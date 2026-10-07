@@ -1,0 +1,636 @@
+{ "tasks": [
+{ "id": "y-stock-scan", "kind": "targeted-edit", "wrongEditKind": "fold-bound", "target": "first_at_least",
+  "instruction": "Return the index of the first of the four bins whose stock is at least the threshold, scanning all four bins, or 4 when no bin qualifies.",
+  "start": { "functions": [
+    { "name": "below", "params": ["u32","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"a","op":"get","args":["p2","p0"]}, {"id":"b","op":"lt","args":["a","p3"]} ], "ret": "b" },
+    { "name": "inc", "params": ["u32","u32","u32x4","u32"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "first_at_least", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"a","op":"loop","args":["below","inc",3,0,"p0","p1"]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" } ] },
+  "reference": { "functions": [
+    { "name": "below", "params": ["u32","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"a","op":"get","args":["p2","p0"]}, {"id":"b","op":"lt","args":["a","p3"]} ], "ret": "b" },
+    { "name": "inc", "params": ["u32","u32","u32x4","u32"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "first_at_least", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"a","op":"loop","args":["below","inc",4,0,"p0","p1"]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "below", "params": ["u32","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"a","op":"get","args":["p2","p0"]}, {"id":"b","op":"lt","args":["a","p3"]} ], "ret": "b" },
+    { "name": "inc", "params": ["u32","u32","u32x4","u32"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "first_at_least", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"a","op":"loop","args":["below","inc",5,0,"p0","p1"]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" } ] } ],
+  "tests": [
+    {"fn":"first_at_least","args":[[5,1,1,1],3],"expected":0},
+    {"fn":"first_at_least","args":[[1,5,1,1],3],"expected":1},
+    {"fn":"first_at_least","args":[[1,1,5,1],3],"expected":2},
+    {"fn":"first_at_least","args":[[1,1,1,5],3],"expected":3},
+    {"fn":"first_at_least","args":[[1,1,1,1],3],"expected":4},
+    {"fn":"first_at_least","args":[[3,0,0,0],3],"expected":0},
+    {"fn":"first_at_least","args":[[2,2,2,2],2],"expected":0},
+    {"fn":"first_at_least","args":[[0,0,0,0],0],"expected":0},
+    {"fn":"first_at_least","args":[[7,8,9,10],11],"expected":4} ],
+  "note": "Start caps the scan at three steps, so an all-short array returns 3; a count of 5 overshoots to 5." },
+
+{ "id": "y-fuel-burns", "kind": "targeted-edit", "wrongEditKind": "swapped-argument", "target": "burns",
+  "instruction": "The burn amount and the fuel reserve are passed to the burn loop in the wrong order; pass them so each burn uses the burn amount and stops before fuel would drop below the reserve.",
+  "start": { "functions": [
+    { "name": "can_burn", "params": ["(u32,u32)","u32","u32","u32"], "result": "bool", "body": [ {"id":"f","op":"at","args":["p0",0]}, {"id":"t","op":"add","args":["p3","p2"]}, {"id":"ok","op":"ge","args":["f","t"]} ], "ret": "ok" },
+    { "name": "burn_step", "params": ["(u32,u32)","u32","u32","u32"], "result": "(u32,u32)", "body": [ {"id":"f","op":"at","args":["p0",0]}, {"id":"f2","op":"sub","args":["f","p2"]}, {"id":"s1","op":"put","args":["p0",0,"f2"]}, {"id":"n","op":"at","args":["p0",1]}, {"id":"n2","op":"add","args":["n",1]}, {"id":"s2","op":"put","args":["s1",1,"n2"]} ], "ret": "s2" },
+    { "name": "burns", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"r","op":"rec","args":["p0",0]}, {"id":"l","op":"loop","args":["can_burn","burn_step",10,"r","p2","p1"]}, {"id":"t","op":"at","args":["l",1]} ], "ret": "t" } ] },
+  "reference": { "functions": [
+    { "name": "can_burn", "params": ["(u32,u32)","u32","u32","u32"], "result": "bool", "body": [ {"id":"f","op":"at","args":["p0",0]}, {"id":"t","op":"add","args":["p3","p2"]}, {"id":"ok","op":"ge","args":["f","t"]} ], "ret": "ok" },
+    { "name": "burn_step", "params": ["(u32,u32)","u32","u32","u32"], "result": "(u32,u32)", "body": [ {"id":"f","op":"at","args":["p0",0]}, {"id":"f2","op":"sub","args":["f","p2"]}, {"id":"s1","op":"put","args":["p0",0,"f2"]}, {"id":"n","op":"at","args":["p0",1]}, {"id":"n2","op":"add","args":["n",1]}, {"id":"s2","op":"put","args":["s1",1,"n2"]} ], "ret": "s2" },
+    { "name": "burns", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"r","op":"rec","args":["p0",0]}, {"id":"l","op":"loop","args":["can_burn","burn_step",10,"r","p1","p2"]}, {"id":"t","op":"at","args":["l",1]} ], "ret": "t" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "can_burn", "params": ["(u32,u32)","u32","u32","u32"], "result": "bool", "body": [ {"id":"f","op":"at","args":["p0",0]}, {"id":"t","op":"add","args":["p3","p2"]}, {"id":"ok","op":"ge","args":["f","t"]} ], "ret": "ok" },
+    { "name": "burn_step", "params": ["(u32,u32)","u32","u32","u32"], "result": "(u32,u32)", "body": [ {"id":"f","op":"at","args":["p0",0]}, {"id":"f2","op":"sub","args":["f","p2"]}, {"id":"s1","op":"put","args":["p0",0,"f2"]}, {"id":"n","op":"at","args":["p0",1]}, {"id":"n2","op":"add","args":["n",1]}, {"id":"s2","op":"put","args":["s1",1,"n2"]} ], "ret": "s2" },
+    { "name": "burns", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"r","op":"rec","args":["p0",0]}, {"id":"l","op":"loop","args":["can_burn","burn_step",5,"r","p1","p2"]}, {"id":"t","op":"at","args":["l",1]} ], "ret": "t" } ] } ],
+  "tests": [
+    {"fn":"burns","args":[100,10,20],"expected":8},
+    {"fn":"burns","args":[50,10,10],"expected":4},
+    {"fn":"burns","args":[30,5,0],"expected":6},
+    {"fn":"burns","args":[5,10,0],"expected":0},
+    {"fn":"burns","args":[200,10,0],"expected":10},
+    {"fn":"burns","args":[19,10,10],"expected":0},
+    {"fn":"burns","args":[20,10,10],"expected":1},
+    {"fn":"burns","args":[0,0,0],"expected":10},
+    {"fn":"burns","args":[45,7,3],"expected":6} ],
+  "note": "Parameters are fuel, burn, reserve. Burns = min(10, floor((fuel-reserve)/burn)). Wrong edit fixes the order but caps the loop at 5." },
+
+{ "id": "y-signal-run", "kind": "comprehension-edit", "wrongEditKind": "off-by-one", "target": "run_length",
+  "instruction": "Return the length of the opening run of samples that are on the same side of 50 as the first sample (above 50 counts as on); the run can be at most all six samples.",
+  "start": { "functions": [
+    { "name": "same_state", "params": ["u32","u32","u32x6","bool"], "result": "bool", "body": [ {"id":"v","op":"get","args":["p2","p0"]}, {"id":"on","op":"gt","args":["v",50]}, {"id":"same","op":"eq","args":["on","p3"]} ], "ret": "same" },
+    { "name": "next", "params": ["u32","u32","u32x6","bool"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "run_length", "params": ["u32x6"], "result": "u32", "body": [ {"id":"f","op":"get","args":["p0",0]}, {"id":"fb","op":"gt","args":["f",50]}, {"id":"l","op":"loop","args":["same_state","next",6,1,"p0","fb"]} ], "ret": "l" } ] },
+  "reference": { "functions": [
+    { "name": "same_state", "params": ["u32","u32","u32x6","bool"], "result": "bool", "body": [ {"id":"v","op":"get","args":["p2","p0"]}, {"id":"on","op":"gt","args":["v",50]}, {"id":"same","op":"eq","args":["on","p3"]} ], "ret": "same" },
+    { "name": "next", "params": ["u32","u32","u32x6","bool"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "run_length", "params": ["u32x6"], "result": "u32", "body": [ {"id":"f","op":"get","args":["p0",0]}, {"id":"fb","op":"gt","args":["f",50]}, {"id":"l","op":"loop","args":["same_state","next",5,1,"p0","fb"]} ], "ret": "l" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "same_state", "params": ["u32","u32","u32x6","bool"], "result": "bool", "body": [ {"id":"v","op":"get","args":["p2","p0"]}, {"id":"on","op":"gt","args":["v",50]}, {"id":"same","op":"eq","args":["on","p3"]} ], "ret": "same" },
+    { "name": "next", "params": ["u32","u32","u32x6","bool"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "run_length", "params": ["u32x6"], "result": "u32", "body": [ {"id":"f","op":"get","args":["p0",0]}, {"id":"fb","op":"gt","args":["f",50]}, {"id":"l","op":"loop","args":["same_state","next",4,1,"p0","fb"]} ], "ret": "l" } ] } ],
+  "tests": [
+    {"fn":"run_length","args":[[60,70,80,90,99,51]],"expected":6},
+    {"fn":"run_length","args":[[10,20,30,40,50,0]],"expected":6},
+    {"fn":"run_length","args":[[60,10,60,60,60,60]],"expected":1},
+    {"fn":"run_length","args":[[60,60,10,10,10,10]],"expected":2},
+    {"fn":"run_length","args":[[10,10,10,10,10,60]],"expected":5},
+    {"fn":"run_length","args":[[51,50,51,51,51,51]],"expected":1},
+    {"fn":"run_length","args":[[0,0,0,0,99,0]],"expected":4},
+    {"fn":"run_length","args":[[50,51,52,53,54,55]],"expected":1},
+    {"fn":"run_length","args":[[100,100,100,100,100,100]],"expected":6} ],
+  "note": "The scan starts at index 1, so only 5 steps fit; with 6 the index wraps to 0 and a uniform array gives 7. Compares two bools with eq." },
+
+{ "id": "y-months-affordable", "kind": "multi-node-edit", "wrongEditKind": "fold-bound", "target": "months_affordable",
+  "instruction": "Return how many of the four monthly bills can be paid in order before the running total would exceed the budget; all four months must be considered.",
+  "start": { "functions": [
+    { "name": "fits", "params": ["(u32,u32)","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"m","op":"at","args":["p0",0]}, {"id":"c","op":"get","args":["p2","m"]}, {"id":"t","op":"at","args":["p0",1]}, {"id":"n","op":"add","args":["t","c"]}, {"id":"ok","op":"le","args":["n","p3"]} ], "ret": "ok" },
+    { "name": "pay", "params": ["(u32,u32)","u32","u32x4","u32"], "result": "(u32,u32)", "body": [ {"id":"m","op":"at","args":["p0",0]}, {"id":"c","op":"get","args":["p2","m"]}, {"id":"t","op":"at","args":["p0",1]}, {"id":"n","op":"add","args":["t","c"]}, {"id":"m2","op":"add","args":["m",1]}, {"id":"r","op":"rec","args":["m2","n"]} ], "ret": "r" },
+    { "name": "months_affordable", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"s","op":"rec","args":[0,0]}, {"id":"l","op":"loop","args":["fits","pay",3,"s","p0","p1"]}, {"id":"r","op":"at","args":["l",1]} ], "ret": "r" } ] },
+  "reference": { "functions": [
+    { "name": "fits", "params": ["(u32,u32)","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"m","op":"at","args":["p0",0]}, {"id":"c","op":"get","args":["p2","m"]}, {"id":"t","op":"at","args":["p0",1]}, {"id":"n","op":"add","args":["t","c"]}, {"id":"ok","op":"le","args":["n","p3"]} ], "ret": "ok" },
+    { "name": "pay", "params": ["(u32,u32)","u32","u32x4","u32"], "result": "(u32,u32)", "body": [ {"id":"m","op":"at","args":["p0",0]}, {"id":"c","op":"get","args":["p2","m"]}, {"id":"t","op":"at","args":["p0",1]}, {"id":"n","op":"add","args":["t","c"]}, {"id":"m2","op":"add","args":["m",1]}, {"id":"r","op":"rec","args":["m2","n"]} ], "ret": "r" },
+    { "name": "months_affordable", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"s","op":"rec","args":[0,0]}, {"id":"l","op":"loop","args":["fits","pay",4,"s","p0","p1"]}, {"id":"r","op":"at","args":["l",0]} ], "ret": "r" } ] },
+  "wrongEdits": [
+    { "functions": [
+    { "name": "fits", "params": ["(u32,u32)","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"m","op":"at","args":["p0",0]}, {"id":"c","op":"get","args":["p2","m"]}, {"id":"t","op":"at","args":["p0",1]}, {"id":"n","op":"add","args":["t","c"]}, {"id":"ok","op":"le","args":["n","p3"]} ], "ret": "ok" },
+    { "name": "pay", "params": ["(u32,u32)","u32","u32x4","u32"], "result": "(u32,u32)", "body": [ {"id":"m","op":"at","args":["p0",0]}, {"id":"c","op":"get","args":["p2","m"]}, {"id":"t","op":"at","args":["p0",1]}, {"id":"n","op":"add","args":["t","c"]}, {"id":"m2","op":"add","args":["m",1]}, {"id":"r","op":"rec","args":["m2","n"]} ], "ret": "r" },
+    { "name": "months_affordable", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"s","op":"rec","args":[0,0]}, {"id":"l","op":"loop","args":["fits","pay",4,"s","p0","p1"]}, {"id":"r","op":"at","args":["l",1]} ], "ret": "r" } ] },
+    { "functions": [
+    { "name": "fits", "params": ["(u32,u32)","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"m","op":"at","args":["p0",0]}, {"id":"c","op":"get","args":["p2","m"]}, {"id":"t","op":"at","args":["p0",1]}, {"id":"n","op":"add","args":["t","c"]}, {"id":"ok","op":"le","args":["n","p3"]} ], "ret": "ok" },
+    { "name": "pay", "params": ["(u32,u32)","u32","u32x4","u32"], "result": "(u32,u32)", "body": [ {"id":"m","op":"at","args":["p0",0]}, {"id":"c","op":"get","args":["p2","m"]}, {"id":"t","op":"at","args":["p0",1]}, {"id":"n","op":"add","args":["t","c"]}, {"id":"m2","op":"add","args":["m",1]}, {"id":"r","op":"rec","args":["m2","n"]} ], "ret": "r" },
+    { "name": "months_affordable", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"s","op":"rec","args":[0,0]}, {"id":"l","op":"loop","args":["fits","pay",3,"s","p0","p1"]}, {"id":"r","op":"at","args":["l",0]} ], "ret": "r" } ] } ],
+  "tests": [
+    {"fn":"months_affordable","args":[[10,20,30,40],100],"expected":4},
+    {"fn":"months_affordable","args":[[10,20,30,40],59],"expected":2},
+    {"fn":"months_affordable","args":[[50,1,1,1],49],"expected":0},
+    {"fn":"months_affordable","args":[[0,0,0,0],0],"expected":4},
+    {"fn":"months_affordable","args":[[5,5,5,5],15],"expected":3},
+    {"fn":"months_affordable","args":[[1,2,3,4],6],"expected":3},
+    {"fn":"months_affordable","args":[[100,0,0,0],100],"expected":4},
+    {"fn":"months_affordable","args":[[7,7,7,7],27],"expected":3},
+    {"fn":"months_affordable","args":[[2,2,2,2],1000],"expected":4} ],
+  "note": "Two fixes: loop count 4 and returning the month field (0) instead of the total paid (1)." },
+
+{ "id": "y-board-jumps", "kind": "targeted-edit", "wrongEditKind": "swapped-argument", "target": "final_square",
+  "instruction": "The number of jumps must be capped by the third parameter instead of always allowing up to eight jumps.",
+  "start": { "functions": [
+    { "name": "before_end", "params": ["u32","u32","u32"], "result": "bool", "body": [ {"id":"a","op":"lt","args":["p0","p2"]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "jump", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"a","op":"mul","args":["p0",2]}, {"id":"b","op":"add","args":["a",1]} ], "ret": "b" },
+    { "name": "final_square", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"l","op":"loop","args":["before_end","jump",8,"p0","p1"]}, {"id":"r","op":"mov","args":["l"]} ], "ret": "r" } ] },
+  "reference": { "functions": [
+    { "name": "before_end", "params": ["u32","u32","u32"], "result": "bool", "body": [ {"id":"a","op":"lt","args":["p0","p2"]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "jump", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"a","op":"mul","args":["p0",2]}, {"id":"b","op":"add","args":["a",1]} ], "ret": "b" },
+    { "name": "final_square", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"l","op":"loop","args":["before_end","jump","p2","p0","p1"]}, {"id":"r","op":"mov","args":["l"]} ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "before_end", "params": ["u32","u32","u32"], "result": "bool", "body": [ {"id":"a","op":"lt","args":["p0","p2"]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "jump", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"a","op":"mul","args":["p0",2]}, {"id":"b","op":"add","args":["a",1]} ], "ret": "b" },
+    { "name": "final_square", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"l","op":"loop","args":["before_end","jump","p1","p0","p1"]}, {"id":"r","op":"mov","args":["l"]} ], "ret": "r" } ] } ],
+  "tests": [
+    {"fn":"final_square","args":[0,100,3],"expected":7},
+    {"fn":"final_square","args":[0,100,10],"expected":127},
+    {"fn":"final_square","args":[5,10,0],"expected":5},
+    {"fn":"final_square","args":[5,10,1],"expected":11},
+    {"fn":"final_square","args":[20,10,5],"expected":20},
+    {"fn":"final_square","args":[1,1000,2],"expected":7},
+    {"fn":"final_square","args":[2,50,4],"expected":47},
+    {"fn":"final_square","args":[0,0,5],"expected":0},
+    {"fn":"final_square","args":[3,4,2],"expected":7} ],
+  "note": "Parameters: start square, board end, jump cap. Each jump goes to 2s+1 while the square is before the end." },
+
+{ "id": "y-free-slot", "kind": "targeted-edit", "wrongEditKind": "off-by-one", "target": "first_free",
+  "instruction": "The search for a free slot (a zero bit in the busy mask) must begin at the slot given by the second parameter, not at slot 0.",
+  "start": { "functions": [
+    { "name": "busy", "params": ["u32","u32","u32"], "result": "bool", "body": [ {"id":"a","op":"shr","args":["p2","p0"]}, {"id":"b","op":"and","args":["a",1]}, {"id":"c","op":"eq","args":["b",1]} ], "ret": "c" },
+    { "name": "next_slot", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "first_free", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"l","op":"loop","args":["busy","next_slot",8,0,"p0"]}, {"id":"r","op":"mov","args":["l"]} ], "ret": "r" } ] },
+  "reference": { "functions": [
+    { "name": "busy", "params": ["u32","u32","u32"], "result": "bool", "body": [ {"id":"a","op":"shr","args":["p2","p0"]}, {"id":"b","op":"and","args":["a",1]}, {"id":"c","op":"eq","args":["b",1]} ], "ret": "c" },
+    { "name": "next_slot", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "first_free", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"l","op":"loop","args":["busy","next_slot",8,"p1","p0"]}, {"id":"r","op":"mov","args":["l"]} ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "busy", "params": ["u32","u32","u32"], "result": "bool", "body": [ {"id":"a","op":"shr","args":["p2","p0"]}, {"id":"b","op":"and","args":["a",1]}, {"id":"c","op":"eq","args":["b",1]} ], "ret": "c" },
+    { "name": "next_slot", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "first_free", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"s","op":"add","args":["p1",1]}, {"id":"l","op":"loop","args":["busy","next_slot",8,"s","p0"]}, {"id":"r","op":"mov","args":["l"]} ], "ret": "r" } ] } ],
+  "tests": [
+    {"fn":"first_free","args":[11,0],"expected":2},
+    {"fn":"first_free","args":[11,1],"expected":2},
+    {"fn":"first_free","args":[11,3],"expected":4},
+    {"fn":"first_free","args":[11,2],"expected":2},
+    {"fn":"first_free","args":[0,5],"expected":5},
+    {"fn":"first_free","args":[255,0],"expected":8},
+    {"fn":"first_free","args":[255,4],"expected":8},
+    {"fn":"first_free","args":[4294967295,3],"expected":11},
+    {"fn":"first_free","args":[6,1],"expected":3} ],
+  "note": "At most 8 slots are checked; when all are busy the result is start + 8." },
+
+{ "id": "y-echo-decay", "kind": "comprehension-edit", "wrongEditKind": "comparison", "target": "decay_ticks",
+  "instruction": "Count halvings only while the amplitude is strictly above the threshold, so counting stops as soon as it is at or below the threshold; the helpers stay unchanged.",
+  "start": { "functions": [
+    { "name": "loud", "params": ["(u32,u32)","u32","u32"], "result": "bool", "body": [ {"id":"a","op":"at","args":["p0",0]}, {"id":"b","op":"ge","args":["a","p2"]} ], "ret": "b" },
+    { "name": "halve", "params": ["(u32,u32)","u32","u32"], "result": "(u32,u32)", "body": [ {"id":"a","op":"at","args":["p0",0]}, {"id":"b","op":"shr","args":["a",1]}, {"id":"c","op":"put","args":["p0",0,"b"]}, {"id":"d","op":"at","args":["p0",1]}, {"id":"e","op":"add","args":["d",1]}, {"id":"f","op":"put","args":["c",1,"e"]} ], "ret": "f" },
+    { "name": "decay_ticks", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"r","op":"rec","args":["p0",0]}, {"id":"l","op":"loop","args":["loud","halve",32,"r","p1"]}, {"id":"n","op":"at","args":["l",1]} ], "ret": "n" } ] },
+  "reference": { "functions": [
+    { "name": "loud", "params": ["(u32,u32)","u32","u32"], "result": "bool", "body": [ {"id":"a","op":"at","args":["p0",0]}, {"id":"b","op":"ge","args":["a","p2"]} ], "ret": "b" },
+    { "name": "halve", "params": ["(u32,u32)","u32","u32"], "result": "(u32,u32)", "body": [ {"id":"a","op":"at","args":["p0",0]}, {"id":"b","op":"shr","args":["a",1]}, {"id":"c","op":"put","args":["p0",0,"b"]}, {"id":"d","op":"at","args":["p0",1]}, {"id":"e","op":"add","args":["d",1]}, {"id":"f","op":"put","args":["c",1,"e"]} ], "ret": "f" },
+    { "name": "decay_ticks", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"r","op":"rec","args":["p0",0]}, {"id":"t","op":"add","args":["p1",1]}, {"id":"l","op":"loop","args":["loud","halve",32,"r","t"]}, {"id":"n","op":"at","args":["l",1]} ], "ret": "n" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "loud", "params": ["(u32,u32)","u32","u32"], "result": "bool", "body": [ {"id":"a","op":"at","args":["p0",0]}, {"id":"b","op":"ge","args":["a","p2"]} ], "ret": "b" },
+    { "name": "halve", "params": ["(u32,u32)","u32","u32"], "result": "(u32,u32)", "body": [ {"id":"a","op":"at","args":["p0",0]}, {"id":"b","op":"shr","args":["a",1]}, {"id":"c","op":"put","args":["p0",0,"b"]}, {"id":"d","op":"at","args":["p0",1]}, {"id":"e","op":"add","args":["d",1]}, {"id":"f","op":"put","args":["c",1,"e"]} ], "ret": "f" },
+    { "name": "decay_ticks", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"r","op":"rec","args":["p0",0]}, {"id":"t","op":"sub","args":["p1",1]}, {"id":"l","op":"loop","args":["loud","halve",32,"r","t"]}, {"id":"n","op":"at","args":["l",1]} ], "ret": "n" } ] } ],
+  "tests": [
+    {"fn":"decay_ticks","args":[100,10],"expected":4},
+    {"fn":"decay_ticks","args":[80,10],"expected":3},
+    {"fn":"decay_ticks","args":[0,0],"expected":0},
+    {"fn":"decay_ticks","args":[1,0],"expected":1},
+    {"fn":"decay_ticks","args":[5,5],"expected":0},
+    {"fn":"decay_ticks","args":[6,5],"expected":1},
+    {"fn":"decay_ticks","args":[4294967295,0],"expected":32},
+    {"fn":"decay_ticks","args":[64,1],"expected":6},
+    {"fn":"decay_ticks","args":[9,2],"expected":2} ],
+  "note": "The predicate is ge; amp > thr is amp >= thr+1, so the fix passes threshold+1 to the loop. Thresholds near 2^32-1 are not tested." },
+
+{ "id": "y-last-slot", "kind": "targeted-edit", "wrongEditKind": "stop-condition", "target": "last_slot",
+  "instruction": "Return the index of the last of the four slots that holds the key, searching from the end, or 4294967295 when the key is absent.",
+  "start": { "functions": [
+    { "name": "miss", "params": ["u32","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"a","op":"get","args":["p2","p0"]}, {"id":"b","op":"eq","args":["a","p3"]}, {"id":"c","op":"eq","args":["b",false]} ], "ret": "c" },
+    { "name": "back", "params": ["u32","u32","u32x4","u32"], "result": "u32", "body": [ {"id":"a","op":"sub","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "last_slot", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"l","op":"loop","args":["miss","back",4,4,"p0","p1"]}, {"id":"r","op":"mov","args":["l"]} ], "ret": "r" } ] },
+  "reference": { "functions": [
+    { "name": "miss", "params": ["u32","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"a","op":"get","args":["p2","p0"]}, {"id":"b","op":"eq","args":["a","p3"]}, {"id":"c","op":"eq","args":["b",false]} ], "ret": "c" },
+    { "name": "back", "params": ["u32","u32","u32x4","u32"], "result": "u32", "body": [ {"id":"a","op":"sub","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "last_slot", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"l","op":"loop","args":["miss","back",4,3,"p0","p1"]}, {"id":"r","op":"mov","args":["l"]} ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "miss", "params": ["u32","u32","u32x4","u32"], "result": "bool", "body": [ {"id":"a","op":"get","args":["p2","p0"]}, {"id":"b","op":"eq","args":["a","p3"]}, {"id":"c","op":"eq","args":["b",false]} ], "ret": "c" },
+    { "name": "back", "params": ["u32","u32","u32x4","u32"], "result": "u32", "body": [ {"id":"a","op":"sub","args":["p0",1]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" },
+    { "name": "last_slot", "params": ["u32x4","u32"], "result": "u32", "body": [ {"id":"l","op":"loop","args":["miss","back",3,3,"p0","p1"]}, {"id":"r","op":"mov","args":["l"]} ], "ret": "r" } ] } ],
+  "tests": [
+    {"fn":"last_slot","args":[[1,2,3,4],4],"expected":3},
+    {"fn":"last_slot","args":[[1,2,3,4],1],"expected":0},
+    {"fn":"last_slot","args":[[1,2,3,4],9],"expected":4294967295},
+    {"fn":"last_slot","args":[[5,5,5,5],5],"expected":3},
+    {"fn":"last_slot","args":[[7,8,7,8],7],"expected":2},
+    {"fn":"last_slot","args":[[0,0,0,1],0],"expected":2},
+    {"fn":"last_slot","args":[[2,9,9,2],9],"expected":2},
+    {"fn":"last_slot","args":[[0,0,0,0],1],"expected":4294967295} ],
+  "note": "Start begins at index 4, which wraps to slot 0 on the first check. Compares a bool with false via eq." },
+
+{ "id": "y-vowel-pick", "kind": "targeted-edit", "wrongEditKind": "off-by-one", "target": "vowel_code",
+  "instruction": "Vowels are numbered from 1, so 1 must give the byte of 'a', 5 the byte of 'u', and numbers keep cycling through the five vowels.",
+  "start": { "functions": [
+    { "name": "vowel_code", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["aeiou"]}, {"id":"c","op":"get","args":["t","p0"]} ], "ret": "c" } ] },
+  "reference": { "functions": [
+    { "name": "vowel_code", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["aeiou"]}, {"id":"i","op":"sub","args":["p0",1]}, {"id":"c","op":"get","args":["t","i"]} ], "ret": "c" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "vowel_code", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["aeiou"]}, {"id":"g","op":"get","args":["t","p0"]}, {"id":"c","op":"sub","args":["g",1]} ], "ret": "c" } ] } ],
+  "tests": [
+    {"fn":"vowel_code","args":[1],"expected":97},
+    {"fn":"vowel_code","args":[2],"expected":101},
+    {"fn":"vowel_code","args":[3],"expected":105},
+    {"fn":"vowel_code","args":[4],"expected":111},
+    {"fn":"vowel_code","args":[5],"expected":117},
+    {"fn":"vowel_code","args":[6],"expected":97},
+    {"fn":"vowel_code","args":[0],"expected":97},
+    {"fn":"vowel_code","args":[10],"expected":117} ],
+  "note": "0 - 1 wraps to 4294967295, which is 0 mod 5, so 0 gives 'a'." },
+
+{ "id": "y-weekday-initial", "kind": "targeted-edit", "wrongEditKind": "off-by-one", "target": "day_letter",
+  "instruction": "Day numbers now start with Sunday as 0 (Monday 1, ..., Saturday 6, then repeating); return the capital initial of that day.",
+  "start": { "functions": [
+    { "name": "day_letter", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["MTWTFSS"]}, {"id":"c","op":"get","args":["t","p0"]} ], "ret": "c" } ] },
+  "reference": { "functions": [
+    { "name": "day_letter", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["SMTWTFS"]}, {"id":"c","op":"get","args":["t","p0"]} ], "ret": "c" } ] },
+  "wrongEdits": [
+    { "functions": [
+    { "name": "day_letter", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["MTWTFSS"]}, {"id":"i","op":"add","args":["p0",1]}, {"id":"c","op":"get","args":["t","i"]} ], "ret": "c" } ] },
+    { "functions": [
+    { "name": "day_letter", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["SMTWTFS"]}, {"id":"i","op":"add","args":["p0",1]}, {"id":"c","op":"get","args":["t","i"]} ], "ret": "c" } ] } ],
+  "tests": [
+    {"fn":"day_letter","args":[0],"expected":83},
+    {"fn":"day_letter","args":[1],"expected":77},
+    {"fn":"day_letter","args":[2],"expected":84},
+    {"fn":"day_letter","args":[3],"expected":87},
+    {"fn":"day_letter","args":[4],"expected":84},
+    {"fn":"day_letter","args":[5],"expected":70},
+    {"fn":"day_letter","args":[6],"expected":83},
+    {"fn":"day_letter","args":[7],"expected":83},
+    {"fn":"day_letter","args":[13],"expected":83} ],
+  "note": "Index wraps mod 7. Shifting by one with the old text is the wrong direction (needs +6)." },
+
+{ "id": "y-tag-score", "kind": "multi-node-edit", "wrongEditKind": "fold-bound", "target": "tag_score",
+  "instruction": "Add all four bytes of the tag to the seed (not just the first three), then keep only the low 8 bits of the result.",
+  "start": { "functions": [
+    { "name": "add_byte", "params": ["u32","u32","u32x4"], "result": "u32", "body": [ {"id":"a","op":"get","args":["p2","p1"]}, {"id":"b","op":"add","args":["p0","a"]} ], "ret": "b" },
+    { "name": "tag_score", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["RCPT"]}, {"id":"s","op":"fold","args":["add_byte",3,"p0","t"]} ], "ret": "s" } ] },
+  "reference": { "functions": [
+    { "name": "add_byte", "params": ["u32","u32","u32x4"], "result": "u32", "body": [ {"id":"a","op":"get","args":["p2","p1"]}, {"id":"b","op":"add","args":["p0","a"]} ], "ret": "b" },
+    { "name": "tag_score", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["RCPT"]}, {"id":"s","op":"fold","args":["add_byte",4,"p0","t"]}, {"id":"m","op":"and","args":["s",255]} ], "ret": "m" } ] },
+  "wrongEdits": [
+    { "functions": [
+    { "name": "add_byte", "params": ["u32","u32","u32x4"], "result": "u32", "body": [ {"id":"a","op":"get","args":["p2","p1"]}, {"id":"b","op":"add","args":["p0","a"]} ], "ret": "b" },
+    { "name": "tag_score", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["RCPT"]}, {"id":"s","op":"fold","args":["add_byte",4,"p0","t"]} ], "ret": "s" } ] },
+    { "functions": [
+    { "name": "add_byte", "params": ["u32","u32","u32x4"], "result": "u32", "body": [ {"id":"a","op":"get","args":["p2","p1"]}, {"id":"b","op":"add","args":["p0","a"]} ], "ret": "b" },
+    { "name": "tag_score", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["RCPT"]}, {"id":"s","op":"fold","args":["add_byte",3,"p0","t"]}, {"id":"m","op":"and","args":["s",255]} ], "ret": "m" } ] } ],
+  "tests": [
+    {"fn":"tag_score","args":[0],"expected":57},
+    {"fn":"tag_score","args":[1],"expected":58},
+    {"fn":"tag_score","args":[199],"expected":0},
+    {"fn":"tag_score","args":[200],"expected":1},
+    {"fn":"tag_score","args":[255],"expected":56},
+    {"fn":"tag_score","args":[1000],"expected":33},
+    {"fn":"tag_score","args":[4294967295],"expected":56},
+    {"fn":"tag_score","args":[256],"expected":57} ],
+  "note": "RCPT = 82,67,80,84; sum 313 (first three 229). Result (seed+313) & 255." },
+
+{ "id": "y-banner-letter", "kind": "comprehension-edit", "wrongEditKind": "comparison", "target": "is_letter",
+  "instruction": "Make the comparison case-insensitive: a lowercase letter byte must also match the capital letter stored at that position of the banner.",
+  "start": { "functions": [
+    { "name": "is_letter", "params": ["u32","u32"], "result": "bool", "body": [ {"id":"t","op":"text","args":["LEVEL"]}, {"id":"c","op":"get","args":["t","p0"]}, {"id":"e","op":"eq","args":["c","p1"]} ], "ret": "e" } ] },
+  "reference": { "functions": [
+    { "name": "is_letter", "params": ["u32","u32"], "result": "bool", "body": [ {"id":"t","op":"text","args":["LEVEL"]}, {"id":"c","op":"get","args":["t","p0"]}, {"id":"u","op":"and","args":["p1",223]}, {"id":"e","op":"eq","args":["c","u"]} ], "ret": "e" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "is_letter", "params": ["u32","u32"], "result": "bool", "body": [ {"id":"t","op":"text","args":["LEVEL"]}, {"id":"c","op":"get","args":["t","p0"]}, {"id":"u","op":"sub","args":["p1",32]}, {"id":"e","op":"eq","args":["c","u"]} ], "ret": "e" } ] } ],
+  "tests": [
+    {"fn":"is_letter","args":[0,76],"expected":true},
+    {"fn":"is_letter","args":[0,108],"expected":true},
+    {"fn":"is_letter","args":[1,69],"expected":true},
+    {"fn":"is_letter","args":[1,101],"expected":true},
+    {"fn":"is_letter","args":[2,86],"expected":true},
+    {"fn":"is_letter","args":[2,118],"expected":true},
+    {"fn":"is_letter","args":[3,76],"expected":false},
+    {"fn":"is_letter","args":[5,108],"expected":true},
+    {"fn":"is_letter","args":[4,77],"expected":false} ],
+  "note": "Clearing bit 5 (and 223) maps lowercase to uppercase and leaves uppercase alone; subtracting 32 breaks uppercase input." },
+
+{ "id": "y-ticket-tail", "kind": "multi-node-edit", "wrongEditKind": "off-by-one", "target": "count_char",
+  "instruction": "Count how often the byte occurs only in the last four letters of the word, instead of in the whole word.",
+  "start": { "functions": [
+    { "name": "count_eq", "params": ["u32","u32","u32x7","u32","u32"], "result": "u32", "body": [ {"id":"idx","op":"add","args":["p1","p4"]}, {"id":"a","op":"get","args":["p2","idx"]}, {"id":"c","op":"eq","args":["a","p3"]}, {"id":"d","op":"select","args":["c",1,0]}, {"id":"e","op":"add","args":["p0","d"]} ], "ret": "e" },
+    { "name": "count_char", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["TICKETS"]}, {"id":"n","op":"fold","args":["count_eq",7,0,"t","p0",0]} ], "ret": "n" } ] },
+  "reference": { "functions": [
+    { "name": "count_eq", "params": ["u32","u32","u32x7","u32","u32"], "result": "u32", "body": [ {"id":"idx","op":"add","args":["p1","p4"]}, {"id":"a","op":"get","args":["p2","idx"]}, {"id":"c","op":"eq","args":["a","p3"]}, {"id":"d","op":"select","args":["c",1,0]}, {"id":"e","op":"add","args":["p0","d"]} ], "ret": "e" },
+    { "name": "count_char", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["TICKETS"]}, {"id":"n","op":"fold","args":["count_eq",4,0,"t","p0",3]} ], "ret": "n" } ] },
+  "wrongEdits": [
+    { "functions": [
+    { "name": "count_eq", "params": ["u32","u32","u32x7","u32","u32"], "result": "u32", "body": [ {"id":"idx","op":"add","args":["p1","p4"]}, {"id":"a","op":"get","args":["p2","idx"]}, {"id":"c","op":"eq","args":["a","p3"]}, {"id":"d","op":"select","args":["c",1,0]}, {"id":"e","op":"add","args":["p0","d"]} ], "ret": "e" },
+    { "name": "count_char", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["TICKETS"]}, {"id":"n","op":"fold","args":["count_eq",4,0,"t","p0",4]} ], "ret": "n" } ] },
+    { "functions": [
+    { "name": "count_eq", "params": ["u32","u32","u32x7","u32","u32"], "result": "u32", "body": [ {"id":"idx","op":"add","args":["p1","p4"]}, {"id":"a","op":"get","args":["p2","idx"]}, {"id":"c","op":"eq","args":["a","p3"]}, {"id":"d","op":"select","args":["c",1,0]}, {"id":"e","op":"add","args":["p0","d"]} ], "ret": "e" },
+    { "name": "count_char", "params": ["u32"], "result": "u32", "body": [ {"id":"t","op":"text","args":["TICKETS"]}, {"id":"n","op":"fold","args":["count_eq",4,0,"t","p0",0]} ], "ret": "n" } ] } ],
+  "tests": [
+    {"fn":"count_char","args":[84],"expected":1},
+    {"fn":"count_char","args":[73],"expected":0},
+    {"fn":"count_char","args":[75],"expected":1},
+    {"fn":"count_char","args":[83],"expected":1},
+    {"fn":"count_char","args":[69],"expected":1},
+    {"fn":"count_char","args":[67],"expected":0},
+    {"fn":"count_char","args":[65],"expected":0},
+    {"fn":"count_char","args":[0],"expected":0} ],
+  "note": "TICKETS = 84,73,67,75,69,84,83; last four are K,E,T,S (offset 3, count 4). Offset 4 wraps to the first T." },
+
+{ "id": "y-battery-glyph", "kind": "comprehension-edit", "wrongEditKind": "wrapping", "target": "bar_glyph",
+  "instruction": "Pick the glyph by whole quarters of the percentage (0-24 first glyph, 25-49 second, 50-74 third, 75-99 fourth, 100 the last); currently 100 wraps back to the first glyph.",
+  "start": { "functions": [
+    { "name": "bar_glyph", "params": ["u32"], "result": "u32", "body": [ {"id":"q","op":"div","args":["p0",20]}, {"id":"t","op":"text","args":[" .oO@"]}, {"id":"g","op":"get","args":["t","q"]} ], "ret": "g" } ] },
+  "reference": { "functions": [
+    { "name": "bar_glyph", "params": ["u32"], "result": "u32", "body": [ {"id":"q","op":"div","args":["p0",25]}, {"id":"t","op":"text","args":[" .oO@"]}, {"id":"g","op":"get","args":["t","q"]} ], "ret": "g" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "bar_glyph", "params": ["u32"], "result": "u32", "body": [ {"id":"q","op":"div","args":["p0",24]}, {"id":"t","op":"text","args":[" .oO@"]}, {"id":"g","op":"get","args":["t","q"]} ], "ret": "g" } ] } ],
+  "tests": [
+    {"fn":"bar_glyph","args":[0],"expected":32},
+    {"fn":"bar_glyph","args":[24],"expected":32},
+    {"fn":"bar_glyph","args":[25],"expected":46},
+    {"fn":"bar_glyph","args":[49],"expected":46},
+    {"fn":"bar_glyph","args":[50],"expected":111},
+    {"fn":"bar_glyph","args":[75],"expected":79},
+    {"fn":"bar_glyph","args":[99],"expected":79},
+    {"fn":"bar_glyph","args":[100],"expected":64},
+    {"fn":"bar_glyph","args":[19],"expected":32} ],
+  "note": "Glyph bytes: space 32, '.' 46, 'o' 111, 'O' 79, '@' 64." },
+
+{ "id": "y-reading-tenths", "kind": "targeted-edit", "wrongEditKind": "wrapping", "target": "echo_units",
+  "instruction": "The input reading is in tenths; write it converted to whole units, rounding down.",
+  "start": { "functions": [
+    { "name": "echo_units", "params": ["io"], "result": "io", "body": [ {"id":"r","op":"read","args":["p0"]}, {"id":"w","op":"at","args":["r",0]}, {"id":"t","op":"at","args":["r",1]}, {"id":"d","op":"mov","args":["w"]}, {"id":"o","op":"write","args":["t","d"]} ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "echo_units", "params": ["io"], "result": "io", "body": [ {"id":"r","op":"read","args":["p0"]}, {"id":"w","op":"at","args":["r",0]}, {"id":"t","op":"at","args":["r",1]}, {"id":"d","op":"div","args":["w",10]}, {"id":"o","op":"write","args":["t","d"]} ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "echo_units", "params": ["io"], "result": "io", "body": [ {"id":"r","op":"read","args":["p0"]}, {"id":"w","op":"at","args":["r",0]}, {"id":"t","op":"at","args":["r",1]}, {"id":"d","op":"rem","args":["w",10]}, {"id":"o","op":"write","args":["t","d"]} ], "ret": "o" } ] } ],
+  "tests": [
+    {"fn":"echo_units","args":[{"io":[0]}],"expected":{"out":[0]}},
+    {"fn":"echo_units","args":[{"io":[9]}],"expected":{"out":[0]}},
+    {"fn":"echo_units","args":[{"io":[10]}],"expected":{"out":[1]}},
+    {"fn":"echo_units","args":[{"io":[123]}],"expected":{"out":[12]}},
+    {"fn":"echo_units","args":[{"io":[]}],"expected":{"out":[0]}},
+    {"fn":"echo_units","args":[{"io":[4294967295]}],"expected":{"out":[429496729]}},
+    {"fn":"echo_units","args":[{"io":[55,7]}],"expected":{"out":[5]}},
+    {"fn":"echo_units","args":[{"io":[100]}],"expected":{"out":[10]}} ],
+  "note": "Only one word is read." },
+
+{ "id": "y-swap-pair", "kind": "targeted-edit", "wrongEditKind": "token-order", "target": "swap_pair",
+  "instruction": "Read two words and write them in the opposite order: the second word first, then the first word.",
+  "start": { "functions": [
+    { "name": "swap_pair", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"o1","op":"write","args":["t2","a"]}, {"id":"o2","op":"write","args":["o1","b"]} ], "ret": "o2" } ] },
+  "reference": { "functions": [
+    { "name": "swap_pair", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"o1","op":"write","args":["t2","b"]}, {"id":"o2","op":"write","args":["o1","a"]} ], "ret": "o2" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "swap_pair", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"o1","op":"write","args":["t2","b"]}, {"id":"o2","op":"write","args":["o1","b"]} ], "ret": "o2" } ] } ],
+  "tests": [
+    {"fn":"swap_pair","args":[{"io":[1,2]}],"expected":{"out":[2,1]}},
+    {"fn":"swap_pair","args":[{"io":[5,5]}],"expected":{"out":[5,5]}},
+    {"fn":"swap_pair","args":[{"io":[7]}],"expected":{"out":[0,7]}},
+    {"fn":"swap_pair","args":[{"io":[]}],"expected":{"out":[0,0]}},
+    {"fn":"swap_pair","args":[{"io":[3,4,5]}],"expected":{"out":[4,3]}},
+    {"fn":"swap_pair","args":[{"io":[0,9]}],"expected":{"out":[9,0]}},
+    {"fn":"swap_pair","args":[{"io":[10,20]}],"expected":{"out":[20,10]}},
+    {"fn":"swap_pair","args":[{"io":[4294967295,1]}],"expected":{"out":[1,4294967295]}} ],
+  "note": "Missing input reads as 0." },
+
+{ "id": "y-sum-three", "kind": "multi-node-edit", "wrongEditKind": "off-by-one", "target": "sum_three",
+  "instruction": "Read the next three input words (not two) and write their sum.",
+  "start": { "functions": [
+    { "name": "sum_three", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"s","op":"add","args":["a","b"]}, {"id":"o","op":"write","args":["t2","s"]} ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "sum_three", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"r3","op":"read","args":["t2"]}, {"id":"c","op":"at","args":["r3",0]}, {"id":"t3","op":"at","args":["r3",1]}, {"id":"s","op":"add","args":["a","b"]}, {"id":"s2","op":"add","args":["s","c"]}, {"id":"o","op":"write","args":["t3","s2"]} ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "sum_three", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"r3","op":"read","args":["t2"]}, {"id":"c","op":"at","args":["r3",0]}, {"id":"t3","op":"at","args":["r3",1]}, {"id":"s","op":"add","args":["a","b"]}, {"id":"s2","op":"add","args":["s","b"]}, {"id":"o","op":"write","args":["t3","s2"]} ], "ret": "o" } ] } ],
+  "tests": [
+    {"fn":"sum_three","args":[{"io":[1,2,3]}],"expected":{"out":[6]}},
+    {"fn":"sum_three","args":[{"io":[0,0,0]}],"expected":{"out":[0]}},
+    {"fn":"sum_three","args":[{"io":[5]}],"expected":{"out":[5]}},
+    {"fn":"sum_three","args":[{"io":[]}],"expected":{"out":[0]}},
+    {"fn":"sum_three","args":[{"io":[10,20]}],"expected":{"out":[30]}},
+    {"fn":"sum_three","args":[{"io":[1,1,1,1]}],"expected":{"out":[3]}},
+    {"fn":"sum_three","args":[{"io":[4294967295,1,5]}],"expected":{"out":[5]}},
+    {"fn":"sum_three","args":[{"io":[7,0,9]}],"expected":{"out":[16]}} ],
+  "note": "Sum wraps mod 2^32. Wrong edit reads the third word but adds the second twice." },
+
+{ "id": "y-score-card", "kind": "multi-node-edit", "wrongEditKind": "token-order", "target": "post_scores",
+  "instruction": "The posted array must also hold the total of the two scores as a third element, after the two scores.",
+  "start": { "functions": [
+    { "name": "post_scores", "params": ["io","u32","u32"], "result": "io", "body": [ {"id":"a","op":"arr","args":["p1","p2"]}, {"id":"o","op":"puts","args":["p0","a"]} ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "post_scores", "params": ["io","u32","u32"], "result": "io", "body": [ {"id":"s","op":"add","args":["p1","p2"]}, {"id":"a","op":"arr","args":["p1","p2","s"]}, {"id":"o","op":"puts","args":["p0","a"]} ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "post_scores", "params": ["io","u32","u32"], "result": "io", "body": [ {"id":"s","op":"add","args":["p1","p2"]}, {"id":"a","op":"arr","args":["p1","p2"]}, {"id":"o","op":"puts","args":["p0","a"]}, {"id":"o2","op":"write","args":["o","s"]} ], "ret": "o2" } ] } ],
+  "tests": [
+    {"fn":"post_scores","args":[{"io":[]},1,2],"expected":{"out":[3,1,2,3]}},
+    {"fn":"post_scores","args":[{"io":[]},0,0],"expected":{"out":[3,0,0,0]}},
+    {"fn":"post_scores","args":[{"io":[]},10,5],"expected":{"out":[3,10,5,15]}},
+    {"fn":"post_scores","args":[{"io":[]},4294967295,2],"expected":{"out":[3,4294967295,2,1]}},
+    {"fn":"post_scores","args":[{"io":[]},7,0],"expected":{"out":[3,7,0,7]}},
+    {"fn":"post_scores","args":[{"io":[]},100,200],"expected":{"out":[3,100,200,300]}},
+    {"fn":"post_scores","args":[{"io":[9,9]},3,4],"expected":{"out":[3,3,4,7]}},
+    {"fn":"post_scores","args":[{"io":[]},0,1],"expected":{"out":[3,0,1,1]}} ],
+  "note": "puts writes the length first. Writing the total separately gives length 2." },
+
+{ "id": "y-tagged-reply", "kind": "targeted-edit", "wrongEditKind": "token-order", "target": "respond",
+  "instruction": "The status tag must be written before the code, not after it; both must still be written.",
+  "start": { "functions": [
+    { "name": "write_tag", "params": ["io"], "result": "io", "body": [ {"id":"t","op":"text","args":["OK"]}, {"id":"o","op":"puts","args":["p0","t"]} ], "ret": "o" },
+    { "name": "respond", "params": ["io","u32"], "result": "io", "body": [ {"id":"o1","op":"write","args":["p0","p1"]}, {"id":"o2","op":"call","args":["write_tag","o1"]} ], "ret": "o2" } ] },
+  "reference": { "functions": [
+    { "name": "write_tag", "params": ["io"], "result": "io", "body": [ {"id":"t","op":"text","args":["OK"]}, {"id":"o","op":"puts","args":["p0","t"]} ], "ret": "o" },
+    { "name": "respond", "params": ["io","u32"], "result": "io", "body": [ {"id":"o1","op":"call","args":["write_tag","p0"]}, {"id":"o2","op":"write","args":["o1","p1"]} ], "ret": "o2" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "write_tag", "params": ["io"], "result": "io", "body": [ {"id":"t","op":"text","args":["OK"]}, {"id":"o","op":"puts","args":["p0","t"]} ], "ret": "o" },
+    { "name": "respond", "params": ["io","u32"], "result": "io", "body": [ {"id":"o1","op":"call","args":["write_tag","p0"]}, {"id":"o2","op":"mov","args":["o1"]} ], "ret": "o2" } ] } ],
+  "tests": [
+    {"fn":"respond","args":[{"io":[]},0],"expected":{"out":[2,79,75,0]}},
+    {"fn":"respond","args":[{"io":[]},1],"expected":{"out":[2,79,75,1]}},
+    {"fn":"respond","args":[{"io":[]},200],"expected":{"out":[2,79,75,200]}},
+    {"fn":"respond","args":[{"io":[]},404],"expected":{"out":[2,79,75,404]}},
+    {"fn":"respond","args":[{"io":[]},500],"expected":{"out":[2,79,75,500]}},
+    {"fn":"respond","args":[{"io":[]},4294967295],"expected":{"out":[2,79,75,4294967295]}},
+    {"fn":"respond","args":[{"io":[]},2],"expected":{"out":[2,79,75,2]}},
+    {"fn":"respond","args":[{"io":[5]},79],"expected":{"out":[2,79,75,79]}} ],
+  "note": "The helper puts the text OK = [79,75] with its length 2." },
+
+{ "id": "y-relay-scaled", "kind": "multi-node-edit", "wrongEditKind": "swapped-argument", "target": "relay",
+  "instruction": "Read a second word as well and emit the first word times the factor, plus the second word.",
+  "start": { "functions": [
+    { "name": "emit", "params": ["io","u32"], "result": "io", "body": [ {"id":"o","op":"write","args":["p0","p1"]}, {"id":"r","op":"mov","args":["o"]} ], "ret": "r" },
+    { "name": "relay", "params": ["io","u32"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"m","op":"mul","args":["a","p1"]}, {"id":"o","op":"call","args":["emit","t1","m"]} ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "emit", "params": ["io","u32"], "result": "io", "body": [ {"id":"o","op":"write","args":["p0","p1"]}, {"id":"r","op":"mov","args":["o"]} ], "ret": "r" },
+    { "name": "relay", "params": ["io","u32"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"m","op":"mul","args":["a","p1"]}, {"id":"s","op":"add","args":["m","b"]}, {"id":"o","op":"call","args":["emit","t2","s"]} ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "emit", "params": ["io","u32"], "result": "io", "body": [ {"id":"o","op":"write","args":["p0","p1"]}, {"id":"r","op":"mov","args":["o"]} ], "ret": "r" },
+    { "name": "relay", "params": ["io","u32"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"s","op":"add","args":["a","b"]}, {"id":"m","op":"mul","args":["s","p1"]}, {"id":"o","op":"call","args":["emit","t2","m"]} ], "ret": "o" } ] } ],
+  "tests": [
+    {"fn":"relay","args":[{"io":[2,3]},10],"expected":{"out":[23]}},
+    {"fn":"relay","args":[{"io":[0,5]},7],"expected":{"out":[5]}},
+    {"fn":"relay","args":[{"io":[4]},3],"expected":{"out":[12]}},
+    {"fn":"relay","args":[{"io":[]},9],"expected":{"out":[0]}},
+    {"fn":"relay","args":[{"io":[1,1]},0],"expected":{"out":[1]}},
+    {"fn":"relay","args":[{"io":[5,6,7]},2],"expected":{"out":[16]}},
+    {"fn":"relay","args":[{"io":[100,1]},1],"expected":{"out":[101]}},
+    {"fn":"relay","args":[{"io":[2147483648,1]},2],"expected":{"out":[1]}} ],
+  "note": "Token passes through the earlier helper emit. Wrong edit multiplies the sum." },
+
+{ "id": "y-larger-reading", "kind": "targeted-edit", "wrongEditKind": "comparison", "target": "write_max",
+  "instruction": "Read two words and write the larger of the two.",
+  "start": { "functions": [
+    { "name": "write_max", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"g","op":"lt","args":["a","b"]}, {"id":"m","op":"select","args":["g","a","b"]}, {"id":"o","op":"write","args":["t2","m"]} ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "write_max", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"g","op":"gt","args":["a","b"]}, {"id":"m","op":"select","args":["g","a","b"]}, {"id":"o","op":"write","args":["t2","m"]} ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "write_max", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"g","op":"gt","args":["a","b"]}, {"id":"m","op":"select","args":["g","b","a"]}, {"id":"o","op":"write","args":["t2","m"]} ], "ret": "o" } ] } ],
+  "tests": [
+    {"fn":"write_max","args":[{"io":[3,7]}],"expected":{"out":[7]}},
+    {"fn":"write_max","args":[{"io":[7,3]}],"expected":{"out":[7]}},
+    {"fn":"write_max","args":[{"io":[5,5]}],"expected":{"out":[5]}},
+    {"fn":"write_max","args":[{"io":[]}],"expected":{"out":[0]}},
+    {"fn":"write_max","args":[{"io":[9]}],"expected":{"out":[9]}},
+    {"fn":"write_max","args":[{"io":[0,1]}],"expected":{"out":[1]}},
+    {"fn":"write_max","args":[{"io":[4294967295,0]}],"expected":{"out":[4294967295]}},
+    {"fn":"write_max","args":[{"io":[2,8,100]}],"expected":{"out":[8]}} ],
+  "note": "Start writes the smaller word." },
+
+{ "id": "y-log-newest-first", "kind": "targeted-edit", "wrongEditKind": "swapped-argument", "target": "log_readings",
+  "instruction": "Log the two readings newest first: the second word read, then the first.",
+  "start": { "functions": [
+    { "name": "log_pair", "params": ["io","u32x2"], "result": "io", "body": [ {"id":"o","op":"puts","args":["p0","p1"]}, {"id":"r","op":"mov","args":["o"]} ], "ret": "r" },
+    { "name": "log_readings", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"p","op":"arr","args":["a","b"]}, {"id":"o","op":"call","args":["log_pair","t2","p"]} ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "log_pair", "params": ["io","u32x2"], "result": "io", "body": [ {"id":"o","op":"puts","args":["p0","p1"]}, {"id":"r","op":"mov","args":["o"]} ], "ret": "r" },
+    { "name": "log_readings", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"p","op":"arr","args":["b","a"]}, {"id":"o","op":"call","args":["log_pair","t2","p"]} ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "log_pair", "params": ["io","u32x2"], "result": "io", "body": [ {"id":"o","op":"puts","args":["p0","p1"]}, {"id":"r","op":"mov","args":["o"]} ], "ret": "r" },
+    { "name": "log_readings", "params": ["io"], "result": "io", "body": [ {"id":"r1","op":"read","args":["p0"]}, {"id":"a","op":"at","args":["r1",0]}, {"id":"t1","op":"at","args":["r1",1]}, {"id":"r2","op":"read","args":["t1"]}, {"id":"b","op":"at","args":["r2",0]}, {"id":"t2","op":"at","args":["r2",1]}, {"id":"p","op":"arr","args":["b","b"]}, {"id":"o","op":"call","args":["log_pair","t2","p"]} ], "ret": "o" } ] } ],
+  "tests": [
+    {"fn":"log_readings","args":[{"io":[1,2]}],"expected":{"out":[2,2,1]}},
+    {"fn":"log_readings","args":[{"io":[5,5]}],"expected":{"out":[2,5,5]}},
+    {"fn":"log_readings","args":[{"io":[]}],"expected":{"out":[2,0,0]}},
+    {"fn":"log_readings","args":[{"io":[7]}],"expected":{"out":[2,0,7]}},
+    {"fn":"log_readings","args":[{"io":[0,3]}],"expected":{"out":[2,3,0]}},
+    {"fn":"log_readings","args":[{"io":[3,0]}],"expected":{"out":[2,0,3]}},
+    {"fn":"log_readings","args":[{"io":[10,20,30]}],"expected":{"out":[2,20,10]}},
+    {"fn":"log_readings","args":[{"io":[4294967295,1]}],"expected":{"out":[2,1,4294967295]}} ],
+  "note": "Token goes through the earlier helper log_pair, which puts the array (length 2 first)." },
+
+{ "id": "y-late-fee", "kind": "multi-node-edit", "wrongEditKind": "comparison", "target": "total_due",
+  "instruction": "Add a helper that computes the late fee from the days late (5 plus 2 per day when at least one day late, otherwise 0), and make the total use it instead of the flat 5.",
+  "start": { "functions": [
+    { "name": "total_due", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"a","op":"gt","args":["p1",0]}, {"id":"b","op":"select","args":["a",5,0]}, {"id":"c","op":"add","args":["p0","b"]} ], "ret": "c" } ] },
+  "reference": { "functions": [
+    { "name": "late_fee", "params": ["u32"], "result": "u32", "body": [ {"id":"a","op":"gt","args":["p0",0]}, {"id":"m","op":"mul","args":["p0",2]}, {"id":"f","op":"add","args":["m",5]}, {"id":"r","op":"select","args":["a","f",0]} ], "ret": "r" },
+    { "name": "total_due", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"b","op":"call","args":["late_fee","p1"]}, {"id":"c","op":"add","args":["p0","b"]} ], "ret": "c" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "late_fee", "params": ["u32"], "result": "u32", "body": [ {"id":"a","op":"ge","args":["p0",0]}, {"id":"m","op":"mul","args":["p0",2]}, {"id":"f","op":"add","args":["m",5]}, {"id":"r","op":"select","args":["a","f",0]} ], "ret": "r" },
+    { "name": "total_due", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"b","op":"call","args":["late_fee","p1"]}, {"id":"c","op":"add","args":["p0","b"]} ], "ret": "c" } ] } ],
+  "tests": [
+    {"fn":"total_due","args":[100,0],"expected":100},
+    {"fn":"total_due","args":[100,1],"expected":107},
+    {"fn":"total_due","args":[100,10],"expected":125},
+    {"fn":"total_due","args":[0,3],"expected":11},
+    {"fn":"total_due","args":[50,0],"expected":50},
+    {"fn":"total_due","args":[0,0],"expected":0},
+    {"fn":"total_due","args":[1000,30],"expected":1065},
+    {"fn":"total_due","args":[4294967295,1],"expected":6} ],
+  "note": "New helper written before total_due. Wrong helper charges a fee on day 0." },
+
+{ "id": "y-weighted-smooth", "kind": "multi-node-edit", "wrongEditKind": "swapped-argument", "target": "smooth",
+  "instruction": "Replace the plain average with a weighted one where the middle sample counts twice, (first + 2*middle + last) / 4 rounded down, computed in a new helper that smooth calls.",
+  "start": { "functions": [
+    { "name": "smooth", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"s","op":"add","args":["p0","p1"]}, {"id":"t","op":"add","args":["s","p2"]}, {"id":"d","op":"div","args":["t",3]} ], "ret": "d" } ] },
+  "reference": { "functions": [
+    { "name": "weighted", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"m","op":"shl","args":["p1",1]}, {"id":"s","op":"add","args":["p0","m"]}, {"id":"t","op":"add","args":["s","p2"]}, {"id":"q","op":"shr","args":["t",2]} ], "ret": "q" },
+    { "name": "smooth", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"d","op":"call","args":["weighted","p0","p1","p2"]}, {"id":"r","op":"mov","args":["d"]} ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "weighted", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"m","op":"shl","args":["p1",1]}, {"id":"s","op":"add","args":["p0","m"]}, {"id":"t","op":"add","args":["s","p2"]}, {"id":"q","op":"shr","args":["t",2]} ], "ret": "q" },
+    { "name": "smooth", "params": ["u32","u32","u32"], "result": "u32", "body": [ {"id":"d","op":"call","args":["weighted","p0","p2","p1"]}, {"id":"r","op":"mov","args":["d"]} ], "ret": "r" } ] } ],
+  "tests": [
+    {"fn":"smooth","args":[0,0,0],"expected":0},
+    {"fn":"smooth","args":[4,4,4],"expected":4},
+    {"fn":"smooth","args":[0,4,0],"expected":2},
+    {"fn":"smooth","args":[0,0,4],"expected":1},
+    {"fn":"smooth","args":[10,20,30],"expected":20},
+    {"fn":"smooth","args":[1,2,3],"expected":2},
+    {"fn":"smooth","args":[100,0,0],"expected":25},
+    {"fn":"smooth","args":[3,5,8],"expected":5},
+    {"fn":"smooth","args":[0,7,1],"expected":3} ],
+  "note": "Wrong edit passes the samples to the helper in the wrong order, doubling the last sample." },
+
+{ "id": "y-overtime-pay", "kind": "multi-node-edit", "wrongEditKind": "wrapping", "target": "pay",
+  "instruction": "Hours above 40 are paid at double rate; add a helper that returns the hours above 40 (0 when 40 or fewer) and use it in the pay calculation.",
+  "start": { "functions": [
+    { "name": "pay", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"b","op":"mul","args":["p0","p1"]}, {"id":"t","op":"mov","args":["b"]} ], "ret": "t" } ] },
+  "reference": { "functions": [
+    { "name": "overtime", "params": ["u32"], "result": "u32", "body": [ {"id":"g","op":"gt","args":["p0",40]}, {"id":"d","op":"sub","args":["p0",40]}, {"id":"r","op":"select","args":["g","d",0]} ], "ret": "r" },
+    { "name": "pay", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"o","op":"call","args":["overtime","p0"]}, {"id":"b","op":"mul","args":["p0","p1"]}, {"id":"e","op":"mul","args":["o","p1"]}, {"id":"t","op":"add","args":["b","e"]} ], "ret": "t" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "overtime", "params": ["u32"], "result": "u32", "body": [ {"id":"d","op":"sub","args":["p0",40]}, {"id":"r","op":"mov","args":["d"]} ], "ret": "r" },
+    { "name": "pay", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"o","op":"call","args":["overtime","p0"]}, {"id":"b","op":"mul","args":["p0","p1"]}, {"id":"e","op":"mul","args":["o","p1"]}, {"id":"t","op":"add","args":["b","e"]} ], "ret": "t" } ] } ],
+  "tests": [
+    {"fn":"pay","args":[0,10],"expected":0},
+    {"fn":"pay","args":[40,10],"expected":400},
+    {"fn":"pay","args":[41,10],"expected":420},
+    {"fn":"pay","args":[50,2],"expected":120},
+    {"fn":"pay","args":[10,5],"expected":50},
+    {"fn":"pay","args":[39,1],"expected":39},
+    {"fn":"pay","args":[60,0],"expected":0},
+    {"fn":"pay","args":[45,3],"expected":150} ],
+  "note": "Pay = hours*rate + overtime*rate. Without the guard the helper wraps below 40 hours." },
+
+{ "id": "y-reorder-available", "kind": "multi-node-edit", "wrongEditKind": "wrapping", "target": "needs_order",
+  "instruction": "Compare the minimum against available stock, which is stock minus reserved (0 when more is reserved than in stock), computed by a new helper; ordering stays off while paused.",
+  "start": { "functions": [
+    { "name": "needs_order", "params": ["u32","u32","u32","bool"], "result": "bool", "body": [ {"id":"low","op":"lt","args":["p0","p2"]}, {"id":"np","op":"eq","args":["p3",false]}, {"id":"r","op":"and","args":["low","np"]} ], "ret": "r" } ] },
+  "reference": { "functions": [
+    { "name": "available", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"g","op":"gt","args":["p1","p0"]}, {"id":"d","op":"sub","args":["p0","p1"]}, {"id":"v","op":"select","args":["g",0,"d"]} ], "ret": "v" },
+    { "name": "needs_order", "params": ["u32","u32","u32","bool"], "result": "bool", "body": [ {"id":"v","op":"call","args":["available","p0","p1"]}, {"id":"low","op":"lt","args":["v","p2"]}, {"id":"np","op":"eq","args":["p3",false]}, {"id":"r","op":"and","args":["low","np"]} ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "available", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"d","op":"sub","args":["p0","p1"]}, {"id":"v","op":"mov","args":["d"]} ], "ret": "v" },
+    { "name": "needs_order", "params": ["u32","u32","u32","bool"], "result": "bool", "body": [ {"id":"v","op":"call","args":["available","p0","p1"]}, {"id":"low","op":"lt","args":["v","p2"]}, {"id":"np","op":"eq","args":["p3",false]}, {"id":"r","op":"and","args":["low","np"]} ], "ret": "r" } ] } ],
+  "tests": [
+    {"fn":"needs_order","args":[10,0,5,false],"expected":false},
+    {"fn":"needs_order","args":[10,6,5,false],"expected":true},
+    {"fn":"needs_order","args":[10,5,5,false],"expected":false},
+    {"fn":"needs_order","args":[3,10,1,false],"expected":true},
+    {"fn":"needs_order","args":[0,0,0,false],"expected":false},
+    {"fn":"needs_order","args":[10,6,5,true],"expected":false},
+    {"fn":"needs_order","args":[100,1,100,false],"expected":true},
+    {"fn":"needs_order","args":[7,7,1,false],"expected":true},
+    {"fn":"needs_order","args":[3,10,1,true],"expected":false} ],
+  "note": "Parameters: stock, reserved, minimum, paused. Compares a bool to false with eq." },
+
+{ "id": "y-sensor-maintenance", "kind": "multi-node-edit", "wrongEditKind": "off-by-one", "target": "fault",
+  "instruction": "Add a helper that says whether the hour is in the maintenance window (hours 2 and 3 inclusive), and report a fault only when the two sensors disagree outside that window.",
+  "start": { "functions": [
+    { "name": "fault", "params": ["bool","bool","u32"], "result": "bool", "body": [ {"id":"m","op":"ne","args":["p0","p1"]}, {"id":"r","op":"mov","args":["m"]} ], "ret": "r" } ] },
+  "reference": { "functions": [
+    { "name": "in_maint", "params": ["u32"], "result": "bool", "body": [ {"id":"a","op":"ge","args":["p0",2]}, {"id":"b","op":"le","args":["p0",3]}, {"id":"c","op":"and","args":["a","b"]} ], "ret": "c" },
+    { "name": "fault", "params": ["bool","bool","u32"], "result": "bool", "body": [ {"id":"m","op":"ne","args":["p0","p1"]}, {"id":"w","op":"call","args":["in_maint","p2"]}, {"id":"ok","op":"eq","args":["w",false]}, {"id":"r","op":"and","args":["m","ok"]} ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "in_maint", "params": ["u32"], "result": "bool", "body": [ {"id":"a","op":"ge","args":["p0",2]}, {"id":"b","op":"lt","args":["p0",3]}, {"id":"c","op":"and","args":["a","b"]} ], "ret": "c" },
+    { "name": "fault", "params": ["bool","bool","u32"], "result": "bool", "body": [ {"id":"m","op":"ne","args":["p0","p1"]}, {"id":"w","op":"call","args":["in_maint","p2"]}, {"id":"ok","op":"eq","args":["w",false]}, {"id":"r","op":"and","args":["m","ok"]} ], "ret": "r" } ] } ],
+  "tests": [
+    {"fn":"fault","args":[true,false,1],"expected":true},
+    {"fn":"fault","args":[true,false,2],"expected":false},
+    {"fn":"fault","args":[true,false,3],"expected":false},
+    {"fn":"fault","args":[true,false,4],"expected":true},
+    {"fn":"fault","args":[true,true,3],"expected":false},
+    {"fn":"fault","args":[false,false,10],"expected":false},
+    {"fn":"fault","args":[false,true,0],"expected":true},
+    {"fn":"fault","args":[false,true,3],"expected":false} ],
+  "note": "Compares bools with ne and eq. Wrong helper excludes hour 3." },
+
+{ "id": "y-round-nickel", "kind": "multi-node-edit", "wrongEditKind": "off-by-one", "target": "price",
+  "instruction": "Round the total (unit cents times quantity) up to the next multiple of 5 cents, using a new helper that does the rounding; exact multiples stay unchanged.",
+  "start": { "functions": [
+    { "name": "price", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"a","op":"mul","args":["p0","p1"]}, {"id":"b","op":"mov","args":["a"]} ], "ret": "b" } ] },
+  "reference": { "functions": [
+    { "name": "round5", "params": ["u32"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",4]}, {"id":"b","op":"div","args":["a",5]}, {"id":"c","op":"mul","args":["b",5]} ], "ret": "c" },
+    { "name": "price", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"a","op":"mul","args":["p0","p1"]}, {"id":"b","op":"call","args":["round5","a"]} ], "ret": "b" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "round5", "params": ["u32"], "result": "u32", "body": [ {"id":"a","op":"add","args":["p0",5]}, {"id":"b","op":"div","args":["a",5]}, {"id":"c","op":"mul","args":["b",5]} ], "ret": "c" },
+    { "name": "price", "params": ["u32","u32"], "result": "u32", "body": [ {"id":"a","op":"mul","args":["p0","p1"]}, {"id":"b","op":"call","args":["round5","a"]} ], "ret": "b" } ] } ],
+  "tests": [
+    {"fn":"price","args":[0,0],"expected":0},
+    {"fn":"price","args":[5,1],"expected":5},
+    {"fn":"price","args":[1,1],"expected":5},
+    {"fn":"price","args":[3,3],"expected":10},
+    {"fn":"price","args":[4,1],"expected":5},
+    {"fn":"price","args":[7,2],"expected":15},
+    {"fn":"price","args":[10,10],"expected":100},
+    {"fn":"price","args":[6,1],"expected":10} ],
+  "note": "Adding 5 instead of 4 bumps exact multiples up by 5." }
+] }

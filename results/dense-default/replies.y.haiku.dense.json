@@ -1,0 +1,104 @@
+{
+ "y-stock-scan/a0/structured": [
+  "fn below u32 u32 u32x4 u32 -> bool\nlt get C A B\n\nfn inc u32 u32 u32x4 u32 -> u32\nselect below A B C A A add A 1\n\nfn first_at_least u32x4 u32 -> u32\nselect lt 0 4 select below 0 B A B 0 select lt 1 4 select below 1 B A B 1 select lt 2 4 select below 2 B A B 2 select lt 3 4 select below 3 B A B 3 4\n",
+  "fn first_at_least u32x4 u32 -> u32\nselect ge get A 0 B 0 select ge get A 1 B 1 select ge get A 2 B 2 select ge get A 3 B 3 4\n"
+ ],
+ "y-fuel-burns/a0/structured": [
+  "fn burns\nr (A 0)\nl loop can_burn burn_step 10 r B C\nt at l 1\n"
+ ],
+ "y-signal-run/a0/structured": [
+  "fn run_length u32x6 -> u32\nf get A 0\nfb gt f 50\nl loop same_state next 6 1 A fb\nl\n\nfn same_state u32 u32 u32x6 bool -> bool\ncount i A fb\ncurrent get A count\ncurrent_above gt current 50\nis_match eq current_above fb\nis_in_bounds lt count 6\nand is_in_bounds is_match\n\nfn next u32 u32 u32x6 bool -> u32\ncount i A fb\nadd count 1\n",
+  "fn run_length u32x6 -> u32\nf get A 0\nfb gt f 50\nl loop same_state next 6 1 A fb\nl\n\nfn same_state u32 u32 u32x6 bool -> bool\nis_in_bounds lt A 6\ncurrent get C A\ncurrent_above gt current 50\nis_match eq current_above D\nand is_in_bounds is_match\n\nfn next u32 u32 u32x6 bool -> u32\nadd A 1\n"
+ ],
+ "y-months-affordable/a0/structured": [
+  "e0\nfn months_affordable u32x4 u32 -> u32\ns (0 0)\nl loop fits pay 4 s A B\nr at l 0\n\n# fits (u32,u32) u32 u32x4 u32 -> bool\nfn fits (u32,u32) u32 u32x4 u32 -> bool\nbill at B A\nsum add at r 1 bill\nle sum C\n\n# pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\nfn pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\nbill at B A\nsum add at r 1 bill\nok le sum C\ncnt select ok add at r 0 1 at r 0\ntot select ok sum at r 1\n(cnt tot)\n\ng0\n# fits (u32,u32) u32 u32x4 u32 -> bool\n# pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\n# months_affordable u32x4 u32 -> u32\n",
+  "e0\nfn months_affordable u32x4 u32 -> u32\ns (0 0)\nl loop fits pay 4 s A B\nr at l 0\n\n# fits (u32,u32) u32 u32x4 u32 -> bool\nfn fits (u32,u32) u32 u32x4 u32 -> bool\nbill at C B\ntot at A 1\nsum add tot bill\nle sum D\n\n# pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\nfn pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\nbill at C B\ntot at A 1\nsum add tot bill\nok le sum D\ncnt select ok add at A 0 1 at A 0\nnew_tot select ok sum at A 1\n(cnt new_tot)\n\ng0\n# fits (u32,u32) u32 u32x4 u32 -> bool\n# pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\n# months_affordable u32x4 u32 -> u32\n"
+ ],
+ "y-board-jumps/a0/structured": [
+  "e0\nfn final_square u32 u32 u32 -> u32\nl loop before_end jump C A B\nr mov l\n# jump u32 u32 u32 -> u32\n# before_end u32 u32 u32 -> bool\n# final_square u32 u32 u32 -> u32\n"
+ ],
+ "y-free-slot/a0/structured": [
+  "fn first_free u32 u32 -> u32\nl loop busy next_slot 8 B A\nr mov l\n"
+ ],
+ "y-echo-decay/a0/structured": [
+  "fn decay_ticks\nr (A 0)\nl loop loud halve 32 r B\nn at l 1\n",
+  "fn decay_ticks\nr (A B)\nl loop loud halve 32 r\nn at l 1\n"
+ ],
+ "y-last-slot/a0/structured": [
+  "e0\nfn last_slot u32x4 u32 -> u32\nl loop miss back 4 4 0 4294967295 A B\nr mov at l 1\n\nback\nselect eq get B i A i sub 3 i 4294967295\n\nmiss\nne get B i A\n",
+  "e0\nfn last_slot u32x4 u32 -> u32\nl loop miss back 4 4 3 4294967295 A B\n\nback\nslot_val get A i\nmatch eq slot_val B\nres select match i 4294967295\n\nmiss\nslot_val get A i\nnot_match ne slot_val B\n"
+ ],
+ "y-vowel-pick/a0/structured": [
+  "e0\nfn vowel_code u32 -> u32\nt \"aeiou\"\nc get t rem sub A 1 5\nc\n"
+ ],
+ "y-weekday-initial/a0/structured": [
+  "e0\nfn day_letter\nt \"SMTWTFS\"\nc get t A\ng0\n# day_letter u32 -> u32\n"
+ ],
+ "y-tag-score/a0/structured": [
+  "e0\nfn tag_score\nt \"RCPT\"\ns fold add_byte 4 A t\ns rem 256 s\n# add_byte u32 u32 u32x4 -> u32\ng0\n# add_byte u32 u32 u32x4 -> u32\n# tag_score u32 -> u32\n",
+  "e0\nfn tag_score\nt \"RCPT\"\ns fold add_byte 4 A t\nrem 256 s\n# add_byte u32 u32 u32x4 -> u32\ng0\n# add_byte u32 u32 u32x4 -> u32\n# tag_score u32 -> u32\n"
+ ],
+ "y-banner-letter/a0/structured": [
+  "e0\nfn is_letter u32 u32 -> bool\nt \"LEVEL\"\nc get t A\nc_up and c 0x5F\nb_up and B 0x5F\ne eq c_up b_up\ng0\n# is_letter u32 u32 -> bool\n",
+  "e0\nfn is_letter u32 u32 -> bool\nt \"LEVEL\"\nc get t A\nc_lower add c 32\nb_lower add B 32\ne1 eq c B\ne2 eq c_lower b_lower\ne or e1 e2\ng0\n# is_letter u32 u32 -> bool\n"
+ ],
+ "y-ticket-tail/a0/structured": [
+  "e0\nfn count_char\nt \"TICKETS\"\nn fold count_eq 4 3 t A 0\n# count_eq u32 u32 u32x7 u32 u32 -> u32\ng0\n# count_eq u32 u32 u32x7 u32 u32 -> u32\n# count_char u32 -> u32\n",
+  "e0\nfn count_char\nt \"TICKETS\"\nn fold count_eq 4 0 t A 3\n# count_eq u32 u32 u32x7 u32 u32 -> u32\ng0\nfn count_eq\nacc i t A offset\nselect (eq (at t (add i offset)) A) (add acc 1) acc\n# count_eq u32 u32 u32x7 u32 u32 -> u32\n# count_char u32 -> u32\n"
+ ],
+ "y-battery-glyph/a0/structured": [
+  "e0\nfn bar_glyph\nq div A 25\nt \" .oO@\"\ng get t q\ng0\n# bar_glyph u32 -> u32\n"
+ ],
+ "y-reading-tenths/a0/structured": [
+  "fn read_units io -> io\nr read io\nt at r 0\nw div t 10\ns at r 1\no write w s\n",
+  "fn read_units A -> io\nr read A\nt at r 0\nw div t 10\ns at r 1\no write w s\n"
+ ],
+ "y-swap-pair/a0/structured": [
+  "e0\nfn swap_pair io -> io\nw1 read A\nw2 read A\no1 write w2\no2 write o1 w1\ng0\n# swap_pair io -> io\n",
+  "e0\nfn swap_pair io -> io\nw1 read A\nw2 read A\no write w2 w1\ng0\n# swap_pair io -> io\n"
+ ],
+ "y-sum-three/a0/structured": [
+  "e0\nfn sum_three io -> io\nr1 read A\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\nr3 read t2\nc at r3 0\nt3 at r3 1\nab add a b\ns add ab c\no write t3 s\ng0\n# sum_three io -> io\n"
+ ],
+ "y-score-card/a0/structured": [
+  "e0\nfn post_scores io u32 u32 -> io\no puts A [B C (add B C)]\ng0\n# post_scores io u32 u32 -> io\n"
+ ],
+ "y-tagged-reply/a0/structured": [
+  "e0\nfn respond io u32 -> io\no1 write A B\no2 write_tag o1\n\ng0\n# write_tag io -> io\n# respond io u32 -> io\n",
+  "e0\nfn respond io u32 -> io\no1 write_tag io\no2 write A B o1\n\ng0\n# write_tag io -> io\n# respond io u32 -> io\n"
+ ],
+ "y-relay-scaled/a0/structured": [
+  "fn relay io u32 -> io\nr1 read A\na at r1 0\nt1 at r1 1\ns add mul a B t1\no emit s\n",
+  "fn relay io u32 -> io\nr1 read A\na at r1 0\nt1 at r1 1\nm mul a B\ns add m t1\no emit io s\n"
+ ],
+ "y-larger-reading/a0/structured": [
+  "fn write_max io -> io\nr1 read A\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\ng lt a b\nm select g a b\no write t2 m\n",
+  "fn write_max io -> io\nr1 read A\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\ng lt a b\nm select g b a\no write t2 m\n"
+ ],
+ "y-log-newest-first/a0/structured": [
+  "e0\nfn log_readings io -> io\nr1 read A\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\np [b a]\no log_pair t2 p\n"
+ ],
+ "y-late-fee/a0/structured": [
+  "e0\nfn late_fee u32 -> u32\nselect gt A 0 add 5 mul 2 A 0\nfn total_due u32 u32 -> u32\nadd A late_fee B\ng0\n# late_fee u32 -> u32\n# total_due u32 u32 -> u32\n"
+ ],
+ "y-weighted-smooth/a0/structured": [
+  "-fn smooth\n\nfn weighted_avg u32 u32 u32 -> u32\ne0\nw mul 2 B\nx add A w\ny add x C\ndiv y 4\ng0\n# weighted_avg u32 u32 u32 -> u32\n\nfn smooth u32 u32 u32 -> u32\ne0\nweighted_avg A B C\ng0\n# smooth u32 u32 u32 -> u32\n",
+  "fn weighted_avg\nw mul 2 B\nx add A w\ny add x C\ndiv y 4\ng0\n# weighted_avg u32 u32 u32 -> u32\n\nfn smooth\nweighted_avg A B C\ng0\n# smooth u32 u32 u32 -> u32\n"
+ ],
+ "y-overtime-pay/a0/structured": [
+  "e0\nfn overtime_hours\nc gt A 40\nselect c sub A 40 0\n# overtime_hours u32 -> u32\n\nfn pay\nr mul 40 B\no overtime_hours A\not mul 2 B\nov mul o ot\nadd r ov\n# pay u32 u32 -> u32\n\ng0\n",
+  "e0\nfn regular_hours\nc le A 40\nselect c A 40\n# regular_hours u32 -> u32\n\nfn overtime_hours\nc gt A 40\nselect c sub A 40 0\n# overtime_hours u32 -> u32\n\nfn pay\nrh regular_hours A\nr mul rh B\no overtime_hours A\not mul 2 B\nov mul o ot\nadd r ov\n# pay u32 u32 -> u32\n\ng0\n"
+ ],
+ "y-reorder-available/a0/structured": [
+  "e0\nfn available_stock u32 u32 -> u32\ndiff sub A B\nis_neg lt diff 0\nselect is_neg 0 diff\n\nfn needs_order u32 u32 u32 bool -> bool\navail available_stock B C\nlow lt A avail\nnp eq D false\nr and low np\ng0\n# available_stock: stock minus reserved, minimum 0\n# needs_order: compare minimum against available stock; ordering off while paused\n",
+  "e0\nfn available_stock u32 u32 -> u32\ndiff sub A B\nis_neg lt diff 0\nselect is_neg 0 diff\n\nfn needs_order u32 u32 u32 bool -> bool\navail available_stock B C\nhas_stock gt B 0\nlow lt avail A\nnp eq D false\ntmp and low np\nr and has_stock tmp\ng0\n# available_stock: stock minus reserved, minimum 0\n# needs_order: order when stock exists, minimum exceeds available, and not paused\n"
+ ],
+ "y-sensor-maintenance/a0/structured": [
+  "e0\nfn in_window u32 -> bool\nge2 ge C 2\nle3 le C 3\nr and ge2 le3\n\nfn fault bool bool u32 -> bool\nge2 ge C 2\nle3 le C 3\nwindow and ge2 le3\ndiffer ne A B\nr select window 0 differ\n\ng0\n# in_window u32 -> bool\n# fault bool bool u32 -> bool\n",
+  "e0\nfn in_window u32 -> bool\nge2 ge A 2\nle3 le A 3\nr and ge2 le3\n\nfn fault bool bool u32 -> bool\nge2 ge C 2\nle3 le C 3\nwindow and ge2 le3\ndiffer ne A B\nr select window 0 differ\n\ng0\n# in_window u32 -> bool\n# fault bool bool u32 -> bool\n"
+ ],
+ "y-round-nickel/a0/structured": [
+  "fn round_5_cents select eq rem X 5 0 X add X sub 5 rem X 5\nfn price round_5_cents mul A B\n\n# round_5_cents u32 -> u32\n# price u32 u32 -> u32\n",
+  "fn round_5_cents select eq rem X 5 0 X add X sub 5 rem X 5\nfn price select eq rem mul A B 5 0 mul A B add mul A B sub 5 rem mul A B 5\n\n# round_5_cents u32 -> u32\n# price u32 u32 -> u32\n"
+ ]
+}

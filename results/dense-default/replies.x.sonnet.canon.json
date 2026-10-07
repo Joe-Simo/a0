@@ -1,0 +1,51 @@
+{
+ "x-night-tariff/a0/structured": [
+  "n lt p1 6"
+ ],
+ "x-lift-load/a0/structured": [
+  "r le w p2\nfn load u32 u32 -> u32\ns add p0 p1\nret s\nend",
+  "fn load u32 u32 -> u32\na mul p0 75\nb mul p1 20\ns add a b\nret s\nend"
+ ],
+ "x-heat-cool-power/a0/structured": [
+  "kp mul k 4"
+ ],
+ "x-loan-quarter/a0/structured": [
+  "r fold month 3 p0 p1 5\nfn month u32 u32 u32 u32 -> u32\na mul p0 p3\nb div a 100\nc add p0 b\nd sub c p2\nret d\nend"
+ ],
+ "x-stair-energy/a0/structured": [
+  "o add r p1"
+ ],
+ "x-tank-overflow/a0/structured": [
+  "fn tank bool u32 u32x4 u32 u32 -> bool\nv get p2 p1\ns add v p4\no gt s p3\nr or p0 o\nret r\nend\nfn overflow u32x4 u32 u32 -> bool\nr fold tank 4 false p0 p2 p1\nret r\nend"
+ ],
+ "x-signal-decay/a0/structured": [
+  "r fold tick 5 p0 2\nfn tick u32 u32 u32 -> u32\nq shr p0 3\nd sub p0 q\nret d\nend"
+ ],
+ "x-combo-bonus/a0/structured": [
+  "z eq p1 0\nr select z t b\nret r"
+ ],
+ "x-opaque-pixel/a0/structured": [
+  "r set m 3 255"
+ ],
+ "x-battery-report/a0/structured": [
+  "low lt pc 20"
+ ],
+ "x-next-seat/a0/structured": [
+  "fn row u32 -> u32\na shr p0 2\nret a\nend\nf add p0 1\ng eq p1 f\nh and e g\nret h\n"
+ ],
+ "x-bill-split/a0/structured": [
+  "z eq p1 0\nr select z t s\nret r\nfn share u32 u32 -> u32\nd div p0 p1\nret d\nend"
+ ],
+ "x-rgb565-pack/a0/structured": [
+  "c shr p1 2"
+ ],
+ "x-armor-hit/a0/structured": [
+  "c gt a p0\ns select c 0 r\nret s"
+ ],
+ "x-enable-flag/a0/structured": [
+  "s shl 1 p1"
+ ],
+ "x-lcg-output/a0/structured": [
+  "r and s 32767"
+ ]
+}

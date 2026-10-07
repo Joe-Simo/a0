@@ -1,0 +1,1726 @@
+{
+  "generatedAt": "2026-10-07T13:24:46.988Z",
+  "status": "run with scripted replies from <tmp>/scripted-replies.json (subject: fresh haiku subagents)",
+  "model": null,
+  "languagePrimer": "experiments/primers/shrink/V2.txt",
+  "primerMode": "always",
+  "taskSet": "y",
+  "specVariant": null,
+  "programView": "all",
+  "systemLayout": "separate",
+  "a0View": "plain",
+  "a0Syntax": "canonical",
+  "method": {
+    "conventional": "whole file in every representation; reply is the whole updated file",
+    "structured": {
+      "a0": "dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines",
+      "ts": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "rust": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "python": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "go": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "java": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "csharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cpp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "kotlin": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "swift": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "ruby": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "php": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "haskell": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "ocaml": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "elixir": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "zig": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "c": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "js": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "lua": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "perl": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "tcl": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "objc": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "fortran": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "dart": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "nim": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "groovy": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "clojure": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "vb": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "fsharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "scala": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "prolog": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "forth": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "guile": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "smalltalk": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "racket": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "erlang": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "commonlisp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "pascal": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "r": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "julia": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "haxe": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "chicken": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "crystal": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "d": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cobol": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "v": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "odin": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "vala": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "gleam": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)"
+    },
+    "note": "sets A/B: each task file holds only the functions the task needs, so whole-file and scoped views are close in size"
+  },
+  "tokenizerNote": "setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.",
+  "design": {
+    "cells": [
+      "a0/structured"
+    ],
+    "heldConstant": [
+      "model",
+      "task text",
+      "acceptance tests",
+      "max repairs",
+      "max_tokens",
+      "system prompt caching"
+    ],
+    "setupCounted": "A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; the further languages (Python, Go, Java, C#, C++, Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir, Zig) carry their own u32 semantics note and are accepted by their own toolchain (build or static check, then a generated driver run; tools/ai-edit-langs.ts, tools/edit-langs/).",
+    "unknowns": "Hidden reasoning tokens are not reported by the API and are recorded as null."
+  },
+  "taskSetSha256": "387b6c19444730932dc3adfec47775170782282e93db3bd32bb9811e795a7e6e",
+  "representations": [
+    "a0"
+  ],
+  "protocols": [
+    "structured"
+  ],
+  "tasks": [
+    {
+      "id": "y-stock-scan",
+      "kind": "targeted-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-fuel-burns",
+      "kind": "targeted-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-signal-run",
+      "kind": "comprehension-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-months-affordable",
+      "kind": "multi-node-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-board-jumps",
+      "kind": "targeted-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-free-slot",
+      "kind": "targeted-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-echo-decay",
+      "kind": "comprehension-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-last-slot",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-vowel-pick",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-weekday-initial",
+      "kind": "targeted-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-tag-score",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-banner-letter",
+      "kind": "comprehension-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-ticket-tail",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-battery-glyph",
+      "kind": "comprehension-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-reading-tenths",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-swap-pair",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-sum-three",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-score-card",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-tagged-reply",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-relay-scaled",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-larger-reading",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-log-newest-first",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-late-fee",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-weighted-smooth",
+      "kind": "multi-node-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-overtime-pay",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-reorder-available",
+      "kind": "multi-node-edit",
+      "tests": 9
+    },
+    {
+      "id": "y-sensor-maintenance",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "y-round-nickel",
+      "kind": "multi-node-edit",
+      "tests": 8
+    }
+  ],
+  "harnessSelfCheck": {
+    "ok": true,
+    "details": {
+      "y-stock-scan/a0": [],
+      "y-stock-scan/a0-original-must-fail": [],
+      "y-fuel-burns/a0": [],
+      "y-fuel-burns/a0-original-must-fail": [],
+      "y-signal-run/a0": [],
+      "y-signal-run/a0-original-must-fail": [],
+      "y-months-affordable/a0": [],
+      "y-months-affordable/a0-original-must-fail": [],
+      "y-board-jumps/a0": [],
+      "y-board-jumps/a0-original-must-fail": [],
+      "y-free-slot/a0": [],
+      "y-free-slot/a0-original-must-fail": [],
+      "y-echo-decay/a0": [],
+      "y-echo-decay/a0-original-must-fail": [],
+      "y-last-slot/a0": [],
+      "y-last-slot/a0-original-must-fail": [],
+      "y-vowel-pick/a0": [],
+      "y-vowel-pick/a0-original-must-fail": [],
+      "y-weekday-initial/a0": [],
+      "y-weekday-initial/a0-original-must-fail": [],
+      "y-tag-score/a0": [],
+      "y-tag-score/a0-original-must-fail": [],
+      "y-banner-letter/a0": [],
+      "y-banner-letter/a0-original-must-fail": [],
+      "y-ticket-tail/a0": [],
+      "y-ticket-tail/a0-original-must-fail": [],
+      "y-battery-glyph/a0": [],
+      "y-battery-glyph/a0-original-must-fail": [],
+      "y-reading-tenths/a0": [],
+      "y-reading-tenths/a0-original-must-fail": [],
+      "y-swap-pair/a0": [],
+      "y-swap-pair/a0-original-must-fail": [],
+      "y-sum-three/a0": [],
+      "y-sum-three/a0-original-must-fail": [],
+      "y-score-card/a0": [],
+      "y-score-card/a0-original-must-fail": [],
+      "y-tagged-reply/a0": [],
+      "y-tagged-reply/a0-original-must-fail": [],
+      "y-relay-scaled/a0": [],
+      "y-relay-scaled/a0-original-must-fail": [],
+      "y-larger-reading/a0": [],
+      "y-larger-reading/a0-original-must-fail": [],
+      "y-log-newest-first/a0": [],
+      "y-log-newest-first/a0-original-must-fail": [],
+      "y-late-fee/a0": [],
+      "y-late-fee/a0-original-must-fail": [],
+      "y-weighted-smooth/a0": [],
+      "y-weighted-smooth/a0-original-must-fail": [],
+      "y-overtime-pay/a0": [],
+      "y-overtime-pay/a0-original-must-fail": [],
+      "y-reorder-available/a0": [],
+      "y-reorder-available/a0-original-must-fail": [],
+      "y-sensor-maintenance/a0": [],
+      "y-sensor-maintenance/a0-original-must-fail": [],
+      "y-round-nickel/a0": [],
+      "y-round-nickel/a0-original-must-fail": []
+    }
+  },
+  "contextTokensByCell": {
+    "a0/structured": {
+      "trials": 28,
+      "meanView": 80,
+      "meanToolContext": 184
+    }
+  },
+  "trials": [
+    {
+      "task": "y-stock-scan",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 124,
+        "cl100k_base": 122
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 155,
+        "output": 119,
+        "total": 621
+      },
+      "outputTokensLocal": {
+        "o200k_base": 119,
+        "cl100k_base": 118
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 119,
+            "cl100k_base": 118
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 37.54750000000058
+    },
+    {
+      "task": "y-fuel-burns",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 151,
+        "cl100k_base": 151
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 188,
+        "output": 15,
+        "total": 550
+      },
+      "outputTokensLocal": {
+        "o200k_base": 15,
+        "cl100k_base": 15
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 15,
+            "cl100k_base": 15
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 7.546099999999569
+    },
+    {
+      "task": "y-signal-run",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 123,
+        "cl100k_base": 123
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 502,
+        "output": 192,
+        "total": 1388
+      },
+      "outputTokensLocal": {
+        "o200k_base": 192,
+        "cl100k_base": 192
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "run_length(60,70,80,90,99,51) = 7, expected 6",
+            "run_length(10,20,30,40,50,0) = 7, expected 6",
+            "run_length(60,10,60,60,60,60) = 2, expected 1",
+            "run_length(60,60,10,10,10,10) = 3, expected 2",
+            "run_length(10,10,10,10,10,60) = 6, expected 5",
+            "run_length(51,50,51,51,51,51) = 2, expected 1",
+            "run_length(0,0,0,0,99,0) = 5, expected 4",
+            "run_length(50,51,52,53,54,55) = 2, expected 1",
+            "run_length(100,100,100,100,100,100) = 7, expected 6"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 66,
+            "cl100k_base": 66
+          },
+          "repair": "Rejected:\nrun_length(60,70,80,90,99,51) = 7, expected 6\nrun_length(10,20,30,40,50,0) = 7, expected 6\nrun_length(60,10,60,60,60,60) = 2, expected 1\nrun_length(60,60,10,10,10,10) = 3, expected 2\nrun_length(10,10,10,10,10,60) = 6, expected 5\nrun_length(51,50,51,51,51,51) = 2, expected 1\nrun_length(0,0,0,0,99,0) = 5, expected 4\nrun_length(50,51,52,53,54,55) = 2, expected 1\nrun_length(100,100,100,100,100,100) = 7, expected 6\n\nCurrent view:\ne0\nfn run_length u32x6 -> u32\nf get p0 0\nfb gt f 50\nl loop same_state next 6 1 p0 fb\nret l\nend\nfn next u32 u32 u32x6 bool -> u32 end\nfn same_state u32 u32 u32x6 bool -> bool end\ng0\nfn same_state u32 u32 u32x6 bool -> bool end\nfn next u32 u32 u32x6 bool -> u32 end\nfn run_length u32x6 -> u32 end\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 126,
+            "cl100k_base": 126
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 38.21950000000015
+    },
+    {
+      "task": "y-months-affordable",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 154,
+        "cl100k_base": 154
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 523,
+        "output": 316,
+        "total": 1533
+      },
+      "outputTokensLocal": {
+        "o200k_base": 316,
+        "cl100k_base": 316
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "months_affordable(10,20,30,40,100) = 60, expected 4",
+            "months_affordable(10,20,30,40,59) = 30, expected 2",
+            "months_affordable(0,0,0,0,0) = 0, expected 4",
+            "months_affordable(5,5,5,5,15) = 15, expected 3",
+            "months_affordable(1,2,3,4,6) = 6, expected 3",
+            "months_affordable(100,0,0,0,100) = 100, expected 4",
+            "months_affordable(7,7,7,7,27) = 21, expected 3",
+            "months_affordable(2,2,2,2,1000) = 6, expected 4"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 136,
+            "cl100k_base": 136
+          },
+          "repair": "Rejected:\nmonths_affordable(10,20,30,40,100) = 60, expected 4\nmonths_affordable(10,20,30,40,59) = 30, expected 2\nmonths_affordable(0,0,0,0,0) = 0, expected 4\nmonths_affordable(5,5,5,5,15) = 15, expected 3\nmonths_affordable(1,2,3,4,6) = 6, expected 3\nmonths_affordable(100,0,0,0,100) = 100, expected 4\nmonths_affordable(7,7,7,7,27) = 21, expected 3\nmonths_affordable(2,2,2,2,1000) = 6, expected 4\n\nCurrent view:\ne0\nfn months_affordable u32x4 u32 -> u32\ns rec 0 0\nl loop fits pay 3 s p0 p1\nr at l 1\nret r\nend\nfn pay (u32,u32) u32 u32x4 u32 -> (u32,u32) end\nfn fits (u32,u32) u32 u32x4 u32 -> bool end\ng0\nfn fits (u32,u32) u32 u32x4 u32 -> bool end\nfn pay (u32,u32) u32 u32x4 u32 -> (u32,u32) end\nfn months_affordable u32x4 u32 -> u32 end\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 180,
+            "cl100k_base": 180
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 19.81760000000031
+    },
+    {
+      "task": "y-board-jumps",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 105,
+        "cl100k_base": 105
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 125,
+        "output": 12,
+        "total": 484
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 12,
+            "cl100k_base": 12
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 7.17870000000039
+    },
+    {
+      "task": "y-free-slot",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 101,
+        "cl100k_base": 101
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 133,
+        "output": 12,
+        "total": 492
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 12,
+            "cl100k_base": 12
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 17.521600000000035
+    },
+    {
+      "task": "y-echo-decay",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 130,
+        "cl100k_base": 133
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 213,
+        "output": 71,
+        "total": 978
+      },
+      "outputTokensLocal": {
+        "o200k_base": 71,
+        "cl100k_base": 73
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "parse: line 5: select expects 3 operands, got 6 fix: write exactly 3 operands after select"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 34,
+            "cl100k_base": 35
+          },
+          "repair": "Rejected:\nparse: line 5: select expects 3 operands, got 6 fix: write exactly 3 operands after select\n\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "structure: decay_ticks.b: loud expects 3 arguments, got 2"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 37,
+            "cl100k_base": 38
+          },
+          "repair": "Rejected:\nstructure: decay_ticks.b: loud expects 3 arguments, got 2\n\nTry again."
+        }
+      ],
+      "failures": [
+        "structure: decay_ticks.b: loud expects 3 arguments, got 2"
+      ],
+      "wallMs": 9.565400000000409
+    },
+    {
+      "task": "y-last-slot",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 120,
+        "cl100k_base": 120
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 356,
+        "output": 143,
+        "total": 1193
+      },
+      "outputTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 143
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "last_slot(1,2,3,4,4) = 4294967295, expected 3",
+            "last_slot(7,8,7,8,7) = 0, expected 2",
+            "last_slot(2,9,9,2,9) = 4294967295, expected 2"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 81,
+            "cl100k_base": 81
+          },
+          "repair": "Rejected:\nlast_slot(1,2,3,4,4) = 4294967295, expected 3\nlast_slot(7,8,7,8,7) = 0, expected 2\nlast_slot(2,9,9,2,9) = 4294967295, expected 2\n\nCurrent view:\ne0\nfn last_slot u32x4 u32 -> u32\ns sub 0 1\nl loop miss back 4 s p0 p1\nr mov l\nret r\nend\nfn back u32 u32 u32x4 u32 -> u32 end\nfn miss u32 u32 u32x4 u32 -> bool end\ng0\nfn miss u32 u32 u32x4 u32 -> bool end\nfn back u32 u32 u32x4 u32 -> u32 end\nfn last_slot u32x4 u32 -> u32 end\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 62,
+            "cl100k_base": 62
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 8.50460000000021
+    },
+    {
+      "task": "y-vowel-pick",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 41,
+        "cl100k_base": 41
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 188,
+        "output": 38,
+        "total": 920
+      },
+      "outputTokensLocal": {
+        "o200k_base": 38,
+        "cl100k_base": 38
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "edit: line 3: duplicate edit for 'c' fix: a reply edits each node once; for two successive updates give the first its own id: write `c1 sub p0 1`, then `c rem c1 5`"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          },
+          "repair": "Rejected:\nedit: line 3: duplicate edit for 'c' fix: a reply edits each node once; for two successive updates give the first its own id: write `c1 sub p0 1`, then `c rem c1 5`\n\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "edit: line 4: duplicate edit for 'c' fix: a reply edits each node once; for two successive updates give the first its own id: write `c2 rem c1 5`, then `c get t c2`"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 20,
+            "cl100k_base": 20
+          },
+          "repair": "Rejected:\nedit: line 4: duplicate edit for 'c' fix: a reply edits each node once; for two successive updates give the first its own id: write `c2 rem c1 5`, then `c get t c2`\n\nTry again."
+        }
+      ],
+      "failures": [
+        "edit: line 4: duplicate edit for 'c' fix: a reply edits each node once; for two successive updates give the first its own id: write `c2 rem c1 5`, then `c get t c2`"
+      ],
+      "wallMs": 4.643799999999828
+    },
+    {
+      "task": "y-weekday-initial",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 43
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 73,
+        "output": 8,
+        "total": 428
+      },
+      "outputTokensLocal": {
+        "o200k_base": 8,
+        "cl100k_base": 8
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 8,
+            "cl100k_base": 8
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 3.250500000000102
+    },
+    {
+      "task": "y-tag-score",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 77,
+        "cl100k_base": 77
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 106,
+        "output": 16,
+        "total": 469
+      },
+      "outputTokensLocal": {
+        "o200k_base": 16,
+        "cl100k_base": 16
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 16,
+            "cl100k_base": 16
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 3.214700000000448
+    },
+    {
+      "task": "y-banner-letter",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 73,
+        "output": 75,
+        "total": 495
+      },
+      "outputTokensLocal": {
+        "o200k_base": 75,
+        "cl100k_base": 75
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 75,
+            "cl100k_base": 75
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 31.705399999999827
+    },
+    {
+      "task": "y-ticket-tail",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 90,
+        "cl100k_base": 90
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 310,
+        "output": 204,
+        "total": 1208
+      },
+      "outputTokensLocal": {
+        "o200k_base": 204,
+        "cl100k_base": 204
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "type: count_char.n: extra argument 0: expected u32, got u32x7 fix: each step runs state = count_eq(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn count_eq u32 u32 u32x7 u32 u32 -> u32`; count_eq is `fn count_eq u32 u32 u32 u32 u32 -> u32`; as declared, write `fold count_eq N S X0 X1 X2` with S a u32 and extras u32 u32 u32"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 63,
+            "cl100k_base": 63
+          },
+          "repair": "Rejected:\ntype: count_char.n: extra argument 0: expected u32, got u32x7 fix: each step runs state = count_eq(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn count_eq u32 u32 u32x7 u32 u32 -> u32`; count_eq is `fn count_eq u32 u32 u32 u32 u32 -> u32`; as declared, write `fold count_eq N S X0 X1 X2` with S a u32 and extras u32 u32 u32\n\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "parse: line 7: unknown operation '0' fix: use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts, or call a function F defined above: `s0 F args…`"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 141,
+            "cl100k_base": 141
+          },
+          "repair": "Rejected:\nparse: line 7: unknown operation '0' fix: use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts, or call a function F defined above: `s0 F args…`\n\nTry again."
+        }
+      ],
+      "failures": [
+        "parse: line 7: unknown operation '0' fix: use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts, or call a function F defined above: `s0 F args…`"
+      ],
+      "wallMs": 56.25880000000052
+    },
+    {
+      "task": "y-battery-glyph",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 148,
+        "output": 15,
+        "total": 857
+      },
+      "outputTokensLocal": {
+        "o200k_base": 15,
+        "cl100k_base": 15
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "edit: bar_glyph: new node 'e0' is not used by any node or by ret fix: add 'ret e0' if it is the new result, or use it in another node"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 8,
+            "cl100k_base": 8
+          },
+          "repair": "Rejected:\nedit: bar_glyph: new node 'e0' is not used by any node or by ret fix: add 'ret e0' if it is the new result, or use it in another node\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 7,
+            "cl100k_base": 7
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 4.568299999999908
+    },
+    {
+      "task": "y-reading-tenths",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 51
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 69,
+        "output": 6,
+        "total": 422
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 3.3963999999996304
+    },
+    {
+      "task": "y-swap-pair",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 82,
+        "cl100k_base": 82
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 103,
+        "output": 14,
+        "total": 464
+      },
+      "outputTokensLocal": {
+        "o200k_base": 14,
+        "cl100k_base": 14
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 14,
+            "cl100k_base": 14
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 3.6376000000000204
+    },
+    {
+      "task": "y-sum-three",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 78,
+        "cl100k_base": 78
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 93,
+        "output": 93,
+        "total": 533
+      },
+      "outputTokensLocal": {
+        "o200k_base": 93,
+        "cl100k_base": 93
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 93,
+            "cl100k_base": 93
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 4.09729999999945
+    },
+    {
+      "task": "y-score-card",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 46,
+        "cl100k_base": 46
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 68,
+        "output": 17,
+        "total": 432
+      },
+      "outputTokensLocal": {
+        "o200k_base": 17,
+        "cl100k_base": 17
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 17,
+            "cl100k_base": 17
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 4.988499999999476
+    },
+    {
+      "task": "y-tagged-reply",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 60,
+        "cl100k_base": 60
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 375,
+        "output": 105,
+        "total": 1174
+      },
+      "outputTokensLocal": {
+        "o200k_base": 105,
+        "cl100k_base": 105
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "runtime",
+          "failures": [
+            "respond({\"io\":[]},0) wrote [0,2,79,75], expected [2,79,75,0]",
+            "respond({\"io\":[]},1) wrote [1,2,79,75], expected [2,79,75,1]",
+            "respond({\"io\":[]},200) wrote [200,2,79,75], expected [2,79,75,200]",
+            "respond({\"io\":[]},404) wrote [404,2,79,75], expected [2,79,75,404]",
+            "respond({\"io\":[]},500) wrote [500,2,79,75], expected [2,79,75,500]",
+            "respond({\"io\":[]},4294967295) wrote [4294967295,2,79,75], expected [2,79,75,4294967295]",
+            "respond({\"io\":[]},2) wrote [2,2,79,75], expected [2,79,75,2]",
+            "respond({\"io\":[5]},79) wrote [79,2,79,75], expected [2,79,75,79]"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 38,
+            "cl100k_base": 38
+          },
+          "repair": "Rejected:\nrespond({\"io\":[]},0) wrote [0,2,79,75], expected [2,79,75,0]\nrespond({\"io\":[]},1) wrote [1,2,79,75], expected [2,79,75,1]\nrespond({\"io\":[]},200) wrote [200,2,79,75], expected [2,79,75,200]\nrespond({\"io\":[]},404) wrote [404,2,79,75], expected [2,79,75,404]\nrespond({\"io\":[]},500) wrote [500,2,79,75], expected [2,79,75,500]\nrespond({\"io\":[]},4294967295) wrote [4294967295,2,79,75], expected [2,79,75,4294967295]\nrespond({\"io\":[]},2) wrote [2,2,79,75], expected [2,79,75,2]\nrespond({\"io\":[5]},79) wrote [79,2,79,75], expected [2,79,75,79]\n\nCurrent view:\ne0\nfn respond io u32 -> io\no1 write p0 p1\no2 call write_tag o1\nret o2\nend\nfn write_tag io -> io end\ng0\nfn write_tag io -> io end\nfn respond io u32 -> io end\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 67,
+            "cl100k_base": 67
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 6.563500000000204
+    },
+    {
+      "task": "y-relay-scaled",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 79,
+        "cl100k_base": 79
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 163,
+        "output": 26,
+        "total": 883
+      },
+      "outputTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "type: relay.c: expected u32, got io fix: replace the operand at relay.c with a value of type u32"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          },
+          "repair": "Rejected:\ntype: relay.c: expected u32, got io fix: replace the operand at relay.c with a value of type u32\n\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "type: relay.c: expected u32, got io fix: replace the operand at relay.c with a value of type u32"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          },
+          "repair": "Rejected:\ntype: relay.c: expected u32, got io fix: replace the operand at relay.c with a value of type u32\n\nTry again."
+        }
+      ],
+      "failures": [
+        "type: relay.c: expected u32, got io fix: replace the operand at relay.c with a value of type u32"
+      ],
+      "wallMs": 4.427699999999277
+    },
+    {
+      "task": "y-larger-reading",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 84,
+        "cl100k_base": 84
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 95,
+        "output": 6,
+        "total": 448
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 3.322099999999409
+    },
+    {
+      "task": "y-log-newest-first",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 106,
+        "cl100k_base": 106
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 122,
+        "output": 5,
+        "total": 474
+      },
+      "outputTokensLocal": {
+        "o200k_base": 5,
+        "cl100k_base": 5
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 5,
+            "cl100k_base": 5
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 3.0354999999999563
+    },
+    {
+      "task": "y-late-fee",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 54,
+        "cl100k_base": 54
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 97,
+        "output": 70,
+        "total": 514
+      },
+      "outputTokensLocal": {
+        "o200k_base": 70,
+        "cl100k_base": 70
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 70,
+            "cl100k_base": 70
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 3.618000000000393
+    },
+    {
+      "task": "y-weighted-smooth",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 54,
+        "cl100k_base": 54
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 117,
+        "output": 144,
+        "total": 955
+      },
+      "outputTokensLocal": {
+        "o200k_base": 144,
+        "cl100k_base": 144
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "parse: line 2: call expects a function name, got 'weighted-avg'"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 73,
+            "cl100k_base": 73
+          },
+          "repair": "Rejected:\nparse: line 2: call expects a function name, got 'weighted-avg'\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 71,
+            "cl100k_base": 71
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 12.621900000000096
+    },
+    {
+      "task": "y-overtime-pay",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 42,
+        "cl100k_base": 42
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 236,
+        "output": 124,
+        "total": 1054
+      },
+      "outputTokensLocal": {
+        "o200k_base": 124,
+        "cl100k_base": 124
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "structure: pay.t: duplicate definition"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 79,
+            "cl100k_base": 79
+          },
+          "repair": "Rejected:\nstructure: pay.t: duplicate definition\n\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "structure: pay.o: unknown callee 'overtime' (callees must be defined earlier; recursion is unsupported) fix: 'overtime' is neither an op nor a function defined above pay: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts; rarely needed: text \"s\", loop P F n s a... (F while P(state,i,a...) holds, at most n times), io values are one linear token used once: read t -> (u32,io), write t v -> io, puts t a -> io"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 45,
+            "cl100k_base": 45
+          },
+          "repair": "Rejected:\nstructure: pay.o: unknown callee 'overtime' (callees must be defined earlier; recursion is unsupported) fix: 'overtime' is neither an op nor a function defined above pay: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts; rarely needed: text \"s\", loop P F n s a... (F while P(state,i,a...) holds, at most n times), io values are one linear token used once: read t -> (u32,io), write t v -> io, puts t a -> io\n\nTry again."
+        }
+      ],
+      "failures": [
+        "structure: pay.o: unknown callee 'overtime' (callees must be defined earlier; recursion is unsupported) fix: 'overtime' is neither an op nor a function defined above pay: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts; rarely needed: text \"s\", loop P F n s a... (F while P(state,i,a...) holds, at most n times), io values are one linear token used once: read t -> (u32,io), write t v -> io, puts t a -> io"
+      ],
+      "wallMs": 7.378200000000106
+    },
+    {
+      "task": "y-reorder-available",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 55,
+        "cl100k_base": 55
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 598,
+        "workflowPrimer": 96,
+        "toolContext": 375,
+        "output": 90,
+        "total": 1159
+      },
+      "outputTokensLocal": {
+        "o200k_base": 90,
+        "cl100k_base": 90
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "needs_order(10,6,5,false) = false, expected true",
+            "needs_order(3,10,1,false) = false, expected true",
+            "needs_order(100,1,100,false) = false, expected true",
+            "needs_order(7,7,1,false) = false, expected true"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 83,
+            "cl100k_base": 83
+          },
+          "repair": "Rejected:\nneeds_order(10,6,5,false) = false, expected true\nneeds_order(3,10,1,false) = false, expected true\nneeds_order(100,1,100,false) = false, expected true\nneeds_order(7,7,1,false) = false, expected true\n\nCurrent view:\ne0\nfn needs_order u32 u32 u32 bool -> bool\navail_stock call available p2 p1\nlow lt p0 avail_stock\nnp eq p3 false\nr and low np\nret r\nend\nfn available u32 u32 -> u32 end\ng0\nfn available u32 u32 -> u32 end\nfn needs_order u32 u32 u32 bool -> bool end\nTry again."
+        },
+        {
+          "status": "wrong-output",
+          "failures": [
+            "needs_order(10,0,5,false) = true, expected false",
+            "needs_order(10,5,5,false) = true, expected false"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 7,
+            "cl100k_base": 7
+          },
+          "repair": "Rejected:\nneeds_order(10,0,5,false) = true, expected false\nneeds_order(10,5,5,false) = true, expected false\n\nCurrent view:\ne0\nfn needs_order u32 u32 u32 bool -> bool\navail_stock call available p2 p1\nlow gt p0 avail_stock\nnp eq p3 false\nr and low np\nret r\nend\nfn available u32 u32 -> u32 end\ng0\nfn available u32 u32 -> u32 end\nfn needs_order u32 u32 u32 bool -> bool end\nTry again."
+        }
+      ],
+      "failures": [
+        "needs_order(10,0,5,false) = true, expected false",
+        "needs_order(10,5,5,false) = true, expected false"
+      ],
+      "wallMs": 10.428799999999683
+    },
+    {
+      "task": "y-sensor-maintenance",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 76,
+        "output": 68,
+        "total": 491
+      },
+      "outputTokensLocal": {
+        "o200k_base": 68,
+        "cl100k_base": 68
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 68,
+            "cl100k_base": 68
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 5.304699999999684
+    },
+    {
+      "task": "y-round-nickel",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 348,
+        "cl100k_base": 341
+      },
+      "viewTokensLocal": {
+        "o200k_base": 42,
+        "cl100k_base": 42
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 299,
+        "workflowPrimer": 48,
+        "toolContext": 75,
+        "output": 56,
+        "total": 478
+      },
+      "outputTokensLocal": {
+        "o200k_base": 56,
+        "cl100k_base": 56
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 56,
+            "cl100k_base": 56
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 29.475499999999556
+    }
+  ]
+}

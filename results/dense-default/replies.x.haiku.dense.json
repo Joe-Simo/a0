@@ -1,0 +1,56 @@
+{
+ "x-night-tariff/a0/structured": [
+  "fn tariff u32 u32 -> u32\nselect lt B 6 mul A 3 mul A 5\n"
+ ],
+ "x-lift-load/a0/structured": [
+  "fn load u32 u32 -> u32\na add A B\n\nfn lift_ok u32 u32 u32 -> bool\nw load A B\nr le w C\n",
+  "fn load u32 u32 -> u32\nr add mul A 100 mul B 50\n\nfn lift_ok u32 u32 u32 -> bool\nw load A B\nr le w C\n"
+ ],
+ "x-heat-cool-power/a0/structured": [
+  "-fn thermo\nfn thermo\nc lt A B\nh sub B A\nhp mul h 10\nk sub A B\nkp mul k 4\nr select c hp kp\n"
+ ],
+ "x-loan-quarter/a0/structured": [
+  "fn balance u32 u32 -> u32\nr fold month 3 A B\no mov r\n\nfn month u32 u32 u32 -> u32\nt mul A 105\nd div t 100\ns sub d C\no mov s\n"
+ ],
+ "x-stair-energy/a0/structured": [
+  "fn climb u32 u32 -> u32\nr fold flight 4 0 A\no add r B\n\nfn flight u32 u32 u32 -> u32\nr add A C\no mov r\n",
+  "fn climb u32 u32 -> u32\nr fold flight 4 0 A\no add r B\n\nfn flight u32 u32 u32 -> u32\nr add B 1\ns mul r C\no add A s\n"
+ ],
+ "x-tank-overflow/a0/structured": [
+  "fn overflow u32x4 u32 u32 -> bool\nr fold tank 4 false A C B\no mov r\n\nfn tank bool u32 u32x4 u32 u32 -> bool\ng get C B\ns add g D\nb gt s E\nr or A b\no mov r\n",
+  "fn overflow u32x4 u32 u32 -> bool\nr fold tank 4 false A B C\no mov r\n\nfn tank bool u32 u32 u32 u32 -> bool\ns add C D\nb gt s E\nr or A b\no mov r\n"
+ ],
+ "x-signal-decay/a0/structured": [
+  "e0\nfn decay\nr fold tick 5 A 3\no mov r\n# tick u32 u32 u32 -> u32\ng0\n# tick u32 u32 u32 -> u32\n# decay u32 -> u32\n"
+ ],
+ "x-combo-bonus/a0/structured": [
+  "e0\nfn final\nb base A B\nm mul C 5\np eq A 0\nt select p (add b m) b\n# base u32 u32 -> u32\ng0\n# base u32 u32 -> u32\n# final u32 u32 u32 -> u32\n",
+  "e0\nfn final\nb base A B\nm mul C 5\np eq B 0\nt select p (add b m) b\n# base u32 u32 -> u32\ng0\n# base u32 u32 -> u32\n# final u32 u32 u32 -> u32\n"
+ ],
+ "x-opaque-pixel/a0/structured": [
+  "fn opaque u32x4 -> u32x4\nm mov A\nr set m 3 255\n"
+ ],
+ "x-battery-report/a0/structured": [
+  "g0\nfn battery u32 u32 -> (u32,bool)\npc div mul A 100 B\nlow lt pc 20\nr (pc low)\n"
+ ],
+ "x-next-seat/a0/structured": [
+  "fn row u32 -> u32\ndiv A 4\n\nfn next_seat u32 u32 -> bool\nand (eq (row A) (row B)) (eq (add (mod A 4) 1) (mod B 4))\n",
+  "fn row u32 -> u32\ndiv A 4\n\nfn next_seat u32 u32 -> bool\nand (eq (row A) (row B)) (eq (rem B 4) (add (rem A 4) 1))\n"
+ ],
+ "x-bill-split/a0/structured": [
+  "fn per_person u32 u32 u32 -> u32\nt add A div mul A C 100\nselect eq B 0 t div t B\n"
+ ],
+ "x-rgb565-pack/a0/structured": [
+  "e0\nfn rgb565\nb << >> A 3 11\nd << >> B 2 5\ne >> C 3\no or b d\nq or o e\ng0\n# rgb565 u32 u32 u32 -> u32\n"
+ ],
+ "x-armor-hit/a0/structured": [
+  "fn armor u32 u32 -> u32\n  select (lt A B) 0 (sub A B)\n\nfn hit u32 u32 u32 -> u32\n  select (lt A (armor B C)) 0 (sub A (armor B C))\n",
+  "fn armor u32 u32 -> u32\n  select (lt A B) A B\n\nfn hit u32 u32 u32 -> u32\n  select (lt A (armor B C)) 0 (sub A (armor B C))\n"
+ ],
+ "x-enable-flag/a0/structured": [
+  "fn enable u32 u32 -> u32\ns << 1 B\nr or A s\nr\n"
+ ],
+ "x-lcg-output/a0/structured": [
+  "fn rand15\nm mul A 1103515245\nn add m 12345\ns >> n 16\nr and s 32767\n"
+ ]
+}
