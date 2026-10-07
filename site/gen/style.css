@@ -420,3 +420,24 @@ pre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6
 .layout::before{content:"";position:absolute;inset:0 -32px;z-index:-1;background:rgba(0,0,0,.92);box-shadow:0 0 56px 40px rgba(0,0,0,.92);pointer-events:none}
 /* narrow phones: the header must fit the viewport (the text Sponsor link is hidden here; the icons stay) */
 @media (max-width:480px){.top{padding:0 12px}.hright>a:not(.ico){display:none}.links{gap:8px}.nav{gap:8px}}
+/* docs page only (scoped by the .docs ancestor): a readable column, a sticky contents on desktop, a collapsible one on mobile */
+.docs .layout{grid-template-columns:220px minmax(0,780px);gap:48px}
+.docs .main p{max-width:70ch;line-height:1.65}
+.docs .main h3{font-size:1.05rem;font-weight:600;margin:28px 0 10px;color:var(--fg)}
+.docs .main section{scroll-margin-top:80px}
+.docs pre.code{font-size:14px;line-height:1.6}
+.docs .toc>summary{list-style:none;cursor:pointer}
+.docs .toc>summary::-webkit-details-marker{display:none}
+.docs .toc>summary:focus-visible{outline:2px solid var(--a0);outline-offset:2px;border-radius:6px}
+.docs .rail a{display:block;padding:6px 0 6px 12px}
+.docs .rail a.on{padding:6px 0 6px 10px}
+@media (min-width:901px){.docs .toc>summary{display:none}.docs .toc::details-content{content-visibility:visible;display:block}.docs .rail{max-height:calc(100vh - 120px);overflow-y:auto}}
+@media (max-width:900px){
+.docs .layout{display:block}
+.docs .rail{position:static;display:block;overflow:visible;margin:0 0 24px;padding:0;background:none;border:0;-webkit-mask:none;mask:none}
+.docs .toc>summary{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:8px;color:var(--fg);font-size:15px}
+.docs .toc>summary::after{content:"+";color:var(--muted)}
+.docs .toc[open]>summary::after{content:"\2212"}
+.docs .toc[open] .rh{display:block;margin:14px 0 2px 12px}
+.docs .rail a,.docs .rail a.on{display:flex;align-items:center;min-height:44px;padding:0 12px;white-space:normal;border:0}
+}
