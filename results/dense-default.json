@@ -1,0 +1,641 @@
+{
+  "generatedAt": "2026-10-07T14:01:26.007Z",
+  "tool": "tools/primer-compare-summary.ts",
+  "preRegistration": "docs/history/2026-10-07-primer-v3-dense-ledger-preregistration.md",
+  "taskSetSha256": {
+    "x": "f8489b9a1d2139ef5aca4e73e03e1a7065a2de4b2a99bad4a1506538fe3f78e0",
+    "y": "387b6c19444730932dc3adfec47775170782282e93db3bd32bb9811e795a7e6e"
+  },
+  "meaning": "Phase B: the dense primer (MODEL_GUIDE.dense.txt, 145 tokens) with the dense view against the shipped canonical primer with the canonical view on sealed sets X and Y, fresh Haiku and Sonnet subagents, one shot plus one repair.",
+  "primerTokensO200k": {
+    "canon": 244,
+    "dense": 145
+  },
+  "baseline": "canon",
+  "variant": "dense",
+  "marginTasks": 2,
+  "perSetMarginTasks": 2,
+  "cells": {
+    "x/haiku/canon": {
+      "n": 16,
+      "system": 293,
+      "oneShot": {
+        "k": 11,
+        "ci95": [
+          0.444,
+          0.858
+        ]
+      },
+      "accepted": {
+        "k": 13,
+        "ci95": [
+          0.57,
+          0.934
+        ]
+      },
+      "callsPerTask": 1.31,
+      "tokensPerAcceptedEdit": {
+        "task1": 690.3,
+        "session10": 300.8,
+        "unbounded": 257.5
+      },
+      "notAccepted": [
+        {
+          "task": "x-lift-load",
+          "first": "parse: line 5: unknown operation 'ret' fix: use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read wr"
+        },
+        {
+          "task": "x-loan-quarter",
+          "first": "balance(100,105) = 214748149, expected 42949457"
+        },
+        {
+          "task": "x-signal-decay",
+          "first": "edit: decay: new node 'd' is not used by any node or by ret fix: add 'ret d' if it is the new result, or use it in another node"
+        }
+      ]
+    },
+    "x/haiku/dense": {
+      "n": 16,
+      "system": 145,
+      "oneShot": {
+        "k": 10,
+        "ci95": [
+          0.386,
+          0.815
+        ]
+      },
+      "accepted": {
+        "k": 13,
+        "ci95": [
+          0.57,
+          0.934
+        ]
+      },
+      "callsPerTask": 1.38,
+      "tokensPerAcceptedEdit": {
+        "task1": 490.2,
+        "session10": 297.5,
+        "unbounded": 276
+      },
+      "notAccepted": [
+        {
+          "task": "x-lift-load",
+          "first": "lift_ok(2,0,150) = false, expected true"
+        },
+        {
+          "task": "x-tank-overflow",
+          "first": "type: overflow (`fold tank 4 false A B C`): extra argument 0: expected u32, got u32x4 fix: each step runs state = tank(state, i, extras...) where i is the u32 s"
+        },
+        {
+          "task": "x-armor-hit",
+          "first": "hit(10,5,2) = 8, expected 7"
+        }
+      ]
+    },
+    "y/haiku/canon": {
+      "n": 28,
+      "system": 293,
+      "oneShot": {
+        "k": 21,
+        "ci95": [
+          0.566,
+          0.873
+        ]
+      },
+      "accepted": {
+        "k": 24,
+        "ci95": [
+          0.685,
+          0.943
+        ]
+      },
+      "callsPerTask": 1.25,
+      "tokensPerAcceptedEdit": {
+        "task1": 673,
+        "session10": 303.8,
+        "unbounded": 262.8
+      },
+      "notAccepted": [
+        {
+          "task": "y-stock-scan",
+          "first": "first_at_least(1,1,1,1,3) = 3, expected 4"
+        },
+        {
+          "task": "y-months-affordable",
+          "first": "parse: line 11: nested operand: A0 has one op per line fix: one op per line: write `should_increment1 select stopped false true` above, then `should_increment a"
+        },
+        {
+          "task": "y-relay-scaled",
+          "first": "type: relay.s: expected u32, got io fix: replace the operand at relay.s with a value of type u32"
+        },
+        {
+          "task": "y-reorder-available",
+          "first": "structure: needs_order.r: reference to undefined or later node 'low' fix: define 'low' on an earlier line of this function, or reference a node defined above ne"
+        }
+      ]
+    },
+    "y/haiku/dense": {
+      "n": 28,
+      "system": 145,
+      "oneShot": {
+        "k": 10,
+        "ci95": [
+          0.207,
+          0.542
+        ]
+      },
+      "accepted": {
+        "k": 15,
+        "ci95": [
+          0.358,
+          0.705
+        ]
+      },
+      "callsPerTask": 1.64,
+      "tokensPerAcceptedEdit": {
+        "task1": 939,
+        "session10": 646.7,
+        "unbounded": 614.2
+      },
+      "notAccepted": [
+        {
+          "task": "y-months-affordable",
+          "first": "structure: fits (`at C B`): at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)"
+        },
+        {
+          "task": "y-echo-decay",
+          "first": "parse: line 3: `loop loud halve` needs 3 operands (halve has 3 parameters) but the line ended after 2 fix: an operation takes its operands right after it, each "
+        },
+        {
+          "task": "y-last-slot",
+          "first": "parse: line 2: unexpected 'A' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above (`x op ...`), then "
+        },
+        {
+          "task": "y-tag-score",
+          "first": "tag_score(0) = 256, expected 57"
+        },
+        {
+          "task": "y-banner-letter",
+          "first": "is_letter(0,108) = false, expected true"
+        },
+        {
+          "task": "y-ticket-tail",
+          "first": "parse: line 2: 'i' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation,"
+        },
+        {
+          "task": "y-reading-tenths",
+          "first": "parse: line 1: unexpected '->' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above (`x op ...`), then"
+        },
+        {
+          "task": "y-swap-pair",
+          "first": "structure: swap_pair (`read A`): io token 'p0' was already consumed"
+        },
+        {
+          "task": "y-tagged-reply",
+          "first": "parse: line 2: 'io' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation"
+        },
+        {
+          "task": "y-relay-scaled",
+          "first": "parse: line 7: 'io' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation"
+        },
+        {
+          "task": "y-weighted-smooth",
+          "first": "structure: smooth (`weighted_avg A B C`): unknown callee 'weighted_avg' (callees must be defined earlier; recursion is unsupported) fix: 'weighted_avg' is defin"
+        },
+        {
+          "task": "y-reorder-available",
+          "first": "needs_order(10,5,5,false) = true, expected false"
+        },
+        {
+          "task": "y-sensor-maintenance",
+          "first": "type: fault (`select window 0 differ`): select branches differ (u32 vs bool)"
+        }
+      ]
+    },
+    "pooled/haiku/canon": {
+      "n": 44,
+      "system": 293,
+      "oneShot": {
+        "k": 32,
+        "ci95": [
+          0.582,
+          0.837
+        ]
+      },
+      "accepted": {
+        "k": 37,
+        "ci95": [
+          0.706,
+          0.921
+        ]
+      },
+      "callsPerTask": 1.27,
+      "tokensPerAcceptedEdit": {
+        "task1": 679.1,
+        "session10": 302.8,
+        "unbounded": 261
+      },
+      "notAccepted": [
+        {
+          "task": "x:x-lift-load",
+          "first": "parse: line 5: unknown operation 'ret' fix: use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read wr"
+        },
+        {
+          "task": "x:x-loan-quarter",
+          "first": "balance(100,105) = 214748149, expected 42949457"
+        },
+        {
+          "task": "x:x-signal-decay",
+          "first": "edit: decay: new node 'd' is not used by any node or by ret fix: add 'ret d' if it is the new result, or use it in another node"
+        },
+        {
+          "task": "y:y-stock-scan",
+          "first": "first_at_least(1,1,1,1,3) = 3, expected 4"
+        },
+        {
+          "task": "y:y-months-affordable",
+          "first": "parse: line 11: nested operand: A0 has one op per line fix: one op per line: write `should_increment1 select stopped false true` above, then `should_increment a"
+        },
+        {
+          "task": "y:y-relay-scaled",
+          "first": "type: relay.s: expected u32, got io fix: replace the operand at relay.s with a value of type u32"
+        },
+        {
+          "task": "y:y-reorder-available",
+          "first": "structure: needs_order.r: reference to undefined or later node 'low' fix: define 'low' on an earlier line of this function, or reference a node defined above ne"
+        }
+      ]
+    },
+    "pooled/haiku/dense": {
+      "n": 44,
+      "system": 145,
+      "oneShot": {
+        "k": 20,
+        "ci95": [
+          0.317,
+          0.599
+        ]
+      },
+      "accepted": {
+        "k": 28,
+        "ci95": [
+          0.489,
+          0.762
+        ]
+      },
+      "callsPerTask": 1.55,
+      "tokensPerAcceptedEdit": {
+        "task1": 730.6,
+        "session10": 484.6,
+        "unbounded": 457.2
+      },
+      "notAccepted": [
+        {
+          "task": "x:x-lift-load",
+          "first": "lift_ok(2,0,150) = false, expected true"
+        },
+        {
+          "task": "x:x-tank-overflow",
+          "first": "type: overflow (`fold tank 4 false A B C`): extra argument 0: expected u32, got u32x4 fix: each step runs state = tank(state, i, extras...) where i is the u32 s"
+        },
+        {
+          "task": "x:x-armor-hit",
+          "first": "hit(10,5,2) = 8, expected 7"
+        },
+        {
+          "task": "y:y-months-affordable",
+          "first": "structure: fits (`at C B`): at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)"
+        },
+        {
+          "task": "y:y-echo-decay",
+          "first": "parse: line 3: `loop loud halve` needs 3 operands (halve has 3 parameters) but the line ended after 2 fix: an operation takes its operands right after it, each "
+        },
+        {
+          "task": "y:y-last-slot",
+          "first": "parse: line 2: unexpected 'A' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above (`x op ...`), then "
+        },
+        {
+          "task": "y:y-tag-score",
+          "first": "tag_score(0) = 256, expected 57"
+        },
+        {
+          "task": "y:y-banner-letter",
+          "first": "is_letter(0,108) = false, expected true"
+        },
+        {
+          "task": "y:y-ticket-tail",
+          "first": "parse: line 2: 'i' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation,"
+        },
+        {
+          "task": "y:y-reading-tenths",
+          "first": "parse: line 1: unexpected '->' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above (`x op ...`), then"
+        },
+        {
+          "task": "y:y-swap-pair",
+          "first": "structure: swap_pair (`read A`): io token 'p0' was already consumed"
+        },
+        {
+          "task": "y:y-tagged-reply",
+          "first": "parse: line 2: 'io' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation"
+        },
+        {
+          "task": "y:y-relay-scaled",
+          "first": "parse: line 7: 'io' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation"
+        },
+        {
+          "task": "y:y-weighted-smooth",
+          "first": "structure: smooth (`weighted_avg A B C`): unknown callee 'weighted_avg' (callees must be defined earlier; recursion is unsupported) fix: 'weighted_avg' is defin"
+        },
+        {
+          "task": "y:y-reorder-available",
+          "first": "needs_order(10,5,5,false) = true, expected false"
+        },
+        {
+          "task": "y:y-sensor-maintenance",
+          "first": "type: fault (`select window 0 differ`): select branches differ (u32 vs bool)"
+        }
+      ]
+    },
+    "x/sonnet/canon": {
+      "n": 16,
+      "system": 293,
+      "oneShot": {
+        "k": 15,
+        "ci95": [
+          0.717,
+          0.989
+        ]
+      },
+      "accepted": {
+        "k": 16,
+        "ci95": [
+          0.806,
+          1
+        ]
+      },
+      "callsPerTask": 1.06,
+      "tokensPerAcceptedEdit": {
+        "task1": 501.2,
+        "session10": 184.7,
+        "unbounded": 149.6
+      },
+      "notAccepted": []
+    },
+    "x/sonnet/dense": {
+      "n": 16,
+      "system": 145,
+      "oneShot": {
+        "k": 10,
+        "ci95": [
+          0.386,
+          0.815
+        ]
+      },
+      "accepted": {
+        "k": 14,
+        "ci95": [
+          0.64,
+          0.965
+        ]
+      },
+      "callsPerTask": 1.38,
+      "tokensPerAcceptedEdit": {
+        "task1": 395.8,
+        "session10": 216.9,
+        "unbounded": 197
+      },
+      "notAccepted": [
+        {
+          "task": "x-lift-load",
+          "first": "parse: line 2: unexpected '0' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above (`x op ...`), then "
+        },
+        {
+          "task": "x-stair-energy",
+          "first": "parse: line 3: unexpected 'A' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above (`x op ...`), then "
+        }
+      ]
+    },
+    "y/sonnet/canon": {
+      "n": 28,
+      "system": 293,
+      "oneShot": {
+        "k": 25,
+        "ci95": [
+          0.728,
+          0.963
+        ]
+      },
+      "accepted": {
+        "k": 28,
+        "ci95": [
+          0.879,
+          1
+        ]
+      },
+      "callsPerTask": 1.11,
+      "tokensPerAcceptedEdit": {
+        "task1": 538.1,
+        "session10": 221.7,
+        "unbounded": 186.5
+      },
+      "notAccepted": []
+    },
+    "y/sonnet/dense": {
+      "n": 28,
+      "system": 145,
+      "oneShot": {
+        "k": 20,
+        "ci95": [
+          0.529,
+          0.847
+        ]
+      },
+      "accepted": {
+        "k": 25,
+        "ci95": [
+          0.728,
+          0.963
+        ]
+      },
+      "callsPerTask": 1.29,
+      "tokensPerAcceptedEdit": {
+        "task1": 424.7,
+        "session10": 249.3,
+        "unbounded": 229.8
+      },
+      "notAccepted": [
+        {
+          "task": "y-free-slot",
+          "first": "first_free(255,0) = 255, expected 8"
+        },
+        {
+          "task": "y-echo-decay",
+          "first": "type: step (`at S 0`): parameter p18 out of range fix: step has 4 parameters (p0..p3): use one of them, or add the parameter with a `fn step ...` block with the"
+        },
+        {
+          "task": "y-ticket-tail",
+          "first": "type: count_tail (`ge I 3`): parameter p8 out of range fix: count_tail has 4 parameters (p0..p3): use one of them, or add the parameter with a `fn count_tail .."
+        }
+      ]
+    },
+    "pooled/sonnet/canon": {
+      "n": 44,
+      "system": 293,
+      "oneShot": {
+        "k": 40,
+        "ci95": [
+          0.788,
+          0.964
+        ]
+      },
+      "accepted": {
+        "k": 44,
+        "ci95": [
+          0.92,
+          1
+        ]
+      },
+      "callsPerTask": 1.09,
+      "tokensPerAcceptedEdit": {
+        "task1": 524.7,
+        "session10": 208.3,
+        "unbounded": 173.1
+      },
+      "notAccepted": []
+    },
+    "pooled/sonnet/dense": {
+      "n": 44,
+      "system": 145,
+      "oneShot": {
+        "k": 30,
+        "ci95": [
+          0.534,
+          0.8
+        ]
+      },
+      "accepted": {
+        "k": 39,
+        "ci95": [
+          0.76,
+          0.95
+        ]
+      },
+      "callsPerTask": 1.32,
+      "tokensPerAcceptedEdit": {
+        "task1": 414.3,
+        "session10": 237.6,
+        "unbounded": 218
+      },
+      "notAccepted": [
+        {
+          "task": "x:x-lift-load",
+          "first": "parse: line 2: unexpected '0' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above (`x op ...`), then "
+        },
+        {
+          "task": "x:x-stair-energy",
+          "first": "parse: line 3: unexpected 'A' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above (`x op ...`), then "
+        },
+        {
+          "task": "y:y-free-slot",
+          "first": "first_free(255,0) = 255, expected 8"
+        },
+        {
+          "task": "y:y-echo-decay",
+          "first": "type: step (`at S 0`): parameter p18 out of range fix: step has 4 parameters (p0..p3): use one of them, or add the parameter with a `fn step ...` block with the"
+        },
+        {
+          "task": "y:y-ticket-tail",
+          "first": "type: count_tail (`ge I 3`): parameter p8 out of range fix: count_tail has 4 parameters (p0..p3): use one of them, or add the parameter with a `fn count_tail .."
+        }
+      ]
+    }
+  },
+  "flipsAgainstBaseline": {
+    "haiku": {
+      "gained": [
+        "x:x-loan-quarter",
+        "x:x-signal-decay",
+        "y:y-stock-scan"
+      ],
+      "lost": [
+        "x:x-tank-overflow",
+        "x:x-armor-hit",
+        "y:y-echo-decay",
+        "y:y-last-slot",
+        "y:y-tag-score",
+        "y:y-banner-letter",
+        "y:y-ticket-tail",
+        "y:y-reading-tenths",
+        "y:y-swap-pair",
+        "y:y-tagged-reply",
+        "y:y-weighted-smooth",
+        "y:y-sensor-maintenance"
+      ]
+    },
+    "sonnet": {
+      "gained": [],
+      "lost": [
+        "x:x-lift-load",
+        "x:x-stair-energy",
+        "y:y-free-slot",
+        "y:y-echo-decay",
+        "y:y-ticket-tail"
+      ]
+    }
+  },
+  "preRegisteredRule": {
+    "haiku": {
+      "primaryHorizon": "session10",
+      "baseline": {
+        "accepted": 37,
+        "cost": 302.8
+      },
+      "variant": {
+        "accepted": 28,
+        "cost": 484.6
+      },
+      "perSet": {
+        "x": {
+          "base": 13,
+          "variant": 13
+        },
+        "y": {
+          "base": 24,
+          "variant": 15
+        }
+      },
+      "acceptanceHeld": false,
+      "everySetHeld": false,
+      "cheaper": false,
+      "pass": false
+    },
+    "sonnet": {
+      "primaryHorizon": "session10",
+      "baseline": {
+        "accepted": 44,
+        "cost": 208.3
+      },
+      "variant": {
+        "accepted": 39,
+        "cost": 237.6
+      },
+      "perSet": {
+        "x": {
+          "base": 16,
+          "variant": 14
+        },
+        "y": {
+          "base": 28,
+          "variant": 25
+        }
+      },
+      "acceptanceHeld": false,
+      "everySetHeld": false,
+      "cheaper": false,
+      "pass": false
+    }
+  },
+  "decision": {
+    "change": false
+  }
+}

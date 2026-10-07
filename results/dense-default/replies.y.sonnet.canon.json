@@ -1,0 +1,89 @@
+{
+ "y-stock-scan/a0/structured": [
+  "fn inc u32 u32 u32x4 u32 -> u32\na get p2 p1\nb ge a p3\nc eq p0 4\nd and b c\ne select d p1 p0\nret e\nend\nfn first_at_least u32x4 u32 -> u32\na fold inc 4 4 p0 p1\nret a\nend"
+ ],
+ "y-fuel-burns/a0/structured": [
+  "l loop can_burn burn_step 10 r p1 p2"
+ ],
+ "y-signal-run/a0/structured": [
+  "l fold next 6 0 p0 fb\nfn next u32 u32 u32x6 bool -> u32\ng get p2 p1\nb gt g 50\ne eq b p3\nk eq p0 p1\nc and e k\nn add p0 1\nr select c n p0\nret r\nend\n-fn same_state",
+  "-fn same_state\nfn next u32 u32 u32x6 bool -> u32\ng get p2 p1\nb gt g 50\ne eq b p3\nk eq p0 p1\nc and e k\nn add p0 1\nr select c n p0\nret r\nend\nfn run_length u32x6 -> u32\nf get p0 0\nfb gt f 50\nl fold next 6 0 p0 fb\nret l\nend"
+ ],
+ "y-months-affordable/a0/structured": [
+  "l loop fits pay 4 s p0 p1\nfn fits (u32,u32) u32 u32x4 u32 -> bool\nt at p0 0\nb get p2 p1\nn add t b\nf le n p3\nret f\nend\nfn pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\nt at p0 0\nc at p0 1\nb get p2 p1\nn add t b\nm add c 1\nr rec n m\nret r\nend"
+ ],
+ "y-board-jumps/a0/structured": [
+  "l loop before_end jump p2 p0 p1"
+ ],
+ "y-free-slot/a0/structured": [
+  "l loop busy next_slot 8 p1 p0"
+ ],
+ "y-echo-decay/a0/structured": [
+  "l loop loud halve 32 r p1",
+  "fn above (u32,u32) u32 u32 -> bool\na at p0 0\nc gt a p2\nret c\nend\nl loop above halve 32 r p1\n"
+ ],
+ "y-last-slot/a0/structured": [
+  "fn back u32 u32 u32x4 u32 -> u32\ng get p2 p1\nh eq g p3\ns select h p1 p0\nret s\nend\nl fold back 4 4294967295 p0 p1\nret l\n-r"
+ ],
+ "y-vowel-pick/a0/structured": [
+  "i sub p0 1 @ t\nc get t i"
+ ],
+ "y-weekday-initial/a0/structured": [
+  "t text \"SMTWTFS\""
+ ],
+ "y-tag-score/a0/structured": [
+  "s fold add_byte 4 p0 t\nr and s 255\nret r"
+ ],
+ "y-banner-letter/a0/structured": [
+  "lo ge p1 97 @ c\nhi le p1 122 @ lo\ninr and lo hi @ hi\nd sub p1 32 @ inr\nu select inr d p1 @ d\ne eq c u"
+ ],
+ "y-ticket-tail/a0/structured": [
+  "n fold count_eq 7 0 t p0 3",
+  "fn count_eq u32 u32 u32x7 u32 u32 -> u32\ng get p2 p1\ne eq g p3\nl ge p1 p4\nb and e l\nm select b 1 0\nr add p0 m\nret r\nend"
+ ],
+ "y-battery-glyph/a0/structured": [
+  "q div p0 25"
+ ],
+ "y-reading-tenths/a0/structured": [
+  "d div w 10"
+ ],
+ "y-swap-pair/a0/structured": [
+  "o1 write t2 b\no2 write o1 a"
+ ],
+ "y-sum-three/a0/structured": [
+  "fn sum_three io -> io\nr1 read p0\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\nr3 read t2\nc at r3 0\nt3 at r3 1\ns add a b\ns2 add s c\no write t3 s2\nret o\nend"
+ ],
+ "y-score-card/a0/structured": [
+  "fn post_scores io u32 u32 -> io\ns add p1 p2\na arr p1 p2 s\no puts p0 a\nret o\nend"
+ ],
+ "y-tagged-reply/a0/structured": [
+  "o1 call write_tag p0\no2 write o1 p1\nret o2"
+ ],
+ "y-relay-scaled/a0/structured": [
+  "r2 read t1 @ m\nb at r2 0 @ r2\nt2 at r2 1 @ b\ns add m b @ t2\no call emit t2 s"
+ ],
+ "y-larger-reading/a0/structured": [
+  "m select g b a"
+ ],
+ "y-log-newest-first/a0/structured": [
+  "p arr b a"
+ ],
+ "y-late-fee/a0/structured": [
+  "b call late_fee p1\n-a\nfn late_fee u32 -> u32\na gt p0 0\nb mul p0 2\nc add 5 b\nd select a c 0\nret d\nend"
+ ],
+ "y-weighted-smooth/a0/structured": [
+  "fn wavg u32 u32 u32 -> u32\nm mul p1 2\na add p0 m\nb add a p2\nd div b 4\nret d\nend\nfn smooth u32 u32 u32 -> u32\nr call wavg p0 p1 p2\nret r\nend"
+ ],
+ "y-overtime-pay/a0/structured": [
+  "fn over u32 -> u32\nc gt p0 40\nd sub p0 40\nr select c d 0\nret r\nend\no call over p0 @ b\nx mul o p1 @ o\nt add b x\n"
+ ],
+ "y-reorder-available/a0/structured": [
+  "fn available u32 u32 -> u32\nshort lt p0 p1\nd sub p0 p1\nr select short 0 d\nret r\nend\nfn needs_order u32 u32 u32 bool -> bool\nav call available p0 p1\nlow lt av p2\nnp eq p3 false\nr and low np\nret r\nend\n"
+ ],
+ "y-sensor-maintenance/a0/structured": [
+  "w call inwin p2 @ m\nn xor w true @ w\nr and m n\nfn inwin u32 -> bool\na ge p0 2\nb le p0 3\nc and a b\nret c\nend"
+ ],
+ "y-round-nickel/a0/structured": [
+  "fn round5 u32 -> u32\na add p0 4\nb div a 5\nc mul b 5\nret c\nend\nb call round5 a\n"
+ ]
+}
