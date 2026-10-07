@@ -3,9 +3,9 @@
  * data attributes on its root element:
  *
  *   data-live="/sentinel.wasm"   the program (an A0 io program exporting `frame`)
- *   data-live-in="4096"          input words it was built with (ioInputCapacity)
+ *   data-live-in="2048"          input words it was built with (ioInputCapacity)
  *   data-live-out="16384"        output words (ioOutputCapacity)
- *   data-live-rows="192"         geometry rows it reads
+ *   data-live-rows="96"         geometry rows it reads
  *
  * This module knows nothing about what the program draws. It runs one animation-frame loop,
  * feeds the program pointer, scroll, viewport, reduced-motion, visibility and frame-cost data
@@ -35,9 +35,9 @@ export async function mountLive(root, config = root.dataset) {
     const url = config.live;
     if (url === undefined || url === '')
         return undefined;
-    const inputWords = Number(config.liveIn ?? '4096');
+    const inputWords = Number(config.liveIn ?? '2048');
     const outputWords = Number(config.liveOut ?? '16384');
-    const rows = Number(config.liveRows ?? '192');
+    const rows = Number(config.liveRows ?? '96');
     let exp;
     try {
         exp = await load(url);

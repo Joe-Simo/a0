@@ -60,7 +60,7 @@ s7 call js s6 p1 tip 3 vy
 ret s7
 end
 
-fn tent_follow u32x1024 u32 u32x32 u32x1344 -> u32x1024
+fn tent_follow u32x1024 u32 u32x32 u32x672 -> u32x1024
 stt call tg p0 p1 0
 a1 eq stt 1
 a2 eq stt 2
@@ -141,7 +141,7 @@ ret s4
 end
 
 # begin the approach to the candidate (x p2, y p3, viewport Q16) of row p6; p4 hdr, p5 rects
-fn begin_approach u32x1024 u32 u32 u32 u32x32 u32x1344 u32 -> u32x1024
+fn begin_approach u32x1024 u32 u32 u32 u32x32 u32x672 u32 -> u32x1024
 sx get p4 5
 sy get p4 6
 x0 call rg p5 p6 1
@@ -183,7 +183,7 @@ ret r
 end
 
 # ---- searching: one tentacle per frame looks for an anchor (p1 tentacle, p2 hdr, p3 rects)
-fn lg_search u32x1024 u32 u32x32 u32x1344 -> u32x1024
+fn lg_search u32x1024 u32 u32x32 u32x672 -> u32x1024
 stt call tg p0 p1 0
 st0 eq stt 0
 rr call bg p0 30
@@ -321,7 +321,7 @@ ret r
 end
 
 # the four stages of one tentacle, in order (p1 tentacle, p2 hdr, p3 rects, p4 dt in ms)
-fn tent_logic u32x1024 u32 u32x32 u32x1344 u32 -> u32x1024
+fn tent_logic u32x1024 u32 u32x32 u32x672 u32 -> u32x1024
 s1 call lg_tick p0 p1 p4
 s2 call lg_search s1 p1 p2 p3
 s3 call tent_follow s2 p1 p2 p3
@@ -333,7 +333,7 @@ end
 
 # ---- a tap on an interactive element: one to three free tentacles reach for its nearest edge
 # (visual only; nothing is clicked, the tap is never intercepted)
-fn tap_row_step (u32,u32) u32 u32x1344 u32 u32 -> (u32,u32)
+fn tap_row_step (u32,u32) u32 u32x672 u32 u32 -> (u32,u32)
 x0 call rg p2 p1 1
 y0 call rg p2 p1 2
 x1 call rg p2 p1 3
@@ -388,7 +388,7 @@ r add p0 n
 ret r
 end
 # p1 tentacle; p2 st; p3 the count to move; p4 row; p5 hdr; p6 rects
-fn tap_apply u32x1024 u32 u32 u32 u32x32 u32x1344 -> u32x1024
+fn tap_apply u32x1024 u32 u32 u32 u32x32 u32x672 -> u32x1024
 rank fold tap_rank_step 8 0 p0 p1
 free0 call tg p0 p1 0
 f0 eq free0 0
@@ -420,11 +420,11 @@ use and use0 fnd
 r select use ap2 p0
 ret r
 end
-fn tap_each u32x1024 u32 u32 u32 u32x32 u32x1344 -> u32x1024
+fn tap_each u32x1024 u32 u32 u32 u32x32 u32x672 -> u32x1024
 r call tap_apply p0 p1 p2 p3 p4 p5
 ret r
 end
-fn tap_scan u32x1024 u32x32 u32x1344 -> (u32,u32)
+fn tap_scan u32x1024 u32x32 u32x672 -> (u32,u32)
 seq get p1 11
 old call bg p0 22
 changed ne seq old
@@ -450,7 +450,7 @@ cn select act cnt 0
 r rec row cn
 ret r
 end
-fn tap_step u32x1024 u32x32 u32x1344 -> u32x1024
+fn tap_step u32x1024 u32x32 u32x672 -> u32x1024
 sc call tap_scan p0 p1 p2
 row at sc 0
 cn at sc 1
