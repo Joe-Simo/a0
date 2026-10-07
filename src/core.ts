@@ -1701,16 +1701,91 @@ export function validateFunction(
   };
 }
 
+/**
+ * What a successful validation of a function read: every function it resolved by name (its
+ * callees, and the callees of its `pre` and `post`) and the profile it was typed under. A typed
+ * function is a pure result of its own text and of these; `validate` reuses it by identity when
+ * all of them are the very objects the new program resolves.
+ */
+interface TypingInputs {
+  readonly profile: 'strict' | undefined;
+  readonly deps: ReadonlyMap<string, TypedFunc>;
+}
+
+/** Only objects `validate` itself produced are here: a spread copy of a typed function is not. */
+const typingInputs = new WeakMap<TypedFunc, TypingInputs>();
+
+function specCallees(fn: Func): string[] {
+  const out: string[] = [];
+  for (const n of [fn.spec?.pre, fn.spec?.post]) {
+    if (n === undefined) continue;
+    if (n.callee !== undefined) out.push(n.callee);
+    if (n.pred !== undefined) out.push(n.pred);
+  }
+  return out;
+}
+
+let reuseEnabled = true;
+
+/**
+ * Run `run` with `validate` reusing nothing: every function is typed again, as before validation was
+ * incremental. The reference for the differential tests and the baseline of tools/edit-incremental.ts.
+ */
+export function withoutReuse<T>(run: () => T): T {
+  const was = reuseEnabled;
+  reuseEnabled = false;
+  try {
+    return run();
+  } finally {
+    reuseEnabled = was;
+  }
+}
+
+/** The typed result of `fn` from an earlier validation, if it is still exactly what validating it here gives. */
+function reusable(
+  fn: Func,
+  scope: ReadonlyMap<string, TypedFunc>,
+  profile: 'strict' | undefined,
+): TypedFunc | undefined {
+  if (!reuseEnabled) return undefined;
+  const typed = fn as TypedFunc;
+  const inputs = typingInputs.get(typed);
+  if (inputs === undefined || inputs.profile !== profile) return undefined;
+  for (const [name, callee] of inputs.deps) if (scope.get(name) !== callee) return undefined;
+  return typed;
+}
+
+/**
+ * Validate a whole program. Incremental by identity: a function that is a typed result of an
+ * earlier `validate` (an edit passes every unchanged function back as it received it), under the
+ * same profile, whose every resolved callee is the same object in this program, is reused as is;
+ * only the functions whose text changed and the functions that (transitively) call them are typed
+ * again. The result, and the first diagnostic of a program that fails, equal a validation from scratch.
+ */
 export function validate(program: Program): TypedProgram {
   if (program.functions.length > LIMITS.maxFunctions) throw diag('A0029');
   const byName = new Map<string, TypedFunc>();
   const functions: TypedFunc[] = [];
-  const names = program.functions.map((f) => f.name);
+  const profile = program.profile === 'strict' ? 'strict' : undefined;
+  let names: string[] | undefined;
   for (const [k, fn] of program.functions.entries()) {
     if (byName.has(fn.name)) throw diag('A0021', [fn.name]);
-    const typed = validateFunction(fn, byName, new Set(names.slice(k + 1)), program.profile);
+    const kept = reusable(fn, byName, profile);
+    if (kept !== undefined) {
+      byName.set(fn.name, kept);
+      functions.push(kept);
+      continue;
+    }
+    names ??= program.functions.map((f) => f.name);
+    const typed = validateFunction(fn, byName, new Set(names.slice(k + 1)), profile);
     // Spec lines are checked once the function is typed, against its callees (all above it).
     if (typed.spec !== undefined) verifySpec(typed, byName);
+    const deps = new Map(typed.calls);
+    for (const name of specCallees(typed)) {
+      const callee = byName.get(name);
+      if (callee !== undefined) deps.set(name, callee);
+    }
+    typingInputs.set(typed, { profile, deps });
     byName.set(fn.name, typed);
     functions.push(typed);
   }
