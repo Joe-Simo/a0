@@ -120,25 +120,25 @@ test('the home page is short: a pitch, one chart per question, the losses beside
   assert.ok(!html.includes('<details'), 'no hidden lists on the home page');
   assert.ok(!html.includes('class="rail"'), 'the section rail is on /benchmarks only');
   for (const h of [
-    'A small language AI models can edit without breaking your build.',
-    'Is it as fast as C?',
+    'A0 is a small language for code an AI agent edits one function at a time',
+    'Install and connect',
+    'Where A0 is slower than C',
     'How much does an edit cost?',
     'How quickly do I know an edit is wrong?',
-    'What does one source compile to?',
-    'Try it',
+    'Targets: machine code, C, wasm, JavaScript',
   ])
     assert.ok(text.includes(h), `missing: ${h}`);
   const answers: readonly RegExp[] = [
     /\$ a0 run examples\/kernels\.a0 affine 3 4 5\n\s*17/,
-    /A0's machine code takes \d+\.\d\dx as long as hand-written C, a geometric mean over the test programs\. It loses on \d+ of \d+: slower than the best of C, Rust and Zig, the worst by \d+\.\d\dx on \w+ \(results\/exec-benchmark-full\.json\)/,
-    /Over a session of 10 edits A0 costs \d+ tokens per task in its canonical form and \d+ in its dense form \(place \d+ and \d+ of \d+ languages, 1 = fewest\)\. On a one-function file it costs \d+\.\d\dx TypeScript's tokens/,
+    /Slower than the best of C, Rust and Zig on \d+ of \d+ test programs\. On a one-function file it costs \d+\.\d\dx TypeScript/,
+    /On a one-function file A0 costs \d+\.\d\dx TypeScript's tokens, because the instructions dominate\. Over a session of 10 edits it costs \d+ tokens per task in its canonical form and \d+ in its dense form \(place \d+ and \d+ of \d+ languages, 1 = fewest\)/,
     /type-checks the whole program in \d+\.\d\d ms at the median\. TypeScript with a warm compiler takes \d+\.\d ms/,
     /\d+ test cases ran on \d+ paths\. The native assembly targets ran the \d+ that need no input or output, and SystemVerilog is simulated separately on \d+/,
-    /MIT license, free for any use\. Copyright 2026 Joe Simo\. Not for floating point, heap-heavy or recursive code/,
+    /MIT license, free for any use\. Copyright 2026 Joe Simo\./,
   ];
   for (const re of answers) assert.match(text, re);
-  assert.match(html, /<a class="pill" href="#try">Install<\/a>/);
-  assert.match(html, /<a class="pill ghost" href="\/benchmarks">/);
+  assert.match(html, /<a class="pill" href="#install"[^>]*>Install A0<\/a>/);
+  assert.ok(html.includes('<a class="pill ghost" href="#connect">Connect your agent</a>'));
 });
 
 // A page program must fit the A0 toolchain: a function holds at most 32768 operand pairs and a text
