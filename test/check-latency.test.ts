@@ -67,6 +67,26 @@ test('check-latency: comparisons carry one verdict per edit and competitor', () 
   assert.equal(cs.length, 8);
 });
 
+test('check-latency: shipped-command rows are extra whole-project comparisons, and optional in a report', () => {
+  const extra = { 'a0 binary check (fresh process)': flat(100) };
+  const cs = compare(edits, flat(20), flat(400), { tsc: flat(2000), tsgo: flat(250) }, extra);
+  assert.equal(cs.length, 10);
+  const row = cs.find(
+    (c) => c.subject === 'a0 binary check (fresh process)' && c.competitor === 'tsgo',
+  );
+  assert.equal(row?.verdict, 'win');
+  assert.equal(row?.kind, 'whole-project');
+  const r = fixture();
+  const withRows = {
+    ...r,
+    a0: { ...r.a0, cliCheckProcess: flat(300), binaryCheckProcess: flat(100) },
+  };
+  assert.deepEqual(validateReport(withRows), []);
+  assert.match(renderTable(withRows), /a0 binary check \(proc\)/);
+  const bad = { ...r, a0: { ...r.a0, binaryCheckProcess: { ...flat(5), median: 99 } } };
+  assert.ok(validateReport(bad).some((p) => /binaryCheckProcess: bad stats/.test(p)));
+});
+
 function fixture(): CheckLatencyReport {
   const wholeProject = { tsc: flat(2000), tsgo: flat(250) };
   const coldIn = flat(20);

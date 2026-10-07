@@ -1,0 +1,483 @@
+{
+  "generatedAt": "2026-10-07T11:32:30.373Z",
+  "tool": "tools/failure-taxonomy.ts",
+  "meaning": "Every A0 subject trial under results/ whose first attempt was not accepted (one-shot failures), classified by the root cause of the first rejection message; repaired = accepted after the recorded repair. Trials repeat across ablation arms (the same task and subject type appear in many arms): counts are trials, not distinct tasks. The class rules are a reading of the message text (tools/failure-taxonomy.ts), not a measurement of intent.",
+  "trialsFirstAttemptNotAccepted": 1447,
+  "notAcceptedAfterRepair": 864,
+  "classes": [
+    {
+      "cls": "syntax slip",
+      "total": 411,
+      "repaired": 173,
+      "stillFailed": 238,
+      "perModel": {
+        "haiku": {
+          "total": 350,
+          "repaired": 137
+        },
+        "sonnet": {
+          "total": 61,
+          "repaired": 36
+        }
+      },
+      "subs": {
+        "wrong operand/argument count": 51,
+        "function frame (header, ret, end)": 85,
+        "extra tokens or missing op on a line": 69,
+        "other grammar slip": 43,
+        "operand or id spelling (nesting, case, commas)": 70,
+        "unknown word (typo, reserved word or alias)": 93
+      },
+      "ids": {
+        "A0215": 23,
+        "A0025": 14,
+        "A0009": 27,
+        "A0028": 1,
+        "A0018": 28,
+        "(no id)": 86,
+        "A0010": 54,
+        "A0101": 16,
+        "A0014": 21,
+        "A0005": 13,
+        "A0011": 18,
+        "A0102": 39,
+        "A0003": 3,
+        "A0023": 13,
+        "A0020": 1,
+        "A0026": 16,
+        "A0220": 11,
+        "A0012": 2,
+        "A0219": 7,
+        "A0704": 12,
+        "A0001": 2,
+        "A0715": 2,
+        "A0604": 1,
+        "A0030": 1
+      }
+    },
+    {
+      "cls": "ordering",
+      "total": 43,
+      "repaired": 17,
+      "stillFailed": 26,
+      "perModel": {
+        "haiku": {
+          "total": 37,
+          "repaired": 13
+        },
+        "sonnet": {
+          "total": 6,
+          "repaired": 4
+        }
+      },
+      "subs": {
+        "callee defined after its caller (or never defined)": 43
+      },
+      "ids": {
+        "A0103": 20,
+        "A0102": 15,
+        "A0604": 8
+      }
+    },
+    {
+      "cls": "id reuse",
+      "total": 41,
+      "repaired": 31,
+      "stillFailed": 10,
+      "perModel": {
+        "haiku": {
+          "total": 28,
+          "repaired": 20
+        },
+        "sonnet": {
+          "total": 13,
+          "repaired": 11
+        }
+      },
+      "subs": {
+        "id defined or edited twice (A0303, A0503 sequence rule)": 41
+      },
+      "ids": {
+        "A0514": 3,
+        "A0503": 27,
+        "A0303": 11
+      }
+    },
+    {
+      "cls": "type/width mismatch",
+      "total": 157,
+      "repaired": 100,
+      "stillFailed": 57,
+      "perModel": {
+        "haiku": {
+          "total": 141,
+          "repaired": 85
+        },
+        "sonnet": {
+          "total": 16,
+          "repaired": 15
+        }
+      },
+      "subs": {
+        "operand or result type": 143,
+        "u32 wraparound (unsigned underflow or overflow)": 14
+      },
+      "ids": {
+        "A0201": 89,
+        "A0105": 37,
+        "A0209": 16,
+        "(no id)": 14,
+        "A0203": 1
+      }
+    },
+    {
+      "cls": "misunderstood semantics",
+      "total": 300,
+      "repaired": 151,
+      "stillFailed": 149,
+      "perModel": {
+        "haiku": {
+          "total": 267,
+          "repaired": 128
+        },
+        "sonnet": {
+          "total": 33,
+          "repaired": 23
+        }
+      },
+      "subs": {
+        "wrong behaviour on the checked inputs": 300
+      },
+      "ids": {
+        "(no id)": 292,
+        "A0201": 8
+      }
+    },
+    {
+      "cls": "protocol misuse",
+      "total": 78,
+      "repaired": 36,
+      "stillFailed": 42,
+      "perModel": {
+        "haiku": {
+          "total": 69,
+          "repaired": 33
+        },
+        "sonnet": {
+          "total": 9,
+          "repaired": 3
+        }
+      },
+      "subs": {
+        "edit-body or handle misuse": 78
+      },
+      "ids": {
+        "(no id)": 9,
+        "A0513": 7,
+        "A0508": 15,
+        "A0612": 1,
+        "A0010": 1,
+        "A0504": 45
+      }
+    },
+    {
+      "cls": "view gap",
+      "total": 0,
+      "repaired": 0,
+      "stillFailed": 0,
+      "perModel": {},
+      "subs": {},
+      "ids": {}
+    },
+    {
+      "cls": "budget exhaustion",
+      "total": 0,
+      "repaired": 0,
+      "stillFailed": 0,
+      "perModel": {},
+      "subs": {},
+      "ids": {}
+    },
+    {
+      "cls": "other",
+      "total": 417,
+      "repaired": 75,
+      "stillFailed": 342,
+      "perModel": {
+        "haiku": {
+          "total": 191,
+          "repaired": 28
+        },
+        "sonnet": {
+          "total": 204,
+          "repaired": 47
+        },
+        "unknown": {
+          "total": 22,
+          "repaired": 0
+        }
+      },
+      "subs": {
+        "no reply from the subject": 315,
+        "spec example limit": 19,
+        "no failure text recorded": 81,
+        "unclassified": 2
+      },
+      "ids": {
+        "(no id)": 397,
+        "A0714": 19,
+        "A0004": 1
+      }
+    }
+  ],
+  "currentArmsOnly": {
+    "meaning": "The same table over the arms that ran the shipped wording (results/set-*, results/app-edit*, results/shipped/).",
+    "trialsFirstAttemptNotAccepted": 465,
+    "classes": [
+      {
+        "cls": "syntax slip",
+        "total": 117,
+        "repaired": 62,
+        "stillFailed": 55,
+        "perModel": {
+          "haiku": {
+            "total": 97,
+            "repaired": 47
+          },
+          "sonnet": {
+            "total": 20,
+            "repaired": 15
+          }
+        },
+        "subs": {
+          "operand or id spelling (nesting, case, commas)": 31,
+          "wrong operand/argument count": 15,
+          "function frame (header, ret, end)": 16,
+          "other grammar slip": 17,
+          "unknown word (typo, reserved word or alias)": 36,
+          "extra tokens or missing op on a line": 2
+        },
+        "ids": {
+          "A0005": 3,
+          "A0014": 7,
+          "A0023": 3,
+          "A0010": 28,
+          "A0101": 8,
+          "(no id)": 11,
+          "A0220": 6,
+          "A0604": 1,
+          "A0011": 1,
+          "A0215": 5,
+          "A0102": 25,
+          "A0026": 7,
+          "A0012": 1,
+          "A0219": 3,
+          "A0025": 6,
+          "A0030": 1,
+          "A0009": 1
+        }
+      },
+      {
+        "cls": "ordering",
+        "total": 11,
+        "repaired": 6,
+        "stillFailed": 5,
+        "perModel": {
+          "haiku": {
+            "total": 7,
+            "repaired": 3
+          },
+          "sonnet": {
+            "total": 4,
+            "repaired": 3
+          }
+        },
+        "subs": {
+          "callee defined after its caller (or never defined)": 11
+        },
+        "ids": {
+          "A0102": 6,
+          "A0103": 5
+        }
+      },
+      {
+        "cls": "id reuse",
+        "total": 25,
+        "repaired": 23,
+        "stillFailed": 2,
+        "perModel": {
+          "haiku": {
+            "total": 15,
+            "repaired": 13
+          },
+          "sonnet": {
+            "total": 10,
+            "repaired": 10
+          }
+        },
+        "subs": {
+          "id defined or edited twice (A0303, A0503 sequence rule)": 25
+        },
+        "ids": {
+          "A0503": 21,
+          "A0303": 4
+        }
+      },
+      {
+        "cls": "type/width mismatch",
+        "total": 46,
+        "repaired": 27,
+        "stillFailed": 19,
+        "perModel": {
+          "haiku": {
+            "total": 41,
+            "repaired": 22
+          },
+          "sonnet": {
+            "total": 5,
+            "repaired": 5
+          }
+        },
+        "subs": {
+          "u32 wraparound (unsigned underflow or overflow)": 9,
+          "operand or result type": 37
+        },
+        "ids": {
+          "(no id)": 9,
+          "A0201": 26,
+          "A0105": 10,
+          "A0209": 1
+        }
+      },
+      {
+        "cls": "misunderstood semantics",
+        "total": 149,
+        "repaired": 79,
+        "stillFailed": 70,
+        "perModel": {
+          "haiku": {
+            "total": 128,
+            "repaired": 68
+          },
+          "sonnet": {
+            "total": 21,
+            "repaired": 11
+          }
+        },
+        "subs": {
+          "wrong behaviour on the checked inputs": 149
+        },
+        "ids": {
+          "(no id)": 145,
+          "A0201": 4
+        }
+      },
+      {
+        "cls": "protocol misuse",
+        "total": 38,
+        "repaired": 19,
+        "stillFailed": 19,
+        "perModel": {
+          "haiku": {
+            "total": 37,
+            "repaired": 19
+          },
+          "sonnet": {
+            "total": 1,
+            "repaired": 0
+          }
+        },
+        "subs": {
+          "edit-body or handle misuse": 38
+        },
+        "ids": {
+          "A0612": 1,
+          "A0504": 30,
+          "A0508": 7
+        }
+      },
+      {
+        "cls": "view gap",
+        "total": 0,
+        "repaired": 0,
+        "stillFailed": 0,
+        "perModel": {},
+        "subs": {},
+        "ids": {}
+      },
+      {
+        "cls": "budget exhaustion",
+        "total": 0,
+        "repaired": 0,
+        "stillFailed": 0,
+        "perModel": {},
+        "subs": {},
+        "ids": {}
+      },
+      {
+        "cls": "other",
+        "total": 79,
+        "repaired": 59,
+        "stillFailed": 20,
+        "perModel": {
+          "haiku": {
+            "total": 33,
+            "repaired": 23
+          },
+          "sonnet": {
+            "total": 46,
+            "repaired": 36
+          }
+        },
+        "subs": {
+          "no reply from the subject": 19,
+          "unclassified": 1,
+          "no failure text recorded": 59
+        },
+        "ids": {
+          "(no id)": 78,
+          "A0004": 1
+        }
+      }
+    ]
+  },
+  "diagnosticTexts": {
+    "A0215": "{0}: {1} expects {2} extra arguments, got {3}",
+    "A0025": "expected 'end' after ret | fix: close the function with `end` on the line after `ret`",
+    "A0009": "expected `id op operands`",
+    "A0028": "function '{0}' not terminated",
+    "A0018": "expected 'fn', got '{0}' | fix: instruction lines belong inside a function: start it with `fn NAME T... -> T` and close it with `ret X` and `end`",
+    "A0010": "nested operand: A0 has one op per line",
+    "A0101": "{0}: reference to undefined or later node '{1}' | fix: define '{1}' on an earlier line of this function, or reference a node defined above {0}",
+    "A0014": "{0} expects {1} operands, got {2} | fix: write exactly {1} operands after {0}",
+    "A0005": "invalid node identifier '{0}'",
+    "A0011": "unknown operation '{0}'",
+    "A0102": "{0}: unknown callee '{1}' (callees must be defined earlier; recursion is unsupported)",
+    "A0003": "invalid operand '{0}'",
+    "A0023": "expected 'fn name types... -> type' | fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)",
+    "A0020": "duplicate function '{0}'",
+    "A0026": "unexpected '{0}' before ret | fix: a function is `fn ...` then instruction lines, `ret X`, `end`: write `ret X` before `end`, and start the next `fn` after that `end`",
+    "A0220": "{0}: {1} expects a record, got {2}",
+    "A0012": "loop expects a predicate and a body function name",
+    "A0219": "{0}: {1} expects {2} arguments, got {3}",
+    "A0704": "{0}: expected {1}",
+    "A0001": "type '{0}': {1} | fix: types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+    "A0715": "{0}: ex {1} failed: input {2}, expected {3}, got {4} | fix: make {0} return {3} for {2}, or change ex {1}; `-ex ARGS -> RESULT` removes an example",
+    "A0604": "unknown function '{0}'",
+    "A0030": "ret expects one operand | fix: write `ret ID` or `ret OP ARGS…`",
+    "A0103": "{0}: unknown {1} body '{2}' (must be defined earlier)",
+    "A0514": "line edit '{0}': line {1} edited twice",
+    "A0503": "duplicate edit for '{0}'",
+    "A0303": "{0}: duplicate definition",
+    "A0201": "{0}: expected {1}, got {2} | fix: replace the operand at {0} with a value of type {1}",
+    "A0105": "{0}: parameter p{1} out of range",
+    "A0209": "{0}: get expects an array, got {1}",
+    "A0203": "{0}: select branches differ ({1} vs {2})",
+    "A0513": "line edit '{0}': {1} has lines 1..{2} | fix: use the line numbers shown in the view",
+    "A0508": "{0}: new node '{1}' is not used by any node or by ret | fix: add 'ret {1}' if it is the new result, or use it in another node",
+    "A0612": "invalid handle '{0}' | fix: start the reply with one of the handle lines shown in the view",
+    "A0504": "invalid delete target '{0}'",
+    "A0714": "spec of {0}: {1}",
+    "A0004": "literal {0} exceeds u32"
+  }
+}

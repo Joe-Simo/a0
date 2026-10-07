@@ -568,8 +568,13 @@ async function main() {
     spy();
     // A page may ask for a live (frame-driven) A0 program with data-live on its root; it mounts after the
     // first render, lazily, and a failure leaves the page as it is (see site/live.ts).
+<<<<<<< HEAD
     if (liveConfig.live !== undefined)
         void import('./live.js').then((m) => m.mountLive(root, liveConfig)).catch(() => undefined);
+=======
+    if (root.dataset.live !== undefined)
+        void import('./live.js').then((m) => m.mountLive(root)).catch(() => undefined);
+>>>>>>> origin/main
     window.a0page = {
         show,
         state: () => state,

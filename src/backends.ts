@@ -42,38 +42,11 @@ import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { trapModuleOf } from './native-trap.js';
 import { callTraps, mayTrapFn, optimizeFunction, siteOf, strictTrapSite } from './optimize.js';
 import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
+import { COMPILER_VERSION, isTarget, TARGETS, type Target } from './targets.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function, type X86Platform } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.39';
-
-export type Target =
-  | 'js'
-  | 'c'
-  | 'java'
-  | 'sv'
-  | 'arm64'
-  | 'x86_64'
-  | 'riscv64'
-  | 'avr'
-  | 'wasm'
-  | 'arm32';
-export const TARGETS: readonly Target[] = [
-  'js',
-  'c',
-  'java',
-  'sv',
-  'arm64',
-  'x86_64',
-  'riscv64',
-  'avr',
-  'wasm',
-  'arm32',
-];
-
-export function isTarget(text: string): text is Target {
-  return (TARGETS as readonly string[]).includes(text);
-}
+export { COMPILER_VERSION, isTarget, TARGETS, type Target };
 
 const hex = (v: number): string => `0x${v.toString(16).padStart(8, '0')}`;
 

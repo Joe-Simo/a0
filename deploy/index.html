@@ -439,11 +439,38 @@ pre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6
 /* the code rain belongs to the hero: behind the content it sits under a soft dark panel so text and charts stay legible */
 .layout{position:relative;z-index:1}
 .layout::before{content:"";position:absolute;inset:0 -32px;z-index:-1;background:rgba(0,0,0,.92);box-shadow:0 0 56px 40px rgba(0,0,0,.92);pointer-events:none}
+/* narrow phones: the header must fit the viewport (the text Sponsor link is hidden here; the icons stay) */
+@media (max-width:480px){.top{padding:0 12px}.hright>a:not(.ico){display:none}.links{gap:8px}.nav{gap:8px}}
+/* docs page only (scoped by the .docs ancestor): a readable column, a sticky contents on desktop, a collapsible one on mobile */
+.docs .layout{grid-template-columns:220px minmax(0,780px);gap:48px}
+.docs .main p{max-width:70ch;line-height:1.65}
+.docs .main h3{font-size:1.05rem;font-weight:600;margin:28px 0 10px;color:var(--fg)}
+.docs .main section{scroll-margin-top:80px}
+.docs pre.code{font-size:14px;line-height:1.6}
+.docs .toc>summary{list-style:none;cursor:pointer}
+.docs .toc>summary::-webkit-details-marker{display:none}
+.docs .toc>summary:focus-visible{outline:2px solid var(--a0);outline-offset:2px;border-radius:6px}
+.docs .rail a{display:block;padding:6px 0 6px 12px}
+.docs .rail a.on{padding:6px 0 6px 10px}
+@media (min-width:901px){.docs .toc>summary{display:none}.docs .toc::details-content{content-visibility:visible;display:block}.docs .rail{max-height:calc(100vh - 120px);overflow-y:auto}}
+@media (max-width:900px){
+.docs .layout{display:block}
+.docs .rail{position:static;display:block;overflow:visible;margin:0 0 24px;padding:0;background:none;border:0;-webkit-mask:none;mask:none}
+.docs .toc>summary{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:8px;color:var(--fg);font-size:15px}
+.docs .toc>summary::after{content:"+";color:var(--muted)}
+.docs .toc[open]>summary::after{content:"\2212"}
+.docs .toc[open] .rh{display:block;margin:14px 0 2px 12px}
+.docs .rail a,.docs .rail a.on{display:flex;align-items:center;min-height:44px;padding:0 12px;white-space:normal;border:0}
+}
 
 </style>
 </head>
 <body>
+<<<<<<< HEAD
   <main id="app" data-program="/page.wasm" data-live="/sentinel.wasm" data-live-in="2048" data-live-out="16384" data-live-rows="96" aria-live="polite"><header class="top"><a class="skip" href="#content">Skip to content</a><nav class="nav" aria-label="Primary"><a class="brand pixel" href="/">A0</a><div class="links"><a href="/docs/">Docs</a><a href="/benchmarks">Benchmarks</a></div><div class="hright"><a href="https://github.com/sponsors/Joe-Simo">Sponsor</a><a class="ico ico-x" href="https://x.com/joesimo" aria-label="@JoeSimo on X" title="@JoeSimo on X"></a><a class="ico ico-gh" href="https://github.com/Joe-Simo/a0" aria-label="GitHub" title="GitHub"></a></div></nav></header><section id="top" class="hero"><div class="stage"></div><h1 class="name pixel">A0</h1><p class="tag pixel">for AI</p></section><div class="center"><h2>A small language AI models can edit without breaking your build.</h2><p>A0 is a compact language with exact rules. A model reads only the functions an edit touches, and an edit that would not compile is rejected before it lands.</p></div><div class="layout" id="content"><div class="main"><section id="start"><pre class="code"><code>fn affine u32 u32 u32 -&gt; u32
+=======
+  <main id="app" data-program="/page.wasm" data-live="/sentinel.wasm" data-live-in="4096" data-live-out="16384" data-live-rows="192" aria-live="polite"><header class="top"><a class="skip" href="#content">Skip to content</a><nav class="nav" aria-label="Primary"><a class="brand pixel" href="/">A0</a><div class="links"><a href="/docs/">Docs</a><a href="/benchmarks">Benchmarks</a></div><div class="hright"><a href="https://github.com/sponsors/Joe-Simo">Sponsor</a><a class="ico ico-x" href="https://x.com/joesimo" aria-label="@JoeSimo on X" title="@JoeSimo on X"></a><a class="ico ico-gh" href="https://github.com/Joe-Simo/a0" aria-label="GitHub" title="GitHub"></a></div></nav></header><section id="top" class="hero"><div class="stage"></div><h1 class="name pixel">A0</h1><p class="tag pixel">for AI</p></section><div class="center"><h2>A small language AI models can edit without breaking your build.</h2><p>A0 is a compact language with exact rules. A model reads only the functions an edit touches, and an edit that would not compile is rejected before it lands.</p></div><div class="layout" id="content"><div class="main"><section id="start"><pre class="code"><code>fn affine u32 u32 u32 -&gt; u32
+>>>>>>> origin/main
 a mul p0 p1
 b add a p2
 ret b
