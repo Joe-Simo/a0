@@ -108,34 +108,25 @@ s 9 css 45000
 }
 c nav
 {sec_hero
+<div
++class home
 <section
 +id top
 +class hero
 .div stage
 s 13 glsl
 >
-.div name pixel
-"A0
->
-.p tag pixel
-"for AI
->
->
-}
-{sec_pitch
-.div center
-=h1 A small language AI models can edit without breaking your build.
-=p A0 is a compact language with exact rules. A model reads only the functions an edit touches, and an edit that would not compile is rejected before it lands.
 >
 <div
 +class layout
 +id content
 <div
 +class main
-}
-{sec_sample
 <section
-+id start
++id intro
++class intro
+=h1 A0 is a small language for code an AI agent edits one function at a time, each edit checked before it lands; it has no floats, heap or recursion, so use C, Rust or TypeScript for those.
+=p Slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs. On a one-function file it costs $cmin_100$x TypeScript's tokens.
 .pre code
 <code
 "fn affine u32 u32 u32 -> u32\n
@@ -149,26 +140,97 @@ s 13 glsl
 "17
 >
 >
-<p
+.p ctas
 .a pill
-+href #try
-"Install
++href #install
+^curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
+"Install A0
 >
 "\s
 .a pill ghost
-+href /benchmarks
-"Benchmarks, including where A0 loses
++href #connect
+"Connect your agent
 >
 >
-=p MIT license, free for any use. Copyright 2026 Joe Simo. Not for floating point, heap-heavy or recursive code: A0 has none of the three.
+>
+}
+{sec_install
+<section
++id install
+=h2 Install and connect
+=p A0 is one binary with no package manager. Install it, then connect your agent.
+.small cmdlabel
+"macOS and Linux
+>
+.div cmd
+.pre code
+<code
+"curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
+>
+>
+<button
++type button
++class copy
++aria-label Copy the macOS and Linux install command
+^curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
+"Copy
+>
+>
+.small cmdlabel
+"Windows, PowerShell
+>
+.div cmd
+.pre code
+<code
+"irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 \| iex
+>
+>
+<button
++type button
++class copy
++aria-label Copy the Windows install command
+^irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 \| iex
+"Copy
+>
+>
+<div
++id connect
+<h3
+"Connect your agent
+>
+=p Claude Code: add the a0 MCP server with this one line. The a0 binary must be on PATH.
+.div cmd
+.pre code
+<code
+"claude mcp add a0 -- a0 mcp .
+>
+>
+<button
++type button
++class copy
++aria-label Copy the Claude Code command
+^claude mcp add a0 -- a0 mcp .
+"Copy
+>
+>
+>
+=p Targets: machine code, C, wasm, JavaScript, JVM, .NET, Metal and SystemVerilog. $vr_full$ test cases ran on $vr_nfull$ paths. The native assembly targets ran the $vr_part$ that need no input or output, and SystemVerilog is simulated separately on $hw_cases$ (results/verification.json).
+=p MIT license, free for any use. Copyright 2026 Joe Simo.
+<p
+"Works? Then see where A0 loses:\s
+<a
++href #fast
+"Where A0 is slower than C
+>
+>
 >
 }
 {sec_fast
 <section
 +id fast
-=h2 Is it as fast as C?
+=h2 Where A0 is slower than C
 .p take
-"On an Apple M3, A0's machine code takes $c_ratio$x as long as hand-written C, a geometric mean over the test programs. It loses on $bk_nloss$ of $bk_n$: slower than the best of C, Rust and Zig, the worst by $bk_slow$x on $bk_slowk$ (results/exec-benchmark-full.json).
+"A0 is slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs, by up to $bk_slow$x on $bk_slowk$. Over all of them its machine code takes $c_ratio$x as long as hand-written C, a geometric mean (on an Apple M3; results/exec-benchmark-full.json).
 >
 .div chart langs reveal
 +role group
@@ -211,6 +273,13 @@ c putratio %a
 >
 ]
 >
+<p
+"Speed is not the point; edits are.\s
+<a
++href #edit
+"What does an edit cost?
+>
+>
 >
 }
 {sec_edit
@@ -218,7 +287,7 @@ c putratio %a
 +id edit
 =h2 How much does an edit cost?
 .p take
-"Over a session of 10 edits A0 costs $ec_c_t10$ tokens per task in its canonical form and $ec_d_t10$ in its dense form (place $ec_cr10$ and $ec_dr10$ of $n_langs1$ languages, 1 = fewest). On a one-function file it costs $cmin_100$x TypeScript's tokens, because the instructions dominate (results/ai-edit-b48-dense.json, results/ai-edit-experiment.b.sonnet-min.json).
+"On a one-function file A0 costs $cmin_100$x TypeScript's tokens, because the instructions dominate. Over a session of 10 edits it costs $ec_c_t10$ tokens per task in its canonical form and $ec_d_t10$ in its dense form (place $ec_cr10$ and $ec_dr10$ of $n_langs1$ languages, 1 = fewest); results/ai-edit-b48-dense.json and results/ai-edit-experiment.b.sonnet-min.json.
 >
 .div chart langs reveal
 +role group
@@ -261,6 +330,13 @@ c putnum %a
 >
 ]
 >
+<p
+"Cheap only if it is also caught:\s
+<a
++href #check
+"How quickly do I know an edit is wrong?
+>
+>
 >
 }
 {sec_check
@@ -297,105 +373,17 @@ c putfix %a
 >
 ]
 >
->
-}
-{sec_targets
-<section
-+id targets
-=h2 What does one source compile to?
-.div legend
-.span lnat
-"machine code
->
-.span lnat
-"C
->
-.span lnat
-"wasm
->
-.span lnat
-"JavaScript
->
-.span lnat
-"JVM
->
-.span lnat
-".NET
->
-.span lnat
-"Metal
->
-.span lnat
-"SystemVerilog
->
->
-.p take
-"$vr_full$ test cases ran on $vr_nfull$ paths. The native assembly targets ran the $vr_part$ that need no input or output, and SystemVerilog is simulated separately on $hw_cases$ (results/verification.json).
->
->
-}
-{sec_try
-<section
-+id try
-=h2 Try it
-.pre code
-+aria-label Install commands
-<code
-.span cm
-"# one binary, no package manager\n
->
-"# macOS and Linux: pick the binary for your machine, a0-darwin-arm64, a0-darwin-x64, a0-linux-arm64 or a0-linux-x64\n
-"curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-linux-x64 -o a0 && chmod +x a0\n
-"# Windows, PowerShell: a0-windows-x64.exe, then use .\\a0.exe where this page says ./a0\n
-"Invoke-WebRequest https://github.com/Joe-Simo/a0/releases/latest/download/a0-windows-x64.exe -OutFile a0.exe\n
-"printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0\n
-"./a0 run sq.a0 sq 12          # 144\n
-"./a0 emit arm64 sq.a0         # A0's own machine code; or x86_64, c, js, java, sv\n
-"./a0 check sq.a0              # diagnostics with the fix
->
->
->
-}
-{sec_terms
-<section
-+id terms
-=h2 Words used here
 <p
-=strong Test case:
-"\sone input with its known correct output.
+"Every number here is read from a file in results/.\s
+<a
++href /benchmarks
+"The benchmarks page shows the method and the losses.
 >
-<p
-=strong Oracle:
-"\sa separate, simple calculator (plain BigInt arithmetic) whose answers every target must match.
->
-<p
-=strong Target:
-"\swhat A0 compiles to: machine code, C, wasm, JavaScript, JVM, .NET, Metal, SystemVerilog.
->
-<p
-=strong Handle:
-"\sa revision token. An edit that names an old handle is refused, so a stale edit cannot overwrite newer code.
->
-<p
-=strong View:
-"\sthe text a model is shown. A scoped view holds one function plus the signatures it calls.
->
-<p
-=strong Dense view:
-# claim-ok: a definition of the dense form, not a measured comparison; the token counts are in results/dense-tokens.json
-"\san optional shorter spelling of the same program, with fewer tokens.
->
-<p
-=strong Test program:
-"\sone small function written in every language and timed.
->
-<p
-=strong Generic cell:
-"\sa basic logic gate or register in the hardware output, before mapping to any chip.
 >
 >
 }
 {sec_close
+>
 >
 >
 }

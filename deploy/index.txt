@@ -1,9 +1,5 @@
-A0
-for AI
-
-A small language AI models can edit without breaking your build.
-A0 is a compact language with exact rules. A model reads only the functions an edit touches, and an edit that would not compile is rejected before it lands.
-
+A0 is a small language for code an AI agent edits one function at a time, each edit checked before it lands; it has no floats, heap or recursion, so use C, Rust or TypeScript for those.
+Slower than the best of C, Rust and Zig on 8 of 19 test programs. On a one-function file it costs 2.42x TypeScript's tokens.
 fn affine u32 u32 u32 -> u32
 a mul p0 p1
 b add a p2
@@ -11,11 +7,24 @@ ret b
 end
 $ a0 run examples/kernels.a0 affine 3 4 5
  17
-Install Benchmarks, including where A0 loses
-MIT license, free for any use. Copyright 2026 Joe Simo. Not for floating point, heap-heavy or recursive code: A0 has none of the three.
+ Connect your agent
 
-Is it as fast as C?
-On an Apple M3, A0's machine code takes 1.16x as long as hand-written C, a geometric mean over the test programs. It loses on 8 of 19: slower than the best of C, Rust and Zig, the worst by 4.31x on mat4 (results/exec-benchmark-full.json).
+Install and connect
+A0 is one binary with no package manager. Install it, then connect your agent.
+macOS and Linuxcurl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
+
+Windows, PowerShellirm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex
+
+Connect your agent
+Claude Code: add the a0 MCP server with this one line. The a0 binary must be on PATH.
+claude mcp add a0 -- a0 mcp.
+
+Targets: machine code, C, wasm, JavaScript, JVM,.NET, Metal and SystemVerilog. 5262 test cases ran on 10 paths. The native assembly targets ran the 4297 that need no input or output, and SystemVerilog is simulated separately on 5262 (results/verification.json).
+MIT license, free for any use. Copyright 2026 Joe Simo.
+Works? Then see where A0 loses: Where A0 is slower than C
+
+Where A0 is slower than C
+A0 is slower than the best of C, Rust and Zig on 8 of 19 test programs, by up to 4.31x on mat4. Over all of them its machine code takes 1.16x as long as hand-written C, a geometric mean (on an Apple M3; results/exec-benchmark-full.json).
 How long each language takes, as a multiple of A0's time
 A0 compiled JIT or VM interpreted
 C
@@ -33,8 +42,10 @@ TypeScript
 Go
 1.53x
 
+Speed is not the point; edits are. What does an edit cost?
+
 How much does an edit cost?
-Over a session of 10 edits A0 costs 184 tokens per task in its canonical form and 117 in its dense form (place 12 and 1 of 49 languages, 1 = fewest). On a one-function file it costs 2.42x TypeScript's tokens, because the instructions dominate (results/ai-edit-b48-dense.json, results/ai-edit-experiment.b.sonnet-min.json).
+On a one-function file A0 costs 2.42x TypeScript's tokens, because the instructions dominate. Over a session of 10 edits it costs 184 tokens per task in its canonical form and 117 in its dense form (place 12 and 1 of 49 languages, 1 = fewest); results/ai-edit-b48-dense.json and results/ai-edit-experiment.b.sonnet-min.json.
 Tokens per task, session of 10 edits
 A0 (canonical and dense) compiled JIT or VM interpreted
 A0 (dense)
@@ -55,6 +66,8 @@ Rust
 C
 225 tok
 
+Cheap only if it is also caught: How quickly do I know an edit is wrong?
+
 How quickly do I know an edit is wrong?
 A0 applies a model's edit and type-checks the whole program in 0.51 ms at the median. TypeScript with a warm compiler takes 15.1 ms (results/edit-loop.json).
 Milliseconds from a model's reply to a type-checked program
@@ -64,27 +77,4 @@ A0 structured
 A0 whole file
 0.53 ms
 
-What does one source compile to?
-machine code C wasm JavaScript JVM.NET Metal SystemVerilog
-5262 test cases ran on 10 paths. The native assembly targets ran the 4297 that need no input or output, and SystemVerilog is simulated separately on 5262 (results/verification.json).
-
-Try it
-# one binary, no package manager
- # macOS and Linux: pick the binary for your machine, a0-darwin-arm64, a0-darwin-x64, a0-linux-arm64 or a0-linux-x64
-curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-linux-x64 -o a0 && chmod +x a0
-# Windows, PowerShell: a0-windows-x64.exe, then use.\a0.exe where this page says./a0
-Invoke-WebRequest https://github.com/Joe-Simo/a0/releases/latest/download/a0-windows-x64.exe -OutFile a0.exe
-printf 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n' > sq.a0
-./a0 run sq.a0 sq 12 # 144
-./a0 emit arm64 sq.a0 # A0's own machine code; or x86_64, c, js, java, sv
-./a0 check sq.a0 # diagnostics with the fix
-
-Words used here
-Test case: one input with its known correct output.
-Oracle: a separate, simple calculator (plain BigInt arithmetic) whose answers every target must match.
-Target: what A0 compiles to: machine code, C, wasm, JavaScript, JVM,.NET, Metal, SystemVerilog.
-Handle: a revision token. An edit that names an old handle is refused, so a stale edit cannot overwrite newer code.
-View: the text a model is shown. A scoped view holds one function plus the signatures it calls.
-Dense view: an optional shorter spelling of the same program, with fewer tokens.
-Test program: one small function written in every language and timed.
-Generic cell: a basic logic gate or register in the hardware output, before mapping to any chip.
+Every number here is read from a file in results/. The benchmarks page shows the method and the losses.
