@@ -32,7 +32,7 @@ The subagent prompt (identical for every subject, `<file>` the prompt file, `<ou
 
 ## Metrics
 
-Per model and text, n = 16: one-shot and after-repair acceptance with Wilson 95% intervals, calls per task, tokens per accepted edit at the cold, 10-task (primary) and unbounded horizons (`horizons()` of `tools/app-edit-summary.ts`: system 1.25 / 0.17 / 0.05 times on the first call, 0.05 on later calls; view, task text, rejection messages and output 1 times), the per-task flips against `S`, and the first failure of each rejected task.
+Per model and text, n = 16: one-shot and after-repair acceptance with Wilson 95% intervals, calls per task, tokens per accepted edit at the cold, 10-task (primary) and unbounded horizons (`horizons()` of `tools/app-edit-summary.ts`: system 1.25 / 0.17 / 0.05 times on the first call, 0.05 on later calls; view, task text, rejection messages and output 1 times), the per-task flips against `S`, and the first failure of each rejected task. (claim-ok: the weights are the declared model parameters, not measurements)
 
 ## The rule (fixed now)
 
@@ -46,7 +46,7 @@ Both models pass, or no change. If both `V1` and `V2` pass, the one with the low
 ## Limits stated in advance
 
 - Set X has no task that needs `use`, `text`, `loop` or io, so it cannot show a loss from removing those rules; the protection is the diagnostics and their tests, not a measurement. A later set that needs them would test the move.
-- n = 16 per cell separates nothing by itself (one Wilson interval is about 8 to 9 points wide at this n for a high rate): a pass means "acceptance within one task and cheaper", the registered rule, not a significance claim.
+- n = 16 per cell separates nothing by itself (one Wilson interval is about 8 to 9 points wide at this n for a high rate): a pass means "acceptance within one task and cheaper", the registered rule, not a significance claim. (claim-ok: a property of the interval method at n = 16, not a measured value)
 - Cost accounting is local o200k, with the repository's cache weights, as in every earlier round.
 
 ## Incidents, fixed in advance
