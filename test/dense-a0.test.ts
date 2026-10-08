@@ -402,10 +402,15 @@ function reference(text: string): string | null {
 }
 
 /** The reader and the reference agree: both reject, or both accept with the same canonical text. */
-function agree(read: (text: string) => { text: string; err: boolean }, text: string, label: string) {
+function agree(
+  read: (text: string) => { text: string; err: boolean },
+  text: string,
+  label: string,
+) {
   const want = reference(text);
   const got = read(text);
-  if (want === null) assert.equal(got.err, true, `${label}: the reader flags what the reference rejects\n${text}`);
+  if (want === null)
+    assert.equal(got.err, true, `${label}: the reader flags what the reference rejects\n${text}`);
   else {
     assert.equal(got.err, false, `${label}: the error flag is clear\n${text}`);
     assert.equal(got.text, want, `${label}: canonical text\n${text}`);
@@ -426,7 +431,8 @@ test('the B1 reader: generated call programs (arities 1 to 44, nesting, earlier 
         if (n.op === 'call') arities.add(n.args.length);
       }
     const dense = formatDense(program);
-    if (/\b[a-z0-9]+ [a-z0-9]+ [A-Zp0-9]/.test(dense) && /\bh\dx\d [a-z]+ /.test(dense)) nested += 1;
+    if (/\b[a-z0-9]+ [a-z0-9]+ [A-Zp0-9]/.test(dense) && /\bh\dx\d [a-z]+ /.test(dense))
+      nested += 1;
     const got = read(dense);
     assert.equal(got.err, false, `call program ${t}: the error flag is clear\n${dense}`);
     assert.equal(got.text, formatProgram(program), `call program ${t}\n${dense}`);
@@ -444,7 +450,8 @@ function callSites(dense: string, names: readonly string[]) {
     const toks = l.split(' ');
     if (toks[0] === 'fn') cur += 1;
     toks.forEach((tk, ti) => {
-      if (names.includes(tk) && !(toks[0] === 'fn' && ti === 1)) sites.push({ line: li, tok: ti, fnIndex: cur });
+      if (names.includes(tk) && !(toks[0] === 'fn' && ti === 1))
+        sites.push({ line: li, tok: ti, fnIndex: cur });
     });
   });
   return { lines, sites };
@@ -466,17 +473,28 @@ test('the B1 reader: mutants of call programs are rejected exactly when the refe
     const set = (next: string[]): string =>
       lines.map((l, li) => (li === site.line ? next.join(' ') : l)).join('\n');
     const callee = toks[site.tok] as string;
-    const kinds = ['drop-arg', 'extra-arg', 'unknown-callee', 'later-callee', 'call-keyword', 'call-no-name', 'call-last'];
+    const kinds = [
+      'drop-arg',
+      'extra-arg',
+      'unknown-callee',
+      'later-callee',
+      'call-keyword',
+      'call-no-name',
+      'call-last',
+    ];
     const kind = kinds[m % kinds.length] as string;
     let mutant: string;
     if (kind === 'drop-arg') mutant = set(toks.filter((_, i) => i !== site.tok + 1));
     else if (kind === 'extra-arg') mutant = set([...toks, '7']);
-    else if (kind === 'unknown-callee') mutant = set(toks.map((x, i) => (i === site.tok ? `${callee}z` : x)));
+    else if (kind === 'unknown-callee')
+      mutant = set(toks.map((x, i) => (i === site.tok ? `${callee}z` : x)));
     else if (kind === 'later-callee') {
       const later = names[Math.max(site.fnIndex, names.length - 1)] as string;
       mutant = set(toks.map((x, i) => (i === site.tok ? later : x)));
-    } else if (kind === 'call-keyword') mutant = set(toks.flatMap((x, i) => (i === site.tok ? ['call', x] : [x])));
-    else if (kind === 'call-no-name') mutant = set(toks.map((x, i) => (i === site.tok ? 'call' : x)));
+    } else if (kind === 'call-keyword')
+      mutant = set(toks.flatMap((x, i) => (i === site.tok ? ['call', x] : [x])));
+    else if (kind === 'call-no-name')
+      mutant = set(toks.map((x, i) => (i === site.tok ? 'call' : x)));
     else mutant = set([...toks, 'call']);
     if (agree(read, mutant, `mutant ${m} (${kind})`)) accepted += 1;
     else rejected += 1;
@@ -507,7 +525,10 @@ test('the B1 reader: calls it must flag, and calls it must read', () => {
     ['a call result named and reused', `${g}fn f u32 -> u32\nx g A\nadd x x\n`],
     ['a record argument', 'fn g (u32,u32) -> u32\nat A 0\n\nfn f u32 -> u32\ng (A 1)\n'],
     ['a zero-arity callee', 'fn z -> u32\nmov 7\n\nfn f u32 -> u32\nadd z A\n'],
-    ['a zero-arity callee, the call keyword', 'fn z -> u32\nmov 7\n\nfn f u32 -> u32\nadd call z A\n'],
+    [
+      'a zero-arity callee, the call keyword',
+      'fn z -> u32\nmov 7\n\nfn f u32 -> u32\nadd call z A\n',
+    ],
     ['an implicit arity from the return', 'fn g A\n\nfn f g 5\n'],
     ['an implicit arity from a nested operand', 'fn g add mul A 2 C\n\nfn f g 1 2 3\n'],
     ['a callee of arity 2 called with one nested call', `fn g add A B\n\nfn f g g 1 2 3\n`],
