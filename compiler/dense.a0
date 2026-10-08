@@ -35,7 +35,11 @@
 # reference), the escape `$name` (the lexer reads it as the word `name` with the flag 128, so the reader
 # takes it for a name of a node defined above, or for the name of a statement, never a keyword or a function),
 # and `=` after the name of a statement.
-# Not yet read (the error flag is set): text, io, spec lines, hex
+# Stage B3.3 adds the type io (a parameter, a result, a field of a record; not an array of it, and the word `io`
+# for the one io parameter is not read) and the operations read (1 operand), write (2) and puts (2), the node ops
+# 28, 29 and 30 for the words of the codes 41, 42 and 43. The mask of a value of the type io is 8, like that of a
+# record; read, write and puts have the mask 8 when their operands may be right (an io token, a u32, an array of u32).
+# Not yet read (the error flag is set): text, spec lines, hex
 # literals, profile lines, commas used as blanks, the `rec` and `arr` words, record and array states and
 # extra operands of inline bodies, and records and arrays as an unwritten result.
 #
@@ -1026,7 +1030,28 @@ r6d and r6a r6b
 r6e and r6d r6c
 r6f and r6e isw
 s56 select r6f 40 s55
-ret s56
+x1a eq ln 4
+x1b eq w0 1919246692
+x1c eq w1 0
+x1d and x1a x1b
+x1e and x1d x1c
+x1f and x1e isw
+x1s select x1f 41 s56
+x2a eq ln 5
+x2b eq w0 2003986804
+x2c eq w1 101
+x2d and x2a x2b
+x2e and x2d x2c
+x2f and x2e isw
+x2s select x2f 42 x1s
+x3a eq ln 4
+x3b eq w0 1886745715
+x3c eq w1 0
+x3d and x3a x3b
+x3e and x3d x3c
+x3f and x3e isw
+x3s select x3f 43 x2s
+ret x3s
 end
 
 # The code of a token: wclsr, but no code for a word written with `$` (an id, never a keyword).
@@ -1067,7 +1092,13 @@ e17 eq p0 17
 y5 select e17 2 y4
 e18 eq p0 18
 y6 select e18 3 y5
-ret y6
+e41 eq p0 41
+y7 select e41 1 y6
+e42 eq p0 42
+y8 select e42 2 y7
+e43 eq p0 43
+y9 select e43 2 y8
+ret y9
 end
 
 
@@ -1762,20 +1793,23 @@ end
 # ended, still valid, the width in bits of the last item, the widths of the open records by depth). A type
 # is u32, bool, an array of them (u32x4, boolx2x3: the lexer checks the word), or a record: parentheses around
 # types separated by commas, each followed by array dimensions as one glued word (x4x2). The width of a
-# value is at most 2097152 bits (the parser of the reference refuses more).
-fn tvtok (u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> (u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+# value is at most 2097152 bits (the parser of the reference refuses more), unless it holds an io token (the
+# state keeps whether the last item does, and the open records that do); an array holds none.
+fn tvtok (u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> (u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 d at p0 0
 ex at p0 1
 ok at p0 2
 lw at p0 3
-a1 at p0 4
-a2 at p0 5
-a3 at p0 6
-a4 at p0 7
-a5 at p0 8
-a6 at p0 9
-a7 at p0 10
-a8 at p0 11
+lio at p0 4
+iom at p0 5
+a1 at p0 6
+a2 at p0 7
+a3 at p0 8
+a4 at p0 9
+a5 at p0 10
+a6 at p0 11
+a7 at p0 12
+a8 at p0 13
 ix add p3 p1
 t call tkget p2 ix
 kd at t 0
@@ -1783,7 +1817,11 @@ fl at t 7
 isw eq kd 1
 lf0 and fl 16
 lf1 ne lf0 0
-isleaf and lf1 isw
+lfv and lf1 isw
+io0 and fl 64
+io1 ne io0 0
+isio and io1 isw
+isleaf or lfv isio
 tl0 and fl 32
 tl1 ne tl0 0
 istail and tl1 isw
@@ -1802,7 +1840,9 @@ cm0 and iscm ex1
 cmok and cm0 dpos
 cl0 and iscl ex1
 clok and cl0 dpos
-tailok and istail ex1
+tl2 and istail ex1
+nlio eq lio 0
+tailok and tl2 nlio
 g0 or leafok opok
 g1 or cmok clok
 g2 or g0 g1
@@ -1835,11 +1875,32 @@ x1 select clok 1 ex
 x2 select cmok 0 x1
 x3 select opok 0 x2
 x4 select leafok 1 x3
+wl select isio 0 wv
 l1 select opok 0 lw
 l2 select tailok tlm l1
 l3 select clok smcs l2
 l4 select cmok 0 l3
-l5 select leafok wv l4
+l5 select leafok wl l4
+dsh shl 1 d
+iob and iom dsh
+iocb ne iob 0
+iocl select iocb 1 0
+lio1 select isio 1 0
+lioa select opok 0 lio
+liob select cmok 0 lioa
+lioc select clok iocl liob
+lio6 select leafok lio1 lioc
+dsh2 add dsh dsh
+dmk sub dsh2 2
+iom1 or iom dmk
+iomu select isio iom1 iom
+nds xor dsh 4294967295
+iomc and iomu nds
+iomn select clok iomc iomu
+wbad gt l5 2097152
+wbio eq lio6 0
+wb2 and wbad wbio
+wok eq wb2 false
 f1 and cmok e1
 f2 and cmok e2
 f3 and cmok e3
@@ -1872,8 +1933,9 @@ n5 select f5 smcs b5
 n6 select f6 smcs b6
 n7 select f7 smcs b7
 n8 select f8 smcs b8
-ok2 and ok good
-r rec dn x4 ok2 l5 n1 n2 n3 n4 n5 n6 n7 n8
+ok1 and ok good
+ok2 and ok1 wok
+r rec dn x4 ok2 l5 lio6 iomn n1 n2 n3 n4 n5 n6 n7 n8
 ret r
 end
 
@@ -1885,18 +1947,15 @@ ps at pe 0
 pn at pe 1
 cn0 sub pn ps
 cnt add cn0 1
-z rec 0 0 true 0 0 0 0 0 0 0 0 0
+z rec 0 0 true 0 0 0 0 0 0 0 0 0 0 0
 st fold tvtok cnt z p4 ps
 d at st 0
 ex at st 1
 ok at st 2
-lw at st 3
 d0 eq d 0
 e1 eq ex 1
 a and d0 e1
-v0 and a ok
-wok le lw 2097152
-v and v0 wok
+v and a ok
 nv eq v false
 r or p0 nv
 ret r
@@ -2034,6 +2093,9 @@ o24 eq op 24
 o25 eq op 25
 o26 eq op 26
 o27 eq op 27
+o28 eq op 28
+o29 eq op 29
+o30 eq op 30
 ar1 or o2 o3
 ar2 or o4 o8
 ar3 or o9 o21
@@ -2225,6 +2287,44 @@ u_sd1 select u_bad 4 12
 u_sresd select u_good a u_sd1
 u_sresc select u_gco 12 4
 u_sres select u_isd u_sresd u_sresc
+u_ad1 ge a 16
+u_ad2 and a 16
+u_ad3 ne u_ad2 0
+u_adesc and u_ad1 u_ad3
+u_nadesc eq u_adesc false
+u_rao and a 8
+u_raob0 ne u_rao 0
+u_raob and u_raob0 u_nadesc
+u_ra1 and a 7
+u_ra1b ne u_ra1 0
+u_rdm select u_ra1b 12 8
+u_rd select u_raob u_rdm 4
+u_wb1 and b 1
+u_wb1b ne u_wb1 0
+u_wbx and b 14
+u_wbxb ne u_wbx 0
+u_wa and u_raob u_wb1b
+u_wm1 or u_ra1b u_wbxb
+u_wm select u_wm1 12 8
+u_wr select u_wa u_wm 4
+u_pb16 ge b 16
+u_pb16b and b 16
+u_pb16c ne u_pb16b 0
+u_pb32 and b 32
+u_pb32z eq u_pb32 0
+u_pb64 and b 64
+u_pb64z eq u_pb64 0
+u_pg0 and u_pb16 u_pb16c
+u_pg1 and u_pg0 u_pb32z
+u_pgood and u_pg1 u_pb64z
+u_pbo and b 8
+u_pbob ne u_pbo 0
+u_pnd eq u_pb16 false
+u_pmay and u_pbob u_pnd
+u_pbm select u_pmay 12 4
+u_pab select u_ra1b 12 8
+u_pr1 select u_pgood u_pab u_pbm
+u_pr select u_raob u_pr1 4
 r0 mov 4
 r1 select o1 a r0
 r2 select binp binr r1
@@ -2235,8 +2335,11 @@ r6 select isfl foldr r5
 r7 select o17 u_gres r6
 r8 select o18 u_sres r7
 r9 select o27 u_arrr r8
-rz eq r9 0
-rr select rz 4 r9
+r10 select o28 u_rd r9
+r11 select o29 u_wr r10
+r12 select o30 u_pr r11
+rz eq r12 0
+rr select rz 4 r12
 spg shr p1 7
 spa get p0 spg
 slo and p1 127
@@ -2862,7 +2965,12 @@ qa_base add qa_start qa_bm7
 qa_afr rec 27 4294967295 0 false 0 0 0 0 6 qa_base 0 0
 cfr rec zopx callarx 0 false k0x v0x 0 0 6 pb zk3 zv3
 c0fr rec zopx 0 0 false k0x v0x 0 0 6 0 zk3 zv3
-nfr rec code ar 0 false 0 0 0 0 0 0 0 0
+ic1 ge code 41
+ic2 le code 43
+icio and ic1 ic2
+cm13 sub code 13
+opn select icio cm13 code
+nfr rec opn ar 0 false 0 0 0 0 0 0 0 0
 gfr rec 99 4294967295 0 false 0 0 0 0 0 0 0 0
 pf1 select ecpush cfr nfr
 pf2 select eab qa_afr pf1
@@ -3572,7 +3680,23 @@ nfl at nmtk 7
 nfa and nfl 133
 nfb ne nfa 0
 nbad1 or nnw kwn
-nbad0 or nbad1 nfb
+nbad0a or nbad1 nfb
+nnl at nmtk 1
+nnw0 at nmtk 3
+nl4 ge nnl 4
+nfc4 shr nnw0 24
+nl3 eq nnl 3
+nfc3 shr nnw0 16
+nl2 eq nnl 2
+nfc2 shr nnw0 8
+nfcs1 select nl2 nfc2 nnw0
+nfcs2 select nl3 nfc3 nfcs1
+nfcc select nl4 nfc4 nfcs2
+nfcg ge nfcc 97
+nfcle le nfcc 122
+nfcl and nfcg nfcle
+nnfl eq nfcl false
+nbad0 or nbad0a nnfl
 a2 add p2 2
 rcr lt a2 p3
 rcn sub p3 a2
@@ -3617,7 +3741,7 @@ hasr and has rr0
 rspn0 sub rend ra
 rspn add rspn0 1
 rspc select hasr rspn 0
-tvz rec 0 0 true 0 0 0 0 0 0 0 0 0
+tvz rec 0 0 true 0 0 0 0 0 0 0 0 0 0 0
 rvs fold tvtok rspc tvz p1 ra
 rvd at rvs 0
 rve at rvs 1
@@ -3625,10 +3749,7 @@ rvo at rvs 2
 rv1 eq rvd 0
 rv2 eq rve 1
 rv3 and rv1 rv2
-rvlw at rvs 3
-rvwk le rvlw 2097152
-rvok0 and rv3 rvo
-rvok and rvok0 rvwk
+rvok and rv3 rvo
 nrvok eq rvok false
 rvbad and hasr nrvok
 bh2 or bh1 nbad0
@@ -4268,8 +4389,8 @@ toka at p4 5
 srca at p4 6
 s0 call emitid p0 p1 p4 true
 s1 call putc s0 csta 3 1
-oo arr 37 37 40 43 46 49 52 54 57 60 63 65 67 69 71 73 75 81 84 87 89 92 95 98 101 105 109 118
-ol arr 0 3 3 3 3 3 2 3 3 3 2 2 2 2 2 2 6 3 3 2 3 3 3 3 4 4 4 3
+oo arr 37 37 40 43 46 49 52 54 57 60 63 65 67 69 71 73 75 81 84 87 89 92 95 98 101 105 109 118 121 125 130
+ol arr 0 3 3 3 3 3 2 3 3 3 2 2 2 2 2 2 6 3 3 2 3 3 3 3 4 4 4 3 4 5 4
 ofs get oo op
 olen get ol op
 s2 call putc s1 csta ofs olen
@@ -4601,7 +4722,7 @@ gnn at g 1
 gft at g 2
 gnf at g 3
 gpt at g 4
-cst text "fn   -> u32\n\n\nendret retvalptruefalsemovaddsubmulandorxorshlshreqneltlegtgeselectgetsetatputdivremreccallfoldloopbool_arr                                                                                                                                       "
+cst text "fn   -> u32\n\n\nendret retvalptruefalsemovaddsubmulandorxorshlshreqneltlegtgeselectgetsetatputdivremreccallfoldloopbool_arrreadwriteputs                                                                                                                          "
 zo call zout
 o0 rec zo 0
 o1 fold pfn gnf o0 gnt gft gpt tk p0 cst gnf gnn

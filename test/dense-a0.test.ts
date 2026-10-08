@@ -32,6 +32,10 @@
  * Stage B3.2 adds the repeat form `[x;n]`, the `$` escape of an id (a keyword, a function name or a
  * type-like word) and `=` after the name of a statement; 250 generated programs, each as the
  * printer writes it, with `=` after names and with more ids escaped, and 500 mutants of 60 of them.
+ * Stage B3.3 adds the type io (a parameter, a result, a field of a record, never an element of an
+ * array) and the operations read, write and puts; 250 generated programs that use the token once as
+ * the checker demands, 500 mutants of 60 of them, and a curated list. The `io` word for the one io
+ * parameter of a function (the reference reads it) is outside the reader.
  */
 
 import assert from 'node:assert/strict';
@@ -86,15 +90,15 @@ function stageAType(t: Type): boolean {
   return typeof t !== 'string' && t.kind === 'rec' && t.fields.every(stageAType);
 }
 
-/** A type of the reader's forms: u32, bool, or a record or an array of such types (no io). */
+/** A type of the reader's forms: u32, bool, io, or a record or an array of such types. */
 function stageType(t: Type): boolean {
-  if (t === 'u32' || t === 'bool') return true;
+  if (t === 'u32' || t === 'bool' || t === 'io') return true;
   if (typeof t === 'string') return false;
   return t.kind === 'rec' ? t.fields.every(stageType) : stageType(t.elem);
 }
 
-/** The array operations of Stage B3.1: the literal `[a b c]`, get and set. */
-const ARRAY_OPS: ReadonlySet<string> = new Set(['arr', 'get', 'set']);
+/** The array operations of Stage B3.1: the literal `[a b c]`, get and set; and of B3.3: read, write, puts. */
+const ARRAY_OPS: ReadonlySet<string> = new Set(['arr', 'get', 'set', 'read', 'write', 'puts']);
 
 /** Whether a canonical program is in the Stage A forms (the dense text is checked separately). */
 function isStageA(p: Program): boolean {
@@ -115,14 +119,15 @@ function scalarType(t: Type): boolean {
 
 /**
  * Stage B3: the Stage A forms plus calls, folds and loops of functions defined earlier in the same
- * program, and arrays (their types and the operations arr, get and set). A program with a fold or
- * loop has scalar types only and no array operation (a record or array state is outside the
- * reader: the lifted body's signature would have to write it).
+ * program, arrays (their types and the operations arr, get and set), and io (the type and the
+ * operations read, write and puts). A program with an inline body `{...}` has scalar types only and
+ * no array or io operation (a record or array state is outside the reader: the lifted body's
+ * signature would have to write it).
  */
-function isStageB3(p: Program): boolean {
+function isStageB3(p: Program, dense: string): boolean {
   if (p.profile !== undefined) return false;
   const defined = new Set<string>();
-  const folds = p.functions.some((f) => f.nodes.some((n) => n.op === 'fold' || n.op === 'loop'));
+  const folds = dense.includes('{');
   for (const f of p.functions) {
     const earlier = (name: string | undefined): boolean =>
       name !== undefined && defined.has(name) && name !== f.name;
@@ -384,6 +389,9 @@ function generator(seed0: number): {
   return { rnd, program, callProgram };
 }
 
+/** Programs with an expression that nests deeper than the 8 frames of the reader (ten writes in one). */
+const DEEP: ReadonlySet<string> = new Set(['compiler/macho.a0', 'site/lib/frame.a0']);
+
 /** Whether the sizes of a program are within the capacities of the reader (see compiler/dense.a0). */
 function withinCapacity(p: Program, dense: string): boolean {
   if (Buffer.byteLength(dense, 'utf8') > PAGES * PAGE) return false;
@@ -397,7 +405,11 @@ function withinCapacity(p: Program, dense: string): boolean {
     nodes += f.nodes.length;
     // the depth of an array node: the frames open around it in the dense text are not known here, so
     // the size of every array is held against the largest region (the first level) and the total
-    for (const n of f.nodes) if (n.op === 'arr') used[0] = (used[0] as number) + n.args.length;
+    for (const n of f.nodes) {
+      if (n.op === 'arr') used[0] = (used[0] as number) + n.args.length;
+      // a record has up to four fields in a frame of the reader
+      if (n.op === 'rec' && n.args.length > 4) return false;
+    }
   }
   return nodes <= 2048 && (used[0] as number) <= (regions[0] as number);
 }
@@ -405,6 +417,7 @@ function withinCapacity(p: Program, dense: string): boolean {
 test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A forms plus calls, folds, loops and arrays read to their canonical text', (t) => {
   const read = loadReader();
   const members: string[] = [];
+  const refusedMembers: string[] = [];
   let checked = 0;
   let withCalls = 0;
   let withFolds = 0;
@@ -415,17 +428,20 @@ test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A form
     if (isReject(abs, ROOT)) continue;
     sources += 1;
     const program = parse(readFileSync(abs, 'utf8'));
-    if (!isStageB3(program)) continue;
     const dense = formatDense(program);
+    if (!isStageB3(program, dense)) continue;
     if (!stageDenseText(dense)) continue;
-    if (!withinCapacity(program, dense)) {
+    const name = relative(ROOT, abs).split(sep).join('/');
+    if (!withinCapacity(program, dense) || DEEP.has(name)) {
       tooBig += 1;
       continue;
     }
-    const name = relative(ROOT, abs).split(sep).join('/');
     members.push(name);
     const got = read(dense);
-    assert.equal(got.err, false, `${name}: the error flag is clear`);
+    if (got.err) {
+      refusedMembers.push(name);
+      continue;
+    }
     assert.equal(got.text, formatProgram(program), `${name}: canonical text`);
     checked += 1;
     if (isStageA(program)) stageA += 1;
@@ -436,12 +452,17 @@ test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A form
   t.diagnostic(
     `${checked} of ${sources} accepted programs read (${stageA} in the Stage A forms, ${withCalls} with calls or arrays, ${withFolds} with folds or loops); ${tooBig} over the capacities`,
   );
+  assert.deepEqual(refusedMembers, [], 'the reader refuses a program of the forms it reads');
   assert.ok(withCalls > 0, 'some accepted programs use calls');
   assert.ok(withFolds > 0, 'some accepted programs use fold or loop');
   assert.ok(
     members.includes('site/sentinel/layout.a0') &&
       members.includes('corpus/reject/array-at.fixed.a0'),
     'programs with arrays are members',
+  );
+  assert.ok(
+    members.includes('examples/life.a0') && members.includes('corpus/reject/io-twice.fixed.a0'),
+    'programs with io are members',
   );
   assert.ok(
     members.includes('corpus/reject/typo-loop-pred.fixed.a0'),
@@ -2054,4 +2075,295 @@ test('the B3.2 reader: a repeat that does not fit its region sets the error flag
   assert.equal(read(tail).text, reference(tail));
   const tailOver = `fn f -> u32\nget [0;448 1] 0\n`;
   assert.equal(read(tailOver).err, true);
+});
+
+// ---------------------------------------------------------------------------
+// Stage B3.3: the type io and the operations read, write and puts
+// ---------------------------------------------------------------------------
+
+/**
+ * Generated canonical programs with io: functions that take an io token among other parameters,
+ * write, puts and read through it, call earlier functions with it, and give it back (alone, or
+ * with a u32 in a record). The token is used once, as the checker demands.
+ */
+function ioGenerator(seed0: number) {
+  const rnd = rngFrom(seed0);
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  interface Val {
+    ref: string;
+    ty: string;
+  }
+  interface Sig {
+    name: string;
+    params: string[];
+    result: string;
+  }
+  const fn = (name: string, sigs: readonly Sig[]): { text: string; sig: Sig } => {
+    const np = 1 + rnd(3);
+    const ioAt = rnd(np);
+    const params = Array.from({ length: np }, (_, i) =>
+      i === ioAt ? 'io' : pick(['u32', 'u32', 'bool', 'u32x3', 'u32x4']),
+    );
+    const vals: Val[] = params.flatMap((ty, i) => (ty === 'io' ? [] : [{ ref: `p${i}`, ty }]));
+    let cur = `p${ioAt}`;
+    const lines: string[] = [];
+    const dn = defaultNames(new Set<string>([name]));
+    const emit = (op: string, args: string[], ty: string): string => {
+      const id = dn.next().value as string;
+      lines.push(`${id} ${op} ${args.join(' ')}`);
+      vals.push({ ref: id, ty });
+      return id;
+    };
+    const u32 = (): string => {
+      const c = vals.filter((v) => v.ty === 'u32');
+      return c.length > 0 && rnd(3) > 0 ? (pick(c) as Val).ref : String(rnd(300));
+    };
+    const arr = (n: number): string => {
+      const ty = `u32x${n}`;
+      const c = vals.filter((v) => v.ty === ty);
+      if (c.length > 0 && rnd(2) === 0) return (pick(c) as Val).ref;
+      return emit('arr', Array.from({ length: n }, u32), ty);
+    };
+    const arg = (ty: string): string => {
+      if (ty === 'u32') return u32();
+      if (ty === 'bool') return pick(['true', 'false']);
+      return arr(Number(ty.slice(4)));
+    };
+    const steps = 1 + rnd(5);
+    for (let s = 0; s < steps; s += 1) {
+      const k = rnd(8);
+      if (k < 2) cur = emit('write', [cur, u32()], 'io');
+      else if (k < 4) cur = emit('puts', [cur, arr(3 + rnd(2))], 'io');
+      else if (k < 5) {
+        const r = emit('read', [cur], '(u32,io)');
+        emit('at', [r, '0'], 'u32');
+        cur = emit('at', [r, '1'], 'io');
+      } else if (k < 6 && sigs.length > 0) {
+        const sg = pick(sigs) as Sig;
+        const args = sg.params.map((ty) => (ty === 'io' ? cur : arg(ty)));
+        const id = emit('call', [sg.name, ...args], sg.result);
+        if (sg.result === 'io') cur = id;
+        else {
+          emit('at', [id, '0'], 'u32');
+          cur = emit('at', [id, '1'], 'io');
+        }
+      } else emit(pick(['add', 'mul', 'xor', 'sub']), [u32(), u32()], 'u32');
+    }
+    let result = 'io';
+    let ret = cur;
+    if (rnd(3) === 0) {
+      ret = emit('read', [cur], '(u32,io)');
+      result = '(u32,io)';
+    }
+    const text = `fn ${name} ${params.join(' ')} -> ${result}\n${lines.join('\n')}\nret ${ret}\nend`;
+    return { text, sig: { name, params, result } };
+  };
+  const program = (): string => {
+    const sigs: Sig[] = [];
+    const parts: string[] = [];
+    const nf = 1 + rnd(3);
+    for (let f = 0; f < nf; f += 1) {
+      const made = fn(`g${f}x${rnd(9)}`, sigs);
+      parts.push(made.text);
+      sigs.push(made.sig);
+    }
+    return parts.join('\n\n');
+  };
+  return { program, rnd, pick };
+}
+
+/** A generated io program that the checker accepts (the generator is retried until it does). */
+function validIoProgram(gen: ReturnType<typeof ioGenerator>): Program {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      return parse(gen.program());
+    } catch (e) {
+      if (!(e instanceof A0Error)) throw e;
+    }
+  }
+  throw new Error('the io generator writes no valid program');
+}
+
+test('the B3.3 reader: generated programs with io read to their canonical text', (t) => {
+  const read = loadReader();
+  const gen = ioGenerator(4711);
+  let withRead = 0;
+  let withWrite = 0;
+  let withPuts = 0;
+  let withIoResult = 0;
+  let checked = 0;
+  for (let k = 0; k < 250; k += 1) {
+    const program = validIoProgram(gen);
+    const dense = formatDense(program);
+    if (Buffer.byteLength(dense) > PAGES * PAGE) continue;
+    const got = read(dense);
+    assert.equal(got.err, false, `program ${k}: the error flag is clear\n${dense}`);
+    assert.equal(got.text, formatProgram(program), `program ${k}\n${dense}`);
+    checked += 1;
+    if (/\bread\b/.test(dense)) withRead += 1;
+    if (/\bwrite\b/.test(dense)) withWrite += 1;
+    if (/\bputs\b/.test(dense)) withPuts += 1;
+    if (/-> \(u32,io\)/.test(dense)) withIoResult += 1;
+  }
+  t.diagnostic(
+    `${checked} programs, ${withRead} with read, ${withWrite} with write, ${withPuts} with puts, ${withIoResult} with a record result`,
+  );
+  assert.ok(checked > 200, 'most programs fit the input');
+  assert.ok(withRead > 60 && withWrite > 60 && withPuts > 60 && withIoResult > 30, 'forms covered');
+});
+
+/**
+ * A text the reference reads but the reader leaves to the error flag, for the reader of Stage B3.3:
+ * a comma used as a blank, a text literal, the `rec` or `arr` word, an inline body, the `io` word
+ * in a body, a checked op, a type written with spaces, or an unwritten result that is not u32 or
+ * bool.
+ */
+function outsideTheReaderB33(text: string, program: Program): boolean {
+  if (/[,"{]|\brec\b|\barr\b|\btext\b|#|\b(cadd|csub|cmul|cdiv|crem|cget)\b/.test(text))
+    return true;
+  const lines = text.split('\n');
+  for (const l of lines) {
+    if (/^fn /.test(l) && /\([^)]*\s[^)]*\)/.test(l)) return true;
+    // the `io` word as a value: after the types of a header, or in a statement
+    const body = /^fn /.test(l) ? l.replace(/^fn \S+( .*?->)? \S+/, '') : l;
+    if (/\bio\b/.test(/^fn /.test(l) && !l.includes('->') ? l : body)) return true;
+  }
+  const heads = lines.filter((l) => /^fn /.test(l));
+  for (const [i, f] of program.functions.entries()) {
+    const h = heads[i];
+    if (h !== undefined && !h.includes('->') && f.result !== 'u32' && f.result !== 'bool')
+      return true;
+  }
+  return /\[[^\]]*;(\d{4,}|[3-9]\d{2})\b/.test(text);
+}
+
+test('the B3.3 reader: mutants of programs with io are rejected exactly when the reference rejects them', (t) => {
+  const read = loadReader();
+  const gen = ioGenerator(1234);
+  const rnd = rngFrom(808);
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  const tokens = [...ARRAY_MUTANT_TOKENS, 'io', 'io', 'read', 'write', 'puts', 'iox2', '(u32,io)'];
+  const bases = Array.from({ length: 60 }, () => formatDense(validIoProgram(gen)));
+  let equal = 0;
+  let rejected = 0;
+  let refused = 0;
+  for (let m = 0; m < 500; m += 1) {
+    const text = mutateArrays(pick(bases), rnd, pick, tokens);
+    if (Buffer.byteLength(text) > PAGES * PAGE) continue;
+    let program: Program | undefined;
+    let want: string | null = null;
+    try {
+      program = parseDense(text);
+      want = formatProgram(program);
+    } catch (e) {
+      if (!(e instanceof A0Error)) throw e;
+    }
+    const got = read(text);
+    if (want === null) {
+      assert.equal(
+        got.err,
+        true,
+        `mutant ${m}: the reader flags what the reference rejects\n${text}`,
+      );
+      rejected += 1;
+    } else if (got.err) {
+      assert.ok(
+        outsideTheReaderB33(text, program as Program),
+        `mutant ${m}: the reader refuses a text of the forms it reads\n${text}`,
+      );
+      refused += 1;
+    } else {
+      assert.equal(got.text, want, `mutant ${m}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(
+    `${rejected} mutants rejected, ${equal} read to the reference text, ${refused} refused`,
+  );
+  assert.ok(rejected > 100, 'many mutants are rejected');
+  assert.ok(equal > 30, 'some mutants are accepted');
+});
+
+const IO_CURATED: Curated[] = [
+  ['an io parameter and result', 'fn f io -> io\nA\n'],
+  ['an io parameter, a u32 result', 'fn f io u32 -> u32\nB\n'],
+  ['an io result from a write', 'fn f io u32 -> io\nwrite A B\n'],
+  ['a write of a literal', 'fn f io -> io\nwrite A 65\n'],
+  ['two writes', 'fn f io -> io\nx write A 65\nwrite x 10\n'],
+  ['two writes, nested', 'fn f io -> io\nwrite write A 65 10\n'],
+  ['a puts of a literal array', 'fn f io -> io\nputs A [72 105]\n'],
+  ['a puts of a parameter', 'fn f io u32x4 -> io\nputs A B\n'],
+  ['a puts of a repeat', 'fn f io -> io\nputs A [65;4]\n'],
+  ['a read', 'fn f io -> (u32,io)\nread A\n'],
+  ['a read, its parts', 'fn f io -> io\nr read A\nv at r 0\nat r 1\n'],
+  ['a read, then a write', 'fn f io -> io\nr read A\nv at r 0\nt at r 1\nwrite t v\n'],
+  ['a result of a record with io', 'fn f io u32 -> (u32,io)\nr write A B\nread r\n'],
+  ['a record of io and u32', 'fn f io u32 -> (io,u32)\n(A B)\n'],
+  ['a record of io, nested', 'fn f io -> ((u32,io),u32)\n((1 A) 2)\n'],
+  ['two io fields in a type', 'fn f (io,io) -> u32\n0\n'],
+  ['an io type in the middle', 'fn f u32 io u32 -> u32\nC\n'],
+  ['an io callee', 'fn g io u32 -> io\nwrite A B\n\nfn f io -> io\ng A 7\n'],
+  ['an io callee with call', 'fn g io u32 -> io\nwrite A B\n\nfn f io -> io\ncall g A 7\n'],
+  [
+    'an io arg of a callee in a callee',
+    'fn g io u32 -> io\nwrite A B\n\nfn h io -> io\ng g A 1 2\n',
+  ],
+  ['an array of io', 'fn f iox2 -> u32\n0\n'],
+  ['a record of io in an array', 'fn f (io,u32)x2 -> u32\n0\n'],
+  ['a record array of io, spaced', 'fn f (io,u32) x2 -> u32\n0\n'],
+  ['io with a dimension word', 'fn f io x2 -> u32\n0\n'],
+  ['a type with io and a big array', 'fn f (io,u32x65536,u32x65536) -> u32\n0\n'],
+  ['a record array over its size without io', 'fn f (u32x65536,u32x65536) -> u32\n0\n'],
+  ['a record with io, its array over its size', 'fn f ((io,u32x65536)) -> u32\n0\n'],
+  ['an inner record over its size beside io', 'fn f (io,(u32x65536,u32x65536)) -> u32\n0\n'],
+  ['a read with too many operands', 'fn f io -> (u32,io)\nread A B\n'],
+  ['a read with none', 'fn f io -> (u32,io)\nread\n'],
+  ['a write with one operand', 'fn f io -> io\nwrite A\n'],
+  ['a puts with three', 'fn f io -> io\nputs A [1] 2\n'],
+  ['a read as an id', 'fn f io -> io\nread = write A 1\n$read\n'],
+  ['write as a function name', 'fn write A\n'],
+  ['puts as an id', 'fn f io -> io\n$puts write A 1\n$puts\n'],
+  ['an implicit read', 'fn f\nr read A\nat r 0\n'],
+  ['an implicit write on a u32', 'fn f\nwrite A 1\n'],
+  ['an implicit puts', 'fn f\nputs A [1 2]\n'],
+  ['the io word', 'fn f io u32 -> io\nwrite io B\n', true],
+  ['the io word, two io parameters', 'fn f io io -> io\nwrite io 1\n'],
+  ['the io word, no io parameter', 'fn f u32 -> u32\nwrite io 1\n'],
+  ['io as a name', 'fn f io -> io\nio write A 1\nio\n'],
+  ['a checked op', 'fn f u32 u32 -> (u32,bool)\ncadd A B\n', true],
+  ['an io type as a function name', 'fn io A\n'],
+  ['an arrow as a function name', 'fn -> u32 -> u32 add A 62\n'],
+  ['an arrow as a function name, the types of io', 'fn -> io -> io write A 62\n'],
+  ['= as a function name', 'fn = A\n'],
+  ['a symbol as a function name', 'fn + A\n'],
+  ['a function name that starts with an underscore', 'fn _f A\n'],
+  ['an io parameter in a fold', 'fn g u32 u32 -> u32\nA\n\nfn f io -> u32\nfold g 3 0\n'],
+];
+
+test('the B3.3 reader: io types and the operations read, write and puts read as the reference reads them', (t) => {
+  const read = loadReader();
+  let equal = 0;
+  let rejected = 0;
+  let refused = 0;
+  for (const [label, text, refuse] of IO_CURATED) {
+    const want = reference(text);
+    const got = read(text);
+    if (want === null) {
+      assert.equal(got.err, true, `${label}: the reader flags what the reference rejects\n${text}`);
+      rejected += 1;
+    } else if (refuse === true) {
+      assert.equal(
+        got.err,
+        true,
+        `${label}: a form outside the reader sets the error flag\n${text}`,
+      );
+      refused += 1;
+    } else {
+      assert.equal(got.err, false, `${label}: the error flag is clear\n${text}`);
+      assert.equal(got.text, want, `${label}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(`${equal} read to the reference text, ${rejected} rejected, ${refused} refused`);
+  assert.ok(equal > 25 && rejected > 8, 'both kinds are covered');
 });
