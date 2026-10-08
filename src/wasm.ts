@@ -39,8 +39,9 @@
  * calls of functions of up to INLINE_CALL_NODES nodes, are emitted in place when they need no
  * frame and no io (literal arguments become constants); counted loops are rotated (one entry
  * guard, a `br_if` back edge); element addresses scale by a shift. Each body then goes through
- * `Code.finish`: adjacent set/get pairs stay on the operand stack or become `local.tee`, dead
- * stores are dropped, and locals with disjoint live ranges share an index.
+ * `Code.finish`: a value read once across balanced code stays on the operand stack (`stackify`),
+ * other set/get pairs become `local.tee`, dead stores are dropped, and locals with disjoint live
+ * ranges share an index.
  *
  * Strict profile (`profile strict`): a node that can trap carries a check, and a trap is the wasm
  * `unreachable` after the runtime has recorded what the interpreter's trap line is made of. The
@@ -269,10 +270,11 @@ const DROP = 0x1a;
 
 /**
  * A function body as an instruction list. Local accesses stay symbolic until `finish`, which
- * keeps a value on the operand stack instead of a `local.set x; local.get x` pair when x has
- * no other access, turns a set followed by a get of the same local into a `local.tee`, drops
- * dead stores, and renumbers the non-parameter locals so ones with disjoint live ranges share
- * an index (a range that touches a loop covers the whole loop, for the back edge).
+ * keeps a value on the operand stack instead of a `local.set x; local.get x` pair when the get
+ * is the only read and the code between them is balanced (`stackify`), turns a set followed by
+ * a get of the same local into a `local.tee`, drops dead stores, and renumbers the non-parameter
+ * locals so ones with disjoint live ranges share an index (a range that touches a loop covers
+ * the whole loop, for the back edge).
  */
 class Code {
   readonly ins: Ins[] = [];
@@ -384,12 +386,196 @@ function localCounts(ins: readonly Ins[]): {
   return { gets, sets };
 }
 
-/** Peephole over adjacent local accesses (see `Code`); parameters are left alone. */
+/**
+ * Stack effect of an instruction-list entry: `net` is its change of depth and `low` the lowest
+ * depth it reaches relative to its start (for a run, the least of its instructions' depth before
+ * their pops minus those pops). An entry with no known effect (a call, a loop, a branch, a
+ * simd or i64 instruction) is a barrier: `undefined`.
+ */
+interface Effect {
+  readonly net: number;
+  readonly low: number;
+}
+const PUSH: Effect = { net: 1, low: 0 };
+const POP: Effect = { net: -1, low: -1 };
+const TEE: Effect = { net: 0, low: -1 };
+
+/** The index after the LEB128 immediate that starts at `at`. */
+function skipLeb(bytes: readonly number[], at: number): number {
+  let p = at;
+  while (((bytes[p] as number) & 0x80) !== 0) p += 1;
+  return p + 1;
+}
+
+/** Stack effect of a run of bytes (its instructions one after another), or a barrier. */
+function runEffect(bytes: readonly number[]): Effect | undefined {
+  let net = 0;
+  let low = 0;
+  let p = 0;
+  while (p < bytes.length) {
+    const op = bytes[p] as number;
+    p += 1;
+    let pops = 0;
+    let pushes = 0;
+    if (op === 0x1a) {
+      pops = 1;
+    } else if (op === 0x1b) {
+      pops = 3;
+      pushes = 1;
+    } else if (op === 0x23) {
+      pushes = 1;
+      p = skipLeb(bytes, p);
+    } else if (op === 0x24) {
+      pops = 1;
+      p = skipLeb(bytes, p);
+    } else if (op === 0x28) {
+      pops = 1;
+      pushes = 1;
+      p = skipLeb(bytes, skipLeb(bytes, p));
+    } else if (op === 0x36) {
+      pops = 2;
+      p = skipLeb(bytes, skipLeb(bytes, p));
+    } else if (op === 0x41) {
+      pushes = 1;
+      p = skipLeb(bytes, p);
+    } else if (op === 0x45 || (op >= 0x67 && op <= 0x69)) {
+      pops = 1;
+      pushes = 1;
+    } else if ((op >= 0x46 && op <= 0x4f) || (op >= 0x6a && op <= 0x78)) {
+      pops = 2;
+      pushes = 1;
+    } else if (op === 0xfc && bytes[p] === 0x0a) {
+      pops = 3;
+      p += 3;
+    } else if (op === 0xfc && bytes[p] === 0x0b) {
+      pops = 3;
+      p += 2;
+    } else {
+      return undefined;
+    }
+    low = Math.min(low, net - pops);
+    net += pushes - pops;
+  }
+  return { net, low };
+}
+
+/** Stack effect of one instruction-list entry (see `Effect`). */
+function effectOf(x: Ins): Effect | undefined {
+  if ('bytes' in x) return runEffect(x.bytes);
+  if ('local' in x) return x.local === 'get' ? PUSH : x.local === 'set' ? POP : TEE;
+  if ('pool' in x || 'str' in x) return PUSH;
+  return undefined;
+}
+
+/**
+ * Peephole over local accesses (see `Code`); parameters are left alone.
+ *
+ * A set whose value is read once is removed together with that get, the value staying on the
+ * operand stack. The set's range runs to the next set or tee of its local, or to the end of the
+ * body; the pair is a candidate when the range holds exactly one get, in the same run of
+ * straight-line code (no barrier between them), and the local has no earlier get in the outermost
+ * loop around the set (a read through the back edge). A candidate is taken when the code between
+ * the two is balanced (it leaves the depth the set left, so the get's value sits where the stack
+ * expects it) and never pops into the value, and its span does not end inside the span of an
+ * earlier taken pair (pairs are taken in order of their sets). A set followed by a get of the
+ * same local becomes a `local.tee` when its pair is not taken; a set with no get anywhere is a
+ * drop, and a tee with no get vanishes.
+ */
 function stackify(input: readonly Ins[], params: number): Ins[] {
-  const { gets, sets } = localCounts(input);
+  const { gets } = localCounts(input);
+  const n = input.length;
+  const effects = input.map(effectOf);
+  // Depth before each entry (from its run's start), and the candidate pairs: pairTo[set] = get.
+  const depth: number[] = new Array<number>(n).fill(0);
+  const pairTo: number[] = new Array<number>(n).fill(-1);
+  // Per local: its open range (the set, its run, the gets read so far: 0, 1 or 2 for "more
+  // than one or not in the set's run", the one get, and whether the loop allows the pair).
+  interface Range {
+    readonly set: number;
+    readonly run: number;
+    reads: number;
+    get: number;
+    readonly loopOk: boolean;
+  }
+  const ranges = new Map<number, Range>();
+  const last = new Map<number, number>();
+  const endRange = (x: number): void => {
+    const r = ranges.get(x);
+    if (r === undefined) return;
+    if (r.reads === 1 && r.loopOk) pairTo[r.set] = r.get;
+    ranges.delete(x);
+  };
+  let d = 0;
+  let run = 0;
+  let loopDepth = 0;
+  let loopStart = 0;
+  for (let k = 0; k < n; k += 1) {
+    const x = input[k] as Ins;
+    depth[k] = d;
+    if ('loop' in x) {
+      if (x.loop === 'open') {
+        if (loopDepth === 0) loopStart = k;
+        loopDepth += 1;
+      } else {
+        loopDepth -= 1;
+      }
+    }
+    const e = effects[k];
+    if (e === undefined) {
+      run += 1;
+      d = 0;
+      continue;
+    }
+    d += e.net;
+    if (!('local' in x) || x.index < params) continue;
+    if (x.local === 'get') {
+      const r = ranges.get(x.index);
+      if (r !== undefined) {
+        if (r.reads === 0 && r.run === run) {
+          r.reads = 1;
+          r.get = k;
+        } else {
+          r.reads = 2;
+        }
+      }
+      last.set(x.index, k);
+    } else if (x.local === 'set') {
+      endRange(x.index);
+      const before = last.get(x.index) ?? -1;
+      ranges.set(x.index, {
+        set: k,
+        run,
+        reads: 0,
+        get: -1,
+        loopOk: before < (loopDepth > 0 ? loopStart : k),
+      });
+    } else {
+      endRange(x.index);
+    }
+  }
+  for (const x of [...ranges.keys()]) endRange(x);
+
+  // Take the pairs in order of their sets; a span that ends inside a taken span is refused.
+  const removed = new Set<number>();
+  const ends = new Set<number>();
+  for (let p = 0; p < n; p += 1) {
+    const q = pairTo[p] as number;
+    if (q < 0) continue;
+    const after = (depth[p] as number) + (effects[p] as Effect).net;
+    let ok = depth[q] === after;
+    for (let k = p + 1; ok && k < q; k += 1) {
+      if ((depth[k] as number) + (effects[k] as Effect).low < after || ends.has(k)) ok = false;
+    }
+    if (!ok) continue;
+    removed.add(p);
+    removed.add(q);
+    ends.add(q);
+  }
+
   const out: Ins[] = [];
-  for (let i = 0; i < input.length; i += 1) {
+  for (let i = 0; i < n; i += 1) {
     const x = input[i] as Ins;
+    if (removed.has(i)) continue;
     if (!('local' in x) || x.index < params || x.local === 'get') {
       out.push(x);
       continue;
@@ -400,7 +586,6 @@ function stackify(input: readonly Ins[], params: number): Ins[] {
       next !== undefined && 'local' in next && next.local === 'get' && next.index === x.index;
     if (x.local === 'set' && followed) {
       i += 1;
-      if (reads === 1 && sets.get(x.index) === 1) continue;
       out.push({ local: 'tee', index: x.index });
     } else if (reads === 0) {
       if (x.local === 'set') out.push({ bytes: [DROP] });
