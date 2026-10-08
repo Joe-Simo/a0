@@ -46,10 +46,10 @@ zt arr zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp
 ret zt
 end
 
-fn s1zero -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool)
+fn s1zero -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool)
 tk0 call ztok
 bd0 call zlnt
-r rec tk0 0 bd0 0 false false false 0 0 0 0 0 0 false false false
+r rec tk0 0 bd0 0 false false false 0 0 0 0 0 0 false false false 0 false
 ret r
 end
 
@@ -72,7 +72,7 @@ ret r
 end
 
 # One byte of the source (i < n) or the virtual newline (i == n): the state after it.
-fn lexb ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool) u32 u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool)
+fn lexb ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool) u32 u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool)
 tk at p0 0
 ntk at p0 1
 bd at p0 2
@@ -89,6 +89,8 @@ nv at p0 12
 dfl at p0 13
 pfl at p0 14
 lfl at p0 15
+wm at p0 16
+inq at p0 17
 pgi shr p1 7
 pg get p2 pgi
 b0 get pg p1
@@ -96,7 +98,9 @@ ci lt p1 p3
 c select ci b0 10
 nl eq c 10
 hs eq c 35
-act eq cmt false
+act0 eq cmt false
+ninq eq inq false
+act and act0 ninq
 d1 ge c 48
 d2 le c 57
 dg and d1 d2
@@ -168,8 +172,11 @@ ntka add ntk endn
 bdb call bput bd nbk ntka
 nlv select nl 1 0
 nbkb add nbk nlv
-pvn select pval 1 0
-tokb rec ke 1 p1 0 0 0 0 0
+isq and q10 act0
+pvq or pval isq
+kf select q10 8 ke
+pvn select pvq 1 0
+tokb rec kf 1 p1 0 0 0 0 0
 oktb lt ntka 4096
 ixb select oktb ntka 4095
 tkv call tokput tka ixb tokb
@@ -214,20 +221,113 @@ pfa select z0 pc pdd
 pfn select upd pfa false
 lfa select z0 up false
 lfn select upd lfa false
-ch or cmt hs
+hsx and hs ninq
+ch or cmt hsx
 cmtn select nl false ch
 ea and act erch
 eb or err0 ea
+l1 ge c 97
+l2 le c 122
+xlc and l1 l2
+xus eq c 95
+y1 eq c 43
+y2 eq c 45
+y3 eq c 42
+y4 eq c 47
+y5 eq c 37
+y6 eq c 38
+y7 eq c 124
+y8 eq c 94
+y9 eq c 60
+y10 eq c 62
+y11 eq c 61
+y12 eq c 33
+xa1 or y1 y2
+xa2 or y3 y4
+xa3 or y5 y6
+xa4 or y7 y8
+xa5 or y9 y10
+xa6 or y11 y12
+xb1 or xa1 xa2
+xb2 or xa3 xa4
+xb3 or xa5 xa6
+xc1 or xb1 xb2
+xsym or xc1 xb3
+xk1 or xlc dg
+xk2 or xus up
+xk3 or xk1 xk2
+xk4 or xk3 xsym
+xot eq xk4 false
+xbl select xlc 1 0
+xbd select dg 2 0
+xbu select xus 4 0
+xbp select up 8 0
+xbs select xsym 16 0
+xbo select xot 32 0
+xcb1 add xbl xbd
+xcb2 add xbu xbp
+xcb3 add xbs xbo
+xcb4 add xcb1 xcb2
+xcb add xcb4 xcb3
+xfl select xlc 64 0
+xfz eq c 48
+xfzb select xfz 128 0
+xfb add xfl xfzb
+xfbz select z0 xfb 0
+xo1 gt nb 429496729
+xo2 eq nb 429496729
+xo3 gt nd2 5
+xo4 and xo2 xo3
+xo5 or xo1 xo4
+xo6 and dg xo5
+xobit select xo6 256 0
+wmp select z0 0 wm
+wm1 or wmp xcb
+wm2 or wm1 xfbz
+wm3 or wm2 xobit
+wmn select upd wm3 0
+v1 and wm 4294967279
+vs eq v1 0
+v2 and wm 64
+v2a ne v2 0
+v3 and wm 56
+v3a eq v3 0
+v4 le wln 64
+vi and v2a v3a
+vi2 and vi v4
+v5 and wm 63
+v5a eq v5 2
+v6 and wm 256
+v6a eq v6 0
+v7 and wm 128
+v7a eq v7 0
+v8 eq wln 1
+v9 or v8 v7a
+vn1 and v5a v6a
+vn and vn1 v9
+v10 eq v5 8
+vu and v10 v8
+va or vs vi2
+vb or vn vu
+valid or va vb
+nvld eq valid false
+badw and endw nvld
+bs eq c 92
+erq and inq bs
+nsq select isq ninq inq
+inqn select nl false nsq
+ebq or eb erq
+ebw or ebq badw
 ov1 gt ntkb 4096
 ov2 gt nbkb 2048
 ov or ov1 ov2
-errn or eb ov
-r rec tkb ntkb bdb nbkb errn upd cmtn wstn wlnn w0n w1n hhn nvn dfn pfn lfn
+errn or ebw ov
+r rec tkb ntkb bdb nbkb errn upd cmtn wstn wlnn w0n w1n hhn nvn dfn pfn lfn wmn inqn
 ret r
 end
 
 # The lexer over the whole input: n + 1 steps (the last one is the virtual newline).
-fn lexall u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool)
+fn lexall u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool)
 s0 call s1zero
 m add p1 1
 s fold lexb m s0 p0 p1
@@ -591,7 +691,35 @@ m49d and m49a m49b
 m49e and m49d m49c
 m49f and m49e isw
 s49 select m49f 15 s48
-ret s49
+r0a eq ln 5
+r0b eq w0 1885434979
+r0c eq w1 104
+r0d and r0a r0b
+r0e and r0d r0c
+r0f and r0e isw
+s50 select r0f 37 s49
+r1a eq ln 4
+r1b eq w0 1952807028
+r1c eq w1 0
+r1d and r1a r1b
+r1e and r1d r1c
+r1f and r1e isw
+s51 select r1f 37 s50
+r2a eq ln 3
+r2b eq w0 7369317
+r2c eq w1 0
+r2d and r2a r2b
+r2e and r2d r2c
+r2f and r2e isw
+s52 select r2f 37 s51
+r3a eq ln 4
+r3b eq w0 1886352244
+r3c eq w1 0
+r3d and r3a r3b
+r3e and r3d r3c
+r3f and r3e isw
+s53 select r3f 37 s52
+ret s53
 end
 
 fn arity u32 -> u32
