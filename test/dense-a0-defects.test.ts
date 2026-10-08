@@ -162,23 +162,36 @@ function chain(depth: number, op = 'add'): string {
 }
 
 /**
- * A function of exactly `target` tokens: `fn f -> u32` (4 tokens), statements `NAME mov A` (3 tokens
- * each), then `ret NAME` with commas after it (commas are tokens), then `end`.
+ * A function of exactly `target` tokens: `fn f -> u32` (4 tokens), statements `NAME mov A` (3 tokens)
+ * or one `NAME add A 1` (4) when the count needs it, `ret NAME` (2), `end` (1). The names are the
+ * shortest first, so the printed output stays under the 16384-byte output capacity.
  */
 function tokenFiller(target: number): string {
-  const names = Array.from({ length: 4000 }, (_, k) => letterName(k)).filter((s) => !SKIP.has(s));
-  const body: string[] = [];
-  let used = 4;
+  const names = candidates(1400);
+  let left = target - 7;
+  const lines = ['fn f -> u32'];
   let k = 0;
-  // Keep at least 3 tokens for `ret NAME` and `end` plus the commas: the loop leaves 3 to 5.
-  while (used + 6 <= target) {
-    body.push(`${names[k] as string} mov A`);
-    used += 3;
+  if (left % 3 === 1) {
+    lines.push(`${names[k] as string} add A 1`);
+    left -= 4;
     k += 1;
   }
-  const last = names[k - 1] as string;
-  const commas = target - used - 3;
-  return `fn f -> u32\n${body.join('\n')}\nret ${last}${','.repeat(commas)}\nend\n`;
+  while (left >= 3) {
+    lines.push(`${names[k] as string} mov A`);
+    left -= 3;
+    k += 1;
+  }
+  lines.push(`ret ${names[k - 1] as string}`, 'end');
+  return `${lines.join('\n')}\n`;
+}
+
+/** `count` explicit nodes, each `NAME mov A`, with the last one as the result (no default names). */
+function explicitNames(count: number): string {
+  const names = candidates(count);
+  const lines = ['fn f -> u32'];
+  for (const n of names) lines.push(`${n} mov A`);
+  lines.push(`ret ${names[names.length - 1] as string}`, 'end');
+  return `${lines.join('\n')}\n`;
 }
 
 /** Long source bytes: a function with `count` statements whose output is over the reader capacity. */
@@ -256,6 +269,8 @@ const PROBES: readonly Probe[] = [
       return `${lines.join('\n')}\n`;
     })(),
   },
+  { name: '257 explicit names', defect: '1', kind: 'match', text: explicitNames(257) },
+  { name: '1000 explicit names', defect: '1', kind: 'match', text: explicitNames(1000) },
   // 2. Identifiers and words: the reference rule ^[a-z][a-z0-9_]{0,63}$ and the numbers.
   {
     name: 'a+b names a value',
