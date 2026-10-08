@@ -9,7 +9,7 @@
 # Stage B1 adds calls: `g A B` (a first word or an identifier that names a function) and
 # `call g A B`, of a function defined earlier in the same input. The arity of the callee is the
 # type count of its header or, for a header without types, one more than the highest parameter its
-# nodes and result use; a callee that is later, the function itself or in a used file, a wrong
+# nodes and result use; a callee that is later, the function itself or not a stub (Stage B4.1), a wrong
 # operand count, and an overflow set the error flag. Arguments of a call are kept in a pool.
 # Stage B2 adds fold and loop: `fold F n s a..` and `loop P F n s a..`, where F and P are the names
 # of functions defined earlier, or inline bodies `{statement; statement}` (the last statement is the
@@ -43,6 +43,11 @@
 # quote: start, length, decoded length), the escapes are \n, \t, \" and \\, a string is not empty; a text node (op 31)
 # keeps the token, the canonical text writes the source between the quotes (a tab as \t), and its mask is an
 # array of u32 as long as the string. A `use` line is the word and one string without an escape.
+# Stage B4.1 adds stubs, the callees of the used files: a line `use fn NAME TYPES -> RESULT` is the canonical header of a
+# function that a used file defines (the host writes them in front of the program, tools/dense-chunk.ts). The reader
+# reads it as a header, marks the function (the return kind 255), and writes nothing for it; its parameter count and
+# result type serve the calls after it. A stub comes before every function, has no statement on its line, and a use
+# line may follow it. A call of a function that is neither a stub nor defined earlier still sets the error flag.
 # Not yet read (the error flag is set): spec lines, hex
 # literals, profile lines, commas used as blanks, the `rec` and `arr` words, record and array states and
 # extra operands of inline bodies, and records and arrays as an unwritten result.
@@ -1392,8 +1397,16 @@ t0 call tkget p3 s
 c0 call wcls t0
 isf0 eq c0 30
 nem lt s e
-isf and isf0 nem
-nm add s 1
+sn1 add s 1
+sn2 add s 2
+st1 call tkget p3 sn1
+sc1 call wcls st1
+sisu eq c0 31
+sisf eq sc1 30
+isus and sisu sisf
+isf1 or isf0 isus
+isf and isf1 nem
+nm select isus sn2 sn1
 nmt call tkget p3 nm
 hn lt nm e
 isn and isf hn
@@ -3848,6 +3861,29 @@ r call stmt p0 p2 p3 p4
 ret r
 end
 
+# A stub, `use fn NAME TYPES -> RESULT`: the header of a function that a used file defines, read as a header
+# (p3 is the index of its `fn` token) and marked with the return kind 255. It has no nodes: a node made by
+# tokens after the header sets the error flag.
+fn hdrs ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
+n0 at p0 1
+r call hdr p0 p2 p3 p4
+gnt at r 0
+gnn at r 1
+gft at r 2
+gnf at r 3
+gpt at r 4
+gnp at r 5
+gerr at r 6
+cur sub gnf 1
+fe call ftget gft cur
+fe2 put fe 6 255
+ft2 call ftset gft cur fe2
+nb gt gnn n0
+er or gerr nb
+out rec gnt gnn ft2 gnf gpt gnp er
+ret out
+end
+
 # A line of the source: a header, a statement, or nothing (use, end, blank).
 fn lnstep ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool) u32 u32x128x16 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
 km1 sub p1 1
@@ -3877,8 +3913,28 @@ cnh select ish 1 0
 cns select isst 1 0
 hd fold hdrf cnh p0 p3 s e
 st fold stmtf cns p0 p3 s e
+sb_t1 call tkget p3 s1i
+sb_c1 call wcls sb_t1
+sb_f1 eq sb_c1 30
+sb_us and isuse sb_f1
+sb_m3 gt ms 2
+sb_us2 and sb_us sb_m3
+sb_ft at p0 2
+sb_n at p0 3
+sb_hs gt sb_n 0
+sb_cm sub sb_n 1
+sb_cur select sb_hs sb_cm 0
+sb_fe call ftget sb_ft sb_cur
+sb_rk at sb_fe 6
+sb_prev eq sb_rk 255
+sb_hs0 eq sb_hs false
+sb_ord0 or sb_hs0 sb_prev
+sb_ok and sb_us2 sb_ord0
+sb_cnt select sb_ok 1 0
+sb_hd fold hdrs sb_cnt p0 p3 s1i e
 x1 select isd p0 st
-x2 select isfn hd x1
+x1s select sb_ok sb_hd x1
+x2 select isfn hd x1s
 out0 select mz p0 x2
 t1 call tkget p3 s1i
 k1 at t1 0
@@ -3894,14 +3950,19 @@ ln1m sub ln1 2
 u7 gt ln1m 0
 u7b eq nv1 ln1m
 uf at p0 3
-u8 eq uf 0
+u8 mov sb_ord0
 ua and u3 u4
 uc and ua u6
 ud0 and uc u7
 ud and ud0 u7b
 uok and ud u8
 unok eq uok false
-ubad and isuse unok
+ubad0 and isuse unok
+sb_nus eq sb_us false
+ubad1 and ubad0 sb_nus
+sb_ok2 eq sb_ok false
+sb_bs and sb_us sb_ok2
+ubad or ubad1 sb_bs
 bad mov ubad
 oe at out0 6
 ne or oe bad
@@ -4754,6 +4815,16 @@ r call plines h8 p2 ctx nfi nl rk rv sepn sepo p7
 ret r
 end
 
+# A function of the table written, or nothing for a stub (the return kind 255): the functions of the used files.
+fn pfnw (u32x128x128,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4 (u32,u32)x128x16 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32x128x128 u32x256 u32 u32 -> (u32x128x128,u32)
+w call pfn p0 p1 p2 p3 p4 p5 p6 p7 p8 p9
+fr call ftget p3 p1
+rk at fr 6
+st eq rk 255
+r select st p0 w
+ret r
+end
+
 # One byte of a name (byte p3 + k of the source p2): the state (in a run of digits after an underscore,
 # digits in it).
 fn usbyte (bool,u32) u32 u32x128x128 u32 -> (bool,u32)
@@ -4815,7 +4886,7 @@ gpt at g 4
 cst text "fn   -> u32\n\n\nendret retvalptruefalsemovaddsubmulandorxorshlshreqneltlegtgeselectgetsetatputdivremreccallfoldloopbool_arrreadwriteputstext                                                                                                                      "
 zo call zout
 o0 rec zo 0
-o1 fold pfn gnf o0 gnt gft gpt tk p0 cst gnf gnn
+o1 fold pfnw gnf o0 gnt gft gpt tk p0 cst gnf gnn
 lxe at lx 4
 gge at g 6
 gnp at g 5

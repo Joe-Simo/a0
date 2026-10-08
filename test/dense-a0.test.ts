@@ -58,6 +58,7 @@ import {
   type Value,
 } from '../src/core.js';
 import { defaultNames, formatDense, parseDense } from '../src/dense.js';
+import { arities, denseWithStubs, type Signature, usedSignatures } from '../tools/dense-chunk.js';
 import { isReject, listSources, ROOT } from '../tools/dense-loader.js';
 
 /** The reader's input and output capacity: 128 pages of 128 bytes (compiler/dense.a0). */
@@ -128,13 +129,13 @@ function scalarType(t: Type): boolean {
  * no array or io operation (a record or array state is outside the reader: the lifted body's
  * signature would have to write it).
  */
-function isStageB3(p: Program, dense: string): boolean {
+function isStageB3(p: Program, dense: string, external: ReadonlySet<string> = new Set()): boolean {
   if (p.profile !== undefined) return false;
   const defined = new Set<string>();
   const folds = dense.replace(/"(?:[^"\\]|\\.)*"/g, '""').includes('{');
   for (const f of p.functions) {
     const earlier = (name: string | undefined): boolean =>
-      name !== undefined && defined.has(name) && name !== f.name;
+      name !== undefined && (external.has(name) || (defined.has(name) && name !== f.name));
     const ok =
       f.spec === undefined &&
       f.params.every(stageType) &&
@@ -468,6 +469,176 @@ test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A form
     members.includes('examples/kernels.a0'),
     'examples/kernels.a0 (nesting, parameters, every Stage A operation) is a member',
   );
+});
+
+const SPEC_WORD_IDS = ['site/sentinel/locomotion.a0', 'site/sentinel/render.a0'];
+
+test('stubs: programs that call functions of the files they use read to their canonical text', (t) => {
+  const read = loadReader();
+  const members: string[] = [];
+  const refused: string[] = [];
+  let tooBig = 0;
+  for (const abs of listSources(ROOT)) {
+    if (isReject(abs, ROOT)) continue;
+    const program = parse(readFileSync(abs, 'utf8'));
+    const sigs = usedSignatures(abs);
+    if (sigs.size === 0) continue;
+    const { dense, text } = denseWithStubs(program, sigs);
+    const own = new Set(program.functions.map((f) => f.name));
+    const external = new Set([...sigs.keys()].filter((k) => !own.has(k)));
+    if (!isStageB3(program, text, external)) continue;
+    const calls = program.functions.some((f) =>
+      f.nodes.some((n) => [n.callee, n.pred].some((c) => c !== undefined && external.has(c))),
+    );
+    if (!calls) continue;
+    const name = relative(ROOT, abs).split(sep).join('/');
+    if (
+      !withinCapacity(program, text) ||
+      Buffer.byteLength(dense) > PAGES * PAGE ||
+      DEEP.has(name)
+    ) {
+      tooBig += 1;
+      continue;
+    }
+    members.push(name);
+    const got = read(dense);
+    if (got.err) {
+      refused.push(name);
+      continue;
+    }
+    assert.equal(got.text, formatProgram(program), `${name}: canonical text`);
+  }
+  t.diagnostic(
+    `${members.length - refused.length} of ${members.length} programs with calls into used files read; ${tooBig} over the capacities; refused: ${refused.join(' ')}`,
+  );
+  // `pre`, `post` and `ex` as ids are spec words to the reader (outside its forms, like spec lines)
+  assert.deepEqual(refused, SPEC_WORD_IDS, 'the reader refuses a program with stubs');
+  for (const name of refused)
+    assert.match(
+      denseWithStubs(
+        parse(readFileSync(join(ROOT, name), 'utf8')),
+        usedSignatures(join(ROOT, name)),
+      ).dense,
+      /^(pre|post|ex) /m,
+      `${name}: an id that is a spec word`,
+    );
+  assert.ok(members.length > 0, 'some programs call functions of used files');
+});
+
+/** A generated call program cut in two: its first k functions are the `used` file, the rest the program. */
+function stubbed(canonical: string, k: number) {
+  const program = parse(canonical);
+  const sigs = new Map<string, Signature>(
+    program.functions.slice(0, k).map((f) => [f.name, { params: f.params, result: f.result }]),
+  );
+  const rest: Program = { ...program, functions: program.functions.slice(k) };
+  const { dense, text } = denseWithStubs(rest, sigs);
+  return { rest, sigs, dense, text, stubs: dense.slice(0, dense.length - text.length) };
+}
+
+/** The reference reading of dense text whose callees are the `known` functions. */
+function referenceKnown(text: string, known: ReadonlyMap<string, number>): string | null {
+  try {
+    return formatProgram(parseDense(text, { known }));
+  } catch (e) {
+    if (e instanceof A0Error) return null;
+    throw e;
+  }
+}
+
+test('stubs: generated programs calling the functions of a used file read to their canonical text', () => {
+  const read = loadReader();
+  const gen = generator(4242);
+  let stubbedCalls = 0;
+  for (let t = 0; t < 160; t += 1) {
+    const canonical = gen.callProgram(t);
+    const n = parse(canonical).functions.length;
+    const { rest, dense, stubs } = stubbed(canonical, 1 + gen.rnd(n - 1));
+    if (stubs.length > 0) stubbedCalls += 1;
+    const got = read(dense);
+    assert.equal(got.err, false, `program ${t}: the error flag is clear\n${dense}`);
+    assert.equal(got.text, formatProgram(rest), `program ${t}\n${dense}`);
+  }
+  assert.ok(stubbedCalls > 100, `${stubbedCalls} programs have stubs`);
+});
+
+test('stubs: mutants of programs with stubs are read as the reference reads them', (t) => {
+  const read = loadReader();
+  const gen = generator(909);
+  const alphabet = ['a', 'A', 'B', '1', ' ', '\n', '(', ')', '-', 'u', 'x', '0'];
+  let rejected = 0;
+  let accepted = 0;
+  for (let b = 0; b < 40; b += 1) {
+    const canonical = gen.callProgram(b);
+    const nfn = parse(canonical).functions.length;
+    const { sigs, text, stubs } = stubbed(canonical, 1 + (b % (nfn - 1)));
+    const known = arities(sigs);
+    for (let m = 0; m < 8; m += 1) {
+      const at = gen.rnd(text.length);
+      const kind = gen.rnd(3);
+      const ch = alphabet[gen.rnd(alphabet.length)] as string;
+      const mutant =
+        kind === 0
+          ? text.slice(0, at) + text.slice(at + 1)
+          : kind === 1
+            ? text.slice(0, at) + ch + text.slice(at + 1)
+            : text.slice(0, at) + ch + text.slice(at);
+      const want = referenceKnown(mutant, known);
+      const got = read(stubs + mutant);
+      if (want === null) {
+        assert.equal(got.err, true, `mutant ${b}.${m}: flagged\n${stubs}${mutant}`);
+        rejected += 1;
+      } else {
+        assert.equal(got.err, false, `mutant ${b}.${m}: clear\n${stubs}${mutant}`);
+        assert.equal(got.text, want, `mutant ${b}.${m}: canonical text\n${stubs}${mutant}`);
+        accepted += 1;
+      }
+    }
+  }
+  t.diagnostic(`${rejected} mutants rejected and ${accepted} accepted, each as the reference does`);
+  assert.ok(rejected > 20 && accepted > 20, 'both outcomes are covered');
+});
+
+test('stubs: a stub line is a header, before the functions, with nothing after it', () => {
+  const read = loadReader();
+  const F = 'fn f u32 -> u32';
+  const cases: [string, string[], boolean][] = [
+    ['one stub', ['use fn g u32 -> u32', F, 'g A'], false],
+    ['a call of two parameters', ['use fn g u32 u32 -> u32', F, 'g A A'], false],
+    ['a stub with no parameters', ['use fn g -> u32', F, 'add A g'], false],
+    ['a record result', ['use fn g u32 -> (u32,u32)', F, 'r g A', 'at r 1'], false],
+    ['an array parameter', ['use fn g u32x4 -> u32', 'fn f u32x4 -> u32', 'g A'], false],
+    ['after a use line', ['use "x.a0"', 'use fn g u32 -> u32', F, 'g A'], false],
+    ['before a use line', ['use fn g u32 -> u32', 'use "x.a0"', F, 'g A'], false],
+    ['two stubs', ['use fn g u32 -> u32', 'use fn h u32 u32 -> u32', F, 'h A g A'], false],
+    ['the wrong operand count', ['use fn g u32 u32 -> u32', F, 'g A'], true],
+    ['no name', ['use fn', F, 'A'], true],
+    ['a type for a name (the reference reads the name u32)', ['use fn u32 -> u32', F, 'A'], false],
+    ['after a function', [F, 'A', 'use fn g u32 -> u32'], true],
+    ['a statement on the stub line', ['use fn g u32 -> u32 add A A', F, 'g A'], true],
+    ['a name twice', ['use fn g u32 -> u32', 'use fn g u32 -> u32', F, 'g A'], true],
+    ['the name of a function of the text', ['use fn f u32 -> u32', F, 'A'], true],
+    ['a keyword for a name', ['use fn add u32 -> u32', F, 'A'], true],
+    ['a string for the header', ['use fn "x.a0"', F, 'A'], true],
+    ['called before it is read', [F, 'g A', 'use fn g u32 -> u32'], true],
+  ];
+  for (const [label, lines, reject] of cases) {
+    const text = `${lines.join('\n')}\n`;
+    const known = new Map<string, number>();
+    for (const l of lines) {
+      const m = /^use fn (\S+)((?: [^ ]+)*) -> \S+$/.exec(l);
+      if (m !== null) known.set(m[1] as string, (m[2] as string).split(' ').filter(Boolean).length);
+    }
+    const program = lines.filter((l) => !l.startsWith('use fn')).join('\n');
+    const got = read(text);
+    if (reject) assert.equal(got.err, true, `${label}: flagged\n${text}`);
+    else {
+      const want = referenceKnown(program, known);
+      assert.notEqual(want, null, `${label}: the reference reads it`);
+      assert.equal(got.err, false, `${label}: clear\n${text}`);
+      assert.equal(got.text, want, `${label}: canonical text`);
+    }
+  }
 });
 
 test('the Stage A reader: generated programs of the Stage A forms read to their canonical text', () => {
