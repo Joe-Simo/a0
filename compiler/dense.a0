@@ -12,9 +12,10 @@
 # Input: the dense bytes src[0..n) as 128-byte pages (n <= 16384). Output: the canonical bytes as
 # pages of 128 (at most 16384 bytes) and the error flag, set when the input or the output is over
 # a capacity (16384 bytes, 4096 tokens, 2048 lines, 2048 nodes, 512 functions, 2048 parameters,
-# 8 nested frames) or a construct is outside the forms above. A function with more than 256
-# default-named nodes is not checked. Every pass is a fold over paged tables; there is no control
-# flow, so every branch is a select, and a fold with a count of 0 does nothing.
+# 8 nested frames) or a construct is outside the forms above. The name and id tables of a function
+# hold 2048 entries, the node capacity, so every node of an accepted program has its own entry.
+# Every pass is a fold over paged tables; there is no control flow, so every branch is a select,
+# and a fold with a count of 0 does nothing.
 #
 # Passes:
 #   1 lexb: each byte (and a virtual newline at n) appends its word and punctuation tokens and
@@ -1308,9 +1309,9 @@ zt arr zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp z
 ret zt
 end
 
-fn z256 -> u32x256
+fn z2048 -> u32x2048
 zq mov 0
-zr arr zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq
+zr arr zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq
 ret zr
 end
 
@@ -1613,7 +1614,7 @@ ret s41
 end
 
 # The flag st, set when local node i has an explicit id of length L and packed word lw.
-fn exfind u32 u32 u32x256 u32x256 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 u32 -> u32
+fn exfind u32 u32 u32x2048 u32x2048 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 u32 -> u32
 kk get p2 p1
 vv get p3 p1
 tk call tkget p4 vv
@@ -1629,7 +1630,7 @@ ret hit
 end
 
 # One candidate name: accepted when no explicit id and no keyword has it.
-fn dncand (u32x256,u32x256,u32) u32 u32x256 u32x256 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> (u32x256,u32x256,u32)
+fn dncand (u32x2048,u32x2048,u32) u32 u32x2048 u32x2048 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> (u32x2048,u32x2048,u32)
 dnw0 at p0 0
 dnl0 at p0 1
 cnt0 at p0 2
@@ -1641,7 +1642,9 @@ exb ne ex 0
 kw call kwdef cl cw
 okc0 eq exb false
 okc1 eq kw false
-okc and okc0 okc1
+okm and okc0 okc1
+okn lt cnt0 p5
+okc and okm okn
 dnw1 set dnw0 cnt0 cw
 dnl1 set dnl0 cnt0 cl
 dnw2 select okc dnw1 dnw0
@@ -1653,7 +1656,7 @@ ret r
 end
 
 # The id kind of node i: 0 default (the m-th default name), 1 explicit (token), 2 retval.
-fn idfold (u32x256,u32x256,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 -> (u32x256,u32x256,u32)
+fn idfold (u32x2048,u32x2048,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 -> (u32x2048,u32x2048,u32)
 ix add p3 p1
 nd call ntget p2 ix
 idt at nd 1
@@ -1711,7 +1714,7 @@ ret m4
 end
 
 # The id of local node li, written when gate: a default name, the explicit token, or retval.
-fn emitid (u32x128x128,u32) u32 (u32x256,u32x256,u32x256,u32x256,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) bool -> (u32x128x128,u32)
+fn emitid (u32x128x128,u32) u32 (u32x2048,u32x2048,u32x2048,u32x2048,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) bool -> (u32x128x128,u32)
 idka at p2 0
 idva at p2 1
 dnwa at p2 2
@@ -1742,7 +1745,7 @@ ret s3
 end
 
 # An operand: a node (its id), a parameter (p + index), a u32 literal, or a bool.
-fn emitop (u32x128x128,u32) u32 u32 (u32x256,u32x256,u32x256,u32x256,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) bool -> (u32x128x128,u32)
+fn emitop (u32x128x128,u32) u32 u32 (u32x2048,u32x2048,u32x2048,u32x2048,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) bool -> (u32x128x128,u32)
 is1 eq p1 1
 is2 eq p1 2
 is3 eq p1 3
@@ -1772,7 +1775,7 @@ ret s5
 end
 
 # One argument: a space and the operand, when the kind is not 0.
-fn emitarg (u32x128x128,u32) u32 u32 (u32x256,u32x256,u32x256,u32x256,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) -> (u32x128x128,u32)
+fn emitarg (u32x128x128,u32) u32 u32 (u32x2048,u32x2048,u32x2048,u32x2048,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) -> (u32x128x128,u32)
 nz ne p1 0
 n1 select nz 1 0
 csta at p3 7
@@ -1782,7 +1785,7 @@ ret s2
 end
 
 # One node line: `id op args`.
-fn nodeline (u32x128x128,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 (u32x256,u32x256,u32x256,u32x256,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) -> (u32x128x128,u32)
+fn nodeline (u32x128x128,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 (u32x2048,u32x2048,u32x2048,u32x2048,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) -> (u32x128x128,u32)
 ix add p1 p3
 nd call ntget p2 ix
 op at nd 0
@@ -1863,16 +1866,17 @@ nfend select lastf p9 nxf
 nl0 sub nfend nfi
 lt3 lt nfi nfend
 nl select lt3 nl0 0
-za call z256
-zb call z256
+za call z2048
+zb call z2048
 ids0 rec za zb 0
 ids fold idfold nl ids0 p2 nfi
 idk at ids 0
 idv at ids 1
-zc call z256
-zd call z256
+zc call z2048
+zd call z2048
 dns0 rec zc zd 0
-dns fold dncand 256 dns0 idk idv p5 nl
+nlc add nl 64
+dns fold dncand nlc dns0 idk idv p5 nl
 dnw at dns 0
 dnl at dns 1
 need0 fold needfold nl 0 p2 nfi
