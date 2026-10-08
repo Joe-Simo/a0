@@ -1395,6 +1395,16 @@ r mov g4
 ret r
 end
 
+# A token of kind 8 (a quote) on the line: the flag, set once any token from base + i is one.
+fn q8fold bool u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> bool
+ix add p3 p1
+t call tkget p2 ix
+k at t 0
+isq eq k 8
+r or p0 isq
+ret r
+end
+
 # A line of the source: a header, a statement, or nothing (use, end, blank).
 fn lnstep ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool) u32 u32x128x16 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
 km1 sub p1 1
@@ -1405,6 +1415,8 @@ e call bget p2 p1
 lt0 lt s e
 ms0 sub e s
 ms select lt0 ms0 0
+s1i add s 1
+s2i add s 2
 t0 call tkget p3 s
 c0 call wcls t0
 isfn eq c0 30
@@ -1416,7 +1428,43 @@ st call stmt p0 p3 s e
 x1 select isd p0 st
 x2 select isfn hd x1
 mz eq ms 0
-out select mz p0 x2
+out0 select mz p0 x2
+hasq fold q8fold ms false p3 s
+nuse eq isuse false
+qbad and hasq nuse
+t1 call tkget p3 s1i
+t2 call tkget p3 s2i
+k1 at t1 0
+k2 at t2 0
+st0 at t0 2
+st1 at t1 2
+st2 at t2 2
+gap add st0 3
+u3 eq ms 3
+u4 eq k1 8
+u5 eq k2 8
+u6 gt st1 gap
+st1n add st1 1
+u7 gt st2 st1n
+uf at p0 3
+u8 eq uf 0
+ua and u3 u4
+ub and ua u5
+uc and ub u6
+ud and uc u7
+uok and ud u8
+unok eq uok false
+ubad and isuse unok
+bad or qbad ubad
+oe at out0 6
+ne or oe bad
+o0 at out0 0
+o1 at out0 1
+o2 at out0 2
+o3 at out0 3
+o4 at out0 4
+o5 at out0 5
+out rec o0 o1 o2 o3 o4 o5 ne
 ret out
 end
 
