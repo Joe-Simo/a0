@@ -914,7 +914,8 @@ test('site page program: A0 UI protocol, stylesheet, and sized bars', async () =
       else if (c === 12) {
         d.sized += 1;
         i += 2;
-      } else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
+      } else if (c === 14) i += 1 + (words[i] as number);
+      else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
     }
     return d;
   };
@@ -925,7 +926,7 @@ test('site page program: A0 UI protocol, stylesheet, and sized bars', async () =
   assert.ok(d0.css.includes('body{') && d0.css.length > 3000);
   assert.ok(d0.sized > 5); // the few chart bars of the short landing page are sized by the program
   const all = d0.texts.join(' ');
-  for (const needle of ['Docs', 'Benchmarks', 'GitHub', 'Made by', 'Is it as fast as C?'])
+  for (const needle of ['Docs', 'Benchmarks', 'GitHub', 'Made by', 'Where A0 is slower than C'])
     assert.ok(all.includes(needle), `missing ${needle}`);
   assert.ok(!all.includes('Clicked'), 'demo removed');
   // Emitted JS produces the identical stream.
@@ -961,6 +962,7 @@ test('site docs program: A0 UI protocol, stylesheet, and reference sections', as
     } else if (c === 6) i += 1 + (words[i] as number);
     else if (c === 10) i += 2 + (words[i + 1] as number);
     else if (c === 12) i += 2;
+    else if (c === 14) i += 1 + (words[i] as number);
     else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
   }
   assert.ok(css.includes('body{'));
