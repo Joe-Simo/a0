@@ -48,6 +48,11 @@
 # reads it as a header, marks the function (the return kind 255), and writes nothing for it; its parameter count and
 # result type serve the calls after it. A stub comes before every function, has no statement on its line, and a use
 # line may follow it. A call of a function that is neither a stub nor defined earlier still sets the error flag.
+# Stage B4.2 is a host contract, no change to the reader: a program larger than one input is cut by tools/dense-chunk.ts
+# at function boundaries into chunks, where the first capacity to bind (dense bytes, tokens, lines, nodes, the bytes
+# written) ends a chunk; a chunk is its stubs (the header of every earlier function it calls, whole, with its types)
+# and its functions, the reader writes the canonical text of the functions of the chunk, and the canonical text of
+# the program is the outputs of the chunks joined with one newline. The reader sets the error flag on any overflow.
 # Not yet read (the error flag is set): spec lines, hex
 # literals, profile lines, commas used as blanks, the `rec` and `arr` words, record and array states and
 # extra operands of inline bodies, and records and arrays as an unwritten result.

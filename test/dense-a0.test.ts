@@ -44,7 +44,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
-import { test } from 'node:test';
+import { type TestContext, test } from 'node:test';
 import {
   A0Error,
   formatProgram,
@@ -58,7 +58,20 @@ import {
   type Value,
 } from '../src/core.js';
 import { defaultNames, formatDense, parseDense } from '../src/dense.js';
-import { arities, denseWithStubs, type Signature, usedSignatures } from '../tools/dense-chunk.js';
+import {
+  arities,
+  type Caps,
+  denseWithStubs,
+  over,
+  type Planned,
+  planChunks,
+  planned,
+  READER_CAPS,
+  readChunked,
+  refusedUpFront,
+  type Signature,
+  usedSignatures,
+} from '../tools/dense-chunk.js';
 import { isReject, listSources, ROOT } from '../tools/dense-loader.js';
 
 /** The reader's input and output capacity: 128 pages of 128 bytes (compiler/dense.a0). */
@@ -639,6 +652,136 @@ test('stubs: a stub line is a header, before the functions, with nothing after i
       assert.equal(got.text, want, `${label}: canonical text`);
     }
   }
+});
+
+/**
+ * The programs of the reader's forms with the functions of their used files as stubs, split into the
+ * programs that have a function the reader refuses whatever the chunk (a limit of the reader, or a
+ * capacity of one input that the function alone exceeds) and the programs without one.
+ */
+function chunkMembers() {
+  const all: { name: string; program: Program; planned: Planned; bytes: number }[] = [];
+  for (const abs of listSources(ROOT)) {
+    if (isReject(abs, ROOT)) continue;
+    const name = relative(ROOT, abs).split(sep).join('/');
+    // an expression nested deeper than the 8 frames of the reader; ids that are spec words
+    if (DEEP.has(name) || SPEC_WORD_IDS.includes(name)) continue;
+    const program = parse(readFileSync(abs, 'utf8'));
+    const sigs = usedSignatures(abs);
+    const own = new Set(program.functions.map((f) => f.name));
+    const external = new Set([...sigs.keys()].filter((k) => !own.has(k)));
+    const text = formatDense(program, { known: arities(sigs) });
+    if (!isStageB3(program, text, external)) continue;
+    all.push({ name, program, planned: planned(program, sigs), bytes: Buffer.byteLength(text) });
+  }
+  const readable = all.filter((m) => refusedUpFront(m.planned).size === 0);
+  const refused = all.filter((m) => refusedUpFront(m.planned).size > 0);
+  return { all, readable, refused };
+}
+
+test('chunks: the planner cuts a program at function boundaries within the capacities, and says which functions no chunk can hold', (t) => {
+  const { all, readable, refused } = chunkMembers();
+  const budgets: [string, Caps][] = [
+    ['16 KB', READER_CAPS],
+    ['4 KB', { ...READER_CAPS, bytes: 4096 }],
+    ['one function per chunk', { ...READER_CAPS, bytes: 1 }],
+  ];
+  const reasons = new Map<string, number>();
+  for (const { name, planned: p } of all) {
+    const up = refusedUpFront(p);
+    for (const why of up.values()) {
+      const key = why.replace(/\d+/g, 'N');
+      reasons.set(key, (reasons.get(key) ?? 0) + 1);
+    }
+    for (const [label, caps] of budgets) {
+      const chunks = planChunks(p, caps);
+      assert.deepEqual(
+        chunks.flatMap((c) => c.blocks.map((b) => b.name)),
+        p.blocks.map((b) => b.name),
+        `${name}: the chunks are the functions in order at ${label}`,
+      );
+      const defined = new Set<string>();
+      for (const c of chunks) {
+        if (c.blocks.length > 1) {
+          assert.equal(
+            over(c.cost, { ...caps, bytes: Math.min(caps.bytes, READER_CAPS.bytes) }),
+            undefined,
+            `${name}: a chunk of ${c.blocks.length} functions is within the capacities at ${label}`,
+          );
+        }
+        for (const s of c.stubs) {
+          const callee = /^use fn (\S+)/.exec(s)?.[1] as string;
+          assert.ok(
+            !c.blocks.some((b) => b.name === callee) &&
+              (defined.has(callee) || !p.blocks.some((b) => b.name === callee)),
+            `${name}: the stub ${callee} stands for a function of an earlier chunk or a used file`,
+          );
+        }
+        for (const b of c.blocks) defined.add(b.name);
+      }
+    }
+  }
+  t.diagnostic(
+    `${all.length} programs: ${readable.length} without a function refused up front, ${refused.length} with one; reasons (functions): ${[...reasons].map(([k, v]) => `${k} ${v}`).join('; ')}`,
+  );
+  assert.ok(readable.length > 50 && refused.length > 10, 'both kinds are present');
+});
+
+/**
+ * Reads the programs without a function refused up front chunk by chunk at one budget: each reads to the
+ * text the reference gives the whole program, with no chunk flagged that the planner counted within the
+ * capacities.
+ */
+function chunkInvariance(t: TestContext, label: string, caps: Caps): number {
+  const read = loadReader();
+  const members = chunkMembers().readable;
+  let chunks = 0;
+  for (const { name, program, planned: p } of members) {
+    const got = readChunked(read, p, caps);
+    chunks += got.chunks;
+    assert.deepEqual(
+      [got.refused, got.retries],
+      [[], 0],
+      `${name}: no chunk is flagged at ${label}`,
+    );
+    assert.equal(got.text, formatProgram(program), `${name}: canonical text at ${label}`);
+  }
+  t.diagnostic(
+    `${label}: ${members.length} programs read to the whole-program text in ${chunks} chunks`,
+  );
+  return members.length;
+}
+
+test('chunks: a program cut at 16 KB reads to the text of the whole program', (t) => {
+  const n = chunkInvariance(t, '16 KB', READER_CAPS);
+  assert.equal(n, 64, `${n} programs`);
+});
+
+test('chunks: a program cut at 4 KB reads to the same text', (t) => {
+  const n = chunkInvariance(t, '4 KB', { ...READER_CAPS, bytes: 4096 });
+  assert.equal(n, 64, `${n} programs`);
+});
+
+test('chunks: a program cut after every function reads to the same text', (t) => {
+  const n = chunkInvariance(t, 'one function per chunk', { ...READER_CAPS, bytes: 1 });
+  assert.equal(n, 64, `${n} programs`);
+});
+
+test('chunks: generated call programs cut at random budgets read to the text of the whole program', (t) => {
+  const read = loadReader();
+  const gen = generator(31337);
+  let multi = 0;
+  for (let k = 0; k < 120; k += 1) {
+    const program = parse(gen.callProgram(k));
+    const p = planned(program, new Map());
+    const bytes = [1, 100, 300, 600][gen.rnd(4)] as number;
+    const got = readChunked(read, p, { ...READER_CAPS, bytes });
+    if (got.chunks > 1) multi += 1;
+    assert.deepEqual([got.refused, got.retries], [[], 0], `program ${k} at ${bytes} bytes`);
+    assert.equal(got.text, formatProgram(program), `program ${k} at ${bytes} bytes`);
+  }
+  t.diagnostic(`${multi} of 120 programs are cut in more than one chunk`);
+  assert.ok(multi > 40, `${multi} programs are cut`);
 });
 
 test('the Stage A reader: generated programs of the Stage A forms read to their canonical text', () => {
