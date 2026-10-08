@@ -23,6 +23,12 @@
  * `ret` in bodies, bool states) and 300 token-level mutants of them must read as the reference
  * reads them (a program the reference rejects must set the error flag; one it accepts must read to
  * the same text, or set the error flag when it uses a form outside the reader).
+ * Stage B3.1 adds arrays: the types (u32x4, boolx2x3, (u32,bool)x128x32), the literal `[a b c]`, get
+ * and set. The corpus set takes in every program of these forms that fits the input capacity and
+ * the array regions; 250 generated programs (typed headers, nested literals, arrays and records in
+ * arrays, calls with array parameters and results, an unwritten result inferred from get), 400
+ * token-level mutants of 60 of them, a curated list of types at their size limits, and the
+ * capacities of the regions of the array elements must read as the reference reads them.
  */
 
 import assert from 'node:assert/strict';
@@ -40,7 +46,7 @@ import {
   type TypedFunc,
   type Value,
 } from '../src/core.js';
-import { formatDense, parseDense } from '../src/dense.js';
+import { defaultNames, formatDense, parseDense } from '../src/dense.js';
 import { isReject, listSources, ROOT } from '../tools/dense-loader.js';
 
 /** The reader's input and output capacity: 128 pages of 128 bytes (compiler/dense.a0). */
@@ -72,10 +78,20 @@ const STAGE_A_OPS: ReadonlySet<string> = new Set([
 ]);
 
 /** A type of the Stage A forms: u32, bool, or a record of such types (no arrays, no io). */
+function stageAType(t: Type): boolean {
+  if (t === 'u32' || t === 'bool') return true;
+  return typeof t !== 'string' && t.kind === 'rec' && t.fields.every(stageAType);
+}
+
+/** A type of the reader's forms: u32, bool, or a record or an array of such types (no io). */
 function stageType(t: Type): boolean {
   if (t === 'u32' || t === 'bool') return true;
-  return typeof t !== 'string' && t.kind === 'rec' && t.fields.every(stageType);
+  if (typeof t === 'string') return false;
+  return t.kind === 'rec' ? t.fields.every(stageType) : stageType(t.elem);
 }
+
+/** The array operations of Stage B3.1: the literal `[a b c]`, get and set. */
+const ARRAY_OPS: ReadonlySet<string> = new Set(['arr', 'get', 'set']);
 
 /** Whether a canonical program is in the Stage A forms (the dense text is checked separately). */
 function isStageA(p: Program): boolean {
@@ -83,8 +99,8 @@ function isStageA(p: Program): boolean {
   return p.functions.every(
     (f) =>
       f.spec === undefined &&
-      f.params.every(stageType) &&
-      stageType(f.result) &&
+      f.params.every(stageAType) &&
+      stageAType(f.result) &&
       f.nodes.every((n) => STAGE_A_OPS.has(n.op)),
   );
 }
@@ -95,11 +111,12 @@ function scalarType(t: Type): boolean {
 }
 
 /**
- * Stage B2: the Stage A forms plus calls, folds and loops of functions defined earlier in the same
- * program. A program with a fold or loop has scalar types only (a record state is outside the
+ * Stage B3: the Stage A forms plus calls, folds and loops of functions defined earlier in the same
+ * program, and arrays (their types and the operations arr, get and set). A program with a fold or
+ * loop has scalar types only and no array operation (a record or array state is outside the
  * reader: the lifted body's signature would have to write it).
  */
-function isStageB2(p: Program): boolean {
+function isStageB3(p: Program): boolean {
   if (p.profile !== undefined) return false;
   const defined = new Set<string>();
   const folds = p.functions.some((f) => f.nodes.some((n) => n.op === 'fold' || n.op === 'loop'));
@@ -114,6 +131,7 @@ function isStageB2(p: Program): boolean {
       f.nodes.every(
         (n) =>
           STAGE_A_OPS.has(n.op) ||
+          (!folds && ARRAY_OPS.has(n.op)) ||
           (n.op === 'call' && earlier(n.callee)) ||
           (n.op === 'fold' && earlier(n.callee)) ||
           (n.op === 'loop' && earlier(n.callee) && earlier(n.pred)),
@@ -124,13 +142,13 @@ function isStageB2(p: Program): boolean {
   return true;
 }
 
-/** The dense text of a Stage A program has none of the spellings outside the Stage A forms. */
+/** The dense text of a program has none of the spellings outside the forms the reader reads. */
 function stageDenseText(dense: string): boolean {
   const body = dense
     .split('\n')
     .filter((l) => !l.startsWith('use '))
     .join('\n');
-  return !/[#$[\]="]|\btext\b/.test(body);
+  return !/[#$="]|\btext\b|\[[^\]]*;/.test(body);
 }
 
 /** The reader over the A0 source: the dense text in, the canonical text and the error flag out. */
@@ -363,7 +381,25 @@ function generator(seed0: number): {
   return { rnd, program, callProgram };
 }
 
-test('the Stage A, B1 and B2 reader: accepted programs in the Stage A forms plus calls, folds and loops read to their canonical text', (t) => {
+/** Whether the sizes of a program are within the capacities of the reader (see compiler/dense.a0). */
+function withinCapacity(p: Program, dense: string): boolean {
+  if (Buffer.byteLength(dense, 'utf8') > PAGES * PAGE) return false;
+  const tokens = dense.match(/[^\s()[\],;{}]+|[()[\],;{}]/g) ?? [];
+  if (tokens.length > 4096 || dense.split('\n').length > 2048) return false;
+  if (p.functions.length > 512) return false;
+  let nodes = 0;
+  const regions = [2112, 448, 64, 64, 64, 64, 64, 64];
+  const used = regions.map(() => 0);
+  for (const f of p.functions) {
+    nodes += f.nodes.length;
+    // the depth of an array node: the frames open around it in the dense text are not known here, so
+    // the size of every array is held against the largest region (the first level) and the total
+    for (const n of f.nodes) if (n.op === 'arr') used[0] = (used[0] as number) + n.args.length;
+  }
+  return nodes <= 2048 && (used[0] as number) <= (regions[0] as number);
+}
+
+test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A forms plus calls, folds, loops and arrays read to their canonical text', (t) => {
   const read = loadReader();
   const members: string[] = [];
   let checked = 0;
@@ -376,10 +412,10 @@ test('the Stage A, B1 and B2 reader: accepted programs in the Stage A forms plus
     if (isReject(abs, ROOT)) continue;
     sources += 1;
     const program = parse(readFileSync(abs, 'utf8'));
-    if (!isStageB2(program)) continue;
+    if (!isStageB3(program)) continue;
     const dense = formatDense(program);
     if (!stageDenseText(dense)) continue;
-    if (Buffer.byteLength(dense, 'utf8') > PAGES * PAGE) {
+    if (!withinCapacity(program, dense)) {
       tooBig += 1;
       continue;
     }
@@ -395,14 +431,14 @@ test('the Stage A, B1 and B2 reader: accepted programs in the Stage A forms plus
     else withCalls += 1;
   }
   t.diagnostic(
-    `${checked} of ${sources} accepted programs read (${stageA} in the Stage A forms, ${withCalls} with calls, ${withFolds} with folds or loops); ${tooBig} over ${PAGES * PAGE} bytes`,
+    `${checked} of ${sources} accepted programs read (${stageA} in the Stage A forms, ${withCalls} with calls or arrays, ${withFolds} with folds or loops); ${tooBig} over the capacities`,
   );
   assert.ok(withCalls > 0, 'some accepted programs use calls');
   assert.ok(withFolds > 0, 'some accepted programs use fold or loop');
-  assert.equal(
-    tooBig,
-    0,
-    'no program of the Stage A forms plus calls, folds and loops is over the input capacity',
+  assert.ok(
+    members.includes('site/sentinel/layout.a0') &&
+      members.includes('corpus/reject/array-at.fixed.a0'),
+    'programs with arrays are members',
   );
   assert.ok(
     members.includes('corpus/reject/typo-loop-pred.fixed.a0'),
@@ -1164,7 +1200,7 @@ const CURATED: Curated[] = [
   ['an empty record type', 'fn f () -> u32 A\n'],
   ['a record type with a trailing comma', 'fn f (u32,) -> u32 A\n'],
   ['a record type', 'fn f (u32,bool) bool -> (bool,u32) A\n'],
-  ['an array type', 'fn f u32x4 -> u32 A\n', true],
+  ['an array type', 'fn f u32x4 -> u32 A\n'],
   ['a name written twice', 'fn f u32 -> u32\na add A 1\na add A 2\na\n'],
   ['a statement after ret', 'fn f u32 -> u32\nret add A 1\nadd A 2\n'],
   ['two ret statements', 'fn f u32 -> u32\nret add A 1\nret add A 2\n'],
@@ -1230,4 +1266,445 @@ test('the B2 reader: capacities set the error flag, never wrong output', () => {
   assert.equal(read(nest(3)).err, false);
   assert.equal(read(nest(3)).text, reference(nest(3)));
   assert.equal(read(nest(9)).err, true, 'more nested frames than the stack holds');
+});
+
+// ---------------------------------------------------------------------------
+// Stage B3.1: array types and the operations arr (`[a b c]`), get and set
+// ---------------------------------------------------------------------------
+
+/** The element type and length of an array type text (`u32x2x3` is three of `u32x2`), or undefined. */
+function arrayParts(t: string): { elem: string; n: number } | undefined {
+  const m = /^(.*)x([1-9][0-9]*)$/.exec(t);
+  return m === null ? undefined : { elem: m[1] as string, n: Number(m[2]) };
+}
+
+/**
+ * Generated canonical programs with arrays: typed headers (arrays of u32, bool and records, up to
+ * two dimensions deep and more), array literals of values in scope, get and set, select and mov of
+ * arrays, calls of earlier functions with array parameters and results, records and `at`. The
+ * programs are well typed (parse checks them); formatDense writes them in dense form, nesting
+ * included, which the reader reads back.
+ */
+function arrayGenerator(seed0: number) {
+  const rnd = rngFrom(seed0);
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  interface Val {
+    ref: string;
+    ty: string;
+  }
+  interface Sig {
+    name: string;
+    params: string[];
+    result: string;
+  }
+  const randType = (): string => {
+    const r = rnd(16);
+    if (r < 3) return 'u32';
+    if (r < 4) return 'bool';
+    if (r < 7) return `u32x${1 + rnd(5)}`;
+    if (r < 8) return `boolx${1 + rnd(4)}`;
+    if (r < 10) return `u32x${1 + rnd(3)}x${1 + rnd(3)}`;
+    if (r < 11) return `boolx${1 + rnd(3)}x${1 + rnd(2)}`;
+    if (r < 12) return '(u32,bool)';
+    if (r < 13) return `(u32,bool)x${1 + rnd(3)}`;
+    if (r < 14) return `(u32,u32)x${1 + rnd(3)}x${1 + rnd(2)}`;
+    if (r < 15) return `u32x${1 + rnd(40)}`;
+    return `u32x${1 + rnd(9)}x${1 + rnd(9)}`;
+  };
+  const fn = (name: string, sigs: readonly Sig[]): { text: string; sig: Sig } => {
+    const params = Array.from({ length: rnd(4) }, randType);
+    const vals: Val[] = params.map((ty, i) => ({ ref: `p${i}`, ty }));
+    const lines: string[] = [];
+    const dn = defaultNames(new Set<string>([name]));
+    let explicit = 0;
+    const emit = (op: string, args: string[], ty: string): Val => {
+      let id: string;
+      if (rnd(7) === 0) {
+        explicit += 1;
+        id = `w${explicit}x`;
+      } else id = dn.next().value as string;
+      lines.push(`${id} ${op} ${args.join(' ')}`);
+      const v = { ref: id, ty };
+      vals.push(v);
+      return v;
+    };
+    const mk = (ty: string, depth: number): string => {
+      const cands = vals.filter((v) => v.ty === ty);
+      if (cands.length > 0 && (depth <= 0 || rnd(3) > 0)) return (pick(cands) as Val).ref;
+      if (ty === 'u32') return String(rnd(50));
+      if (ty === 'bool') return pick(['true', 'false']);
+      const ap = arrayParts(ty);
+      if (ap !== undefined) {
+        const elems = Array.from({ length: ap.n }, () => mk(ap.elem, depth - 1));
+        return emit('arr', elems, ty).ref;
+      }
+      // a record type (a,b)
+      const fields = ty.slice(1, -1).split(',');
+      return emit(
+        'rec',
+        fields.map((f) => mk(f, depth - 1)),
+        ty,
+      ).ref;
+    };
+    const steps = 1 + rnd(7);
+    for (let s = 0; s < steps; s += 1) {
+      const k = rnd(12);
+      const arrays = vals.filter((v) => arrayParts(v.ty) !== undefined);
+      if (k < 2)
+        emit(pick(['add', 'sub', 'mul', 'and', 'or', 'xor']), [mk('u32', 1), mk('u32', 1)], 'u32');
+      else if (k < 3) emit(pick(['lt', 'eq', 'ne', 'ge']), [mk('u32', 1), mk('u32', 1)], 'bool');
+      else if (k < 6 && arrays.length > 0) {
+        const a = pick(arrays) as Val;
+        emit('get', [a.ref, mk('u32', 1)], (arrayParts(a.ty) as { elem: string }).elem);
+      } else if (k < 8 && arrays.length > 0) {
+        const a = pick(arrays) as Val;
+        const e = (arrayParts(a.ty) as { elem: string }).elem;
+        emit('set', [a.ref, mk('u32', 1), mk(e, 2)], a.ty);
+      } else if (k < 9) {
+        const ty = randType();
+        emit('select', [mk('bool', 1), mk(ty, 2), mk(ty, 2)], ty);
+      } else if (k < 10) {
+        const ty = randType();
+        emit('mov', [mk(ty, 2)], ty);
+      } else if (k < 11 && sigs.length > 0) {
+        const sg = pick(sigs) as Sig;
+        emit('call', [sg.name, ...sg.params.map((p) => mk(p, 2))], sg.result);
+      } else {
+        mk(randType(), 3);
+      }
+    }
+    // the result: the last node, or a parameter
+    if (lines.length === 0) emit('mov', ['7'], 'u32');
+    const last = vals[vals.length - 1] as Val;
+    const header = `fn ${name}${params.length > 0 ? ` ${params.join(' ')}` : ''} -> ${last.ty}`;
+    const text = `${header}\n${lines.join('\n')}\nret ${last.ref}\nend`;
+    return { text, sig: { name, params, result: last.ty } };
+  };
+  const program = (): string => {
+    const sigs: Sig[] = [];
+    const parts: string[] = [];
+    const nf = 1 + rnd(3);
+    for (let f = 0; f < nf; f += 1) {
+      const made = fn(`g${f}x${rnd(9)}`, sigs);
+      parts.push(made.text);
+      sigs.push(made.sig);
+    }
+    return parts.join('\n\n');
+  };
+  return { program, rnd, pick };
+}
+
+test('the B3.1 reader: generated programs with arrays read to their canonical text', (t) => {
+  const read = loadReader();
+  const gen = arrayGenerator(8080);
+  let withGet = 0;
+  let withSet = 0;
+  let withArr = 0;
+  let nested = 0;
+  let checked = 0;
+  for (let k = 0; k < 250; k += 1) {
+    const canonical = gen.program();
+    const program = parse(canonical);
+    // every element written (the repeat form `[x;n]` is read from Stage B3.2 on)
+    const dense = formatDense(program, { style: { repeat: false } });
+    if (Buffer.byteLength(dense) > PAGES * PAGE) continue;
+    const got = read(dense);
+    assert.equal(got.err, false, `program ${k}: the error flag is clear\n${dense}`);
+    assert.equal(got.text, formatProgram(program), `program ${k}\n${dense}`);
+    checked += 1;
+    if (/\bget\b/.test(dense)) withGet += 1;
+    if (/\bset\b/.test(dense)) withSet += 1;
+    if (dense.includes('[')) withArr += 1;
+    if (/\[[^\]]*\[/.test(dense)) nested += 1;
+  }
+  t.diagnostic(
+    `${checked} programs, ${withArr} with a literal, ${withGet} with get, ${withSet} with set, ${nested} with nested literals`,
+  );
+  assert.ok(checked > 200, 'most programs fit the input');
+  assert.ok(withArr > 100 && withGet > 60 && withSet > 30 && nested > 10, 'the forms are covered');
+});
+
+/** The dense words and punctuation an array mutant is made of. */
+const ARRAY_MUTANT_TOKENS = [
+  '[',
+  ']',
+  '(',
+  ')',
+  'get',
+  'set',
+  'A',
+  'B',
+  '0',
+  '3',
+  'true',
+  'false',
+  'u32',
+  'bool',
+  'u32x2',
+  'boolx3',
+  'u32x2x3',
+  'u32x0',
+  'x2',
+  'x',
+  '->',
+  'add',
+  'select',
+  'mov',
+  'call',
+  'ret',
+  'at',
+  'put',
+  'fold',
+  'rec',
+  'arr',
+  ',',
+  ';',
+  '$x',
+  'fn',
+  'a',
+  'b',
+  'c',
+];
+
+/** The pieces of a dense text with arrays: words, punctuation, spaces and newlines. */
+function arrayPieces(text: string): string[] {
+  return text.match(/\n|[{};()[\],]|[^\s{};()[\],]+| +/g) ?? [];
+}
+
+/** One mutation of a dense text with arrays. */
+function mutateArrays(
+  text: string,
+  rnd: (n: number) => number,
+  pick: <T>(xs: readonly T[]) => T,
+): string {
+  const ps = arrayPieces(text);
+  const words = ps.flatMap((p, i) => (/^\s*$/.test(p) ? [] : [i]));
+  const k = words[rnd(words.length)] as number;
+  const out = ps.slice();
+  const op = rnd(6);
+  if (op === 0) out.splice(k, 1);
+  else if (op === 1) out.splice(k, 0, pick(ARRAY_MUTANT_TOKENS), ' ');
+  else if (op === 2) out[k] = pick(ARRAY_MUTANT_TOKENS);
+  else if (op === 3) {
+    const next = words[Math.min(words.length - 1, words.indexOf(k) + 1)] as number;
+    [out[k], out[next]] = [out[next] as string, out[k] as string];
+  } else if (op === 4) out.splice(k, 0, pick(ARRAY_MUTANT_TOKENS));
+  else {
+    out[k] = pick(ARRAY_MUTANT_TOKENS);
+    out.splice(words[rnd(words.length)] as number, 0, pick(ARRAY_MUTANT_TOKENS), ' ');
+  }
+  return out.join('');
+}
+
+/**
+ * A text the reference reads but the reader leaves to the error flag uses a form outside the reader:
+ * a comma used as a blank, a `$` escape, `=`, the repeat form, a text literal, the `rec` or `arr`
+ * word, an inline body, a type written with spaces, or an unwritten result that is not u32 or bool.
+ */
+function outsideTheArrayReader(text: string, program: Program): boolean {
+  if (/[,$;"={]|\brec\b|\barr\b|\btext\b|\bio\b|#/.test(text)) return true;
+  const lines = text.split('\n');
+  for (const l of lines) if (/^fn /.test(l) && /\([^)]*\s[^)]*\)/.test(l)) return true;
+  const heads = lines.filter((l) => /^fn /.test(l));
+  for (const [i, f] of program.functions.entries()) {
+    const h = heads[i];
+    if (h !== undefined && !h.includes('->') && f.result !== 'u32' && f.result !== 'bool')
+      return true;
+  }
+  return false;
+}
+
+test('the B3.1 reader: mutants of programs with arrays are rejected exactly when the reference rejects them', (t) => {
+  const read = loadReader();
+  const gen = arrayGenerator(9191);
+  const bases = Array.from({ length: 60 }, () =>
+    formatDense(parse(gen.program()), { style: { repeat: false } }),
+  );
+  const rnd = rngFrom(31);
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  let equal = 0;
+  let rejected = 0;
+  let refused = 0;
+  for (let m = 0; m < 400; m += 1) {
+    const text = mutateArrays(pick(bases), rnd, pick);
+    if (Buffer.byteLength(text) > PAGES * PAGE) continue;
+    let program: Program | undefined;
+    let want: string | null = null;
+    try {
+      program = parseDense(text);
+      want = formatProgram(program);
+    } catch (e) {
+      if (!(e instanceof A0Error)) throw e;
+    }
+    const got = read(text);
+    if (want === null) {
+      assert.equal(
+        got.err,
+        true,
+        `mutant ${m}: the reader flags what the reference rejects\n${text}`,
+      );
+      rejected += 1;
+    } else if (got.err) {
+      assert.ok(
+        outsideTheArrayReader(text, program as Program),
+        `mutant ${m}: the reader refuses a text of the forms it reads\n${text}`,
+      );
+      refused += 1;
+    } else {
+      assert.equal(got.text, want, `mutant ${m}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(
+    `${rejected} mutants rejected, ${equal} read to the reference text, ${refused} refused`,
+  );
+  assert.ok(rejected > 150, 'most mutants are rejected');
+  assert.ok(equal > 10, 'some mutants are accepted');
+});
+
+const ARRAY_CURATED: Curated[] = [
+  ['an array literal', 'fn f -> u32\nx [1 2 3]\nget x 1\n'],
+  ['an array literal as an operand', 'fn f -> u32\nget [1 2 3] A\n'],
+  ['an array of parameters', 'fn f u32 u32 -> u32\nx [A B 7]\nget x 1\n'],
+  ['an array of arrays', 'fn f -> u32x2x3\n[[1 2] [3 4] [5 6]]\n'],
+  [
+    'an array of arrays, read twice',
+    'fn f u32 u32 -> u32\nx [A B]\ny [x [1 2] x]\nget get y 0 1\n',
+  ],
+  ['an array of records', 'fn f u32 bool -> (u32,bool)x2\n[(A B) (1 true)]\n'],
+  ['an array of bools', 'fn f bool -> boolx2\n[A true]\n'],
+  ['a one-element array', 'fn f u32 -> u32x1\n[A]\n'],
+  ['set, then get', 'fn f u32x3 -> u32\nx set A 1 7\nget x 1\n'],
+  ['set, get on a parameter', 'fn f u32x4 u32 u32 -> u32x4\nset A B C\n'],
+  ['get on an array result', 'fn g -> u32x3\n[1 2 3]\n\nfn f -> u32\nget g 2\n'],
+  ['an array argument', 'fn g u32x3 -> u32\nget A 0\n\nfn f -> u32\ng [4 5 6]\n'],
+  ['an array of calls', 'fn g u32 -> u32\nadd A 1\n\nfn f u32 -> u32x2\n[g A g 2]\n'],
+  ['an array of an array operation', 'fn f u32 -> u32x3\n[A add A 1 mul A 2]\n'],
+  ['an implicit arity from an array', 'fn f -> u32x3\n[A B C]\n'],
+  ['an implicit result from get', 'fn f\nx [1 2]\nget x 0\n'],
+  ['an implicit result from get, bool', 'fn f\nx [true false]\nget x A\n'],
+  ['an implicit result from a get of a get', 'fn f\nx [1 2]\ny [x x]\nget get y 0 1\n'],
+  ['a get with a bool index', 'fn f\nx [1 2]\nget x true\n'],
+  ['a set of the wrong element type', 'fn f\nx [1 2]\nset x 0 true\n'],
+  ['a set whose array has two shapes', 'fn f\nx select true [1 2] [3 4 5]\nget x 0\n'],
+  [
+    'an implicit result from a call returning an array',
+    'fn g -> u32x4\n[1 2 3 4]\n\nfn f\nx g\nget x 1\n',
+  ],
+  ['an unwritten result that is an array', 'fn f\nx [1 2]\nx\n', true],
+  ['an unwritten result that is a get of arrays', 'fn f\nget [[true] [false]] 0\n', true],
+  ['an unwritten result that is a select of arrays', 'fn f\nselect true [1 2] [3 4]\n', true],
+  ['an empty array', 'fn f u32 -> u32\nget [] A\n'],
+  ['an array not closed', 'fn f u32 -> u32\nget [1 2 A\n'],
+  ['an array closed without a start', 'fn f u32 -> u32\nget 1 2] A\n'],
+  ['an array closed by a parenthesis', 'fn f u32 -> u32\nget [1 2) A\n'],
+  ['a group closed by a bracket', 'fn f u32 -> u32\nget (1 2] A\n'],
+  ['get with one operand', 'fn f u32x2 -> u32\nget A\n'],
+  ['get with three operands', 'fn f u32x2 -> u32\nget A 0 1\n'],
+  ['set with two operands', 'fn f u32x2 -> u32x2\nset A 0\n'],
+  ['a comma in an array', 'fn f -> u32x3\n[1, 2, 3]\n', true],
+  ['a record in an array literal', 'fn f -> u32\nget [1 (2 3)] A\n'],
+  ['an array named and reused', 'fn f u32 -> u32\nx [A A]\nadd get x 0 get x 1\n'],
+  ['an array type with a record', 'fn f (u32,bool)x2 u32 -> (u32,bool)\nget A B\n'],
+  [
+    'an array of arrays of records',
+    'fn f (u32,u32)x3x2 u32 -> u32\nx get A 1\ny get x B\nat y 0\n',
+  ],
+  ['a record of arrays', 'fn f (u32x2,bool) -> u32x2\nat A 0\n'],
+  ['a record of arrays in an array', 'fn f (u32x2,bool)x3 -> (u32x2,bool)\nget A 0\n'],
+  ['a three-dimensional array type', 'fn f u32x2x2x2 -> u32x2x2\nget A 1\n'],
+  ['an array of one record field', 'fn f (u32)x2 -> (u32)\nget A 0\n'],
+  ['the largest u32 array type', 'fn f u32x65536 -> u32\nget A 0\n'],
+  ['an array type over its length', 'fn f u32x65537 -> u32\nA\n'],
+  ['an array of bool over its length', 'fn f boolx65537 -> u32\nA\n'],
+  ['the largest bool array type', 'fn f boolx65536 -> u32\nA\n'],
+  ['an array type over its size', 'fn f u32x2049x32 -> u32\nA\n'],
+  ['an array type at its size', 'fn f u32x2048x32 -> u32\nA\n'],
+  ['a record type over its size', 'fn f (u32x65536,u32) -> u32\nA\n'],
+  ['a record array over its size', 'fn f (u32x1000,u32x1000)x100 -> u32\nA\n'],
+  ['a record array at its size', 'fn f (u32x1000,u32x1000)x32 -> u32\nA\n'],
+  ['an array of length zero', 'fn f u32x0 -> u32\nA\n'],
+  ['an array length with a leading zero', 'fn f u32x01 -> u32\nA\n'],
+  ['an array of an unknown type', 'fn f u33x2 -> u32\nA\n'],
+  ['an array of io', 'fn f iox2 -> u32\nA\n'],
+  ['an array length that is no number', 'fn f u32xa -> u32\nA\n'],
+  ['dimensions after a group', 'fn f (u32,bool)x2x3 -> u32\nA\n'],
+  ['dimensions after a group, spaced', 'fn f (u32,bool) x2 -> u32\nA\n'],
+  ['dimensions twice after a group', 'fn f (u32)x2 x3 -> u32\nA\n'],
+  ['a dimension word alone', 'fn f x2 -> u32\nA\n'],
+  ['an array result type', 'fn f -> boolx2x3\n[[true false] [true false] [false true]]\n'],
+  ['an array type as a name', 'fn f u32x2 -> u32\nu32x2 add 1 2\n'],
+  ['a name that looks like a dimension', 'fn f u32 -> u32\nx2 add A 1\nmul x2 x2\n'],
+  ['a name that looks like a dimension, long', 'fn f u32 -> u32\nx128x32 add A 1\nmul x128x32 2\n'],
+  ['get as a function name', 'fn get A\n'],
+  ['set as an id', 'fn f set add 1 2\n'],
+  [
+    'a fold with an array extra operand',
+    'fn g u32 u32 u32x2 -> u32\nA\n\nfn f u32x2 -> u32\nfold g 3 0 A\n',
+  ],
+  ['an inline fold over an array', 'fn f u32x2 -> u32\nfold {add A get C 0} 3 0 A\n', true],
+];
+
+test('the B3.1 reader: arrays, array types, get and set read as the reference reads them', (t) => {
+  const read = loadReader();
+  let equal = 0;
+  let rejected = 0;
+  let refused = 0;
+  for (const [label, text, refuse] of ARRAY_CURATED) {
+    const want = reference(text);
+    const got = read(text);
+    if (want === null) {
+      assert.equal(got.err, true, `${label}: the reader flags what the reference rejects\n${text}`);
+      rejected += 1;
+    } else if (refuse === true) {
+      assert.equal(
+        got.err,
+        true,
+        `${label}: a form outside the reader sets the error flag\n${text}`,
+      );
+      refused += 1;
+    } else {
+      assert.equal(got.err, false, `${label}: the error flag is clear\n${text}`);
+      assert.equal(got.text, want, `${label}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(`${equal} read to the reference text, ${rejected} rejected, ${refused} refused`);
+  assert.ok(equal > 35 && rejected > 15, 'both kinds are covered');
+});
+
+test('the B3.1 reader: the array regions set the error flag on overflow, never wrong output', () => {
+  const read = loadReader();
+  const elems = (n: number): string =>
+    Array.from({ length: n }, (_, i) => String(i % 10)).join(' ');
+  // depth 0: 2112 places; the arrays of a program share them
+  const fits = `fn f -> u32x2112\n[${elems(2112)}]\n`;
+  // the input holds 16384 bytes: a 2112 place array of one digit and a space fits
+  assert.ok(Buffer.byteLength(fits) <= PAGES * PAGE);
+  const fitsGot = read(fits);
+  assert.equal(fitsGot.err, false, 'an array that fills its region');
+  assert.equal(fitsGot.text, reference(fits));
+  const over = `fn f -> u32x2113\n[${elems(2113)}]\n`;
+  assert.equal(read(over).err, true, 'an array over its region');
+  const two = `fn f -> u32x1100\n[${elems(1100)}]\n\nfn g -> u32x1100\n[${elems(1100)}]\n`;
+  assert.equal(read(two).err, true, 'two arrays over the region of their depth');
+  const two2 = `fn f -> u32x1000\n[${elems(1000)}]\n\nfn g -> u32x1000\n[${elems(1000)}]\n`;
+  const two2Got = read(two2);
+  assert.equal(two2Got.err, false, 'two arrays within the region');
+  assert.equal(two2Got.text, reference(two2));
+  // depth 1: an operand of an operation
+  const d1 = (n: number): string => `fn f -> u32\nget [${elems(n)}] 0\n`;
+  assert.equal(read(d1(448)).err, false, 'an array that fills the region of depth 1');
+  assert.equal(read(d1(448)).text, reference(d1(448)));
+  assert.equal(read(d1(449)).err, true, 'an array over the region of depth 1');
+  // depth 2
+  const d2 = (n: number): string => `fn f -> u32\nadd 1 get [${elems(n)}] 0\n`;
+  assert.equal(read(d2(64)).err, false, 'an array that fills the region of depth 2');
+  assert.equal(read(d2(64)).text, reference(d2(64)));
+  assert.equal(read(d2(65)).err, true, 'an array over the region of depth 2');
+  // nesting: the frames hold eight levels
+  const deep = (d: number): string => `fn f -> u32\n${'get ['.repeat(d)}1${' ] 0'.repeat(d)}\n`;
+  assert.equal(read(deep(3)).err, false, 'arrays nested three deep');
+  assert.equal(read(deep(3)).text, reference(deep(3)));
+  assert.equal(read(deep(5)).err, true, 'arrays nested over the frames');
 });
