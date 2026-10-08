@@ -842,6 +842,16 @@ static int cmd_calls(const char *file) {
 #define NO_FN 0xffffffffu
 #define MAX_SOURCE_BYTES (1u << 20)
 
+/*
+ * `a0 check --chunk-bytes=N FILE` sets the byte margin of a chunk (the other margins stay); N = 0
+ * plans the whole program as one chunk, which is the unchunked check whenever the front end takes
+ * it (the front end then refuses a program over its capacities, and the driver halves it as it
+ * halves any chunk it refuses). Tests compare the two plans with the TypeScript checker. With
+ * A0_CHUNK_TRACE set, every chunk is announced on stderr as "chunk ua..ub: N bytes, S stubs".
+ */
+static size_t plan_bytes = CHUNK_BYTES;
+static bool plan_whole = false;
+
 typedef struct {
   char *p;
   size_t n, cap;
@@ -1411,6 +1421,8 @@ static bool run_chunk(uint32_t ua, uint32_t ub) {
     }
     give_up("one function over a front end capacity");
   }
+  if (getenv("A0_CHUNK_TRACE") != NULL)
+    fprintf(stderr, "chunk %u..%u: %zu bytes, %u stubs\n", ua, ub, n, ns);
   for (size_t i = 0; i < n; i++) io.input[1 + i] = (unsigned char)chunk_text.p[i];
   io.input[0] = (uint32_t)n;
   io.input[n + 1] = ns;
@@ -1518,7 +1530,8 @@ static int cmd_check(const char *file, bool lines) {
         const Unit *x = &units[ub];
         size_t b2 = bytes + (x->b - x->a);
         uint32_t t2 = toks + x->toks, n2 = nodes + x->nodes, f2 = fns + 1;
-        if (ub > ua && (b2 > CHUNK_BYTES || t2 > CHUNK_TOKENS || n2 > CHUNK_NODES || f2 > CHUNK_FNS))
+        if (!plan_whole && ub > ua &&
+            (b2 > plan_bytes || t2 > CHUNK_TOKENS || n2 > CHUNK_NODES || f2 > CHUNK_FNS))
           break;
         bytes = b2;
         toks = t2;
@@ -1529,8 +1542,8 @@ static int cmd_check(const char *file, bool lines) {
       /* the stubs the chunk needs weigh on the margins too: shrink while they overflow */
       for (;;) {
         uint32_t ns = collect_stubs(ua, ub);
-        if (ub - ua > 1 &&
-            (bytes + (size_t)ns * 96 > CHUNK_BYTES + 6000 || toks + ns * 16 > CHUNK_TOKENS + 800 ||
+        if (!plan_whole && ub - ua > 1 &&
+            (bytes + (size_t)ns * 96 > plan_bytes + 6000 || toks + ns * 16 > CHUNK_TOKENS + 800 ||
              fns + ns > CHUNK_FNS + 40)) {
           ub--;
           const Unit *x = &units[ub];
@@ -1572,7 +1585,7 @@ static int cmd_check(const char *file, bool lines) {
 }
 
 static void usage(void) {
-  fputs("usage:\n  a0 check [--lines] <file.a0>\n  a0 run <file.a0> <function> <args...>\n"
+  fputs("usage:\n  a0 check [--lines] [--chunk-bytes=N] <file.a0>\n  a0 run <file.a0> <function> <args...>\n"
         "  a0 bench <file.a0> <function> <iterations>\n  a0 calls <file.a0>   # calls on stdin\n",
         stderr);
   exit(64);
@@ -1590,9 +1603,23 @@ int main(int argc, char **argv) {
 #endif
   if (argc < 3) usage();
   const char *cmd = argv[1], *file = argv[2];
-  if (strcmp(cmd, "check") == 0 && argc == 3) return cmd_check(file, false);
-  if (strcmp(cmd, "check") == 0 && argc == 4 && strcmp(argv[2], "--lines") == 0)
-    return cmd_check(argv[3], true);
+  if (strcmp(cmd, "check") == 0) {
+    /* options, then the file: --lines, --chunk-bytes=N (see plan_bytes) */
+    bool lines = false;
+    int i = 2;
+    for (; i < argc - 1; i++) {
+      if (strcmp(argv[i], "--lines") == 0) lines = true;
+      else if (strncmp(argv[i], "--chunk-bytes=", 14) == 0) {
+        char *end = NULL;
+        unsigned long v = strtoul(argv[i] + 14, &end, 10);
+        if (argv[i][14] == '\0' || *end != '\0' || v > (1ul << 30)) usage();
+        plan_whole = v == 0;
+        plan_bytes = (size_t)v;
+      } else usage();
+    }
+    if (i != argc - 1) usage();
+    return cmd_check(argv[argc - 1], lines);
+  }
   if (strcmp(cmd, "run") == 0 && argc >= 4) return cmd_run(file, argv[3], argc - 4, argv + 4);
   if (strcmp(cmd, "bench") == 0 && argc == 5) return cmd_bench(file, argv[3], argv[4]);
   if (strcmp(cmd, "calls") == 0 && argc == 3) return cmd_calls(file);

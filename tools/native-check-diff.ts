@@ -89,9 +89,9 @@ export type Native =
   | { readonly kind: 'verdict'; readonly verdict: Verdict; readonly stderr: string }
   | { readonly kind: 'unsupported'; readonly why: string };
 
-/** What the native checker says about a file. */
-export function native(exe: string, path: string): Native {
-  const r = runTool(exe, ['check', path], { timeoutMs: 600_000 });
+/** What the native checker says about a file (`flags`: options of `a0 check`, before the path). */
+export function native(exe: string, path: string, flags: readonly string[] = []): Native {
+  const r = runTool(exe, ['check', ...flags, path], { timeoutMs: 600_000 });
   if (r.status === 0) return { kind: 'verdict', verdict: { ok: true }, stderr: '' };
   if (r.status === 65) {
     return { kind: 'unsupported', why: /unsupported \(([^)]*)\)/.exec(r.stderr)?.[1] ?? r.stderr };
@@ -159,10 +159,14 @@ export function agree(ref: Verdict, nat: Verdict): string {
   return 'same';
 }
 
-export async function compare(exe: string, p: Program): Promise<Row> {
+export async function compare(
+  exe: string,
+  p: Program,
+  flags: readonly string[] = [],
+): Promise<Row> {
   const bytes = readFileSync(p.path).length;
   const ref = await reference(p.path);
-  const nat = native(exe, p.path);
+  const nat = native(exe, p.path, flags);
   if (nat.kind === 'unsupported')
     return {
       label: p.label,
@@ -176,7 +180,7 @@ export async function compare(exe: string, p: Program): Promise<Row> {
   let result = outcome;
   if (outcome === 'same' && ref.ok) {
     // the lines of an accepted program: what the TypeScript CLI prints
-    const lines = runTool(exe, ['check', '--lines', p.path], { timeoutMs: 600_000 });
+    const lines = runTool(exe, ['check', '--lines', ...flags, p.path], { timeoutMs: 600_000 });
     const expected = await tsLines(p.path);
     if (lines.stdout !== expected) result = 'lines differ';
   }
@@ -184,7 +188,7 @@ export async function compare(exe: string, p: Program): Promise<Row> {
 }
 
 /** The stdout of `a0 check FILE` for an accepted program (src/cli.ts). */
-async function tsLines(path: string): Promise<string> {
+export async function tsLines(path: string): Promise<string> {
   const { formatType } = await import('../src/core.js');
   const { revision } = await import('../src/edit.js');
   const program = (await link(path, (p) => Promise.resolve(readFileSync(p, 'utf8')))).program;
