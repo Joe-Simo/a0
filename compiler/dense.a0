@@ -1,4 +1,4 @@
-# Dense reader, written in A0 (Stage A). The dense text of one file becomes the canonical text of
+# Dense reader, written in A0 (Stages A and B1). The dense text of one file becomes the canonical text of
 # its program: src/dense.ts parseDense, then formatProgram. Stage A covers the forms that
 # the corpus fixtures and examples/kernels.a0 use, and records: explicit ids and
 # the default names a, b, ... of nodes that have none; nesting (a value used once is written in
@@ -6,18 +6,26 @@
 # records; parameters A, B, ... and pN; u32 and bool literals; the arithmetic, comparison and
 # select operations and mov; use lines (skipped: the canonical text has none); function headers
 # with u32, bool or record types, and the first statement on the header line.
-# Not Stage A (the error flag is set): calls and direct callees, fold, loop, arrays, text, io, $
-# escapes, =, inline bodies, repeat, spec lines, hex literals and profile lines.
+# Stage B1 adds calls: `g A B` (a first word or an identifier that names a function) and
+# `call g A B`, of a function defined earlier in the same input. The arity of the callee is the
+# type count of its header or, for a header without types, one more than the highest parameter its
+# nodes and result use; a callee that is later, the function itself or in a used file, a wrong
+# operand count, and an overflow set the error flag. Arguments of a call are kept in a pool.
+# Not yet read (the error flag is set): fold, loop, arrays, text, io, $ escapes, =, inline bodies,
+# repeat, spec lines, hex literals and profile lines.
 #
 # Input: the dense bytes src[0..n) as 128-byte pages (n <= 16384). Output: the canonical bytes as
 # pages of 128 (at most 16384 bytes) and the error flag, set when the input or the output is over
 # a capacity (16384 bytes, 4096 tokens, 2048 lines, 2048 nodes, 512 functions, 2048 parameters,
-# 8 nested frames) or a construct is outside the forms above. The name and id tables of a function
+# 8 nested frames, 3070 call arguments) or a construct is outside the forms above. The name and id tables of a function
 # hold 2048 entries, the node capacity, so every node of an accepted program has its own entry.
 # Every pass is a fold over paged tables; there is no control flow, so every branch is a select,
 # and a fold with a count of 0 does nothing.
 #
 # Passes:
+#   0 fnscan: each line that starts with `fn` names a function; the name tokens seed the function
+#     table and their count the meta entry of the node table, so a word is a function name before
+#     (or without) the function being read; a name defined twice is an error.
 #   1 lexb: each byte (and a virtual newline at n) appends its word and punctuation tokens and
 #     the line boundaries (the token count at each newline) to paged tables.
 #   2 lines: each line is a function header (`fn NAME [TYPES ->] [RESULT]`, the rest of the
@@ -31,6 +39,12 @@
 # value of a number (or of the parameter letter or pN), fl bit 0 digits, bit 1 pN, bit 2 A-Z.
 # Node: (op, idt, nargs, k0, v0, k1, v1, k2, v2, k3, v3); idt 0 default name, 1+token for an
 # explicit name, 4294967295 the fresh `retval`. Operand kinds: 1 node, 2 parameter, 3 u32, 4 bool.
+# The node table has 40 pages of 128 entries: nodes 0..2047, the meta entry 2048 (k0 the next free
+# pool offset, k1 the function count), the call-argument pool 2049..5118 (one operand per entry, in
+# k0 and v0 of fields 3 and 4), and 5119 a dummy write target. A call node (op 24) has k0 = 5 and
+# v0 the callee, k1 = 2 and v1 the highest parameter its arguments use (or k1 = 0), k2 = 6 and v2
+# the pool index of its first argument; nargs is the arity. A call frame (op 24) keeps the same
+# k0, v0, k2, v2 and writes each argument to the pool as it completes.
 
 fn ztok -> (u32,u32,u32,u32,u32,u32,u32,u32)x128x32
 zr rec 0 0 0 0 0 0 0 0
