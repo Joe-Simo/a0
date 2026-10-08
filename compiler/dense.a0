@@ -1,0 +1,1955 @@
+# Dense reader, written in A0 (Stage A). The dense text of one file becomes the canonical text of
+# its program: src/dense.ts parseDense, then formatProgram. Stage A covers the forms that
+# the corpus fixtures and examples/kernels.a0 use, and records: explicit ids and
+# the default names a, b, ... of nodes that have none; nesting (a value used once is written in
+# its consumer, as in `add mul A B C`); records (`(a b)`, `(x,)`, and `(x)` for x); at and put on
+# records; parameters A, B, ... and pN; u32 and bool literals; the arithmetic, comparison and
+# select operations and mov; use lines (skipped: the canonical text has none); function headers
+# with u32, bool or record types, and the first statement on the header line.
+# Not Stage A (the error flag is set): calls and direct callees, fold, loop, arrays, text, io, $
+# escapes, =, inline bodies, repeat, spec lines, hex literals and profile lines.
+#
+# Input: the dense bytes src[0..n) as 128-byte pages (n <= 16384). Output: the canonical bytes as
+# pages of 128 (at most 16384 bytes) and the error flag, set when the input or the output is over
+# a capacity (16384 bytes, 4096 tokens, 2048 lines, 2048 nodes, 512 functions, 2048 parameters,
+# 8 nested frames) or a construct is outside the forms above. A function with more than 256
+# default-named nodes is not checked. Every pass is a fold over paged tables; there is no control
+# flow, so every branch is a select, and a fold with a count of 0 does nothing.
+#
+# Passes:
+#   1 lexb: each byte (and a virtual newline at n) appends its word and punctuation tokens and
+#     the line boundaries (the token count at each newline) to paged tables.
+#   2 lines: each line is a function header (`fn NAME [TYPES ->] [RESULT]`, the rest of the
+#     line its first statement) or a statement; statements are prefix expressions, parsed
+#     forward with a frame stack, so a node is created after its operands (canonical order).
+#   3 print: each function as its canonical lines; default names are the candidates a..zzzz
+#     that are neither keywords nor explicit names, in node order.
+#
+# Token: (kind, len, start, w0, w1, hh, nv, fl). kind 1 word, 3 ( 4 ) 5 [ 6 ] 7 , 9 error byte.
+# w0 and w1 pack the first 8 bytes (big-endian, no padding), hh is a hash of all bytes, nv the
+# value of a number (or of the parameter letter or pN), fl bit 0 digits, bit 1 pN, bit 2 A-Z.
+# Node: (op, idt, nargs, k0, v0, k1, v1, k2, v2, k3, v3); idt 0 default name, 1+token for an
+# explicit name, 4294967295 the fresh `retval`. Operand kinds: 1 node, 2 parameter, 3 u32, 4 bool.
+
+fn ztok -> (u32,u32,u32,u32,u32,u32,u32,u32)x128x32
+zr rec 0 0 0 0 0 0 0 0
+zp arr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr zr
+zt arr zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp
+ret zt
+end
+
+fn zlnt -> u32x128x16
+zu mov 0
+zp arr zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu
+zt arr zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp
+ret zt
+end
+
+fn s1zero -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool)
+tk0 call ztok
+bd0 call zlnt
+r rec tk0 0 bd0 0 false false false 0 0 0 0 0 0 false false false
+ret r
+end
+
+fn tokput (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 (u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,u32,u32,u32,u32,u32,u32,u32)x128x32
+ix shr p1 7
+pg get p0 ix
+lo and p1 127
+pg2 set pg lo p2
+r set p0 ix pg2
+ret r
+end
+
+fn bput u32x128x16 u32 u32 -> u32x128x16
+ix shr p1 7
+pg get p0 ix
+lo and p1 127
+pg2 set pg lo p2
+r set p0 ix pg2
+ret r
+end
+
+# One byte of the source (i < n) or the virtual newline (i == n): the state after it.
+fn lexb ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool) u32 u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool)
+tk at p0 0
+ntk at p0 1
+bd at p0 2
+nbk at p0 3
+err0 at p0 4
+inw at p0 5
+cmt at p0 6
+wst at p0 7
+wln at p0 8
+w0 at p0 9
+w1 at p0 10
+hh at p0 11
+nv at p0 12
+dfl at p0 13
+pfl at p0 14
+lfl at p0 15
+pgi shr p1 7
+pg get p2 pgi
+b0 get pg p1
+ci lt p1 p3
+c select ci b0 10
+nl eq c 10
+hs eq c 35
+act eq cmt false
+d1 ge c 48
+d2 le c 57
+dg and d1 d2
+u1 ge c 65
+u2 le c 90
+up and u1 u2
+q1 eq c 32
+q2 eq c 9
+q3 eq c 13
+q4 eq c 44
+q5 eq c 40
+q6 eq c 41
+q7 eq c 91
+q8 eq c 93
+q9 eq c 59
+q10 eq c 34
+q11 eq c 123
+q12 eq c 125
+s1 or q1 q2
+s2 or q3 q4
+s3 or q5 q6
+s4 or q7 q8
+s5 or q9 q10
+s6 or q11 q12
+s7 or s1 s2
+s8 or s3 s4
+s9 or s5 s6
+s10 or s7 s8
+sx or s9 s10
+sepall or sx hs
+sepa2 or sepall nl
+wc eq sepa2 false
+upd and act wc
+endw and inw sepa2
+e1 mov q9
+e2 or q11 q12
+erch or e1 e2
+ect and act erch
+pr1 or q4 q5
+pr2 or q6 q7
+pr3 or q8 q9
+pr4 mov q11
+pr5 or pr1 pr2
+pr6 or pr3 pr4
+pr7 or pr5 pr6
+pr8 or pr7 q12
+pval and act pr8
+ka select q4 7 9
+kb select q5 3 ka
+kc select q6 4 kb
+kd select q7 5 kc
+ke select q8 6 kd
+wl2 ge wln 2
+pfq and pfl wl2
+fb select pfq 2 0
+wl1 eq wln 1
+lfq and lfl wl1
+fc select lfq 4 0
+fa select dfl 1 0
+fab add fa fb
+flg add fab fc
+endn select endw 1 0
+toka rec 1 wln wst w0 w1 hh nv flg
+tka call tokput tk ntk toka
+ntka add ntk endn
+bdb call bput bd nbk ntka
+nlv select nl 1 0
+nbkb add nbk nlv
+pvn select pval 1 0
+tokb rec ke 1 p1 0 0 0 0 0
+tkb call tokput tka ntka tokb
+ntkb add ntka pvn
+z0 eq wln 0
+ue and upd z0
+wstn select ue p1 wst
+wlna add wln 1
+wlnn select upd wlna 0
+lt4 lt wln 4
+m1 mul w0 256
+m2 add m1 c
+w0a select lt4 m2 w0
+w0n select upd w0a 0
+ge4 ge wln 4
+lt8 lt wln 8
+g48 and ge4 lt8
+m3 mul w1 256
+m4 add m3 c
+w1a select g48 m4 w1
+w1n select upd w1a 0
+h1 mul hh 31
+h2 add h1 c
+hha select z0 c h2
+hhn select upd hha 0
+nb select z0 0 nv
+nd1 mul nb 10
+nd2 sub c 48
+nd3 add nd1 nd2
+nu sub c 65
+nz select up nu 0
+nwn select z0 nz nv
+nwx select dg nd3 nwn
+nvn select upd nwx 0
+dd and dfl dg
+dfa select z0 dg dd
+dfn select upd dfa false
+pc eq c 112
+pdd and pfl dg
+pfa select z0 pc pdd
+pfn select upd pfa false
+lfa select z0 up false
+lfn select upd lfa false
+ch or cmt hs
+cmtn select nl false ch
+ea and act erch
+eb or err0 ea
+ov1 gt ntkb 4095
+ov2 gt nbkb 2047
+ov or ov1 ov2
+errn or eb ov
+r rec tkb ntkb bdb nbkb errn upd cmtn wstn wlnn w0n w1n hhn nvn dfn pfn lfn
+ret r
+end
+
+# The lexer over the whole input: n + 1 steps (the last one is the virtual newline).
+fn lexall u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool)
+s0 call s1zero
+m add p1 1
+s fold lexb m s0 p0 p1
+ret s
+end
+
+fn wcls (u32,u32,u32,u32,u32,u32,u32,u32) -> u32
+kd at p0 0
+ln at p0 1
+w0 at p0 3
+w1 at p0 4
+isw eq kd 1
+prev mov 0
+m0a eq ln 2
+m0b eq w0 26222
+m0c eq w1 0
+m0d and m0a m0b
+m0e and m0d m0c
+m0f and m0e isw
+s0 select m0f 30 prev
+m1a eq ln 3
+m1b eq w0 7697253
+m1c eq w1 0
+m1d and m1a m1b
+m1e and m1d m1c
+m1f and m1e isw
+s1 select m1f 31 s0
+m2a eq ln 3
+m2b eq w0 6647396
+m2c eq w1 0
+m2d and m2a m2b
+m2e and m2d m2c
+m2f and m2e isw
+s2 select m2f 32 s1
+m3a eq ln 3
+m3b eq w0 7497076
+m3c eq w1 0
+m3d and m3a m3b
+m3e and m3d m3c
+m3f and m3e isw
+s3 select m3f 33 s2
+m4a eq ln 4
+m4b eq w0 1953658213
+m4c eq w1 0
+m4d and m4a m4b
+m4e and m4d m4c
+m4f and m4e isw
+s4 select m4f 34 s3
+m5a eq ln 5
+m5b eq w0 1717660787
+m5c eq w1 101
+m5d and m5a m5b
+m5e and m5d m5c
+m5f and m5e isw
+s5 select m5f 35 s4
+m6a eq ln 2
+m6b eq w0 11582
+m6c eq w1 0
+m6d and m6a m6b
+m6e and m6d m6c
+m6f and m6e isw
+s6 select m6f 36 s5
+m7a eq ln 3
+m7b eq w0 7680818
+m7c eq w1 0
+m7d and m7a m7b
+m7e and m7d m7c
+m7f and m7e isw
+s7 select m7f 37 s6
+m8a eq ln 4
+m8b eq w0 1651470188
+m8c eq w1 0
+m8d and m8a m8b
+m8e and m8d m8c
+m8f and m8e isw
+s8 select m8f 37 s7
+m9a eq ln 2
+m9b eq w0 26991
+m9c eq w1 0
+m9d and m9a m9b
+m9e and m9d m9c
+m9f and m9e isw
+s9 select m9f 37 s8
+m10a eq ln 3
+m10b eq w0 7171958
+m10c eq w1 0
+m10d and m10a m10b
+m10e and m10d m10c
+m10f and m10e isw
+s10 select m10f 1 s9
+m11a eq ln 3
+m11b eq w0 6382692
+m11c eq w1 0
+m11d and m11a m11b
+m11e and m11d m11c
+m11f and m11e isw
+s11 select m11f 2 s10
+m12a eq ln 3
+m12b eq w0 7566690
+m12c eq w1 0
+m12d and m12a m12b
+m12e and m12d m12c
+m12f and m12e isw
+s12 select m12f 3 s11
+m13a eq ln 3
+m13b eq w0 7173484
+m13c eq w1 0
+m13d and m13a m13b
+m13e and m13d m13c
+m13f and m13e isw
+s13 select m13f 4 s12
+m14a eq ln 3
+m14b eq w0 6385252
+m14c eq w1 0
+m14d and m14a m14b
+m14e and m14d m14c
+m14f and m14e isw
+s14 select m14f 5 s13
+m15a eq ln 2
+m15b eq w0 28530
+m15c eq w1 0
+m15d and m15a m15b
+m15e and m15d m15c
+m15f and m15e isw
+s15 select m15f 6 s14
+m16a eq ln 3
+m16b eq w0 7892850
+m16c eq w1 0
+m16d and m16a m16b
+m16e and m16d m16c
+m16f and m16e isw
+s16 select m16f 7 s15
+m17a eq ln 3
+m17b eq w0 7563372
+m17c eq w1 0
+m17d and m17a m17b
+m17e and m17d m17c
+m17f and m17e isw
+s17 select m17f 8 s16
+m18a eq ln 3
+m18b eq w0 7563378
+m18c eq w1 0
+m18d and m18a m18b
+m18e and m18d m18c
+m18f and m18e isw
+s18 select m18f 9 s17
+m19a eq ln 2
+m19b eq w0 25969
+m19c eq w1 0
+m19d and m19a m19b
+m19e and m19d m19c
+m19f and m19e isw
+s19 select m19f 10 s18
+m20a eq ln 2
+m20b eq w0 28261
+m20c eq w1 0
+m20d and m20a m20b
+m20e and m20d m20c
+m20f and m20e isw
+s20 select m20f 11 s19
+m21a eq ln 2
+m21b eq w0 27764
+m21c eq w1 0
+m21d and m21a m21b
+m21e and m21d m21c
+m21f and m21e isw
+s21 select m21f 12 s20
+m22a eq ln 2
+m22b eq w0 27749
+m22c eq w1 0
+m22d and m22a m22b
+m22e and m22d m22c
+m22f and m22e isw
+s22 select m22f 13 s21
+m23a eq ln 2
+m23b eq w0 26484
+m23c eq w1 0
+m23d and m23a m23b
+m23e and m23d m23c
+m23f and m23e isw
+s23 select m23f 14 s22
+m24a eq ln 2
+m24b eq w0 26469
+m24c eq w1 0
+m24d and m24a m24b
+m24e and m24d m24c
+m24f and m24e isw
+s24 select m24f 15 s23
+m25a eq ln 6
+m25b eq w0 1936026725
+m25c eq w1 25460
+m25d and m25a m25b
+m25e and m25d m25c
+m25f and m25e isw
+s25 select m25f 16 s24
+m26a eq ln 3
+m26b eq w0 6776180
+m26c eq w1 0
+m26d and m26a m26b
+m26e and m26d m26c
+m26f and m26e isw
+s26 select m26f 17 s25
+m27a eq ln 3
+m27b eq w0 7562612
+m27c eq w1 0
+m27d and m27a m27b
+m27e and m27d m27c
+m27f and m27e isw
+s27 select m27f 18 s26
+m28a eq ln 2
+m28b eq w0 24948
+m28c eq w1 0
+m28d and m28a m28b
+m28e and m28d m28c
+m28f and m28e isw
+s28 select m28f 19 s27
+m29a eq ln 3
+m29b eq w0 7370100
+m29c eq w1 0
+m29d and m29a m29b
+m29e and m29d m29c
+m29f and m29e isw
+s29 select m29f 20 s28
+m30a eq ln 3
+m30b eq w0 6580598
+m30c eq w1 0
+m30d and m30a m30b
+m30e and m30d m30c
+m30f and m30e isw
+s30 select m30f 21 s29
+m31a eq ln 3
+m31b eq w0 7497069
+m31c eq w1 0
+m31d and m31a m31b
+m31e and m31d m31c
+m31f and m31e isw
+s31 select m31f 22 s30
+m32a eq ln 4
+m32b eq w0 1969514870
+m32c eq w1 0
+m32d and m32a m32b
+m32e and m32d m32c
+m32f and m32e isw
+s32 select m32f 21 s31
+m33a eq ln 4
+m33b eq w0 1970431341
+m33c eq w1 0
+m33d and m33a m33b
+m33e and m33d m33c
+m33f and m33e isw
+s33 select m33f 22 s32
+m34a eq ln 1
+m34b eq w0 43
+m34c eq w1 0
+m34d and m34a m34b
+m34e and m34d m34c
+m34f and m34e isw
+s34 select m34f 2 s33
+m35a eq ln 1
+m35b eq w0 45
+m35c eq w1 0
+m35d and m35a m35b
+m35e and m35d m35c
+m35f and m35e isw
+s35 select m35f 3 s34
+m36a eq ln 1
+m36b eq w0 42
+m36c eq w1 0
+m36d and m36a m36b
+m36e and m36d m36c
+m36f and m36e isw
+s36 select m36f 4 s35
+m37a eq ln 1
+m37b eq w0 47
+m37c eq w1 0
+m37d and m37a m37b
+m37e and m37d m37c
+m37f and m37e isw
+s37 select m37f 21 s36
+m38a eq ln 1
+m38b eq w0 37
+m38c eq w1 0
+m38d and m38a m38b
+m38e and m38d m38c
+m38f and m38e isw
+s38 select m38f 22 s37
+m39a eq ln 1
+m39b eq w0 38
+m39c eq w1 0
+m39d and m39a m39b
+m39e and m39d m39c
+m39f and m39e isw
+s39 select m39f 5 s38
+m40a eq ln 1
+m40b eq w0 124
+m40c eq w1 0
+m40d and m40a m40b
+m40e and m40d m40c
+m40f and m40e isw
+s40 select m40f 6 s39
+m41a eq ln 1
+m41b eq w0 94
+m41c eq w1 0
+m41d and m41a m41b
+m41e and m41d m41c
+m41f and m41e isw
+s41 select m41f 7 s40
+m42a eq ln 2
+m42b eq w0 15420
+m42c eq w1 0
+m42d and m42a m42b
+m42e and m42d m42c
+m42f and m42e isw
+s42 select m42f 8 s41
+m43a eq ln 2
+m43b eq w0 15934
+m43c eq w1 0
+m43d and m43a m43b
+m43e and m43d m43c
+m43f and m43e isw
+s43 select m43f 9 s42
+m44a eq ln 2
+m44b eq w0 15677
+m44c eq w1 0
+m44d and m44a m44b
+m44e and m44d m44c
+m44f and m44e isw
+s44 select m44f 10 s43
+m45a eq ln 2
+m45b eq w0 8509
+m45c eq w1 0
+m45d and m45a m45b
+m45e and m45d m45c
+m45f and m45e isw
+s45 select m45f 11 s44
+m46a eq ln 1
+m46b eq w0 60
+m46c eq w1 0
+m46d and m46a m46b
+m46e and m46d m46c
+m46f and m46e isw
+s46 select m46f 12 s45
+m47a eq ln 2
+m47b eq w0 15421
+m47c eq w1 0
+m47d and m47a m47b
+m47e and m47d m47c
+m47f and m47e isw
+s47 select m47f 13 s46
+m48a eq ln 1
+m48b eq w0 62
+m48c eq w1 0
+m48d and m48a m48b
+m48e and m48d m48c
+m48f and m48e isw
+s48 select m48f 14 s47
+m49a eq ln 2
+m49b eq w0 15933
+m49c eq w1 0
+m49d and m49a m49b
+m49e and m49d m49c
+m49f and m49e isw
+s49 select m49f 15 s48
+ret s49
+end
+
+fn arity u32 -> u32
+a0 mov 0
+e1 eq p0 1
+x1 select e1 1 a0
+g0a ge p0 2
+g0b le p0 15
+g0c and g0a g0b
+y0 select g0c 2 x1
+g1a ge p0 16
+g1b le p0 16
+g1c and g1a g1b
+y1 select g1c 3 y0
+g2a ge p0 19
+g2b le p0 19
+g2c and g2a g2b
+y2 select g2c 2 y1
+g3a ge p0 20
+g3b le p0 20
+g3c and g3a g3b
+y3 select g3c 3 y2
+g4a ge p0 21
+g4b le p0 22
+g4c and g4a g4b
+y4 select g4c 2 y3
+ret y4
+end
+
+
+# Pass 2: tokens to functions and nodes. A statement is a prefix expression over fixed arities,
+# read forward with a frame stack; a node is created when its last operand completes, so the
+# nodes come in canonical order. A parenthesized group is a record (or a single operand).
+# Frames: (op, need, have, comma, k0, v0, k1, v1, k2, v2, k3, v3); op 99 is a group.
+# Functions: (name token, parameter count or 4294967295 when implicit, first parameter span,
+# result token span or 4294967295 for u32, first node, return kind, return value).
+
+fn tkget (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32)
+ix shr p1 7
+pg get p0 ix
+r get pg p1
+ret r
+end
+
+fn bget u32x128x16 u32 -> u32
+ix shr p1 7
+pg get p0 ix
+r get pg p1
+ret r
+end
+
+fn ntget (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+ix shr p1 7
+pg get p0 ix
+r get pg p1
+ret r
+end
+
+fn ntset (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16
+ix shr p1 7
+pg get p0 ix
+lo and p1 127
+pg2 set pg lo p2
+r set p0 ix pg2
+ret r
+end
+
+fn ftget (u32,u32,u32,u32,u32,u32,u32,u32)x128x4 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32)
+ix shr p1 7
+pg get p0 ix
+r get pg p1
+ret r
+end
+
+fn ftset (u32,u32,u32,u32,u32,u32,u32,u32)x128x4 u32 (u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,u32,u32,u32,u32,u32,u32,u32)x128x4
+ix shr p1 7
+pg get p0 ix
+lo and p1 127
+pg2 set pg lo p2
+r set p0 ix pg2
+ret r
+end
+
+fn ptget (u32,u32)x128x16 u32 -> (u32,u32)
+ix shr p1 7
+pg get p0 ix
+r get pg p1
+ret r
+end
+
+fn ptset (u32,u32)x128x16 u32 (u32,u32) -> (u32,u32)x128x16
+ix shr p1 7
+pg get p0 ix
+lo and p1 127
+pg2 set pg lo p2
+r set p0 ix pg2
+ret r
+end
+
+fn frget (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9 u32 -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)
+r get p0 p1
+ret r
+end
+
+fn frset (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9 u32 (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9
+r set p0 p1 p2
+ret r
+end
+
+fn zfrm -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)
+r rec 0 0 0 false 0 0 0 0 0 0 0 0
+ret r
+end
+
+fn zfrms -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9
+zf call zfrm
+r arr zf zf zf zf zf zf zf zf zf
+ret r
+end
+
+fn zntab -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16
+zn rec 0 0 0 0 0 0 0 0 0 0 0
+zp arr zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn zn
+zt arr zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp
+ret zt
+end
+
+fn zftab -> (u32,u32,u32,u32,u32,u32,u32,u32)x128x4
+zf rec 0 0 0 0 0 0 0 0
+zp arr zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf
+zt arr zp zp zp zp
+ret zt
+end
+
+fn zptab -> (u32,u32)x128x16
+zq rec 0 0
+zp arr zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq
+zt arr zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp
+ret zt
+end
+
+fn zg -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
+gn call zntab
+gf call zftab
+gp call zptab
+r rec gn 0 gf 0 gp 0 false
+ret r
+end
+
+# Token k is glued to token k-1 (no space between them): one type, or one parenthesized group.
+fn glued (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> bool
+t call tkget p0 p1
+km sub p1 1
+u call tkget p0 km
+ts at t 2
+ul at u 1
+us at u 2
+ue add us ul
+r eq ts ue
+ret r
+end
+
+# The statement state with the node of a frame (its op and operands) appended.
+fn mknode ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32) (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32) -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32)
+nt at p0 0
+nn at p0 1
+nf at p0 2
+fr at p0 3
+dp at p0 4
+rs at p0 5
+rk at p0 6
+rv at p0 7
+se at p0 8
+bs at p0 9
+op at p1 0
+hv at p1 2
+k0 at p1 4
+v0 at p1 5
+k1 at p1 6
+v1 at p1 7
+k2 at p1 8
+v2 at p1 9
+k3 at p1 10
+v3 at p1 11
+nd rec op 0 hv k0 v0 k1 v1 k2 v2 k3 v3
+nt2 call ntset nt nn nd
+nn2 add nn 1
+r rec nt2 nn2 nf fr dp rs rk rv se bs
+ret r
+end
+
+# The last node from nf whose explicit id spells the token p5 (p4: the token table), else p0.
+fn findn u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 (u32,u32,u32,u32,u32,u32,u32,u32) -> u32
+ix add p1 p3
+nd call ntget p2 ix
+idt at nd 1
+op0 ne idt 0
+op1 ne idt 4294967295
+okn and op0 op1
+ti sub idt 1
+tk call tkget p4 ti
+la at tk 1
+lb at p5 1
+w0a at tk 3
+w0b at p5 3
+w1a at tk 4
+w1b at p5 4
+ha at tk 5
+hb at p5 5
+e1 eq la lb
+e2 eq w0a w0b
+e3 eq w1a w1b
+e4 eq ha hb
+e5 and e1 e2
+e6 and e3 e4
+hit and e5 e6
+hit2 and hit okn
+r select hit2 ix p0
+ret r
+end
+
+# One cascade step: a pending value goes to the top frame (or to the root); a full frame becomes
+# a node, and its value is pending for the frame below it.
+fn casc (((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32),bool,u32,u32) u32 -> (((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32),bool,u32,u32)
+sp at p0 0
+pe at p0 1
+pk at p0 2
+pv at p0 3
+nt at sp 0
+nn at sp 1
+nf at sp 2
+frs at sp 3
+dp at sp 4
+rs at sp 5
+rk at sp 6
+rv at sp 7
+se at sp 8
+bs at sp 9
+tpi sub dp 1
+top call frget frs tpi
+opc at top 0
+need at top 1
+have at top 2
+cma at top 3
+grp eq opc 99
+hv1 add have 1
+fullc eq hv1 need
+ng eq grp false
+fl0 and ng fullc
+z eq dp 0
+nz eq z false
+ce and pe nz
+cdone and ce fl0
+cb and pe z
+e0 eq have 0
+e1 eq have 1
+e2 eq have 2
+e3 eq have 3
+k0o at top 4
+v0o at top 5
+k1o at top 6
+v1o at top 7
+k2o at top 8
+v2o at top 9
+k3o at top 10
+v3o at top 11
+k0n select e0 pk k0o
+v0n select e0 pv v0o
+k1n select e1 pk k1o
+v1n select e1 pv v1o
+k2n select e2 pk k2o
+v2n select e2 pv v2o
+k3n select e3 pk k3o
+v3n select e3 pv v3o
+newtop rec opc need hv1 cma k0n v0n k1n v1n k2n v2n k3n v3n
+frs2 call frset frs tpi newtop
+cnd and pe nz
+frs3 select cnd frs2 frs
+spm call mknode sp newtop
+ntm at spm 0
+nnm at spm 1
+nt2 select cdone ntm nt
+nn2 select cdone nnm nn
+pvn select cdone nn pv
+pkn select cdone 1 pk
+dp2 sub dp 1
+dp3 select cdone dp2 dp
+rs2 or rs cb
+seb and cb rs
+se2 or se seb
+rk2 select cb pk rk
+rv2 select cb pv rv
+sp2 rec nt2 nn2 nf frs3 dp3 rs2 rk2 rv2 se2 bs
+r rec sp2 cdone pkn pvn
+ret r
+end
+
+# A statement token: its frame, its value and its errors; then the cascade of its value.
+fn spt ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32)
+ix add p3 p1
+t call tkget p2 ix
+kd at t 0
+ln at t 1
+w0 at t 3
+fl at t 7
+nvv at t 6
+code call wcls t
+nt0 at p0 0
+nn0 at p0 1
+nf0 at p0 2
+fr0 at p0 3
+dp0 at p0 4
+rs0 at p0 5
+rk0 at p0 6
+rv0 at p0 7
+se0 at p0 8
+bs0 at p0 9
+sp0 rec nt0 nn0 nf0 fr0 dp0 rs0 rk0 rv0 se0 bs0
+isw eq kd 1
+ar call arity code
+arnz ne ar 0
+eop and isw arnz
+arz eq ar 0
+ct34 eq code 34
+ct35 eq code 35
+cbool or ct34 ct35
+ebool and isw cbool
+bvv select ct34 1 0
+f1 and fl 1
+dig ne f1 0
+enum and isw dig
+f2 and fl 2
+pn ne f2 0
+f4 and fl 4
+lt4f ne f4 0
+pl or pn lt4f
+epar and isw pl
+enmp or enum epar
+cz eq code 0
+fz eq fl 0
+cnm and cz fz
+enm1 and isw cnm
+eg1 eq kd 3
+erp eq kd 4
+ecm eq kd 7
+nfr rec code ar 0 false 0 0 0 0 0 0 0 0
+gfr rec 99 4294967295 0 false 0 0 0 0 0 0 0 0
+pushfr select eg1 gfr nfr
+push or eop eg1
+cntn sub nn0 nf0
+fnd fold findn cntn 4294967295 nt0 nf0 p2 t
+fnf ne fnd 4294967295
+fnd2 select fnf fnd 0
+tpi0 sub dp0 1
+top call frget fr0 tpi0
+topop at top 0
+needt at top 1
+have at top 2
+cma at top 3
+k0 at top 4
+v0 at top 5
+k1 at top 6
+v1 at top 7
+k2 at top 8
+v2 at top 9
+k3 at top 10
+v3 at top 11
+topgrp eq topop 99
+hv1e eq have 1
+ncma eq cma false
+single and hv1e ncma
+bad1 eq topgrp false
+bad2 eq have 0
+bad3 gt have 4
+dz eq dp0 0
+bad4 or bad1 bad2
+bad5 or bad4 bad3
+badrp or bad5 dz
+rfr rec 23 0 have false k0 v0 k1 v1 k2 v2 k3 v3
+spm call mknode sp0 rfr
+erpnb eq badrp false
+erpg and erp erpnb
+ersg eq single false
+mkrec and erpg ersg
+spr select mkrec spm sp0
+ntr at spr 0
+nnr at spr 1
+rkrp select single k0 1
+rvrp select single v0 nn0
+topmod rec topop needt have true k0 v0 k1 v1 k2 v2 k3 v3
+tcm and ecm topgrp
+topw select tcm topmod top
+fra call frset fr0 dp0 pushfr
+frb call frset fra tpi0 topw
+dpa add dp0 1
+dpb sub dp0 1
+dpc select erp dpb dp0
+dpn select push dpa dpc
+arz2 eq ar 0
+cnz ne code 0
+kwb1 and isw cnz
+kwb2 and kwb1 arz
+kwb3 eq cbool false
+kwbad and kwb2 kwb3
+kk1 eq kd 1
+kk2 eq kd 3
+kk3 eq kd 4
+kk4 eq kd 7
+kok1 or kk1 kk2
+kok2 or kk3 kk4
+kok or kok1 kok2
+kbad eq kok false
+nfbad0 eq fnf false
+nfbad and enm1 nfbad0
+ncg eq topgrp false
+cmz or ncg dz
+cmbad and ecm cmz
+dfull eq dp0 8
+pof and push dfull
+erpbad and erp badrp
+ea1 or se0 kwbad
+ea2 or ea1 kbad
+ea3 or ea2 nfbad
+ea4 or ea3 erpbad
+ea5 or ea4 cmbad
+serrn or ea5 pof
+pa1 or ebool enum
+pa2 or pa1 epar
+pc1 and enm1 fnf
+pd1 or pa2 pc1
+erpok and erp badrp
+erpok2 eq badrp false
+erpv and erp erpok2
+pendv or pd1 erpv
+q1 select enum 3 0
+q2 select epar 2 q1
+q3 select ebool 4 q2
+q4 select pc1 1 q3
+pkn select erpv rkrp q4
+r1 select pc1 fnd2 0
+r2 select enmp nvv r1
+r3 select ebool bvv r2
+pvn select erpv rvrp r3
+sps1 rec ntr nnr nf0 frb dpn rs0 rk0 rv0 serrn bs0
+cs0 rec sps1 pendv pkn pvn
+csr fold casc 9 cs0
+r at csr 0
+ret r
+end
+
+# The first arrow token (`->`) of the header from token base + i on, else the state st.
+fn findarr u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> u32
+ix add p3 p1
+t call tkget p2 ix
+c call wcls t
+isa eq c 36
+nn4 eq p0 4294967295
+hit and isa nn4
+ixv select hit ix p0
+ret ixv
+end
+
+# One parameter token: a run start (a new span) or a glued token (extends the last span).
+fn parfold ((u32,u32)x128x16,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 u32 -> ((u32,u32)x128x16,u32)
+pt at p0 0
+cnt at p0 1
+k add p3 p1
+ptk call tkget p2 k
+gl call glued p2 k
+ni0 eq p1 0
+ng eq gl false
+start or ni0 ng
+idxn add p4 cnt
+kpr sub cnt 1
+idxc add p4 kpr
+widx select start idxn idxc
+prev call ptget pt idxc
+prevs at prev 0
+wstart select start k prevs
+ent rec wstart k
+pt2 call ptset pt widx ent
+sn select start 1 0
+cnt2 add cnt sn
+r rec pt2 cnt2
+ret r
+end
+
+# One result token: the run of glued tokens from the first one; the first token after it stops it.
+fn resfold (u32,bool) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> (u32,bool)
+et at p0 0
+dn at p0 1
+k add p3 p1
+glv call glued p2 k
+ni0 eq p1 0
+ngl eq glv false
+ni0n eq ni0 false
+ndn and ngl ni0n
+dn2 or dn ndn
+cont0 eq dn2 false
+cont1 or ni0 glv
+cont and cont0 cont1
+et2 select cont k et
+r rec et2 dn2
+ret r
+end
+
+# A statement line: an optional `ret` and name, then the prefix expression of the current function.
+fn stmt ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool) (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
+gnt at p0 0
+gnn at p0 1
+gft at p0 2
+gnf at p0 3
+gpt at p0 4
+gnp at p0 5
+gerr at p0 6
+cur sub gnf 1
+fn0 call ftget gft cur
+nf0 at fn0 5
+ok0 gt gnf 0
+t0 call tkget p1 p2
+c0 call wcls t0
+kd0 at t0 0
+fl0 at t0 7
+isw0 eq kd0 1
+retf eq c0 33
+cz0 eq c0 0
+fz0 eq fl0 0
+nmw and cz0 fz0
+nmw2 and nmw isw0
+nrt eq retf false
+nmk0 and nmw2 nrt
+nlen sub p3 p2
+two ge nlen 2
+nmk2 and nmk0 two
+rp1 add p2 1
+s1 select retf rp1 p2
+s2a add s1 1
+s2 select nmk2 s2a s1
+lt2 lt s2 p3
+cd sub p3 s2
+cnt select lt2 cd 0
+zfr call zfrms
+sps0 rec gnt gnn nf0 zfr 0 false 0 0 false gnn
+sres fold spt cnt sps0 p1 s2
+snn at sres 1
+sbase at sres 9
+created sub snn sbase
+hascr ne created 0
+sdep at sres 4
+sroot at sres 5
+srk at sres 6
+srv at sres 7
+sser at sres 8
+snt at sres 0
+dok eq sdep 0
+okr and sroot dok
+nse eq sser false
+okf and okr nse
+hasx ne cnt 0
+good0 and okf hasx
+good and good0 ok0
+last sub snn 1
+ndl call ntget snt last
+ndop at ndl 0
+ndidt at ndl 1
+ndna at ndl 2
+ndk0 at ndl 3
+ndv0 at ndl 4
+ndk1 at ndl 5
+ndv1 at ndl 6
+ndk2 at ndl 7
+ndv2 at ndl 8
+ndk3 at ndl 9
+ndv3 at ndl 10
+ea0 eq srk 1
+eb0 and ea0 hascr
+rtset and retf eb0
+nmset and nmk2 eb0
+nmref0 and nmk2 ea0
+nmref1 eq hascr false
+nmref and nmref0 nmref1
+nea0 ne srk 1
+nmerr and nmk2 nea0
+pd1 add p2 1
+idn0 select nmset pd1 ndidt
+idn select rtset 4294967295 idn0
+ndu rec ndop idn ndna ndk0 ndv0 ndk1 ndv1 ndk2 ndv2 ndk3 ndv3
+nt2 call ntset snt last ndu
+mv rec 1 pd1 1 1 srv 0 0 0 0 0 0
+ntm2 call ntset nt2 snn mv
+nt3 select nmref ntm2 nt2
+snp1 add snn 1
+nn3 select nmref snp1 snn
+rkf select nmref 1 srk
+rvf select nmref snn srv
+fnm at fn0 0
+fnp at fn0 1
+fpf at fn0 2
+fres at fn0 3
+frese at fn0 4
+fn1 rec fnm fnp fpf fres frese nf0 rkf rvf
+ft2 call ftset gft cur fn1
+ngood eq good false
+erra or gerr ngood
+errb or erra nmerr
+nok0 eq ok0 false
+errc or errb nok0
+g5 rec nt3 nn3 ft2 gnf gpt gnp errc
+gbad rec gnt gnn gft gnf gpt gnp errc
+r select ok0 g5 gbad
+ret r
+end
+
+# A function header (`fn NAME [TYPES ->] [RESULT] [statement]`) and its first statement.
+fn hdr ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool) (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
+gnt at p0 0
+gnn at p0 1
+gft at p0 2
+gnf at p0 3
+gpt at p0 4
+gnp at p0 5
+gerr at p0 6
+nmt add p2 1
+nmok lt nmt p3
+a2 add p2 2
+rcr lt a2 p3
+rcn sub p3 a2
+rcc select rcr rcn 0
+arw fold findarr rcc 4294967295 p1 a2
+has ne arw 4294967295
+pcn0 sub arw a2
+pcnt select has pcn0 0
+pst0 rec gpt 0
+pfin fold parfold pcnt pst0 p1 a2 gnp
+ptf at pfin 0
+cntf at pfin 1
+npt2 add gnp cntf
+ra add arw 1
+rr0 lt ra p3
+rcc2 sub p3 ra
+rcn2 select rr0 rcc2 0
+rcc3 select has rcn2 0
+rst0 rec ra false
+endr fold resfold rcc3 rst0 p1 ra
+rend at endr 0
+ress select has ra 4294967295
+rese select has rend 4294967295
+rendp add rend 1
+ssn select has rendp a2
+hasp gt cntf 0
+npar select hasp cntf 4294967295
+nfn rec nmt npar gnp ress rese gnn 0 0
+ft2 call ftset gft gnf nfn
+nfns2 add gnf 1
+g1 rec gnt gnn ft2 nfns2 ptf npt2 gerr
+ssok lt ssn p3
+g2 call stmt g1 p1 ssn p3
+g3 select ssok g2 g1
+ge3 at g3 6
+badn eq nmok false
+nrr eq rr0 false
+badr and has nrr
+bh1 or badn badr
+errh or ge3 bh1
+x0 at g3 0
+x1 at g3 1
+x2 at g3 2
+x3 at g3 3
+x4 at g3 4
+x5 at g3 5
+g4 rec x0 x1 x2 x3 x4 x5 errh
+r mov g4
+ret r
+end
+
+# A line of the source: a header, a statement, or nothing (use, end, blank).
+fn lnstep ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool) u32 u32x128x16 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
+km1 sub p1 1
+bp call bget p2 km1
+z0k eq p1 0
+s select z0k 0 bp
+e call bget p2 p1
+lt0 lt s e
+ms0 sub e s
+ms select lt0 ms0 0
+t0 call tkget p3 s
+c0 call wcls t0
+isfn eq c0 30
+isuse eq c0 31
+isend eq c0 32
+isd or isuse isend
+hd call hdr p0 p3 s e
+st call stmt p0 p3 s e
+x1 select isd p0 st
+x2 select isfn hd x1
+mz eq ms 0
+out select mz p0 x2
+ret out
+end
+
+# The reader's pass 2 over the lexer state of the whole input.
+fn parsefn u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
+lx call lexall p0 p1
+nb at lx 3
+bd at lx 2
+tk at lx 0
+g0 call zg
+g fold lnstep nb g0 bd tk
+ret g
+end
+
+
+# Pass 3: the canonical text. Every emit writes a count of bytes, and a count of 0 writes nothing,
+# so a branch that does not apply is an emit of 0 bytes. The constant text (cst) holds
+# the fixed words; OPOFFS and OPLENS locate the name of each op code in it.
+
+fn zout -> u32x128x128
+zu mov 0
+zp arr zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu zu
+zt arr zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp
+ret zt
+end
+
+fn z256 -> u32x256
+zq mov 0
+zr arr zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq zq
+ret zr
+end
+
+fn zpw -> u32x10
+pw arr 1 10 100 1000 10000 100000 1000000 10000000 100000000 1000000000
+ret pw
+end
+
+# One byte appended to the output.
+fn ob (u32x128x128,u32) u32 -> (u32x128x128,u32)
+out at p0 0
+pos at p0 1
+ix shr pos 7
+pg get out ix
+lo and pos 127
+pg2 set pg lo p1
+o2 set out ix pg2
+np add pos 1
+r rec o2 np
+ret r
+end
+
+fn putcb (u32x128x128,u32) u32 u32x256 u32 -> (u32x128x128,u32)
+ix add p3 p1
+b get p2 ix
+r call ob p0 b
+ret r
+end
+
+# n bytes of the constant text from offset off.
+fn putc (u32x128x128,u32) u32x256 u32 u32 -> (u32x128x128,u32)
+r fold putcb p3 p0 p1 p2
+ret r
+end
+
+fn putsb (u32x128x128,u32) u32 u32x128x128 u32 -> (u32x128x128,u32)
+x add p3 p1
+xp shr x 7
+pg get p2 xp
+b get pg x
+r call ob p0 b
+ret r
+end
+
+# n bytes of the source from byte start.
+fn putsrc (u32x128x128,u32) u32x128x128 u32 u32 -> (u32x128x128,u32)
+r fold putsb p3 p0 p1 p2
+ret r
+end
+
+fn putwb (u32x128x128,u32) u32 u32 u32 -> (u32x128x128,u32)
+q1 sub p3 1
+q2 sub q1 p1
+q3 mul q2 8
+v shr p2 q3
+b and v 255
+r call ob p0 b
+ret r
+end
+
+# n bytes of the packed word w, most significant first.
+fn putw (u32x128x128,u32) u32 u32 -> (u32x128x128,u32)
+r fold putwb p2 p0 p1 p2
+ret r
+end
+
+fn dcnb u32 u32 u32x10 u32 -> u32
+ix add p1 1
+pwi get p2 ix
+g2 ge p3 pwi
+inc select g2 1 0
+r add p0 inc
+ret r
+end
+
+fn putnb (u32x128x128,u32) u32 u32x10 u32 u32 -> (u32x128x128,u32)
+e1 sub p4 1
+e sub e1 p1
+pwv get p2 e
+dv div p3 pwv
+dm rem dv 10
+ch add dm 48
+r call ob p0 ch
+ret r
+end
+
+# The decimal digits of v when gate, else nothing.
+fn putnum (u32x128x128,u32) u32 bool -> (u32x128x128,u32)
+pw call zpw
+dc fold dcnb 9 1 pw p1
+ng select p2 dc 0
+r fold putnb ng p0 pw p1 dc
+ret r
+end
+
+# The name of the candidate j in the default sequence a, b, ..., z, aa, ...: (length, packed).
+fn cnstep (u32,u32,u32) u32 -> (u32,u32,u32)
+nn at p0 0
+lw at p0 1
+ll at p0 2
+pos0 gt nn 0
+nm1 sub nn 1
+dd rem nm1 26
+nx div nm1 26
+ch add dd 97
+sh mul ll 8
+one mov 1
+pwr shl one sh
+term mul ch pwr
+lw2 add lw term
+ll2 add ll 1
+nn2 select pos0 nx nn
+lw3 select pos0 lw2 lw
+ll3 select pos0 ll2 ll
+r rec nn2 lw3 ll3
+ret r
+end
+
+fn cname u32 -> (u32,u32)
+n0 add p0 1
+r0 rec n0 0 0
+fin fold cnstep 4 r0
+lw at fin 1
+ll at fin 2
+out rec ll lw
+ret out
+end
+
+fn kwdef u32 u32 -> bool
+k0 mov false
+m0a eq p0 3
+m0b eq p1 7171958
+m0c and m0a m0b
+s0 or k0 m0c
+m1a eq p0 3
+m1b eq p1 6382692
+m1c and m1a m1b
+s1 or s0 m1c
+m2a eq p0 3
+m2b eq p1 7566690
+m2c and m2a m2b
+s2 or s1 m2c
+m3a eq p0 3
+m3b eq p1 7173484
+m3c and m3a m3b
+s3 or s2 m3c
+m4a eq p0 3
+m4b eq p1 6385252
+m4c and m4a m4b
+s4 or s3 m4c
+m5a eq p0 2
+m5b eq p1 28530
+m5c and m5a m5b
+s5 or s4 m5c
+m6a eq p0 3
+m6b eq p1 7892850
+m6c and m6a m6b
+s6 or s5 m6c
+m7a eq p0 3
+m7b eq p1 7563372
+m7c and m7a m7b
+s7 or s6 m7c
+m8a eq p0 3
+m8b eq p1 7563378
+m8c and m8a m8b
+s8 or s7 m8c
+m9a eq p0 2
+m9b eq p1 25969
+m9c and m9a m9b
+s9 or s8 m9c
+m10a eq p0 2
+m10b eq p1 28261
+m10c and m10a m10b
+s10 or s9 m10c
+m11a eq p0 2
+m11b eq p1 27764
+m11c and m11a m11b
+s11 or s10 m11c
+m12a eq p0 2
+m12b eq p1 27749
+m12c and m12a m12b
+s12 or s11 m12c
+m13a eq p0 2
+m13b eq p1 26484
+m13c and m13a m13b
+s13 or s12 m13c
+m14a eq p0 2
+m14b eq p1 26469
+m14c and m14a m14b
+s14 or s13 m14c
+m15a eq p0 4
+m15b eq p1 1667329132
+m15c and m15a m15b
+s15 or s14 m15c
+m16a eq p0 4
+m16b eq p1 1718578276
+m16c and m16a m16b
+s16 or s15 m16c
+m17a eq p0 4
+m17b eq p1 1819242352
+m17c and m17a m17b
+s17 or s16 m17c
+m18a eq p0 3
+m18b eq p1 6386290
+m18c and m18a m18b
+s18 or s17 m18c
+m19a eq p0 3
+m19b eq p1 7497059
+m19c and m19a m19b
+s19 or s18 m19c
+m20a eq p0 3
+m20b eq p1 6776180
+m20c and m20a m20b
+s20 or s19 m20c
+m21a eq p0 3
+m21b eq p1 7562612
+m21c and m21a m21b
+s21 or s20 m21c
+m22a eq p0 2
+m22b eq p1 24948
+m22c and m22a m22b
+s22 or s21 m22c
+m23a eq p0 3
+m23b eq p1 7370100
+m23c and m23a m23b
+s23 or s22 m23c
+m24a eq p0 4
+m24b eq p1 1919246692
+m24c and m24a m24b
+s24 or s23 m24c
+m25a eq p0 3
+m25b eq p1 6580598
+m25c and m25a m25b
+s25 or s24 m25c
+m26a eq p0 3
+m26b eq p1 7497069
+m26c and m26a m26b
+s26 or s25 m26c
+m27a eq p0 4
+m27b eq p1 1886745715
+m27c and m27a m27b
+s27 or s26 m27c
+m28a eq p0 4
+m28b eq p1 1667327076
+m28c and m28a m28b
+s28 or s27 m28c
+m29a eq p0 4
+m29b eq p1 1668511074
+m29c and m29a m29b
+s29 or s28 m29c
+m30a eq p0 4
+m30b eq p1 1668117868
+m30c and m30a m30b
+s30 or s29 m30c
+m31a eq p0 4
+m31b eq p1 1667524982
+m31c and m31a m31b
+s31 or s30 m31c
+m32a eq p0 4
+m32b eq p1 1668441453
+m32c and m32a m32b
+s32 or s31 m32c
+m33a eq p0 4
+m33b eq p1 1667720564
+m33c and m33a m33b
+s33 or s32 m33c
+m34a eq p0 4
+m34b eq p1 1969514870
+m34c and m34a m34b
+s34 or s33 m34c
+m35a eq p0 4
+m35b eq p1 1970431341
+m35c and m35a m35b
+s35 or s34 m35c
+m36a eq p0 4
+m36b eq p1 1952807028
+m36c and m36a m36b
+s36 or s35 m36c
+m37a eq p0 2
+m37b eq p1 26222
+m37c and m37a m37b
+s37 or s36 m37c
+m38a eq p0 3
+m38b eq p1 7497076
+m38c and m38a m38b
+s38 or s37 m38c
+m39a eq p0 3
+m39b eq p1 6647396
+m39c and m39a m39b
+s39 or s38 m39c
+m40a eq p0 3
+m40b eq p1 7697253
+m40c and m40a m40b
+s40 or s39 m40c
+m41a eq p0 4
+m41b eq p1 1953658213
+m41c and m41a m41b
+s41 or s40 m41c
+ret s41
+end
+
+# The flag st, set when local node i has an explicit id of length L and packed word lw.
+fn exfind u32 u32 u32x256 u32x256 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 u32 -> u32
+kk get p2 p1
+vv get p3 p1
+tk call tkget p4 vv
+tl at tk 1
+tw at tk 3
+e1 eq kk 1
+e2 eq tl p5
+e3 eq tw p6
+e4 and e1 e2
+e5 and e4 e3
+hit select e5 1 p0
+ret hit
+end
+
+# One candidate name: accepted when no explicit id and no keyword has it.
+fn dncand (u32x256,u32x256,u32) u32 u32x256 u32x256 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> (u32x256,u32x256,u32)
+dnw0 at p0 0
+dnl0 at p0 1
+cnt0 at p0 2
+cc call cname p1
+cl at cc 0
+cw at cc 1
+ex fold exfind p5 0 p2 p3 p4 cl cw
+exb ne ex 0
+kw call kwdef cl cw
+okc0 eq exb false
+okc1 eq kw false
+okc and okc0 okc1
+dnw1 set dnw0 cnt0 cw
+dnl1 set dnl0 cnt0 cl
+dnw2 select okc dnw1 dnw0
+dnl2 select okc dnl1 dnl0
+cn1 add cnt0 1
+cnt2 select okc cn1 cnt0
+r rec dnw2 dnl2 cnt2
+ret r
+end
+
+# The id kind of node i: 0 default (the m-th default name), 1 explicit (token), 2 retval.
+fn idfold (u32x256,u32x256,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 -> (u32x256,u32x256,u32)
+ix add p3 p1
+nd call ntget p2 ix
+idt at nd 1
+ka eq idt 0
+kb eq idt 4294967295
+kd0 select kb 2 1
+kd select ka 0 kd0
+idk0 at p0 0
+idv0 at p0 1
+m0 at p0 2
+it1 sub idt 1
+vv0 select kb 0 it1
+vv select ka m0 vv0
+idk2 set idk0 p1 kd
+idv2 set idv0 p1 vv
+mi select ka 1 0
+m2 add m0 mi
+r rec idk2 idv2 m2
+ret r
+end
+
+# The larger of mx and one more than the parameter index of node i operands (kind 2).
+fn needfold u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 -> u32
+ix add p3 p1
+nd call ntget p2 ix
+k0 at nd 3
+v0 at nd 4
+k1 at nd 5
+v1 at nd 6
+k2 at nd 7
+v2 at nd 8
+k3 at nd 9
+v3 at nd 10
+a0 eq k0 2
+b0 add v0 1
+c0 select a0 b0 0
+a1 eq k1 2
+b1 add v1 1
+c1 select a1 b1 0
+a2 eq k2 2
+b2 add v2 1
+c2 select a2 b2 0
+a3 eq k3 2
+b3 add v3 1
+c3 select a3 b3 0
+g1 gt p0 c0
+m1 select g1 p0 c0
+g2 gt m1 c1
+m2 select g2 m1 c1
+g3 gt m2 c2
+m3 select g3 m2 c2
+g4 gt m3 c3
+m4 select g4 m3 c3
+ret m4
+end
+
+# The id of local node li, written when gate: a default name, the explicit token, or retval.
+fn emitid (u32x128x128,u32) u32 (u32x256,u32x256,u32x256,u32x256,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) bool -> (u32x128x128,u32)
+idka at p2 0
+idva at p2 1
+dnwa at p2 2
+dnla at p2 3
+toka at p2 5
+srca at p2 6
+csta at p2 7
+kk get idka p1
+vv get idva p1
+is0 eq kk 0
+is1 eq kk 1
+is2 eq kk 2
+g0 and p3 is0
+g1 and p3 is1
+g2 and p3 is2
+mdl get dnla vv
+mdw get dnwa vv
+dl2 select g0 mdl 0
+s1 call putw p0 mdw dl2
+tk call tkget toka vv
+tst at tk 2
+tln at tk 1
+n1 select g1 tln 0
+s2 call putsrc s1 srca tst n1
+n2 select g2 6 0
+s3 call putc s2 csta 21 n2
+ret s3
+end
+
+# An operand: a node (its id), a parameter (p + index), a u32 literal, or a bool.
+fn emitop (u32x128x128,u32) u32 u32 (u32x256,u32x256,u32x256,u32x256,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) bool -> (u32x128x128,u32)
+is1 eq p1 1
+is2 eq p1 2
+is3 eq p1 3
+is4 eq p1 4
+g1 and p4 is1
+nfa at p3 4
+li sub p2 nfa
+s1 call emitid p0 li p3 g1
+csta at p3 7
+g2 and p4 is2
+n2 select g2 1 0
+s2 call putc s1 csta 27 n2
+gn or is2 is3
+gnum and p4 gn
+s3 call putnum s2 p2 gnum
+vt ne p2 0
+gtr and is4 vt
+gtr2 and p4 gtr
+ntr select gtr2 4 0
+s4 call putc s3 csta 28 ntr
+vf eq p2 0
+gfa and is4 vf
+gfa2 and p4 gfa
+nfl select gfa2 5 0
+s5 call putc s4 csta 32 nfl
+ret s5
+end
+
+# One argument: a space and the operand, when the kind is not 0.
+fn emitarg (u32x128x128,u32) u32 u32 (u32x256,u32x256,u32x256,u32x256,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) -> (u32x128x128,u32)
+nz ne p1 0
+n1 select nz 1 0
+csta at p3 7
+s1 call putc p0 csta 3 n1
+s2 call emitop s1 p1 p2 p3 nz
+ret s2
+end
+
+# One node line: `id op args`.
+fn nodeline (u32x128x128,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 u32 (u32x256,u32x256,u32x256,u32x256,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32x128x128,u32x256) -> (u32x128x128,u32)
+ix add p1 p3
+nd call ntget p2 ix
+op at nd 0
+na at nd 2
+k0 at nd 3
+v0 at nd 4
+k1 at nd 5
+v1 at nd 6
+k2 at nd 7
+v2 at nd 8
+k3 at nd 9
+v3 at nd 10
+q0 gt na 0
+q1 gt na 1
+q2 gt na 2
+q3 gt na 3
+kg0 select q0 k0 0
+kg1 select q1 k1 0
+kg2 select q2 k2 0
+kg3 select q3 k3 0
+csta at p4 7
+s0 call emitid p0 p1 p4 true
+s1 call putc s0 csta 3 1
+oo arr 37 37 40 43 46 49 52 54 57 60 63 65 67 69 71 73 75 81 84 87 89 92 95 98
+ol arr 0 3 3 3 3 3 2 3 3 3 2 2 2 2 2 2 6 3 3 2 3 3 3 3
+ofs get oo op
+olen get ol op
+s2 call putc s1 csta ofs olen
+s3 call emitarg s2 kg0 v0 p4
+s4 call emitarg s3 kg1 v1 p4
+s5 call emitarg s4 kg2 v2 p4
+s6 call emitarg s5 kg3 v3 p4
+s7 call putc s6 csta 11 1
+ret s7
+end
+
+# A parameter of an explicit list: a space and the span of its type tokens.
+fn parem (u32x128x128,u32) u32 (u32,u32)x128x16 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32x128x128 u32x256 u32 -> (u32x128x128,u32)
+pix add p6 p1
+pe call ptget p2 pix
+ps at pe 0
+pn at pe 1
+bs call tkget p3 ps
+bst at bs 2
+ee call tkget p3 pn
+eb at ee 2
+el at ee 1
+enb add eb el
+nb sub enb bst
+sp1 call putc p0 p5 3 1
+r call putsrc sp1 p4 bst nb
+ret r
+end
+
+# An implicit parameter: a space and u32.
+fn impem (u32x128x128,u32) u32 u32x256 -> (u32x128x128,u32)
+sp1 call putc p0 p2 3 1
+r call putc sp1 p2 8 3
+ret r
+end
+
+# One function: its header, node lines, ret line and end; then the separator to the next.
+fn pfn (u32x128x128,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x16 (u32,u32,u32,u32,u32,u32,u32,u32)x128x4 (u32,u32)x128x16 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32x128x128 u32x256 u32 u32 -> (u32x128x128,u32)
+fr call ftget p3 p1
+fnm at fr 0
+npar at fr 1
+pfs at fr 2
+rss at fr 3
+rse at fr 4
+nfi at fr 5
+rk at fr 6
+rv at fr 7
+f1 add p1 1
+nxt call ftget p3 f1
+nxf at nxt 5
+lastf eq f1 p8
+nfend select lastf p9 nxf
+nl0 sub nfend nfi
+lt3 lt nfi nfend
+nl select lt3 nl0 0
+za call z256
+zb call z256
+ids0 rec za zb 0
+ids fold idfold nl ids0 p2 nfi
+idk at ids 0
+idv at ids 1
+zc call z256
+zd call z256
+dns0 rec zc zd 0
+dns fold dncand 256 dns0 idk idv p5 nl
+dnw at dns 0
+dnl at dns 1
+need0 fold needfold nl 0 p2 nfi
+rk2 eq rk 2
+rv1 add rv 1
+rkm select rk2 rv1 0
+gneed gt need0 rkm
+needed select gneed need0 rkm
+ctx rec idk idv dnw dnl nfi p5 p6 p7
+ex0 eq npar 4294967295
+expl ne npar 4294967295
+nexp select expl npar 0
+h1 call putc p0 p7 0 3
+ftk call tkget p5 fnm
+nst at ftk 2
+nln at ftk 1
+h2 call putsrc h1 p6 nst nln
+h3 fold parem nexp h2 p4 p5 p6 p7 pfs
+hn select expl 0 needed
+h4 fold impem hn h3 p7
+h5 call putc h4 p7 4 4
+expl2 ne rss 4294967295
+rtk call tkget p5 rss
+rst at rtk 2
+rtk2 call tkget p5 rse
+rend2 at rtk2 2
+rlen2 at rtk2 1
+rsum add rend2 rlen2
+rnb0 sub rsum rst
+rn select expl2 rnb0 0
+h6 call putsrc h5 p6 rst rn
+ru select expl2 0 3
+h7 call putc h6 p7 8 ru
+h8 call putc h7 p7 11 1
+ln0 fold nodeline nl h8 p2 nfi ctx
+r1 call putc ln0 p7 17 4
+r2 call emitop r1 rk rv ctx true
+r3 call putc r2 p7 11 1
+e1 call putc r3 p7 14 3
+sepn select lastf 1 2
+sepo select lastf 11 12
+e2 call putc e1 p7 sepo sepn
+ret e2
+end
+
+# The canonical text of one source: the tables of the lexer and the parser, then every function.
+fn canonfn u32x128x128 u32 -> ((u32x128x128,u32),bool)
+lx call lexall p0 p1
+nb at lx 3
+bd at lx 2
+tk at lx 0
+g0 call zg
+g fold lnstep nb g0 bd tk
+gnt at g 0
+gnn at g 1
+gft at g 2
+gnf at g 3
+gpt at g 4
+cst text "fn   -> u32\n\n\nendret retvalptruefalsemovaddsubmulandorxorshlshreqneltlegtgeselectgetsetatputdivremrec                                                                                                                                                           "
+zo call zout
+o0 rec zo 0
+o1 fold pfn gnf o0 gnt gft gpt tk p0 cst gnf gnn
+lxe at lx 4
+gge at g 6
+gnp at g 5
+cap1 gt p1 16384
+ov1 gt gnn 2047
+ov2 gt gnf 511
+ov3 gt gnp 2047
+opos at o1 1
+ov4 gt opos 16384
+e01 or lxe gge
+e02 or e01 cap1
+e03 or e02 ov1
+e04 or e03 ov2
+e05 or e04 ov3
+e06 or e05 ov4
+res rec o1 e06
+ret res
+end
