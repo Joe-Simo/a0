@@ -15,12 +15,6 @@ const FORCED = '--chunk-bytes=3000';
 /** The unchunked plan: the whole program as one chunk (halved only where the front end refuses it). */
 const WHOLE = '--chunk-bytes=0';
 
-/**
- * Sources the native checker declines in every plan (tools/native/a0.c `give_up`): a function of
- * site/bench.a0 (chart_tk) holds more nodes than the front end takes in one chunk (2730).
- */
-const DECLINED = new Set(['site/bench.a0']);
-
 /** The chunks the driver announces on stderr for a run (A0_CHUNK_TRACE). */
 function chunkCount(exe: string, flags: readonly string[], path: string): number {
   const r = runTool(exe, ['check', ...flags, path], {
@@ -50,9 +44,8 @@ test('chunked check: forced small chunks give the unchunked check verdict and re
       const p = { label: path, path };
       const unchunked = await compare(exe, p, [WHOLE]);
       const chunked = await compare(exe, p, [FORCED]);
-      assert.equal(chunked.outcome, DECLINED.has(path) ? 'unsupported' : 'same', `${path} chunked`);
-      assert.equal(unchunked.outcome, DECLINED.has(path) ? 'unsupported' : 'same', `${path} whole`);
-      if (DECLINED.has(path)) continue;
+      assert.equal(chunked.outcome, 'same', `${path} chunked`);
+      assert.equal(unchunked.outcome, 'same', `${path} whole`);
       // where the unchunked check fits (one chunk), it is the same verdict and revisions as the chunked one
       if (chunkCount(exe, [WHOLE], path) === 1) {
         whole += 1;
@@ -67,13 +60,12 @@ test('chunked check: forced small chunks give the unchunked check verdict and re
       else assert.fail(`${path}: the forced plan did not split it`);
     }
     assert.ok(whole >= 4, `${whole} sources fit one chunk`);
-    assert.equal(split, sources.length - DECLINED.size);
+    assert.equal(split, sources.length);
 
     // Rejections across chunk boundaries: seeded one-line edits of each linked source (as the
     // differential of tools/native-check-diff.ts makes them), each checked in the forced plan.
     let rejected = 0;
     for (const [i, path] of sources.entries()) {
-      if (DECLINED.has(path)) continue;
       const text = (await link(path, (p) => Promise.resolve(readFileSync(p, 'utf8')))).text;
       for (const m of materialize(join(dir, `mutant-${i}`), mutants(text, 2, 0x5eed + i))) {
         const row = await compare(exe, m, [FORCED]);

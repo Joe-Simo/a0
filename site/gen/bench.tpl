@@ -1111,6 +1111,10 @@ c putnum %a
 >
 >
 ]
+}
+# The token chart is two section functions: the self-hosted checker takes at most 2730 nodes in one
+# chunk (compiler/parse.a0 `fecap`), and each row loop expands to a node per language.
+{chart_tk2
 .details more
 <summary
 "Show all $tkrows$ rows ($n_langs1$ languages, A0 in two forms)
@@ -2144,6 +2148,10 @@ c putfix %a
 "other languages
 >
 >
+}
+# The parallel chart is two section functions: the self-hosted checker takes at most 2730 nodes in one
+# chunk (compiler/parse.a0 `fecap`), and the kernel loop expands to a group of nodes for each kernel.
+{chart_par2
 [pk
 .p kh mono
 "$pk_name$: $pk_trips$ iterations, A0 $pk_ms$ ms

@@ -9,13 +9,6 @@ import { cleanup, compare, programSet, type Row, tempDir } from '../tools/native
 const compiler = findClang().path ?? findGcc().path;
 const skip = compiler === undefined ? 'no C compiler (clang or gcc) on this machine' : false;
 
-/**
- * Programs the native checker declines (exit 65: a function over a capacity of the self-hosted
- * front end, tools/native/a0.c `give_up`); the command line then uses the TypeScript checker.
- * site/bench.a0 holds functions of more than 2730 nodes (compiler/parse.a0 `fecap`).
- */
-const DECLINED = new Set(['site/bench.a0']);
-
 test('native check: same verdict as the TypeScript checker on the corpus, the sources and their mutants', {
   skip,
   timeout: 1_800_000,
@@ -35,8 +28,9 @@ test('native check: same verdict as the TypeScript checker on the corpus, the so
       rows.filter((r) => r.outcome !== 'same' && r.outcome !== 'unsupported'),
       [],
     );
+    // no source is declined (a function over the self-hosted front end's per-chunk capacity, exit 65)
     assert.deepEqual(
-      rows.filter((r) => r.outcome === 'unsupported' && !DECLINED.has(r.label)).map((r) => r.label),
+      rows.filter((r) => r.outcome === 'unsupported').map((r) => r.label),
       [],
     );
     // the programs are the ones the task names: the front end's own sources and the app edits
