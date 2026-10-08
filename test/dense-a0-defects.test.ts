@@ -375,9 +375,9 @@ const PROBES: readonly Probe[] = [
     text: 'fn f -> u32\nio add A 1\nret io\nend\n',
   },
   {
-    name: 'a text literal outside use',
+    name: 'a text literal is read from Stage B3.4 on',
     defect: '2',
-    kind: 'refuse',
+    kind: 'match',
     text: 'fn f -> u32\nret "x"\nend\n',
   },
   {

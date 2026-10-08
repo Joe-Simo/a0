@@ -39,7 +39,11 @@
 # for the one io parameter is not read) and the operations read (1 operand), write (2) and puts (2), the node ops
 # 28, 29 and 30 for the words of the codes 41, 42 and 43. The mask of a value of the type io is 8, like that of a
 # record; read, write and puts have the mask 8 when their operands may be right (an io token, a u32, an array of u32).
-# Not yet read (the error flag is set): text, spec lines, hex
+# Stage B3.4 adds text literals, `"..."` and `text "..."`: the lexer makes one token of a string (at its closing
+# quote: start, length, decoded length), the escapes are \n, \t, \" and \\, a string is not empty; a text node (op 31)
+# keeps the token, the canonical text writes the source between the quotes (a tab as \t), and its mask is an
+# array of u32 as long as the string. A `use` line is the word and one string without an escape.
+# Not yet read (the error flag is set): spec lines, hex
 # literals, profile lines, commas used as blanks, the `rec` and `arr` words, record and array states and
 # extra operands of inline bodies, and records and arrays as an unwritten result.
 #
@@ -114,10 +118,10 @@ zt arr zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp
 ret zt
 end
 
-fn s1zero -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool)
+fn s1zero -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool,u32,u32,bool)
 tk0 call ztok
 bd0 call zlnt
-r rec tk0 0 bd0 0 false false false 0 0 0 0 0 0 false false false 0 false 0 0 0 0 0 0 0 false
+r rec tk0 0 bd0 0 false false false 0 0 0 0 0 0 false false false 0 false 0 0 0 0 0 0 0 false 0 0 false
 ret r
 end
 
@@ -151,7 +155,7 @@ ret r
 end
 
 # One byte of the source (i < n) or the virtual newline (i == n): the state after it.
-fn lexb ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool) u32 u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool)
+fn lexb ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool,u32,u32,bool) u32 u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool,u32,u32,bool)
 tk at p0 0
 ntk at p0 1
 bd at p0 2
@@ -178,6 +182,9 @@ td1 at p0 22
 td2 at p0 23
 tbk at p0 24
 dlr at p0 25
+sqs at p0 26
+sqc at p0 27
+sqe at p0 28
 pgi shr p1 7
 pg get p2 pgi
 b0 get pg p1
@@ -416,14 +423,51 @@ ntka add ntk endn
 bdb call bput bd nbk ntka
 nlv select nl 1 0
 nbkb add nbk nlv
-isq and q10 act0
+nse eq sqe false
+cq0 and q10 inq
+isq and cq0 nse
+opq0 and q10 act0
+opq and opq0 ninq
+qe1 eq c 110
+qe2 eq c 116
+qe3 eq c 34
+qe4 eq c 92
+qea or qe1 qe2
+qeb or qe3 qe4
+qescok or qea qeb
+qin and inq sqe
+nqok eq qescok false
+qebad and qin nqok
+qbs0 and inq nse
+qbs1 and qbs0 qe4
+nbs1 eq qbs1 false
+nisq eq isq false
+qic0 and inq nbs1
+qic1 and qic0 nisq
+sqc1 add sqc 1
+sqc2 select qic1 sqc1 sqc
+sqcn select opq 0 sqc2
+sqsn select opq p1 sqs
+sqen mov qbs1
+sqc0 eq sqc 0
+qemp and isq sqc0
+qun and nl inq
+qerr0 or qebad qemp
+qerr2 or qerr0 qun
+inq1 select isq false inq
+inq2 select opq true inq1
+qsl0 sub p1 sqs
+qsl add qsl0 1
+qtl select isq qsl 1
+qts select isq sqs p1
+qnv select isq sqc 0
 pvq or pval isq
 kf select q10 8 ke
 kg select q9 10 kf
 kh select q11 11 kg
 ki select q12 12 kh
 pvn select pvq 1 0
-tokb rec ki 1 p1 0 0 0 0 0
+tokb rec ki qtl qts 0 0 0 qnv 0
 oktb lt ntka 4096
 ixb select oktb ntka 4095
 tkv call tokput tka ixb tokb
@@ -558,13 +602,10 @@ vb or vn vu
 valid or va vb
 nvld eq valid false
 badw and endw nvld
-bs eq c 92
-erq and inq bs
-nsq select isq ninq inq
-inqn select nl false nsq
+inqn select nl false inq2
 dlru select upd dlr false
 dlrn select dls true dlru
-ebq or eb erq
+ebq or eb qerr2
 ebw or ebq badw
 ov1 gt ntkb 4096
 ov2 gt nbkb 2048
@@ -612,12 +653,12 @@ ebd1 or ebw dbad1
 ebd2 or ebd1 dbad2
 ebd3 or ebd2 dbad3
 errn or ebd3 ov
-r rec tkb ntkb bdb nbkb errn upd cmtn wstn wlnn w0n w1n hhn nvn dfn pfn lfn wmn inqn tsnn cdnn prnn tndn td1n td2n bkn dlrn
+r rec tkb ntkb bdb nbkb errn upd cmtn wstn wlnn w0n w1n hhn nvn dfn pfn lfn wmn inqn tsnn cdnn prnn tndn td1n td2n bkn dlrn sqsn sqcn sqen
 ret r
 end
 
 # The lexer over the whole input: n + 1 steps (the last one is the virtual newline).
-fn lexall u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool)
+fn lexall u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool,u32,u32,bool)
 s0 call s1zero
 m add p1 1
 s fold lexb m s0 p0 p1
@@ -2096,6 +2137,7 @@ o27 eq op 27
 o28 eq op 28
 o29 eq op 29
 o30 eq op 30
+o31 eq op 31
 ar1 or o2 o3
 ar2 or o4 o8
 ar3 or o9 o21
@@ -2325,6 +2367,14 @@ u_pbm select u_pmay 12 4
 u_pab select u_ra1b 12 8
 u_pr1 select u_pgood u_pab u_pbm
 u_pr select u_raob u_pr1 4
+ptk4 at p4 3
+tkx call tkget ptk4 v0
+tn at tkx 6
+tn1 sub tn 1
+tnl le tn 65536
+tns mul tn1 128
+tdsc add 24 tns
+txr select tnl tdsc 8
 r0 mov 4
 r1 select o1 a r0
 r2 select binp binr r1
@@ -2338,8 +2388,9 @@ r9 select o27 u_arrr r8
 r10 select o28 u_rd r9
 r11 select o29 u_wr r10
 r12 select o30 u_pr r11
-rz eq r12 0
-rr select rz 4 r12
+r13 select o31 txr r12
+rz eq r13 0
+rr select rz 4 r13
 spg shr p1 7
 spa get p0 spg
 slo and p1 127
@@ -3014,6 +3065,18 @@ bad4 or bad1 bad2
 bad5 or bad4 bad3
 badrp or bad5 dz
 rfr rec 23 0 have false k0 v0 k1 v1 k2 v2 k3 v3
+etx eq kd 8
+qc_a eq code 37
+qc_b eq ln 4
+qc_c eq w0 1952807028
+qc_d and qc_a qc_b
+qc_e and qc_d qc_c
+qc_f and qc_e isw
+qc_g eq nxk 8
+qc_h and qc_g nxin
+qc_etw and qc_f qc_h
+qc_nt eq qc_etw false
+qc_tfr rec 31 0 0 false 8 ix 0 0 0 0 0 0
 frm0 select ecz c0fr rfr
 qa_is27 eq topop 27
 qa_hvp gt have 0
@@ -3030,7 +3093,8 @@ qa_pk1 select qa_hp 2 0
 qa_pm1 sub qa_psm 1
 qa_pv1 select qa_hp qa_pm1 0
 qa_nfr rec 27 0 have false 0 0 qa_pk1 qa_pv1 6 v2 0 0
-frm select qa_ecbok qa_nfr frm0
+frm1 select qa_ecbok qa_nfr frm0
+frm select etx qc_tfr frm1
 qa_j0 eq tpi0 0
 qa_j1 eq tpi0 1
 qa_j2 eq tpi0 2
@@ -3107,7 +3171,8 @@ erpg and erp erpnb
 ersg eq single false
 mkrec and erpg ersg
 mkany0 or mkrec ecz
-mkany or mkany0 qa_ecbok
+mkany1 or mkany0 qa_ecbok
+mkany or mkany1 etx
 spr select mkany spm sp0
 ntr at spr 0
 nnr at spr 1
@@ -3137,7 +3202,8 @@ kwb4 and kwb2 kwb3
 nckw eq ecallkw false
 kwb5 and kwb4 nckw
 nfkk eq isfk false
-kwbad and kwb5 nfkk
+kwb6 and kwb5 nfkk
+kwbad and kwb6 qc_nt
 kk1 eq kd 1
 kk2 eq kd 3
 kk3 eq kd 4
@@ -3151,7 +3217,9 @@ kok3 or kok kk5
 kok4 or kok3 kk6
 kk10 eq kd 10
 kok5 or kok4 kk10
-kbad eq kok5 false
+kk8 eq kd 8
+kok6 or kok5 kk8
+kbad eq kok6 false
 nfbad0 eq fnf false
 nfbad and enm1 nfbad0
 ncg eq topgrp false
@@ -3188,13 +3256,15 @@ erpok2 eq badrp false
 erpv and erp erpok2
 pd2 or pd1 erpv
 pendv0 or pd2 ecz
-pendv or pendv0 qa_ecbok
+pendv1 or pendv0 qa_ecbok
+pendv or pendv1 etx
 q1 select enum 3 0
 q2 select epar 2 q1
 q3 select ebool 4 q2
 q4 select pc1 1 q3
 q5 select erpv rkrp q4
-qa_zk or ecz qa_ecbok
+qa_zk0 or ecz qa_ecbok
+qa_zk or qa_zk0 etx
 pkn select qa_zk 1 q5
 r1 select pc1 fnd2 0
 r2 select enmp nvv r1
@@ -3767,16 +3837,6 @@ r mov g4
 ret r
 end
 
-# A token of kind 8 (a quote) on the line: the flag, set once any token from base + i is one.
-fn q8fold bool u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> bool
-ix add p3 p1
-t call tkget p2 ix
-k at t 0
-isq eq k 8
-r or p0 isq
-ret r
-end
-
 # hdr and stmt as fold steps (a count of 0 reads nothing).
 fn hdrf ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
 r call hdr p0 p2 p3 p4
@@ -3820,33 +3880,29 @@ st fold stmtf cns p0 p3 s e
 x1 select isd p0 st
 x2 select isfn hd x1
 out0 select mz p0 x2
-hasq fold q8fold ms false p3 s
-nuse eq isuse false
-qbad and hasq nuse
 t1 call tkget p3 s1i
-t2 call tkget p3 s2i
 k1 at t1 0
-k2 at t2 0
 st0 at t0 2
 st1 at t1 2
-st2 at t2 2
+ln1 at t1 1
+nv1 at t1 6
 gap add st0 3
-u3 eq ms 3
+u3 eq ms 2
 u4 eq k1 8
-u5 eq k2 8
 u6 gt st1 gap
-st1n add st1 1
-u7 gt st2 st1n
+ln1m sub ln1 2
+u7 gt ln1m 0
+u7b eq nv1 ln1m
 uf at p0 3
 u8 eq uf 0
 ua and u3 u4
-ub and ua u5
-uc and ub u6
-ud and uc u7
+uc and ua u6
+ud0 and uc u7
+ud and ud0 u7b
 uok and ud u8
 unok eq uok false
 ubad and isuse unok
-bad or qbad ubad
+bad mov ubad
 oe at out0 6
 ne or oe bad
 o0 at out0 0
@@ -3921,6 +3977,27 @@ xp shr x 7
 pg get p2 xp
 b get pg x
 r call ob p0 b
+ret r
+end
+
+# obf as a fold step (a count of 0 writes nothing): the byte p2.
+fn obf (u32x128x128,u32) u32 u32 -> (u32x128x128,u32)
+r call ob p0 p2
+ret r
+end
+
+# Byte p3 + i of the source p2 in a text literal, as the canonical text writes it: a tab as \t.
+fn putsq (u32x128x128,u32) u32 u32x128x128 u32 -> (u32x128x128,u32)
+x add p3 p1
+xp shr x 7
+pg get p2 xp
+lo and x 127
+b get pg lo
+ist eq b 9
+b1 select ist 92 b
+s1 call ob p0 b1
+nt select ist 1 0
+r fold obf nt s1 116
 ret r
 end
 
@@ -4389,8 +4466,8 @@ toka at p4 5
 srca at p4 6
 s0 call emitid p0 p1 p4 true
 s1 call putc s0 csta 3 1
-oo arr 37 37 40 43 46 49 52 54 57 60 63 65 67 69 71 73 75 81 84 87 89 92 95 98 101 105 109 118 121 125 130
-ol arr 0 3 3 3 3 3 2 3 3 3 2 2 2 2 2 2 6 3 3 2 3 3 3 3 4 4 4 3 4 5 4
+oo arr 37 37 40 43 46 49 52 54 57 60 63 65 67 69 71 73 75 81 84 87 89 92 95 98 101 105 109 118 121 125 130 134
+ol arr 0 3 3 3 3 3 2 3 3 3 2 2 2 2 2 2 6 3 3 2 3 3 3 3 4 4 4 3 4 5 4 4
 ofs get oo op
 olen get ol op
 s2 call putc s1 csta ofs olen
@@ -4415,7 +4492,20 @@ s3 call emitarg sc3 kg0 v0 p4
 s4 call emitarg s3 kg1 v1 p4
 s5 call emitarg s4 kg2 v2 p4
 s6 call emitarg s5 kg3 v3 p4
-s7 call putc s6 csta 11 1
+ist eq op 31
+tvx select ist v0 0
+tkq call tkget toka tvx
+qs at tkq 2
+ql at tkq 1
+cnq0 sub ql 2
+cnq select ist cnq0 0
+n1q select ist 1 0
+qs1 add qs 1
+qa call putc s6 csta 3 n1q
+qb fold obf n1q qa 34
+qc fold putsq cnq qb srca qs1
+qd fold obf n1q qc 34
+s7 call putc qd csta 11 1
 ret s7
 end
 
@@ -4722,7 +4812,7 @@ gnn at g 1
 gft at g 2
 gnf at g 3
 gpt at g 4
-cst text "fn   -> u32\n\n\nendret retvalptruefalsemovaddsubmulandorxorshlshreqneltlegtgeselectgetsetatputdivremreccallfoldloopbool_arrreadwriteputs                                                                                                                          "
+cst text "fn   -> u32\n\n\nendret retvalptruefalsemovaddsubmulandorxorshlshreqneltlegtgeselectgetsetatputdivremreccallfoldloopbool_arrreadwriteputstext                                                                                                                      "
 zo call zout
 o0 rec zo 0
 o1 fold pfn gnf o0 gnt gft gpt tk p0 cst gnf gnn

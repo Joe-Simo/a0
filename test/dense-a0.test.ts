@@ -36,6 +36,9 @@
  * array) and the operations read, write and puts; 250 generated programs that use the token once as
  * the checker demands, 500 mutants of 60 of them, and a curated list. The `io` word for the one io
  * parameter of a function (the reference reads it) is outside the reader.
+ * Stage B3.4 adds text literals, `"abc"` and `text "abc"` (the escapes \n, \t, \" and \\; a raw tab
+ * is written \t), and the `use` line as one string: 250 generated programs with texts of every
+ * byte the lexer marks, 500 mutants of 60 of them, and a curated list.
  */
 
 import assert from 'node:assert/strict';
@@ -45,6 +48,7 @@ import { test } from 'node:test';
 import {
   A0Error,
   formatProgram,
+  formatTextLiteral,
   type Program,
   parse,
   parseAndValidate,
@@ -127,7 +131,7 @@ function scalarType(t: Type): boolean {
 function isStageB3(p: Program, dense: string): boolean {
   if (p.profile !== undefined) return false;
   const defined = new Set<string>();
-  const folds = dense.includes('{');
+  const folds = dense.replace(/"(?:[^"\\]|\\.)*"/g, '""').includes('{');
   for (const f of p.functions) {
     const earlier = (name: string | undefined): boolean =>
       name !== undefined && defined.has(name) && name !== f.name;
@@ -148,15 +152,6 @@ function isStageB3(p: Program, dense: string): boolean {
     defined.add(f.name);
   }
   return true;
-}
-
-/** The dense text of a program has none of the spellings outside the forms the reader reads. */
-function stageDenseText(dense: string): boolean {
-  const body = dense
-    .split('\n')
-    .filter((l) => !l.startsWith('use '))
-    .join('\n');
-  return !/[#"]|\btext\b/.test(body);
 }
 
 /** The reader over the A0 source: the dense text in, the canonical text and the error flag out. */
@@ -406,7 +401,8 @@ function withinCapacity(p: Program, dense: string): boolean {
     // the depth of an array node: the frames open around it in the dense text are not known here, so
     // the size of every array is held against the largest region (the first level) and the total
     for (const n of f.nodes) {
-      if (n.op === 'arr') used[0] = (used[0] as number) + n.args.length;
+      // a text literal keeps its token, not its bytes
+      if (n.op === 'arr' && n.text === undefined) used[0] = (used[0] as number) + n.args.length;
       // a record has up to four fields in a frame of the reader
       if (n.op === 'rec' && n.args.length > 4) return false;
     }
@@ -430,7 +426,6 @@ test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A form
     const program = parse(readFileSync(abs, 'utf8'));
     const dense = formatDense(program);
     if (!isStageB3(program, dense)) continue;
-    if (!stageDenseText(dense)) continue;
     const name = relative(ROOT, abs).split(sep).join('/');
     if (!withinCapacity(program, dense) || DEEP.has(name)) {
       tooBig += 1;
@@ -464,6 +459,7 @@ test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A form
     members.includes('examples/life.a0') && members.includes('corpus/reject/io-twice.fixed.a0'),
     'programs with io are members',
   );
+  assert.ok(members.includes('site/gen/sgwords.a0'), 'programs with text literals are members');
   assert.ok(
     members.includes('corpus/reject/typo-loop-pred.fixed.a0'),
     'a program with a loop of named functions is a member',
@@ -2366,4 +2362,259 @@ test('the B3.3 reader: io types and the operations read, write and puts read as 
   }
   t.diagnostic(`${equal} read to the reference text, ${rejected} rejected, ${refused} refused`);
   assert.ok(equal > 25 && rejected > 8, 'both kinds are covered');
+});
+
+// ---------------------------------------------------------------------------
+// Stage B3.4: text literals, `"..."` and `text "..."`
+// ---------------------------------------------------------------------------
+
+/** The characters a generated text is made of: one byte each, the escaped ones and the lexer's marks. */
+const TEXT_CHARS = [
+  ...'abcdefghij klmnopqrst 0123456789',
+  '#',
+  ';',
+  '(',
+  ')',
+  '[',
+  ']',
+  '{',
+  '}',
+  ',',
+  '=',
+  '$',
+  '\\',
+  '"',
+  '\n',
+  '\t',
+  '_',
+  '-',
+  '>',
+];
+
+/** A text of exactly n bytes of UTF-8 (a two- and a three-byte character now and then). */
+function textOfBytes(n: number, rnd: (n: number) => number): string {
+  let s = '';
+  let left = n;
+  while (left > 0) {
+    const r = rnd(24);
+    if (r === 0 && left >= 2) {
+      s += 'é';
+      left -= 2;
+    } else if (r === 1 && left >= 3) {
+      s += '€';
+      left -= 3;
+    } else {
+      s += TEXT_CHARS[rnd(TEXT_CHARS.length)] as string;
+      left -= 1;
+    }
+  }
+  return s;
+}
+
+/** The canonical text of a function with a text node. */
+function textProgram(rnd: (n: number) => number): string {
+  const parts: string[] = [];
+  const nf = 1 + rnd(3);
+  for (let f = 0; f < nf; f += 1) {
+    const lines: string[] = [];
+    const n = 1 + rnd(40);
+    const text = textOfBytes(n, rnd);
+    lines.push(`a text ${formatTextLiteral(text)}`);
+    let last = 'a';
+    let ty = `u32x${n}`;
+    const k = rnd(4);
+    if (k === 1) {
+      lines.push(`b get a ${rnd(60)}`);
+      last = 'b';
+      ty = 'u32';
+    } else if (k === 2) {
+      const m = 1 + rnd(30);
+      lines.push(`b text ${formatTextLiteral(textOfBytes(m, rnd))}`);
+      lines.push(`c get b ${rnd(30)}`);
+      lines.push(`d get a ${rnd(30)}`);
+      lines.push('e add c d');
+      last = 'e';
+      ty = 'u32';
+    } else if (k === 3) {
+      lines.push(`b set a ${rnd(n)} ${rnd(256)}`);
+      last = 'b';
+    }
+    parts.push(`fn t${f}x${rnd(9)} -> ${ty}\n${lines.join('\n')}\nret ${last}\nend`);
+  }
+  return parts.join('\n\n');
+}
+
+test('the B3.4 reader: generated programs with text literals read to their canonical text', (t) => {
+  const read = loadReader();
+  const rnd = rngFrom(2718);
+  let withEscape = 0;
+  let checked = 0;
+  for (let k = 0; k < 250; k += 1) {
+    const program = parse(textProgram(rnd));
+    const dense = formatDense(program);
+    if (Buffer.byteLength(dense) > PAGES * PAGE) continue;
+    const got = read(dense);
+    assert.equal(got.err, false, `program ${k}: the error flag is clear\n${dense}`);
+    assert.equal(got.text, formatProgram(program), `program ${k}\n${dense}`);
+    checked += 1;
+    if (/\\[nt"\\]/.test(dense)) withEscape += 1;
+  }
+  t.diagnostic(`${checked} programs, ${withEscape} with an escape`);
+  assert.ok(checked > 200 && withEscape > 60, 'the forms are covered');
+});
+
+/**
+ * A text the reference reads but the reader leaves to the error flag, for the reader of Stage B3.4:
+ * a comma used as a blank, the `rec` or `arr` word, an inline body, the `io` word in a body, a
+ * checked op, a type written with spaces, or an unwritten result that is not u32 or bool.
+ */
+function outsideTheReaderB34(text: string, program: Program): boolean {
+  const lines = text.split('\n').map((l) => l.replace(/"(?:[^"\\]|\\.)*"/g, '""'));
+  const flat = lines.join('\n');
+  if (/[,{]|\brec\b|\barr\b|#|\b(cadd|csub|cmul|cdiv|crem|cget)\b/.test(flat)) return true;
+  for (const l of lines) {
+    if (/^fn /.test(l) && /\([^)]*\s[^)]*\)/.test(l)) return true;
+    const body = /^fn /.test(l) ? l.replace(/^fn \S+( .*?->)? \S+/, '') : l;
+    if (/\bio\b/.test(/^fn /.test(l) && !l.includes('->') ? l : body)) return true;
+  }
+  const heads = lines.filter((l) => /^fn /.test(l));
+  for (const [i, f] of program.functions.entries()) {
+    const h = heads[i];
+    if (h !== undefined && !h.includes('->') && f.result !== 'u32' && f.result !== 'bool')
+      return true;
+  }
+  return /\[[^\]]*;(\d{4,}|[3-9]\d{2})\b/.test(flat);
+}
+
+test('the B3.4 reader: mutants of programs with text literals are rejected exactly when the reference rejects them', (t) => {
+  const read = loadReader();
+  const rnd = rngFrom(909);
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  const tokens = [
+    ...ARRAY_MUTANT_TOKENS,
+    '"',
+    '""',
+    '"ab"',
+    '"a\\nb"',
+    '"a\\qb"',
+    'text',
+    'text',
+    '"x',
+    '\\',
+  ];
+  const bases = Array.from({ length: 60 }, () => formatDense(parse(textProgram(rnd))));
+  let equal = 0;
+  let rejected = 0;
+  let refused = 0;
+  for (let m = 0; m < 500; m += 1) {
+    const text = mutateArrays(pick(bases), rnd, pick, tokens);
+    if (Buffer.byteLength(text) > PAGES * PAGE) continue;
+    let program: Program | undefined;
+    let want: string | null = null;
+    try {
+      program = parseDense(text);
+      want = formatProgram(program);
+    } catch (e) {
+      if (!(e instanceof A0Error)) throw e;
+    }
+    const got = read(text);
+    if (want === null) {
+      assert.equal(
+        got.err,
+        true,
+        `mutant ${m}: the reader flags what the reference rejects\n${text}`,
+      );
+      rejected += 1;
+    } else if (got.err) {
+      assert.ok(
+        outsideTheReaderB34(text, program as Program),
+        `mutant ${m}: the reader refuses a text of the forms it reads\n${text}`,
+      );
+      refused += 1;
+    } else {
+      assert.equal(got.text, want, `mutant ${m}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(
+    `${rejected} mutants rejected, ${equal} read to the reference text, ${refused} refused`,
+  );
+  assert.ok(rejected > 100, 'many mutants are rejected');
+  assert.ok(equal > 30, 'some mutants are accepted');
+});
+
+const TEXT_CURATED: Curated[] = [
+  ['a text literal', 'fn f -> u32x3\n"abc"\n'],
+  ['text before a literal', 'fn f -> u32x3\ntext "abc"\n'],
+  ['text before text', 'fn f -> u32x3\ntext text "abc"\n'],
+  ['a literal as an operand', 'fn f u32 -> u32\nget "abc" A\n'],
+  ['a literal named', 'fn f u32 -> u32\nx "hello world"\nget x A\n'],
+  ['a literal named with =', 'fn f u32 -> u32\nx = "abc"\nget x A\n'],
+  ['a literal named with the escape', 'fn f u32 -> u32\n$text "abc"\nget $text A\n'],
+  ['a newline escape', 'fn f -> u32x3\n"a\\nb"\n'],
+  ['a tab escape', 'fn f -> u32x3\n"a\\tb"\n'],
+  ['a raw tab', 'fn f -> u32x3\n"a\tb"\n'],
+  ['a quote escape', 'fn f -> u32x3\n"a\\"b"\n'],
+  ['a backslash escape', 'fn f -> u32x3\n"a\\\\b"\n'],
+  ['an escape that does not exist', 'fn f -> u32x3\n"a\\qb"\n'],
+  ['an escape at the end', 'fn f -> u32x3\n"ab\\"\n'],
+  ['an empty literal', 'fn f -> u32x3\n""\n'],
+  ['a literal not closed', 'fn f -> u32x3\n"abc\n'],
+  ['two literals', 'fn f -> u32x3\n"abc" "def"\n'],
+  ['text and nothing', 'fn f -> u32x3\ntext\n'],
+  ['text and a number', 'fn f -> u32x3\ntext 5\n'],
+  ['text and two literals', 'fn f -> u32x3\ntext "abc" "def"\n'],
+  ['the marks of the lexer inside a literal', 'fn f -> u32x8\n"# (;{}[]"\n'],
+  ['a comment after a literal', 'fn f -> u32x3\n"abc" # "def"\n'],
+  ['a literal in an array', 'fn f -> u32x2x3\n["abc" "def"]\n'],
+  ['a literal of two lengths in an array', 'fn f -> u32x2\n["abc" "de"]\n'],
+  ['a literal as an argument', 'fn g u32x3 -> u32\nget A 0\n\nfn f -> u32\ng "xyz"\n'],
+  ['a literal of other bytes', 'fn f -> u32x6\n"é€"\n'],
+  ['a literal as the result, not written', 'fn f\n"abc"\n', true],
+  ['a literal read through get, not written', 'fn f\nget "abc" 1\n'],
+  ['a word before a literal', 'fn f -> u32x2\na"b"\n'],
+  ['a word after a literal', 'fn f -> u32x2\n"b"a\n'],
+  ['a literal after an operation', 'fn f u32 -> u32\nadd A"b"\n'],
+  ['a literal in the header line', 'fn f -> u32x3 "abc"\n'],
+  ['a literal as a function name', 'fn "f" A\n'],
+  ['a literal in a type list', 'fn f "u32" -> u32\nA\n'],
+  ['a literal in an inline body', 'fn f fold {a "abc"; get a 1} 3 0\n'],
+  ['a use line', 'use "x.a0"\nfn f A\n'],
+  ['a use line with a backslash', 'use "x\\\\y.a0"\nfn f A\n'],
+  ['a use line with nothing', 'use ""\nfn f A\n'],
+  ['a use line with two paths', 'use "x.a0" "y.a0"\nfn f A\n'],
+  ['a use line with a comment', 'use "x.a0" # c\nfn f A\n'],
+  ['a use line with two spaces', 'use  "x.a0"\nfn f A\n'],
+  ['a use line with no space', 'use"x.a0"\nfn f A\n'],
+  ['a use line after a function', 'fn g A\n\nuse "x.a0"\nfn f g 1\n'],
+  ['a use line with an escape', 'use "x\\"y.a0"\nfn f A\n'],
+  ['a long literal', `fn f -> u32x3000\n"${'abc'.repeat(1000)}"\n`],
+];
+
+test('the B3.4 reader: text literals and use lines read as the reference reads them', (t) => {
+  const read = loadReader();
+  let equal = 0;
+  let rejected = 0;
+  let refused = 0;
+  for (const [label, text, refuse] of TEXT_CURATED) {
+    const want = reference(text);
+    const got = read(text);
+    if (want === null) {
+      assert.equal(got.err, true, `${label}: the reader flags what the reference rejects\n${text}`);
+      rejected += 1;
+    } else if (refuse === true) {
+      assert.equal(
+        got.err,
+        true,
+        `${label}: a form outside the reader sets the error flag\n${text}`,
+      );
+      refused += 1;
+    } else {
+      assert.equal(got.err, false, `${label}: the error flag is clear\n${text}`);
+      assert.equal(got.text, want, `${label}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(`${equal} read to the reference text, ${rejected} rejected, ${refused} refused`);
+  assert.ok(equal > 20 && rejected > 12, 'both kinds are covered');
 });
