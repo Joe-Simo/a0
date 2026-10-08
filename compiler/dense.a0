@@ -1,5 +1,5 @@
-# Dense reader, written in A0 (Stages A and B1). The dense text of one file becomes the canonical text of
-# its program: src/dense.ts parseDense, then formatProgram. Stage A covers the forms that
+# Dense reader, written in A0 (Stages A, B1 and B2). The dense text of one file becomes the canonical
+# text of its program: src/dense.ts parseDense, then formatProgram. Stage A covers the forms that
 # the corpus fixtures and examples/kernels.a0 use, and records: explicit ids and
 # the default names a, b, ... of nodes that have none; nesting (a value used once is written in
 # its consumer, as in `add mul A B C`); records (`(a b)`, `(x,)`, and `(x)` for x); at and put on
@@ -11,13 +11,29 @@
 # type count of its header or, for a header without types, one more than the highest parameter its
 # nodes and result use; a callee that is later, the function itself or in a used file, a wrong
 # operand count, and an overflow set the error flag. Arguments of a call are kept in a pool.
-# Not yet read (the error flag is set): fold, loop, arrays, text, io, $ escapes, =, inline bodies,
-# repeat, spec lines, hex literals and profile lines.
+# Stage B2 adds fold and loop: `fold F n s a..` and `loop P F n s a..`, where F and P are the names
+# of functions defined earlier, or inline bodies `{statement; statement}` (the last statement is the
+# result). The operand count is the arity of the body F (of P when F is inline; the larger of the
+# two when both are inline); an inline body has the parameters A (the state), B (the step) and C...
+# (the extra operands), at least 2. Each inline body is lifted: it becomes the function CALLER_N, N
+# counting the bodies of the function CALLER in the order its fold and loop nodes complete (a
+# predicate before its body), written before CALLER with the signature the reference reader derives
+# (the state type of the initial value, u32, the types of the extra operands; bool, or the state type,
+# as the result). A state or extra operand of an inline body that is not u32 or bool sets the error
+# flag. The result of a function with no `->` is what the reference reader infers: u32 when the
+# result value is u32 or has no type, bool when it is a bool. The reader also refuses what the
+# reference rejects and the earlier stages read: a function name that is a keyword or not an
+# identifier, a type that is not u32, bool or a record of them, a name written twice, anything
+# after a `ret` statement of a function, a function with no statement.
+# Not yet read (the error flag is set): arrays, text, io, $ escapes, =, repeat, spec lines, hex
+# literals, profile lines, commas used as blanks, the `rec` word, record states and extra operands of
+# inline bodies, and records as an unwritten result.
 #
 # Input: the dense bytes src[0..n) as 128-byte pages (n <= 16384). Output: the canonical bytes as
 # pages of 128 (at most 16384 bytes) and the error flag, set when the input or the output is over
-# a capacity (16384 bytes, 4096 tokens, 2048 lines, 2048 nodes, 512 functions, 2048 parameters,
-# 8 nested frames, 3070 call arguments) or a construct is outside the forms above. The name and id tables of a function
+# a capacity (16384 bytes, 4096 tokens, 2048 lines, 2048 nodes, 1024 nodes of inline bodies, 512
+# inline bodies, 512 functions, 2048 parameters, 8 nested frames, 3072 call arguments) or a
+# construct is outside the forms above. The name and id tables of a function
 # hold 2048 entries, the node capacity, so every node of an accepted program has its own entry.
 # Every pass is a fold over paged tables; there is no control flow, so every branch is a select,
 # and a fold with a count of 0 does nothing.
@@ -30,21 +46,33 @@
 #     the line boundaries (the token count at each newline) to paged tables.
 #   2 lines: each line is a function header (`fn NAME [TYPES ->] [RESULT]`, the rest of the
 #     line its first statement) or a statement; statements are prefix expressions, parsed
-#     forward with a frame stack, so a node is created after its operands (canonical order).
-#   3 print: each function as its canonical lines; default names are the candidates a..zzzz
-#     that are neither keywords nor explicit names, in node order.
+#     forward with a frame stack, so a node is created after its operands (canonical order). The
+#     inline bodies of a statement are read first (prestep, bodyrun): the statements of each
+#     become nodes of the body region, and its descriptor is kept; the fold or loop word takes the
+#     next descriptor, skips the body tokens, and its node completes like a call.
+#   3 print: each function as its canonical lines, its lifted bodies first; default names are the
+#     candidates a..zzzz that are neither keywords nor explicit names, in node order.
 #
-# Token: (kind, len, start, w0, w1, hh, nv, fl). kind 1 word, 3 ( 4 ) 5 [ 6 ] 7 , 9 error byte.
+# Token: (kind, len, start, w0, w1, hh, nv, fl). kind 1 word, 3 ( 4 ) 5 [ 6 ] 7 , 8 quote, 9 error
+# byte, 10 ; 11 { 12 }.
 # w0 and w1 pack the first 8 bytes (big-endian, no padding), hh is a hash of all bytes, nv the
 # value of a number (or of the parameter letter or pN), fl bit 0 digits, bit 1 pN, bit 2 A-Z.
 # Node: (op, idt, nargs, k0, v0, k1, v1, k2, v2, k3, v3); idt 0 default name, 1+token for an
 # explicit name, 4294967295 the fresh `retval`. Operand kinds: 1 node, 2 parameter, 3 u32, 4 bool.
-# The node table has 31 pages of 128 entries: nodes 0..2047, the meta entry 2048 (k0 the next free
-# pool offset, k1 the function count), the call-argument pool 2049..2816 (four operands to an entry,
-# in the fields of k0..v3: 3072 arguments), and 2817 a dummy write target. A call node (op 24) has k0 = 5 and
+# The node table has 35 pages of 128 entries: nodes 0..2047, the meta entry 2048 (field 3 the next
+# free pool argument, 5 the function count, 6 the inline bodies lifted so far in the function, 7 the
+# descriptors so far, 8 the body nodes so far), the call-argument pool 2049..2816 (four operands to an entry, in
+# the fields of k0..v3: 3072 arguments), 2817 a dummy write target, the nodes of the inline bodies
+# 2818..3841, and the descriptors of the inline bodies 3842..4353 (first node, node count, result
+# kind, result value, parameter count). A call node (op 24) has k0 = 5 and
 # v0 the callee, k1 = 2 and v1 the highest parameter its arguments use (or k1 = 0), k2 = 6 and v2
 # the pool index of its first argument; nargs is the arity. A call frame (op 24) keeps the same
-# k0, v0, k2, v2 and writes each argument to the pool as it completes.
+# k0, v0, k2, v2 and writes each argument to the pool as it completes. A fold node (op 25) and a
+# loop node (op 26) are the same, with k0 = 5 and v0 the body function (k0 = 7 and v0 the
+# descriptor of an inline body), and for a loop k3 and v3 the predicate in the same way; k2 is 6 plus
+# 8 times the number of bodies lifted before the node, which numbers its inline bodies.
+# A type is a mask of what it can be: 1 u32, 2 bool, 4 an error (the reference reader gives no type),
+# 8 another type. The result mask of each function is kept in field 8 of its function table entry.
 
 fn ztok -> (u32,u32,u32,u32,u32,u32,u32,u32)x128x32
 zr rec 0 0 0 0 0 0 0 0
