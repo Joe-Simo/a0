@@ -709,7 +709,11 @@ function foldGenerator(seed0: number) {
     return { text, arity };
   };
   /** A fold or loop expression and its type. */
-  const foldExpr = (np: number, depth: number, helpers: Helpers): { text: string; type: string } => {
+  const foldExpr = (
+    np: number,
+    depth: number,
+    helpers: Helpers,
+  ): { text: string; type: string } => {
     const isLoop = rnd(3) === 0;
     const boolState = rnd(7) === 0;
     if (isLoop) use.loops += 1;
@@ -861,14 +865,17 @@ function foldGenerator(seed0: number) {
           return name;
         };
         const ops = [String(1 + rnd(9)), rnd(2) === 0 ? 'p0' : String(rnd(30))];
-        for (let i = 2; i < arity; i += 1) ops.push(rnd(2) === 0 ? `p${rnd(cnp)}` : String(rnd(30)));
+        for (let i = 2; i < arity; i += 1)
+          ops.push(rnd(2) === 0 ? `p${rnd(cnp)}` : String(rnd(30)));
         const pred = isLoop ? spec('bool') : '';
         const body = spec('u32');
         if (isLoop) use.loops += 1;
         const id = String.fromCharCode(97 + k);
         ids.push(id);
         nodes.push(
-          isLoop ? `${id} loop ${pred} ${body} ${ops.join(' ')}` : `${id} fold ${body} ${ops.join(' ')}`,
+          isLoop
+            ? `${id} loop ${pred} ${body} ${ops.join(' ')}`
+            : `${id} fold ${body} ${ops.join(' ')}`,
         );
       }
       parts.push(...lifted);
@@ -902,7 +909,11 @@ test('the B2 reader: 300 generated programs of fold and loop read to the referen
   for (let k = 0; k < 300; k += 1) {
     const text = gen.program();
     assert.ok(Buffer.byteLength(text) <= PAGES * PAGE, `program ${k} fits the input`);
-    assert.notEqual(reference(text), null, `program ${k}: the generator writes what the reference reads\n${text}`);
+    assert.notEqual(
+      reference(text),
+      null,
+      `program ${k}: the generator writes what the reference reads\n${text}`,
+    );
     foldCheck(read, text, `program ${k}`);
     if (text.includes('{')) inlineBodies += 1;
   }
@@ -910,8 +921,14 @@ test('the B2 reader: 300 generated programs of fold and loop read to the referen
   t.diagnostic(
     `inline ${u.inline}, named ${u.named}, loops ${u.loops}, bool state ${u.boolState}, nested ${u.nested}, extra operands ${u.extras}; ${inlineBodies} programs with an inline body`,
   );
-  assert.ok(u.inline > 200 && u.named > 20 && u.loops > 60, 'inline, named and loop forms are covered');
-  assert.ok(u.boolState > 10 && u.nested > 10 && u.extras > 60, 'bool states, nesting and extra operands are covered');
+  assert.ok(
+    u.inline > 200 && u.named > 20 && u.loops > 60,
+    'inline, named and loop forms are covered',
+  );
+  assert.ok(
+    u.boolState > 10 && u.nested > 10 && u.extras > 60,
+    'bool states, nesting and extra operands are covered',
+  );
 });
 
 test('the B2 reader: canonical programs with lifted helpers read back from the formatter', (t) => {
@@ -935,8 +952,34 @@ test('the B2 reader: canonical programs with lifted helpers read back from the f
 
 /** The dense words and punctuation a mutant is made of. */
 const MUTANT_TOKENS = [
-  '{', '}', ';', 'fold', 'loop', 'A', 'B', 'C', '5', '0', 'true', 'false', '(', ')', 'x', 'add',
-  'select', 'call', 'ret', 'f', 'lt', 'mov', ',', '$x', 'fn', 'u32', '->', 'end',
+  '{',
+  '}',
+  ';',
+  'fold',
+  'loop',
+  'A',
+  'B',
+  'C',
+  '5',
+  '0',
+  'true',
+  'false',
+  '(',
+  ')',
+  'x',
+  'add',
+  'select',
+  'call',
+  'ret',
+  'f',
+  'lt',
+  'mov',
+  ',',
+  '$x',
+  'fn',
+  'u32',
+  '->',
+  'end',
 ];
 
 /** The pieces of a dense text: words, punctuation, spaces and newlines, which join back to the text. */
@@ -992,7 +1035,11 @@ test('the B2 reader: mutants of fold and loop programs are rejected exactly when
     const want = reference(text);
     const got = read(text);
     if (want === null) {
-      assert.equal(got.err, true, `mutant ${m}: the reader flags what the reference rejects\n${text}`);
+      assert.equal(
+        got.err,
+        true,
+        `mutant ${m}: the reader flags what the reference rejects\n${text}`,
+      );
       rejected += 1;
     } else if (got.err) {
       assert.ok(
@@ -1005,7 +1052,9 @@ test('the B2 reader: mutants of fold and loop programs are rejected exactly when
       equal += 1;
     }
   }
-  t.diagnostic(`${rejected} mutants rejected, ${equal} read to the reference text, ${refused} refused`);
+  t.diagnostic(
+    `${rejected} mutants rejected, ${equal} read to the reference text, ${refused} refused`,
+  );
   assert.ok(rejected > 150, 'most mutants are rejected');
   assert.ok(equal > 10, 'some mutants are accepted');
 });
@@ -1030,11 +1079,17 @@ const CURATED: Curated[] = [
   ['a fold named and reused', `${STEP}fn f x fold step 4 0\nmul x x\n`],
   ['a fold as a result', `${STEP}fn f u32 -> u32\nret fold step 4 A\nend\n`],
   ['a zero-arity body', 'fn z -> u32\nmov 7\n\nfn f fold z\n'],
-  ['a loop of named functions', `${STEP}${BELOW.replace('fn below', 'fn below')}fn f loop below step 10 0\n`],
+  [
+    'a loop of named functions',
+    `${STEP}${BELOW.replace('fn below', 'fn below')}fn f loop below step 10 0\n`,
+  ],
   ['a loop with the body first', `${STEP}${BELOW}fn f loop step below 10 0\n`],
   ['a loop with one function', `${STEP}${BELOW}fn f loop below 10 0\n`],
   ['a loop with no operands', `${STEP}${BELOW}fn f loop below step\n`],
-  ['a loop in the operand of a loop', `${STEP}${BELOW}fn f add loop below step 10 0 loop below step 3 1\n`],
+  [
+    'a loop in the operand of a loop',
+    `${STEP}${BELOW}fn f add loop below step 10 0 loop below step 3 1\n`,
+  ],
   ['an inline fold body', 'fn f fold {add A B} 4 0\n'],
   ['an inline body with an extra operand', 'fn f fold {add A C} 4 0 7\n'],
   ['inline statements', 'fn f fold {add A B; mul A 2} 4 0\n'],
@@ -1069,10 +1124,27 @@ const CURATED: Curated[] = [
   ['two ret in a body', 'fn f fold {ret add A B; ret mul A 2} 4 0\n'],
   ['a bare value before the last statement', 'fn f fold {a add A B; A; add A B} 4 0\n'],
   ['a name written twice in a body', 'fn f fold {x add A B; x add A 1; x} 4 0\n'],
-  ['the same name in two bodies', 'fn f add fold {x add A B; mul x 2} 4 0 fold {x add A 1; mul x 3} 2 3\n'],
-  ['a body that names a value of the caller', 'fn f x add 1 2\nadd fold {y add A B; mul y x} 4 0 1\n'],
+  [
+    'the same name in two bodies',
+    'fn f add fold {x add A B; mul x 2} 4 0 fold {x add A 1; mul x 3} 2 3\n',
+  ],
+  [
+    'a body that names a value of the caller',
+    'fn f x add 1 2\nadd fold {y add A B; mul y x} 4 0 1\n',
+  ],
   ['a body using a parameter beyond the operands', 'fn f fold {add A D} 4 0 1 2\n'],
-  ['three inline folds in a function', 'fn f x fold {add A B} 4 0\ny fold {mul A 3} 2 x\nz fold {sub A B} 3 y\nadd z y\n'],
+  [
+    'three inline folds in a function',
+    'fn f x fold {add A B} 4 0\ny fold {mul A 3} 2 x\nz fold {sub A B} 3 y\nadd z y\n',
+  ],
+  ['a function named like an inline body', 'fn f_1 add A B\n\nfn f fold {mul A 2} 3 1\n'],
+  ['a later function named like an inline body', 'fn f fold {mul A 2} 3 1\n\nfn f_1 add A B\n'],
+  [
+    'a name that ends with digits, beside an inline body',
+    'fn f_2 add A B\n\nfn f fold {mul A 2} 3 1\n',
+    true,
+  ],
+  ['a name that ends with digits, with no inline body', 'fn f_2 add A B\n\nfn f add 1 2\n'],
   ['spaces inside braces', 'fn f fold { add A B } 4 0\n'],
   ['no space after a brace', 'fn f fold {add A B}4 0\n'],
   ['a separator after the closing brace', 'fn f fold {add A B}; 4 0\n'],
@@ -1113,7 +1185,11 @@ test('the B2 reader: fold, loop, inline bodies, result types and header checks r
       assert.equal(got.err, true, `${label}: the reader flags what the reference rejects\n${text}`);
       rejected += 1;
     } else if (refuse === true) {
-      assert.equal(got.err, true, `${label}: a form outside the reader sets the error flag\n${text}`);
+      assert.equal(
+        got.err,
+        true,
+        `${label}: a form outside the reader sets the error flag\n${text}`,
+      );
       refused += 1;
     } else {
       assert.equal(got.err, false, `${label}: the error flag is clear\n${text}`);

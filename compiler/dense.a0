@@ -3857,6 +3857,49 @@ r call plines h8 p2 ctx nfi nl rk rv sepn sepo p7
 ret r
 end
 
+# One byte of a name (byte p3 + k of the source p2): the state (in a run of digits after an underscore,
+# digits in it).
+fn usbyte (bool,u32) u32 u32x128x128 u32 -> (bool,u32)
+x add p3 p1
+pg shr x 7
+pa get p2 pg
+lo and x 127
+c get pa lo
+isu eq c 95
+d1 ge c 48
+d2 le c 57
+dg and d1 d2
+inr at p0 0
+cnt at p0 1
+c1 add cnt 1
+dgin and dg inr
+nin0 select dg false false
+inr1 select dgin true nin0
+inr2 select isu true inr1
+cn1 select dgin c1 0
+cn2 select isu 0 cn1
+r rec inr2 cn2
+ret r
+end
+
+# The flag, set when the name of function p1 ends with an underscore and digits (CALLER_N is the name
+# of an inline body: such a name could be one).
+fn usfn bool u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32x128x128 -> bool
+fe call ftget p2 p1
+nm at fe 0
+t call tkget p3 nm
+st at t 2
+ln at t 1
+z rec false 0
+f fold usbyte ln z p4 st
+inr at f 0
+cnt at f 1
+pos ne cnt 0
+hit and inr pos
+r or p0 hit
+ret r
+end
+
 # The canonical text of one source: the tables of the lexer and the parser, then every function.
 fn canonfn u32x128x128 u32 -> ((u32x128x128,u32),bool)
 lx call lexall p0 p1
@@ -3879,6 +3922,11 @@ o1 fold pfn gnf o0 gnt gft gpt tk p0 cst gnf gnn
 lxe at lx 4
 gge at g 6
 gnp at g 5
+mfin call ntget gnt 2048
+nbod at mfin 7
+hasb ne nbod 0
+usn select hasb gnf 0
+usb fold usfn usn false gft tk p0
 cap1 gt p1 16384
 ov1 gt gnn 2048
 ov2 gt gnf 512
@@ -3891,6 +3939,7 @@ e03 or e02 ov1
 e04 or e03 ov2
 e05 or e04 ov3
 e06 or e05 ov4
-res rec o1 e06
+e07 or e06 usb
+res rec o1 e07
 ret res
 end
