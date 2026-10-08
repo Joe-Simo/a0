@@ -31,7 +31,11 @@
 # The mask of a node (see below) tells an array of u32 or bool of one or two dimensions from any other type
 # (get and set of it are typed; any other array is the mask 8, and its get is any type), so a function whose
 # result is not written and ends in an array, or in a value of an unknown type, sets the error flag.
-# Not yet read (the error flag is set): text, io, $ escapes, =, repeat `[x;n]`, spec lines, hex
+# Stage B3.2 adds the repeat form `[x;n]` (n copies of the first element; elements may follow it, as in the
+# reference), the escape `$name` (the lexer reads it as the word `name` with the flag 128, so the reader
+# takes it for a name of a node defined above, or for the name of a statement, never a keyword or a function),
+# and `=` after the name of a statement.
+# Not yet read (the error flag is set): text, io, spec lines, hex
 # literals, profile lines, commas used as blanks, the `rec` and `arr` words, record and array states and
 # extra operands of inline bodies, and records and arrays as an unwritten result.
 #
@@ -106,10 +110,10 @@ zt arr zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp zp
 ret zt
 end
 
-fn s1zero -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32)
+fn s1zero -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool)
 tk0 call ztok
 bd0 call zlnt
-r rec tk0 0 bd0 0 false false false 0 0 0 0 0 0 false false false 0 false 0 0 0 0 0 0 0
+r rec tk0 0 bd0 0 false false false 0 0 0 0 0 0 false false false 0 false 0 0 0 0 0 0 0 false
 ret r
 end
 
@@ -143,7 +147,7 @@ ret r
 end
 
 # One byte of the source (i < n) or the virtual newline (i == n): the state after it.
-fn lexb ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32)
+fn lexb ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool) u32 u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool)
 tk at p0 0
 ntk at p0 1
 bd at p0 2
@@ -169,6 +173,7 @@ tnd at p0 21
 td1 at p0 22
 td2 at p0 23
 tbk at p0 24
+dlr at p0 25
 pgi shr p1 7
 pg get p2 pgi
 b0 get pg p1
@@ -210,7 +215,13 @@ s10 or s7 s8
 sx or s9 s10
 sepall or sx hs
 sepa2 or sepall nl
-wc eq sepa2 false
+dlc eq c 36
+dlz eq wln 0
+dls0 and dlc dlz
+dls and dls0 act
+ndls eq dls false
+wc0 eq sepa2 false
+wc and wc0 ndls
 upd and act wc
 endw and inw sepa2
 pr1 or q4 q5
@@ -390,7 +401,9 @@ wsh select hast wsh0 0
 tflg add tfc wsh
 nvt select lvalid descn nv
 flg2 add flg tflg
-toka rec 1 wln wst w0 w1 hh nvt flg2
+dfb select dlr 128 0
+flg3 add flg2 dfb
+toka rec 1 wln wst w0 w1 hh nvt flg3
 okta lt ntk 4096
 ixa select okta ntk 4095
 tkw call tokput tk ixa toka
@@ -545,25 +558,69 @@ bs eq c 92
 erq and inq bs
 nsq select isq ninq inq
 inqn select nl false nsq
+dlru select upd dlr false
+dlrn select dls true dlru
 ebq or eb erq
 ebw or ebq badw
 ov1 gt ntkb 4096
 ov2 gt nbkb 2048
 ov or ov1 ov2
-errn or ebw ov
-r rec tkb ntkb bdb nbkb errn upd cmtn wstn wlnn w0n w1n hhn nvn dfn pfn lfn wmn inqn tsnn cdnn prnn tndn td1n td2n bkn
+dbad1 and dls dlr
+ninw eq inw false
+ndu eq upd false
+ndd eq dls false
+dend0 and dlr ninw
+dend1 and dend0 ndu
+dbad2 and dend1 ndd
+rsf eq wln 2
+rsf1 eq w0 26222
+rsa and rsf rsf1
+rsg eq wln 3
+rsg1 eq w0 6647396
+rsg2 and rsg rsg1
+rsh1 eq w0 7497076
+rsh2 and rsg rsh1
+rsi eq wln 4
+rsi1 eq w0 1953658213
+rsi2 and rsi rsi1
+rsj eq wln 5
+rsj1 eq w0 1717660787
+rsj2 eq w1 101
+rsj3 and rsj rsj1
+rsj4 and rsj3 rsj2
+rsk1 eq w0 1885434979
+rsk2 eq w1 104
+rsk3 and rsj rsk1
+rsk4 and rsk3 rsk2
+rs1 or rsa rsg2
+rs2 or rs1 rsh2
+rs3 or rs2 rsi2
+rs4 or rs3 rsj4
+rs5 or rs4 rsk4
+npf eq pfq false
+nrs eq rs5 false
+dg1 and vi2 npf
+dgood and dg1 nrs
+ndg eq dgood false
+dbd0 and endw dlr
+dbad3 and dbd0 ndg
+ebd1 or ebw dbad1
+ebd2 or ebd1 dbad2
+ebd3 or ebd2 dbad3
+errn or ebd3 ov
+r rec tkb ntkb bdb nbkb errn upd cmtn wstn wlnn w0n w1n hhn nvn dfn pfn lfn wmn inqn tsnn cdnn prnn tndn td1n td2n bkn dlrn
 ret r
 end
 
 # The lexer over the whole input: n + 1 steps (the last one is the virtual newline).
-fn lexall u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32)
+fn lexall u32x128x128 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool)
 s0 call s1zero
 m add p1 1
 s fold lexb m s0 p0 p1
 ret s
 end
 
-fn wcls (u32,u32,u32,u32,u32,u32,u32,u32) -> u32
+fn wclsr (u32,u32,u32,u32,u32,u32,u32,u32) -> u32
 kd at p0 0
 ln at p0 1
 w0 at p0 3
@@ -972,6 +1029,16 @@ s56 select r6f 40 s55
 ret s56
 end
 
+# The code of a token: wclsr, but no code for a word written with `$` (an id, never a keyword).
+fn wcls (u32,u32,u32,u32,u32,u32,u32,u32) -> u32
+fl at p0 7
+dl and fl 128
+dlb ne dl 0
+c call wclsr p0
+r select dlb 0 c
+ret r
+end
+
 fn arity u32 -> u32
 a0 mov 0
 e1 eq p0 1
@@ -1188,6 +1255,13 @@ end
 # pput as a fold step (a count of 0 writes nothing).
 fn pputf (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40
 r call pput p0 p2 p3 p4
+ret r
+end
+
+# pput as a fold step over the arguments base + i (p2 the base): a repeated element.
+fn pputr (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40
+ix add p2 p1
+r call pput p0 ix p3 p4
 ret r
 end
 
@@ -1676,7 +1750,11 @@ c45 and l45 a45
 d45 and c45 b45
 o45 or o44 d45
 isw eq kd 1
-r and o45 isw
+fl at p0 7
+dl and fl 128
+ndl eq dl 0
+r0 and o45 isw
+r and r0 ndl
 ret r
 end
 
@@ -2528,6 +2606,7 @@ nix add ix 1
 nxt call tkget p2 nix
 nxk at nxt 0
 nxf at nxt 7
+nxn at nxt 6
 nxc call wcls nxt
 nxw eq nxk 1
 nxc0 eq nxc 0
@@ -2540,7 +2619,7 @@ nxv and nxv2 nxin
 ct38 eq code 38
 ecallkw and isw ct38
 cz eq code 0
-fl15 and fl 15
+fl15 and fl 143
 fz eq fl15 0
 cnm and cz fz
 enm0 and isw cnm
@@ -2795,6 +2874,12 @@ cntn sub nn0 nf0
 fnd fold findn cntn 4294967295 nt0 nf0 p2 t
 fnf ne fnd 4294967295
 fnd2 select fnf fnd 0
+qa_dl and fl 128
+qa_dlb ne qa_dl 0
+qa_ddl and isw qa_dlb
+qa_pcd and qa_ddl fnf
+qa_nfn eq fnf false
+qa_dbad and qa_ddl qa_nfn
 tpi0 sub dp0 1
 top call frget fr0 tpi0
 topop at top 0
@@ -2874,6 +2959,40 @@ qa_x8 at qa_cte 8
 qa_x9 at qa_cte 9
 qa_x10 at qa_cte 10
 qa_cten rec qa_c0 qa_c1 qa_c2 qa_c3 qa_c4 qa_c5 qa_c6 qa_c7 qa_x8 qa_x9 qa_x10
+esm eq kd 10
+qb_h1 eq have 1
+qb_s0 and qa_is27 qb_h1
+qb_s1 and qb_s0 qa_dpp
+qb_nd0 and nxf 1
+qb_nd ne qb_nd0 0
+qb_nvl ge nxn 1
+qb_nvh le nxn 65536
+qb_rd0 eq tpi0 0
+qb_rd1 eq tpi0 1
+qb_re2a sub tpi0 1
+qb_re2b mul qb_re2a 64
+qb_re2c add qb_re2b 5632
+qb_re12 select qb_rd1 5632 qb_re2c
+qb_rend select qb_rd0 5184 qb_re12
+qb_end add v2 nxn
+qb_fit le qb_end qb_rend
+qb_sm1 and esm qb_s1
+qb_sm2 and qb_sm1 nxin
+qb_sm3 and qb_sm2 nxw
+qb_sm4 and qb_sm3 qb_nd
+qb_sm5 and qb_sm4 qb_nvl
+qb_sm6 and qb_sm5 qb_nvh
+qb_smok and qb_sm6 qb_fit
+qb_nsm eq qb_smok false
+qb_smbad and esm qb_nsm
+qb_fe call pget ntq v2
+qb_fk at qb_fe 0
+qb_fv at qb_fe 1
+qb_nm1 sub nxn 1
+qb_cp select qb_smok qb_nm1 0
+qb_vp1 add v2 1
+qb_nts fold pputr qb_cp ntq qb_vp1 qb_fk qb_fv
+qb_topsm rec topop needt nxn cma k0 v0 k1 v1 k2 v2 k3 v3
 spm call mknode sp0 frm
 erpnb eq badrp false
 erpg and erp erpnb
@@ -2886,11 +3005,14 @@ ntr at spr 0
 nnr at spr 1
 qa_ntw call ntset ntr 3554 qa_cten
 ntr2 select qa_ecbok qa_ntw ntr
+ntr3 select qb_smok qb_nts ntr2
+sk2 select qb_smok nix2 sk1
 rkrp select single k0 1
 rvrp select single v0 nn0
 topmod rec topop needt have true k0 v0 k1 v1 k2 v2 k3 v3
 tcm and ecm topgrp
-topw select tcm topmod top
+topw0 select tcm topmod top
+topw select qb_smok qb_topsm topw0
 fra call frset fr0 dp0 pushfr
 frb call frset fra tpi0 topw
 dpa add dp0 1
@@ -2919,7 +3041,9 @@ kk5 eq kd 5
 kk6 eq kd 6
 kok3 or kok kk5
 kok4 or kok3 kk6
-kbad eq kok4 false
+kk10 eq kd 10
+kok5 or kok4 kk10
+kbad eq kok5 false
 nfbad0 eq fnf false
 nfbad and enm1 nfbad0
 ncg eq topgrp false
@@ -2939,13 +3063,18 @@ ea8 or ea7 cbbad
 ea9 or ea8 efbad
 qa_tl and fl 8
 qa_tlb ne qa_tl 0
-qa_tbad and isw qa_tlb
+qa_tbad0 and isw qa_tlb
+qa_ndlb eq qa_dlb false
+qa_tbad and qa_tbad0 qa_ndlb
 qa_ea0 or ea9 qa_ecbbad
-qa_ea or qa_ea0 qa_tbad
+qa_ea1 or qa_ea0 qa_tbad
+qa_ea2 or qa_ea1 qa_dbad
+qa_ea or qa_ea2 qb_smbad
 serrn or qa_ea povf
 pa1 or ebool enum
 pa2 or pa1 epar
-pc1 and enm1 fnf
+pc1a and enm1 fnf
+pc1 or pc1a qa_pcd
 pd1 or pa2 pc1
 erpok2 eq badrp false
 erpv and erp erpok2
@@ -2964,7 +3093,7 @@ r2 select enmp nvv r1
 r3 select ebool bvv r2
 r4 select erpv rvrp r3
 pvn select qa_zk nn0 r4
-sps1 rec ntr2 nnr nf0 frb dpn rs0 rk0 rv0 serrn bs0 sk1 bi1
+sps1 rec ntr3 nnr nf0 frb dpn rs0 rk0 rv0 serrn bs0 sk2 bi1
 cs0 rec sps1 pendv pkn pvn
 csr fold casc 9 cs0
 r at csr 0
@@ -3054,7 +3183,7 @@ fl0 at t0 7
 isw0 eq kd0 1
 retf eq c0 33
 cz0 eq c0 0
-fl15z and fl0 15
+fl15z and fl0 143
 fz0 eq fl15z 0
 nmw and cz0 fz0
 nmw2 and nmw isw0
@@ -3074,10 +3203,67 @@ nisf eq isf0 false
 nmk1 and nmk0 nisf
 nlen sub p3 p2
 two ge nlen 2
-nmk2 and nmk1 two
+nmk2a and nmk1 two
+ln0 at t0 1
+w00 at t0 3
+w10 at t0 4
+t1i add p2 1
+t1t call tkget p1 t1i
+t1k at t1t 0
+t1l at t1t 1
+t1w at t1t 3
+t1a eq t1k 1
+t1b eq t1l 1
+t1c eq t1w 61
+t1d and t1a t1b
+t1e and t1d t1c
+eqt and t1e two
+l4 ge ln0 4
+fc4 shr w00 24
+l3 eq ln0 3
+fc3 shr w00 16
+l2 eq ln0 2
+fc2 shr w00 8
+fcs1 select l2 fc2 w00
+fcs2 select l3 fc3 fcs1
+fcc select l4 fc4 fcs2
+fcge ge fcc 97
+fcle le fcc 122
+fcl and fcge fcle
+pnb and fl0 2
+npn eq pnb 0
+rs1 eq c0 30
+rs2 eq c0 32
+rs3 eq c0 33
+rs4 eq c0 34
+rs5 eq c0 35
+rs6 or rs1 rs2
+rs7 or rs6 rs3
+rs8 or rs7 rs4
+rs9 or rs8 rs5
+pa5 eq ln0 5
+pa6 eq w00 1885434979
+pa7 eq w10 104
+pa8 and pa5 pa6
+pa9 and pa8 pa7
+rsx or rs9 pa9
+nrsx eq rsx false
+dlb0 and fl0 128
+dlb1 ne dlb0 0
+nm1 and eqt isw0
+nm2 and nm1 fcl
+nm3 and nm2 npn
+nm4 and nm3 nrsx
+nm5 and nm4 nrt
+nmd0 and dlb1 isw0
+nmd and nmd0 two
+nmk2b or nmk2a nm5
+nmk2 or nmk2b nmd
 rp1 add p2 1
 s1 select retf rp1 p2
-s2a add s1 1
+s2b add s1 1
+eqs select eqt 1 0
+s2a add s2b eqs
 s2 select nmk2 s2a s1
 lt2 lt s2 p3
 cd sub p3 s2
@@ -3383,7 +3569,7 @@ nwd eq nkd 1
 nnw eq nwd false
 kwn call isresv nmtk
 nfl at nmtk 7
-nfa and nfl 5
+nfa and nfl 133
 nfb ne nfa 0
 nbad1 or nnw kwn
 nbad0 or nbad1 nfb

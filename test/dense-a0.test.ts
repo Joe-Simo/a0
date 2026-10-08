@@ -29,6 +29,9 @@
  * arrays, calls with array parameters and results, an unwritten result inferred from get), 400
  * token-level mutants of 60 of them, a curated list of types at their size limits, and the
  * capacities of the regions of the array elements must read as the reference reads them.
+ * Stage B3.2 adds the repeat form `[x;n]`, the `$` escape of an id (a keyword, a function name or a
+ * type-like word) and `=` after the name of a statement; 250 generated programs, each as the
+ * printer writes it, with `=` after names and with more ids escaped, and 500 mutants of 60 of them.
  */
 
 import assert from 'node:assert/strict';
@@ -148,7 +151,7 @@ function stageDenseText(dense: string): boolean {
     .split('\n')
     .filter((l) => !l.startsWith('use '))
     .join('\n');
-  return !/[#$="]|\btext\b|\[[^\]]*;/.test(body);
+  return !/[#"]|\btext\b/.test(body);
 }
 
 /** The reader over the A0 source: the dense text in, the canonical text and the error flag out. */
@@ -1278,6 +1281,32 @@ function arrayParts(t: string): { elem: string; n: number } | undefined {
   return m === null ? undefined : { elem: m[1] as string, n: Number(m[2]) };
 }
 
+/** Ids of nodes that the dense text writes with the `$` escape: keywords and type-like words. */
+const ESCAPED_IDS = [
+  'add',
+  'sub',
+  'mul',
+  'rem',
+  'get',
+  'set',
+  'mov',
+  'select',
+  'at',
+  'put',
+  'call',
+  'fold',
+  'loop',
+  'arr',
+  'rec',
+  'text',
+  'u32',
+  'bool',
+  'io',
+  'u32x2',
+  'boolx3',
+  'u32x2x3',
+];
+
 /**
  * Generated canonical programs with arrays: typed headers (arrays of u32, bool and records, up to
  * two dimensions deep and more), array literals of values in scope, get and set, select and mov of
@@ -1285,7 +1314,7 @@ function arrayParts(t: string): { elem: string; n: number } | undefined {
  * programs are well typed (parse checks them); formatDense writes them in dense form, nesting
  * included, which the reader reads back.
  */
-function arrayGenerator(seed0: number) {
+function arrayGenerator(seed0: number, opts: { repeat?: boolean; escapes?: boolean } = {}) {
   const rnd = rngFrom(seed0);
   const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
   interface Val {
@@ -1315,11 +1344,19 @@ function arrayGenerator(seed0: number) {
     const params = Array.from({ length: rnd(4) }, randType);
     const vals: Val[] = params.map((ty, i) => ({ ref: `p${i}`, ty }));
     const lines: string[] = [];
-    const dn = defaultNames(new Set<string>([name]));
+    const dn = defaultNames(new Set<string>([name, ...ESCAPED_IDS, ...sigs.map((s) => s.name)]));
     let explicit = 0;
+    const usedEscapes = new Set<string>();
     const emit = (op: string, args: string[], ty: string): Val => {
       let id: string;
-      if (rnd(7) === 0) {
+      if (opts.escapes === true && rnd(6) === 0) {
+        // an id that needs the `$` escape: a keyword, a type-like word, a function name
+        const free = [...ESCAPED_IDS, ...sigs.map((s) => s.name)].filter(
+          (e) => !usedEscapes.has(e),
+        );
+        id = pick(free);
+        usedEscapes.add(id);
+      } else if (rnd(7) === 0) {
         explicit += 1;
         id = `w${explicit}x`;
       } else id = dn.next().value as string;
@@ -1335,6 +1372,17 @@ function arrayGenerator(seed0: number) {
       if (ty === 'bool') return pick(['true', 'false']);
       const ap = arrayParts(ty);
       if (ap !== undefined) {
+        if (opts.repeat === true && ap.n >= 3 && (ap.elem === 'u32' || ap.elem === 'bool')) {
+          if (rnd(2) === 0) {
+            // n equal elements: a literal or a parameter, which the printer writes as [x;n]
+            const one = mk(ap.elem, 0);
+            return emit(
+              'arr',
+              Array.from({ length: ap.n }, () => one),
+              ty,
+            ).ref;
+          }
+        }
         const elems = Array.from({ length: ap.n }, () => mk(ap.elem, depth - 1));
         return emit('arr', elems, ty).ref;
       }
@@ -1476,6 +1524,7 @@ function mutateArrays(
   text: string,
   rnd: (n: number) => number,
   pick: <T>(xs: readonly T[]) => T,
+  tokens: readonly string[] = ARRAY_MUTANT_TOKENS,
 ): string {
   const ps = arrayPieces(text);
   const words = ps.flatMap((p, i) => (/^\s*$/.test(p) ? [] : [i]));
@@ -1483,15 +1532,15 @@ function mutateArrays(
   const out = ps.slice();
   const op = rnd(6);
   if (op === 0) out.splice(k, 1);
-  else if (op === 1) out.splice(k, 0, pick(ARRAY_MUTANT_TOKENS), ' ');
-  else if (op === 2) out[k] = pick(ARRAY_MUTANT_TOKENS);
+  else if (op === 1) out.splice(k, 0, pick(tokens), ' ');
+  else if (op === 2) out[k] = pick(tokens);
   else if (op === 3) {
     const next = words[Math.min(words.length - 1, words.indexOf(k) + 1)] as number;
     [out[k], out[next]] = [out[next] as string, out[k] as string];
-  } else if (op === 4) out.splice(k, 0, pick(ARRAY_MUTANT_TOKENS));
+  } else if (op === 4) out.splice(k, 0, pick(tokens));
   else {
-    out[k] = pick(ARRAY_MUTANT_TOKENS);
-    out.splice(words[rnd(words.length)] as number, 0, pick(ARRAY_MUTANT_TOKENS), ' ');
+    out[k] = pick(tokens);
+    out.splice(words[rnd(words.length)] as number, 0, pick(tokens), ' ');
   }
   return out.join('');
 }
@@ -1707,4 +1756,302 @@ test('the B3.1 reader: the array regions set the error flag on overflow, never w
   assert.equal(read(deep(3)).err, false, 'arrays nested three deep');
   assert.equal(read(deep(3)).text, reference(deep(3)));
   assert.equal(read(deep(5)).err, true, 'arrays nested over the frames');
+});
+
+// ---------------------------------------------------------------------------
+// Stage B3.2: the repeat form [x;n], the $ escape and `=` after a name
+// ---------------------------------------------------------------------------
+
+/** A dense text with `=` after the name of a statement (the printer never writes it). */
+function withEquals(text: string, rnd: (n: number) => number): string {
+  const words = new Set<string>([
+    ...BIN_OPS,
+    ...CMP_OPS,
+    ...['select', 'get', 'set', 'mov', 'at', 'put', 'rec', 'call', 'fold', 'loop', 'arr'],
+    ...['ret', 'fn', 'end', 'use', 'true', 'false'],
+    ...[...text.matchAll(/^fn (\S+)/gm)].map((m) => m[1] as string),
+  ]);
+  return text
+    .split('\n')
+    .map((l) => {
+      const m = /^(\$?[a-z][a-z0-9_]*) (?!=)(.+)$/.exec(l);
+      if (m === null || (!(m[1] as string).startsWith('$') && words.has(m[1] as string))) return l;
+      return rnd(3) !== 0 ? l : `${m[1]} = ${m[2]}`;
+    })
+    .join('\n');
+}
+
+/** A dense text with some uses of the names of nodes written with the `$` escape. */
+function withEscapes(text: string, rnd: (n: number) => number): string {
+  const words = new Set<string>([
+    ...BIN_OPS,
+    ...CMP_OPS,
+    ...['select', 'get', 'set', 'mov', 'at', 'put', 'rec', 'call', 'fold', 'loop', 'arr'],
+    ...['ret', 'fn', 'end', 'use', 'true', 'false'],
+    ...[...text.matchAll(/^fn (\S+)/gm)].map((m) => m[1] as string),
+  ]);
+  const names = new Set<string>();
+  for (const l of text.split('\n')) {
+    const m = /^(\$?)([a-z][a-z0-9_]*) (?!=)/.exec(l);
+    if (m !== null && (m[1] === '$' || !words.has(m[2] as string))) names.add(m[2] as string);
+  }
+  // a name that is also a word of the text (an op, a function) is written with `$` already, or not at all
+  const chosen = new Set([...names].filter((n) => !words.has(n) && rnd(3) === 0));
+  if (chosen.size === 0) return text;
+  return text
+    .split('\n')
+    .map((l) =>
+      l.startsWith('fn ')
+        ? l
+        : l.replace(/(\$?)\b([a-z][a-z0-9_]*)\b/g, (all, d: string, w: string) =>
+            d === '' && chosen.has(w) ? `$${w}` : all,
+          ),
+    )
+    .join('\n');
+}
+
+test('the B3.2 reader: generated programs with repeats and escapes read to their canonical text', (t) => {
+  const read = loadReader();
+  const gen = arrayGenerator(5150, { repeat: true, escapes: true });
+  const rnd = rngFrom(77);
+  let repeats = 0;
+  let escapes = 0;
+  let equals = 0;
+  let checked = 0;
+  for (let k = 0; k < 250; k += 1) {
+    const program = parse(gen.program());
+    const base = formatDense(program);
+    // the printer's text, the same with `=` after names, and with more names escaped
+    const variants = [base, withEquals(base, rnd), withEscapes(base, rnd)];
+    for (const dense of variants) {
+      if (Buffer.byteLength(dense) > PAGES * PAGE) continue;
+      const want = reference(dense);
+      assert.equal(
+        want,
+        formatProgram(program),
+        `program ${k}: a variant means the same program\n${dense}`,
+      );
+      const got = read(dense);
+      assert.equal(got.err, false, `program ${k}: the error flag is clear\n${dense}`);
+      assert.equal(got.text, want, `program ${k}\n${dense}`);
+      checked += 1;
+      if (/;\d/.test(dense)) repeats += 1;
+      if (/\$[a-z]/.test(dense)) escapes += 1;
+      if (/^[$a-z][a-z0-9_]* = /m.test(dense)) equals += 1;
+    }
+  }
+  t.diagnostic(
+    `${checked} texts, ${repeats} with a repeat, ${escapes} with an escape, ${equals} with =`,
+  );
+  assert.ok(checked > 600, 'most programs fit the input');
+  assert.ok(repeats > 80 && escapes > 100 && equals > 60, 'the forms are covered');
+});
+
+/**
+ * A text the reference reads but the reader leaves to the error flag, for the reader of Stage B3.2:
+ * a comma used as a blank, a text literal, the `rec` or `arr` word, an inline body, an `io` word, a
+ * type written with spaces, or an unwritten result that is not u32 or bool.
+ */
+function outsideTheReaderB32(text: string, program: Program): boolean {
+  if (/[,"{]|\brec\b|\barr\b|\btext\b|\bio\b|#/.test(text)) return true;
+  const lines = text.split('\n');
+  for (const l of lines) if (/^fn /.test(l) && /\([^)]*\s[^)]*\)/.test(l)) return true;
+  const heads = lines.filter((l) => /^fn /.test(l));
+  for (const [i, f] of program.functions.entries()) {
+    const h = heads[i];
+    if (h !== undefined && !h.includes('->') && f.result !== 'u32' && f.result !== 'bool')
+      return true;
+  }
+  // a repeat or an array literal that does not fit the regions of its depth
+  return /\[[^\]]*;(\d{4,}|[3-9]\d{2})\b/.test(text);
+}
+
+test('the B3.2 reader: mutants of programs with repeats and escapes are rejected exactly when the reference rejects them', (t) => {
+  const read = loadReader();
+  const gen = arrayGenerator(6262, { repeat: true, escapes: true });
+  const rnd = rngFrom(404);
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  const bases = Array.from({ length: 60 }, () => {
+    const b = formatDense(parse(gen.program()));
+    return rnd(3) === 0 ? withEquals(b, rnd) : b;
+  });
+  let equal = 0;
+  let rejected = 0;
+  let refused = 0;
+  for (let m = 0; m < 500; m += 1) {
+    const text = mutateArrays(pick(bases), rnd, pick);
+    if (Buffer.byteLength(text) > PAGES * PAGE) continue;
+    let program: Program | undefined;
+    let want: string | null = null;
+    try {
+      program = parseDense(text);
+      want = formatProgram(program);
+    } catch (e) {
+      if (!(e instanceof A0Error)) throw e;
+    }
+    const got = read(text);
+    if (want === null) {
+      assert.equal(
+        got.err,
+        true,
+        `mutant ${m}: the reader flags what the reference rejects\n${text}`,
+      );
+      rejected += 1;
+    } else if (got.err) {
+      assert.ok(
+        outsideTheReaderB32(text, program as Program),
+        `mutant ${m}: the reader refuses a text of the forms it reads\n${text}`,
+      );
+      refused += 1;
+    } else {
+      assert.equal(got.text, want, `mutant ${m}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(
+    `${rejected} mutants rejected, ${equal} read to the reference text, ${refused} refused`,
+  );
+  assert.ok(rejected > 150, 'most mutants are rejected');
+  assert.ok(equal > 30, 'some mutants are accepted');
+});
+
+const ESCAPE_CURATED: Curated[] = [
+  ['a repeat of a literal', 'fn f -> u32x5\n[0;5]\n'],
+  ['a repeat of a parameter', 'fn f u32 -> u32x3\n[A;3]\n'],
+  ['a repeat of an operation', 'fn f u32 -> u32x4\n[add A 1;4]\n'],
+  ['a repeat of an array', 'fn f u32 -> u32x3x2\n[[1 2 3];2]\n'],
+  ['a repeat of a bool', 'fn f -> boolx3\n[true;3]\n'],
+  ['a repeat of one', 'fn f u32 -> u32x2\n[7;1]\n'],
+  ['elements after a repeat', 'fn f -> u32x3\n[7;1 8 9]\n'],
+  ['elements after a repeat, the form of the reference', 'fn f -> u32x4\n[7;2 8 9]\n'],
+  ['a repeat in an operand', 'fn f u32 -> u32\nget [A;4] 2\n'],
+  ['a repeat in a call', 'fn g u32x4 -> u32\nget A 1\n\nfn f u32 -> u32\ng [A;4]\n'],
+  ['a repeat in an array', 'fn f u32 -> u32x2x3\n[[A;2] [1;2] [2;2]]\n'],
+  ['a repeat of zero', 'fn f -> u32x2\n[7;0]\n'],
+  ['a repeat over its length', 'fn f -> u32x2\n[7;65537]\n'],
+  ['a repeat after two elements', 'fn f -> u32x2\n[7 8;2]\n'],
+  ['a repeat of nothing', 'fn f -> u32x2\n[;2]\n'],
+  ['a repeat twice', 'fn f -> u32x2\n[7;2;3]\n'],
+  ['a repeat by a parameter', 'fn f -> u32x2\n[7;A]\n'],
+  ['a repeat in a group', 'fn f -> u32x2\n(7;2)\n'],
+  ['a repeat not closed', 'fn f -> u32x2\n[7;2\n'],
+  ['a repeat by a number with a zero', 'fn f -> u32x2\n[7;02]\n'],
+  ['a repeat by a hex number', 'fn f -> u32x2\n[7;0x2]\n'],
+  ['a repeat by a number too big', 'fn f -> u32x2\n[7;99999999999]\n'],
+  ['a repeat by the count of an array region', 'fn f -> u32x2112\n[0;2112]\n'],
+  ['a repeat over the region', 'fn f -> u32x2113\n[0;2113]\n', true],
+  ['a repeat by the greatest length', 'fn f -> u32x65536\n[0;65536]\n', true],
+  ['a repeat of a node', 'fn f u32 -> u32x2\nx add A 1\n[x;2]\n'],
+  ['a repeat after a name', 'fn f u32 -> u32x3\nx [A;3]\nset x 1 7\n'],
+  ['the semicolon in a body', 'fn f fold {a [A;3]; get a 1} 3 0\n'],
+  ['a keyword as an id', 'fn f u32 -> u32\n$rem add A 1\nmul $rem $rem\n'],
+  [
+    'a keyword as an id, the second',
+    'fn f u32 -> u32\n$add add A 1\n$get mul $add 2\nget [1 2 3] $get\n',
+  ],
+  ['a keyword as an id without the escape', 'fn f u32 -> u32\nrem add A 1\nmul rem rem\n'],
+  ['a function name as an id', 'fn g A\n\nfn f u32 -> u32\n$g add A 1\nmul $g $g\n'],
+  [
+    'a function name as an id without the escape',
+    'fn g A\n\nfn f u32 -> u32\ng add A 1\nmul g g\n',
+  ],
+  ['a type-like word as an id', 'fn f u32 -> u32\n$u32x2 add A 1\nmul $u32x2 2\n'],
+  ['u32 as an id', 'fn f u32 -> u32\n$u32 add A 1\nmul $u32 2\n'],
+  ['an id, escaped for no reason', 'fn f u32 -> u32\n$x add A 1\nmul $x $x\n'],
+  ['an escaped use of a plain id', 'fn f u32 -> u32\nx add A 1\nmul $x $x\n'],
+  ['an escape of a name not defined', 'fn f u32 -> u32\nx add A 1\nadd $y x\n'],
+  ['an escape of a name defined later', 'fn f u32 -> u32\nadd $y 1\ny add A 1\n'],
+  ['an escape of a function name', 'fn g A\n\nfn f u32 -> u32\nadd $g 1\n'],
+  ['an escape of a keyword never defined', 'fn f u32 -> u32\nadd $add 1\n'],
+  ['an escape of a reserved word', 'fn f u32 -> u32\n$fn add A 1\n$fn\n'],
+  ['an escape of ret', 'fn f u32 -> u32\n$ret add A 1\n$ret\n'],
+  ['an escape of true', 'fn f u32 -> u32\n$true add A 1\n$true\n'],
+  ['an escape of a parameter word', 'fn f u32 -> u32\n$p3 add A 1\n$p3\n'],
+  ['an escape of a letter', 'fn f u32 -> u32\n$A add A 1\nA\n'],
+  ['an escape of a number', 'fn f u32 -> u32\n$5 add A 1\n$5\n'],
+  ['an escape of a symbol', 'fn f u32 -> u32\n$+ add A 1\n$+\n'],
+  ['an escape followed by a space', 'fn f u32 -> u32\n$ x add A 1\nx\n'],
+  ['two escapes', 'fn f u32 -> u32\n$$x add A 1\nx\n'],
+  ['an escape inside a word', 'fn f u32 -> u32\nx$y add A 1\nx\n'],
+  ['an escape alone on a line', 'fn f u32 -> u32\nadd A 1\n$\n'],
+  ['an escape of the result', 'fn f u32 -> u32\nx add A 1\nret $x\n'],
+  ['an escape of the result, as a statement', 'fn f u32 -> u32\nx add A 1\n$x\n'],
+  ['an escaped name defined twice', 'fn f u32 -> u32\n$x add A 1\n$x add A 2\n$x\n'],
+  ['an escaped name and a plain name', 'fn f u32 -> u32\n$x add A 1\nx add A 2\nx\n'],
+  ['an escaped name as a function name', 'fn $f A\n'],
+  ['an escape in a header', 'fn f $x -> u32\nA\n'],
+  ['an escape in a comment', 'fn f u32 -> u32\nadd A 1 # $x\n'],
+  ['an escape in an inline body', 'fn f fold {$x add A B; mul $x 2} 3 0\n'],
+  ['a name taken from a fold body', 'fn f x fold {add A B} 3 0\nadd $x 1\n'],
+  ['= after a name', 'fn f u32 -> u32\nx = add A 1\nmul x x\n'],
+  ['= after a keyword', 'fn f u32 -> u32\nadd = add A 1\nmul $add $add\n'],
+  ['= after a function name', 'fn g A\n\nfn f u32 -> u32\ng = add A 1\nmul $g $g\n'],
+  ['= after an escaped name', 'fn f u32 -> u32\n$x = add A 1\nmul $x $x\n'],
+  ['= after a reserved word', 'fn f u32 -> u32\ntrue = add A 1\ntrue\n'],
+  ['= after ret', 'fn f u32 -> u32\nret = add A 1\nret\n'],
+  ['= after a parameter word', 'fn f u32 -> u32\np3 = add A 1\np3\n'],
+  ['= after a letter', 'fn f u32 -> u32\nA = add A 1\nA\n'],
+  ['= after a number', 'fn f u32 -> u32\n5 = add A 1\n5\n'],
+  ['= alone after a name', 'fn f u32 -> u32\nx =\nmul x x\n'],
+  ['= twice', 'fn f u32 -> u32\nx = y = add A 1\nx\n'],
+  ['= at the end of an expression', 'fn f u32 -> u32\nadd A =\n'],
+  ['= as an operand', 'fn f u32 -> u32\nadd = A\n'],
+  ['= in an array', 'fn f u32 -> u32x2\n[A = 1]\n'],
+  ['= after a name already defined', 'fn f u32 -> u32\nx add A 1\nx = add A 2\nx\n'],
+  ['= after a copied value', 'fn f u32 -> u32\nx add A 1\ny = x\nadd y x\n'],
+  ['= after a name, on the header line', 'fn f u32 -> u32 x = add A 1\n'],
+  ['= before a call', 'fn g A\n\nfn f u32 -> u32\nx = g A\nadd x 1\n'],
+  ['= before an array', 'fn f u32 -> u32\nx = [A A]\nget x 1\n'],
+  ['= in an inline body', 'fn f fold {x = add A B; mul x 2} 3 0\n'],
+  ['mod after a name', 'fn f u32 -> u32\nmod = add A 1\nmul $mod $mod\n'],
+];
+
+test('the B3.2 reader: repeats, escapes and = read as the reference reads them', (t) => {
+  const read = loadReader();
+  let equal = 0;
+  let rejected = 0;
+  let refused = 0;
+  for (const [label, text, refuse] of ESCAPE_CURATED) {
+    const want = reference(text);
+    const got = read(text);
+    if (want === null) {
+      assert.equal(got.err, true, `${label}: the reader flags what the reference rejects\n${text}`);
+      rejected += 1;
+    } else if (refuse === true) {
+      assert.equal(
+        got.err,
+        true,
+        `${label}: a form outside the reader sets the error flag\n${text}`,
+      );
+      refused += 1;
+    } else {
+      assert.equal(got.err, false, `${label}: the error flag is clear\n${text}`);
+      assert.equal(got.text, want, `${label}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(`${equal} read to the reference text, ${rejected} rejected, ${refused} refused`);
+  assert.ok(equal > 20 && rejected > 25, 'both kinds are covered');
+});
+
+test('the B3.2 reader: a repeat that does not fit its region sets the error flag, never wrong output', () => {
+  const read = loadReader();
+  const rep = (n: number, at: string): string =>
+    `fn f -> u32\n${at === '' ? '' : `${at} `}get [0;${n}] 0\n`;
+  // depth 1: 448 places, shared with the other arrays of that depth
+  assert.equal(read(rep(448, '')).err, false);
+  assert.equal(read(rep(448, '')).text, reference(rep(448, '')));
+  assert.equal(read(rep(449, '')).err, true);
+  // two arrays of the same depth share the region
+  const two = `fn f -> u32\nx get [0;300] 0\ny get [0;300] 0\nadd x y\n`;
+  assert.equal(read(two).err, true, 'two repeats over the region of their depth');
+  const twoOk = `fn f -> u32\nx get [0;200] 0\ny get [0;200] 0\nadd x y\n`;
+  assert.equal(read(twoOk).err, false);
+  assert.equal(read(twoOk).text, reference(twoOk));
+  // a repeat then more elements fills the region
+  const tail = `fn f -> u32\nget [0;447 1] 0\n`;
+  assert.equal(read(tail).err, false);
+  assert.equal(read(tail).text, reference(tail));
+  const tailOver = `fn f -> u32\nget [0;448 1] 0\n`;
+  assert.equal(read(tailOver).err, true);
 });

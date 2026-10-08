@@ -345,15 +345,15 @@ const PROBES: readonly Probe[] = [
     text: 'fn f -> u32\nret add A 0x5\nend\n',
   },
   {
-    name: '$ab is not Stage A',
+    name: '$ab is a name (read from Stage B3.2 on)',
     defect: '2',
-    kind: 'refuse',
+    kind: 'match',
     text: 'fn f -> u32\n$ab add A 1\nret ab\nend\n',
   },
   {
-    name: 'a statement with = is not Stage A',
+    name: 'a statement with = is read from Stage B3.2 on',
     defect: '2',
-    kind: 'refuse',
+    kind: 'match',
     text: 'fn f -> u32\nx = add A 1\nret x\nend\n',
   },
   {
