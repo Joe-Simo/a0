@@ -177,10 +177,6 @@ sepa2 or sepall nl
 wc eq sepa2 false
 upd and act wc
 endw and inw sepa2
-e1 mov q9
-e2 or q11 q12
-erch and e1 e2
-ect and act erch
 pr1 or q4 q5
 pr2 or q6 q7
 pr3 or q8 q9
@@ -269,8 +265,7 @@ lfn select upd lfa false
 hsx and hs ninq
 ch or cmt hsx
 cmtn select nl false ch
-ea and act erch
-eb or err0 ea
+eb mov err0
 l1 ge c 97
 l2 le c 122
 xlc and l1 l2
@@ -1570,9 +1565,9 @@ end
 fn ptyp (u32,u32)x128x16 u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 -> u32
 expl ne p2 4294967295
 inr lt p4 p2
-use and expl inr
+usd and expl inr
 ix add p1 p4
-ix2 select use ix 0
+ix2 select usd ix 0
 pe call ptget p0 ix2
 ps at pe 0
 pn at pe 1
@@ -1580,7 +1575,7 @@ one eq ps pn
 tk call tkget p3 ps
 c call tycls tk
 c2 select one c 8
-r select use c2 1
+r select usd c2 1
 ret r
 end
 
