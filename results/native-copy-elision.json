@@ -1,0 +1,67 @@
+{
+  "file": "compiler/native.a0",
+  "runs": 15,
+  "warmup": 3,
+  "interleaved": true,
+  "outputsEqual": true,
+  "ratioBranchOverHead": 0.747,
+  "subjects": {
+    "head": {
+      "buildMs": 4722,
+      "cBytes": 862541,
+      "exit": 0,
+      "out": "ok",
+      "medianMs": 155.8,
+      "minMs": 153.3,
+      "maxMs": 161.5,
+      "loadPctMax": 24,
+      "samples": [
+        156.5,
+        153.3,
+        157.3,
+        153.4,
+        155.5,
+        160.9,
+        155.6,
+        153.5,
+        155.8,
+        155.8,
+        154.5,
+        161.5,
+        159.6,
+        160.2,
+        154.6
+      ]
+    },
+    "branch": {
+      "buildMs": 4604,
+      "cBytes": 855727,
+      "exit": 0,
+      "out": "ok",
+      "medianMs": 116.3,
+      "minMs": 113.8,
+      "maxMs": 119.5,
+      "loadPctMax": 15,
+      "samples": [
+        116,
+        117,
+        118.2,
+        115.9,
+        118.3,
+        115.3,
+        119.5,
+        114.1,
+        113.8,
+        116.1,
+        116.3,
+        117,
+        118.2,
+        118.9,
+        115.7
+      ]
+    }
+  },
+  "command": "a0 check compiler/native.a0, fresh process per sample; native checker built per tree with tools/native-check.ts buildNativeCheck",
+  "loadNote": "Windows CPU percent sampled before each sample (max shown); not the load average gate of tools/quiet.ts",
+  "claim": "fresh-process median of the native checker on compiler/native.a0: 155.8 ms at HEAD (0f4ab35) against 116.3 ms with the C backend copy elision (a0c-0.1.42), 15 interleaved samples after 3 warm-up"
+}
