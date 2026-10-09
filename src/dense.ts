@@ -181,7 +181,7 @@ export interface DenseStyle {
   readonly tab?: boolean;
   /** `min X Y` / `max X Y` for `select lt X Y X Y` / `select lt X Y Y X` over plain operands. */
   readonly minmax?: boolean;
-  /** Hexadecimal for the literals whose hex text is fewer o200k tokens (see `HEX_SHORTER`). */
+  /** Hexadecimal for the literals of one repeated hex digit (see `hexSpelling`). */
   readonly hex?: boolean;
   /** Leave out a fold's trailing operands that are all of the function's parameters in order. */
   readonly trailingParams?: boolean;
@@ -190,11 +190,14 @@ export interface DenseStyle {
 }
 
 /**
- * Literals written in hexadecimal under `hex`: the values whose lowercase hex text is strictly fewer
- * o200k_base tokens than the decimal (a tokenizer sweep, recorded in the pre-registration; the source
- * does not depend on a tokenizer).
+ * A literal is written in hexadecimal under `hex` when its hex digits are one repeated digit (all
+ * ones, `0xaaaaaaaa`, ...) and `0x` plus those digits is no longer than the decimal text: a general
+ * test on the literal itself, with no value list and no tokenizer.
  */
-const HEX_SHORTER: ReadonlySet<number> = new Set([0xffffff, 0xffffffff, 0xaaaaaaaa]);
+function hexSpelling(value: number): string | undefined {
+  const h = value.toString(16);
+  return /^(.)\1*$/.test(h) && 2 + h.length <= String(value).length ? `0x${h}` : undefined;
+}
 
 /** Words of the compact spellings: the printer escapes an id spelled like one (`$min`). */
 const SUGAR: ReadonlySet<string> = new Set(['tab', 'min', 'max']);
@@ -264,9 +267,7 @@ function operandWord(o: Operand, ctx: PrintCtx): string {
     case 'param':
       return ctx.style.letters ? paramWord(o.index) : `p${o.index}`;
     case 'u32':
-      return ctx.style.hex && HEX_SHORTER.has(o.value)
-        ? `0x${o.value.toString(16)}`
-        : String(o.value);
+      return (ctx.style.hex ? hexSpelling(o.value) : undefined) ?? String(o.value);
     case 'bool':
       return o.value ? 'true' : 'false';
   }
