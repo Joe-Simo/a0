@@ -1,0 +1,403 @@
+use "body.a0"
+
+fn tent_u
+h fx_hash add << A 4 B 20251
+r fx_unit01 h
+
+fn tent_jinit u32x1024 u32 u32 -> u32x1024
+bx bg A 1
+by bg A 2
+ra bg A 5
+rb tg A C 11
+ang add ra rb
+c fx_cos ang
+s fx_sin ang
+sc bg A 38
+seg tg A C 8
+rim fx_mul 720896 sc
+off mul B seg
+dist add rim off
+cx fx_mul c dist
+cy fx_mul s dist
+x add bx cx
+y add by cy
+s1 js A C B 0 x
+s2 js s1 C B 1 y
+s3 js s2 C B 2 0
+s4 js s3 C B 3 0
+s5 js s4 C B 4 x
+s6 js s5 C B 5 y
+
+fn tent_init u32x1024 u32 -> u32x1024
+sc bg A 38
+u0 tent_u B 0
+u1 tent_u B 1
+u2 tent_u B 2
+u3 tent_u B 3
+u4 tent_u B 4
+u5 tent_u B 5
+u6 tent_u B 6
+u7 tent_u B 7
+u8 tent_u B 8
+u9 tent_u B 9
+nj0 >> u0 14
+nj add nj0 6
+rch0 fx_mul u1 4915200
+rch1 add rch0 7208960
+rch fx_mul rch1 sc
+njm sub nj 1
+seg div rch njm
+stf0 fx_mul u2 22938
+stf add stf0 22938
+dmp0 fx_mul u3 170394
+dmp add dmp0 209715
+rsp0 fx_mul u4 22938
+rsp add rsp0 36044
+frq0 fx_mul u5 20972
+frq add frq0 11796
+kb mul B 8192
+jit0 >> u7 4
+jit sub jit0 2048
+rest0 add kb jit
+rest and rest0 65535
+pf0 >> u8 13
+pref add pf0 1
+odd0 and B 1
+odd eq odd0 1
+zb select odd 4294921421 45875
+zj0 >> u6 2
+zj sub zj0 8192
+z add zb zj
+cd0 >> u9 6
+cd add cd0 200
+s1 ts A B 0 0
+s2 ts s1 B 1 nj
+s3 ts s2 B 2 0
+s4 ts s3 B 5 0
+s5 ts s4 B 6 0
+s6 ts s5 B 7 cd
+s7 ts s6 B 8 seg
+s8 ts s7 B 9 stf
+s9 ts s8 B 10 dmp
+s10 ts s9 B 11 rest
+s11 ts s10 B 12 frq
+s12 ts s11 B 13 u6
+s13 ts s12 B 14 rch
+s14 ts s13 B 15 rsp
+s15 ts s14 B 16 pref
+s16 ts s15 B 17 z
+s17 ts s16 B 18 0
+s18 ts s17 B 19 0
+s18a ts s18 B 26 45875
+s18b ts s18a B 27 0
+s18c ts s18b B 28 65536
+s19 fold tent_jinit 10 s18c B
+
+fn tent_probe u32x1024 u32 -> u32x1024
+ra bg A 5
+rb tg A B 11
+ph tg A B 13
+sw0 fx_mul ph 26214
+sw fx_sin sw0
+swa fx_mul sw 2621
+ang0 add ra rb
+ang add ang0 swa
+c fx_cos ang
+s fx_sin ang
+reach tg A B 14
+hr fx_mul reach 62259
+bp0 fx_mul ph 39322
+bp fx_sin bp0
+bpa fx_mul bp 7864
+bf add 65536 bpa
+hr2 fx_mul hr bf
+bx bg A 1
+by bg A 2
+vx bg A 3
+vy bg A 4
+lx fx_mul vx 6554
+ly fx_mul vy 6554
+cx fx_mul c hr2
+cy fx_mul s hr2
+hx0 add bx cx
+hy0 add by cy
+hx1 add hx0 lx
+hy1 add hy0 ly
+tr travel_dir A
+tux at tr 0
+tuy at tr 1
+tgo at tr 2
+bias fx_mul reach 19661
+bxo fx_mul tux bias
+byo fx_mul tuy bias
+bxs select tgo bxo 0
+bys select tgo byo 0
+hx add hx1 bxs
+hy add hy1 bys
+s1 ts A B 20 hx
+s2 ts s1 B 21 hy
+
+fn jstep u32x1024 u32 u32 u32 -> u32x1024
+stt tg A C 0
+nj tg A C 1
+x jg A C B 0
+y jg A C B 1
+vx jg A C B 2
+vy jg A C B 3
+ph tg A C 13
+sc bg A 38
+jq mul B 13762
+a1a add ph jq
+a1 add a1a 8520
+phb fx_mul ph 89784
+jr mul B 11141
+a2a add phb jr
+a2 add a2a 40000
+nx fx_sin a1
+ny fx_sin a2
+jh << B 16
+frac div jh nj
+st0 eq stt 0
+st1 eq stt 1
+st2 eq stt 2
+amp0 select st0 34078720 41943040
+amp1 select st1 5898240 amp0
+amp_s select st2 9830400 amp1
+amp1m fx_mul amp_s sc
+mf bg A 93
+amp1x fx_mul amp1m mf
+amp fx_mul amp1x frac
+ax0 fx_mul nx amp
+ay0 fx_mul ny amp
+anx tg A C 23
+any tg A C 24
+hxx tg A C 20
+hyy tg A C 21
+gx select st1 anx hxx
+gy select st1 any hyy
+gs0 select st0 2228224 1441792
+gs1 select st1 13107200 gs0
+gs select st2 0 gs1
+d1 sub nj B
+t1 eq d1 1
+t2 eq d1 2
+t3 eq d1 3
+w3 select t3 9830 0
+w2 select t2 26214 w3
+w select t1 65536 w2
+gsw fx_mul gs w
+gdx sub gx x
+gdy sub gy y
+gax fx_mul gsw gdx
+gay fx_mul gsw gdy
+ax add ax0 gax
+ay add ay0 gay
+dvx fx_mul ax D
+dvy fx_mul ay D
+vx1 add vx dvx
+vy1 add vy dvy
+dmp tg A C 10
+fd fx_mul dmp D
+fac0 sub 65536 fd
+fac fx_max fac0 13107
+vx2 fx_mul vx1 fac
+vy2 fx_mul vy1 fac
+vx3 fx_limit vx2 209715200
+vy3 fx_limit vy2 209715200
+mx fx_mul vx3 D
+my fx_mul vy3 D
+nx1 add x mx
+ny1 add y my
+s1 js A C B 0 nx1
+s2 js s1 C B 1 ny1
+s3 js s2 C B 2 vx3
+s4 js s3 C B 3 vy3
+s5 js s4 C B 4 nx1
+s6 js s5 C B 5 ny1
+
+fn tent_pin u32x1024 u32 -> u32x1024
+stt tg A B 0
+nj tg A B 1
+tip sub nj 1
+ax tg A B 23
+ay tg A B 24
+s1 js A B tip 0 ax
+s2 js s1 B tip 1 ay
+s3 js s2 B tip 2 0
+s4 js s3 B tip 3 0
+s5 js s4 B tip 4 ax
+s6 js s5 B tip 5 ay
+pin eq stt 2
+r select pin s6 A
+
+fn rim_fix u32x1024 u32 -> u32x1024
+ra bg A 5
+rb tg A B 11
+a add ra rb
+c fx_cos a
+s fx_sin a
+sc bg A 38
+rim fx_mul 720896 sc
+bx bg A 1
+by bg A 2
+cx fx_mul c rim
+cy fx_mul s rim
+rx add bx cx
+ry add by cy
+x0 jg A B 0 0
+y0 jg A B 0 1
+dx sub x0 rx
+dy sub y0 ry
+cdx fx_mul dx 36044
+cdy fx_mul dy 36044
+rdx fx_mul cdx 60948
+rdy fx_mul cdy 60948
+bdx sub cdx rdx
+bdy sub cdy rdy
+nx sub x0 rdx
+ny sub y0 rdy
+s1 js A B 0 0 nx
+s2 js s1 B 0 1 ny
+ox bg s2 31
+oy bg s2 32
+nox add ox bdx
+noy add oy bdy
+s3 bs s2 31 nox
+s4 bs s3 32 noy
+
+fn seg_fix u32x1024 u32 u32 -> u32x1024
+nj tg A C 1
+stt tg A C 0
+i1 add B 1
+ax jg A C B 0
+ay jg A C B 1
+bx jg A C i1 0
+by jg A C i1 1
+dx sub bx ax
+dy sub by ay
+len fx_hyp dx dy
+seg tg A C 8
+resp tg A C 15
+z eq len 0
+diff sub len seg
+r0 fx_div diff len
+r select z 0 r0
+cf fx_mul r resp
+njm sub nj 1
+istip eq i1 njm
+att eq stt 2
+pin and istip att
+f0 select pin 65536 32768
+f1 select pin 0 32768
+cdx fx_mul dx cf
+cdy fx_mul dy cf
+m0x fx_mul cdx f0
+m0y fx_mul cdy f0
+m1x fx_mul cdx f1
+m1y fx_mul cdy f1
+nax add ax m0x
+nay add ay m0y
+nbx sub bx m1x
+nby sub by m1y
+s1 js A C B 0 nax
+s2 js s1 C B 1 nay
+s3 js s2 C i1 0 nbx
+s4 js s3 C i1 1 nby
+
+fn bend_fix u32x1024 u32 u32 -> u32x1024
+nj tg A C 1
+stt tg A C 0
+i2 add B 2
+ax jg A C B 0
+ay jg A C B 1
+cx jg A C i2 0
+cy jg A C i2 1
+dx sub cx ax
+dy sub cy ay
+len fx_hyp dx dy
+seg tg A C 8
+stf tg A C 9
+rest fx_mul seg 124518
+short fx_lt len rest
+nz ne len 0
+act and short nz
+gap sub rest len
+r fx_div gap len
+cf0 fx_mul r stf
+cf fx_mul cf0 32768
+njm sub nj 1
+istip eq i2 njm
+att eq stt 2
+pin and istip att
+f0 select pin 65536 32768
+f1 select pin 0 32768
+cdx fx_mul dx cf
+cdy fx_mul dy cf
+m0x fx_mul cdx f0
+m0y fx_mul cdy f0
+m1x fx_mul cdx f1
+m1y fx_mul cdy f1
+zx select act m0x 0
+zy select act m0y 0
+wx select act m1x 0
+wy select act m1y 0
+nax sub ax zx
+nay sub ay zy
+ncx add cx wx
+ncy add cy wy
+s1 js A C B 0 nax
+s2 js s1 C B 1 nay
+s3 js s2 C i2 0 ncx
+s4 js s3 C i2 1 ncy
+
+fn tent_iter u32x1024 u32 u32 -> u32x1024
+nj tg A C 1
+s1 rim_fix A C
+njs sub nj 1
+s2 fold seg_fix njs s1 C
+njb sub nj 2
+s3 fold bend_fix njb s2 C
+
+fn vel_fix u32x1024 u32 u32 -> u32x1024
+inv bg A 88
+x jg A C B 0
+y jg A C B 1
+px jg A C B 4
+py jg A C B 5
+vx jg A C B 2
+vy jg A C B 3
+dx sub x px
+dy sub y py
+cx fx_mul dx inv
+cy fx_mul dy inv
+vx1 add vx cx
+vy1 add vy cy
+vx2 fx_limit vx1 209715200
+vy2 fx_limit vy1 209715200
+s1 js A C B 2 vx2
+s2 js s1 C B 3 vy2
+
+fn tent_tension u32x1024 u32 -> u32x1024
+nj tg A B 1
+seg tg A B 8
+tip sub nj 1
+x0 jg A B 0 0
+y0 jg A B 0 1
+x1 jg A B tip 0
+y1 jg A B tip 1
+dx sub x1 x0
+dy sub y1 y0
+d fx_hyp dx dy
+cl mul seg tip
+r fx_div d cl
+s1 ts A B 22 r
+
+fn tent_run u32x1024 u32 u32 u32 -> u32x1024
+nj tg A B 1
+s1 tent_probe A B
+s2 fold jstep nj s1 B C
+s3 tent_pin s2 B
+s4 fold tent_iter D s3 B
+s5 fold vel_fix nj s4 B
+s6 tent_tension s5 B
+

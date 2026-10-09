@@ -1,0 +1,251 @@
+fn fx_isneg -> bool eq >> A 31 1
+
+fn fx_neg sub 0 A
+
+fn fx_abs
+n fx_isneg A
+m sub 0 A
+r select n m A
+
+fn fx_lt -> bool
+r lt xor A 2147483648 xor B 2147483648
+
+fn fx_gt -> bool
+r fx_lt B A
+
+fn fx_le -> bool
+g fx_lt B A
+r select g false true
+
+fn fx_ge -> bool
+l fx_lt A B
+r select l false true
+
+fn fx_min
+l fx_lt A B
+r select l A B
+
+fn fx_max
+l fx_lt A B
+r select l B A
+
+fn fx_clamp fx_min fx_max A B C
+
+fn fx_limit
+n sub 0 B
+r fx_clamp A n B
+
+fn fx_sar
+s >> A 31
+m sub 0 s
+t xor A m
+u >> t B
+r xor u m
+
+fn fx_mul
+sa fx_isneg A
+sb fx_isneg B
+ma fx_abs A
+mb fx_abs B
+ah >> ma 16
+al and ma 65535
+bh >> mb 16
+bl and mb 65535
+hh mul ah bh
+hs << hh 16
+hl mul ah bl
+lh mul al bh
+ll mul al bl
+lls >> ll 16
+s1 add hs hl
+s2 add s1 lh
+s3 add s2 lls
+sn xor sa sb
+n sub 0 s3
+r select sn n s3
+
+fn fx_divstep (u32,u32) u32 u32 -> (u32,u32)
+r at A 0
+q at A 1
+r2 << r 1
+ok ge r2 C
+rs sub r2 C
+rn select ok rs r2
+q2 << q 1
+bit select ok 1 0
+q3 or q2 bit
+o (rn q3)
+
+fn fx_div
+sa fx_isneg A
+sb fx_isneg B
+ma fx_abs A
+mb fx_abs B
+z eq mb 0
+qi div ma mb
+qm mul qi mb
+r0 sub ma qm
+s0 (r0 0)
+f fold fx_divstep 16 s0 mb
+fr at f 1
+qh << qi 16
+m add qh fr
+sn xor sa sb
+n sub 0 m
+sg select sn n m
+r select z 2147483647 sg
+
+fn fx_muldiv
+r div mul A B C
+
+fn fx_lerp
+d sub B A
+m fx_mul d C
+r add A m
+
+fn fx_isqstep (u32,u32) u32 -> (u32,u32)
+x at A 0
+res at A 1
+i2 << B 1
+sh sub 30 i2
+bit << 1 sh
+t add res bit
+ok ge x t
+x2 sub x t
+xn select ok x2 x
+rh >> res 1
+rb add rh bit
+rn select ok rb rh
+o (xn rn)
+
+fn fx_isqrt
+s (A 0)
+f fold fx_isqstep 16 s
+r at f 1
+
+fn fx_sqrt
+n fx_isneg A
+a lt A 65536
+b lt A 16777216
+x16 << A 16
+x8 << A 8
+xb select b x8 A
+xs select a x16 xb
+sb select b 4 8
+sh select a 0 sb
+r0 fx_isqrt xs
+r2 mul r0 r0
+$rem sub xs r2
+up gt $rem r0
+r1 add r0 1
+rn select up r1 r0
+r select a r0 rn
+v << r sh
+z select n 0 v
+
+fn fx_hyp
+ax fx_abs A
+ay fx_abs B
+m fx_max ax ay
+s1 ge m 8388608
+s2 ge m 134217728
+k1 select s1 4 0
+k select s2 8 k1
+bx >> ax k
+by >> ay k
+xx fx_mul bx bx
+yy fx_mul by by
+q add xx yy
+h fx_sqrt q
+r << h k
+
+fn fx_unit -> (u32,u32)
+l fx_hyp A B
+z eq l 0
+ux fx_div A l
+uy fx_div B l
+x select z 65536 ux
+y select z 0 uy
+r (x y)
+
+fn fx_dot
+r add fx_mul A C fx_mul B D
+
+fn fx_cross
+r sub fx_mul A D fx_mul B C
+
+fn fx_qsin
+t [0 1608 3216 4821 6424 8022 9616 11204 12785 14359 15924 17479 19024 20557 22078 23586 25080 26558 28020 29466 30893 32303 33692 35062 36410 37736 39040 40320 41576 42806 44011 45190 46341 47464 48559 49624 50660 51665 52639 53581 54491 55368 56212 57022 57798 58538 59244 59914 60547 61145 61705 62228 62714 63162 63572 63944 64277 64571 64827 65043 65220 65358 65457 65516 65536]
+g get t A
+
+fn fx_s256
+i and A 255
+q >> i 6
+r and i 63
+n64 sub 64 r
+oddv and q 1
+odd eq oddv 1
+k select odd n64 r
+v fx_qsin k
+low ge q 2
+nv sub 0 v
+s select low nv v
+
+fn fx_sin
+i >> A 8
+f and A 255
+a fx_s256 i
+i1 add i 1
+d sub fx_s256 i1 a
+m mul d f
+ms fx_sar m 8
+r add a ms
+
+fn fx_cos
+r fx_sin add A 16384
+
+fn fx_atan01
+t [0 163 326 489 651 813 975 1136 1297 1457 1617 1775 1933 2090 2246 2401 2555 2708 2860 3010 3159 3307 3453 3599 3742 3884 4025 4164 4302 4438 4572 4705 4836 4966 5094 5220 5344 5467 5589 5708 5826 5943 6058 6171 6282 6392 6500 6607 6712 6815 6917 7018 7117 7214 7310 7405 7498 7589 7679 7768 7856 7942 8026 8110 8192]
+i >> A 10
+f and A 1023
+a get t i
+i1 add i 1
+d sub get t i1 a
+m mul d f
+ms >> m 10
+r add a ms
+
+fn fx_atan2
+ax fx_abs B
+ay fx_abs A
+big fx_max ax ay
+small fx_min ax ay
+z eq big 0
+r fx_div small big
+base fx_atan01 r
+swap gt ay ax
+b1 sub 16384 base
+oct select swap b1 base
+xneg fx_isneg B
+b2 sub 32768 oct
+q2 select xneg b2 oct
+yneg fx_isneg A
+b3 sub 0 q2
+q3 select yneg b3 q2
+w and q3 65535
+v select z 0 w
+
+fn fx_rng
+b xor A << A 13
+d xor b >> b 17
+xor d << d 5
+
+fn fx_hash
+b xor mul A 2654435761 B
+e mul xor b >> b 15 2246822519
+h mul xor e >> e 13 3266489917
+xor h >> h 16
+
+fn fx_unit01
+r >> A 16
+

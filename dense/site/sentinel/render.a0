@@ -1,0 +1,604 @@
+use "life.a0"
+use "../lib/frame.a0"
+
+fn rgba or << A 8 B
+
+fn ascale
+m mul A B
+r >> m 16
+c min_u32 r 255
+
+fn one_if bool -> u32
+r select A 1 0
+
+fn lerp_pt
+r add A fx_mul B C
+
+fn shd_line io u32 u32 u32 u32 u32 u32 u32 -> io
+c rgba 0 H
+r fr_line A C D E F G c
+
+fn hl_seg io u32 u32 u32 u32 u32 u32 u32 -> io
+c rgba 13163775 H
+r fr_line A C D E F G c
+
+fn seg_draw io u32 u32x1024 u32 -> io
+nj tg C D 1
+j1 add B 1
+ax jg C D B 0
+ay jg C D B 1
+bx jg C D j1 0
+by jg C D j1 1
+sc bg C 38
+z tg C D 17
+stt tg C D 0
+cov tg C D 28
+q bg C 17
+dx sub bx ax
+dy sub by ay
+un fx_unit dx dy
+ux at un 0
+uy at un 1
+px sub 0 uy
+py mov ux
+jh << B 16
+jf div jh nj
+j1h << j1 16
+jf2 div j1h nj
+ta fx_mul jf 183500
+tb fx_mul jf2 183500
+wa0 sub 301466 ta
+wb0 sub 301466 tb
+zw fx_mul z 22938
+ws add 65536 zw
+wa1 fx_mul wa0 sc
+wb1 fx_mul wb0 sc
+wa fx_mul wa1 ws
+wb fx_mul wb1 ws
+ha fx_sar wa 1
+hb fx_sar wb 1
+pax fx_mul px ha
+pay fx_mul py ha
+pbx fx_mul px hb
+pby fx_mul py hb
+p0x add ax pax
+p0y add ay pay
+p1x add bx pbx
+p1y add by pby
+p2x sub bx pbx
+p2y sub by pby
+p3x sub ax pax
+p3y sub ay pay
+za fx_mul z 2621440
+zi fx_sar za 16
+a0 add 225 zi
+att eq stt 2
+a1 add a0 25
+al0 select att a1 a0
+al ascale al0 cov
+odd0 and B 1
+odd ne odd0 0
+rgb select odd 6846614 5398652
+col rgba rgb al
+hq fx_ge q 2
+front fx_ge z 0
+sh and hq front
+nsh one_if sh
+shx fx_mul 85197 sc
+shy fx_mul 157286 sc
+sax add ax shx
+say add ay shy
+sbx add bx shx
+sby add by shy
+sw fx_mul wa 72090
+sal ascale 70 cov
+io1 fold shd_line nsh A sax say sbx sby sw sal
+io2 fr_quad io1 p0x p0y p1x p1y p2x p2y p3x p3y col
+jpar0 and j1 1
+jpar eq jpar0 0
+rc select jpar 5952255 14872319
+ral0 select jpar 140 110
+ral ascale ral0 cov
+rcol rgba rc ral
+rx fx_mul px hb
+ry fx_mul py hb
+rx2 fx_mul rx 82000
+ry2 fx_mul ry 82000
+rax add bx rx2
+ray add by ry2
+rbx sub bx rx2
+rby sub by ry2
+rw fx_mul 58982 sc
+io3 fr_line io2 rax ray rbx rby rw rcol
+dl0 sub 0 px
+dl1 sub dl0 py
+lit fx_ge dl1 0
+sgn select lit 32768 4294934528
+hx fx_mul pax sgn
+hy fx_mul pay sgn
+hx2 fx_mul pbx sgn
+hy2 fx_mul pby sgn
+h0x add ax hx
+h0y add ay hy
+h1x add bx hx2
+h1y add by hy2
+hw fx_mul wa 14000
+hal ascale 80 cov
+nhl one_if hq
+io4 fold hl_seg nhl io3 h0x h0y h1x h1y hw hal
+
+fn dsc_s io u32 u32 u32 u32 u32 -> io
+r fr_disc A C D E F
+
+fn sph_s io u32 u32 u32 u32 u32 u32 -> io
+r fr_sphere A C D E F G
+
+fn glw_s io u32 u32 u32 u32 u32 -> io
+r fr_glow A C D E F
+
+fn prong_step io u32 u32x1024 u32 -> io
+nj tg C D 1
+tip sub nj 1
+pre sub nj 2
+tx jg C D tip 0
+ty jg C D tip 1
+qx jg C D pre 0
+qy jg C D pre 1
+dx sub tx qx
+dy sub ty qy
+un fx_unit dx dy
+ux at un 0
+uy at un 1
+o tg C D 26
+cov tg C D 28
+sc bg C 38
+om mul o 7000
+ot >> om 16
+th add 3000 ot
+nth sub 0 th
+i0 eq B 0
+i1 eq B 1
+ang0 select i1 0 th
+ang select i0 nth ang0
+c fx_cos ang
+s fx_sin ang
+cu fx_mul c ux
+su fx_mul s uy
+rx sub cu su
+sux fx_mul s ux
+cuy fx_mul c uy
+ry add sux cuy
+len fx_mul 458752 sc
+ex fx_mul rx len
+ey fx_mul ry len
+apx add tx ex
+apy add ty ey
+hw fx_mul 58982 sc
+bpx fx_mul ry hw
+bpy fx_mul rx hw
+b0x sub tx bpx
+b0y add ty bpy
+b1x add tx bpx
+b1y sub ty bpy
+al ascale 235 cov
+col rgba 9873092 al
+r fr_quad A b0x b0y apx apy b1x b1y b1x b1y col
+
+fn blade_step io u32 u32x1024 u32 -> io
+nj tg C D 1
+tip sub nj 1
+pre sub nj 2
+tx jg C D tip 0
+ty jg C D tip 1
+qx jg C D pre 0
+qy jg C D pre 1
+dx sub tx qx
+dy sub ty qy
+un fx_unit dx dy
+ux at un 0
+uy at un 1
+cov tg C D 28
+sc bg C 38
+l1 fx_mul 262144 sc
+l2 fx_mul 786432 sc
+hw fx_mul 144179 sc
+m1x fx_mul ux l1
+m1y fx_mul uy l1
+m2x fx_mul ux l2
+m2y fx_mul uy l2
+wx fx_mul uy hw
+wy fx_mul ux hw
+p1x add tx m1x
+p1y add ty m1y
+k0x add p1x 0
+k1x sub p1x wx
+k1y add p1y wy
+k3x add p1x wx
+k3y sub p1y wy
+k2x add tx m2x
+k2y add ty m2y
+al ascale 240 cov
+col rgba 14872319 al
+r fr_quad A tx ty k1x k1y k2x k2y k3x k3y col
+
+fn impact_step io u32 u32x1024 u32 -> io
+nj tg C D 1
+tip sub nj 1
+x jg C D tip 0
+y jg C D tip 1
+im tg C D 27
+sc bg C 38
+f0 mul im 100
+f min_u32 f0 65536
+inv sub 65536 f
+g0 fx_mul inv 786432
+g1 add g0 131072
+rr fx_mul g1 sc
+al0 ascale 200 f
+rc rgba 14872319 al0
+w fx_mul 72090 sc
+a fr_ring A x y rr w rc
+sr fx_mul 196608 sc
+al1 ascale 230 f
+sc2 rgba 5952255 al1
+fr_disc a x y sr sc2
+
+fn tip_draw io u32 u32x1024 u32 -> io
+nj tg C D 1
+tip sub nj 1
+x jg C D tip 0
+y jg C D tip 1
+sc bg C 38
+k3 eq D 2
+k5 eq D 5
+blade or k3 k5
+nb not_b blade
+nbl one_if blade
+npr0 one_if nb
+npr mul npr0 3
+wr fx_mul 104858 sc
+wc rgba 2633798 235
+io1 fr_disc A x y wr wc
+io2 fold prong_step npr io1 C D
+io3 fold blade_step nbl io2 C D
+im tg C D 27
+on gt im 0
+nim one_if on
+io4 fold impact_step nim io3 C D
+
+fn tent_draw io u32 u32x1024 u32 u32 -> io
+nj tg C D 1
+z tg C D 17
+front fx_ge z 0
+wantf eq E 1
+show eq front wantf
+nsg0 sub nj 1
+nsg select show nsg0 0
+io1 fold seg_draw nsg A C D
+x jg C D 0 0
+y jg C D 0 1
+sc bg C 38
+hr fx_mul 157286 sc
+hc rgba 2633798 235
+nh one_if show
+io2 fold dsc_s nh io1 x y hr hc
+nt one_if show
+io3 fold tip_draw nt io2 C D
+
+fn tent_pass0 io u32 u32x1024 -> io
+r tent_draw A B C B 0
+
+fn tent_pass1 io u32 u32x1024 -> io
+r tent_draw A B C B 1
+
+fn shadow_cmd io u32 u32 u32 u32 -> io
+c rgba 0 90
+r fr_glow A C D E c
+
+fn plate_step io u32 u32x1024 -> io
+bx bg C 1
+by bg C 2
+sc bg C 38
+ang bg C 5
+rad fx_mul 786432 sc
+ri fx_mul rad 38000
+ro fx_mul rad 63500
+i8 mul B 8192
+a0 add ang i8
+am add a0 4096
+al sub am 2600
+ah add am 2600
+cl fx_cos al
+sl fx_sin al
+ch fx_cos ah
+sh fx_sin ah
+x0a fx_mul cl ri
+y0a fx_mul sl ri
+x1a fx_mul cl ro
+y1a fx_mul sl ro
+x2a fx_mul ch ro
+y2a fx_mul sh ro
+x3a fx_mul ch ri
+y3a fx_mul sh ri
+q0x add bx x0a
+q0y add by y0a
+q1x add bx x1a
+q1y add by y1a
+q2x add bx x2a
+q2y add by y2a
+q3x add bx x3a
+q3y add by y3a
+col rgba 6319240 225
+r fr_quad A q0x q0y q1x q1y q2x q2y q3x q3y col
+
+fn light_step io u32 u32x1024 -> io
+bx bg C 1
+by bg C 2
+sc bg C 38
+ang bg C 5
+clk bg C 13
+rad fx_mul 786432 sc
+rl fx_mul rad 51118
+i0 eq B 0
+i1 eq B 1
+i2 eq B 2
+o0 select i2 39977 57016
+o1 select i1 24248 o0
+off select i0 7209 o1
+a add ang off
+c fx_cos a
+s fx_sin a
+cx fx_mul c rl
+cy fx_mul s rl
+x add bx cx
+y add by cy
+sp0 mul B 7
+sp add 25 sp0
+ph mul clk sp
+ps fx_sin ph
+pp0 add ps 65536
+pp fx_sar pp0 1
+pa0 mul pp 150
+pa1 >> pa0 16
+al add 80 pa1
+r fx_mul rad 4915
+cyan rgba 5952255 al
+viol rgba 10124287 al
+col select i2 viol cyan
+d fr_disc A x y r col
+
+fn ring_glow2 io u32 u32 u32 u32 u32 -> io
+w mov 72090
+r fr_ring A C D E w F
+
+fn body_draw io u32x1024 -> io
+bx bg B 1
+by bg B 2
+vx bg B 3
+vy bg B 4
+sc bg B 38
+ang bg B 5
+core bg B 20
+clk bg B 13
+q bg B 17
+rad fx_mul 786432 sc
+sho fx_mul 393216 sc
+sho2 fx_mul 655360 sc
+sx add bx sho
+sy add by sho2
+shr1 fx_mul rad 98304
+qs fx_ge q 1
+nsh one_if qs
+io1 fold shadow_cmd nsh A sx sy shr1
+qh fx_ge q 2
+nqh not_b qh
+nsp one_if qh
+nfl one_if nqh
+lo rgba 7241374 245
+hi rgba 922140 245
+io2 fold sph_s nsp io1 bx by rad lo hi
+io3 fold dsc_s nfl io2 bx by rad hi
+io4 fold plate_step 8 io3 B
+rr0 fx_mul rad 63700
+rc0 rgba 8571120 100
+w1 fx_mul 58982 sc
+io5 fr_ring io4 bx by rr0 w1 rc0
+rr1 fx_mul rad 32768
+rc1 rgba 9873092 70
+io6 fr_ring io5 bx by rr1 w1 rc1
+io7 fold light_step 0 io6 B
+br0 << clk 3
+brt fx_sin br0
+brm fx_mul brt 5243
+bre add 65536 brm
+cg0 mul core 95
+cg1 >> cg0 16
+cga0 add 25 cg1
+cga ascale cga0 bre
+gr fx_mul rad 124518
+gc rgba 5952255 cga
+io8 fold glw_s nsp io7 bx by gr gc
+er fx_mul rad 22282
+ea0 mul core 40
+ea1 >> ea0 16
+ea add 175 ea1
+ec rgba 5952255 ea
+io9 fr_disc io8 bx by er ec
+pxo fx_mul vx 262
+pyo fx_mul vy 262
+pl fx_mul rad 14418
+pxl fx_limit pxo pl
+pyl fx_limit pyo pl
+ppx add bx pxl
+ppy add by pyl
+pr fx_mul rad 9175
+pc rgba 14872319 235
+io10 fr_disc io9 ppx ppy pr pc
+rr2 fx_mul rad 30146
+rc2 rgba 5952255 120
+io11 fr_ring io10 bx by rr2 w1 rc2
+ck bg B 90
+ckp gt ck 0
+nck one_if ckp
+ckf0 mul ck 93
+ckf min_u32 ckf0 65536
+ckinv sub 65536 ckf
+ckr0 fx_mul ckinv rad
+ckr1 fx_mul ckr0 131072
+ckr add ckr1 rad
+ckal ascale 190 ckf
+ckc rgba 5952255 ckal
+io12 fold ring_glow2 nck io11 bx by ckr ckc
+
+fn link_cmds io u32 u32 u32 u32 u32 u32 -> io
+c1 rgba 10124287 G
+lc rgba 5952255 G
+fr_disc fr_disc fr_line A C D E F 52429 c1 C D 104858 lc E F 104858 lc
+
+fn link_draw io u32 u32x1024 -> io
+b mul B 6
+base add b 65
+life bg C base
+a1 add base 1
+ta bg C a1
+a2 add base 2
+ja bg C a2
+a3 add base 3
+tb bg C a3
+a4 add base 4
+jb bg C a4
+a5 add base 5
+age bg C a5
+xa jg C ta ja 0
+ya jg C ta ja 1
+xb jg C tb jb 0
+yb jg C tb jb 1
+on gt life 0
+n one_if on
+fi0 << age 8
+fi min_u32 fi0 65536
+lo0 << life 8
+lo min_u32 lo0 65536
+fe min_u32 fi lo
+al ascale 110 fe
+r fold link_cmds n A xa ya xb yb al
+
+fn bracket_cmd io u32 u32 u32 u32 u32 -> io
+c rgba 5952255 52
+r fr_brackets A C D E F 393216 58982 c
+
+fn glint_cmd io u32 u32 u32 u32 u32 u32 u32 -> io
+al rgba 14872319 H
+r fr_line A C D E F G al
+
+fn bracket_draw io u32 u32x1024 u32x32 u32x672 -> io
+stt tg C B 0
+att eq stt 2
+rid tg C B 2
+nrows get D 21
+n0 select att nrows 0
+row env_find E n0 rid
+nf eq row 4294967295
+fnd not_b nf
+rowc select nf 0 row
+sx get D 5
+sy get D 6
+x0 rg E rowc 1
+y0 rg E rowc 2
+x1 rg E rowc 3
+y1 rg E rowc 4
+x0q pg2vp x0 sx
+y0q pg2vp y0 sy
+x1q pg2vp x1 sx
+y1q pg2vp y1 sy
+go and att fnd
+n one_if go
+io1 fold bracket_cmd n A x0q y0q x1q y1q
+ax tg C B 23
+ay tg C B 24
+sc bg C 38
+dl sub ax x0q
+dr sub x1q ax
+dt sub ay y0q
+db sub y1q ay
+m1 fx_min dl dr
+m2 fx_min dt db
+m fx_min m1 m2
+vert1 eq m dl
+vert2 eq m dr
+vert or vert1 vert2
+ex1 select vert1 x0q x1q
+len fx_mul 917504 sc
+ist eq m dt
+ey1 select ist y0q y1q
+x1a sub ax len
+x2a add ax len
+y1a sub ay len
+y2a add ay len
+x1g select vert ex1 x1a
+y1g select vert y1a ey1
+x2g select vert ex1 x2a
+y2g select vert y2a ey1
+im tg C B 27
+f0 mul im 100
+f min_u32 f0 65536
+ga0 ascale 185 f
+alp add 70 ga0
+gw fx_mul 104858 sc
+io2 fold glint_cmd n io1 x1g y1g x2g y2g gw alp
+
+fn dep_cmd io u32 u32 u32 u32 u32 -> io
+c rgba 5995775 44
+a fr_line A C D E F 39322 c
+mx0 add C E
+my0 add D F
+mx fx_sar mx0 1
+my fx_sar my0 1
+d fr_disc a mx my 78643 c
+
+fn dep_draw io u32 u32x1024 -> io
+k2 add B 1
+s1 tg C B 0
+s2 tg C k2 0
+a1 eq s1 2
+a2 eq s2 2
+both and a1 a2
+kn1 tg C B 25
+kn2 tg C k2 25
+c1 eq kn1 3
+c2 eq kn2 3
+rd1 tg C B 2
+rd2 tg C k2 2
+same eq rd1 rd2
+e1 and c1 c2
+kk and e1 same
+n1 tg C B 1
+n2 tg C k2 1
+t1 sub n1 1
+t2 sub n2 1
+xa jg C B t1 0
+ya jg C B t1 1
+xb jg C k2 t2 0
+yb jg C k2 t2 1
+dx sub xb xa
+dy sub yb ya
+d fx_hyp dx dy
+sc bg C 38
+lim fx_mul 13107200 sc
+near fx_le d lim
+q bg C 17
+qok fx_ge q 2
+g1 and both kk
+g2 and g1 near
+g3 and g2 qok
+n one_if g3
+r fold dep_cmd n A xa ya xb yb
+
+fn render_all io u32x1024 u32x32 u32x672 -> io
+io1 fold tent_pass0 8 A B
+io2 body_draw io1 B
+io3 fold tent_pass1 8 io2 B
+io4 fold link_draw 3 io3 B
+io5 fold bracket_draw 8 io4 B C D
+io6 fold dep_draw 7 io5 B
+

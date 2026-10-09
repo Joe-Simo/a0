@@ -1,0 +1,515 @@
+use "env.a0"
+
+fn dt_q
+r div << A 16 1000
+
+fn min_u32
+l lt A B
+r select l A B
+
+fn flag -> bool
+r ne and A B 0
+
+fn not_b bool -> bool
+r select A false true
+
+fn body_pointer u32x1024 u32x32 u32 u32 -> u32x1024
+flags get B 2
+known flag flags 4
+down flag flags 8
+cancel flag flags 128
+first flag flags 32
+ptype get B 10
+px get B 8
+py get B 9
+sy get B 6
+ppx bg A 35
+ppy bg A 36
+nk not_b known
+reset or first nk
+dx0 sub px ppx
+dy0 sub py ppy
+dx1 fx_limit dx0 26214400
+dy1 fx_limit dy0 26214400
+dxs select reset 0 dx1
+dys select reset 0 dy1
+ivx fx_div dxs D
+ivy fx_div dys D
+opvx bg A 9
+opvy bg A 10
+npvx fx_lerp opvx ivx 22938
+npvy fx_lerp opvy ivy 22938
+adx fx_abs dxs
+ady fx_abs dys
+mv add adx ady
+moved gt mv 98304
+idle0 bg A 12
+idle1 add idle0 C
+idle2 min_u32 idle1 60000
+idle3 select moved 0 idle2
+idle select known idle3 60000
+istouch eq ptype 3
+tdo bg A 23
+tdo_b ne tdo 0
+ndo_b not_b tdo_b
+rise and down ndo_b
+tsy0 bg A 24
+tsy select rise sy tsy0
+dsc sub sy tsy
+adsc fx_abs dsc
+sc0 gt adsc 10
+scrolled or sc0 cancel
+ts0 bg A 25
+ts0_b ne ts0 0
+ts1 or ts0_b scrolled
+ts2 select down ts1 ts0_b
+ts3 select rise false ts2
+tscroll select ts3 1 0
+tend0 bg A 26
+tend1 add tend0 C
+tend2 min_u32 tend1 60000
+tend select down 0 tend2
+nt not_b istouch
+idle_ok lt idle 3400
+m1 and known nt
+mouse_on and m1 idle_ok
+tsc_b ne tscroll 0
+nts not_b tsc_b
+recent lt tend 1500
+rel and recent nts
+tt or down rel
+touch_on and istouch tt
+dts and down tsc_b
+touch_scroll and istouch dts
+ma select mouse_on 1 0
+mb select touch_on 2 ma
+mode select touch_scroll 3 mb
+s1 bs A 9 npvx
+s2 bs s1 10 npvy
+s3 bs s2 12 idle
+tdn select down 1 0
+s4 bs s3 23 tdn
+s5 bs s4 24 tsy
+s6 bs s5 25 tscroll
+s7 bs s6 26 tend
+s8 bs s7 11 mode
+px2 select known px ppx
+py2 select known py ppy
+s9 bs s8 7 px2
+s10 bs s9 8 py2
+s11 bs s10 35 px2
+s12 bs s11 36 py2
+
+fn body_home u32x1024 u32x32 u32x672 u32 u32 -> u32x1024
+mode bg A 11
+pm bg A 87
+sc bg A 38
+vw get B 3
+vh get B 4
+sx get B 5
+sy get B 6
+nrows get B 21
+bx bg A 1
+by bg A 2
+adv fx_mul 3277 E
+ph0 bg A 27
+ph1 add ph0 adv
+ph and ph1 65535
+it0 bg A 29
+itgt gt it0 D
+it1 sub it0 D
+it select itgt it1 0
+home_x bg A 33
+unset eq home_x 0
+vwq << vw 16
+vhq << vh 16
+hx0 fx_mul vwq 48497
+hy0 fx_mul vhq 26214
+patrolling eq mode 0
+pmv ne pm 0
+leaving and patrolling pmv
+hx1 select leaving bx home_x
+hy2 bg A 34
+hy1 select leaving by hy2
+hxs select unset hx0 hx1
+hys select unset hy0 hy1
+rng0 bg A 19
+rng1 fx_rng rng0
+rng2 fx_rng rng1
+row fx_hash rng1 7
+r1 rem row nrows
+vis r_vis C r1
+kind r_kind C r1
+x0 rg C r1 1
+y0 rg C r1 2
+x1 rg C r1 3
+y1 rg C r1 4
+w sub x1 x0
+h sub y1 y0
+big_w ge w 30
+big_h ge h 14
+big and big_w big_h
+okk0 and vis big
+due eq it 0
+want and due patrolling
+rows_ok gt nrows 0
+want2 and want rows_ok
+side and rng2 3
+frac and rng2 4095
+fq << frac 4
+wq << w 16
+hq << h 16
+along_x fx_mul wq fq
+along_y fx_mul hq fq
+gapq fx_mul 2883584 sc
+x0q pg2vp x0 sx
+y0q pg2vp y0 sy
+x1q pg2vp x1 sx
+y1q pg2vp y1 sy
+side0 eq side 0
+side1 eq side 1
+side2 eq side 2
+cx_a add x0q along_x
+cxo sub x0q gapq
+cxo2 add x1q gapq
+cx_c select side2 cxo cxo2
+sd01 or side0 side1
+tx select sd01 cx_a cx_c
+cy_a sub y0q gapq
+cy_b add y1q gapq
+cy_c add y0q along_y
+tyb select side1 cy_b cy_c
+ty select side0 cy_a tyb
+dxh sub tx bx
+dyh sub ty by
+dist fx_hyp dxh dyh
+near_lo mul 60 65536
+near_hi mul 420 65536
+nlo fx_mul near_lo sc
+nhi fx_mul near_hi sc
+far_ok fx_le dist nhi
+near_ok fx_ge dist nlo
+mrg fx_mul 3932160 sc
+xlo mov mrg
+xhi sub vwq mrg
+ylo mul 70 65536
+yhi sub vhq 3276800
+in_x1 fx_ge tx xlo
+in_x2 fx_le tx xhi
+in_y1 fx_ge ty ylo
+in_y2 fx_le ty yhi
+in_view and in_x1 in_x2
+in_view2 and in_y1 in_y2
+inside and in_view in_view2
+dist_ok and far_ok near_ok
+acc0 and okk0 inside
+acc1 and acc0 dist_ok
+accept and want2 acc1
+rt fx_rng rng2
+span rem rt 5000
+itn0 add 5500 span
+itn select accept itn0 450
+it_fin select want2 itn it
+hxn select accept tx hxs
+hyn select accept ty hys
+s1 bs A 27 ph
+s2 bs s1 29 it_fin
+s3 bs s2 33 hxn
+s4 bs s3 34 hyn
+s5 bs s4 19 rt
+s6 bs s5 87 mode
+
+fn avoid_step (u32,u32) u32 u32x672 u32 u32 u32 -> (u32,u32)
+x at A 0
+y at A 1
+kind r_kind C B
+vis r_vis C B
+k1 eq kind 1
+k2 eq kind 2
+k3 eq kind 3
+k12 or k1 k2
+k4 eq kind 4
+kk0 or k12 k3
+kk or kk0 k4
+x0 rg C B 1
+y0 rg C B 2
+x1 rg C B 3
+y1 rg C B 4
+x0q pg2vp x0 D
+y0q pg2vp y0 E
+x1q pg2vp x1 D
+y1q pg2vp y1 E
+x0p sub x0q F
+y0p sub y0q F
+x1p add x1q F
+y1p add y1q F
+a1 fx_ge x x0p
+a2 fx_le x x1p
+a3 fx_ge y y0p
+a4 fx_le y y1p
+i1 and a1 a2
+i2 and a3 a4
+inside and i1 i2
+e1 and vis kk
+act and e1 inside
+e edge_pt x0p y0p x1p y1p x y
+ex at e 0
+ey at e 1
+nx select act ex x
+ny select act ey y
+o (nx ny)
+
+fn travel_dir u32x1024 -> (u32,u32,bool)
+mode bg A 11
+m1 eq mode 1
+m2 eq mode 2
+pur or m1 m2
+bx bg A 1
+by bg A 2
+px bg A 7
+py bg A 8
+hx bg A 33
+hy bg A 34
+tx select pur px hx
+ty select pur py hy
+dx sub tx bx
+dy sub ty by
+len fx_hyp dx dy
+go gt len 3276800
+u fx_unit dx dy
+ux at u 0
+uy at u 1
+r (ux uy go)
+
+fn feet_step (u32,u32,u32) u32 u32x1024 u32 -> (u32,u32,u32)
+stt tg C B 0
+att eq stt 2
+ax tg C B 23
+ay tg C B 24
+nx tg C B 29
+ny tg C B 30
+ox fx_mul nx D
+oy fx_mul ny D
+sx at A 0
+sy at A 1
+n at A 2
+tx0 add ax ox
+ty0 add ay oy
+nsx add sx tx0
+nsy add sy ty0
+nn add n 1
+rx select att nsx sx
+ry select att nsy sy
+rn select att nn n
+o (rx ry rn)
+
+fn near_step (u32,u32,u32) u32 u32x672 u32 u32 u32x1024 u32 -> (u32,u32,u32)
+x0 rg C B 1
+y0 rg C B 2
+x1 rg C B 3
+y1 rg C B 4
+vis r_vis C B
+kind r_kind C B
+kn ne kind 0
+w sub x1 x0
+h sub y1 y0
+bw ge w 6
+bh ge h 6
+bg2 and bw bh
+x0q pg2vp x0 D
+y0q pg2vp y0 E
+x1q pg2vp x1 D
+y1q pg2vp y1 E
+bx bg F 1
+by bg F 2
+e edge_pt x0q y0q x1q y1q bx by
+ex at e 0
+ey at e 1
+dx sub ex bx
+dy sub ey by
+d fx_hyp dx dy
+nm edge_normal x0q y0q x1q y1q bx by
+nx at nm 0
+ny at nm 1
+ox fx_mul nx G
+oy fx_mul ny G
+tx add ex ox
+ty add ey oy
+bd at A 0
+better fx_lt d bd
+a1 and vis kn
+a2 and a1 bg2
+ok and a2 better
+nd select ok d bd
+bx0 at A 1
+by0 at A 2
+nx2 select ok tx bx0
+ny2 select ok ty by0
+o (nd nx2 ny2)
+
+fn body_goal u32x1024 u32x32 u32x672 -> (u32,u32,u32,u32)
+mode bg A 11
+bx bg A 1
+by bg A 2
+sc bg A 38
+idle eq mode 0
+hm select idle 589824 983040
+h fx_mul hm sc
+tr travel_dir A
+ux at tr 0
+uy at tr 1
+go at tr 2
+f0 (0 0 0)
+feet fold feet_step 8 f0 A h
+fsx at feet 0
+fsy at feet 1
+fn_ at feet 2
+nf65 << fn_ 16
+mx fx_div fsx nf65
+my fx_div fsy nf65
+lean fx_mul 1835008 sc
+lx0 fx_mul ux lean
+ly0 fx_mul uy lean
+lx select go lx0 0
+ly select go ly0 0
+mx2 add mx lx
+my2 add my ly
+sxg get B 5
+syg get B 6
+nrows get B 21
+n0 (2147483647 bx by)
+near fold near_step nrows n0 C sxg syg A h
+nxx at near 1
+nyy at near 2
+supported fx_ge fn_ 2
+dx0 select supported mx2 nxx
+dy0 select supported my2 nyy
+vw get B 3
+vh get B 4
+vwq << vw 16
+vhq << vh 16
+mq fx_mul 1703936 sc
+xmax sub vwq mq
+ymax sub vhq mq
+dx fx_clamp dx0 mq xmax
+dyc fx_clamp dy0 mq ymax
+pad fx_mul 917504 sc
+av0 (dx dyc)
+av1 fold avoid_step nrows av0 C sxg syg pad
+av2 fold avoid_step nrows av1 C sxg syg pad
+av3 fold avoid_step nrows av2 C sxg syg pad
+av fold avoid_step nrows av3 C sxg syg pad
+ndx at av 0
+ndy at av 1
+k select idle 589824 1048576
+c select idle 327680 458752
+r (ndx ndy k c)
+
+fn body_step u32x1024 u32x32 u32x672 u32 -> u32x1024
+g body_goal A B C
+dx at g 0
+dy at g 1
+k at g 2
+c at g 3
+bx bg A 1
+by bg A 2
+vx bg A 3
+vy bg A 4
+sc bg A 38
+ex sub dx bx
+ey sub dy by
+tu fx_unit ex ey
+tux at tu 0
+tuy at tu 1
+plx mov 0
+ply mov 0
+ax1 fx_mul k ex
+ax2 fx_mul c vx
+ax3 sub ax1 ax2
+ax add ax3 plx
+ay1 fx_mul k ey
+ay2 fx_mul c vy
+ay3 sub ay1 ay2
+ay add ay3 ply
+dvx fx_mul ax D
+dvy fx_mul ay D
+vx1 add vx dvx
+vy1 add vy dvy
+spd fx_hyp vx1 vy1
+vmax fx_mul 45875200 sc
+over gt spd vmax
+f fx_div vmax spd
+vx2s fx_mul vx1 f
+vy2s fx_mul vy1 f
+vx2 select over vx2s vx1
+vy2 select over vy2s vy1
+mx fx_mul vx2 D
+my fx_mul vy2 D
+bx1 add bx mx
+by1 add by my
+vw get B 3
+vh get B 4
+vwq << vw 16
+vhq << vh 16
+hix sub vwq 655360
+hiy sub vhq 655360
+bx2 fx_clamp bx1 655360 hix
+by2 fx_clamp by1 655360 hiy
+hitx ne bx2 bx1
+hity ne by2 by1
+vx3 select hitx 0 vx2
+vy3 select hity 0 vy2
+s1 bs A 1 bx2
+s2 bs s1 2 by2
+s3 bs s2 3 vx3
+s4 bs s3 4 vy3
+
+fn body_heading u32x1024 u32 -> u32x1024
+vx bg A 3
+vy bg A 4
+spd fx_hyp vx vy
+fast gt spd 2621440
+want fx_atan2 vy vx
+ang bg A 5
+d0 sub want ang
+d and d0 65535
+big gt d 32768
+d2 sub d 65536
+err select big d2 d
+errs select fast err 0
+angv bg A 6
+t1 fx_mul 1703936 errs
+t2 fx_mul 458752 angv
+acc sub t1 t2
+dv fx_mul acc B
+angv2 add angv dv
+da fx_mul angv2 B
+ang2 add ang da
+ang3 and ang2 65535
+s1 bs A 5 ang3
+s2 bs s1 6 angv2
+
+fn body_react u32x1024 u32 -> u32x1024
+rx0 bg A 31
+ry0 bg A 32
+rx fx_limit rx0 1572864
+ry fx_limit ry0 1572864
+bx bg A 1
+by bg A 2
+vx bg A 3
+vy bg A 4
+ivx fx_div rx B
+ivy fx_div ry B
+cx fx_mul ivx 13107
+cy fx_mul ivy 13107
+nbx add bx rx
+nby add by ry
+nvx add vx cx
+nvy add vy cy
+s1 bs A 1 nbx
+s2 bs s1 2 nby
+s3 bs s2 3 nvx
+s4 bs s3 4 nvy
+s5 bs s4 31 0
+s6 bs s5 32 0
+

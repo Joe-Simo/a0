@@ -1,0 +1,46 @@
+use "../lib/fx.a0"
+
+fn bg u32x1024 u32 -> u32
+v get A B
+
+fn bs u32x1024 u32 u32 -> u32x1024
+r set A B C
+
+fn tbase add mul A 96 96
+
+fn tg u32x1024 u32 u32 -> u32
+b tbase B
+i add b C
+v get A i
+
+fn ts u32x1024 u32 u32 u32 -> u32x1024
+b tbase B
+i add b C
+r set A i D
+
+fn jg u32x1024 u32 u32 u32 -> u32
+b tbase B
+j4 mul C 6
+o add b 32
+o2 add o j4
+i add o2 D
+v get A i
+
+fn js u32x1024 u32 u32 u32 u32 -> u32x1024
+b tbase B
+j4 mul C 6
+o add b 32
+o2 add o j4
+i add o2 D
+r set A i E
+
+fn q16
+r << A 16
+
+fn scale_of
+a lt A 600
+b lt A 1000
+s1 select ge A 1700 73400 65536
+s2 select b 57671 s1
+s3 select a 47186 s2
+

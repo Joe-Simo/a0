@@ -1,0 +1,7363 @@
+use "emit_c.a0"
+use "wasm_code.a0"
+
+fn wa24 u32x128x24 u32 -> u32 get get A >> B 7 and B 127
+
+fn wa65 u32x128x65 u32 -> u32 get get A >> B 7 and B 127
+
+fn wa128 u32x128x128 u32 -> u32 get get A >> B 7 and B 127
+
+fn wa16 u32x128x16 u32 -> u32 get get A >> B 7 and B 127
+
+fn wa100 u32x128x100 u32 -> u32 get get A >> B 7 and B 127
+
+fn wa512 u32x128x512 u32 -> u32 get get A >> B 7 and B 127
+
+fn wat u32x384x65 u32 u32 -> u32 get get A >> B 7 add mul and B 127 3 C
+
+fn z100 -> u32x128x100
+a zpage
+[a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a]
+
+fn z512 -> u32x128x512
+a zpage
+[a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a]
+
+fn wawr io u32 u32 -> io write A C
+
+fn wab (io,u32,u32,u32) u32 bool -> (io,u32,u32,u32)
+a at A 0
+b at A 1
+c at A 2
+d at A 3
+(fold wawr select C 1 0 a B add b 1 c d)
+
+fn wab2 (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32) wab wab A B D C D
+
+fn wab3 (io,u32,u32,u32) u32 u32 u32 bool -> (io,u32,u32,u32) wab wab wab A B E C E D E
+
+fn waref (io,u32,u32,u32) u32 -> (io,u32,u32,u32)
+a at A 0
+b at A 1
+c at A 2
+d at A 3
+(write a B b c add d 1)
+
+fn wapool (io,u32,u32,u32) -> (io,u32,u32,u32)
+a at A 0
+b at A 1
+c at A 2
+d at A 3
+(write a add 2147483648 c b add c 1 add d 1)
+
+fn walebb (io,u32,u32,u32) u32 u32 u32 u32 bool -> (io,u32,u32,u32)
+c and >> C mul B 7 127
+f select lt add B 1 D 128 0
+h select eq B 4 E 0
+wab A or or c f h F
+
+fn waul (io,u32,u32,u32) u32 bool -> (io,u32,u32,u32)
+a ge B 128
+b ge B 16384
+c ge B 2097152
+d ge B 268435456
+e select a 1 0
+f select b 1 0
+g select c 1 0
+h select d 1 0
+l add add add add e f g h 1
+fold walebb l A B l 0 C
+
+fn wasl (io,u32,u32,u32) u32 bool -> (io,u32,u32,u32)
+a ge B 2147483648
+c select a xor B 4294967295 B
+d ge c 64
+e ge c 8192
+f ge c 1048576
+g ge c 134217728
+h select d 1 0
+i select e 1 0
+j select f 1 0
+k select g 1 0
+o add add add add h i j k 1
+fold walebb o A B o select a 112 0 C
+
+fn wauln
+a ge A 128
+b ge A 16384
+c ge A 2097152
+d ge A 268435456
+e select a 1 0
+f select b 1 0
+g select c 1 0
+h select d 1 0
+add add add add e f g h 1
+
+fn wasln
+c select ge A 2147483648 xor A 4294967295 A
+d ge c 64
+e ge c 8192
+f ge c 1048576
+g ge c 134217728
+h select d 1 0
+i select e 1 0
+j select f 1 0
+k select g 1 0
+add add add add h i j k 1
+
+fn waulst (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32) waul A C D
+
+fn waslst (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32) wasl A C D
+
+fn waci (io,u32,u32,u32) u32 bool -> (io,u32,u32,u32) wasl wab A 65 C B C
+
+fn wacist (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32) waci A C D
+
+fn walx (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32) waul wab A B D C D
+
+fn walxst (io,u32,u32,u32) u32 u32 u32 bool -> (io,u32,u32,u32) walx A C D E
+
+fn wamem (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32) waul wab2 A B 2 D C D
+
+fn waaddst (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32) wab waci A C D 106 D
+
+fn wacopy (io,u32,u32,u32) u32 bool -> (io,u32,u32,u32) wab2 wab2 waci A B C 252 10 C 0 0 C
+
+fn wacopyst (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32) wacopy A C D
+
+fn wapush (io,u32,u32,u32) u32 u32 u32 bool -> (io,u32,u32,u32)
+c or eq B 1 eq B 2
+e wab A select c 32 65 E
+f select c 1 0
+fold waslst select c 0 1 fold waulst f e D E C E
+
+fn wapushst (io,u32,u32,u32) u32 u32 u32 u32 bool -> (io,u32,u32,u32) wapush A C D E F
+
+fn wafi (u32,u32) u32 u32x128x65 u32x128x65 u32 -> (u32,u32)
+a at A 0
+b at A 1
+e wa65 C wa65 D add E B
+f and e 2147483647
+g >> e 31
+(add a f or b g)
+
+fn wainfost u32x128x65 u32 u32x384x65 u32x128x65 -> u32x128x65
+a wat C B 0
+b wat C B 1
+c wat C B 2
+d eq a 3
+e eq a 4
+f eq a 5
+g wa65 A c
+h and g 2147483647
+i >> g 31
+j mul b h
+m fold wafi select f c 0 (0 0) A D b
+n at m 0
+o at m 1
+v or select f n select e j 4 << select f o select e i select d 1 0 31
+w >> B 7
+set A w set get A w and B 127 v
+
+fn wainfo u32x384x65 u32x128x65 u32 -> u32x128x65 fold wainfost C z65 A B
+
+fn wafo u32x128x65 u32x128x65 u32 u32 -> u32 at fold wafi D (0 0) B A C 0
+
+fn waretop u32x128x512 u32 -> (u32,u32)
+a >> B 28
+b and B 268435455
+c eq a 5
+d mul b 2
+f get A >> d 7
+g and d 127
+h get f g
+j get f add g 1
+(select c h a select c j b)
+
+fn waown u32x128x45 u32x128x65 u32x384x65 u32 -> bool
+a mul D 7
+b cfw A a 1
+c cfw A a 2
+d cfw A a 3
+e wa65 B c
+g wa65 B add c 1
+n ge get get C >> e 7 add mul and e 127 3 0 4
+o eq g 0
+p ge b 2
+and and and n o p eq d e
+
+fn warefst (io,u32,u32,u32) u32 u32 -> (io,u32,u32,u32) waref A C
+
+fn wabst (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32) wab A C D
+
+fn wab2st (io,u32,u32,u32) u32 u32 u32 bool -> (io,u32,u32,u32) wab2 A C D E
+
+fn wab3st (io,u32,u32,u32) u32 u32 u32 u32 bool -> (io,u32,u32,u32) wab3 A C D E F
+
+fn wamemst (io,u32,u32,u32) u32 u32 u32 bool -> (io,u32,u32,u32) wamem A C D E
+
+fn wxg u32x128x512 u32 -> u32
+a >> B 7
+b and B 127
+get get A a b
+
+fn wxs u32x128x512 u32 u32 u32 -> u32x128x512
+a >> C 7
+b and C 127
+set A a set get A a b D
+
+fn wxad u32x128x512 u32 u32 u32 -> u32x128x512
+a >> C 7
+b and C 127
+e add get get A a b D
+f >> C 7
+g and C 127
+set A f set get A f g e
+
+fn wxfr add add mul A 128 128 B
+
+fn wxcx add add mul A 176 640 B
+
+fn wxrw
+a eq A 0
+b mul B 4
+add select a add b 5440 add add mul sub A 1 128 16704 b C
+
+fn wxbk
+b mul sub A 1 640
+c mul B 20
+add add add b 17088 c C
+
+fn wxfg u32x128x512 u32 u32 -> u32 wxg A wxfr B C
+
+fn wxcg u32x128x512 u32 u32 -> u32 wxg A wxcx B C
+
+fn wxrg u32x128x512 u32 u32 u32 -> u32 wxg A wxrw B C D
+
+fn wxfs u32x128x512 u32 u32 u32 u32 -> u32x128x512
+a wxfr C D
+b >> a 7
+c and a 127
+set A b set get A b c E
+
+fn wxcs u32x128x512 u32 u32 u32 u32 -> u32x128x512
+a wxcx C D
+b >> a 7
+c and a 127
+set A b set get A b c E
+
+fn wxrs u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+a wxrw C D E
+b >> a 7
+c and a 127
+set A b set get A b c F
+
+fn wxbs u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+a wxbk C D E
+b >> a 7
+c and a 127
+set A b set get A b c F
+
+fn wxe u32x128x512 u32 u32 u32 -> u32x128x512
+a get A 0
+b get a 0
+c get a 8
+d ge b 22528
+f add b select d 0 1
+g select d 1 c
+j set A 0 set set a 0 f 8 g
+l add mul b 2 20480
+m >> l 7
+n and l 127
+o get j m
+p add n 1
+r set set o n C p D
+set j m select eq d false r o
+
+fn wxnl u32x128x512 u32 -> u32x128x512
+a >> 1 7
+b and 1 127
+d get get A a b
+e ge d 8192
+f >> 16 7
+g and 16 127
+j set A f set get A f g d
+k add d 1
+l >> 1 7
+m and 1 127
+p set j l set get j l m k
+r ne select e 1 0 0
+s >> 8 7
+t and 8 127
+set p s select r set get p s t 1 get p s
+
+fn wxnv u32x128x512 u32 -> u32x128x512
+a >> 2 7
+b and 2 127
+d get get A a b
+e ge d 128
+f add d 1048576
+g >> 16 7
+h and 16 127
+k set A g set get A g h f
+l add d 1
+m >> 2 7
+n and 2 127
+q set k m set get k m n l
+s ne select e 1 0 0
+t >> 8 7
+u and 8 127
+set q t select s set get q t u 1 get q t
+
+fn wxfp u32x128x512 u32 -> u32x128x512
+a >> 4 7
+b and 4 127
+d get get A a b
+e eq d 4294967295
+g fold wxnl select e 1 0 A
+h >> 16 7
+i and 16 127
+l select e get get g h i d
+n ne select e 1 0 0
+o >> 4 7
+p and 4 127
+u set g o select n set get g o p l get g o
+v >> 16 7
+w and 16 127
+set u v set get u v w l
+
+fn wxpu u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+a >> 7 7
+b and 7 127
+d get get A a b
+e ge d 512
+f select e 0 1
+h add mul d 4 1344
+i ne f 0
+j >> h 7
+k and h 127
+p set A j select i set get A j k C get A j
+q add h 1
+r ne f 0
+s >> q 7
+t and q 127
+y set p s select r set get p s t D get p s
+z add h 2
+aa ne f 0
+ab >> z 7
+ac and z 127
+ah set y ab select aa set get y ab ac E get y ab
+ai add h 3
+aj ne f 0
+ak >> ai 7
+al and ai 127
+aq set ah ak select aj set get ah ak al F get ah ak
+ar add d 1
+as ne f 0
+au >> 7 7
+av and 7 127
+a0 set aq au select as set get aq au av ar get aq au
+a1 select e 1 0
+a2 ne a1 0
+a3 >> 8 7
+a4 and 8 127
+a5 get a0 a3
+a6 set a5 a4 1
+a7 get a0 a3
+a8 select a2 a6 a7
+a9 set a0 a3 a8
+
+fn wxpo u32x128x512 u32 -> u32x128x512
+a >> 7 7
+b and 7 127
+e sub get get A a b 1
+g add mul e 4 1344
+h >> g 7
+i and g 127
+k get get A h i
+l add g 1
+m >> l 7
+n and l 127
+p get get A m n
+q add g 2
+r >> q 7
+s and q 127
+u get get A r s
+v add g 3
+w >> v 7
+x and v 127
+z get get A w x
+aa >> 16 7
+ab and 16 127
+ae set A aa set get A aa ab k
+af >> 17 7
+ag and 17 127
+aj set ae af set get ae af ag p
+ak >> 18 7
+al and 18 127
+ao set aj ak set get aj ak al u
+ap >> 19 7
+aq and 19 127
+au set ao ap set get ao ap aq z
+av >> 7 7
+aw and 7 127
+set au av set get au av aw e
+
+fn z352 -> u32x128x352
+a zpage
+[a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a]
+
+fn wxnw u32x128x132 u32 u32 -> u32
+b add mul B 6 C
+c >> b 7
+d and b 127
+get get A c d
+
+fn wxok u32x128x512 u32 -> u32
+a mul B 2
+b >> a 7
+c and a 127
+get get A b c
+
+fn wxov u32x128x512 u32 -> u32
+b add mul B 2 1
+c >> b 7
+d and b 127
+get get A c d
+
+fn wxfw u32x128x45 u32 u32 -> u32 cfw A mul B 7 C
+
+fn wxty u32x384x65 u32 u32 -> u32 wat A B C
+
+fn wxtag u32x384x65 u32 -> u32 wat A B 0
+
+fn wxbyt u32x128x65 u32 -> u32 and wa65 A B 2147483647
+
+fn wxio u32x128x65 u32 -> u32 >> wa65 A B 31
+
+fn wxsh u32x128x310 u32 -> u32
+a >> B 7
+b and B 127
+get get A a b
+
+fn wxl2s add A select ne >> C add B 1 0 1 0
+
+fn wxlog2 fold wxl2s 31 0 A
+
+fn wxpow2 -> bool eq and A sub A 1 0
+
+fn wxopty u32 u32 u32x128x24 u32x128x65 u32 u32 -> u32
+a eq A 1
+b eq A 2
+c eq A 4
+select a wa24 C add F B select b wa65 D add E B select c 1 0
+
+fn wxres u32x128x512 u32 u32 u32 u32 -> u32x128x512
+a eq D 1
+b eq D 2
+e or eq D 3 eq D 4
+f select a E 0
+g eq C 0
+h mul f 4
+o add select g add h 5440 add add mul sub C 1 128 16704 h 2
+p >> o 7
+q and o 127
+u ne and get get A p q 1 0
+v eq C 0
+w mul f 4
+ad add select v add w 5440 add add mul sub C 1 128 16704 w 1
+ae >> ad 7
+af and ad 127
+ah get get A ae af
+ai eq C 0
+aj mul f 4
+aq add select ai add aj 5440 add add mul sub C 1 128 16704 aj 3
+ar >> aq 7
+as and aq 127
+av get get A ar as
+aw >> av 28
+ax and av 268435455
+a0 or and a eq aw 2 b
+a1 select b E ax
+a2 select a0 a1 0
+a3 mul a2 2
+a4 add a3 32
+a5 mul C 128
+a6 add a5 128
+a7 add a6 a4
+a8 >> a7 7
+a9 and a7 127
+bb get get A a8 a9
+bc add a3 33
+bf add add mul C 128 128 bc
+bg >> bf 7
+bh and bf 127
+bj get get A bg bh
+bk gt C 0
+bn and and bk a0 eq bb 1
+bp select eq av 0 f ax
+bq eq C 0
+br mul bp 4
+by add select bq add br 5440 add add mul sub C 1 128 16704 br 0
+bz >> by 7
+b0 and by 127
+b1 get A bz
+b2 get b1 b0
+b3 >> 10 7
+b4 and 10 127
+b5 get A b3
+b6 get b5 b4
+b7 add b6 a2
+b8 select bk bj b7
+b9 select a0 b8 b2
+ca and a u
+cc or or e ca bn
+cf select cc select e E select ca ah bj b9
+cg select cc 1 0
+ch >> 16 7
+ci and 16 127
+cl set A ch set get A ch ci cg
+cm >> 17 7
+cn and 17 127
+set cl cm set get cl cm cn cf
+
+fn wxpr u32x128x512 u32 u32 u32 -> u32x128x512
+b select ne C 0 2 3
+c get A 0
+d get c 0
+e get c 8
+f ge d 22528
+h add d select f 0 1
+i select f 1 e
+l set A 0 set set c 0 h 8 i
+n add mul d 2 20480
+o >> n 7
+p and n 127
+q get l o
+r add p 1
+t set set q p b r D
+set l o select eq f false t q
+
+fn wxpsh u32x128x512 u32 u32 u32 u32 -> u32x128x512
+a fold wxres 1 A C D E
+b >> 16 7
+c and 16 127
+e get get a b c
+f >> 17 7
+g and 17 127
+fold wxpr 1 a e get get a f g
+
+fn wxset u32x128x512 u32 u32 u32 -> u32x128x512
+a fold wxnl 1 A
+b >> 16 7
+c and 16 127
+e get get a b c
+f fold wxrs 1 a C D 0 e
+g get f 0
+h get g 0
+i get g 8
+j ge h 22528
+l add h select j 0 1
+m select j 1 i
+p set f 0 set set g 0 l 8 m
+r add mul h 2 20480
+s >> r 7
+t and r 127
+u get p s
+v add t 1
+x set set u t 4 v e
+set p s select eq j false x u
+
+fn wxbind u32x128x512 u32 u32 u32 u32 -> u32x128x512 fold wxrs 1 A C D 0 E
+
+fn wxkc u32x128x512 u32 u32 -> u32x128x512
+a get A 0
+b get a 0
+c get a 8
+d ge b 22528
+f add b select d 0 1
+g select d 1 c
+j set A 0 set set a 0 f 8 g
+l add mul b 2 20480
+m >> l 7
+n and l 127
+o get j m
+p add n 1
+r set set o n 2 p C
+set j m select eq d false r o
+
+fn wxlg u32x128x512 u32 u32 -> u32x128x512
+a get A 0
+b get a 0
+c get a 8
+d ge b 22528
+f add b select d 0 1
+g select d 1 c
+j set A 0 set set a 0 f 8 g
+l add mul b 2 20480
+m >> l 7
+n and l 127
+o get j m
+p add n 1
+r set set o n 3 p C
+set j m select eq d false r o
+
+fn wxls u32x128x512 u32 u32 -> u32x128x512
+a get A 0
+b get a 0
+c get a 8
+d ge b 22528
+f add b select d 0 1
+g select d 1 c
+j set A 0 set set a 0 f 8 g
+l add mul b 2 20480
+m >> l 7
+n and l 127
+o get j m
+p add n 1
+r set set o n 4 p C
+set j m select eq d false r o
+
+fn wxop u32x128x512 u32 u32 -> u32x128x512
+a get A 0
+b get a 0
+c get a 8
+d ge b 22528
+f add b select d 0 1
+g select d 1 c
+j set A 0 set set a 0 f 8 g
+l add mul b 2 20480
+m >> l 7
+n and l 127
+o get j m
+p add n 1
+r set set o n 1 p C
+set j m select eq d false r o
+
+fn wxcp u32x128x512 u32 u32 -> u32x128x512
+a get A 0
+b get a 0
+c get a 8
+d ge b 22528
+f add b select d 0 1
+g select d 1 c
+j set A 0 set set a 0 f 8 g
+l add mul b 2 20480
+m >> l 7
+n and l 127
+o get j m
+p add n 1
+r set set o n 2 p C
+u set j m select eq d false r o
+v get u 0
+w get v 0
+x get v 8
+y ge w 22528
+aa add w select y 0 1
+ab select y 1 x
+ae set u 0 set set v 0 aa 8 ab
+ag add mul w 2 20480
+ah >> ag 7
+ai and ag 127
+aj get ae ah
+ak add ai 1
+am set set aj ai 16 ak 0
+set ae ah select eq y false am aj
+
+fn wxld u32x128x512 u32 u32 -> u32x128x512
+a get A 0
+b get a 0
+c get a 8
+d ge b 22528
+f add b select d 0 1
+g select d 1 c
+j set A 0 set set a 0 f 8 g
+l add mul b 2 20480
+m >> l 7
+n and l 127
+o get j m
+p add n 1
+r set set o n 10 p C
+set j m select eq d false r o
+
+fn wxst u32x128x512 u32 u32 -> u32x128x512
+a get A 0
+b get a 0
+c get a 8
+d ge b 22528
+f add b select d 0 1
+g select d 1 c
+j set A 0 set set a 0 f 8 g
+l add mul b 2 20480
+m >> l 7
+n and l 127
+o get j m
+p add n 1
+r set set o n 11 p C
+set j m select eq d false r o
+
+fn wxadd u32x128x512 u32 u32 -> u32x128x512
+a get A 0
+b get a 0
+c get a 8
+d ge b 22528
+f add b select d 0 1
+g select d 1 c
+j set A 0 set set a 0 f 8 g
+l add mul b 2 20480
+m >> l 7
+n and l 127
+o get j m
+p add n 1
+r set set o n 2 p C
+u set j m select eq d false r o
+v get u 0
+w get v 0
+x get v 8
+y ge w 22528
+aa add w select y 0 1
+ab select y 1 x
+ae set u 0 set set v 0 aa 8 ab
+ag add mul w 2 20480
+ah >> ag 7
+ai and ag 127
+aj get ae ah
+ak add ai 1
+am set set aj ai 1 ak 106
+set ae ah select eq y false am aj
+
+fn wxea u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+a fold wxpsh 1 A C D E
+b eq F 3
+c select b false true
+e mul rem G H I
+g fold wxpsh select c 1 0 a C F G
+j and eq F 2 eq G 1
+m add add mul C 128 128 22
+n >> m 7
+o and m 127
+q get get g n o
+t add add mul C 128 128 23
+u >> t 7
+v and t 127
+x get get g u v
+y ne q 0
+z le x H
+ac and and and j y z c
+ad wxpow2 H
+ae sub H 1
+ag and c select ac false true
+ah and ag ad
+aj and ag select ad false true
+al fold wxkc select ah 1 0 g ae
+an fold wxop select ah 1 0 al 113
+ap fold wxkc select aj 1 0 an H
+ar fold wxop select aj 1 0 ap 112
+au and c ne I 1
+av wxlog2 I
+aw wxpow2 I
+ax and au aw
+az and au select aw false true
+a0 select ax 1 0
+a1 fold wxkc a0 ar av
+a2 select ax 1 0
+a3 fold wxop a2 a1 116
+a4 select az 1 0
+a5 fold wxkc a4 a3 I
+a6 select az 1 0
+a7 fold wxop a6 a5 108
+a8 select c 1 0
+a9 fold wxop a8 a7 106
+ba select b e 0
+bb >> 16 7
+bc and 16 127
+set a9 bb set get a9 bb bc ba
+
+fn wxsa u32x128x512 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+a lt F 4
+b select a false true
+g fold wxpsh 1 fold wxadd select and b ne H 0 1 0 A H C D E
+i fold wxst select a 1 0 g H
+fold wxcp select b 1 0 i G
+
+fn wxu64 u32x128x64 u32 -> u32
+a >> B 7
+b and B 127
+get get A a b
+
+fn wxusa u32x128x64 u32 u32x128 u32 u32 u32 bool -> u32x128x64
+a add D B
+c and mul a 2 127
+d get C c
+f get C add c 1
+g eq d 1
+h eq d 2
+j select h add f 4096 f
+k >> j 7
+l get A k
+m and j 127
+n get l m
+p and >> n 16 3
+r and >> n 18 3
+w cumin add p select and G eq a E 0 1 3
+y cumin add r 1 3
+z << w 16
+aa << y 18
+ab add F 1
+ad or or z aa ab
+set A k set l m select or g h ad n
+
+fn wxuspg u32x128x64 u32 u32x128x512 u32 u32 u32 u32 bool -> u32x128x64
+a add F B
+b get C a
+c mul a 64
+d add c 64
+e umax D c
+fold wxusa sub cumin E d e A b e D G H
+
+fn wxusn u32x128x64 u32 u32x128x132 u32x128x512 u32 -> u32x128x64
+a add E B
+b wxnw C a 1
+c wxnw C a 2
+d wxnw C a 3
+g or eq b 25 eq b 27
+h add d c
+i lt d h
+j >> d 6
+fold wxuspg select i add sub >> sub h 1 6 j 1 0 A D d h j B g
+
+fn wxroot u32x128x512 u32 u32 u32 u32 u32x128x64 u32 u32 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x310 -> u32x128x512
+a add D B
+b wxnw I a 1
+c wxnw I a 3
+f ge wxtag L wa24 K a 4
+g eq b 1
+h eq b 26
+i eq b 28
+j eq b 20
+k eq b 21
+l or h i
+m or j k
+n or l m
+o add c 1
+p wxok J c
+q wxov J c
+r wxok J o
+s wxov J o
+t select m r p
+u select m s q
+v eq t 1
+w eq t 2
+y wxnw I add D u 1
+z eq y 22
+aa eq y 23
+ab eq y 24
+ac eq y 26
+ad eq y 28
+an or and v or or or or z aa ab ac ad and w and eq E 1 eq u 0
+ar select and eq t G eq u H false true
+av wxu64 F select w add u 4096 u
+ax and >> av 16 3
+ay and av 65535
+az eq ax 1
+a0 add B 1
+a1 le ay a0
+a2 add 11264 a
+a3 wxsh M a2
+a4 eq a3 0
+a5 and an ar
+a6 and a5 az
+a7 and a6 a1
+a8 and a7 a4
+a9 and n a8
+bc or and a9 f and f g
+bd select v u 0
+be eq C 0
+bf mul bd 4
+bm add select be add bf 5440 add add mul sub C 1 128 16704 bf 3
+bn >> bm 7
+bo and bm 127
+bq get get A bn bo
+bw select bc select v select eq bq 0 add 268435456 u bq add 536870912 u 0
+bx wxu64 F B
+by wxrw C B 3
+bz >> by 7
+b0 and by 127
+b1 get A bz
+b2 set b1 b0 bw
+b3 set A bz b2
+b4 wxrw C B 1
+b5 >> b4 7
+b6 and b4 127
+b7 get b3 b5
+b8 set b7 b6 bx
+b9 set b3 b5 b8
+
+fn wxslot u32x128x512 u32 u32 u32 u32 -> u32x128x512
+a >> 11 7
+b and 11 127
+g and eq get get A a b D eq C 0
+h >> 9 7
+i and 9 127
+k get get A h i
+l >> 3 7
+m and 3 127
+o get get A l m
+p select g false true
+s add o and add E 3 4294967292
+u ne select p 1 0 0
+v >> 3 7
+w and 3 127
+ab set A v select u set get A v w s get A v
+ad and p eq o 0
+af and p select ad false true
+ah fold wxfp select ad 1 0 ab
+ai >> 16 7
+aj and 16 127
+al get get ah ai aj
+an fold wxnl select af 1 0 ah
+ao >> 16 7
+ap and 16 127
+ar get get an ao ap
+as >> 4 7
+au and 4 127
+aw get get an as au
+ay fold wxlg select af 1 0 an aw
+a0 fold wxkc select af 1 0 ay o
+a1 select af 1 0
+a2 fold wxop a1 a0 106
+a3 select af 1 0
+a4 fold wxls a3 a2 ar
+a5 select ad al ar
+a6 select g k a5
+a7 fold wxrs 1 a4 C D 0 a6
+a8 >> 16 7
+a9 and 16 127
+set a7 a8 set get a7 a8 a9 a6
+
+fn wxbop
+a eq A 2
+b eq A 3
+c eq A 4
+d eq A 5
+e eq A 6
+f eq A 7
+g eq A 8
+h eq A 9
+i eq A 12
+j eq A 13
+k eq A 14
+l eq A 15
+m eq A 16
+ac select eq A 17 79 select m 75 select l 77 select k 73 select j 71 select i 70 select h 118 select g 116 select f 115 select e 114 select d 113 select c 108 select b 107 select a 106 mov 0
+ad eq A 64
+select eq A 65 120 select ad 119 ac
+
+fn wxrotl or << A B >> A sub 32 B
+
+fn wxeval
+a add B C
+b sub B C
+c mul B C
+d and B C
+e or B C
+f xor B C
+g << B C
+h >> B C
+i eq B C
+j ne B C
+k lt B C
+l le B C
+m gt B C
+n ge B C
+o select i 1 0
+p select j 1 0
+q select k 1 0
+r select l 1 0
+s select m 1 0
+t select n 1 0
+u eq A 2
+v eq A 3
+w eq A 4
+x eq A 5
+y eq A 6
+z eq A 7
+aa eq A 8
+ab eq A 9
+ac eq A 12
+ad eq A 13
+ae eq A 14
+af eq A 15
+ag eq A 16
+ax select eq A 17 t select ag s select af r select ae q select ad p select ac o select ab h select aa g select z f select y e select x d select w c select v b select u a mov 0
+rot_a and C 31
+rot_b sub 32 rot_a
+rot_c and rot_b 31
+rot_d wxrotl B rot_a
+rot_e wxrotl B rot_c
+rot_f eq A 64
+rot_g eq A 65
+rot_h select rot_g rot_e ax
+rot_i select rot_f rot_d rot_h
+
+fn wxhmov u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+a at C 0
+b at C 1
+fold wxset 1 fold wxpr 1 A at C 17 at C 18 a b
+
+fn wxhbin u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+a at C 0
+b at C 1
+c at C 3
+d at C 17
+e at C 18
+f at C 19
+g at C 20
+h at C 23
+i eq d 1
+j eq f 1
+k eq h 0
+m and and i j k
+n select m false true
+o wxeval c e g
+p wxbop c
+r fold wxrs select m 1 0 A a b 1 o
+t fold wxrs select m 1 0 r a b 2 1
+v fold wxpr select n 1 0 t d e
+x fold wxpr select n 1 0 v f g
+z fold wxop select n 1 0 x p
+fold wxset select n 1 0 z a b
+
+fn wxhdiv u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+a at C 0
+b at C 1
+c at C 3
+d at C 17
+e at C 18
+f at C 19
+g at C 20
+h fold wxnl 1 A
+i >> 16 7
+j and 16 127
+l get get h i j
+o fold wxls 1 fold wxop 1 fold wxpr 1 h f g 69 l
+p eq c 10
+q select p false true
+s fold wxkc select p 1 0 o 4294967295
+fold wxset 1 fold wxop 1 fold wxlg 1 fold wxop 1 fold wxop 1 fold wxlg 1 fold wxpr 1 fold wxpr 1 fold wxpr select q 1 0 s d e d e f g l 114 select p 110 112 l 27 a b
+
+fn wxown u32 u32 u32 u32 u32x128x310 -> u32 add A select eq wxsh E add 2816 add C B add D 1 1 0
+
+fn wxhsel u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 -> u32x128x512
+a at C 0
+b at C 1
+c at C 13
+d at C 14
+e at C 15
+f at C 16
+g at C 17
+h at C 18
+i at C 19
+j at C 20
+k at C 21
+l at C 22
+m eq g 1
+n select m false true
+o ne h 0
+p select o i k
+q select o j l
+s fold wxpr select m 1 0 A p q
+u fold wxset select m 1 0 s a b
+x add add mul a 128 128 2
+y >> x 7
+z and x 127
+ab get get u y z
+ae add add mul a 128 128 3
+af >> ae 7
+ag and ae 127
+al and gt fold wxown get get u af ag 0 ab b D 0 n
+an and n select al false true
+ap fold wxpr select an 1 0 u i j
+ar fold wxpr select an 1 0 ap k l
+au fold wxpr select an 1 0 ar g h
+aw fold wxop select an 1 0 au 27
+ay fold wxset select an 1 0 aw a b
+a0 fold wxpr select al 1 0 ay g h
+a1 select al 1 0
+a2 ne a1 0
+a3 get a0 0
+a4 get a3 0
+a5 get a3 8
+a6 ge a4 22528
+a7 select a6 0 1
+a8 add a4 a7
+a9 select a6 1 a5
+be set a0 0 select a2 set set a3 0 a8 8 a9 get a0 0
+bg add mul a4 2 20480
+bh >> bg 7
+bi and bg 127
+bj get be bh
+bk add bi 1
+bm set set bj bi 15 bk 127
+br set be bh select a2 select eq a6 false bm bj get be bh
+bt fold wxpu select al 1 0 br 7 a b 0
+bv fold wxpu select al 1 0 bt 4 1 11 0
+bx fold wxpu select al 1 0 bv 3 a e f
+bz fold wxpu select al 1 0 bx 6 a b 1
+b0 select al 1 0
+b1 fold wxpu b0 bz 4 1 5 0
+b2 select al 1 0
+b3 fold wxpu b2 b1 3 a c d
+b4 select al 1 0
+b5 fold wxpu b4 b3 6 a b 0
+
+fn wxfnd u32 u32 u32 u32 u32 u32 u32x128x310 -> u32
+a add F B
+b add C a
+d wxsh G add 2816 b
+f wxsh G add 5632 b
+h eq d add D 1
+i eq f E
+j eq A 4294967295
+select and and h i j a A
+
+fn wxfset u32x128x512 u32 u32 u32 u32 u32x128x45 u32x128x512 -> u32x128x512
+a wxfw F D 4
+b wxfw F D 5
+c wxfw F D 1
+e waretop G wxfw F D 6
+f at e 0
+g at e 1
+i select gt C 0 1 0
+fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 A C 0 D C 1 E C 2 a C 3 b C 4 c C 5 f C 6 g C 7 i
+
+fn wxclr u32x128x512 u32 u32 -> u32x128x512
+a wxrw C B 0
+b >> a 7
+c and a 127
+f set A b set get A b c 0
+g wxrw C B 1
+h >> g 7
+i and g 127
+l set f h set get f h i 0
+m wxrw C B 2
+n >> m 7
+o and m 127
+r set l n set get l n o 0
+s wxrw C B 3
+t >> s 7
+u and s 127
+x set r t set get r t u 0
+y wxbk C B 0
+z >> y 7
+aa and y 127
+ad set x z set get x z aa 0
+ae wxbk C B 1
+af >> ae 7
+ag and ae 127
+set ad af set get ad af ag 0
+
+fn wxnf u32x128x512 u32 u32 u32 u32x128x132 u32x128x24 u32x384x65 -> u32x128x512
+a add D B
+b wxnw E a 1
+e ge wxtag G wa24 F a 4
+f eq C 0
+g mul B 4
+n add select f add g 5440 add add mul sub C 1 128 16704 g 3
+o >> n 7
+p and n 127
+r get get A o p
+s eq C 0
+t mul B 4
+aa add select s add t 5440 add add mul sub C 1 128 16704 t 2
+ab >> aa 7
+ac and aa 127
+af and get get A ab ac 2
+ag eq r 0
+ah eq af 0
+ai eq b 25
+aj eq b 27
+ak eq b 18
+al eq b 1
+ap select or or or ai aj ak al false true
+av ne select and and and e ag ah ap 1 0 0
+aw >> 18 7
+ax and 18 127
+az set get A aw ax 1
+a0 get A aw
+a1 select av az a0
+a2 set A aw a1
+
+fn wxiop u32x128x512 u32 u32 u32x128x65 u32x128x65 -> u32x128x512
+f ne select ne wxio E wa65 D add C B 0 1 0 0
+g >> 19 7
+h and 19 127
+set A g select f set get A g h 1 get A g
+
+fn wxion u32x128x512 u32 u32 u32x128x24 u32x128x65 -> u32x128x512
+f ne select ne wxio E wa24 D add C B 0 1 0 0
+g >> 19 7
+h and 19 127
+set A g select f set get A g h 1 get A g
+
+fn wxsm0 u32x128x512 u32 u32 u32x128x65 u32x384x65 -> u32x128x512
+a wa65 D C
+b wxtag E a
+c wxty E a 1
+d wxty E a 2
+e ge b 4
+f eq b 4
+g select f c d
+h le g 8
+j select f le d 1 true
+m select and and e h j 1 0
+n select f 0 d
+o >> 22 7
+p and 22 127
+s set A o set get A o p m
+t >> 24 7
+u and 24 127
+x set s t set get s t u g
+y >> 25 7
+z and 25 127
+ac set x y set get x y z c
+ad >> 26 7
+ae and 26 127
+set ac ad set get ac ad ae n
+
+fn wxsm1 u32x128x512 u32 u32 u32x128x65 -> u32x128x512
+e ne select gt wa65 D add C B 1 1 0 0
+f >> 22 7
+g and 22 127
+set A f select e set get A f g 0 get A f
+
+fn wxchs u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
+a add D B
+b wxok E a
+c wxov E a
+f and eq b 2 eq c 0
+g eq b 1
+h select g c 0
+i eq C 0
+j mul h 4
+q add select i add j 5440 add add mul sub C 1 128 16704 j 2
+r >> q 7
+s and q 127
+z select or f and g ne and get get A r s 2 0 1 0
+aa >> 24 7
+ab and 24 127
+ae or get get A aa ab z
+af >> 24 7
+ag and 24 127
+aj set A af set get A af ag ae
+ak >> 23 7
+al and 23 127
+an get get aj ak al
+ao or an z
+aq select ne B 0 ao an
+ar >> 23 7
+as and 23 127
+set aj ar set get aj ar as aq
+
+fn wxch1 u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x512
+a add D B
+b wxnw E a 1
+c wxnw E a 2
+d wxnw E a 3
+e wa24 G a
+f add d 1
+g wxok F d
+h wxov F d
+i wxok F f
+l and eq g 2 eq h 0
+m eq g 1
+n select m h 0
+o eq C 0
+p mul n 4
+w add select o add p 5440 add add mul sub C 1 128 16704 p 2
+x >> w 7
+y and w 127
+ae or l and m ne and get get A x y 2 0
+af eq b 26
+ag eq b 28
+ah eq b 25
+ai eq b 27
+aj or af ag
+ak or ah ai
+am and or aj ak ae
+an >> 23 7
+ao and 23 127
+ar set A an set get A an ao 0
+as >> 24 7
+au and 24 127
+ay fold wxchs c set ar as set get ar as au 0 C d F
+az >> 23 7
+a0 and 23 127
+a1 get ay az
+a2 get a1 a0
+a3 >> 24 7
+a4 and 24 127
+a5 get ay a3
+a6 get a5 a4
+a7 ne a2 0
+a8 ne a6 0
+a9 ne i 3
+be and am or or a9 and ak select l false true a7
+bf eq b 22
+bg eq b 23
+bh eq b 24
+bl and or or bf bg bh eq e H
+bm select am false true
+bn and bm bl
+bp or and am aj bn
+bt or be and and bm select bn false true a8
+bu select bp 1 0
+ne bu 0
+bw wxrw C B 2
+bx ne bu 0
+by >> bw 7
+bz and bw 127
+b0 get ay by
+b1 set b0 bz 2
+b2 get ay by
+b3 select bx b1 b2
+b4 set ay by b3
+b5 select bt 1 0
+b6 ne b5 0
+b7 >> 22 7
+b8 and 22 127
+b9 get b4 b7
+set b4 b7 select b6 set b9 b8 0 get b4 b7
+
+fn wxch3 u32x128x512 u32 u32 u32 u32 u32x128x512 -> u32x128x512
+a add D B
+b wxok F a
+c wxov F a
+d eq b 1
+e select d c 0
+f eq C 0
+g mul e 4
+n add select f add g 5440 add add mul sub C 1 128 16704 g 2
+o >> n 7
+p and n 127
+u and d ne and get get A o p 2 0
+v eq B 0
+ab ne select and u select and ne E 0 v false true 1 0 0
+ac >> 22 7
+ad and 22 127
+ai set A ac select ab set get A ac ad 0 get A ac
+aj wxbk C e 1
+ak >> aj 7
+al and aj 127
+ao add get get ai ak al 1
+aq ne select d 1 0 0
+ar >> aj 7
+as and aj 127
+set ai ar select aq set get ai ar as ao get ai ar
+
+fn wxch2 u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+a add D B
+b wxnw E a 1
+fold wxch3 wxnw E a 2 A C wxnw E a 3 select or eq b 26 eq b 28 1 0 F
+
+fn wxch4 u32x128x512 u32 u32 -> u32x128x512
+a eq C 0
+b mul B 4
+i add select a add b 5440 add add mul sub C 1 128 16704 b 2
+j >> i 7
+k and i 127
+o ne and get get A j k 2 0
+p wxbk C B 1
+q >> p 7
+r and p 127
+x ne select and o gt get get A q r 1 1 0 0
+y >> 22 7
+z and 22 127
+set A y select x set get A y z 0 get A y
+
+fn wxsmall u32x128x512 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 -> u32x128x512
+a wxfw E D 5
+b wxfw E D 4
+c wxfw E D 2
+e waretop G wxfw E D 6
+f at e 0
+g at e 1
+h wa65 J c
+i fold wxsm0 1 A c J I
+j >> 25 7
+k and 25 127
+m get get i j k
+n >> 26 7
+o and 26 127
+t fold wxch2 a fold wxch1 a fold wxsm1 get get i n o i m J C b F G H h C b F G
+w and eq f 2 eq g 0
+x eq f 1
+y select x g 0
+z eq C 0
+aa mul y 4
+ah add select z add aa 5440 add add mul sub C 1 128 16704 aa 2
+ai >> ah 7
+aj and ah 127
+as ne select select or w and x ne and get get t ai aj 2 0 false true 1 0 0
+au >> 22 7
+av and 22 127
+a0 set t au select as set get t au av 0 get t au
+a1 wxbk C y 1
+a2 >> a1 7
+a3 and a1 127
+a4 get a0 a2
+a5 get a4 a3
+a6 add a5 1
+a7 select x 1 0
+a8 ne a7 0
+a9 >> a1 7
+ba and a1 127
+fold wxch4 a set a0 a9 select a8 set get a0 a9 ba a6 get a0 a9 C
+
+fn wxana u32x128x512 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x310 -> u32x128x512
+a wxfw F D 4
+b wxfw F D 5
+d waretop H wxfw F D 6
+e at d 0
+f at d 1
+fold wxroot b A C a E fold wxusn b z64 G H a e f G H I J K
+
+fn wxhl u32 u32 u32 u32x128x132 -> u32
+b wxnw D add C B 1
+add A select or eq b 20 eq b 21 1 0
+
+fn wxcan u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32 -> u32x128x512
+zqf ne P 0
+zql select zqf 16 F
+zqm select zqf 1 0
+a add C 1
+b wxfw H D 5
+c wxfw H D 6
+d wxfw H D 2
+e wxfw H D 1
+f wxfw H D 3
+g wxfw H D 4
+zqh fold wxhl b 0 g I
+zqn eq zqh 0
+zqp select zqf false true
+zqo or zqn zqp
+h eq c 0
+i select h false true
+j lt C 3
+k le b zql
+m lt wxtag L f 4
+o or eq E 1 m
+r and and and j i k o
+s select r b 0
+t select r e 0
+v and and j h k
+w >> 15 7
+x and 15 127
+z get get A w x
+ab and v lt z 32
+ad ne select ab 1 0 0
+ae >> 15 7
+af and 15 127
+ak set A ae select ad set get A ae af z get A ae
+al add 32 z
+am add z 1
+ao ne select ab 1 0 0
+ap >> al 7
+aq and al 127
+aw set ak ap select ao set get ak ap aq D get ak ap
+ay ne select ab 1 0 0
+az >> 15 7
+a0 and 15 127
+a1 get aw az
+a2 set a1 a0 am
+a3 get aw az
+a4 select ay a2 a3
+a5 set aw az a4
+a6 select r 1 0
+a7 fold wxfset a6 a5 a D E H J
+a8 fold wxclr s a7 a
+a9 >> 22 7
+ba and 22 127
+bd set a8 a9 set get a8 a9 ba 1
+be gt G 0
+bh fold wxsmall select and r be 1 0 bd a D H I J K L M
+bj fold wxana select r 1 0 bh a D E H I J K L O
+bk >> 18 7
+bl and 18 127
+bp fold wxnf s set bj bk set get bj bk bl 0 a g I K L
+bq >> 19 7
+br and 19 127
+bw fold wxion s fold wxiop t set bp bq set get bp bq br 0 d M N g K N
+bx >> 18 7
+by and 18 127
+b0 get get bw bx by
+b1 >> 19 7
+b2 and 19 127
+b3 get bw b1
+b4 get b3 b2
+b5 >> 22 7
+b6 and 22 127
+b7 get bw b5
+b8 get b7 b6
+b9 eq b0 zqm
+ca eq b4 0
+cd or eq b8 1 select be false true
+zqr and r b9
+ch select and and and zqr zqo ca cd 1 0
+ci >> 16 7
+cj and 16 127
+set bw ci set get bw ci cj ch
+
+fn wxenter u32x128x512 u32 u32 -> u32x128x512
+c add add mul C 128 128 3
+d >> c 7
+e and c 127
+h gt get get A d e 0
+i fold wxpu 1 A 5 C 0 0
+k fold wxpu select h 1 0 i 1 C 0 0
+l >> 6 7
+m and 6 127
+set k l set get k l m C
+
+fn wxec1 u32x128x512 u32 u32 u32 -> u32x128x512
+a mul B 2
+b add a 4
+c add a 5
+d wxbk C D b
+e wxbk C D c
+f >> d 7
+g and d 127
+i get get A f g
+j >> e 7
+k and e 127
+m get get A j k
+n add B 10
+q add add mul C 128 128 n
+r >> q 7
+s and q 127
+u get get A r s
+y select and eq i 0 eq m u false true
+z eq i 1
+aa and y z
+ac and y select z false true
+ad select aa 1 0
+ne ad 0
+af ne ad 0
+ag get A 0
+ah get ag 0
+ai get ag 8
+aj ge ah 22528
+al add ah select aj 0 1
+am select aj 1 ai
+ar set A 0 select af set set ag 0 al 8 am get A 0
+au add mul ah 2 20480
+av >> au 7
+aw and au 127
+ax get ar av
+ay add aw 1
+a0 set set ax aw 2 ay m
+a1 eq aj false
+a2 select a1 a0 ax
+a3 get ar av
+a4 select af a2 a3
+a5 set ar av a4
+a6 select ac 1 0
+a7 ne a6 0
+a8 ne a6 0
+a9 get a5 0
+ba get a9 0
+bb get a9 8
+bc ge ba 22528
+be add ba select bc 0 1
+bf select bc 1 bb
+bk set a5 0 select a8 set set a9 0 be 8 bf get a5 0
+bm add mul ba 2 20480
+bn >> bm 7
+bo and bm 127
+bp get bk bn
+bq add bo 1
+bs set set bp bo 3 bq m
+set bk bn select a8 select eq bc false bs bp get bk bn
+
+fn wxec2 u32x128x512 u32 u32 u32 u32 -> u32x128x512
+b sub sub E 1 B
+c mul b 2
+d add c 4
+e add c 5
+f wxbk C D d
+g wxbk C D e
+h >> f 7
+i and f 127
+k get get A h i
+l >> g 7
+m and g 127
+o get get A l m
+p add b 10
+s add add mul C 128 128 p
+t >> s 7
+u and s 127
+w get get A t u
+ab select select and eq k 0 eq o w false true 1 0
+ne ab 0
+ad ne ab 0
+ae get A 0
+af get ae 0
+ag get ae 8
+ah ge af 22528
+aj add af select ah 0 1
+ak select ah 1 ag
+ap set A 0 select ad set set ae 0 aj 8 ak get A 0
+ar add mul af 2 20480
+as >> ar 7
+au and ar 127
+av get ap as
+aw add au 1
+ay set set av au 4 aw w
+a0 select eq ah false ay av
+a1 get ap as
+a2 select ad a0 a1
+a3 set ap as a2
+
+fn wxend u32x128x512 u32 u32 u32x128x45 u32x128x65 -> u32x128x512
+c add add mul C 128 128 1
+d >> c 7
+e and c 127
+g get get A d e
+j add add mul C 128 128 5
+k >> j 7
+l and j 127
+n get get A k l
+q add add mul C 128 128 6
+r >> q 7
+s and q 127
+u get get A r s
+x add add mul C 128 128 9
+y >> x 7
+z and x 127
+ab get get A y z
+ae add add mul C 128 128 0
+af >> ae 7
+ag and ae 127
+ai get get A af ag
+aj eq n 1
+ak select aj u 0
+al eq C 0
+am mul ak 4
+au add select al add am 5440 add add mul sub C 1 128 16704 am 2
+av >> au 7
+aw and au 127
+a0 ne and get get A av aw 2 0
+a1 and aj a0
+a2 gt ab 0
+a3 and a2 a1
+a4 select a3 false true
+a5 select a2 ab 0
+a6 select a3 ab 0
+a7 fold wxec1 a6 A C ak
+a8 fold wxec2 a6 a7 C ak a6
+a9 eq C 0
+ba mul ak 4
+bh add select a9 add ba 5440 add add mul sub C 1 128 16704 ba 3
+bi >> bh 7
+bj and bh 127
+bl get get a8 bi bj
+bm >> 0 7
+bn and 0 127
+get get a8 bm bn
+bq >> bl 28
+br and bl 268435455
+eq bl 0
+b0 or and eq n 2 eq u 0 and aj and eq bq 2 eq br 0
+b1 select b0 false true
+b2 eq g 1
+b3 select b2 false true
+b4 and b2 b1
+b5 and b4 a4
+b6 and b3 a4
+b7 mul C 128
+b8 add b7 128
+b9 add b8 33
+ca >> b9 7
+cb and b9 127
+cd get get a8 ca cb
+cf fold wxlg select b5 1 0 a8 cd
+ch fold wxpsh select b5 1 0 cf C n u
+cj wxbyt E wxfw D ai 3
+cl fold wxcp select b5 1 0 ch cj
+cn fold wxpsh select b6 1 0 cl C n u
+co sub C 1
+cp >> 6 7
+cq and 6 127
+set cn cp set get cn cp cq co
+
+fn wxhind u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+a at C 0
+b at C 1
+c wxbk a b 0
+d >> c 7
+e and c 127
+fold wxrs 1 A a b 0 sub get get A d e 1
+
+fn wxhcar u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+a at C 0
+b at C 1
+e add add mul a 128 128 21
+f >> e 7
+g and e 127
+fold wxrs 1 A a b 0 get get A f g
+
+fn wxhfld u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+a at C 0
+b at C 1
+c at C 14
+f add add mul a 128 128 9
+g >> f 7
+h and f 127
+l add rem c get get A g h 10
+o add add mul a 128 128 l
+p >> o 7
+q and o 127
+fold wxrs 1 A a b 0 get get A p q
+
+fn wxwk u32x128x512 u32 u32 u32 u32 u32 u32x128x512 -> u32x128x512
+a add F B
+b wxok G a
+c wxov G a
+d eq b 1
+e eq b 2
+h or eq b 3 eq b 4
+i select d c 0
+j eq C 0
+k mul i 4
+r add select j add k 5440 add add mul sub C 1 128 16704 k 2
+s >> r 7
+t and r 127
+x ne and get get A s t 1 0
+y eq C 0
+z mul i 4
+ag add select y add z 5440 add add mul sub C 1 128 16704 z 1
+ah >> ag 7
+ai and ag 127
+ak get get A ah ai
+al eq C 0
+am mul i 4
+au add select al add am 5440 add add mul sub C 1 128 16704 am 3
+av >> au 7
+aw and au 127
+ay get get A av aw
+az >> ay 28
+a0 and ay 268435455
+a1 eq az 2
+a2 and d a1
+a3 or a2 e
+a4 select e c a0
+a5 select a3 a4 0
+a6 mul a5 2
+a7 add a6 32
+a8 mul C 128
+a9 add a8 128
+ba add a9 a7
+bb >> ba 7
+bc and ba 127
+be get get A bb bc
+bf add a6 33
+bi add add mul C 128 128 bf
+bj >> bi 7
+bk and bi 127
+bm get get A bj bk
+bn gt C 0
+bq and and bn a3 eq be 1
+bs select eq ay 0 i a0
+bt eq C 0
+bu mul bs 4
+b0 select bt add bu 5440 add add mul sub C 1 128 16704 bu
+b1 add b0 0
+b2 >> b1 7
+b3 and b1 127
+b4 get A b2
+b5 get b4 b3
+b6 >> 10 7
+b7 and 10 127
+b8 get A b6
+b9 get b8 b7
+cc select a3 select bn bm add b9 a5 b5
+cd and d x
+cf or or h cd bq
+ci select cf select h c select cd ak bm cc
+cj select cf 1 0
+ck >> 16 7
+cl and 16 127
+co set A ck set get A ck cl cj
+cp >> 17 7
+cq and 17 127
+ct set co cp set get co cp cq ci
+cu >> 16 7
+cv and 16 127
+cx get get ct cu cv
+cy >> 17 7
+cz and 17 127
+c0 get ct cy
+c1 get c0 cz
+c2 mul B 2
+c3 add c2 4
+c4 add c2 5
+c5 wxbk C D c3
+c6 wxbk C D c4
+c7 >> c5 7
+c8 and c5 127
+c9 get ct c7
+db set ct c7 set c9 c8 cx
+dc >> c6 7
+dd and c6 127
+set db dc set get db dc dd c1
+
+fn wxwu u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+a mul B 2
+b add a 4
+c add a 5
+d add B 10
+g add add mul C 128 128 d
+h >> g 7
+i and g 127
+k get get A h i
+l wxbk C F b
+m wxbk C F c
+n >> l 7
+o and l 127
+q get get A n o
+r >> m 7
+s and m 127
+u get get A r s
+v eq E 1
+w select v 0 q
+x select v k u
+y eq B G
+z select y H w
+aa select y I x
+ab wxbk C D b
+ac wxbk C D c
+ad >> ab 7
+ae and ab 127
+ah set A ad set get A ad ae z
+ai >> ac 7
+aj and ac 127
+set ah ai set get ah ai aj aa
+
+fn wxhwrd u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 -> u32x128x512
+a at C 0
+b at C 1
+c at C 3
+d at C 4
+e at C 5
+f at C 11
+g at C 12
+h at C 14
+i at C 21
+j at C 22
+k eq c 22
+l eq c 23
+m eq c 24
+o or or k l m
+select o 1 0
+q select o 0 1
+t add add mul a 128 128 9
+u >> t 7
+v and t 127
+x get get A u v
+pq9 select o d 0
+y fold wxwk pq9 A a b 0 e D
+ab and eq f 2 eq g 0
+fold wxwu q y a b select ab 1 0 select ab 0 g rem h x i j
+
+fn wxsto u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+a eq J 26
+b eq J 28
+c wxty L K 1
+d wxty L K 2
+e wxtag L d
+f wxbyt N d
+h fold wxea select a 1 0 A C D E F G c f
+i >> 16 7
+j and 16 127
+l get get h i j
+m wxty L K 1
+p select b select eq F 3 G 0 0
+q wafo M N m p
+s wa65 M add m p
+t wxtag L s
+u wxbyt N s
+w fold wxpsh select b 1 0 h C D E
+x select a l q
+fold wxsa 1 w C H I select a e t select a f u x
+
+fn wxhali u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+a at C 0
+b at C 1
+c at C 3
+d at C 11
+e at C 12
+f at C 13
+g at C 14
+h at C 15
+i at C 16
+k fold wxsto 1 A a d e f g h i c at C 23 D E F
+n add add mul a 128 128 18
+o >> n 7
+p and n 127
+r get get k o p
+u add add mul a 128 128 20
+v >> u 7
+w and u 127
+y get get k v w
+ab add add mul a 128 128 21
+ac >> ab 7
+ad and ab 127
+af get get k ac ad
+ai and ne r 0 eq y b
+ak fold wxpsh select ai 1 0 k a h i
+fold wxls select ai 1 0 ak af
+
+fn wxhset u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+a at C 0
+b at C 1
+c at C 3
+d at C 10
+e at C 11
+f at C 12
+g at C 13
+h at C 14
+i at C 15
+j at C 16
+k at C 23
+l fold wxslot 1 A a b d
+m >> 16 7
+n and 16 127
+fold wxsto 1 fold wxcp 1 fold wxpsh 1 fold wxlg 1 l get get l m n a e f d a 1 b g h i j c k D E F
+
+fn wxdead u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 u32x128x310 -> u32x128x512
+a eq C 0
+b mul D 4
+i add select a add b 5440 add add mul sub C 1 128 16704 b 1
+j >> i 7
+k and i 127
+m get get A j k
+o and >> m 18 3
+q sub and m 65535 1
+t add add mul C 128 128 2
+u >> t 7
+v and t 127
+x get get A u v
+aa add add mul C 128 128 5
+ab >> aa 7
+ac and aa 127
+ae get get A ab ac
+ah add add mul C 128 128 6
+ai >> ah 7
+aj and ah 127
+al get get A ai aj
+ao and eq ae 1 eq al D
+ap add x q
+ar add wxnw E ap 3 1
+as wxok F ar
+au wxov F ar
+ax and eq as 1 eq au D
+ay eq C 0
+az mul q 4
+a0 add az 5440
+a1 sub C 1
+a2 mul a1 128
+a3 add a2 16704
+a4 add a3 az
+a5 select ay a0 a4
+a6 add a5 3
+a7 >> a6 7
+a8 and a6 127
+a9 get A a7
+bb ne get a9 a8 0
+be ne wxsh G add 8448 ap 0
+bl select and and and and eq o 1 select ao false true ax bb be 1 0
+bm >> 27 7
+bn and 27 127
+set A bm set get A bm bn bl
+
+fn wxael u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x512 -> u32x128x512
+a add D B
+b wxok H a
+c wxov H a
+d mul B G
+e get A 0
+f get e 0
+g get e 8
+h ge f 22528
+j add f select h 0 1
+k select h 1 g
+n set A 0 set set e 0 j 8 k
+p add mul f 2 20480
+q >> p 7
+r and p 127
+s get n q
+t add r 1
+v set set s r 3 t E
+y set n q select eq h false v s
+z lt F 4
+aa select z false true
+ad select and aa ne d 0 1 0
+ne ad 0
+af ne ad 0
+ag get y 0
+ah get ag 0
+ai get ag 8
+aj ge ah 22528
+al add ah select aj 0 1
+am select aj 1 ai
+ar set y 0 select af set set ag 0 al 8 am get y 0
+au add mul ah 2 20480
+av >> au 7
+aw and au 127
+ax get ar av
+ay add aw 1
+a0 set set ax aw 2 ay d
+a1 eq aj false
+a2 select a1 a0 ax
+a3 get ar av
+a4 select af a2 a3
+a5 set ar av a4
+a6 ne ad 0
+a7 get a5 0
+a8 get a7 0
+a9 get a7 8
+ba ge a8 22528
+bc add a8 select ba 0 1
+bd select ba 1 a9
+bi set a5 0 select a6 set set a7 0 bc 8 bd get a5 0
+bk add mul a8 2 20480
+bl >> bk 7
+bm and bk 127
+bn get bi bl
+bo add bm 1
+bq set set bn bm 1 bo 106
+bv set bi bl select a6 select eq ba false bq bn get bi bl
+bw eq b 1
+bx eq b 2
+b0 or eq b 3 eq b 4
+b1 select bw c 0
+b2 eq C 0
+b3 mul b1 4
+b4 add b3 5440
+b5 sub C 1
+b6 mul b5 128
+b7 add b6 16704
+b8 add b7 b3
+b9 select b2 b4 b8
+ca add b9 2
+cb >> ca 7
+cc and ca 127
+cg ne and get get bv cb cc 1 0
+ch eq C 0
+ci mul b1 4
+cp add select ch add ci 5440 add add mul sub C 1 128 16704 ci 1
+cq >> cp 7
+cr and cp 127
+ct get get bv cq cr
+cu eq C 0
+cv mul b1 4
+cw add cv 5440
+c0 add add mul sub C 1 128 16704 cv
+c1 select cu cw c0
+c2 add c1 3
+c3 >> c2 7
+c4 and c2 127
+c5 get bv c3
+c6 get c5 c4
+c7 >> c6 28
+c8 and c6 268435455
+c9 eq c7 2
+db or and bw c9 bx
+dd select db select bx c c8 0
+de mul dd 2
+df add de 32
+di add add mul C 128 128 df
+dj >> di 7
+dk and di 127
+dm get get bv dj dk
+dn add de 33
+dq add add mul C 128 128 dn
+dr >> dq 7
+ds and dq 127
+du get get bv dr ds
+dv gt C 0
+dy and and dv db eq dm 1
+d0 select eq c6 0 b1 c8
+d1 eq C 0
+d2 mul d0 4
+d3 add d2 5440
+d4 sub C 1
+d5 mul d4 128
+d6 add d5 16704
+d7 add d6 d2
+d8 select d1 d3 d7
+d9 add d8 0
+ea >> d9 7
+eb and d9 127
+ed get get bv ea eb
+ee >> 10 7
+ef and 10 127
+ek select db select dv du add get get bv ee ef dd ed
+el and bw cg
+en or or b0 el dy
+er select en select b0 c select el ct du ek
+es select en 1 0
+et >> 16 7
+eu and 16 127
+ex set bv et set get bv et eu es
+ey >> 17 7
+ez and 17 127
+e0 get ex ey
+e1 set e0 ez er
+e2 set ex ey e1
+e3 >> 16 7
+e4 and 16 127
+e5 get e2 e3
+e6 get e5 e4
+e7 >> 17 7
+e8 and 17 127
+e9 get e2 e7
+fa get e9 e8
+fc select ne e6 0 2 3
+fd get e2 0
+fe get fd 0
+ff get fd 8
+fg ge fe 22528
+fi add fe select fg 0 1
+fj select fg 1 ff
+fm set e2 0 set set fd 0 fi 8 fj
+fp add mul fe 2 20480
+fq >> fp 7
+fr and fp 127
+fs get fm fq
+ft add fr 1
+fv set set fs fr fc ft fa
+fy set fm fq select eq fg false fv fs
+fz select z 1 0
+f0 ne fz 0
+f1 ne fz 0
+f2 get fy 0
+f3 get f2 0
+f4 get f2 8
+f5 ge f3 22528
+f6 select f5 0 1
+f7 add f3 f6
+f8 select f5 1 f4
+f9 set f2 0 f7
+gd set fy 0 select f1 set f9 8 f8 get fy 0
+gg add mul f3 2 20480
+gh >> gg 7
+gi and gg 127
+gj get gd gh
+gk add gi 1
+gm set set gj gi 11 gk d
+gr set gd gh select f1 select eq f5 false gm gj get gd gh
+gs select aa 1 0
+ne gs 0
+gv ne gs 0
+gw get gr 0
+gx get gw 0
+gy get gw 8
+gz ge gx 22528
+g0 select gz 0 1
+g1 add gx g0
+g2 select gz 1 gy
+g3 set gw 0 g1
+g4 set g3 8 g2
+g5 get gr 0
+g6 select gv g4 g5
+g7 set gr 0 g6
+g8 mul gx 2
+g9 add g8 20480
+ha >> g9 7
+hb and g9 127
+hc get g7 ha
+hd add hb 1
+hf set set hc hb 2 hd G
+hk set g7 ha select gv select eq gz false hf hc get g7 ha
+hl ne gs 0
+hm get hk 0
+hn get hm 0
+ho get hm 8
+hp ge hn 22528
+hr add hn select hp 0 1
+hs select hp 1 ho
+hx set hk 0 select hl set set hm 0 hr 8 hs get hk 0
+hz add mul hn 2 20480
+h0 >> hz 7
+h1 and hz 127
+h2 get hx h0
+h3 add h1 1
+h4 set h2 h1 16
+h5 set h4 h3 0
+h6 eq hp false
+h7 select h6 h5 h2
+h8 get hx h0
+h9 select hl h7 h8
+set hx h0 h9
+
+fn wxlitop (bool,bool) u32 u32x128 u32 -> (bool,bool)
+c and mul add D B 2 127
+d get C c
+f get C add c 1
+i or eq d 3 eq d 4
+j eq f 0
+k at A 0
+l at A 1
+(and k i and l j)
+
+fn wxlitpg (bool,bool) u32 u32x128x512 u32 u32 u32 -> (bool,bool)
+a add F B
+b get C a
+c mul a 64
+d add c 64
+e umax D c
+fold wxlitop sub cumin E d e A b e
+
+fn wxlits u32x128x512 u32 u32 -> (bool,bool)
+a add B C
+b lt B a
+c >> B 6
+fold wxlitpg select b add sub >> sub a 1 6 c 1 0 (true true) A B a c
+
+fn wxharr u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x132 u32x128x512 u32x128x310 u32x384x65 u32x128x65 -> u32x128x512
+a at C 0
+b at C 1
+c at C 2
+d at C 4
+e at C 5
+f at C 8
+h fold wxslot 1 A a b at C 10
+i >> 16 7
+j and 16 127
+l get get h i j
+m fold wxdead 1 h a b D E F
+n >> 27 7
+o and 27 127
+r eq get get m n o 0
+s wxty G f 2
+t wxtag G s
+u wxbyt H s
+v wxlits E e d
+w at v 0
+x at v 1
+y lt t 4
+ab and and ge d 4 y w
+ac select ab false true
+ad and r ab
+ae and r ac
+af select x false true
+ag and ad x
+ah and ad af
+ai mul d 4
+aj select ae d 0
+ak >> 5 7
+al and 5 127
+an get get m ak al
+ao ge an 1024
+aq and ah select ao false true
+au ne select and ah ao 1 0 0
+av >> 8 7
+aw and 8 127
+a0 select au set get m av aw 1 get m av
+a1 set m av a0
+a2 select ad 1 0
+a3 fold wxlg a2 a1 l
+a4 select ag 1 0
+a5 fold wxkc a4 a3 0
+a6 select ag 1 0
+a7 fold wxkc a6 a5 ai
+a8 select ag 1 0
+a9 ne a8 0
+ba get a7 0
+bb get ba 0
+bc get ba 8
+bd ge bb 22528
+bf add bb select bd 0 1
+bg select bd 1 bc
+bl set a7 0 select a9 set set ba 0 bf 8 bg get a7 0
+bn add mul bb 2 20480
+bo >> bn 7
+bp and bn 127
+bq get bl bo
+br add bp 1
+bt set set bq bp 17 br 0
+by set bl bo select a9 select eq bd false bt bq get bl bo
+bz add 3392 an
+b0 select aq 1 0
+b1 ne b0 0
+b2 >> bz 7
+b3 and bz 127
+b4 get by b2
+b5 set b4 b3 c
+b6 get by b2
+b7 select b1 b5 b6
+b8 set by b2 b7
+b9 add an 1
+cb ne select aq 1 0 0
+cc >> 5 7
+cd and 5 127
+ci set b8 cc select cb set get b8 cc cd b9 get b8 cc
+ck ne select aq 1 0 0
+cl get ci 0
+cm get cl 0
+cn get cl 8
+co ge cm 22528
+cq add cm select co 0 1
+cr select co 1 cn
+cw set ci 0 select ck set set cl 0 cq 8 cr get ci 0
+cy add mul cm 2 20480
+cz >> cy 7
+c0 and cy 127
+c1 get cw cz
+c2 add c0 1
+c3 set c1 c0 7
+c4 set c3 c2 an
+c5 eq co false
+c6 select c5 c4 c1
+c7 get cw cz
+c8 select ck c6 c7
+c9 set cw cz c8
+fold wxael aj fold wxcp select aq 1 0 c9 ai a e l t u E
+
+fn wxrecf u32x128x512 u32 u32 u32 u32 u32 u32x128x512 u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+a add D B
+b wxok G a
+c wxov G a
+e wa65 I add F B
+f wxtag H e
+g wxbyt J e
+h >> 27 7
+i and 27 127
+k get get A h i
+l get A 0
+m get l 0
+n get l 8
+o ge m 22528
+q add m select o 0 1
+r select o 1 n
+u set A 0 set set l 0 q 8 r
+w add mul m 2 20480
+x >> w 7
+y and w 127
+z get u x
+aa add y 1
+ac set set z y 3 aa E
+af set u x select eq o false ac z
+ag lt f 4
+ah select ag false true
+ak select and ah ne k 0 1 0
+ne ak 0
+am ne ak 0
+an get af 0
+ao get an 0
+ap get an 8
+aq ge ao 22528
+as add ao select aq 0 1
+au select aq 1 ap
+az set af 0 select am set set an 0 as 8 au get af 0
+a0 mul ao 2
+a1 add a0 20480
+a2 >> a1 7
+a3 and a1 127
+a4 get az a2
+a5 add a3 1
+a6 set a4 a3 2
+a7 set a6 a5 k
+a8 eq aq false
+a9 select a8 a7 a4
+bc set az a2 select am a9 get az a2
+bd ne ak 0
+be get bc 0
+bf get be 0
+bg get be 8
+bh ge bf 22528
+bj add bf select bh 0 1
+bk select bh 1 bg
+bp set bc 0 select bd set set be 0 bj 8 bk get bc 0
+br add mul bf 2 20480
+bs >> br 7
+bt and br 127
+bu get bp bs
+bv add bt 1
+bx set set bu bt 1 bv 106
+bz select eq bh false bx bu
+b0 get bp bs
+b1 select bd bz b0
+b2 set bp bs b1
+b3 eq b 1
+b4 eq b 2
+b5 eq b 3
+b6 eq b 4
+b7 or b5 b6
+b8 select b3 c 0
+b9 eq C 0
+ca mul b8 4
+ch add select b9 add ca 5440 add add mul sub C 1 128 16704 ca 2
+ci >> ch 7
+cj and ch 127
+cn ne and get get b2 ci cj 1 0
+co eq C 0
+cp mul b8 4
+cw add select co add cp 5440 add add mul sub C 1 128 16704 cp 1
+cx >> cw 7
+cy and cw 127
+c0 get get b2 cx cy
+c1 eq C 0
+c2 mul b8 4
+c3 add c2 5440
+c4 sub C 1
+c5 mul c4 128
+c6 add c5 16704
+c7 add c6 c2
+c8 select c1 c3 c7
+c9 add c8 3
+da >> c9 7
+db and c9 127
+dd get get b2 da db
+de >> dd 28
+df and dd 268435455
+di or and b3 eq de 2 b4
+dk select di select b4 c df 0
+dl mul dk 2
+dm add dl 32
+dp add add mul C 128 128 dm
+dq >> dp 7
+dr and dp 127
+dt get get b2 dq dr
+du add dl 33
+dx add add mul C 128 128 du
+dy >> dx 7
+dz and dx 127
+d0 get b2 dy
+d1 get d0 dz
+d2 gt C 0
+d3 and d2 di
+d4 eq dt 1
+d5 and d3 d4
+d6 eq dd 0
+d7 select d6 b8 df
+d8 eq C 0
+d9 mul d7 4
+eg add select d8 add d9 5440 add add mul sub C 1 128 16704 d9 0
+eh >> eg 7
+ei and eg 127
+ek get get b2 eh ei
+el >> 10 7
+em and 10 127
+es select di select d2 d1 add get get b2 el em dk ek
+et and b3 cn
+ev or or b7 et d5
+ey select ev select b7 c select et c0 d1 es
+ez select ev 1 0
+e0 >> 16 7
+e1 and 16 127
+e2 get b2 e0
+e3 set e2 e1 ez
+e4 set b2 e0 e3
+e5 >> 17 7
+e6 and 17 127
+e7 get e4 e5
+e8 set e7 e6 ey
+e9 set e4 e5 e8
+fa >> 16 7
+fb and 16 127
+fd get get e9 fa fb
+fe >> 17 7
+ff and 17 127
+fh get get e9 fe ff
+fj select ne fd 0 2 3
+fk get e9 0
+fl get fk 0
+fm get fk 8
+fo ge fl 22528
+fq add fl select fo 0 1
+fr select fo 1 fm
+fu set e9 0 set set fk 0 fq 8 fr
+fw add mul fl 2 20480
+fx >> fw 7
+fy and fw 127
+fz get fu fx
+f0 add fy 1
+f1 set fz fy fj
+f2 set f1 f0 fh
+f3 eq fo false
+f4 select f3 f2 fz
+f5 set fu fx f4
+f6 select ag 1 0
+f7 ne f6 0
+f8 ne f6 0
+f9 get f5 0
+ga get f9 0
+gb get f9 8
+gc ge ga 22528
+gf add ga select gc 0 1
+gg select gc 1 gb
+gl set f5 0 select f8 set set f9 0 gf 8 gg get f5 0
+gn add mul ga 2 20480
+go >> gn 7
+gp and gn 127
+gq get gl go
+gr add gp 1
+gu set set gq gp 11 gr k
+gz set gl go select f8 select eq gc false gu gq get gl go
+g0 select ah 1 0
+g1 ne g0 0
+g2 ne g0 0
+g3 get gz 0
+g4 get g3 0
+g5 get g3 8
+g6 ge g4 22528
+g7 select g6 0 1
+g8 add g4 g7
+g9 select g6 1 g5
+he set gz 0 select g2 set set g3 0 g8 8 g9 get gz 0
+hg add mul g4 2 20480
+hh >> hg 7
+hi and hg 127
+hj get he hh
+hk add hi 1
+hm set set hj hi 2 hk g
+hr set he hh select g2 select eq g6 false hm hj get he hh
+hs ne g0 0
+ht get hr 0
+hu get ht 0
+hv get ht 8
+hw ge hu 22528
+hy add hu select hw 0 1
+hz select hw 1 hv
+h0 set ht 0 hy
+h1 set h0 8 hz
+h2 get hr 0
+h3 select hs h1 h2
+h4 set hr 0 h3
+h5 mul hu 2
+h6 add h5 20480
+h7 >> h6 7
+h8 and h6 127
+h9 get h4 h7
+ia add h8 1
+ic set set h9 h8 16 ia 0
+ih set h4 h7 select hs select eq hw false ic h9 get h4 h7
+ii add k g
+ij >> 27 7
+ik and 27 127
+set ih ij set get ih ij ik ii
+
+fn wxhrec u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+a at C 0
+b at C 1
+c at C 4
+d at C 5
+e at C 8
+g fold wxslot 1 A a b at C 10
+h >> 16 7
+i and 16 127
+k get get g h i
+l wxty E e 1
+m >> 27 7
+n and 27 127
+fold wxrecf c set g m set get g m n 0 a d k l D E F G
+
+fn wxhget u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 u32x128x65 -> u32x128x512
+a at C 0
+b at C 1
+c at C 11
+d at C 12
+e at C 13
+f at C 14
+g at C 23
+h wxty D g 1
+i wxty D g 2
+j wxtag D i
+l fold wxea 1 A a c d e f h wxbyt E i
+m >> 16 7
+n and 16 127
+p get get l m n
+q lt j 4
+t and select q false true ne p 0
+v fold wxld select q 1 0 l p
+fold wxset 1 fold wxadd select t 1 0 v p a b
+
+fn wxhat u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+a at C 0
+b at C 1
+c at C 11
+d at C 12
+e at C 13
+f at C 14
+h wxty D at C 23 1
+j select eq e 3 f 0
+k wafo E F h j
+n wxtag D wa65 E add h j
+o fold wxpsh 1 A a c d
+p lt n 4
+s and select p false true ne k 0
+u fold wxld select p 1 0 o k
+fold wxset 1 fold wxadd select s 1 0 u k a b
+
+fn wxhread u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+a at C 0
+b at C 1
+c at C 10
+d at C 11
+e at C 12
+f fold wxslot 1 A a b c
+g >> 16 7
+h and 16 127
+j get get f g h
+l fold wxpsh 1 fold wxlg 1 f j a d e
+m get l 0
+n get m 0
+o get m 8
+p ge n 22528
+r add n select p 0 1
+s select p 1 o
+v set l 0 set set m 0 r 8 s
+x add mul n 2 20480
+y >> x 7
+z and x 127
+aa get v y
+ab add z 1
+ad set set aa z 6 ab 256
+fold wxst 1 fold wxpsh 1 fold wxlg 1 fold wxst 1 set v y select eq p false ad aa 0 j a d e 4
+
+fn wxhwrite u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+a at C 0
+b at C 1
+c at C 11
+d at C 12
+e at C 13
+f at C 14
+h fold wxpsh 1 fold wxpsh 1 A a c d a e f
+i get h 0
+j get i 0
+k get i 8
+l ge j 22528
+n add j select l 0 1
+o select l 1 k
+r set h 0 set set i 0 n 8 o
+t add mul j 2 20480
+u >> t 7
+v and t 127
+w get r u
+x add v 1
+z set set w v 6 x 257
+fold wxset 1 fold wxpsh 1 set r u select eq l false z w a c d a b
+
+fn wxhputs u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 -> u32x128x512
+a at C 0
+b at C 1
+c at C 11
+d at C 12
+e at C 13
+f at C 14
+h wxty D at C 24 1
+k fold wxkc 1 fold wxpsh 1 fold wxpsh 1 A a c d a e f h
+l get k 0
+m get l 0
+n get l 8
+o ge m 22528
+q add m select o 0 1
+r select o 1 n
+u set k 0 set set l 0 q 8 r
+w add mul m 2 20480
+x >> w 7
+y and w 127
+z get u x
+aa add y 1
+ac set set z y 6 aa 258
+fold wxset 1 fold wxpsh 1 set u x select eq o false ac z a c d a b
+
+fn wxsrc u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
+a add D B
+b wxok E a
+c wxov E a
+d eq b 1
+e eq b 2
+h or eq b 3 eq b 4
+i select d c 0
+j eq C 0
+k mul i 4
+r add select j add k 5440 add add mul sub C 1 128 16704 k 2
+s >> r 7
+t and r 127
+x ne and get get A s t 1 0
+y eq C 0
+z mul i 4
+ag add select y add z 5440 add add mul sub C 1 128 16704 z 1
+ah >> ag 7
+ai and ag 127
+ak get get A ah ai
+al eq C 0
+am mul i 4
+au add select al add am 5440 add add mul sub C 1 128 16704 am 3
+av >> au 7
+aw and au 127
+ay get get A av aw
+az >> ay 28
+a0 and ay 268435455
+a1 eq az 2
+a2 and d a1
+a3 or a2 e
+a4 select e c a0
+a5 select a3 a4 0
+a6 mul a5 2
+a7 add a6 32
+a8 mul C 128
+a9 add a8 128
+ba add a9 a7
+bb >> ba 7
+bc and ba 127
+be get get A bb bc
+bf add a6 33
+bi add add mul C 128 128 bf
+bj >> bi 7
+bk and bi 127
+bm get get A bj bk
+bn gt C 0
+bq and and bn a3 eq be 1
+bs select eq ay 0 i a0
+bt eq C 0
+bu mul bs 4
+b0 select bt add bu 5440 add add mul sub C 1 128 16704 bu
+b1 add b0 0
+b2 >> b1 7
+b3 and b1 127
+b4 get A b2
+b5 get b4 b3
+b6 >> 10 7
+b7 and 10 127
+b8 get A b6
+b9 get b8 b7
+cc select a3 select bn bm add b9 a5 b5
+cd and d x
+cf or or h cd bq
+ci select cf select h c select cd ak bm cc
+cj select cf 1 0
+ck >> 16 7
+cl and 16 127
+co set A ck set get A ck cl cj
+cp >> 17 7
+cq and 17 127
+ct set co cp set get co cp cq ci
+cu >> 16 7
+cv and 16 127
+cx get get ct cu cv
+cy >> 17 7
+cz and 17 127
+c0 get ct cy
+c1 get c0 cz
+c2 add C 1
+c3 mul B 2
+c4 add c3 32
+c5 add c3 33
+c6 wxfr c2 c4
+c7 >> c6 7
+c8 and c6 127
+c9 get ct c7
+db set ct c7 set c9 c8 cx
+dc wxfr c2 c5
+dd >> dc 7
+de and dc 127
+set db dd set get db dd de c1
+
+fn wxpa u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
+a add D B
+b wxok E a
+c wxov E a
+d eq b 1
+e eq b 2
+h or eq b 3 eq b 4
+i select d c 0
+j eq C 0
+k mul i 4
+r add select j add k 5440 add add mul sub C 1 128 16704 k 2
+s >> r 7
+t and r 127
+x ne and get get A s t 1 0
+y eq C 0
+z mul i 4
+ag add select y add z 5440 add add mul sub C 1 128 16704 z 1
+ah >> ag 7
+ai and ag 127
+ak get get A ah ai
+al eq C 0
+am mul i 4
+au add select al add am 5440 add add mul sub C 1 128 16704 am 3
+av >> au 7
+aw and au 127
+ay get get A av aw
+az >> ay 28
+a0 and ay 268435455
+a1 eq az 2
+a2 and d a1
+a3 or a2 e
+a4 select e c a0
+a5 select a3 a4 0
+a6 mul a5 2
+a7 add a6 32
+a8 mul C 128
+a9 add a8 128
+ba add a9 a7
+bb >> ba 7
+bc and ba 127
+be get get A bb bc
+bf add a6 33
+bi add add mul C 128 128 bf
+bj >> bi 7
+bk and bi 127
+bm get get A bj bk
+bn gt C 0
+bq and and bn a3 eq be 1
+bs select eq ay 0 i a0
+bt eq C 0
+bu mul bs 4
+b0 select bt add bu 5440 add add mul sub C 1 128 16704 bu
+b1 add b0 0
+b2 >> b1 7
+b3 and b1 127
+b4 get A b2
+b5 get b4 b3
+b6 >> 10 7
+b7 and 10 127
+b8 get A b6
+b9 get b8 b7
+cc select a3 select bn bm add b9 a5 b5
+cd and d x
+cf or or h cd bq
+ci select cf select h c select cd ak bm cc
+cj select cf 1 0
+ck >> 16 7
+cl and 16 127
+co set A ck set get A ck cl cj
+cp >> 17 7
+cq and 17 127
+ct set co cp set get co cp cq ci
+cu >> 16 7
+cv and 16 127
+cx get get ct cu cv
+cy >> 17 7
+cz and 17 127
+c0 get ct cy
+c1 get c0 cz
+c2 ne cx 0
+c3 select c2 2 3
+c4 get ct 0
+c5 get c4 0
+c6 get c4 8
+c7 ge c5 22528
+c8 select c7 0 1
+c9 add c5 c8
+da select c7 1 c6
+dd set ct 0 set set c4 0 c9 8 da
+df add mul c5 2 20480
+dg >> df 7
+dh and df 127
+di get dd dg
+dj add dh 1
+dl set set di dh c3 dj c1
+set dd dg select eq c7 false dl di
+
+fn wxhcall u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
+a at C 0
+b at C 1
+c at C 4
+d at C 5
+e at C 6
+f at C 9
+g at C 10
+h lt f 4
+i select h false true
+l ne select gt c 32 1 0 0
+m >> 8 7
+n and 8 127
+s set A m select l set get A m n 2 get A m
+u fold wxsrc select h c 0 s a d F
+zqw fold wxcan select h 1 0 u a e 0 8 0 D E F G H I J K 0
+zqx >> 16 7
+zqy and 16 127
+zqz get zqw zqx
+zqa get zqz zqy
+zqb eq zqa 1
+zqc select zqb false true
+zqd and h zqc
+zqe select zqd 1 0
+w fold wxcan zqe zqw a e 0 8 0 D E F G H I J K 1
+x >> 16 7
+y and 16 127
+ac and h eq get get w x y 1
+ae and h select ac false true
+af add a 1
+ah fold wxpu select ac 1 0 w 7 a b 0
+aj fold wxenter select ac 1 0 ah af
+al fold wxpa select ae c 0 aj a d F
+am mul e 2
+an add am 1
+ap add wa16 L am 259
+aq wa16 L an
+ar >> 12 7
+as and 12 127
+aw umax get get al ar as aq
+select ae ap 0
+az ne select ae 1 0 0
+a0 get al 0
+a1 get a0 0
+a2 get a0 8
+a3 ge a1 22528
+a4 select a3 0 1
+a5 add a1 a4
+a6 select a3 1 a2
+a7 set a0 0 a5
+a8 set a7 8 a6
+a9 get al 0
+bb set al 0 select az a8 a9
+bd add mul a1 2 20480
+be >> bd 7
+bf and bd 127
+bg get bb be
+bh add bf 1
+bj set set bg bf 6 bh ap
+bo set bb be select az select eq a3 false bj bg get bb be
+bq ne select ae 1 0 0
+br >> 12 7
+bs and 12 127
+bx set bo br select bq set get bo br bs aw get bo br
+bz fold wxset select ae 1 0 bx a b
+b0 select i 1 0
+b1 fold wxslot b0 bz a b g
+b2 >> 16 7
+b3 and 16 127
+b4 get b1 b2
+b5 get b4 b3
+b6 select i 1 0
+b7 fold wxlg b6 b1 b5
+b8 select i c 0
+b9 fold wxpa b8 b7 a d F
+cb ne select i 1 0 0
+cc get b9 0
+cd get cc 0
+ce get cc 8
+cf ge cd 22528
+ch add cd select cf 0 1
+ci select cf 1 ce
+cn set b9 0 select cb set set cc 0 ch 8 ci get b9 0
+cp add mul cd 2 20480
+cq >> cp 7
+cr and cp 127
+cs get cn cq
+ct add cr 1
+cv set set cs cr 6 ct ap
+c0 set cn cq select cb select eq cf false cv cs get cn cq
+c1 select i 1 0
+c2 ne c1 0
+c3 >> 12 7
+c4 and 12 127
+c5 get c0 c3
+c6 set c5 c4 aw
+c7 get c0 c3
+c8 select c2 c6 c7
+c9 set c0 c3 c8
+
+fn wxhx u32x128x512 u32 u32 -> u32x128x512
+a add C 1
+b mul B 2
+c add b 104
+d add c 1
+g add add mul C 176 640 c
+h >> g 7
+i and g 127
+k get get A h i
+n add add mul C 176 640 d
+o >> n 7
+p and n 127
+r get get A o p
+s add b 36
+t add b 37
+u wxfr a s
+v >> u 7
+w and u 127
+z set A v set get A v w k
+aa wxfr a t
+ab >> aa 7
+ac and aa 127
+set z ab set get z ab ac r
+
+fn wxhf u32x128x512 u32 u32 -> u32x128x512
+a add C 1
+b add 168 B
+e add add mul C 176 640 b
+f >> e 7
+g and e 127
+i get get A f g
+k wxfr a add B 10
+l >> k 7
+m and k 127
+set A l set get A l m i
+
+fn wxhost u32x128x512 u32 u32 u32 -> u32x128x512
+a add C 1
+d add add mul C 176 640 0
+e >> d 7
+f and d 127
+h get get A e f
+k add add mul C 176 640 1
+l >> k 7
+m and k 127
+o get get A l m
+r add add mul C 176 640 17
+s >> r 7
+t and r 127
+v get get A s t
+y add add mul C 176 640 3
+z >> y 7
+aa and y 127
+ac get get A z aa
+af add add mul C 176 640 4
+ag >> af 7
+ah and af 127
+aj get get A ag ah
+am add add mul C 176 640 12
+an >> am 7
+ao and am 127
+aq get get A an ao
+au add add mul C 176 640 13
+av >> au 7
+aw and au 127
+ay get get A av aw
+a0 add mul C 176 640
+a1 add a0 14
+a2 >> a1 7
+a3 and a1 127
+a4 get A a2
+a5 get a4 a3
+a6 mul C 176
+a7 add a6 640
+a8 add a7 15
+a9 >> a8 7
+ba and a8 127
+bc get get A a9 ba
+bf add add mul C 176 640 16
+bg >> bf 7
+bh and bf 127
+bj get get A bg bh
+bk eq D 1
+bn select or bk eq D 2 aq 0
+bo select bk ay 0
+bp select bk a5 0
+bq select bk bc 0
+br select bk bj 0
+b0 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 fold wxfs 1 A a 32 0 a 33 h a 34 0 a 35 o a 9 bn a 18 bo a 19 bp a 20 bq a 21 br
+b1 fold wxfs 1 b0 a 22 ac
+b2 fold wxfs 1 b1 a 23 aj
+b3 fold wxhx v b2 C
+b4 fold wxhf bn b3 C
+
+fn wxlim u32x128x512 u32 u32 u32 -> u32x128x512
+b add mul D 5 24
+e add add mul C 176 640 b
+f >> e 7
+g and e 127
+i get get A f g
+j add b 2
+m add add mul C 176 640 j
+n >> m 7
+o and m 127
+q get get A n o
+t add add mul C 176 640 34
+u >> t 7
+v and t 127
+x get get A u v
+aa add add mul C 176 640 18
+ab >> aa 7
+ac and aa 127
+ae get get A ab ac
+ah add add mul C 176 640 19
+ai >> ah 7
+aj and ah 127
+al get get A ai aj
+am eq i 0
+an eq i 1
+ao eq i 2
+aq fold wxpsh select am 1 0 A C ae al
+as fold wxkc select an 1 0 aq q
+fold wxlg select ao 1 0 as x
+
+fn wxlst u32x128x512 u32 u32 u32 -> u32x128x512
+b add mul D 5 24
+c add b 1
+d add b 2
+e add b 3
+h add add mul C 176 640 c
+i >> h 7
+j and h 127
+l get get A i j
+o add add mul C 176 640 d
+p >> o 7
+q and o 127
+s get get A p q
+v add add mul C 176 640 e
+w >> v 7
+x and v 127
+z get get A w x
+ac add add mul C 176 640 6
+ad >> ac 7
+ae and ac 127
+ag get get A ad ae
+aj add add mul C 176 640 1
+ak >> aj 7
+al and aj 127
+an get get A ak al
+ar select and ne l 0 gt s z false true
+aw ne select or ar ne ag 0 1 0 0
+ax get A 0
+ay get ax 0
+az get ax 8
+a0 ge ay 22528
+a1 select a0 0 1
+a2 add ay a1
+a3 select a0 1 az
+a4 set ax 0 a2
+a5 set a4 8 a3
+a6 get A 0
+a7 select aw a5 a6
+a8 set A 0 a7
+a9 mul ay 2
+ba add a9 20480
+bb >> ba 7
+bc and ba 127
+bd get a8 bb
+be add bc 1
+bg set set bd bc 14 be 64
+bl set a8 bb select aw select eq a0 false bg bd get a8 bb
+bn fold wxlg select ar 1 0 bl an
+bp fold wxlim select ar 1 0 bn C D
+br fold wxop select ar 1 0 bp 79
+bt ne select ar 1 0 0
+bu get br 0
+bv get bu 0
+bw get bu 8
+bx ge bv 22528
+bz add bv select bx 0 1
+b0 select bx 1 bw
+b1 set bu 0 bz
+b2 set b1 8 b0
+b3 get br 0
+b4 select bt b2 b3
+b5 set br 0 b4
+b6 mul bv 2
+b7 add b6 20480
+b8 >> b7 7
+b9 and b7 127
+ca get b5 b8
+cb add b9 1
+cd set set ca b9 12 cb 0
+ci set b5 b8 select bt select eq bx false cd ca get b5 b8
+cj get ci 0
+ck get cj 0
+cl get cj 8
+cm ge ck 22528
+co add ck select cm 0 1
+cp select cm 1 cl
+cs set ci 0 set set cj 0 co 8 cp
+cu add mul ck 2 20480
+cv >> cu 7
+cw and cu 127
+cx get cs cv
+cy add cw 1
+c0 set set cx cw 8 cy 0
+c1 eq cm false
+c2 select c1 c0 cx
+c3 set cs cv c2
+c4 fold wxcs 1 c3 C 22 0
+c5 fold wxpu 1 c4 9 C 0 0
+
+fn wxindw u32x128x512 u32 u32 -> u32x128x512
+a add C 1
+b add 40 B
+e add add mul C 176 640 b
+f >> e 7
+g and e 127
+i get get A f g
+j wxbk a B 0
+k >> j 7
+l and j 127
+set A k set get A k l i
+
+fn wxiarg u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+c add add mul C 176 640 0
+d >> c 7
+e and c 127
+g get get A d e
+j add add mul C 176 640 1
+k >> j 7
+l and j 127
+n get get A k l
+q add add mul C 176 640 17
+r >> q 7
+s and q 127
+u get get A r s
+x add add mul C 176 640 9
+y >> x 7
+z and x 127
+ab get get A y z
+ae add add mul C 128 128 2
+af >> ae 7
+ag and ae 127
+al add wxnw D add get get A af ag ab 3 2
+fold wxpa u fold wxlg 1 fold wxlg 1 A g n C al E
+
+fn wxtrip u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
+c add add mul C 176 640 6
+d >> c 7
+e and c 127
+g get get A d e
+j add add mul C 176 640 7
+k >> j 7
+l and j 127
+n get get A k l
+o ne g 0
+select o false true
+r fold wxhost select o 1 0 A C 0
+t fold wxcan select o 1 0 r C n 0 24 0 D E F G H I J K 0
+u >> 16 7
+v and 16 127
+z and o eq get get t u v 1
+ab and o select z false true
+ac add C 1
+ad fold wxpu 1 t 10 C 0 0
+af fold wxenter select z 1 0 ad ac
+ah fold wxiarg select ab 1 0 af C E F
+ai mul n 2
+aj add ai 1
+al add wa16 L ai 259
+am wa16 L aj
+an >> 12 7
+ao and 12 127
+ar umax get get ah an ao am
+au ne select ab 1 0 0
+av get ah 0
+aw get av 0
+ax get av 8
+ay ge aw 22528
+a0 add aw select ay 0 1
+a1 select ay 1 ax
+a2 set av 0 a0
+a3 set a2 8 a1
+a4 get ah 0
+a5 select au a3 a4
+a6 set ah 0 a5
+a7 mul aw 2
+a8 add a7 20480
+a9 >> a8 7
+ba and a8 127
+bb get a6 a9
+bc add ba 1
+be set set bb ba 6 bc al
+bj set a6 a9 select au select eq ay false be bb get a6 a9
+bl ne select ab 1 0 0
+bm >> 12 7
+bn and 12 127
+set bj bm select bl set get bj bm bn ar get bj bm
+
+fn wxtbod u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
+c add add mul C 176 640 6
+d >> c 7
+e and c 127
+h ne get get A d e 0
+j fold wxop select h 1 0 A 69
+l ne select h 1 0 0
+m get j 0
+n get m 0
+o get m 8
+p ge n 22528
+r add n select p 0 1
+s select p 1 o
+x set j 0 select l set set m 0 r 8 s get j 0
+z add mul n 2 20480
+aa >> z 7
+ab and z 127
+ac get x aa
+ad add ab 1
+af set set ac ab 12 ad 1
+ak set x aa select l select eq p false af ac get x aa
+an add add mul C 176 640 8
+ao >> an 7
+ap and an 127
+ar get get ak ao ap
+av add add mul C 176 640 10
+aw >> av 7
+ax and av 127
+az get get ak aw ax
+a0 mul C 176
+a1 add a0 640
+a2 add a1 2
+a3 >> a2 7
+a4 and a2 127
+a5 get ak a3
+a6 get a5 a4
+a7 mul C 176
+a8 add a7 640
+a9 add a8 11
+ba >> a9 7
+bb and a9 127
+bd get get ak ba bb
+bg add add mul C 176 640 12
+bh >> bg 7
+bi and bg 127
+bk get get ak bh bi
+bl ne az 0
+bm select bl false true
+bo fold wxhost select bl 1 0 ak C 1
+bq fold wxcan select bl 1 0 bo C ar bd 24 bk D E F G H I J K 0
+br >> 16 7
+bs and 16 127
+by ne select and bl ne get get bq br bs 1 1 0 0
+bz >> 8 7
+b0 and 8 127
+b1 get bq bz
+b2 set b1 b0 3
+b3 get bq bz
+b4 select by b2 b3
+b5 set bq bz b4
+b6 add C 1
+b7 wxfw D ar 5
+b8 select bl b7 0
+b9 fold wxindw b8 b5 C
+cb fold wxpu select bl 1 0 b9 11 C 0 0
+cd fold wxenter select bl 1 0 cb b6
+cf fold wxpu select bm 1 0 cd 11 C 0 0
+ch fold wxiarg select bm 1 0 cf C E F
+ci mul ar 2
+cj add ci 1
+ck wa16 L ci
+cl ne a6 0
+cm add ck 259
+co select cl add cm 1 cm
+cp wa16 L cj
+cq >> 12 7
+cr and 12 127
+cu umax get get ch cq cr cp
+cw ne select bm 1 0 0
+cx get ch 0
+cy get cx 0
+cz get cx 8
+c0 ge cy 22528
+c1 select c0 0 1
+c2 add cy c1
+c3 select c0 1 cz
+c4 set cx 0 c2
+c5 set c4 8 c3
+c6 get ch 0
+c7 select cw c5 c6
+c8 set ch 0 c7
+c9 mul cy 2
+da add c9 20480
+db >> da 7
+dc and da 127
+dd get c8 db
+de add dc 1
+dg set set dd dc 6 de co
+dl set c8 db select cw select eq c0 false dg dd get c8 db
+dn ne select bm 1 0 0
+do >> 12 7
+dp and 12 127
+set dl do select dn set get dl do dp cu get dl do
+
+fn wxupd u32x128x512 u32 u32 -> u32x128x512
+a add 40 B
+d add add mul C 176 640 a
+e >> d 7
+f and d 127
+h get get A e f
+i add 72 B
+l add add mul C 176 640 i
+m >> l 7
+n and l 127
+p get get A m n
+q ne h 0
+r sub h 1
+s select q 1 0
+ne s 0
+u ne s 0
+v get A 0
+w get v 0
+x get v 8
+y ge w 22528
+aa add w select y 0 1
+ab select y 1 x
+ag set A 0 select u set set v 0 aa 8 ab get A 0
+ai add mul w 2 20480
+aj >> ai 7
+ak and ai 127
+al get ag aj
+am add ak 1
+ao set set al ak 3 am r
+au set ag aj select u select eq y false ao al get ag aj
+av select q 1 0
+ne av 0
+ax ne av 0
+ay get au 0
+az get ay 0
+a0 get ay 8
+a1 ge az 22528
+a2 select a1 0 1
+a3 add az a2
+a4 select a1 1 a0
+a5 set ay 0 a3
+a6 set a5 8 a4
+a7 get au 0
+a8 select ax a6 a7
+a9 set au 0 a8
+bb add mul az 2 20480
+bc >> bb 7
+bd and bb 127
+be get a9 bc
+bf add bd 1
+bh set set be bd 2 bf p
+bm set a9 bc select ax select eq a1 false bh be get a9 bc
+bn select q 1 0
+ne bn 0
+bp ne bn 0
+bq get bm 0
+br get bq 0
+bs get bq 8
+bt ge br 22528
+bv add br select bt 0 1
+bw select bt 1 bs
+b0 select bp set set bq 0 bv 8 bw get bm 0
+b1 set bm 0 b0
+b2 mul br 2
+b3 add b2 20480
+b4 >> b3 7
+b5 and b3 127
+b6 get b1 b4
+b7 add b5 1
+b8 set b6 b5 1
+b9 set b8 b7 106
+ce set b1 b4 select bp select eq bt false b9 b6 get b1 b4
+cf select q 1 0
+ne cf 0
+ch ne cf 0
+ci get ce 0
+cj get ci 0
+ck get ci 8
+cl ge cj 22528
+cn add cj select cl 0 1
+co select cl 1 ck
+ct set ce 0 select ch set set ci 0 cn 8 co get ce 0
+cv add mul cj 2 20480
+cw >> cv 7
+cx and cv 127
+cy get ct cw
+cz add cx 1
+c0 set cy cx 4
+c1 set c0 cz r
+c2 eq cl false
+c3 select c2 c1 cy
+c4 get ct cw
+c5 select ch c3 c4
+c6 set ct cw c5
+
+fn wxfst u32x128x512 u32 u32 -> u32x128x512
+c add add mul C 176 640 0
+d >> c 7
+e and c 127
+g get get A d e
+h add 168 B
+k add add mul C 176 640 h
+l >> k 7
+m and k 127
+o get get A l m
+p mul B 4
+q get A 0
+r get q 0
+s get q 8
+t ge r 22528
+v add r select t 0 1
+w select t 1 s
+z set A 0 set set q 0 v 8 w
+ab add mul r 2 20480
+ac >> ab 7
+ad and ab 127
+ae get z ac
+af add ad 1
+ah set set ae ad 3 af g
+ak set z ac select eq t false ah ae
+al get ak 0
+am get al 0
+an get al 8
+ao ge am 22528
+aq add am select ao 0 1
+ar select ao 1 an
+av set ak 0 set set al 0 aq 8 ar
+ax add mul am 2 20480
+ay >> ax 7
+az and ax 127
+a0 get av ay
+a1 add az 1
+a2 set a0 az 3
+a3 set a2 a1 o
+a4 eq ao false
+a5 select a4 a3 a0
+a6 set av ay a5
+a7 get a6 0
+a8 get a7 0
+a9 get a7 8
+ba ge a8 22528
+bc add a8 select ba 0 1
+bd select ba 1 a9
+bg set a6 0 set set a7 0 bc 8 bd
+bi add mul a8 2 20480
+bj >> bi 7
+bk and bi 127
+bl get bg bj
+bm add bk 1
+bo set set bl bk 11 bm p
+set bg bj select eq ba false bo bl
+
+fn wxtend u32x128x512 u32 u32 -> u32x128x512
+c add add mul C 176 640 2
+d >> c 7
+e and c 127
+g get get A d e
+j add add mul C 176 640 0
+k >> j 7
+l and j 127
+n get get A k l
+q add add mul C 176 640 1
+r >> q 7
+s and q 127
+u get get A r s
+x add add mul C 176 640 22
+y >> x 7
+z and x 127
+ab get get A y z
+ae add add mul C 176 640 21
+af >> ae 7
+ag and ae 127
+ai get get A af ag
+al add add mul C 176 640 23
+am >> al 7
+an and al 127
+ap get get A am an
+as add add mul C 176 640 12
+au >> as 7
+av and as 127
+ax get get A au av
+a0 add add mul C 176 640 37
+a1 >> a0 7
+a2 and a0 127
+a3 get A a1
+a4 get a3 a2
+a5 mul C 176
+a6 add a5 640
+a7 add a6 6
+a8 >> a7 7
+a9 and a7 127
+bb get get A a8 a9
+bd add mul ai 5 24
+be add bd 4
+bh add add mul C 176 640 be
+bi >> bh 7
+bj and bh 127
+bl get get A bi bj
+bm add bd 1
+bp add add mul C 176 640 bm
+bq >> bp 7
+br and bp 127
+bt get get A bq br
+bu add bd 2
+bx add add mul C 176 640 bu
+by >> bx 7
+bz and bx 127
+b0 get A by
+b1 get b0 bz
+b2 add bd 3
+b3 mul C 176
+b4 add b3 640
+b5 add b4 b2
+b6 >> b5 7
+b7 and b5 127
+b8 get A b6
+b9 get b8 b7
+ci fold wxls 1 fold wxop 1 fold wxkc 1 fold wxlg 1 fold wxupd a4 fold wxls select select ne g 0 false true 1 0 A n C u 1 106 u
+cj add ab 1
+ck fold wxcs 1 ci C 22 cj
+cl lt cj bl
+cm select cl false true
+co fold wxpu select cl 1 0 ck 9 C 0 0
+cq fold wxlg select cm 1 0 co u
+cs fold wxlim select cm 1 0 cq C ai
+cu fold wxop select cm 1 0 cs 73
+cw ne select cm 1 0 0
+cx get cu 0
+cy get cx 0
+cz get cx 8
+c0 ge cy 22528
+c1 select c0 0 1
+c2 add cy c1
+c3 select c0 1 cz
+c4 set cx 0 c2
+c5 set c4 8 c3
+c6 get cu 0
+c7 select cw c5 c6
+c8 set cu 0 c7
+c9 mul cy 2
+da add c9 20480
+db >> da 7
+dc and da 127
+dd get c8 db
+de add dc 1
+dg set set dd dc 12 de 0
+dl set c8 db select cw select eq c0 false dg dd get c8 db
+dn ne select cm 1 0 0
+do get dl 0
+dp get do 0
+dq get do 8
+dr ge dp 22528
+dt add dp select dr 0 1
+du select dr 1 dq
+dz set dl 0 select dn set set do 0 dt 8 du get dl 0
+d0 mul dp 2
+d1 add d0 20480
+d2 >> d1 7
+d3 and d1 127
+d4 get dz d2
+d5 add d3 1
+d6 set d4 d3 9
+d7 set d6 d5 0
+d8 eq dr false
+d9 select d8 d7 d4
+ec set dz d2 select dn d9 get dz d2
+el fold wxop select and cm or select and ne bt 0 gt b1 b9 false true ne bb 0 1 0 ec 11
+em add ai 1
+en lt em ap
+eo and cm en
+and cm en
+es and cm select en false true
+eu fold wxcs select eo 1 0 el C 21 em
+ew fold wxpu select eo 1 0 eu 8 C em 0
+fold wxfst select es ax 0 ew C
+
+fn wxext u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
+a add D B
+b wxok E a
+c wxov E a
+d eq b 1
+e eq b 2
+h or eq b 3 eq b 4
+i select d c 0
+j eq C 0
+k mul i 4
+r add select j add k 5440 add add mul sub C 1 128 16704 k 2
+s >> r 7
+t and r 127
+x ne and get get A s t 1 0
+y eq C 0
+z mul i 4
+ag add select y add z 5440 add add mul sub C 1 128 16704 z 1
+ah >> ag 7
+ai and ag 127
+ak get get A ah ai
+al eq C 0
+am mul i 4
+au add select al add am 5440 add add mul sub C 1 128 16704 am 3
+av >> au 7
+aw and au 127
+ay get get A av aw
+az >> ay 28
+a0 and ay 268435455
+a1 eq az 2
+a2 and d a1
+a3 or a2 e
+a4 select e c a0
+a5 select a3 a4 0
+a6 mul a5 2
+a7 add a6 32
+a8 mul C 128
+a9 add a8 128
+ba add a9 a7
+bb >> ba 7
+bc and ba 127
+be get get A bb bc
+bf add a6 33
+bi add add mul C 128 128 bf
+bj >> bi 7
+bk and bi 127
+bm get get A bj bk
+bn gt C 0
+bq and and bn a3 eq be 1
+bs select eq ay 0 i a0
+bt eq C 0
+bu mul bs 4
+b0 select bt add bu 5440 add add mul sub C 1 128 16704 bu
+b1 add b0 0
+b2 >> b1 7
+b3 and b1 127
+b4 get A b2
+b5 get b4 b3
+b6 >> 10 7
+b7 and 10 127
+b8 get A b6
+b9 get b8 b7
+cc select a3 select bn bm add b9 a5 b5
+cd and d x
+cf or or h cd bq
+ci select cf select h c select cd ak bm cc
+cj select cf 1 0
+ck >> 16 7
+cl and 16 127
+co set A ck set get A ck cl cj
+cp >> 17 7
+cq and 17 127
+ct set co cp set get co cp cq ci
+cu >> 16 7
+cv and 16 127
+cx get get ct cu cv
+cy >> 17 7
+cz and 17 127
+c0 get ct cy
+c1 get c0 cz
+c2 mul B 2
+c3 add c2 104
+c4 add c3 1
+c5 wxcx C c3
+c6 >> c5 7
+c7 and c5 127
+c8 get ct c6
+c9 set c8 c7 cx
+da set ct c6 c9
+db wxcx C c4
+dc >> db 7
+dd and db 127
+set da dc set get da dc dd c1
+
+fn wxcclr u32x128x512 u32 u32 -> u32x128x512
+a add 40 B
+b add 72 B
+c wxcx C a
+d >> c 7
+e and c 127
+h set A d set get A d e 0
+i wxcx C b
+j >> i 7
+k and i 127
+set h j set get h j k 0
+
+fn wxfld1 u32x128x512 u32 u32 u32 -> u32x128x512
+a >> 1 7
+b and 1 127
+d get get A a b
+e ge d 8192
+f >> 16 7
+g and 16 127
+j set A f set get A f g d
+k add d 1
+l >> 1 7
+m and 1 127
+p set j l set get j l m k
+r ne select e 1 0 0
+s >> 8 7
+t and 8 127
+y set p s select r set get p s t 1 get p s
+z >> 16 7
+aa and 16 127
+ac get get y z aa
+ad mul B 4
+ae get y 0
+af get ae 0
+ag get ae 8
+ah ge af 22528
+aj add af select ah 0 1
+ak select ah 1 ag
+an set y 0 set set ae 0 aj 8 ak
+ap add mul af 2 20480
+aq >> ap 7
+ar and ap 127
+as get an aq
+au add ar 1
+aw set set as ar 3 au D
+az set an aq select eq ah false aw as
+a0 get az 0
+a1 get a0 0
+a2 get a0 8
+a3 ge a1 22528
+a4 select a3 0 1
+a5 add a1 a4
+a6 select a3 1 a2
+a7 set a0 0 a5
+a8 set a7 8 a6
+a9 set az 0 a8
+bb add mul a1 2 20480
+bc >> bb 7
+bd and bb 127
+be get a9 bc
+bf add bd 1
+bh set set be bd 10 bf ad
+bk set a9 bc select eq a3 false bh be
+bl get bk 0
+bm get bl 0
+bn get bl 8
+bo ge bm 22528
+bq add bm select bo 0 1
+br select bo 1 bn
+bu set bk 0 set set bl 0 bq 8 br
+bw add mul bm 2 20480
+bx >> bw 7
+by and bw 127
+bz get bu bx
+b0 add by 1
+b1 set bz by 4
+b2 set b1 b0 ac
+b3 eq bo false
+b4 select b3 b2 bz
+b5 set bu bx b4
+b6 add 168 B
+b7 wxcx C b6
+b8 >> b7 7
+b9 and b7 127
+set b5 b8 set get b5 b8 b9 ac
+
+fn wxind1 u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 u32 -> u32x128x512
+a add D B
+b wxnw E a 1
+c wxnw E a 3
+d add c 1
+e wxok F c
+f wxov F c
+g wxok F d
+h wxov F d
+i eq b 4
+l and eq e 2 eq f 1
+o and eq g 2 eq h 1
+p eq g 3
+q eq e 3
+r and l p
+w and i or r and and o q select r false true
+x select r h f
+y select w 1 0
+ne y 0
+aa >> 1 7
+ab and 1 127
+ad get get A aa ab
+ae ge ad 8192
+af ne y 0
+ag >> 16 7
+ah and 16 127
+am set A ag select af set get A ag ah ad get A ag
+an add ad 1
+ao ne y 0
+ap >> 1 7
+aq and 1 127
+aw set am ap select ao set get am ap aq an get am ap
+az ne and y select ae 1 0 0
+a0 >> 8 7
+a1 and 8 127
+a2 get aw a0
+a3 set a2 a1 1
+a4 get aw a0
+a5 select az a3 a4
+a6 set aw a0 a5
+a7 >> 16 7
+a8 and 16 127
+a9 get a6 a7
+ba get a9 a8
+bb mul G x
+bc select w 1 0
+ne bc 0
+be ne bc 0
+bf get a6 0
+bg get bf 0
+bh get bf 8
+bi ge bg 22528
+bk add bg select bi 0 1
+bl select bi 1 bh
+bq set a6 0 select be set set bf 0 bk 8 bl get a6 0
+bs add mul bg 2 20480
+bt >> bs 7
+bu and bs 127
+bv get bq bt
+bw add bu 1
+by set set bv bu 2 bw bb
+b0 select eq bi false by bv
+b1 get bq bt
+b2 select be b0 b1
+b3 set bq bt b2
+b4 select w 1 0
+b5 ne b4 0
+b6 ne b4 0
+b7 get b3 0
+b8 get b7 0
+b9 get b7 8
+ca ge b8 22528
+cc add b8 select ca 0 1
+cd select ca 1 b9
+ci set b3 0 select b6 set set b7 0 cc 8 cd get b3 0
+ck add mul b8 2 20480
+cl >> ck 7
+cm and ck 127
+cn get ci cl
+co add cm 1
+cq set set cn cm 4 co ba
+cv set ci cl select b6 select eq ca false cq cn get ci cl
+cw add ba 1
+cx add 40 B
+cy add 72 B
+cz select w 1 0
+c0 ne cz 0
+c1 wxcx C cx
+c2 ne cz 0
+c3 >> c1 7
+c4 and c1 127
+c5 get cv c3
+c6 set c5 c4 cw
+c7 get cv c3
+c8 select c2 c6 c7
+c9 set cv c3 c8
+da select w 1 0
+ne da 0
+dc wxcx C cy
+dd ne da 0
+de >> dc 7
+df and dc 127
+set c9 de select dd set get c9 de df x get c9 de
+
+fn wxcr0 u32x128x512 u32 u32 u32x128x132 -> u32x128x512
+b wxnw D add C B 1
+e or eq b 26 eq b 28
+f >> 31 7
+g and 31 127
+j add get get A f g 1
+l ne select e 1 0 0
+m >> 31 7
+n and 31 127
+set A m select l set get A m n j get A m
+
+fn wxcr1 u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+a add C B
+b wxnw D a 1
+c wxnw D a 3
+d add c 1
+e wxok E c
+f wxov E c
+g wxok E d
+h wxov E d
+i eq b 25
+l and eq e 2 eq f 0
+m eq g 1
+n add C h
+o wxnw D n 1
+p wxnw D n 3
+q add p 1
+r wxok E p
+s wxov E p
+t wxok E q
+u wxov E q
+v eq o 3
+y and eq r 2 eq s 1
+ab and eq t 3 eq u 1
+ac >> 29 7
+ad and 29 127
+ag eq get get A ac ad 4294967295
+ao ne select and and and and and and i l m v y ab ag 1 0 0
+ap >> 29 7
+aq and 29 127
+set A ap select ao set get A ap aq B get A ap
+
+fn wxcarry u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 -> u32x128x512
+a wxfw D C 4
+b wxfw D C 5
+d waretop F wxfw D C 6
+e at d 0
+f at d 1
+g eq e 1
+h select g f 0
+i add a h
+j wxnw E i 1
+k wxnw E i 3
+l add k 1
+m wxok F k
+n wxov F k
+o wxok F l
+p wxov F l
+q eq j 26
+r eq m 2
+s eq n 0
+t eq o 2
+u eq p 1
+z and and and and and g q r s t u
+aa >> 31 7
+ab and 31 127
+ae set A aa set get A aa ab 0
+af >> 29 7
+ag and 29 127
+al fold wxcr1 b fold wxcr0 b set ae af set get ae af ag 4294967295 a E a E F
+am >> 31 7
+an and 31 127
+ap get get al am an
+aq >> 29 7
+ar and 29 127
+au get get al aq ar
+av eq ap 1
+aw ne au 4294967295
+az select and and z av aw 1 0
+a0 >> 28 7
+a1 and 28 127
+a2 get al a0
+a3 set a2 a1 az
+a4 set al a0 a3
+a5 >> 30 7
+a6 and 30 127
+a7 get a4 a5
+a8 set a7 a6 h
+a9 set a4 a5 a8
+
+fn wxvpl u32x128x512 u32 u32 u32 -> u32x128x512
+a eq C 3
+b eq C 1
+c eq C 2
+d eq D 1
+e and c d
+g and c select d false true
+h >> 19104 7
+i and 19104 127
+k get get A h i
+l add 19072 D
+m >> l 7
+n and l 127
+p get get A m n
+q add 19008 D
+r >> q 7
+s and q 127
+u get get A r s
+w ne select a 1 0 0
+x get A 0
+y get x 0
+z get x 8
+aa ge y 22528
+ac add y select aa 0 1
+ad select aa 1 z
+ai set A 0 select w set set x 0 ac 8 ad get A 0
+ak add mul y 2 20480
+al >> ak 7
+am and ak 127
+an get ai al
+ao add am 1
+aq set set an am 21 ao D
+aw set ai al select w select eq aa false aq an get ai al
+ay fold wxlg select e 1 0 aw k
+a0 fold wxlg select g 1 0 ay p
+a1 select b 1 0
+a2 fold wxlg a1 a0 u
+
+fn wxvsc u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
+a eq C 3
+b eq C 2
+c >> 19110 7
+d and 19110 127
+f get get A c d
+g >> 19111 7
+h and 19111 127
+l add get get A g h sub D 2
+m wxok E l
+n wxov E l
+p fold wxkc select a 1 0 A D
+fold wxpsh select b 1 0 p f m n
+
+fn wxvsp u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
+c and eq C 2 ge D 2
+d add 19072 D
+e >> d 7
+f and d 127
+j and c eq get get A e f 0
+k >> 19110 7
+l and 19110 127
+n get get A k l
+o >> 19111 7
+p and 19111 127
+t add get get A o p sub D 2
+u wxok E t
+v wxov E t
+w select j 1 0
+ne w 0
+y >> 2 7
+z and 2 127
+ab get get A y z
+ac ge ab 128
+ad add ab 1048576
+ae ne w 0
+af >> 16 7
+ag and 16 127
+al set A af select ae set get A af ag ad get A af
+am add ab 1
+an ne w 0
+ao >> 2 7
+ap and 2 127
+av set al ao select an set get al ao ap am get al ao
+ay ne and w select ac 1 0 0
+az >> 8 7
+a0 and 8 127
+a1 get av az
+a2 set a1 a0 1
+a3 get av az
+a4 select ay a2 a3
+a5 set av az a4
+a6 >> 16 7
+a7 and 16 127
+a8 get a5 a6
+a9 get a8 a7
+ba select j 1 0
+ne ba 0
+ne ba 0
+bd eq u 1
+be eq u 2
+bh or eq u 3 eq u 4
+bi select bd v 0
+bj eq n 0
+bk mul bi 4
+br add select bj add bk 5440 add add mul sub n 1 128 16704 bk 2
+bs >> br 7
+bt and br 127
+bx ne and get get a5 bs bt 1 0
+by eq n 0
+bz mul bi 4
+b0 add bz 5440
+b1 sub n 1
+b2 mul b1 128
+b3 add b2 16704
+b4 add b3 bz
+b5 select by b0 b4
+b6 add b5 1
+b7 >> b6 7
+b8 and b6 127
+b9 get a5 b7
+ca get b9 b8
+cb eq n 0
+cc mul bi 4
+cj add select cb add cc 5440 add add mul sub n 1 128 16704 cc 3
+ck >> cj 7
+cl and cj 127
+cn get get a5 ck cl
+co >> cn 28
+cp and cn 268435455
+cs or and bd eq co 2 be
+cu select cs select be v cp 0
+cv mul cu 2
+cw add cv 32
+cz add add mul n 128 128 cw
+c0 >> cz 7
+c1 and cz 127
+c2 get a5 c0
+c3 get c2 c1
+c4 add cv 33
+c5 mul n 128
+c6 add c5 128
+c7 add c6 c4
+c8 >> c7 7
+c9 and c7 127
+db get get a5 c8 c9
+dc gt n 0
+df and and dc cs eq c3 1
+dh select eq cn 0 bi cp
+di eq n 0
+dj mul dh 4
+dq add select di add dj 5440 add add mul sub n 1 128 16704 dj 0
+dr >> dq 7
+ds and dq 127
+du get get a5 dr ds
+dv >> 10 7
+dw and 10 127
+d0 select dc db add get get a5 dv dw cu
+d1 select cs d0 du
+d2 and bd bx
+d3 or bh d2
+d4 or d3 df
+d5 select d2 ca db
+d6 select bh v d5
+d7 select d4 d6 d1
+d8 select d4 1 0
+d9 ne ba 0
+ea >> 16 7
+eb and 16 127
+eg set a5 ea select d9 set get a5 ea eb d8 get a5 ea
+eh ne ba 0
+ei >> 17 7
+ej and 17 127
+eo set eg ei select eh set get eg ei ej d7 get eg ei
+ep >> 16 7
+er and 16 127
+et get get eo ep er
+eu >> 17 7
+ev and 17 127
+ex get get eo eu ev
+ne ba 0
+e0 select ne et 0 2 3
+e1 ne ba 0
+e2 get eo 0
+e3 get e2 0
+e4 get e2 8
+e5 ge e3 22528
+e6 select e5 0 1
+e7 add e3 e6
+e8 select e5 1 e4
+e9 set e2 0 e7
+fd set eo 0 select e1 set e9 8 e8 get eo 0
+ff add mul e3 2 20480
+fg >> ff 7
+fh and ff 127
+fi get fd fg
+fj add fh 1
+fl set set fi fh e0 fj ex
+fr set fd fg select e1 select eq e5 false fl fi get fd fg
+ft ne select j 1 0 0
+fu get fr 0
+fv get fu 0
+fw get fu 8
+fx ge fv 22528
+fz add fv select fx 0 1
+f0 select fx 1 fw
+f1 set fu 0 fz
+f2 set f1 8 f0
+f3 get fr 0
+f4 select ft f2 f3
+f5 set fr 0 f4
+f6 mul fv 2
+f7 add f6 20480
+f8 >> f7 7
+f9 and f7 127
+ga get f5 f8
+gb add f9 1
+gd set set ga f9 18 gb 17
+gj set f5 f8 select ft select eq fx false gd ga get f5 f8
+gk select j 1 0
+ne gk 0
+gm ne gk 0
+gn get gj 0
+go get gn 0
+gp get gn 8
+gq ge go 22528
+gs add go select gq 0 1
+gu select gq 1 gp
+gz set gj 0 select gm set set gn 0 gs 8 gu get gj 0
+g0 mul go 2
+g1 add g0 20480
+g2 >> g1 7
+g3 and g1 127
+g4 get gz g2
+g5 add g3 1
+g6 set g4 g3 4
+g7 set g6 g5 a9
+g8 eq gq false
+g9 select g8 g7 g4
+hc set gz g2 select gm g9 get gz g2
+he ne select j 1 0 0
+hf >> d 7
+hg and d 127
+set hc hf select he set get hc hf hg a9 get hc hf
+
+fn wxvsb u32x128x512 u32 u32 u32x128x512 -> u32x128x512
+a add C B
+fold wxvsp 1 A wxok D a wxov D a D
+
+fn wxvsa u32x128x512 u32 u32x128x132 u32x128x512 -> u32x128x512
+a >> 19112 7
+b and 19112 127
+d get get A a b
+e >> 19113 7
+f and 19113 127
+h get get A e f
+i >> 19114 7
+j and 19114 127
+l get get A i j
+m >> 19115 7
+n and 19115 127
+p get get A m n
+q add d B
+r wxnw C q 3
+s wxnw C q 2
+t ne B h
+v fold wxvsb select t s 0 A r D
+fold wxvsp select t 1 0 v l p D
+
+fn wxvn1 u32x128x512 u32 u32x128x132 u32x128x512 -> u32x128x512
+a >> 19112 7
+b and 19112 127
+d get get A a b
+e >> 19113 7
+f and 19113 127
+h get get A e f
+i add d B
+j wxnw C i 1
+k wxnw C i 3
+l add k 1
+m wxok D k
+n wxov D k
+o wxok D l
+p wxov D l
+q ne B h
+t or eq j 8 eq j 9
+uq9 select t false true
+u and uq9 q
+v select q 1 0
+ne v 0
+x eq m 3
+y eq m 1
+z eq m 2
+aa eq n 1
+ab and z aa
+ad and z select aa false true
+ae >> 19104 7
+af and 19104 127
+ah get get A ae af
+ai add 19072 n
+aj >> ai 7
+ak and ai 127
+am get get A aj ak
+an add 19008 n
+ao >> an 7
+ap and an 127
+ar get get A ao ap
+av ne and v select x 1 0 0
+aw get A 0
+ax get aw 0
+ay get aw 8
+az ge ax 22528
+a0 select az 0 1
+a1 add ax a0
+a2 select az 1 ay
+a3 set aw 0 a1
+a4 set a3 8 a2
+a5 get A 0
+a6 select av a4 a5
+a7 set A 0 a6
+a8 mul ax 2
+a9 add a8 20480
+ba >> a9 7
+bb and a9 127
+bc get a7 ba
+bd add bb 1
+bf set set bc bb 21 bd n
+bk set a7 ba select av select eq az false bf bc get a7 ba
+bm and v select ab 1 0
+ne bm 0
+bo ne bm 0
+bp get bk 0
+bq get bp 0
+br get bp 8
+bs ge bq 22528
+bu add bq select bs 0 1
+bv select bs 1 br
+b0 set bk 0 select bo set set bp 0 bu 8 bv get bk 0
+b1 mul bq 2
+b2 add b1 20480
+b3 >> b2 7
+b4 and b2 127
+b5 get b0 b3
+b6 add b4 1
+b7 set b5 b4 3
+b8 set b7 b6 ah
+b9 eq bs false
+cd set b0 b3 select bo select b9 b8 b5 get b0 b3
+cf and v select ad 1 0
+ne cf 0
+ch ne cf 0
+ci get cd 0
+cj get ci 0
+ck get ci 8
+cl ge cj 22528
+cn add cj select cl 0 1
+co select cl 1 ck
+ct set cd 0 select ch set set ci 0 cn 8 co get cd 0
+cv add mul cj 2 20480
+cw >> cv 7
+cx and cv 127
+cy get ct cw
+cz add cx 1
+c0 set cy cx 3
+c1 set c0 cz am
+c2 eq cl false
+c3 select c2 c1 cy
+c4 get ct cw
+c5 select ch c3 c4
+c6 set ct cw c5
+c7 select y 1 0
+c8 and v c7
+c9 ne c8 0
+da ne c8 0
+db get c6 0
+dc get db 0
+dd get db 8
+de ge dc 22528
+dg add dc select de 0 1
+dh select de 1 dd
+dm set c6 0 select da set set db 0 dg 8 dh get c6 0
+do add mul dc 2 20480
+dp >> do 7
+dq and do 127
+dr get dm dp
+ds add dq 1
+du set set dr dq 3 ds ar
+dz set dm dp select da select eq de false du dr get dm dp
+d0 select u 1 0
+d1 ne d0 0
+d2 eq o 3
+d3 eq o 1
+d4 eq o 2
+d5 eq p 1
+d6 and d4 d5
+d7 select d5 false true
+d8 and d4 d7
+d9 >> 19104 7
+ea and 19104 127
+ec get get dz d9 ea
+ed add 19072 p
+ee >> ed 7
+ef and ed 127
+eh get get dz ee ef
+ei add 19008 p
+ej >> ei 7
+ek and ei 127
+em get get dz ej ek
+ep ne and d0 select d2 1 0 0
+er get dz 0
+es get er 0
+et get er 8
+eu ge es 22528
+ew add es select eu 0 1
+ex select eu 1 et
+ez set set er 0 ew 8 ex
+e0 get dz 0
+e1 select ep ez e0
+e2 set dz 0 e1
+e3 mul es 2
+e4 add e3 20480
+e5 >> e4 7
+e6 and e4 127
+e7 get e2 e5
+e8 add e6 1
+e9 set e7 e6 21
+fa set e9 e8 p
+ff set e2 e5 select ep select eq eu false fa e7 get e2 e5
+fh and d0 select d6 1 0
+ne fh 0
+fj ne fh 0
+fk get ff 0
+fl get fk 0
+fm get fk 8
+fo ge fl 22528
+fq add fl select fo 0 1
+fr select fo 1 fm
+fw set ff 0 select fj set set fk 0 fq 8 fr get ff 0
+fy add mul fl 2 20480
+fz >> fy 7
+f0 and fy 127
+f1 get fw fz
+f2 add f0 1
+f3 set f1 f0 3
+f4 set f3 f2 ec
+f5 eq fo false
+f6 select f5 f4 f1
+f7 get fw fz
+f8 select fj f6 f7
+f9 set fw fz f8
+gb and d0 select d8 1 0
+ne gb 0
+gd ne gb 0
+gf get f9 0
+gg get gf 0
+gh get gf 8
+gi ge gg 22528
+gk add gg select gi 0 1
+gl select gi 1 gh
+gq set f9 0 select gd set set gf 0 gk 8 gl get f9 0
+gs add mul gg 2 20480
+gu >> gs 7
+gv and gs 127
+gw get gq gu
+gx add gv 1
+gz set set gw gv 3 gx eh
+g0 eq gi false
+g1 select g0 gz gw
+g2 get gq gu
+g3 select gd g1 g2
+g4 set gq gu g3
+g5 select d3 1 0
+g6 and d0 g5
+g7 ne g6 0
+g8 ne g6 0
+g9 get g4 0
+ha get g9 0
+hb get g9 8
+hc ge ha 22528
+he add ha select hc 0 1
+hf select hc 1 hb
+hk set g4 0 select g8 set set g9 0 he 8 hf get g4 0
+hm add mul ha 2 20480
+hn >> hm 7
+ho and hm 127
+hp get hk hn
+hq add ho 1
+hs set set hp ho 3 hq em
+hx set hk hn select g8 select eq hc false hs hp get hk hn
+hz select and q t 1 0
+h0 ne hz 0
+h1 eq o 3
+h2 eq o 2
+h3 >> 19110 7
+h4 and 19110 127
+h5 get hx h3
+h6 get h5 h4
+h7 >> 19111 7
+h8 and 19111 127
+h9 get hx h7
+ic add get h9 h8 sub p 2
+id wxok D ic
+ie wxov D ic
+ig and hz select h1 1 0
+ne ig 0
+ii ne ig 0
+ij get hx 0
+ik get ij 0
+il get ij 8
+im ge ik 22528
+$io add ik select im 0 1
+ip select im 1 il
+iu set hx 0 select ii set set ij 0 $io 8 ip get hx 0
+iw add mul ik 2 20480
+ix >> iw 7
+iy and iw 127
+iz get iu ix
+i0 add iy 1
+i1 set iz iy 2
+i2 set i1 i0 p
+i3 eq im false
+i4 select i3 i2 iz
+i5 get iu ix
+i6 select ii i4 i5
+i7 set iu ix i6
+i8 select h2 1 0
+i9 and hz i8
+ne i9 0
+ne i9 0
+jc eq id 1
+jd eq id 2
+jg or eq id 3 eq id 4
+jh select jc ie 0
+ji eq h6 0
+jj mul jh 4
+jq add select ji add jj 5440 add add mul sub h6 1 128 16704 jj 2
+jr >> jq 7
+js and jq 127
+jw ne and get get i7 jr js 1 0
+jx eq h6 0
+jy mul jh 4
+jz add jy 5440
+j0 sub h6 1
+j1 mul j0 128
+j2 add j1 16704
+j3 add j2 jy
+j4 select jx jz j3
+j5 add j4 1
+j6 >> j5 7
+j7 and j5 127
+j8 get i7 j6
+j9 get j8 j7
+ka eq h6 0
+kb mul jh 4
+ki add select ka add kb 5440 add add mul sub h6 1 128 16704 kb 3
+kj >> ki 7
+kk and ki 127
+km get get i7 kj kk
+kn >> km 28
+ko and km 268435455
+kr or and jc eq kn 2 jd
+kt select kr select jd ie ko 0
+ku mul kt 2
+kv add ku 32
+ky add add mul h6 128 128 kv
+kz >> ky 7
+k0 and ky 127
+k1 get i7 kz
+k2 get k1 k0
+k3 add ku 33
+k4 mul h6 128
+k5 add k4 128
+k6 add k5 k3
+k7 >> k6 7
+k8 and k6 127
+k9 get i7 k7
+la get k9 k8
+lb gt h6 0
+lf and and lb kr eq k2 1
+lh select eq km 0 jh ko
+li eq h6 0
+lj mul lh 4
+lq add select li add lj 5440 add add mul sub h6 1 128 16704 lj 0
+lr >> lq 7
+ls and lq 127
+lv get get i7 lr ls
+lw >> 10 7
+lx and 10 127
+l0 add get get i7 lw lx kt
+l1 select lb la l0
+l2 select kr l1 lv
+l3 and jc jw
+l4 or jg l3
+l5 or l4 lf
+l6 select l3 j9 la
+l7 select jg ie l6
+l8 select l5 l7 l2
+l9 select l5 1 0
+ma ne i9 0
+mb >> 16 7
+mc and 16 127
+mh set i7 mb select ma set get i7 mb mc l9 get i7 mb
+mi ne i9 0
+mj >> 17 7
+mk and 17 127
+mp set mh mj select mi set get mh mj mk l8 get mh mj
+mq >> 16 7
+mr and 16 127
+mt get get mp mq mr
+mu >> 17 7
+mv and 17 127
+mx get get mp mu mv
+ne i9 0
+m0 select ne mt 0 2 3
+m1 ne i9 0
+m2 get mp 0
+m3 get m2 0
+m4 get m2 8
+m5 ge m3 22528
+m6 select m5 0 1
+m7 add m3 m6
+m8 select m5 1 m4
+m9 set m2 0 m7
+nd set mp 0 select m1 set m9 8 m8 get mp 0
+ng add mul m3 2 20480
+nh >> ng 7
+ni and ng 127
+nj get nd nh
+nk add ni 1
+nm set set nj ni m0 nk mx
+nr set nd nh select m1 select eq m5 false nm nj get nd nh
+ns eq j 2
+nt eq j 3
+nu eq j 4
+nv eq j 5
+nw eq j 6
+nx eq j 7
+ny eq j 8
+nz eq j 9
+n0 mov 0
+n1 select ns 174 n0
+n2 select nt 177 n1
+n3 select nu 181 n2
+n4 select nv 78 n3
+n5 select nw 80 n4
+n6 select nx 81 n5
+n7 select ny 171 n6
+n8 select nz 173 n7
+n9 select q 1 0
+oa ne n9 0
+ob get nr 0
+oc get ob 0
+od get ob 8
+oe ge oc 22528
+og add oc select oe 0 1
+oh select oe 1 od
+om set nr 0 select oa set set ob 0 og 8 oh get nr 0
+oo add mul oc 2 20480
+op >> oo 7
+oq and oo 127
+os get om op
+ot add oq 1
+ov set set os oq 18 ot n8
+o0 set om op select oa select eq oe false ov os get om op
+o1 select q 1 0
+o2 ne o1 0
+o3 >> 2 7
+o4 and 2 127
+o5 get o0 o3
+o6 get o5 o4
+o7 ge o6 128
+o8 add o6 1048576
+o9 ne o1 0
+pa >> 16 7
+pb and 16 127
+pg set o0 pa select o9 set get o0 pa pb o8 get o0 pa
+ph add o6 1
+pi ne o1 0
+pj >> 2 7
+pk and 2 127
+pp set pg pj select pi set get pg pj pk ph get pg pj
+ps ne and o1 select o7 1 0 0
+pt >> 8 7
+pu and 8 127
+pz set pp pt select ps set get pp pt pu 1 get pp pt
+qa >> 16 7
+qb and 16 127
+qd get get pz qa qb
+qe select q 1 0
+ne qe 0
+qg ne qe 0
+qh get pz 0
+qi get qh 0
+qj get qh 8
+qk ge qi 22528
+qm add qi select qk 0 1
+qn select qk 1 qj
+qs set pz 0 select qg set set qh 0 qm 8 qn get pz 0
+qu add mul qi 2 20480
+qv >> qu 7
+qw and qu 127
+qx get qs qv
+qy add qw 1
+q0 set set qx qw 4 qy qd
+q1 eq qk false
+q2 select q1 q0 qx
+q3 get qs qv
+q4 select qg q2 q3
+q5 set qs qv q4
+q6 add 19008 B
+q7 select q 1 0
+q8 ne q7 0
+q9 >> q6 7
+ra and q6 127
+set q5 q9 select q8 set get q5 q9 ra qd get q5 q9
+
+fn wxvfill u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x132 u32x128x512 u32x128x45 -> u32x128x512
+a wxfw J D 4
+b wxfw J D 5
+e at waretop I wxfw J D 6 1
+h add wxnw H add a e 3 2
+i wxok I h
+j wxov I h
+k add E 2
+l >> 19110 7
+m and 19110 127
+p set A l set get A l m C
+q >> 19111 7
+r and 19111 127
+u set p q set get p q r k
+v >> 19112 7
+w and 19112 127
+z set u v set get u v w a
+aa >> 19113 7
+ab and 19113 127
+ae set z aa set get z aa ab e
+af >> 19114 7
+ag and 19114 127
+aj set ae af set get ae af ag i
+ak >> 19115 7
+al and 19115 127
+ao set aj ak set get aj ak al j
+ap >> 19116 7
+aq and 19116 127
+au set ao ap set get ao ap aq b
+av >> 19117 7
+aw and 19117 127
+a0 fold wxnv 1 set au av set get au av aw F
+a1 >> 16 7
+a2 and 16 127
+a3 get a0 a1
+a4 get a3 a2
+a5 >> 19104 7
+a6 and 19104 127
+a7 get a0 a5
+a8 set a7 a6 a4
+a9 set a0 a5 a8
+ba get a9 0
+bb get ba 0
+bc get ba 8
+bd ge bb 22528
+bf add bb select bd 0 1
+bg select bd 1 bc
+bj set a9 0 set set ba 0 bf 8 bg
+bl add mul bb 2 20480
+bm >> bl 7
+bn and bl 127
+bo get bj bm
+bp add bn 1
+br set set bo bn 20 bp 0
+bx fold wxnl 1 fold wxvsa b fold wxls 1 set bj bm select eq bd false br bo a4 H I
+by >> 16 7
+bz and 16 127
+b0 get bx by
+b1 get b0 bz
+b2 >> 19105 7
+b3 and 19105 127
+b4 get bx b2
+b5 set b4 b3 b1
+b6 set bx b2 b5
+b7 fold wxlg 1 b6 F
+b8 fold wxls 1 b7 b1
+b9 get b8 0
+ca get b9 0
+cb get b9 8
+cc ge ca 22528
+ce add ca select cc 0 1
+cf select cc 1 cb
+ci set b8 0 set set b9 0 ce 8 cf
+ck add mul ca 2 20480
+cl >> ck 7
+cm and ck 127
+cn get ci cl
+co add cm 1
+cq set set cn cm 8 co 0
+cw fold wxvpl 1 fold wxlg 1 fold wxvn1 b set ci cl select eq cc false cq cn H I b1 i j
+cx get cw 0
+cy get cx 0
+cz get cx 8
+c0 ge cy 22528
+c1 select c0 0 1
+c2 add cy c1
+c3 select c0 1 cz
+c4 set cx 0 c2
+c5 set c4 8 c3
+c6 set cw 0 c5
+c7 mul cy 2
+c8 add c7 20480
+c9 >> c8 7
+da and c8 127
+db get c6 c9
+dc add da 1
+de set set db da 19 dc 0
+di fold wxlg 1 set c6 c9 select eq c0 false de db a4
+dj get di 0
+dk get dj 0
+dl get dj 8
+dm ge dk 22528
+do add dk select dm 0 1
+dp select dm 1 dl
+ds set di 0 set set dj 0 do 8 dp
+du add mul dk 2 20480
+dv >> du 7
+dw and du 127
+dx get ds dv
+dy add dw 1
+d0 set set dx dw 21 dy 4
+d1 eq dm false
+d2 select d1 d0 dx
+d3 set ds dv d2
+d4 get d3 0
+d5 get d4 0
+d6 get d4 8
+d7 ge d5 22528
+d8 select d7 0 1
+d9 add d5 d8
+ea select d7 1 d6
+ed set d3 0 set set d4 0 d9 8 ea
+ef add mul d5 2 20480
+eg >> ef 7
+eh and ef 127
+ei get ed eg
+ej add eh 1
+el set set ei eh 18 ej 174
+et fold wxop 1 fold wxkc 1 fold wxlg 1 fold wxls 1 set ed eg select eq d7 false el ei a4 b1 16 106
+eu get et 0
+ev get eu 0
+ew get eu 8
+ex ge ev 22528
+ez add ev select ex 0 1
+e0 select ex 1 ew
+e1 set eu 0 ez
+e2 set e1 8 e0
+e3 set et 0 e2
+e4 mul ev 2
+e5 add e4 20480
+e6 >> e5 7
+e7 and e5 127
+e8 get e3 e6
+e9 add e7 1
+fb set set e8 e7 5 e9 b1
+fj fold wxop 1 fold wxop 1 fold wxkc 1 fold wxlg 1 set e3 e6 select eq ex false fb e8 F mul G 4 106 73
+fk get fj 0
+fl get fk 0
+fm get fk 8
+fo ge fl 22528
+fq add fl select fo 0 1
+fr select fo 1 fm
+fu set fj 0 set set fk 0 fq 8 fr
+fw add mul fl 2 20480
+fx >> fw 7
+fy and fw 127
+fz get fu fx
+f0 add fy 1
+f1 set fz fy 12
+f2 set f1 f0 0
+f3 eq fo false
+f4 select f3 f2 fz
+f5 set fu fx f4
+f6 get f5 0
+f7 get f6 0
+f8 get f6 8
+f9 ge f7 22528
+gb add f7 select f9 0 1
+gc select f9 1 f8
+gg set f5 0 set set f6 0 gb 8 gc
+gi add mul f7 2 20480
+gj >> gi 7
+gk and gi 127
+gl get gg gj
+gm add gk 1
+go set set gl gk 9 gm 0
+set gg gj select eq f9 false go gl
+
+fn wxvclr u32x128x512 u32 -> u32x128x512
+a add 19072 B
+b >> a 7
+c and a 127
+set A b set get A b c 0
+
+fn wxphs u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+b add mul D 5 24
+c add b 1
+d add b 2
+e add b 3
+f add b 4
+fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 A C b E C c F C d G C e H C f I
+
+fn wxiter2 u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 -> u32x128x512
+a at C 0
+b at C 8
+c at C 9
+at C 11
+e add a 1
+h add add mul a 176 640 0
+i >> h 7
+j and h 127
+l get get A i j
+o add add mul a 176 640 2
+p >> o 7
+q and o 127
+s get get A p q
+v add add mul a 176 640 3
+w >> v 7
+x and v 127
+z get get A w x
+ac add add mul a 176 640 4
+ad >> ac 7
+ae and ac 127
+ag get get A ad ae
+aj add add mul a 176 640 5
+ak >> aj 7
+al and aj 127
+an get get A ak al
+aq add add mul a 176 640 8
+ar >> aq 7
+as and aq 127
+av get get A ar as
+ay add add mul a 176 640 11
+az >> ay 7
+a0 and ay 127
+a1 get A az
+a2 get a1 a0
+a3 mul a 176
+a4 add a3 640
+a5 add a4 35
+a6 >> a5 7
+a7 and a5 127
+a8 get A a6
+a9 get a8 a7
+bc add add mul a 176 640 37
+bd >> bc 7
+be and bc 127
+bg get get A bd be
+bh wxty H b 1
+bi wxty H b 2
+bm select eq c 4 bh select eq c 5 bi 0
+bn ne s 0
+bo ne a9 0
+bp and bn bo
+bq le bg 24
+br gt bg 0
+bt and and bp bq br
+bu select bt bg 0
+bv wxfw D av 4
+bw fold wxclr bu A e
+bx >> 22 7
+by and 22 127
+b0 set get bw bx by 1
+b1 set bw bx b0
+b2 select bt 1 0
+b3 fold wxsmall b2 b1 e av D E F G H I
+b4 >> 22 7
+b5 and 22 127
+b6 get b3 b4
+b7 get b6 b5
+b8 eq b7 1
+b9 and bt b8
+ca select b9 bm 0
+cd fold wxcan 1 fold wxhost 1 fold wxcs 1 b3 a 12 ca a 2 a av a2 24 ca D E F G H I J K 0
+ce >> 16 7
+cf and 16 127
+ci eq get get cd ce cf 1
+cj and b9 ci
+ck select cj bm 0
+cl select ci 1 0
+cm fold wxcs 1 cd a 12 ck
+cn select ci bg 0
+cr fold wxind1 cn fold wxfld1 ck fold wxcs 1 fold wxcs 1 cm a 10 cl a 37 cn a l a bv E F an
+cs select cj false true
+cu and and bn ci cs
+cw fold wxcarry select cu 1 0 cr av D E F
+cx >> 28 7
+cy and 28 127
+c0 get get cw cx cy
+c1 >> 29 7
+c2 and 29 127
+c3 get cw c1
+c4 get c3 c2
+c5 >> 30 7
+c6 and 30 127
+c7 get cw c5
+c8 get c7 c6
+c9 eq c0 1
+da eq e 0
+db mul c8 4
+di add select da add db 5440 add add mul sub e 1 128 16704 db 3
+dj >> di 7
+dk and di 127
+dn ne get get cw dj dk 0
+dp and and cu c9 dn
+dr fold wxnl select dp 1 0 cw
+ds >> 16 7
+dt and 16 127
+dv get get dr ds dt
+dy mul rem add an 4294967295 bh 4
+d0 fold wxlg select dp 1 0 dr l
+d1 select dp 1 0
+d2 fold wxld d1 d0 dy
+d3 select dp 1 0
+d4 fold wxls d3 d2 dv
+d5 select dp 1 0
+d6 fold wxcs 1 d4 a 13 d5
+d7 fold wxcs 1 d6 a 14 c4
+d8 fold wxcs 1 d7 a 15 c8
+d9 fold wxcs 1 d8 a 16 dv
+ea >> 14 7
+eb and 14 127
+ed get get d9 ea eb
+ee le bg 12
+eh select and and bo ci ee ed 1
+ei ne z 0
+ej sub ag an
+ek lt ej eh
+en or eq eh 1 and ei ek
+eo select en false true
+ep and eo ei
+es and eo select ei false true
+et rem ej eh
+ev sub add an ej et
+ex and ep lt ev ag
+e0 select ep select ex 2 1 select es 2 1
+e1 select en 1 e0
+e2 select ep 1 2
+e3 select en 0 e2
+e4 select ep 1 0
+e5 select en z e4
+e6 select ep ev 0
+e7 select en ag e6
+e8 select en 1 eh
+e9 fold wxphs 1 d9 a 0 e3 e5 e7 an e8
+fg fold wxphs or select ex 1 0 select es 1 0 e9 a 1 0 select ep 1 0 select ep ag 0 select ep ev an 1
+fi fold wxnl select es 1 0 fg
+fj >> 16 7
+fk and 16 127
+fm get get fi fj fk
+fq add add mul a 176 640 18
+fr >> fq 7
+fs and fq 127
+fu get get fi fr fs
+fx add add mul a 176 640 19
+fy >> fx 7
+fz and fx 127
+f0 get fi fy
+f1 get f0 fz
+f2 select es 1 0
+f3 fold wxpsh f2 fi a fu f1
+f4 sub 0 eh
+f5 select es 1 0
+f6 fold wxkc f5 f3 f4
+f7 select es 1 0
+f8 fold wxop f7 f6 113
+f9 select es 1 0
+fold wxpu 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxls f9 f8 fm a 34 fm a 20 eh a 21 0 a 23 e1 8 a 0 0
+
+fn wxiter u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 -> u32x128x512
+a at C 0
+b at C 1
+c at C 2
+d at C 3
+e at C 4
+f at C 5
+g at C 6
+h at C 7
+i at C 10
+j at C 11
+k at C 12
+l at C 13
+m at C 14
+n at C 25
+p ge at C 9 4
+q eq d 20
+r ne n 0
+s select r false true
+t and p r
+u and p s
+v select p false true
+z select ne wxsh K add 8448 c 0 false true
+aa eq j 3
+ab sub e 2
+ae ne select gt ab 30 1 0 0
+af >> 8 7
+ag and 8 127
+al set A af select ae set get A af ag 2 get A af
+an fold wxres select t 1 0 al a 1 b
+ao >> 17 7
+ap and 17 127
+ar get get an ao ap
+au fold wxslot select u 1 0 an a b i
+av >> 16 7
+aw and 16 127
+ay get get au av aw
+a0 fold wxnl select v 1 0 au
+a1 >> 16 7
+a2 and 16 127
+a3 get a0 a1
+a4 get a3 a2
+a5 select v 1 0
+a6 fold wxbind a5 a0 a b a4
+a7 select u ay a4
+a8 select t ar a7
+a9 and u z
+bb fold wxlg select a9 1 0 a6 a8
+bd fold wxpsh select a9 1 0 bb a l m
+bf fold wxcp select a9 1 0 bd i
+bh fold wxpsh select v 1 0 bf a l m
+bk fold wxnl 1 fold wxls select v 1 0 bh a8
+bl >> 16 7
+bm and 16 127
+bo get get bk bl bm
+bp >> 13 7
+bq and 13 127
+bt ne get get bk bp bq 0
+bu wxsh K c
+bv ge bu 4
+bx and and bt p bv
+b0 select bx sub bu rem bu 4 0
+b1 >> 19110 7
+b2 and 19110 127
+b3 get bk b1
+b4 set b3 b2 0
+b5 set bk b1 b4
+b6 fold wxvclr 32 b5
+b7 select bx 1 0
+b8 fold wxvfill b7 b6 a g f a8 b0 E F D
+b9 fold wxkc 1 b8 b0
+ca fold wxls 1 b9 bo
+cd select and aa ge b0 k 0 1
+c0 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 fold wxcs 1 ca a 0 a8 a 1 bo a 2 select p 1 0 a 3 select aa 1 0 a 4 k a 5 b0 a 6 select eq d 21 1 0 a 7 h a 8 g a 9 b a 11 select p 1 0 a 12 0 a 13 0 a 17 ab a 18 j a 19 k a 35 select q 1 0
+c1 wxfw D g 5
+c2 fold wxcs 1 c0 a 37 c1
+c3 fold wxcclr 32 c2 a
+c4 add f 2
+c5 fold wxext ab c3 a c4 F
+c6 fold wxiter2 cd c5 C D E F G H I J K
+
+fn wxnode u32x128x512 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
+c add add mul C 128 128 2
+d >> c 7
+e and c 127
+g get get A d e
+h add g D
+k add add mul C 128 128 0
+l >> k 7
+m and k 127
+p wxfw E get get A l m 2
+q0 wxnw F h 1
+rot_c add 25600 h
+rot_k wxsh L rot_c
+rot_l eq rot_k 1
+rot_r eq rot_k 2
+rot_t or rot_l rot_r
+rot_q select rot_r 65 64
+q select rot_t rot_q q0
+rot_xi add 28416 h
+rot_xj add 31232 h
+rot_bi add 34048 h
+rot_bj add 36864 h
+rot_xk wxsh L rot_xi
+rot_xv wxsh L rot_xj
+rot_bk wxsh L rot_bi
+rot_bv wxsh L rot_bj
+r wxnw F h 2
+s wxnw F h 3
+t wxnw F h 4
+u wxnw F h 5
+v wa24 H h
+w wxtag I v
+x wxbyt K v
+y add s 1
+z add s 2
+aa0 wxok G s
+ab0 wxov G s
+ac0 wxok G y
+ad0 wxov G y
+aa select rot_t rot_xk aa0
+ab select rot_t rot_xv ab0
+ac select rot_t rot_bk ac0
+ad select rot_t rot_bv ad0
+ae wxok G z
+af wxov G z
+ag gt r 0
+ah gt r 1
+ai gt r 2
+ak fold wxres select ag 1 0 A C aa ab
+al >> 16 7
+am and 16 127
+ao get get ak al am
+ap >> 17 7
+aq and 17 127
+as get get ak ap aq
+au select ag ao 0
+av select ag as 0
+ax fold wxres select ah 1 0 ak C ac ad
+ay >> 16 7
+az and 16 127
+a0 get ax ay
+a1 get a0 az
+a2 >> 17 7
+a3 and 17 127
+a4 get ax a2
+a5 get a4 a3
+a6 select ah a1 0
+a7 select ah a5 0
+a8 select ai 1 0
+a9 fold wxres a8 ax C ae af
+ba >> 16 7
+bb and 16 127
+bd get get a9 ba bb
+be >> 17 7
+bf and 17 127
+bh get get a9 be bf
+bi select ai bd 0
+bj select ai bh 0
+bk wxopty aa ab H J p g
+bl wxopty ac ad H J p g
+bm eq C 0
+bn mul D 4
+bu add select bm add bn 5440 add add mul sub C 1 128 16704 bn 3
+bv >> bu 7
+bw and bu 127
+bz ne get get a9 bv bw 0
+b0 select bz 1 0
+b1 (C D h q r s t u v w x aa ab ac ad ae af au av a6 a7 bi bj bk bl b0 0 0)
+b2 gt C 0
+b3 wxbk C D 0
+b4 >> b3 7
+b5 and b3 127
+b6 get a9 b4
+b7 get b6 b5
+b8 ne b7 0
+b9 and b2 b8
+cc add add mul C 128 128 18
+cd >> cc 7
+ce and cc 127
+cg get get a9 cd ce
+cj add add mul C 128 128 19
+ck >> cj 7
+cl and cj 127
+cn get get a9 ck cl
+cq and ne cg 0 eq cn D
+ct add add mul C 128 128 9
+cu >> ct 7
+cv and ct 127
+cy gt get get a9 cu cv 0
+cz eq q 25
+c0 eq q 27
+c1 or cz c0
+c2 eq aa 2
+c3 eq ab 0
+c4 and c2 c3
+c5 eq ac 3
+c6 and cy c1
+c7 and c6 c4
+c8 and c7 c5
+c9 eq C 0
+da mul D 4
+dh add select c9 add da 5440 add add mul sub C 1 128 16704 da 2
+di >> dh 7
+dj and dh 127
+do and cy ne and get get a9 di dj 2 0
+dp select b9 false true
+dq and dp cq
+ds and dp select dq false true
+dt and ds c8
+dv and ds select dt false true
+dw and dv do
+dy and dv select dw false true
+dz eq q 26
+d0 eq q 28
+d1 or dz d0
+d2 eq q 20
+d3 eq q 21
+d4 or d2 d3
+d5 and dy bz
+d6 and d5 d1
+d7 and dy d4
+d8 select bz false true
+d9 and dy d8
+eb and d9 select d4 false true
+ec eq q 1
+ed eq q 19
+ee eq q 18
+eh or eq q 22 eq q 24
+ei eq q 23
+el or eq q 10 eq q 11
+em ge q 2
+en le q 9
+eo ge q 12
+ep le q 17
+et or and em en and eo ep
+rot_b1 eq q 64
+rot_b2 eq q 65
+rot_b3 or rot_b1 rot_b2
+rot_et or et rot_b3
+ew or eq q 26 eq q 28
+ex eq q 27
+ey eq q 29
+ez eq q 30
+e0 eq q 31
+e1 and eb ec
+e2 and eb rot_et
+e3 and eb el
+e4 and eb ee
+e5 and eb ed
+e6 and eb eh
+e7 and eb ei
+e8 and eb cz
+e9 and eb ew
+fa and eb ex
+fb and eb ey
+fc and eb ez
+fd and eb e0
+ff fold wxhind select b9 1 0 a9 b1
+fh fold wxhcar select dq 1 0 ff b1
+fj fold wxhfld select dt 1 0 fh b1
+fl fold wxhwrd select dw 1 0 fj b1 G
+fo fold wxhali select d6 1 0 fl b1 I J K
+fq fold wxiter select d7 1 0 fo b1 E F G H I J K L
+fs fold wxhmov select e1 1 0 fq b1
+fu fold wxhbin select e2 1 0 fs b1
+fw fold wxhdiv select e3 1 0 fu b1
+fy fold wxhsel select e4 1 0 fw b1 L
+f0 fold wxhcall select e5 1 0 fy b1 E F G H I J K L M
+f1 select e6 1 0
+f2 fold wxharr f1 f0 b1 F G L I K
+f3 select e7 1 0
+f4 fold wxhrec f3 f2 b1 G I J K
+f5 select e8 1 0
+f6 fold wxhget f5 f4 b1 I K
+f7 select e9 1 0
+f8 fold wxhset f7 f6 b1 I J K
+f9 select fa 1 0
+ga fold wxhat f9 f8 b1 I J K
+gc fold wxhread select fb 1 0 ga b1
+gf fold wxhwrite select fc 1 0 gc b1
+fold wxhputs select fd 1 0 gf b1 I
+
+fn wxstep u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
+a >> 95 7
+b and 95 127
+e add get get A a b 1
+f >> 95 7
+g and 95 127
+k fold wxpo 1 set A f set get A f g e
+l >> 16 7
+m and 16 127
+o get get k l m
+p >> 17 7
+q and 17 127
+s get get k p q
+t >> 18 7
+u and 18 127
+w get get k t u
+x >> 19 7
+y and 19 127
+aa get get k x y
+ab >> 96 7
+ac and 96 127
+af set k ab set get k ab ac o
+ag >> 97 7
+ah and 97 127
+ak set af ag set get af ag ah s
+al >> 98 7
+am and 98 127
+ap set ak al set get ak al am w
+aq eq o 1
+ar eq o 2
+as eq o 3
+au eq o 4
+av eq o 5
+aw eq o 6
+ax eq o 7
+ay eq o 8
+az eq o 9
+a0 eq o 10
+a1 eq o 11
+a2 mul s 128
+a3 add a2 128
+a4 add a3 3
+a5 >> a4 7
+a6 and a4 127
+a7 get ap a5
+a8 get a7 a6
+a9 mul s 128
+bb add add a9 128 2
+bc >> bb 7
+bd and bb 127
+bf get get ap bc bd
+bg add w 1
+bk fold wxpu select and aq lt bg a8 1 0 ap 1 s bg 0
+bl add bf w
+bp and aq eq wxsh J add 2816 bl 0
+rot_w add 25600 bl
+rot_wv wxsh J rot_w
+rot_wn ne rot_wv 3
+bpr and bp rot_wn
+bs fold wxnode select or bpr ar 1 0 bk s w C D E F G H I J K
+bu fold wxpsh select as 1 0 bs s w aa
+bw ne select au 1 0 0
+bx get bu 0
+by get bx 0
+bz get bx 8
+b0 ge by 22528
+b1 select b0 0 1
+b2 add by b1
+b3 select b0 1 bz
+b4 set bx 0 b2
+b5 set b4 8 b3
+b6 get bu 0
+b7 select bw b5 b6
+b8 set bu 0 b7
+b9 mul by 2
+ca add b9 20480
+cb >> ca 7
+cc and ca 127
+cd get b8 cb
+ce add cc 1
+cg set set cd cc s ce w
+cl set b8 cb select bw select eq b0 false cg cd get b8 cb
+cn fold wxend select av 1 0 cl s C I
+co and aa 3
+cp >> aa 2
+cq add co 1
+cv fold wxfnd select aw select gt a8 cp sub a8 cp 0 0 4294967295 bf w cq cp J
+cw ne cv 4294967295
+cz or co << add cv 1 2
+c0 and aw cw
+c1 select c0 1 0
+c2 fold wxpu c1 cn 6 s w cz
+c3 select c0 1 0
+c4 fold wxpu c3 c2 2 s cv 0
+c5 select ax 1 0
+c6 fold wxset c5 c4 s w
+c7 select ay 1 0
+c8 fold wxlst c7 c6 s w
+c9 select az 1 0
+da fold wxtrip c9 c8 s C D E F G H I J K
+dc fold wxtbod select a0 1 0 da s C D E F G H I J K
+fold wxtend select a1 1 0 dc s
+
+fn wxgo u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> bool
+a >> 7 7
+b and 7 127
+d get get A a b
+e >> 8 7
+f and 8 127
+h get get A e f
+i >> 95 7
+j and 95 127
+l get get A i j
+m gt d 0
+n eq h 0
+o lt l 400000
+and and m n o
+
+fn wxdbg u32x128x512 u32 -> u32x128x512
+a >> 8 7
+b and 8 127
+set A a set get A a b 9
+
+fn wxrsl u32x128x512 u32 u32 u32x128x132 -> u32x128x512
+c add add mul 0 128 128 5
+d >> c 7
+e and c 127
+g get get A d e
+j add add mul 0 128 128 6
+k >> j 7
+l and j 127
+n get get A k l
+q add add mul 0 128 128 2
+r >> q 7
+s and q 127
+u get get A r s
+v eq g 1
+w select v n 0
+x eq 0 0
+y mul w 4
+af add select x add y 5440 add add mul sub 0 1 128 16704 y 3
+ag >> af 7
+ah and af 127
+aj get get A ag ah
+ak eq aj 0
+al >> aj 28
+am and aj 268435455
+ap select ak w select eq al 1 am 4294967295
+au and and v ne C 0 ne ap 4294967295
+av select au ap 0
+aw eq 0 0
+ax mul av 4
+ay add ax 5440
+a0 mul sub 0 1 128
+a1 add a0 16704
+a2 add a1 ax
+a3 select aw ay a2
+a4 add a3 3
+a5 >> a4 7
+a6 and a4 127
+a7 get A a5
+a8 get a7 a6
+a9 eq a8 0
+bb wxnw D add u av 1
+bc eq bb 25
+bd eq bb 27
+be eq bb 18
+bf eq bb 1
+bj select or or or bc bd be bf false true
+bm select and and au a9 bj av 4294967295
+bn >> 11 7
+bo and 11 127
+set A bn set get A bn bo bm
+
+fn wxprol u32x128x512 u32 u32 u32 -> u32x128x512
+a >> 20480 7
+b and 20480 127
+e set A a set get A a b 22
+f >> 20481 7
+g and 20481 127
+j set e f set get e f g 0
+k >> 20482 7
+l and 20482 127
+o set j k set get j k l 2
+p >> 20483 7
+q and 20483 127
+t set o p set get o p q D
+u >> 20484 7
+v and 20484 127
+y set t u set get t u v 1
+z >> 20485 7
+aa and 20485 127
+ad set y z set get y z aa 107
+ae >> 20486 7
+af and 20486 127
+ai set ad ae set get ad ae af 5
+aj >> 20487 7
+ak and 20487 127
+an set ai aj set get ai aj ak C
+ao >> 20488 7
+ap and 20488 127
+as set an ao set get an ao ap 23
+au >> 20489 7
+av and 20489 127
+set as au set get as au av 0
+
+fn wxfinal u32x128x512 u32 u32x128x45 u32x128x65 -> u32x128x512
+c add add mul 0 128 128 1
+d >> c 7
+e and c 127
+g get get A d e
+j add add mul 0 128 128 5
+k >> j 7
+l and j 127
+n get get A k l
+q add add mul 0 128 128 6
+r >> q 7
+s and q 127
+u get get A r s
+x add add mul 0 128 128 0
+y >> x 7
+z and x 127
+ab get get A y z
+ac eq n 1
+ad select ac u 0
+ae eq 0 0
+af mul ad 4
+am add select ae add af 5440 add add mul sub 0 1 128 16704 af 3
+an >> am 7
+ao and am 127
+aq get get A an ao
+ar >> aq 28
+as and aq 268435455
+aw and eq n 2 eq u 0
+a0 and ac and eq ar 2 eq as 0
+a1 or aw a0
+a2 select a1 false true
+a3 eq g 1
+a4 >> 9 7
+a5 and 9 127
+a6 get A a4
+a7 get a6 a5
+a8 ne a7 4294967295
+a9 >> 11 7
+ba and 11 127
+bd eq get get A a9 ba 4294967295
+be >> 10 7
+bf and 10 127
+bh get get A be bf
+bj wxbyt D wxfw C ab 3
+bo or and a3 a2 and and eq g 0 a8 bd
+bp select a3 bh a7
+bs and select a3 false true select a8 false true
+bu fold wxlg select bo 1 0 A bp
+bw fold wxpsh select bo 1 0 bu 0 n u
+by fold wxcp select bo 1 0 bw bj
+b0 fold wxpsh select bs 1 0 by 0 n u
+b1 >> 3 7
+b2 and 3 127
+b3 get b0 b1
+b4 get b3 b2
+b5 add b4 15
+b6 and b5 4294967280
+b7 gt b6 0
+b8 >> 4 7
+b9 and 4 127
+cb get get b0 b8 b9
+cd fold wxlg select b7 1 0 b0 cb
+cf fold wxkc select b7 1 0 cd b6
+ch fold wxop select b7 1 0 cf 106
+cj ne select b7 1 0 0
+ck get ch 0
+cl get ck 0
+cm get ck 8
+cn ge cl 22528
+cp add cl select cn 0 1
+cq select cn 1 cm
+cv set ch 0 select cj set set ck 0 cp 8 cq get ch 0
+cx add mul cl 2 20480
+cy >> cx 7
+cz and cx 127
+c0 get cv cy
+c1 add cz 1
+c2 set c0 cz 23
+c3 set c2 c1 0
+c4 eq cn false
+c5 select c4 c3 c0
+c6 get cv cy
+c7 select cj c5 c6
+c8 set cv cy c7
+c9 select b7 1 0
+fold wxprol c9 c8 cb b6
+
+fn wxemit u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
+a wxfw H C 1
+b wxfw H C 5
+e ge wxtag L wxfw H C 3 4
+g and eq D 0 e
+h select g 1 0
+i add h a
+j select g 0 4294967295
+k >> 0 7
+l and 0 127
+o set A k set get A k l 5
+p >> 1 7
+q and 1 127
+t set o p set get o p q i
+u >> 4 7
+v and 4 127
+y set t u set get t u v 4294967295
+z >> 5 7
+aa and 5 127
+ad set y z set get y z aa E
+ae >> 9 7
+af and 9 127
+ai set ad ae set get ad ae af j
+aj >> 10 7
+ak and 10 127
+an set ai aj set get ai aj ak h
+ao >> 11 7
+ap and 11 127
+as set an ao set get an ao ap 4294967295
+au >> 13 7
+av and 13 127
+ay set as au set get as au av F
+az >> 14 7
+a0 and 14 127
+a1 get ay az
+a2 set a1 a0 G
+a3 set ay az a2
+a4 fold wxfset 1 a3 0 C D H J
+a5 fold wxana 1 a4 0 C D H I J K L O
+a6 select g 1 0
+a7 select g 1 0
+a8 fold wxrsl a7 a5 a6 I
+a9 gt b 0
+bb fold wxpu select a9 1 0 a8 1 0 0 0
+bd loop wxgo wxstep add 0 16777216 bb H I J K L M N O P
+be >> 95 7
+bf and 95 127
+fold wxfinal 1 fold wxdbg select ge get get bd be bf 400000 1 0 bd H N
+
+fn waiop bool u32 u32x128x65 u32x128x65 u32 -> bool or A eq >> wa65 D wa65 C add E B 31 1
+
+fn waion bool u32 u32x128x24 u32x128x65 u32 -> bool or A eq >> wa65 D wa24 C add E B 31 1
+
+fn waio u32x128x45 u32x128x65 u32x128x24 u32x128x65 u32 -> u32
+a mul E 7
+b cfw A a 1
+c cfw A a 2
+d cfw A a 3
+e cfw A a 4
+select fold waion cfw A a 5 fold waiop b eq >> wa65 D d 31 1 B D c C D e 1 0
+
+fn wanmb (io,u32,u32,u32) u32 u32x128x400 u32 -> (io,u32,u32,u32)
+a add D B
+wab A get get C >> a 7 and a 127 true
+
+fn watrail io u32 u32x128x16 u32x128x8 u32 -> io
+a add E B
+b mul a 2
+f get get C >> b 7 and b 127
+g add b 1
+k get get C >> g 7 and g 127
+o get get D >> a 7 and a 127
+write write write A f k o
+
+fn wxpg u32x128x512 u32 -> u32x128 get A add B 160
+
+fn wxcpi u32x128x352 u32 u32x128x512 -> u32x128x352 set A B wxpg C B
+
+fn wxcm u32 u32 u32x128x512 -> u32
+a >> B 7
+b and B 127
+add A select ge get get C a b 256 1 0
+
+fn wxwm io u32 u32x128x512 -> io
+a >> B 7
+b and B 127
+d get get C a b
+fold wawr select ge d 256 1 0 A d
+
+fn wxwc io u32 u32x128x512 -> io
+a >> B 7
+b and B 127
+write A get get C a b
+
+fn wxpel io u32 u32 u32x128x512 -> io write A wxov D add C B
+
+fn wxpoc io u32 u32x128x512 u32x128x132 u32x128x512 u32 -> io
+b add 3392 add F B
+c >> b 7
+d and b 127
+f get get C c d
+g wxnw D f 2
+h wxnw D f 3
+fold wxpel g write A g h E
+
+fn wxpsz u32 u32 u32x128x512 u32x128x132 u32 -> u32
+b add 3392 add E B
+c >> b 7
+d and b 127
+add A add wxnw D get get C c d 2 1
+
+fn wxmv io u32x128x512 u32x128x512 bool -> io
+a >> 65533 7
+b and 65533 127
+d get get C a b
+e >> 65534 7
+f and 65534 127
+h get get C e f
+i >> 65535 7
+j and 65535 127
+l get get C i j
+o add add mul 0 128 128 4
+p >> o 7
+q and o 127
+s get get B p q
+t >> 10 7
+u and 10 127
+x add get get B t u s
+y select D 1 0
+aa sub d fold wxcm d 0 C
+write write fold wxwm d write write write write write A x y h l 0 C 0 aa
+
+fn wxmvf io u32 u32x128x512 u32x128x512 -> io wxmv A C D false
+
+fn wxnmb io u32 u32x128x400 u32 -> io
+a add D B
+write A get get C >> a 7 and a 127
+
+fn wxdmq u32x128x512 u32 u32x128x512 -> u32x128x512 set A B get C B
+
+fn wxdmp u32x128x512 u32 u32x128x352 -> u32x128x512 set A B get C B
+
+fn wxdts u32x128x16 u32 u32 u32 -> u32x128x16
+a >> C 7
+b and C 127
+set A a set get A a b D
+
+fn wxmg (u32,u32x128x8) u32 u32x128x512 -> (u32,u32x128x8)
+a at A 0
+b at A 1
+c add 32 B
+d >> c 7
+e and c 127
+g get get C d e
+h >> a 7
+i and a 127
+l set b h set get b h i g
+(add a 1 l)
+
+fn wxfun (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+a at A 0
+b at A 1
+c at A 2
+d at A 3
+e at A 4
+f at A 5
+g add C B
+h waown F K J g
+i select h 1 0
+k fold wxemit 1 z512 g 0 0 D E F G H I J K L M c
+l >> 0 7
+m and 0 127
+o get get k l m
+r add add mul 0 128 128 4
+s >> r 7
+t and r 127
+v get get k s t
+w >> 10 7
+x and 10 127
+aa add get get k w x v
+ac fold wxcpi 352 z352 k
+ad wfzfin ac o aa
+ae eq D 3
+ai fold wxs 1 fold wxdmp 352 z512 ac 65533 mul o 2
+ao select eq D 4 fold wxs 1 fold wxdmq 160 z512 k 65533 20480 select ae ai ad
+ap >> 5 7
+aq and 5 127
+as get get k ap aq
+av fold wxemit i z512 g 1 as D E F G H I J K L M c
+aw >> 0 7
+ax and 0 127
+az get get av aw ax
+a0 mul 0 128
+a1 add a0 128
+a2 add a1 4
+a3 >> a2 7
+a4 and a2 127
+a5 get av a3
+a6 get a5 a4
+a7 >> 10 7
+a8 and 10 127
+a9 get av a7
+bb add get a9 a8 a6
+bd fold wxcpi 352 z352 av
+be wfzfin bd az bb
+bj select ae fold wxs 1 fold wxdmp 352 z512 bd 65533 mul az 2 be
+bk >> 5 7
+bl and 5 127
+bn get get av bk bl
+bo select h bn as
+bp >> 65533 7
+bq and 65533 127
+bs get get ao bp bq
+bt eq bs 4294967295
+bu select bt 0 bs
+bv >> 65533 7
+bw and 65533 127
+by get get bj bv bw
+bz eq by 4294967295
+b0 select bz 0 by
+b1 select h b0 0
+b2 fold wxcm bu 0 ao
+b3 fold wxcm b1 0 bj
+b4 >> 3 7
+b5 and 3 127
+b6 get k b4
+b7 get b6 b5
+b8 >> 3 7
+b9 and 3 127
+cc select h get get av b8 b9 0
+ci umax and add b7 15 4294967280 select h and add cc 15 4294967280 0
+cj >> 12 7
+ck and 12 127
+cm get get k cj ck
+cn >> 12 7
+co and 12 127
+ct add ci umax cm select h get get av cn co 0
+cu >> 8 7
+cv and 8 127
+cx get get k cu cv
+cy >> 8 7
+cz and 8 127
+c0 get av cy
+c1 get c0 cz
+c2 umax cx c1
+c3 umax f c2
+c4 or bt bz
+c5 select c4 1 0
+c6 umax c3 c5
+c7 waio F K I L g
+c8 mul g 2
+c9 wa16 O c8
+da add c8 1
+db wa16 O da
+dc fold wxpsz as 0 k G 0
+de select h sub bn as 0
+dh add dc select h fold wxpsz de 0 av G as 0
+di add b2 7
+dk select h add b3 7 0
+dn add add add db 5 di dk
+do add bu b1
+dp select h 1 0
+dq add dp 1
+d0 fold wxnmb db write write write write fold wxpoc de fold wxpoc as write write write a dh dn do k G H 0 av G H as bo c7 ct db N c9
+d1 write d0 dq
+d2 wxfw F g 3
+d3 wxtag J d2
+d4 lt d3 4
+d5 wxmv d1 k ao d4
+d6 fold wxmvf dp d5 av bj
+d7 fold wxwc bu d6 ao
+d8 fold wxwc b1 d7 bj
+d9 >> 15 7
+ea and 15 127
+ec get get k d9 ea
+ed >> 15 7
+ee and 15 127
+ek fold wxmg select h get get av ed ee 0 fold wxmg ec (d e) k av
+el at ek 0
+em at ek 1
+eo fold wxdts 1 fold wxdts 1 c c8 b da ct
+(d8 add b dq eo el em c6)
+
+fn wxwq io u32 u32x128x8 -> io
+a >> B 7
+b and B 127
+write A get get C a b
+
+fn wachunkend (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32x128x8 u32 u32 -> (io,u32)
+b mov B
+e mov A
+f at e 0
+g at e 1
+h at e 2
+i at e 3
+j at e 4
+k at e 5
+l gt i 0
+m select l false true
+n gt k 0
+o select n false true
+p and m o
+q select p 1 0
+r select l 1 0
+s select l i 0
+t select p b 0
+u fold wxwq s f j
+v fold wawr r u i
+w fold watrail t v h C D
+x sub g E
+y fold wawr q w x
+z fold wawr q y b
+aa eq k 1
+ab select aa 4 5
+ac select n ab 0
+ad select l 7 ac
+ae (z ad)
+
+fn wachunk io u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32x128x310 u32 u32 -> (io,u32)
+a wainfo B C L
+b sub N M
+r wachunkend fold wxfun b (A O J 0 z8 0) M Q R D E F G B C a P H I b K M O
+
+fn wardw io -> (u32,io) read A
+
+fn wart16 (u32x128x16,io) u32 u32 -> (u32x128x16,io)
+a at A 0
+b at A 1
+d sub C mul B 128
+i fold rbyte select gt d 128 128 d (zpage b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warn16 io u32 -> (u32x128x16,io)
+a z16
+fold wart16 >> add B 127 7 (a A) B
+
+fn wart24 (u32x128x24,io) u32 u32 -> (u32x128x24,io)
+a at A 0
+b at A 1
+d sub C mul B 128
+i fold rbyte select gt d 128 128 d (zpage b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warn24 io u32 -> (u32x128x24,io)
+a z24
+fold wart24 >> add B 127 7 (a A) B
+
+fn wart45 (u32x128x45,io) u32 u32 -> (u32x128x45,io)
+a at A 0
+b at A 1
+d sub C mul B 128
+i fold rbyte select gt d 128 128 d (zpage b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warn45 io u32 -> (u32x128x45,io)
+a z45
+fold wart45 >> add B 127 7 (a A) B
+
+fn wart65 (u32x128x65,io) u32 u32 -> (u32x128x65,io)
+a at A 0
+b at A 1
+d sub C mul B 128
+i fold rbyte select gt d 128 128 d (zpage b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warn65 io u32 -> (u32x128x65,io)
+a z65
+fold wart65 >> add B 127 7 (a A) B
+
+fn z132 -> u32x128x132
+a zpage
+[a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a]
+
+fn wart132 (u32x128x132,io) u32 u32 -> (u32x128x132,io)
+a at A 0
+b at A 1
+d sub C mul B 128
+i fold rbyte select gt d 128 128 d (zpage b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warn132 io u32 -> (u32x128x132,io)
+a z132
+fold wart132 >> add B 127 7 (a A) B
+
+fn wart128 (u32x128x128,io) u32 u32 -> (u32x128x128,io)
+a at A 0
+b at A 1
+d sub C mul B 128
+i fold rbyte select gt d 128 128 d (zpage b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warn128 io u32 -> (u32x128x128,io)
+a zsrc
+fold wart128 >> add B 127 7 (a A) B
+
+fn wart400 (u32x128x400,io) u32 u32 -> (u32x128x400,io)
+a at A 0
+b at A 1
+d sub C mul B 128
+i fold rbyte select gt d 128 128 d (zpage b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warn400 io u32 -> (u32x128x400,io)
+a z400
+fold wart400 >> add B 127 7 (a A) B
+
+fn wart512 (u32x128x512,io) u32 u32 -> (u32x128x512,io)
+a at A 0
+b at A 1
+d sub C mul B 128
+i fold rbyte select gt d 128 128 d (zpage b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warn512 io u32 -> (u32x128x512,io)
+a z512
+fold wart512 >> add B 127 7 (a A) B
+
+fn warb384 (u32x384,io) u32 -> (u32x384,io)
+a at A 0
+c read at A 1
+d at c 0
+e at c 1
+(set a B d e)
+
+fn wartty (u32x384x65,io) u32 u32 -> (u32x384x65,io)
+a at A 0
+b at A 1
+d sub C mul B 384
+i fold warb384 select gt d 384 384 d (z384 b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warnty io u32 -> (u32x384x65,io)
+a zty
+fold wartty div add B 383 384 (a A) B
+
+fn z310 -> u32x128x310
+a zpage
+[a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a]
+
+fn wart200 (u32x128x310,io) u32 u32 -> (u32x128x310,io)
+a at A 0
+b at A 1
+d sub C mul B 128
+i fold rbyte select gt d 128 128 d (zpage b)
+j at i 0
+k at i 1
+(set a B j k)
+
+fn warn200 io u32 -> (u32x128x310,io)
+a z310
+fold wart200 >> add B 127 7 (a A) B
+
+fn z500 -> u32x128x500
+a zpage
+[a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a]
+
+fn zk256 -> u32x256 [0;256]
+
+fn wkrdw (u32x128,io,u32) u32 u32 -> (u32x128,io,u32)
+a at A 0
+b at A 1
+c at A 2
+d read b
+e at d 0
+f at d 1
+(set a add C B e f add mul c 31 e)
+
+fn wkrdpg (u32x128x512,io,u32) u32 u32 u32 u32 -> (u32x128x512,io,u32)
+a at A 0
+b at A 1
+c at A 2
+d add E B
+e mul d 128
+f umax C e
+i sub cumin D add e 128 f
+j sub f e
+m fold wkrdw i (get a d b c) j
+n at m 0
+o at m 1
+p at m 2
+(set a d n o p)
+
+fn wkrdlit (u32x128x512,io,u32) u32 u32 u32 -> (u32x128x512,io,u32)
+a add C D
+b >> C 7
+fold wkrdpg add sub >> sub a 1 7 b 1 A C a b
+
+fn wkcwv bool u32 u32x128x512 u32x128x512 u32 u32 u32 -> bool
+sv add F B
+nv add G B
+sin lt sv E
+nin lt nv E
+sa add 10240 sv
+sb sub sv E
+si select sin sa sb
+sp >> si 7
+sq and si 127
+ga get C sp
+gb get D sp
+gs select sin ga gb
+a get gs sq
+na add 10240 nv
+nb sub nv E
+ni select nin na nb
+np >> ni 7
+nq and ni 127
+ha get C np
+hb get D np
+hs select nin ha hb
+e eq a get hs nq
+r and A e
+
+fn wkcmpst bool u32 u32x128x512 u32x128x512 u32 u32 u32 u32 -> bool
+r fold wkcwv H A C D E F G
+
+fn wkprgo (u32,bool,u32,bool) u32 u32x128x512 u32 u32 u32 u32x128x512 u32 -> bool select at A 3 false true
+
+fn wkprobe (u32,bool,u32,bool) u32 u32x128x512 u32 u32 u32 u32x128x512 u32 -> (u32,bool,u32,bool)
+a at A 0
+c add 4096 mul a 3
+g get get C >> c 7 and c 127
+h add c 1
+l get get C >> h 7 and h 127
+m add c 2
+q get get C >> m 7 and m 127
+r eq q 0
+u and eq g D eq q E
+x and u fold wkcmpst select u 1 0 true C G H l F E
+y or r x
+(select y a and add a 1 2047 x l y)
+
+fn wkpgo (u32x128x512,io,u32,u32,u32,bool,u32,u32x128x512,u32,u32) u32 -> bool select at A 5 false true
+
+fn wkpst (u32x128x512,io,u32,u32,u32,bool,u32,u32x128x512,u32,u32) u32 -> (u32x128x512,io,u32,u32,u32,bool,u32,u32x128x512,u32,u32)
+a at A 0
+b at A 1
+c at A 2
+d at A 3
+e at A 4
+f at A 6
+tb at A 7
+c0 at A 8
+cb at A 9
+g wardw b
+h at g 0
+i at g 1
+j eq h 0
+q select j false true
+sw gt cb 0
+nsw select sw false true
+cf add c h
+fit le cf 55295
+fit0 and nsw fit
+nfit0 select fit0 false true
+cbh add cb h
+bfull gt cbh 65536
+l and nfit0 bfull
+m ge d 4096
+n ge e 2046
+o or l m
+p or o n
+np select p false true
+r and q p
+s select r 4 f
+u and q np
+bd0 select sw c0 c
+bd select fit0 1073741824 bd0
+nvb add bd cb
+nv select fit0 c nvb
+ua and u fit0
+ub and u nfit0
+cnta select ua 1 0
+cntb select ub 1 0
+wa add 10240 c
+x (a i 0)
+y fold wkrdlit cnta x wa h
+z at y 0
+aa at y 1
+ab at y 2
+xb (tb aa ab)
+yb fold wkrdlit cntb xb cb h
+zb at yb 0
+io2 at yb 1
+hs at yb 2
+ac and hs 2047
+ad (ac false 0 false)
+ae select u 2048 0
+af loop wkprgo wkprobe ae ad z hs h nv zb bd
+ag at af 0
+ah at af 1
+ai at af 2
+aj select ah false true
+ak and u aj
+al mul ag 3
+am add 4096 al
+an select ak am 65535
+ao >> an 7
+ap get z ao
+aq and an 127
+ar set ap aq hs
+as set z ao ar
+au add am 1
+av select ak au 65535
+aw >> av 7
+ax get as aw
+ay and av 127
+az set ax ay nv
+a0 set as aw az
+a1 add am 2
+a2 select ak a1 65535
+a3 >> a2 7
+a4 get a0 a3
+a5 and a2 127
+a6 set a4 a5 h
+a7 set a0 a3 a6
+a8 mul nv 4
+a9 add 1024 a8
+ba mul ai 4
+bb add 1024 ba
+bc select ah bb a9
+bd2 select u d 65535
+be >> bd2 7
+bf get a7 be
+bg and bd2 127
+bh set bf bg bc
+bi set a7 be bh
+ka and ak fit0
+kb and ak nfit0
+kc and kb nsw
+bj add c h
+bk select ka bj c
+bl add e 1
+bm select ak bl e
+bn add d 1
+bo select u bn d
+bp or j p
+bq add cb h
+br select kb bq cb
+bs select kc c c0
+bt (bi io2 bk bo bm bp s zb bs br)
+
+fn wkocc u32x128x32 u32 u32x128x512 -> u32x128x32 set A B get C B
+
+fn wk16g u32x128x16 u32 -> u32
+pg >> B 7
+page get A pg
+lo and B 127
+w get page lo
+
+fn wk16s u32x128x16 u32 u32 -> u32x128x16
+pg >> B 7
+page get A pg
+lo and B 127
+np set page lo C
+nt set A pg np
+
+fn wk64g u32x128x64 u32 -> u32
+pg >> B 7
+page get A pg
+lo and B 127
+w get page lo
+
+fn wk64s u32x128x64 u32 u32 -> u32x128x64
+pg >> B 7
+page get A pg
+lo and B 127
+np set page lo C
+nt set A pg np
+
+fn wk256g u32x128x256 u32 -> u32
+pg >> B 7
+page get A pg
+lo and B 127
+w get page lo
+
+fn wk256s u32x128x256 u32 u32 -> u32x128x256
+pg >> B 7
+page get A pg
+lo and B 127
+np set page lo C
+nt set A pg np
+
+fn wk500g u32x128x500 u32 -> u32
+pg >> B 7
+page get A pg
+lo and B 127
+w get page lo
+
+fn wk500s u32x128x500 u32 u32 -> u32x128x500
+pg >> B 7
+page get A pg
+lo and B 127
+np set page lo C
+nt set A pg np
+
+fn wkrdlnpg (u32x128x64,io) u32 u32 u32 u32 -> (u32x128x64,io)
+a at A 0
+b at A 1
+c add E B
+d mul c 128
+e umax C d
+h sub cumin D add d 128 e
+i sub e d
+l fold wkrdw h (get a c b 0) i
+m at l 0
+n at l 1
+(set a c m n)
+
+fn wkrdln (u32x128x64,io) u32 u32 -> (u32x128x64,io)
+a add B C
+b lt B a
+c >> B 7
+fold wkrdlnpg select b add sub >> sub a 1 7 c 1 0 A B a c
+
+fn wkrgo (io,u32,u32,u32,bool,u32x128x500,u32) u32 u32x128x32 u32 -> bool select at A 4 false true
+
+fn wkref (io,u32,u32,u32,bool,u32x128x500,u32) u32 u32x128x32 u32 -> (io,u32,u32,u32,bool,u32x128x500,u32)
+a at A 0
+b at A 1
+c at A 2
+d at A 3
+ee at A 5
+ep at A 6
+e read a
+f at e 0
+g at e 1
+h eq f 0
+i ge f 2147483648
+k add D and f 2147483647
+q add wasln get get C >> k 7 and k 127 1
+r ge f 259
+s sub f 259
+u add wauln s 1
+x add wauln add s 3 1
+y select r u 2
+z select r x 2
+aa select i q y
+ab select i q z
+ac select h 0 aa
+ad select h 0 ab
+ae select h 0 1
+af add b ac
+ag add c ad
+ah add d ae
+cl ge f 256
+np select i false true
+isc and cl np
+keep or h isc
+room lt ep 63999
+store and keep room
+widx select store ep 63999
+wval select h 0 f
+ee2 wk500s ee widx wval
+inc select keep 1 0
+ep2 add ep inc
+(g af ag ah h ee2 ep2)
+
+fn wkmv (u32x128x256,io,u32,u32x128x500,u32) u32 u32x128x32 u32 -> (u32x128x256,io,u32,u32x128x500,u32)
+a at A 0
+b at A 1
+c at A 2
+ee at A 3
+ep at A 4
+d wardw b
+e at d 0
+g wardw at d 1
+h at g 0
+j wardw at g 1
+k at j 0
+m wardw at j 1
+n at m 0
+p wardw at m 1
+q at p 0
+t loop wkrgo wkref 16777216 (at p 1 0 0 0 false ee ep) C D
+u at t 0
+v at t 1
+w at t 2
+x at t 3
+te at t 5
+tp at t 6
+y wardw u
+z at y 0
+aa at y 1
+ac or e << h 16
+ad mul c 8
+ae >> ad 7
+ai set a ae set get a ae and ad 127 ac
+aj add ad 1
+ak >> aj 7
+ao set ai ak set get ai ak and aj 127 k
+ap add ad 2
+aq >> ap 7
+av set ao aq set get ao aq and ap 127 n
+aw add ad 3
+ax >> aw 7
+a0 set get av ax and aw 127 q
+a1 set av ax a0
+a2 add ad 4
+a3 >> a2 7
+a4 get a1 a3
+a5 and a2 127
+a6 set a4 a5 z
+a7 set a1 a3 a6
+a8 add ad 5
+a9 >> a8 7
+bd set a7 a9 set get a7 a9 and a8 127 x
+be add ad 6
+bf >> be 7
+bj set bd bf set get bd bf and be 127 v
+bk add ad 7
+bl >> bk 7
+(set bj bl set get bj bl and bk 127 w aa add c 1 te tp)
+
+fn wkmf (u32x128x256,u32x128x64,u32x128x64,io,u32,u32,u32,u32,u32,u32,u32x128x500,u32) u32 u32x128x32 -> (u32x128x256,u32x128x64,u32x128x64,io,u32,u32,u32,u32,u32,u32,u32x128x500,u32)
+a at A 0
+b at A 1
+c at A 2
+d at A 3
+e at A 4
+f at A 5
+g at A 6
+h at A 7
+i at A 8
+j at A 9
+ex at A 10
+ey at A 11
+k wardw d
+l at k 0
+n wardw at k 1
+o at n 0
+q wardw at n 1
+r at q 0
+t wardw at q 1
+u at t 0
+x wkrdln (c at t 1) i u
+y at x 0
+aa wardw at x 1
+ab at aa 0
+ae fold wkmv ab (a at aa 1 e ex ey) C f
+af at ae 0
+ag at ae 1
+ah at ae 2
+ez at ae 3
+ew at ae 4
+ai mul B 4
+aj >> ai 7
+an set b aj set get b aj and ai 127 i
+ao add ai 1
+ap >> ao 7
+au set an ap set get an ap and ao 127 u
+av add ai 2
+aw >> av 7
+a0 set au aw set get au aw and av 127 ab
+a1 add ai 3
+a2 >> a1 7
+a3 get a0 a2
+a4 and a1 127
+a5 set a3 a4 f
+a6 set a0 a2 a5
+a7 add f l
+a8 umax g r
+a9 or h o
+ba add i u
+bb gt l 1024
+bc gt ba 8192
+bd gt ah 4096
+(af a6 y ag ah a7 a8 a9 ba select or or bb bc bd 4 j ez ew)
+
+fn wkcusb (io,u32,u32,u32) u32 u32x128 bool -> (io,u32,u32,u32) wab A get C B D
+
+fn wkcus (io,u32,u32,u32) u32x128 u32 bool -> (io,u32,u32,u32) fold wkcusb C wab3 A 2 97 48 D B D
+
+fn wktyadd (u32x256,u32x256,u32) u32 -> (u32x256,u32x256,u32)
+a at A 0
+b at A 1
+c at A 2
+d get a B
+e eq d 0
+f add c 1
+(set a B select e f d set b select e c 255 B select e f c)
+
+fn wkkey u32x128x256 u32 -> u32
+a mul B 8
+e get get A >> a 7 and a 127
+f and e 65535
+g >> e 16
+add mul f 2 g
+
+fn wktyv (u32x256,u32x256,u32) u32 u32x128x256 -> (u32x256,u32x256,u32) wktyadd A wkkey C B
+
+fn wktyk (u32x256,u32x256,u32) u32 u32 -> (u32x256,u32x256,u32) wktyadd A C
+
+fn wktyvg (u32x256,u32x256,u32) u32 u32 u32x128x256 -> (u32x256,u32x256,u32) wktyv A C D
+
+fn wktyvt (u32x256,u32x256,u32) u32 u32x128x256 u32x128x64 -> (u32x256,u32x256,u32)
+i3 add B 3
+tv wk64g D i3
+kk ne tv 4294967295
+cnt select kk 1 0
+r fold wktyvg cnt A B C
+
+fn wab7f (io,u32,u32,u32) u32 bool -> (io,u32,u32,u32) wab A 127 C
+
+fn wktyone (io,u32,u32,u32) u32 u32x256 bool -> (io,u32,u32,u32)
+a get C B
+b >> a 1
+c and a 1
+f fold wab7f b waul wab A 96 D b D D
+g eq c 1
+h select g 1 0
+fold wabst select g 0 1 fold wab2st h f 1 127 D 0 D
+
+fn wktypes (io,u32,u32,u32) u32x256 u32 bool -> (io,u32,u32,u32) fold wktyone C waul A C D B D
+
+fn wkfnone (io,u32,u32,u32) u32 u32x128x256 u32x256 bool -> (io,u32,u32,u32) waul A sub get D wkkey C B 1 E
+
+fn wkfnhk (io,u32,u32,u32) u32 u32x256 u32 bool -> (io,u32,u32,u32) waul A sub get C D 1 E
+
+fn wkfnonez (io,u32,u32,u32) u32 u32 u32x128x256 u32x256 bool -> (io,u32,u32,u32) wkfnone A C D E F
+
+fn wkfnonet (io,u32,u32,u32) u32 u32x128x256 u32x256 bool u32x128x64 -> (io,u32,u32,u32)
+tv wk64g F add B 3
+kk ne tv 4294967295
+cnt select kk 1 0
+r fold wkfnonez cnt A B C D E
+
+fn wkfuncs (io,u32,u32,u32) u32x128x256 u32 u32x256 u32 u32 u32 u32 u32x128x64 bool -> (io,u32,u32,u32)
+hk1 add F G
+hk add hk1 H
+c add hk E
+d waul A c J
+e0 fold wkfnhk F d D 3 J
+e1 fold wkfnhk G e0 D 4 J
+e2 fold wkfnhk H e1 D 6 J
+f fold wkfnonet C e2 B D J I
+
+fn wklnb (io,u32,u32,u32) u32 u32x128x64 u32 bool -> (io,u32,u32,u32)
+a add D B
+wab A get get C >> a 7 and a 127 E
+
+fn wkexone (io,u32,u32,u32) u32 u32x128x64 u32x128x64 u32x128x64 bool -> (io,u32,u32,u32)
+a mul B 4
+e get get C >> a 7 and a 127
+f add a 1
+j get get C >> f 7 and f 127
+k add a 2
+o get get C >> k 7 and k 127
+t wab fold wklnb j wab3 waul A add j 3 F 97 48 95 F D e F 0 F
+u at t 2
+vt wk64g E add u 3
+w waul t vt F
+x at w 0
+y at w 1
+z at w 3
+(x y add u o z)
+
+fn wkexoneg (io,u32,u32,u32) u32 u32 u32x128x64 u32x128x64 u32x128x64 bool -> (io,u32,u32,u32) wkexone A C D E F G
+
+fn wkexadv (io,u32,u32,u32) u32 u32 u32x128x64 -> (io,u32,u32,u32)
+a at A 0
+b at A 1
+u at A 2
+d at A 3
+f4 mul C 4
+f42 add f4 2
+cnt wk64g D f42
+u2 add u cnt
+r (a b u2 d)
+
+fn wkexonek (io,u32,u32,u32) u32 u32x128x64 u32x128x64 u32x128x64 u32x128x16 bool -> (io,u32,u32,u32)
+rt wk16g F B
+isr ne rt 0
+c1 select isr 1 0
+c0 select isr 0 1
+s1 fold wkexoneg c1 A B C D E G
+s2 fold wkexadv c0 s1 B C
+
+fn wkexports (io,u32,u32,u32) u32 u32x128x64 u32x128x64 u32x128x64 u32x128x16 u32 bool -> (io,u32,u32,u32)
+j wab2 wab3 wab3 wab3 wab3 wab3 wab3 wab3 waul A add G 2 H 6 109 101 H 109 111 114 H 121 2 0 H 11 95 95 H 104 101 97 H 112 95 98 H 97 115 101 H 3 1 H
+fold wkexonek B (at j 0 at j 1 0 at j 3) C D E F H
+
+fn wkhrd (io,u32,u32,u32) u32 bool -> (io,u32,u32,u32)
+a mul B 4
+b add a 4
+wab2 waci wab wamem wab waci wamem walx walx wamem wab2 waci wamem walx walx wab2 wab wab waci wamem walx wab wamem walx wamem walx wab A 0 C 32 0 C 40 b C 32 0 C 40 a C 73 C 32 0 C 40 b C B C 73 C 113 C 4 127 C 32 0 C 32 0 C 40 b C 4 C 108 106 C 40 0 C 32 0 C 32 0 C 40 b C 1 C 106 C 54 b C 5 C 0 C 11 11 C
+
+fn wkhwr (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32)
+b mul add B 2 4
+d add b mul C 4
+wab2 wamem wab waci wamem walx walx wamem walx wab2 waci wamem walx walx wab2 wab waci wamem walx wab A 0 D 32 0 D 40 d D C D 73 D 4 64 D 32 0 D 32 0 D 40 d D 4 D 108 106 D 32 1 D 54 b D 32 0 D 32 0 D 40 d D 1 D 106 D 54 d D 11 11 D
+
+fn wkhpu (io,u32,u32,u32) bool u32 -> (io,u32,u32,u32) wab3 wab2 walx wab waci walx walx wamem wab2 waci walx walx walx wab2 wab walx walx wab2 wab2 walx waci walx walx walx wab3 A 1 1 127 B 32 0 B 32 2 B 16 C B 0 B 33 3 B 2 64 B 3 64 B 32 3 B 32 2 B 79 B 13 1 B 32 0 B 32 1 B 32 3 B 4 B 108 106 B 40 0 B 16 C B 32 3 B 1 B 106 B 33 3 B 12 0 B 11 11 11 B
+
+fn wkhr1 (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32)
+a at A 0
+b at A 1
+d wkhrd (a 0 0 0) C false
+e at d 1
+i wkhrd waul (at d 0 b 0 0) e D C D
+(at i 0 at i 1 0 0)
+
+fn wkhw1 (io,u32,u32,u32) u32 u32 u32 bool -> (io,u32,u32,u32)
+a at A 0
+b at A 1
+d wkhwr (a 0 0 0) C D false
+e at d 1
+i wkhwr waul (at d 0 b 0 0) e E C D E
+(at i 0 at i 1 0 0)
+
+fn wkhp1 (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32)
+a at A 0
+b at A 1
+d wkhpu (a 0 0 0) false C
+e at d 1
+wkhpu waul (at d 0 b 0 0) e D D C
+
+fn wkhelp (io,u32,u32,u32) u32 u32 u32 bool u32 u32 u32 -> (io,u32,u32,u32)
+r1 fold wkhr1 F A C E
+r2 fold wkhw1 G r1 C D E
+r3 fold wkhp1 H r2 F E
+
+fn wkhsum io u32 u32 u32 u32 u32 -> (io,u32)
+b wkhelp (A 0 0 0) 0 B C false D E F
+(at b 0 at b 1)
+
+fn wkbsz u32x128x256 u32 bool -> u32
+a mul B 8
+b add a 1
+f get get A >> b 7 and b 127
+g add a 2
+k get get A >> g 7 and g 127
+l add a 3
+get get A >> l 7 and l 127
+q add a 4
+u get get A >> q 7 and q 127
+v add a 6
+z get get A >> v 7 and v 127
+aa add a 7
+ae get get A >> aa 7 and aa 127
+af eq f 0
+ag eq k 0
+ah wauln f
+ai wauln k
+aj add ah 1
+ak add ai 1
+ao add add select af 0 aj select ag 0 ak 1
+ap select C ae z
+add add add ao u ap 1
+
+fn wkcsz u32 u32 u32x128x256 bool -> u32
+a wkbsz C B D
+add A add wauln a a
+
+fn wkcszg u32 u32 u32 u32x128x256 bool -> u32 wkcsz A C D E
+
+fn wkcszt u32 u32 u32x128x256 bool u32x128x64 -> u32
+tv wk64g E add B 3
+kk ne tv 4294967295
+cnt select kk 1 0
+r fold wkcszg cnt A B C D
+
+fn wkcw (io,u32,u32,u32) u32 u32x128 u32x128x8 u32x128x64 bool -> (io,u32,u32,u32)
+a get C B
+b lt a 256
+c ge a 2147483648
+d ge a 259
+e select c false true
+f and d e
+g select b false true
+h select f false true
+j and and g e h
+l fold wabst select b 1 0 A a F
+m3 add sub a 259 3
+tv wk64g E m3
+o sub a 256
+th wk64g E o
+p select f tv th
+q or f j
+r select q 1 0
+s fold walxst r l 16 p F
+t and a 2147483647
+u >> t 7
+v get D u
+w and t 127
+x get v w
+y select c 1 0
+z fold wacist y s x F
+
+fn wkcpg (io,u32,u32,u32) u32 u32 u32x128x8 u32x128x64 bool -> (io,u32,u32,u32)
+a at A 0
+b at A 1
+c at A 2
+d at A 3
+f sub C mul B 128
+h select gt f 128 128 f
+k fold rbyte h (zpage a)
+l at k 0
+fold wkcw h (at k 1 b c d) l D E F
+
+fn wkfow u32x128 u32 u32x128 u32x128 u32 -> u32x128
+a add E B
+b ge a 128
+c and a 127
+d get C c
+set A B select b get D c d
+
+fn wkfop u32x128x8 u32 u32x128x32 u32 -> u32x128x8
+b add D mul B 128
+c >> b 7
+d and b 127
+e add c 1
+f get C c
+g get C e
+set A B fold wkfow 128 zpage f g d
+
+fn wkfocc u32x128x32 u32 -> u32x128x8 fold wkfop 8 z8 A B
+
+fn wkcvar (io,u32,u32,u32) u32 u32x128x256 u32x128x8 u32 u32x128x64 -> (io,u32,u32,u32)
+a add E B
+a3 add a 3
+tv wk64g F a3
+kk ne tv 4294967295
+b wkbsz C a false
+d mul a 8
+e add d 1
+f >> e 7
+g get C f
+h and e 127
+i get g h
+j add d 2
+k >> j 7
+l get C k
+m and j 127
+n get l m
+o add d 3
+p >> o 7
+q get C p
+r and o 127
+s get q r
+t add d 4
+u >> t 7
+v get C u
+w and t 127
+x get v w
+y add d 5
+z >> y 7
+aa get C z
+ab and y 127
+ac get aa ab
+ad waul A b kk
+ae eq i 0
+af eq n 0
+ag select ae 0 1
+ah select af 0 1
+ai add ag ah
+aj wab ad ai kk
+ak fold waulst ag aj i kk
+al fold wabst ag ak 127 kk
+am fold waulst ah al n kk
+an fold wabst ah am 123 kk
+ao add x ac
+ap add ao 127
+aq >> ap 7
+ar fold wkcpg aq an ao D F kk
+as wab ar 11 kk
+
+fn wkcfn (io,u32,u32,u32) u32 u32x128x256 u32x128x64 u32x128x32 u32x128x64 -> (io,u32,u32,u32)
+a mul B 4
+b add a 2
+f get get D >> b 7 and b 127
+g add a 3
+l wkfocc E get get D >> g 7 and g 127
+m at A 2
+n fold wkcvar f A C l m F
+o at n 0
+p at n 1
+q at n 3
+(o p add m f q)
+
+fn wkdw (io,u32,u32,u32) u32 u32x128x512 u32x128x512 u32 bool u32 -> (io,u32,u32,u32)
+v add G B
+sin lt v E
+sa add 10240 v
+sb sub v E
+si select sin sa sb
+sp >> si 7
+sq and si 127
+ga get C sp
+gb get D sp
+gs select sin ga gb
+a get gs sq
+b and a 255
+d and >> a 8 255
+f and >> a 16 255
+g >> a 24
+wab2 wab2 A b d F f g F
+
+fn wkdpg (io,u32,u32,u32) u32 u32x128x512 u32 bool u32x128x512 u32 -> (io,u32,u32,u32)
+c mul B 128
+d sub D c
+e gt d 128
+f select e 128 d
+g fold wkdw f A C F G E c
+
+fn wkdata (io,u32,u32,u32) u32 u32x128x512 u32 bool u32x128x512 u32 -> (io,u32,u32,u32)
+a mul D 4
+j waul wab wasl wab3 waul wab A 11 true add add wauln a a 6 true 1 0 65 true 1024 true 11 true a true
+fold wkdpg >> add D 127 7 j C D true F G
+
+fn wkhsumst (io,u32) u32 u32 u32 u32 u32 u32 -> (io,u32) wkhsum at A 0 C D E F G
+
+fn wkhelpst (io,u32,u32,u32) u32 u32 u32 u32 u32 u32 -> (io,u32,u32,u32) wkhelp A 0 C D true E F G
+
+fn wkdatast (io,u32,u32,u32) u32 u32x128x512 u32 u32x128x512 u32 -> (io,u32,u32,u32) wkdata A 0 C D true E F
+
+fn wkmod io u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x512 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x64 u32x128x16 u32 u32 u32x128x512 u32 -> io
+ph0 wk64g P 0
+ph1 wk64g P 1
+ph2 wk64g P 2
+pg0 ne ph0 4294967295
+pg1 ne ph1 4294967295
+pg2 ne ph2 4294967295
+pk0 select pg0 1 0
+pk1 select pg1 1 0
+pk2 select pg2 1 0
+phk1 add pk0 pk1
+phk add phk1 pk2
+d add phk S
+e (A 0 0 0)
+f wab3 e 0 97 115 true
+g wab3 f 109 1 0 true
+h wab2 g 0 0 true
+i add 3 H
+j wab h 0 true
+k waul j i true
+l wkcus k G H true
+m zk256
+n (m m 0)
+o0 fold wktyk pk0 n 3
+o1 fold wktyk pk1 o0 4
+o fold wktyk pk2 o1 6
+p fold wktyvt L o B P
+q at p 0
+r at p 1
+s at p 2
+t at l 0
+u (t 0 0 0)
+v wktypes u r s false
+w at v 1
+x at v 0
+y (x 0 0 0)
+z wab y 1 true
+aa waul z w true
+ab wktypes aa r s true
+ac at ab 0
+ad (ac 0 0 0)
+ae wkfuncs ad B L q S pk0 pk1 pk2 P false
+af at ae 1
+ag at ae 0
+ah (ag 0 0 0)
+ai wab ah 3 true
+aj waul ai af true
+ak wkfuncs aj B L q S pk0 pk1 pk2 P true
+al mul O 4
+am add 1024 al
+an add am 15
+ao and an 4294967280
+ap add M 15
+aq and ap 4294967280
+ar lt aq 16
+as select ar 16 aq
+au add ao as
+av add au 65535
+aw >> av 16
+ax eq aw 0
+ay select ax 1 aw
+az wauln ay
+a0 add az 2
+a1 wab ak 5 true
+a2 waul a1 a0 true
+a3 wab2 a2 1 0 true
+a4 waul a3 ay true
+a5 wasln au
+a6 add a5 4
+a7 mul a6 2
+a8 add a7 1
+a9 wab a4 6 true
+ba waul a9 a8 true
+bb wab ba 2 true
+bc wab3 bb 127 1 65 true
+bd wasl bc au true
+be wab bd 11 true
+bf wab3 be 127 0 65 true
+bg wasl bf au true
+bh wab bg 11 true
+bi at bh 0
+bj (bi 0 0 0)
+bk wkexports bj K C D P Q R false
+bl at bk 1
+bm at bk 0
+bn (bm 0 0 0)
+bo wab bn 7 true
+bp waul bo bl true
+bq wkexports bp K C D P Q R true
+br at bq 0
+bs (br 0)
+bt fold wkhsumst 1 bs I J pk0 pk1 pk2
+bu at bt 0
+bv at bt 1
+bw fold wkcszt L 0 B false P
+bx wauln d
+by add bx bv
+bz add by bw
+b0 (bu 0 0 0)
+b1 wab b0 10 true
+b2 waul b1 bz true
+b3 waul b2 d true
+b4 fold wkhelpst 1 b3 I J pk0 pk1 pk2
+b5 at b4 0
+b6 at b4 1
+b7 (b5 b6 0 0)
+b8 fold wkcfn K b7 B C E P
+b9 ne O 0
+ca select b9 1 0
+cb fold wkdatast ca b8 F O T U
+cc at cb 0
+
+fn wkmodst io u32 u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x512 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x64 u32x128x16 u32 u32 u32x128x512 u32 -> io wkmod A C D E F G H I J K L M N O P Q R S T U V
+
+fn wkxrd (u32x128x64,u32x128x16,io,u32) u32 -> (u32x128x64,u32x128x16,io,u32)
+xx at A 0
+yy at A 1
+tok at A 2
+off at A 3
+r wardw tok
+len at r 0
+tok2 at r 1
+xi (xx tok2)
+xr wkrdln xi off len
+xx2 at xr 0
+tok3 at xr 1
+e2 mul B 2
+yy1 wk16s yy e2 off
+e3 add e2 1
+yy2 wk16s yy1 e3 len
+off2 add off len
+o (xx2 yy2 tok3 off2)
+
+fn wkfv (u32x128x16,u32) u32 u32x128x64 -> (u32x128x16,u32)
+fvt at A 0
+run at A 1
+fvt2 wk16s fvt B run
+fi4 mul B 4
+fi5 add fi4 2
+cnt wk64g C fi5
+run2 add run cnt
+r (fvt2 run2)
+
+fn wkeqb bool u32 u32x128x64 u32 u32x128x64 u32 -> bool
+ni add D B
+nb wk64g C ni
+xi add F B
+xb wk64g E xi
+e eq nb xb
+r and A e
+
+fn wkrootf (u32x128x64,u32x128x16,u32) u32 u32x128x64 u32x128x64 u32x128x64 u32x128x16 u32x128x16 u32 -> (u32x128x64,u32x128x16,u32)
+kt at A 0
+rt at A 1
+fd at A 2
+f4 mul B 4
+ns wk64g C f4
+f41 add f4 1
+nl wk64g C f41
+e2 mul H 2
+xs wk16g F e2
+e3 add e2 1
+xl wk16g F e3
+leq eq nl xl
+cnt select leq nl 0
+same fold wkeqb cnt true D ns E xs
+hit and leq same
+fv wk16g G B
+kidx add fv 3
+widx select hit kidx 8190
+kt2 wk64s kt widx 1
+ro wk16g rt B
+rn select hit 1 ro
+rt2 wk16s rt B rn
+hitn select hit 1 0
+fd2 add fd hitn
+o (kt2 rt2 fd2)
+
+fn wkroote (u32x128x64,u32x128x16,bool) u32 u32 u32x128x64 u32x128x64 u32x128x64 u32x128x16 u32x128x16 -> (u32x128x64,u32x128x16,bool)
+kt at A 0
+rt at A 1
+okb at A 2
+s (kt rt 0)
+r fold wkrootf C s D E F G H B
+kt2 at r 0
+rt2 at r 1
+fd at r 2
+found ne fd 0
+ok2 and okb found
+o (kt2 rt2 ok2)
+
+fn wkallk u32x128x64 u32 -> u32x128x64
+c add B 3
+r wk64s A c 1
+
+fn wkallr u32x128x16 u32 -> u32x128x16
+r wk16s A B 1
+
+fn wkrcgo (u32x128x64,u32,u32,u32,bool) u32 u32x128x500 -> bool select at A 4 false true
+
+fn wkrcst (u32x128x64,u32,u32,u32,bool) u32 u32x128x500 -> (u32x128x64,u32,u32,u32,bool)
+kt at A 0
+pos at A 1
+ch at A 2
+kept at A 3
+w wk500g C pos
+isend eq w 0
+iscall ge w 259
+ishelp1 ge w 256
+ishelp2 lt w 259
+ishelp and ishelp1 ishelp2
+isedge or iscall ishelp
+wm sub w 259
+t1 add wm 3
+t2 sub w 256
+tg select iscall t1 t2
+cur wk64g kt tg
+kb eq kept 1
+apply and kb isedge
+widx select apply tg 8190
+kt2 wk64s kt widx 1
+curz eq cur 0
+chg and apply curz
+chgn select chg 1 0
+ch2 or ch chgn
+pos2 add pos 1
+o (kt2 pos2 ch2 kept isend)
+
+fn wkrcv (u32x128x64,u32,u32) u32 u32x128x500 -> (u32x128x64,u32,u32)
+kt at A 0
+pos at A 1
+ch at A 2
+i3 add B 3
+kept wk64g kt i3
+s (kt pos ch kept false)
+r loop wkrcgo wkrcst 65536 s C
+kt2 at r 0
+pos2 at r 1
+ch2 at r 2
+o (kt2 pos2 ch2)
+
+fn wkrcgo2 (u32x128x64,u32) u32 u32x128x500 u32 -> bool ne at A 1 0
+
+fn wkrcpass (u32x128x64,u32) u32 u32x128x500 u32 -> (u32x128x64,u32)
+kt at A 0
+s (kt 0 0)
+r fold wkrcv D s C
+kt2 at r 0
+ch at r 2
+o (kt2 ch)
+
+fn wkputw u32x128x64 -> u32x128x64
+p wk64g A 2
+w wk64g A 1
+both or p w
+r wk64s A 1 both
+
+fn wkrank (u32x128x64,u32) u32 u32x128x64 u32 -> (u32x128x64,u32)
+tt at A 0
+cnt at A 1
+i3 add B 3
+kv wk64g C i3
+kk eq kv 1
+nv add D cnt
+val select kk nv 4294967295
+tt2 wk64s tt i3 val
+cn select kk 1 0
+cnt2 add cnt cn
+o (tt2 cnt2)
+
+fn wksumr u32 u32 u32x128x16 -> u32
+v wk16g C B
+r add A v
+
+fn wkmgo (u32,u32,u32,bool) u32 u32x128x500 u32x128x64 u32 -> bool select at A 3 false true
+
+fn wkmst (u32,u32,u32,bool) u32 u32x128x500 u32x128x64 u32 -> (u32,u32,u32,bool)
+pos at A 0
+os at A 1
+ns at A 2
+w wk500g C pos
+isend eq w 0
+iscall ge w 259
+s sub w 259
+oi add s E
+ob wauln oi
+ob1 add ob 1
+s3 add s 3
+ni wk64g D s3
+nb wauln ni
+nb1 add nb 1
+od select iscall ob1 0
+nd select iscall nb1 0
+os2 add os od
+ns2 add ns nd
+pos2 add pos 1
+o (pos2 os2 ns2 isend)
+
+fn wkmdv (u32x128x256,u32) u32 u32x128x500 u32x128x64 u32 u32 -> (u32x128x256,u32)
+vt at A 0
+pos at A 1
+s (pos 0 0 false)
+r loop wkmgo wkmst F s C D E
+pos2 at r 0
+os at r 1
+ns at r 2
+i3 add B 3
+tv wk64g D i3
+kept ne tv 4294967295
+v8 mul B 8
+f6i add v8 6
+f7i add v8 7
+f6 wk256g vt f6i
+f7 wk256g vt f7i
+hio ne E 0
+old select hio f7 f6
+nw add sub old os ns
+n6 select kept nw f6
+n7 select kept nw f7
+vt2 wk256s vt f6i n6
+vt3 wk256s vt2 f7i n7
+o (vt3 pos2)
+
+fn wkplan u32x128x256 u32x128x64 u32x128x64 u32x128x500 u32 u32x128x64 u32x128x16 u32 u32 u32 u32 u32 -> (u32x128x256,u32x128x64,u32x128x16,u32,u32,u32)
+hasx ne H 0
+dfb select hasx false true
+dflt select hasx 0 1
+nxm sub H 1
+nx select hasx nxm 0
+ion ne K 0
+iou select ion 1 0
+hv select dfb iou 0
+kz z64
+rz z16
+fz z16
+nvd mul J dflt
+nfd mul I dflt
+ka fold wkallk nvd kz
+kb0 wk64s ka 0 hv
+kb1 wk64s kb0 1 hv
+kb wk64s kb1 2 hv
+ra fold wkallr nfd rz
+fvs (fz 0)
+fvr fold wkfv I fvs B
+fv at fvr 0
+rs (kb ra true)
+rr fold wkroote nx rs I B C F G fv
+kroot at rr 0
+rroot at rr 1
+okf at rr 2
+capv add J 2
+capr select hasx capv 0
+ri (kroot 1)
+rl loop wkrcgo2 wkrcpass capr ri D J
+kr at rl 0
+kf wkputw kr
+k0 wk64g kf 0
+k1 wk64g kf 1
+k2 wk64g kf 2
+hk1 add k0 k1
+hk add hk1 k2
+k0b eq k0 1
+k1b eq k1 1
+k2b eq k2 1
+t0 select k0b 0 4294967295
+t1 select k1b k0 4294967295
+t2 select k2b hk1 4294967295
+tz z64
+tz0 wk64s tz 0 t0
+tz1 wk64s tz0 1 t1
+tz2 wk64s tz1 2 t2
+trs (tz2 0)
+trr fold wkrank J trs kf hk
+tt at trr 0
+nk at trr 1
+nroots fold wksumr I 0 rroot
+hold select ion 3 0
+capm select hasx 65536 0
+vs (A 0)
+vr fold wkmdv J vs D tt hold capm
+vout at vr 0
+over gt E 63999
+eover and over hasx
+nfound select okf false true
+nfx and hasx nfound
+c2 select eover 4 L
+c2z eq c2 0
+nf2 and nfx c2z
+c3 select nf2 6 c2
+o (vout tt rroot nroots nk c3)
+
+fn walink io -> (io,u32)
+a wardw A
+b at a 0
+c at a 1
+f fold rbyte b (zpage c)
+g at f 0
+i wardw at f 1
+j at i 0
+l wardw at i 1
+m at l 0
+o wardw at l 1
+p at o 0
+q1 wardw at o 1
+nx1 at q1 0
+q2 at q1 1
+hasx ne nx1 0
+nxm sub nx1 1
+nx select hasx nxm 0
+zx z64
+zy z16
+xst (zx zy q2 0)
+xf fold wkxrd nx xst
+xx at xf 0
+xy at xf 1
+q3 at xf 2
+xoff at xf 3
+r z512
+pb9 z512
+s (r q3 0 0 0 false 0 pb9 0 0)
+u loop wkpgo wkpst add 4096 1 s
+v at u 0
+w at u 1
+xc9 at u 2
+y at u 6
+pbk9 at u 7
+pc09 at u 8
+pcb9 at u 9
+sw9 gt pcb9 0
+xt9 add pc09 pcb9
+x select sw9 xt9 xc9
+bd9 select sw9 pc09 1073741824
+aa fold wkocc 32 z32 v
+ab z256
+ac z64
+ad z64
+ez z500
+af fold wkmf p (ab ac ad w 0 0 0 0 0 y ez 0) aa
+ag at af 0
+ah at af 1
+ai at af 2
+aj at af 3
+ak at af 4
+al at af 6
+am at af 7
+an at af 9
+ee0 at af 10
+ep0 at af 11
+xb1 gt nx 1024
+xb2 gt xoff 8192
+xbad or xb1 xb2
+an2 select xbad 4 an
+pl wkplan ag ah ai ee0 ep0 xx xy nx1 p ak am an2
+vv at pl 0
+tt at pl 1
+rr at pl 2
+nr at pl 3
+nk at pl 4
+cd at pl 5
+(fold wkmodst select eq cd 0 1 0 aj vv ah ai aa v g b j m p ak al am x tt rr nr nk pbk9 bd9 cd)
+

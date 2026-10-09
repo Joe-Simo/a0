@@ -1,0 +1,477 @@
+use "emit_arm64.a0"
+use "optimize.a0"
+use "shape.a0"
+
+fn rdword io -> (u32,io)
+r read A
+
+fn rdfst (u32x128x8,io) u32 -> (u32x128x8,io)
+fs at A 0
+tk at A 1
+r rdword tk
+v at r 0
+t at r 1
+pi >> B 7
+wi and B 127
+pg get fs pi
+pg2 set pg wi v
+fs2 set fs pi pg2
+o (fs2 t)
+
+fn wfst io u32 u32x128x8 u32 -> io
+i add D B
+pi >> i 7
+wi and i 127
+pg get C pi
+v get pg wi
+w write A v
+
+fn wtrail io u32 u32x128x8 u32 u32 -> io
+k sub E D
+w0 fold wfst k A C D
+w1 write w0 k
+
+fn rdchunk io -> (u32x512x64,u32,u32x128x8,u32,bool,bool,io)
+rs readsrc A
+src at rs 0
+n at rs 1
+t1 at rs 2
+rh rdword t1
+head at rh 0
+t2 at rh 1
+rt rdword t2
+strict at rt 0
+t3 at rt 1
+rf rdword t3
+from at rf 0
+t4 at rf 1
+$z8 z8
+fs0 ($z8 t4)
+fsr fold rdfst from fs0
+fst at fsr 0
+t5 at fsr 1
+sb ne strict 0
+hd ne head 0
+r (src n fst from sb hd t5)
+
+fn emitchunkio io -> u32
+c rdchunk A
+src at c 0
+n at c 1
+fst at c 2
+from at c 3
+sb at c 4
+hd at c 5
+t5 at c 6
+u cunit t5 src n fst from sb hd
+t6 at u 0
+code at u 1
+fstat at u 2
+nfns at u 3
+ok eq code 0
+go select ok 1 0
+t7 fold wtrail go t6 fstat from nfns
+code
+
+fn emitachunkio io -> u32
+c rdchunk A
+src at c 0
+n at c 1
+fst at c 2
+from at c 3
+sb at c 4
+hd at c 5
+t5 at c 6
+u qunit t5 src n fst from sb hd
+t6 at u 0
+code at u 1
+fstat at u 2
+nfns at u 3
+ok eq code 0
+go select ok 1 0
+t7 fold wtrail go t6 fstat from nfns
+code
+
+fn wshw u32x128x310 u32 -> u32 get get A >> B 7 and B 127
+
+fn wshp1 u32x128x310 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x310
+r shpass A C D E F G H I
+
+fn wshp u32x128x310 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 -> u32x128x310
+b add mul B 7 6
+fold wshp1 select ne get get E >> b 7 and b 127 0 1 0 A C D E F G H B
+
+fn wsmq (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+a at A 0
+b at A 1
+c at A 2
+d at A 3
+e at A 4
+f at A 5
+g >> d 7
+h and d 127
+k set e g set get e g h C
+(a b c add d 1 k f)
+
+fn wserr (io,u32,u32x128x16,u32,u32x128x8,u32) u32 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+m (at A 0 at A 1 at A 2 at A 3 at A 4 1)
+
+fn wmq (u32,u32x128x8) u32 u32x128x310 -> (u32,u32x128x8)
+a at A 0
+b at A 1
+c add B 16129
+g get get C >> c 7 and c 127
+h >> a 7
+i and a 127
+l set b h set get b h i g
+(add a 1 l)
+
+fn wsent u32x128x16 u32 u32 u32 -> u32x128x16 wxdts A 0 mul add C B 2 D
+
+fn wshd io u32 u32x128x310 -> io write A wshw C B
+
+fn wbad1 u32 u32 u32x128x512 u32 -> u32
+b add mul B 2 20480
+f get get C >> b 7 and b 127
+g add b 1
+k get get C >> g 7 and g 127
+q or A select and eq f 6 ge k D 1 0
+
+fn wxbad u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> bool
+j z512
+k fold wxemit 1 j A 0 0 B C D E F G H I J K L
+n wxg k 0
+b1 fold wbad1 n 0 k 16777216
+h waown D I H A
+i select h 1 0
+l wxg k 5
+au z512
+av fold wxemit i au A 1 l B C D E F G H I J K L
+n2 wxg av 0
+n3 select h n2 0
+b2 fold wbad1 n3 0 av 16777216
+b3 or b1 b2
+r ne b3 0
+
+fn wxfus (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+fu shfuse J K F G H I M C true
+st at fu 0
+ms at fu 1
+nf1 at fu 2
+ty2 at fu 3
+tl2 at fu 4
+fns2 at fu 5
+nodes2 at fu 6
+nt2 at fu 7
+nty2 at fu 8
+ar2 shfargs J K F G H I M C true
+nf0 wshw M 25474
+sh2 shfsh M ty2 tl2 fns2 nodes2 ar2 nt2 C nf0 nf1
+a2 wainfo ty2 tl2 nty2
+ct at A 2
+nsyn sub nf1 nf0
+ct2 fold wsent nsyn ct nf0 16777216
+bad wxbad C D E fns2 nodes2 ar2 nt2 ty2 tl2 a2 sh2 ct2
+st1 eq st 1
+nb select bad false true
+ok and st1 nb
+okc select ok 1 0
+nok select ok 0 1
+st7 eq st 7
+c7 select st7 1 0
+s0 fold wsmq c7 A ms
+st4 eq st 4
+c4 select st4 1 0
+s1 fold wserr c4 s0
+s2 fold wxfun okc s1 C D E fns2 nodes2 ar2 nt2 ty2 tl2 a2 sh2 N O
+s3 fold wxfun nok s2 C D E F G H I J K L M N O
+
+fn wxfunf (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+g add C B
+fc shfcheck J K F G H I M g true
+fd at fc 0
+ms at fc 1
+nm ne ms 4294967295
+nmc select nm 1 0
+s0 fold wsmq nmc A ms
+has ne fd 0
+hc select has 1 0
+nh select has 0 1
+s1 fold wxfus hc s0 g D E F G H I J K L M N O
+s2 fold wxfun nh s1 g D E F G H I J K L M N O
+
+fn wxorch io u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> (io,u32)
+c fold wshp O shcounts shinit B C L Q R O L M B C D E F G
+nown sub O N
+miss wshw c 16128
+dmp eq S 5
+dmpn select dmp 25600 0
+io1 fold wshd dmpn A c
+z z8
+m0 (0 z)
+m1 fold wmq miss m0 c
+mc at m1 0
+ml at m1 1
+none eq miss 0
+nodmp eq dmp false
+runq and none nodmp
+cnt select runq nown 0
+ai wainfo B C L
+st0 (io1 P J mc ml 0)
+st fold wxfunf cnt st0 N S T D E F G B C ai c H I
+r wachunkend st nown K N P
+
+fn wam2 (io,u32) u32 -> (io,u32)
+t at A 0
+rb wardw t
+base at rb 0
+t1 at rb 1
+rf wardw t1
+nbef at rf 0
+t2 at rf 1
+nd mul nbef 2
+rd warn16 t2 nd
+dt at rd 0
+t3 at rd 1
+rn wardw t3
+nty at rn 0
+t4 at rn 1
+n3 mul nty 3
+rt warnty t4 n3
+ty at rt 0
+t5 at rt 1
+rl wardw t5
+ntl at rl 0
+t6 at rl 1
+rtl warn65 t6 ntl
+tl at rtl 0
+t7 at rtl 1
+rm wardw t7
+nfn at rm 0
+t8 at rm 1
+n7 mul nfn 7
+rfn warn45 t8 n7
+fns at rfn 0
+t9 at rfn 1
+rk wardw t9
+nnode at rk 0
+t10 at rk 1
+n6 mul nnode 6
+rnd warn132 t10 n6
+nodes at rnd 0
+t11 at rnd 1
+rnt warn24 t11 nnode
+nt at rnt 0
+t12 at rnt 1
+ro wardw t12
+narg at ro 0
+t13 at ro 1
+n2 mul narg 2
+rar warn512 t13 n2
+args at rar 0
+t14 at rar 1
+rnm wardw t14
+nname at rnm 0
+t15 at rnm 1
+rnb warn400 t15 nname
+names at rnb 0
+t16 at rnb 1
+nfm mul nfn 2
+rfm warn16 t16 nfm
+fnm at rfm 0
+t17 at rfm 1
+fst z8
+rsd wardw t17
+sopt at rsd 0
+t18 at rsd 1
+ru wardw t18
+uopt at ru 0
+t19 at ru 1
+sj eq sopt 2
+sk eq sopt 3
+sl eq sopt 4
+sd eq sopt 5
+sm select sk 3 1
+sn select sl 4 sm
+so select sd 5 sn
+simd select sj 0 so
+uz eq uopt 0
+unroll select uz 1 uopt
+r wxorch t19 ty tl fns nodes args nt names fnm dt fst nty ntl nbef nfn base nnode narg simd unroll
+
+fn wcnf u32 u32 u32x128x45 -> u32
+a mul B 7
+b add a 1
+f get get C >> b 7 and b 127
+g add a 2
+l add f get get C >> g 7 and g 127
+select gt l A l A
+
+fn wcnt u32 u32 u32x384x65 -> u32
+a wat C B 0
+b wat C B 1
+c wat C B 2
+f select eq a 5 add b c 0
+select gt f A f A
+
+fn wcnn u32x128x45 u32 -> u32
+z eq B 0
+r sub B 1
+r2 select z 0 r
+a mul r2 7
+b add a 4
+f get get A >> b 7 and b 127
+g add a 5
+select z 0 add f get get A >> g 7 and g 127
+
+fn wsw1 u32x128x45 u32 u32 u32 -> u32x128x45
+b add mul C 7 B
+c >> b 7
+d and b 127
+f select eq B 5 D 0
+set A c set get A c d f
+
+fn wsstub u32x128x45 u32 u32x128x16 -> u32x128x45 fold wsw1 7 A B get get C >> B 7 and B 127
+
+fn wxcvn u32x128x132 u32 u32x128x128 -> u32x128x132 set A B get C B
+
+fn wsorch (io,u32) u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 -> (io,u32)
+$io at A 0
+z z132
+n132 fold wxcvn 128 z F
+nn wcnn E O
+ntl0 fold wcnf O 0 E
+ntl1 fold wcnt M ntl0 C
+r wxorch $io C D E n132 G H I J K L M ntl1 N O P nn Q 1 1
+
+fn wsunit io u32x512x64 u32 u32x128x8 u32 u32x128x16 u32 u32 u32x128x16 -> (io,u32)
+a lexsrc B C
+b at a 0
+d div at a 1 3
+e pass1 B b d
+f at e 1
+g at e 2
+h at e 3
+i at e 5
+j at e 7
+k at e 10
+l at e 11
+m at e 12
+n at e 15
+o ne k 0
+q and eq l 0 o
+r select q 1 l
+s select q d m
+t pass2 B f j
+u at t 0
+v pass3 B b g i n r s d
+w at v 0
+x at v 2
+y at v 4
+z at v 5
+aa at v 6
+ab at v 11
+ac at v 12
+ad at v 18
+af pass4 y at v 19 ad
+ag at af 0
+ah at af 1
+ai at af 2
+aj at af 3
+ak ne ai 0
+al select ak ai ab
+am select ak aj ac
+an pass5 ag ah B b g h d al am 0
+ao at an 0
+ap at an 1
+aq at an 2
+ar at an 5
+as bodyargs aq ar ag ah B b g h d al am
+au at e 7
+av at e 8
+aw at t 1
+ax at v 19
+ay at v 5
+az at v 6
+a0 at an 4
+a1 fecap b d au aw av ax ay az a0 ar
+a2 at an 8
+a3 select a1 4 a2
+a4 cumin H ad
+a5 checkir w x ao ap as D z aa ad a4
+a6 at a5 0
+a7 at a5 2
+a8 at a5 4
+a9 at a5 7
+ba at a5 8
+bb at a5 10
+bh at fold cstpg >> add j 127 7 (z64 0) f 0
+bj fold cfnm ad z16 ao f bh
+rf0 select eq a3 0 bb a3
+rfp at e 16
+rfu refuse rfp ap a0
+rfz eq rf0 0
+rfr and rfz rfu
+bl select rfr 2 rf0
+bn select eq bl 0 1 0
+afix fold wsstub H ao I
+st0 (A 0)
+bo fold wsorch bn st0 a6 a7 afix ap as a8 u bj F a9 ba E ad G ar
+bio at bo 0
+bec at bo 1
+bok eq bl 0
+bcd select bok bec bl
+(bio bcd)
+
+fn wam1 (io,u32) u32 -> (io,u32)
+t at A 0
+c rdchunk t
+src at c 0
+n at c 1
+fst at c 2
+from at c 3
+t5 at c 6
+rb rdword t5
+base at rb 0
+t6 at rb 1
+nd mul from 2
+rd warn16 t6 nd
+dt at rd 0
+t7 at rd 1
+rc rdword t7
+cfrom at rc 0
+t8 at rc 1
+rn warn16 t8 cfrom
+cnt at rn 0
+t9 at rn 1
+u wsunit t9 src n fst from dt base cfrom cnt
+
+fn wam3 (io,u32) u32 -> (io,u32)
+t at A 0
+r walink t
+
+fn wam7 (io,u32) u32 -> (io,u32)
+t at A 0
+r ozone t
+
+fn wam8 (io,u32) u32 -> (io,u32)
+t at A 0
+r ozimg t
+
+fn emitwasmio io -> u32
+r rdword A
+m at r 0
+t at r 1
+s0 (t 6)
+m1 eq m 1
+m2 eq m 2
+m3 eq m 3
+m7 eq m 7
+m8 eq m 8
+c1 select m1 1 0
+c2 select m2 1 0
+c3 select m3 1 0
+c7 select m7 1 0
+c8 select m8 1 0
+code at fold wam8 c8 fold wam7 c7 fold wam3 c3 fold wam2 c2 fold wam1 c1 s0 1
+

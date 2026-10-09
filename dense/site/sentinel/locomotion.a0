@@ -1,0 +1,508 @@
+use "anchor.a0"
+
+fn busy_step u32 u32 u32x1024 -> u32
+stt tg C B 0
+n select or eq stt 1 eq stt 2 1 0
+r add A n
+
+fn rel_enter u32x1024 u32 -> u32x1024
+nj tg A B 1
+tip sub nj 1
+pre sub nj 2
+rid tg A B 2
+clk bg A 13
+sc bg A 38
+s1 ts A B 18 rid
+s2 ts s1 B 0 3
+s3 ts s2 B 5 0
+s4 ts s3 B 19 0
+k31 add B 31
+h fx_hash clk k31
+u >> h 22
+cdh >> u 2
+cdms add 60 cdh
+s5 ts s4 B 7 cdms
+hx tg s5 B 20
+hy tg s5 B 21
+tx jg s5 B tip 0
+ty jg s5 B tip 1
+dx sub hx tx
+dy sub hy ty
+un fx_unit dx dy
+ux at un 0
+uy at un 1
+kick fx_mul 17039360 sc
+pvx jg s5 B pre 2
+pvy jg s5 B pre 3
+bvx fx_mul pvx 52429
+bvy fx_mul pvy 52429
+kx fx_mul ux kick
+ky fx_mul uy kick
+vx add bvx kx
+vy add bvy ky
+s6 js s5 B tip 2 vx
+s7 js s6 B tip 3 vy
+
+fn tent_follow u32x1024 u32 u32x32 u32x672 -> u32x1024
+stt tg A B 0
+a1 eq stt 1
+a2 eq stt 2
+active or a1 a2
+nrows get C 21
+n select active nrows 0
+rid tg A B 2
+sx get C 5
+sy get C 6
+vw get C 3
+vh get C 4
+row env_find D n rid
+nf eq row 4294967295
+rowc select nf 0 row
+x0 rg D rowc 1
+y0 rg D rowc 2
+offx tg A B 3
+offy tg A B 4
+ax0 pg2vp x0 sx
+ay0 pg2vp y0 sy
+ax add ax0 offx
+ay add ay0 offy
+vis r_vis D rowc
+wq << vw 16
+hq << vh 16
+wq2 add wq 2621440
+hq2 add hq 2621440
+m1 fx_ge ax 4292345856
+m2 fx_le ax wq2
+m3 fx_ge ay 4292345856
+m4 fx_le ay hq2
+inx and m1 m2
+iny and m3 m4
+inv and inx iny
+f0 and vis inv
+fnd select nf false f0
+ok and active fnd
+oax tg A B 23
+oay tg A B 24
+nax select ok ax oax
+nay select ok ay oay
+s1 ts A B 23 nax
+s2 ts s1 B 24 nay
+nfnd not_b fnd
+lost and active nfnd
+rel rel_enter s2 B
+r select lost rel s2
+
+fn lg_tick u32x1024 u32 u32 -> u32x1024
+tm0 tg A B 5
+tm add tm0 C
+cd0 tg A B 7
+cdok gt cd0 C
+cd1 sub cd0 C
+cd select cdok cd1 0
+s1 ts A B 5 tm
+s2 ts s1 B 7 cd
+stt tg A B 0
+c1 eq stt 1
+c2 eq stt 2
+c3 eq stt 3
+tc0 select c3 52429 45875
+tc1 select c1 65536 tc0
+tgt select c2 0 tc1
+cl tg A B 26
+dcl sub tgt cl
+f0 mul C 917
+f min_u32 f0 65536
+dc fx_mul dcl f
+ncl add cl dc
+s3 ts s2 B 26 ncl
+im0 tg A B 27
+imok gt im0 C
+im1 sub im0 C
+im select imok im1 0
+s4 ts s3 B 27 im
+
+fn ring_push u32x1024 u32 u32 u32 -> u32x1024
+h bg A 64
+hm rem h 8
+b mul hm 3
+i add b 40
+s1 bs A i B
+i1 add i 1
+s2 bs s1 i1 C
+i2 add i 2
+s3 bs s2 i2 D
+h1 add h 1
+s4 bs s3 64 h1
+
+fn begin_approach u32x1024 u32 u32 u32 u32x32 u32x672 u32 -> u32x1024
+sx get E 5
+sy get E 6
+x0 rg F G 1
+y0 rg F G 2
+id rg F G 0
+kind r_kind F G
+sxq << sx 16
+syq << sy 16
+x0q << x0 16
+y0q << y0 16
+px add C sxq
+py add D syq
+offx sub px x0q
+offy sub py y0q
+s1 ts A B 2 id
+s2 ts s1 B 3 offx
+s3 ts s2 B 4 offy
+s4 ts s3 B 5 0
+s5 ts s4 B 25 kind
+s6 ts s5 B 19 0
+x1 rg F G 3
+y1 rg F G 4
+x1q << x1 16
+y1q << y1 16
+nrm edge_normal x0q y0q x1q y1q px py
+nnx at nrm 0
+nny at nrm 1
+s7a ts s6 B 29 nnx
+s7b ts s7a B 30 nny
+s7 ts s7b B 0 1
+
+fn hold_ms u32x1024 u32 -> u32
+k tg A B 25
+clk bg A 13
+h fx_hash clk B
+u >> h 16
+span div u 60
+base add 450 span
+iscode eq k 3
+ishead eq k 1
+m1 select iscode 88474 65536
+m2 select ishead 45875 m1
+r fx_mul base m2
+
+fn lg_search u32x1024 u32 u32x32 u32x672 -> u32x1024
+stt tg A B 0
+st0 eq stt 0
+rr bg A 30
+mine eq rr B
+q bg A 17
+fr bg A 84
+fb and fr 1
+fz eq fb 0
+qz eq q 0
+okq select qz fz true
+cd tg A B 7
+cdz eq cd 0
+busy fold busy_step 8 0 A
+few lt busy 5
+w1 and st0 mine
+w2 and w1 okq
+w3 and w2 cdz
+w4 and w3 few
+mf bg A 93
+mfn ne mf 0
+want and w4 mfn
+nrows get C 21
+n select want nrows 0
+sp search_prepare A C D B
+best anchor_search sp D n
+score at best 0
+bx at best 1
+by at best 2
+brow at best 3
+hi lt busy 4
+th select hi 4292345856 786432
+fnd fx_ge score th
+go and want fnd
+ap begin_approach sp B bx by C D brow
+s_a select go ap sp
+clk bg A 13
+h fx_hash clk B
+u >> h 22
+cdq >> u 3
+cdn add 40 cdq
+nogo not_b fnd
+miss and want nogo
+cdset select miss cdn cd
+r ts s_a B 7 cdset
+
+fn lg_approach u32x1024 u32 -> u32x1024
+stt tg A B 0
+s1 eq stt 1
+sc bg A 38
+nj tg A B 1
+tip sub nj 1
+tx jg A B tip 0
+ty jg A B tip 1
+ax tg A B 23
+ay tg A B 24
+dx sub ax tx
+dy sub ay ty
+d fx_hyp dx dy
+rad fx_mul 393216 sc
+close fx_le d rad
+arrive and s1 close
+hold hold_ms A B
+fl tg A B 19
+tapv and fl 1
+tapf ne tapv 0
+holdt select tapf 800 hold
+sx bg A 864
+sy bg A 865
+pgx vp2pg ax sx
+pgy vp2pg ay sy
+rid tg A B 2
+a1 ts A B 0 2
+a2 ts a1 B 5 0
+a3 ts a2 B 6 holdt
+a4a ring_push a3 rid pgx pgy
+a4b ts a4a B 27 650
+kq tg a4b B 25
+kc3 eq kq 3
+kc6 eq kq 6
+kcc or kc3 kc6
+ock bg a4b 90
+nck select kcc 700 ock
+a4 bs a4b 90 nck
+tm tg A B 5
+slow gt tm 2500
+bx bg A 1
+by bg A 2
+dbx sub ax bx
+dby sub ay by
+db fx_hyp dbx dby
+reach tg A B 14
+rl fx_mul reach 78643
+far fx_gt db rl
+bad0 or slow far
+bad and s1 bad0
+r1 select arrive a4 A
+nar not_b arrive
+bad2 and bad nar
+rel rel_enter r1 B
+r select bad2 rel r1
+
+fn planted_step u32 u32 u32x1024 -> u32
+stt tg C B 0
+n select eq stt 2 1 0
+r add A n
+
+fn lg_attach u32x1024 u32 -> u32x1024
+stt tg A B 0
+s2 eq stt 2
+tm tg A B 5
+hold tg A B 6
+over gt tm hold
+ten tg A B 22
+taut fx_gt ten 81920
+ax tg A B 23
+ay tg A B 24
+bx bg A 1
+by bg A 2
+dbx sub ax bx
+dby sub ay by
+db fx_hyp dbx dby
+reach tg A B 14
+rl fx_mul reach 77000
+far fx_gt db rl
+pl fold planted_step 8 0 A
+trv travel_dir A
+tux at trv 0
+tuy at trv 1
+tgo at trv 2
+dotb fx_dot dbx dby tux tuy
+behind fx_lt dotb 0
+ntg not_b tgo
+many gt pl 3
+full ge pl 5
+bh0 or behind full
+bh1 or bh0 ntg
+vol0 and over many
+vol and vol0 bh1
+stuck gt tm 9000
+b1 or vol taut
+b2 or b1 far
+b3 or b2 stuck
+go and s2 b3
+rel rel_enter A B
+r select go rel A
+
+fn lg_release u32x1024 u32 -> u32x1024
+stt tg A B 0
+s3 eq stt 3
+tm tg A B 5
+done gt tm 260
+go and s3 done
+a1 ts A B 0 0
+r select go a1 A
+
+fn cover_step u32 u32 u32x672 u32 u32 -> u32
+x0 rg C B 1
+y0 rg C B 2
+x1 rg C B 3
+y1 rg C B 4
+kind r_kind C B
+k2 eq kind 2
+k3 eq kind 3
+kk or k2 k3
+a1 ge D x0
+a2 le D x1
+a3 ge E y0
+a4 le E y1
+i1 and a1 a2
+i2 and a3 a4
+ins and i1 i2
+hit and kk ins
+n select hit 1 0
+r add A n
+
+fn lg_cover u32x1024 u32 u32x32 u32x672 -> u32x1024
+nj tg A B 1
+mid >> nj 1
+x jg A B mid 0
+y jg A B mid 1
+sx get C 5
+sy get C 6
+pgx vp2pg x sx
+pgy vp2pg y sy
+nrows get C 21
+hits fold cover_step nrows 0 D pgx pgy
+over ne hits 0
+tgt select over 26214 65536
+old tg A B 28
+nw fx_lerp old tgt 7864
+r ts A B 28 nw
+
+fn tent_logic u32x1024 u32 u32x32 u32x672 u32 -> u32x1024
+s1 lg_tick A B E
+s2 lg_search s1 B C D
+s3 tent_follow s2 B C D
+s4 lg_approach s3 B
+s5 lg_attach s4 B
+s6 lg_release s5 B
+s7 lg_cover s6 B C D
+
+fn tap_row_step (u32,u32) u32 u32x672 u32 u32 -> (u32,u32)
+x0 rg C B 1
+y0 rg C B 2
+x1 rg C B 3
+y1 rg C B 4
+kind r_kind C B
+a1 ge D x0
+a2 le D x1
+a3 ge E y0
+a4 le E y1
+i1 and a1 a2
+i2 and a3 a4
+inside and i1 i2
+ctl eq kind 4
+w sub x1 x0
+h sub y1 y0
+area mul w h
+best at A 0
+bet lt area best
+c1 and inside ctl
+c2 and c1 bet
+nb select c2 area best
+br at A 1
+nr select c2 B br
+o (nb nr)
+
+fn tap_dist u32x1024 u32 u32 u32 -> u32x1024
+nj tg A B 1
+tip sub nj 1
+tx jg A B tip 0
+ty jg A B tip 1
+dx sub C tx
+dy sub D ty
+d fx_hyp dx dy
+i add 875 B
+r bs A i d
+
+fn tap_rank_step u32 u32 u32x1024 u32 -> u32
+i add 875 B
+dj bg C i
+ik add 875 D
+dk bg C ik
+dlt fx_lt dj dk
+eqd eq dj dk
+jl lt B D
+tie and eqd jl
+less or dlt tie
+stj tg C B 0
+fj0 eq stj 0
+fj3 eq stj 3
+fj or fj0 fj3
+lf and less fj
+n select lf 1 0
+r add A n
+
+fn tap_apply u32x1024 u32 u32 u32 u32x32 u32x672 -> u32x1024
+rank fold tap_rank_step 8 0 A B
+free0 tg A B 0
+f0 eq free0 0
+f3 eq free0 3
+free or f0 f3
+sel fx_lt rank C
+use0 and free sel
+sx get E 5
+sy get E 6
+x0 rg F D 1
+y0 rg F D 2
+x1 rg F D 3
+y1 rg F D 4
+x0q pg2vp x0 sx
+y0q pg2vp y0 sy
+x1q pg2vp x1 sx
+y1q pg2vp y1 sy
+nj tg A B 1
+tip sub nj 1
+tx jg A B tip 0
+ty jg A B tip 1
+e edge_pt x0q y0q x1q y1q tx ty
+ex at e 0
+ey at e 1
+ap begin_approach A B ex ey E F D
+ap2 ts ap B 19 1
+fnd ne D 4294967295
+$use and use0 fnd
+r select $use ap2 A
+
+fn tap_each u32x1024 u32 u32 u32 u32x32 u32x672 -> u32x1024
+r tap_apply A B C D E F
+
+fn tap_scan u32x1024 u32x32 u32x672 -> (u32,u32)
+seq get B 11
+old bg A 22
+changed ne seq old
+tx get B 12
+ty get B 13
+sx get B 5
+sy get B 6
+pgx vp2pg tx sx
+pgy vp2pg ty sy
+nrows get B 21
+n select changed nrows 0
+init (4294967295 4294967295)
+best fold tap_row_step n init C pgx pgy
+row at best 1
+clk bg A 13
+h fx_hash clk seq
+u >> h 20
+cnt0 rem u 3
+cnt add cnt0 1
+nf ne row 4294967295
+act and changed nf
+cn select act cnt 0
+r (row cn)
+
+fn tap_step u32x1024 u32x32 u32x672 -> u32x1024
+sc tap_scan A B C
+row at sc 0
+cn at sc 1
+seq get B 11
+tx get B 12
+ty get B 13
+s1 bs A 22 seq
+d1 fold tap_dist 8 s1 tx ty
+r fold tap_each 8 d1 cn row B C
+

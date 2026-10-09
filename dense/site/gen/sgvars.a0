@@ -1,0 +1,199 @@
+use "sgphase.a0"
+use "sgtables.a0"
+
+fn vhd u32x128x128 u32 -> u32
+r rd128 A B
+
+fn vapb u32x128x128 u32 u32 -> u32x128x128
+o rd128 A 0
+s1 fold wb128 1 A o C
+o1 add o 1
+r fold wr128 1 s1 0 o1
+
+fn vapst u32x128x128 u32 u32x128x512 u32 -> u32x128x128
+r fold vapb 1 A sb C add D B
+
+fn vapv u32x128x128 u32 u32 -> u32x128x128
+r fold vapb 1 A vb A add C B
+
+fn vappa u32x128x128 u32 u32x128x64 u32 -> u32x128x128
+r fold vapb 1 A pb C add D B
+
+fn vapref u32x128x128 u32 u32 -> u32x128x128
+s >> C 16
+l and C 65535
+r fold vapv l A s
+
+fn vdig u32x128x128 u32 u32 u32 -> u32x128x128
+ch digit B C D
+r fold vapb 1 A ch
+
+fn vapd u32x128x128 u32 u32 -> u32x128x128
+nd ndig C
+r fold vdig nd A C nd
+
+fn vapf2 u32x128x128 u32 u32 -> u32x128x128
+ip div C 100
+fp rem C 100
+t div fp 10
+o rem fp 10
+t1 add t 48
+o1 add o 48
+s1 fold vapd 1 A ip
+s2 fold vapb 1 s1 46
+s3 fold vapb 1 s2 t1
+s4 fold vapb 1 s3 o1
+
+fn vapf1 u32x128x128 u32 u32 -> u32x128x128
+ip div C 10
+o rem C 10
+o1 add o 48
+s1 fold vapd 1 A ip
+s2 fold vapb 1 s1 46
+s3 fold vapb 1 s2 o1
+
+fn since u32x128x128 u32 -> u32
+o rd128 A 0
+l sub o B
+s << B 16
+r or s l
+
+fn vdef u32x128x128 u32 u32 u32 u32 u32 -> u32x128x128
+n rd128 A 1
+e0 << n 2
+e add e0 352
+e1 add e 1
+e2 add e 2
+e3 add e 3
+s1 fold wr128 1 A e C
+s2 fold wr128 1 s1 e1 D
+s3 fold wr128 1 s2 e2 E
+s4 fold wr128 1 s3 e3 F
+n1 add n 1
+s5 fold wr128 1 s4 1 n1
+
+fn key1
+r or << A 14 268435456
+
+fn key2
+r or or << A 14 B 536870912
+
+fn vnum u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+h whash C D
+st rd128 A 0
+s1 fold vapd 1 A F
+r0 since s1 st
+r fold vdef 1 s1 h E r0 F
+
+fn vfix2 u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+h whash C D
+st rd128 A 0
+s1 fold vapf2 1 A F
+r0 since s1 st
+r fold vdef 1 s1 h E r0 0
+
+fn vfix1 u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+h whash C D
+st rd128 A 0
+s1 fold vapf1 1 A F
+r0 since s1 st
+r fold vdef 1 s1 h E r0 0
+
+fn vref u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+h whash C D
+r fold vdef 1 A h E F 0
+
+fn vflag u32x128x128 u32 u32x128x512 u32 u32 bool -> u32x128x128
+h whash C D
+w rd128 A 13
+r0 select F w 0
+r fold vdef 1 A h E r0 0
+
+fn vconst u32x128x128 u32 u32x128x512 u32 u32 -> u32x128x128
+st rd128 A 0
+s wstart C D
+l wlen C D
+s1 fold vapst l A C s
+r0 since s1 st
+r fold wr128 1 s1 E r0
+
+fn nbmore -> bool
+r and gt >> C A 1 lt A 31
+
+fn nbstep u32 u32 u32 -> u32
+r add A 1
+
+fn lg
+z eq A 0
+n select z 1 A
+e loop nbmore nbstep 32 0 n
+sh sub 31 e
+m << n sh
+i0 >> m 21
+i and i0 1023
+f0 >> m 5
+f and f0 65535
+t tlg
+a get t i
+i1 add i 1
+d sub get t i1 a
+df mul d f
+dd >> df 16
+e20 << e 20
+x add e20 a
+r add x dd
+
+fn bias 268435456
+
+fn ldiff
+a lg A
+b lg B
+bi bias
+x add a bi
+r sub x b
+
+fn ex
+eb >> A 20
+f and A 1048575
+i >> f 10
+fr and f 1023
+t tex
+a get t i
+i1 add i 1
+d sub get t i1 a
+dm mul d fr
+dd >> dm 10
+m add a dd
+x mul m B
+big ge eb 276
+up sub eb 276
+xl << x up
+s sub 276 eb
+far ge s 32
+s1 sub s 1
+h << 1 s1
+xh add x h
+xr >> xh s
+r0 select far 0 xr
+r select big xl r0
+
+fn rdiv
+q div A B
+r rem A B
+r2 add r r
+up gt r2 B
+tie eq r2 B
+odd and q 1
+o eq odd 1
+t and tie o
+c or up t
+q1 add q 1
+v select c q1 q
+
+fn pct
+a sub A B
+b sub C B
+n mul a 82
+q rdiv n b
+r add q 18
+

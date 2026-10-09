@@ -1,0 +1,1306 @@
+use "check.a0"
+
+fn cwsb io u32 u32 -> io
+s mul B 8
+v >> C s
+b and v 255
+w write A b
+
+fn cws io u32 -> io
+a ne B 0
+b ge B 256
+c ge B 65536
+d ge B 16777216
+na select a 1 0
+nb select b 1 0
+nx select c 1 0
+nd select d 1 0
+s1 add na nb
+s2 add s1 nx
+n add s2 nd
+r fold cwsb n A B
+
+fn cws6 io u32 u32 u32 u32 u32 u32 -> io cws cws cws cws cws cws A B C D E F G
+
+fn cws6st io u32 u32 u32 u32 u32 u32 u32 -> io
+r cws6 A C D E F G H
+
+fn cws6c io bool u32 u32 u32 u32 u32 u32 -> io
+n select B 1 0
+r fold cws6st n A C D E F G H
+
+fn cpow10 -> u32x10
+r [1 10 100 1000 10000 100000 1000000 10000000 100000000 1000000000]
+
+fn cdecst io u32 u32 u32 u32x10 -> io
+k sub D 1
+j sub k B
+d get E j
+q div C d
+r rem q 10
+c add r 48
+w write A c
+
+fn cwdec io u32 -> io
+a1 ge B 10
+a2 ge B 100
+a3 ge B 1000
+a4 ge B 10000
+a5 ge B 100000
+a6 ge B 1000000
+a7 ge B 10000000
+a8 ge B 100000000
+a9 ge B 1000000000
+b1 select a1 1 0
+b2 select a2 1 0
+b3 select a3 1 0
+b4 select a4 1 0
+b5 select a5 1 0
+b6 select a6 1 0
+b7 select a7 1 0
+b8 select a8 1 0
+b9 select a9 1 0
+c1 add b1 1
+c2 add c1 b2
+c3 add c2 b3
+c4 add c3 b4
+c5 add c4 b5
+c6 add c5 b6
+c7 add c6 b7
+c8 add c7 b8
+n add c8 b9
+pw cpow10
+r fold cdecst n A B n pw
+
+fn cdecst2 io u32 u32 -> io
+r cwdec A C
+
+fn cwdecc io bool u32 -> io
+n select B 1 0
+r fold cdecst2 n A C
+
+fn cwop io u32 u32 -> io
+k1 eq B 1
+k2 eq B 2
+k3 eq B 3
+k4 eq B 4
+k6 eq B 6
+b0 cws6c cws6c A k1 110 0 0 0 0 0 k2 112 0 0 0 0 0
+b cws6c b0 k6 7219752 0 0 0 0 0
+x or k1 k2
+x6 or x k6
+num or x6 k3
+d cws6c cwdecc b num C k3 117 0 0 0 0 0
+nz ne C 0
+tr and k4 nz
+z eq C 0
+fa and k4 z
+f cws6c cws6c d tr 1702195828 0 0 0 0 0 fa 1936482662 101 0 0 0 0
+k5 eq B 5
+f0 cws6c f k5 812657192 41 0 0 0 0
+f1 cws6c f0 k6 41 0 0 0 0 0
+
+fn cwopst io u32 u32 u32 -> io
+r cwop A C D
+
+fn cwopc io bool u32 u32 -> io
+n select B 1 0
+r fold cwopst n A C D
+
+fn cwty io u32 u32 -> io
+c1 eq B 1
+c2 eq B 2
+c3 eq B 3
+c4 ge B 4
+cwdecc cws6c cws6c cws6c cws6c A c1 1953393013 1952395827 0 0 0 0 c2 1819242338 0 0 0 0 0 c3 1767845985 2760815 0 0 0 0 c4 7614561 0 0 0 0 0 c4 C
+
+fn cwtyst io u32 u32 u32 -> io
+r cwty A C D
+
+fn cwtyc io bool u32 u32 -> io
+n select B 1 0
+r fold cwtyst n A C D
+
+fn cwsel io (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> io
+k0 at B 1
+v0 at B 2
+k1 at B 3
+v1 at B 4
+k2 at B 5
+v2 at B 6
+l0 at B 8
+l1 at B 9
+na at B 11
+c1 eq C 1
+c2 eq C 2
+c3 eq C 3
+c4 eq C 4
+c5 eq C 5
+c6 eq C 6
+c7 eq C 7
+c8 eq C 8
+c cwopc cwopc cwopc A c1 k0 v0 c2 k1 v1 c3 k2 v2
+sk at B 16
+sv at B 17
+e cwopc c c4 sk sv
+f cwdecc e c5 l0
+g cwdecc f c6 l1
+h cwdecc g c7 v1
+j cwdecc h c8 na
+
+fn cwtst io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> io
+j cws6 cwsel cws6 cwsel cws6 cwsel cws6 cwsel cws6 A D E F G H I C J K L M N O P C Q R S T U V W C X Y Z p26 p27 p28 p29 C p30 p31 p32 p33 p34 p35 p36
+k cwsel j C p37
+l cws6 k p38 p39 p40 p41 p42 p43
+
+fn cwt io bool (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> io
+n select B 1 0
+r fold cwtst n A C D E F G H I J K L M N O P Q R S T U V W X Y Z p26 p27 p28 p29 p30 p31 p32 p33 p34 p35 p36 p37 p38 p39 p40 p41 p42 p43
+
+fn cnmst io u32 u32x128x400 u32 -> io
+j add D B
+jp >> j 7
+pg get C jp
+jl and j 127
+b get pg jl
+w write A b
+
+fn cwnm io bool u32x128x400 u32 u32 -> io
+n select B E 0
+r fold cnmst n A C D
+
+fn cumin
+b lt A B
+r select b A B
+
+fn cretop u32 u32x128x512 -> (u32,u32)
+k0 >> A 28
+v0 and A 268435455
+big eq k0 5
+a2 mul v0 2
+ah >> a2 7
+al and a2 127
+a3 add a2 1
+bh >> a3 7
+bl and a3 127
+pg get B ah
+pg1 get B bh
+ak get pg al
+av get pg1 bl
+k select big ak k0
+v select big av v0
+o (k v)
+
+fn cres u32 u32 u32x128x24 u32 -> (u32,u32)
+isn eq A 1
+isp eq A 2
+v0 eq B 0
+nv ne D 0
+dp0 and isp v0
+dp and dp0 nv
+rp >> B 7
+rg get C rp
+rl and B 127
+r get rg rl
+rk >> r 28
+rv and r 268435455
+k1 select dp 5 A
+v1 select dp 0 B
+k select isn rk k1
+v select isn rv v1
+o (k v)
+
+fn clst io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128 u32 u32 u32 u32x128x24 u32 -> io
+i at C 0
+fa at C 10
+oi add F B
+kk sub oi fa
+x2 mul oi 2
+xl and x2 127
+kd get D xl
+x3 add xl 1
+vd get D x3
+m1 eq E 1
+m2 eq E 2
+m3 eq E 3
+m4 eq E 4
+pos ne oi G
+s1 and m1 pos
+sep or s1 m2
+l cws6c cwdecc cws6c cwdecc cws6c cws6c cwdecc cws6c cwdecc cws6c cws6c A sep 8236 0 0 0 0 0 m3 28192 0 0 0 0 0 m3 i m3 5989678 0 0 0 0 0 m3 kk m3 540876893 0 0 0 0 0 m4 28192 0 0 0 0 0 m4 i m4 26158 0 0 0 0 0 m4 kk m4 2112800 0 0 0 0 0
+rs cres kd vd H I
+rsk at rs 0
+rsv at rs 1
+m cwop l rsk rsv
+agg or m3 m4
+o cws6c m agg 59 0 0 0 0 0
+
+fn clpg io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32 u32 u32 u32 u32x128x24 u32 -> io
+pi add H B
+pg get D pi
+b mul pi 64
+e add b 64
+lo umax F b
+hi cumin G e
+cnt sub hi lo
+r fold clst cnt A C pg E lo F I J
+
+fn cwlist io bool (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32 u32 u32x128x24 u32 -> io
+fa at C 10
+na at C 11
+lo add fa F
+hi add fa na
+has lt lo hi
+go and B has
+lp >> lo 6
+h1 sub hi 1
+hp >> h1 6
+d sub hp lp
+np add d 1
+n select go np 0
+r fold clpg n A C D E lo hi lp G H
+
+fn cotype u32 u32 u32x128x24 u32x128x65 u32 u32 -> u32
+g add E B
+gp >> g 7
+gpg get C gp
+gl and g 127
+tn get gpg gl
+q add F B
+qp >> q 7
+qpg get D qp
+ql and q 127
+tp get qpg ql
+k1 eq A 1
+k2 eq A 2
+k4 eq A 4
+select k1 tn select k2 tp select k4 1 0
+
+fn czst bool u32 u32x128 u32 -> bool
+j add D B
+aw mul j 2
+a and aw 127
+k get C a
+v get C add a 1
+k3 eq k 3
+k4 eq k 4
+lit or k3 k4
+z eq v 0
+lz and lit z
+r and A lz
+
+fn czpg bool u32 u32x128x512 u32 u32 u32 -> bool
+pi add F B
+pg get C pi
+b mul pi 64
+e add b 64
+lo umax D b
+hi cumin E e
+cnt sub hi lo
+r fold czst cnt A pg lo
+
+fn cnode io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32 u32 u32x128x24 u32 -> io
+g add J B
+b6 mul g 6
+b1 add b6 1
+b1p >> b1 7
+b1g get C b1p
+b1l and b1 127
+op get b1g b1l
+b2 add b6 2
+b2p >> b2 7
+b2g get C b2p
+b2l and b2 127
+na get b2g b2l
+b3 add b6 3
+b3p >> b3 7
+b3g get C b3p
+b3l and b3 127
+fa get b3g b3l
+b4 add b6 4
+b4p >> b4 7
+b4g get C b4p
+b4l and b4 127
+ce get b4g b4l
+b5 add b6 5
+b5p >> b5 7
+b5g get C b5p
+b5l and b5 127
+pr get b5g b5l
+gp >> g 7
+gpg get E gp
+gl and g 127
+t get gpg gl
+tp >> t 7
+tpg get F tp
+tl and t 127
+t3 mul tl 3
+tag get tpg t3
+t5 add t3 2
+et get tpg t5
+ep >> et 7
+epg get F ep
+el and et 127
+et3 mul el 3
+etag get epg et3
+x0 mul fa 2
+x0p >> x0 7
+x0g get D x0p
+x0l and x0 127
+k0 get x0g x0l
+x1 add x0l 1
+v0 get x0g x1
+x2 add x0 2
+x2p >> x2 7
+x2g get D x2p
+x2l and x2 127
+k1 get x2g x2l
+x3 add x2l 1
+v1 get x2g x3
+x4 add x0 4
+x4p >> x4 7
+x4g get D x4p
+x4l and x4 127
+k2 get x4g x4l
+x5 add x4l 1
+v2 get x4g x5
+o0 cotype k0 v0 E G J K
+o1 cotype k1 v1 E G J K
+o0p >> o0 7
+o0g get F o0p
+o0t and o0 127
+o03 mul o0t 3
+o0l add o03 1
+l0 get o0g o0l
+o1p >> o1 7
+o1g get F o1p
+o1t and o1 127
+o13 mul o1t 3
+o1l add o13 1
+l1 get o1g o1l
+ce2 mul ce 2
+cep >> ce2 7
+ceg get I cep
+cel and ce2 127
+cs get ceg cel
+ce3 add cel 1
+cl get ceg ce3
+pr2 mul pr 2
+prp >> pr2 7
+prg get I prp
+prl and pr2 127
+ps get prg prl
+pr3 add prl 1
+pl get prg pr3
+r0 cres k0 v0 L M
+q0 at r0 0
+u0 at r0 1
+r1 cres k1 v1 L M
+q1 at r1 0
+u1 at r1 1
+r2 cres k2 v2 L M
+q2 at r2 0
+u2 at r2 1
+srp >> B 7
+srg get L srp
+srl and B 127
+sr get srg srl
+sk >> sr 28
+sv and sr 268435455
+sw add 268435456 B
+g4 eq tag 4
+g5 eq tag 5
+agg or g4 g5
+nagg select agg false true
+rg25 eq op 25
+rg27 eq op 27
+rga or rg25 rg27
+bor and rga agg
+nbor select bor false true
+al0 ne sr sw
+al and al0 nbor
+nal select al false true
+nc (B q0 u0 q1 u1 q2 u2 t l0 l1 fa na cs cl ps pl sk sv)
+w0 cws6 A 8224 0 0 0 0 0
+wb cws6c w0 bor 1936617315 8308 0 0 0 0
+w1 cwtyc wb nal tag t
+nnm and nal nbor
+w2a cws6c w1 nnm 28192 0 0 0 0 0
+w2 cws6c w2a bor 1868769824 544502638 110 0 0 0
+w3 cwdecc w2 nal B
+is1 eq op 1
+is2 eq op 2
+is3 eq op 3
+is4 eq op 4
+is5 eq op 5
+is6 eq op 6
+is7 eq op 7
+is8 eq op 8
+is9 eq op 9
+is10 eq op 10
+is11 eq op 11
+is12 eq op 12
+is13 eq op 13
+is14 eq op 14
+is15 eq op 15
+is16 eq op 16
+is17 eq op 17
+is18 eq op 18
+is19 eq op 19
+is20 eq op 20
+is21 eq op 21
+is22 eq op 22
+is23 eq op 23
+is24 eq op 24
+is25 eq op 25
+is26 eq op 26
+is27 eq op 27
+is28 eq op 28
+is29 eq op 29
+is30 eq op 30
+is31 eq op 31
+tb eq t 1
+nb select tb false true
+a5 and is5 tb
+u5 and is5 nb
+a6 and is6 tb
+u6 and is6 nb
+a7 and is7 tb
+u7 and is7 nb
+d1 cwt w3 is1 nc 2112800 0 0 0 0 0 1 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d2 cwt d1 is2 nc 1629502752 1684102960 10340 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d3 cwt d2 is3 nc 1629502752 1970495280 10338 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d4 cwt d3 is4 nc 1629502752 1970102064 10348 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d5 cwt d4 a5 nc 673201440 0 0 0 0 0 1 539371040 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e5 cwt d5 u5 nc 1629502752 1851875120 10340 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d6 cwt e5 a6 nc 673201440 0 0 0 0 0 1 545029152 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e6 cwt d6 u6 nc 1629502752 1919901488 40 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d7 cwt e6 a7 nc 1629502752 1701732144 40 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e7 cwt d7 u7 nc 1629502752 1870159664 10354 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d8 cwt e7 is8 nc 1629502752 1752391472 10348 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d9 cwt d8 is9 nc 1629502752 1752391472 10354 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d10 cwt d9 is10 nc 1629502752 1768185648 10358 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d11 cwt d10 is11 nc 1629502752 1701994288 10349 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d12 cwt d11 is12 nc 1629502752 1902468912 40 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d13 cwt d12 is13 nc 1629502752 1701732144 40 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d14 cwt d13 is14 nc 1629502752 1953259312 40 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d15 cwt d14 is15 nc 1629502752 1701601072 40 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d16 cwt d15 is16 nc 1629502752 1952931632 40 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d17 cwt d16 is17 nc 1629502752 1701273392 40 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d18 cwt d17 is18 nc 673201440 0 0 0 0 0 1 2113312 0 0 0 0 0 2 2112032 0 0 0 0 0 3 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d19 cwt d18 is19 nc 1629502752 24368 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e19 cwnm d19 is19 H cs cl
+f19 cwt e19 is19 nc 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+g19 cwlist f19 is19 nc D 1 0 L M
+h19 cwt g19 is19 nc 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+it or is20 is21
+itn and it nal
+ita and it agg
+itv and it nagg
+la and is21 agg
+lv and is21 nagg
+d20 cwt h19 itn nc 2112800 0 0 0 0 0 2 8251 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e20 cwt d20 it nc 544370534 1852405032 1597125492 811671668 540876905 1629502256 0 1008757040 32 0 0 0 0 1 811671611 690695017 31520 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e21 cwt e20 lv nc 543582496 811671848 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+f21 cwnm e21 lv H ps pl
+g21 cwt f21 lv nc 40 0 0 0 0 0 4 811671596 105 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+h21 cwlist g21 lv nc D 2 2 L M
+j21 cwt h21 lv nc 1646274857 1801545074 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e24 cwt j21 la nc 543582496 811671848 24434 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+f24 cwnm e24 la H ps pl
+g24 cwt f24 la nc 9768 0 0 0 0 0 4 811671596 105 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+h24 cwlist g24 la nc D 2 2 L M
+j24 cwt h24 la nc 1646274857 1801545074 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+k20 cwt j24 itv nc 32 0 0 0 0 0 4 1629502752 24368 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+l20 cwnm k20 itv H cs cl
+m20 cwt l20 itv nc 40 0 0 0 0 0 4 811671596 105 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+n20 cwlist m20 itv nc D 2 2 L M
+o21 cwt n20 itv nc 2099264297 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+k23 cwt o21 ita nc 1865441568 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+l23 cwnm k23 ita H cs cl
+m23 cwt l23 ita nc 9768 0 0 0 0 0 4 811671596 105 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+n23 cwlist m23 ita nc D 2 2 L M
+o20 cwt n23 ita nc 2099264297 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e1 eq etag 1
+e2 eq etag 2
+es or e1 e2
+zhi add fa na
+zhas lt fa zhi
+zlp >> fa 6
+zh1 sub zhi 1
+zhp >> zh1 6
+zd sub zhp zlp
+znp add zd 1
+zn select zhas znp 0
+allz fold czpg zn true D fa zhi zlp
+zr and is22 allz
+zero and zr es
+nzr select zero false true
+ia or is22 is24
+lst and ia nzr
+d22 cwt o20 zero nc 1868963899 1965564018 863268457 544497458 543764577 993009725 0 1764778272 2112544 0 0 0 0 8 1629502325 724265264 8233 0 0 0 4 1633379630 542992688 993009725 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e22 cwt d22 lst nc 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+f22 cwlist e22 lst nc D 3 0 L M
+d23 cwt f22 is23 nc 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e23 cwlist d23 is23 nc D 4 0 L M
+v25 and is25 nbor
+b25 and is25 bor
+c25 cwt e23 v25 nc 2112800 0 0 0 0 0 1 5989678 0 0 0 0 0 2 2106656 0 0 0 0 0 5 3890549 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d25 cwt c25 b25 nc 639647008 0 0 0 0 0 1 5989678 0 0 0 0 0 2 2106656 0 0 0 0 0 5 3890549 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s26n and is26 nal
+d26 cwt d25 s26n nc 2112800 0 0 0 0 0 1 8251 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e26 cwt d26 is26 nc 0 0 0 0 0 0 4 5989678 0 0 0 0 0 2 2106656 0 0 0 0 0 5 1025531253 32 0 0 0 0 3 59 0 0 0 0 0 0 0 0 0 0 0 0
+v27 and is27 nbor
+b27 and is27 bor
+c27 cwt e26 v27 nc 2112800 0 0 0 0 0 1 26158 0 0 0 0 0 7 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d27 cwt c27 b27 nc 639647008 0 0 0 0 0 1 26158 0 0 0 0 0 7 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s28n and is28 nal
+d28 cwt d27 s28n nc 2112800 0 0 0 0 0 1 8251 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+e28 cwt d28 is28 nc 0 0 0 0 0 0 4 26158 0 0 0 0 0 7 2112800 0 0 0 0 0 3 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d29_0 cwt e28 is29 nc 8251 0 0 0 0 0 4 540042798 8253 0 0 0 0 1 1869626925 1769236851 1008758383 32 0 0 1 1768832557 1953853550 2113312 0 0 0 1 1852390957 1534358896 0 0 0 0 1 1869626925 1769236851 724266607 540680285 540767536 0
+d29 cwt d29_0 is29 nc 0 0 0 0 0 0 4 540108334 8253 0 0 0 0 1 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d30 cwt d29 is30 nc 1629502752 1920425776 677737577 0 0 0 1 8236 0 0 0 0 0 2 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+d31 cwt d30 is31 nc 1629502752 1970298672 2650996 0 0 0 1 8236 0 0 0 0 0 2 539780398 0 0 0 0 0 6 3877237 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+y0 cws6c d31 nal 1870014496 1848206441 0 0 0 0
+y1 cwdecc y0 nal B
+y2 cws6c y1 nal 59 0 0 0 0 0
+y3 cws6 y2 10 0 0 0 0 0
+
+fn cprm io u32 u32x128x65 u32x384x65 u32 -> io
+q add E B
+qp >> q 7
+qg get C qp
+ql and q 127
+t get qg ql
+tp >> t 7
+tg get D tp
+tl and t 127
+t3 mul tl 3
+tag get tg t3
+pos ne B 0
+cwdec cws6 cwty cws6c A pos 8236 0 0 0 0 0 tag t 28704 0 0 0 0 0 B
+
+fn cfw u32x128x45 u32 u32 -> u32
+w add B C
+wp >> w 7
+wg get A wp
+wl and w 127
+v get wg wl
+
+fn cprm1 io u32 u32x128x65 u32x384x65 u32 -> io
+k add B 1
+r cprm A k C D E
+
+fn cusa u32x128x64 u32 u32x128 u32 u32 u32 bool -> u32x128x64
+oi add D B
+xw mul oi 2
+x2 and xw 127
+kd get C x2
+x3 add x2 1
+vd get C x3
+isn eq kd 1
+isp eq kd 2
+q add vd 4096
+slot select isp q vd
+sp >> slot 7
+sl and slot 127
+pg get A sp
+w get pg sl
+nb >> w 16
+k0 eq oi E
+good and G k0
+bad select good 0 1
+nb2 add nb bad
+hi << nb2 16
+j1 add F 1
+nw or hi j1
+val or isn isp
+out select val nw w
+pg2 set pg sl out
+r set A sp pg2
+
+fn cuspg u32x128x64 u32 u32x128x512 u32 u32 u32 u32 bool -> u32x128x64
+pi add F B
+pg get C pi
+b mul pi 64
+e add b 64
+lo umax D b
+hi cumin E e
+cnt sub hi lo
+r fold cusa cnt A pg lo D G H
+
+fn cusn u32x128x64 u32 u32x128x128 u32x128x512 u32 -> u32x128x64
+g add E B
+b6 mul g 6
+b1 add b6 1
+b1p >> b1 7
+b1g get C b1p
+b1l and b1 127
+op get b1g b1l
+b2 add b6 2
+b2p >> b2 7
+b2g get C b2p
+b2l and b2 127
+na get b2g b2l
+b3 add b6 3
+b3p >> b3 7
+b3g get C b3p
+b3l and b3 127
+fa get b3g b3l
+isg eq op 25
+isa eq op 27
+ga or isg isa
+hi add fa na
+has lt fa hi
+lp >> fa 6
+h1 sub hi 1
+hp >> h1 6
+d sub hp lp
+np add d 1
+n select has np 0
+r fold cuspg n A D fa hi lp B ga
+
+fn cbra u32x128x64 u32 u32x128 u32 u32 -> u32x128x64
+oi add D B
+xw mul oi 2
+x2 and xw 127
+kd get C x2
+x3 add x2 1
+vd get C x3
+isn eq kd 1
+sp >> vd 7
+sl and vd 127
+pg get A sp
+w get pg sl
+fl >> w 31
+isb eq fl 1
+mk and isn isb
+c and w 2147483647
+cp >> c 7
+cl and c 127
+cg get A cp
+j1 add E 1
+cw get cg cl
+nw select mk j1 cw
+cg2 set cg cl nw
+r set A cp cg2
+
+fn cbrpg u32x128x64 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x64
+pi add F B
+pg get C pi
+b mul pi 64
+e add b 64
+lo umax D b
+hi cumin E e
+cnt sub hi lo
+r fold cbra cnt A pg lo G
+
+fn cbrn u32x128x64 u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32 -> u32x128x64
+g add G B
+b6 mul g 6
+b1 add b6 1
+b1p >> b1 7
+b1g get C b1p
+b1l and b1 127
+op get b1g b1l
+b2 add b6 2
+b2p >> b2 7
+b2g get C b2p
+b2l and b2 127
+na get b2g b2l
+b3 add b6 3
+b3p >> b3 7
+b3g get C b3p
+b3l and b3 127
+fa get b3g b3l
+hi add fa na
+has lt fa hi
+lp >> fa 6
+h1 sub hi 1
+hp >> h1 6
+d sub hp lp
+np add d 1
+n select has np 0
+s1 fold cbrpg n A D fa hi lp B
+gp >> g 7
+gpg get E gp
+gl and g 127
+t get gpg gl
+tp >> t 7
+tpg get F tp
+tl and t 127
+t3 mul tl 3
+tag get tpg t3
+g4 eq tag 4
+g5 eq tag 5
+agg or g4 g5
+isg eq op 25
+isa eq op 27
+ga or isg isa
+bor and ga agg
+x0 mul fa 2
+x0p >> x0 7
+x0g get D x0p
+x0l and x0 127
+k0 get x0g x0l
+x1 add x0l 1
+v0 get x0g x1
+isp eq k0 2
+q add v0 4096
+slot select isp q v0
+sp >> slot 7
+sl and slot 127
+spg get s1 sp
+sw get spg sl
+fl >> sw 31
+isb eq fl 1
+isn eq k0 1
+bb and isn isb
+cb and sw 2147483647
+own select bb cb slot
+tw add 2147483648 own
+jp >> B 7
+jl and B 127
+jg get s1 jp
+jg2 set jg jl tw
+s2 set s1 jp jg2
+r select bor s2 s1
+
+fn cbrret u32x128x64 u32 u32 -> u32x128x64
+isn eq B 1
+sp >> C 7
+sl and C 127
+pg get A sp
+w get pg sl
+fl >> w 31
+isb eq fl 1
+mk and isn isb
+c and w 2147483647
+cp >> c 7
+cl and c 127
+cg get A cp
+cw get cg cl
+nw select mk 65535 cw
+cg2 set cg cl nw
+r set A cp cg2
+
+fn crt u32x128x24 u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x64 u32 u32 u32 u32 u32x128x64 -> u32x128x24
+g add H B
+b6 mul g 6
+b1 add b6 1
+b1p >> b1 7
+b1g get C b1p
+b1l and b1 127
+op get b1g b1l
+b3 add b6 3
+b3p >> b3 7
+b3g get C b3p
+b3l and b3 127
+fa get b3g b3l
+gp >> g 7
+gpg get E gp
+gl and g 127
+t get gpg gl
+tp >> t 7
+tpg get F tp
+tl and t 127
+t3 mul tl 3
+tag get tpg t3
+g4 eq tag 4
+g5 eq tag 5
+agg or g4 g5
+s26 eq op 26
+s28 eq op 28
+isst or s26 s28
+f20 eq op 20
+f21 eq op 21
+it or f20 f21
+isfl and it agg
+slot select isfl 1 0
+x add fa slot
+x2 mul x 2
+xp >> x2 7
+xg get D xp
+xl and x2 127
+kd get xg xl
+x3 add xl 1
+vd get xg x3
+isn eq kd 1
+isp eq kd 2
+dg add H vd
+d6 mul dg 6
+d1 add d6 1
+d1p >> d1 7
+d1g get C d1p
+d1l and d1 127
+dop get d1g d1l
+q22 eq dop 22
+q23 eq dop 23
+q24 eq dop 24
+q26 eq dop 26
+q28 eq dop 28
+f1 or q22 q23
+f2 or f1 q24
+f3 or f2 q26
+fr or f3 q28
+fn1 and isn fr
+v0 eq vd 0
+rf eq I 2
+nown and v0 rf
+own select nown false true
+fp1 and isp own
+okk or fn1 fp1
+e1 eq kd J
+e2 eq vd K
+rs and e1 e2
+nrs select rs false true
+us0 add vd 4096
+us1 select isp us0 vd
+usp >> us1 7
+usg get G usp
+usl and us1 127
+w get usg usl
+nb >> w 16
+lu and w 65535
+c1 eq nb 1
+j1 add B 1
+c2 eq lu j1
+bsg get L usp
+lb get bsg usl
+bst le lb j1
+bfl le lb B
+bok select isst bst bfl
+cand or isst isfl
+i1 and cand okk
+i2 and i1 nrs
+i3 and i2 c1
+i4 and i3 c2
+inp and i4 bok
+rp >> vd 7
+rg get A rp
+rl and vd 127
+rr get rg rl
+nv ne I 0
+dp and v0 nv
+pw add 536870912 vd
+pp select dp 1342177280 pw
+res select isn rr pp
+self add 268435456 B
+g25 eq op 25
+g27 eq op 27
+gat or g25 g27
+bor and gat agg
+bself add 1610612736 B
+nw0 select inp res self
+nw select bor bself nw0
+op1 >> B 7
+opg get A op1
+ol and B 127
+opg2 set opg ol nw
+r set A op1 opg2
+
+fn cvar io u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 u32x128x64 u32 u32x128x64 -> io
+b mul J 7
+np cfw I b 1
+fp cfw I b 2
+rt cfw I b 3
+fn0 cfw I b 4
+cnt cfw I b 5
+rw cfw I b 6
+rp >> rt 7
+rg get E rp
+rl and rt 127
+r3 mul rl 3
+rtag get rg r3
+qp >> fp 7
+qg get F qp
+ql and fp 127
+q0 get qg ql
+q0p >> q0 7
+q0g get E q0p
+q0l and q0 127
+q03 mul q0l 3
+qtag get q0g q03
+v0 eq L 0
+v1 eq L 1
+v2 eq L 2
+nv ne L 0
+a1 cws6c cwtyc A v0 rtag rt v1 1952543859 1763730281 1852402798 1870012517 1629512809 6254384
+a2 cws6c a1 v2 1952543859 1763730281 1852402798 1868701797 1629514863 6255152
+c cws6c a2 v0 1597006112 0 0 0 0 0
+s2 mul J 2
+sp >> s2 7
+sg get H sp
+sw and s2 127
+ss get sg sw
+s3 add sw 1
+sl get sg s3
+e cws6 cwnm c true G ss sl 40 0 0 0 0 0
+z eq np 0
+zv and z v0
+g cws6c e zv 1684631414 0 0 0 0 0
+g1 cws6c g v2 1936617315 8308 0 0 0 0
+g2 cwtyc g1 nv qtag q0
+g3 cws6c g2 nv 812657184 0 0 0 0 0
+n0 select v0 np 0
+h0 fold cprm n0 g3 F E fp
+np1 sub np 1
+n1 select nv np1 0
+h1 fold cprm1 n1 h0 F E fp
+j cws6 h1 175841321 0 0 0 0 0
+rop cretop rw C
+rk at rop 0
+rv at rop 1
+$z24 z24
+ro fold crt cnt $z24 B C D E K fn0 L rk rv M
+k fold cnode cnt j B C D E F G H fn0 fp ro L
+rr cres rk rv ro L
+rrk at rr 0
+rrv at rr 1
+d5 eq rrk 5
+nd5 select d5 false true
+st and v1 nd5
+rtn select v1 false true
+emit or rtn st
+l cws6c k rtn 1701978144 1852994932 32 0 0 0
+l1 cws6c l st 1881808928 540876848 0 0 0 0
+m cwopc l1 emit rrk rrv
+m1 cws6c m emit 2619 0 0 0 0 0
+o cws6 m1 658045 0 0 0 0 0
+
+fn cvarst io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 u32x128x64 u32 u32x128x64 -> io
+r cvar A C D E F G H I J K L M N
+
+fn cfn io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 -> io
+f add K B
+b mul f 7
+np cfw J b 1
+fp cfw J b 2
+rt cfw J b 3
+fn0 cfw J b 4
+cnt cfw J b 5
+$z64 z64
+us fold cusn cnt $z64 C D fn0
+bs0 fold cbrn cnt $z64 C D E F fn0
+rw cfw J b 6
+rop cretop rw D
+rk at rop 0
+rv at rop 1
+bs cbrret bs0 rk rv
+a cvar A C D E F G H I J f us 0 bs
+tq0p >> fp 7
+tq0g get G tq0p
+tq0l and fp 127
+t0 get tq0g tq0l
+fp1 add fp 1
+tq1p >> fp1 7
+tq1g get G tq1p
+tq1l and fp1 127
+t1 get tq1g tq1l
+t0p >> t0 7
+t0g get F t0p
+t0l and t0 127
+t03 mul t0l 3
+tag0 get t0g t03
+g4 eq tag0 4
+g5 eq tag0 5
+ag or g4 g5
+i1 eq t1 0
+n2 ge np 2
+sh0 and ag i1
+sh and sh0 n2
+so eq rt t0
+sb eq rt 1
+ho and sh so
+hr and sh sb
+no select ho 1 0
+bo fold cvarst no a C D E F G H I J f us 1 bs
+nr select hr 1 0
+br fold cvarst nr bo C D E F G H I J f us 2 bs
+
+fn cfld io u32 u32x128x65 u32x384x65 u32 -> io
+q add E B
+qp >> q 7
+qg get C qp
+ql and q 127
+t get qg ql
+tp >> t 7
+tg get D tp
+tl and t 127
+t3 mul tl 3
+tag get tg t3
+cws6 cwdec cws6 cwty cws6 A 32 0 0 0 0 0 tag t 26144 0 0 0 0 0 B 59 0 0 0 0 0
+
+fn ctarr io u32 u32x384x65 u32 -> io
+tp >> D 7
+tg get C tp
+tl and D 127
+t3 mul tl 3
+a1 add t3 1
+n get tg a1
+a2 add t3 2
+e get tg a2
+ep >> e 7
+eg get C ep
+el and e 127
+e3 mul el 3
+etag get eg e3
+cws6 cwdec cws6 cwdec cws6 cwty cws6 A 1701869940 543581540 1970435187 2065724515 32 0 etag e 5989664 0 0 0 0 0 n 2099264349 1949327648 0 0 0 0 D 2619 0 0 0 0 0
+
+fn ctrec io u32 u32x384x65 u32x128x65 u32 -> io
+tp >> E 7
+tg get C tp
+tl and E 127
+t3 mul tl 3
+a1 add t3 1
+first get tg a1
+a2 add t3 2
+cnt get tg a2
+cws6 cwdec cws6 fold cfld cnt cws6 A 1701869940 543581540 1970435187 2065724515 0 0 D C first 1629519136 29744 0 0 0 0 E 2619 0 0 0 0 0
+
+fn ctd io u32 u32x384x65 u32x128x65 u32 -> io
+t add E B
+tp >> t 7
+tg get C tp
+tl and t 127
+t3 mul tl 3
+tag get tg t3
+c4 eq tag 4
+c5 eq tag 5
+n4 select c4 1 0
+n5 select c5 1 0
+fold ctrec n5 fold ctarr n4 A C t C D t
+
+fn cpre io u32 -> io
+a_0 cws6 A 1193290287 1919250021 1684370529 544825888 543516788 1126182977
+a_1 cws6 a_0 1768776992 1919251572 1769109280 1852142708 544106784 673198145
+a_2 cws6 a_1 1886220131 1919249513 1768777007 778264436 774451297 170863136
+a_3 cws6 a_2 1668180259 1701082476 1953709088 1953392996 171862062 1668180259
+a_4 cws6 a_3 1701082476 1953709088 1869570660 1047015020 1887007754 1717920869
+a_5 cws6 a_4 1920234272 544498549 1767845985 811671663 997157215 1718166282
+a_6 cws6 a_5 1717920878 1596997920 1230982985 1414877262 1346454367 1414087489
+a_7 cws6 a_6 1680018009 1852401253 809574501 1599031647 1431326281 1094934356
+a_8 cws6 a_7 1229144400 840980820 175453749 1684956451 587884137 1684956777
+a_9 cws6 a_8 1092642405 1330208560 1414877023 1599362384 1095778627 1498696003
+a_10 cws6 a_9 1701061386 1701734758 1596997920 1331646281 1431327829 1094934356
+a_11 cws6 a_10 1229144400 824203604 1966354992 1852121866 174483812 1970435187
+a_12 cws6 a_11 1629516899 1869176624 1965062944 863268457 544497458 1970302569
+a_13 cws6 a_12 809589620 1599031647 1431326281 1094934356 1229144400 995973460
+a_14 cws6 a_13 1852405024 1597125492 1768824948 1953853550 1769283643 842232942
+a_15 cws6 a_14 1881175135 1953067887 997093225 1852405024 1597125492 1970217076
+a_16 cws6 a_15 1953853556 1596997979 1331646281 1431327829 1094934356 1229144400
+a_17 cws6 a_16 995973460 1852405024 1597125492 1869488244 1970304117 2099264372
+a_18 cws6 a_17 1953696315 1667855457 1819175200 543518313 1767845985 1630150767
+a_19 cws6 a_18 1920425776 677737577 1767845985 1948917871 1769283628 842232942
+a_20 cws6 a_19 1981838431 544940073 673212009 1849568628 1886680431 1008759925
+a_21 cws6 a_20 1596997920 1331646281 1431327829 1094934356 1229144400 539580756
+a_22 cws6 a_21 1866345844 1970304117 762600308 1970236990 1953853556 542976811
+a_23 cws6 a_22 997597245 1952805408 544109173 2099264372 1635021578 543385972
+a_24 cws6 a_23 1768713833 1629513070 1869176624 811674144 1953853535 811673715
+a_25 cws6 a_24 544172383 539784234 1936617315 1769283700 842232942 706770015
+a_26 cws6 a_25 1965042789 863268457 544497458 2065705326 1597006112 1953067639
+a_27 cws6 a_26 745810021 992570912 1919903264 1769285664 842232942 1763734623
+a_28 cws6 a_27 807419168 543760443 997072956 724265248 811671593 1769109343
+a_29 cws6 a_28 1948804468 1533354028 992566633 1952805408 544109173 2099264372
+a_30 cws6 a_29 1635021578 543385972 1768713833 1965057390 863268457 544497458
+a_31 cws6 a_30 1633628257 1965581412 863268457 544497458 1965042785 863268457
+a_32 cws6 a_31 544497458 2065705314 1952805408 544109173 539697249 2099264354
+a_33 cws6 a_32 1635021578 543385972 1768713833 1965057390 863268457 544497458
+a_34 cws6 a_33 1935618145 1965580917 863268457 544497458 1965042785 863268457
+a_35 cws6 a_34 544497458 2065705314 1952805408 544109173 539828321 2099264354
+a_36 cws6 a_35 1635021578 543385972 1768713833 1965057390 863268457 544497458
+a_37 cws6 a_36 1834954849 1965583477 863268457 544497458 1965042785 863268457
+a_38 cws6 a_37 544497458 2065705314 1952805408 544109173 1852405032 1597125492
+a_39 cws6 a_38 673720692 1953393013 1952396342 706765097 992567840 1930067232
+a_40 cws6 a_39 1769234804 1852383331 1701734764 1852405024 1597125492 811671668
+a_41 cws6 a_40 1684955487 1852405032 1597125492 744562804 1852405024 1597125492
+a_42 cws6 a_41 694296692 1914731296 1920300133 543236206 996286502 1930067232
+a_43 cws6 a_42 1769234804 1852383331 1701734764 1852405024 1597125492 811671668
+a_44 cws6 a_43 678588255 1953393013 1952395827 539779360 1953393013 1952395827
+a_45 cws6 a_44 539583008 1701978235 1852994932 2082496800 540762656 1953696381
+a_46 cws6 a_45 1667855457 1819175200 543518313 1953393013 1952395827 1597006112
+a_47 cws6 a_46 678588280 1953393013 1952395827 539779360 1953393013 1952395827
+a_48 cws6 a_47 539583008 1701978235 1852994932 1579180320 540762656 1953696381
+a_49 cws6 a_48 1667855457 1819175200 543518313 1953393013 1952395827 1597006112
+a_50 cws6 a_49 678193267 1953393013 1952395827 539779360 1953393013 1952395827
+a_51 cws6 a_50 539583008 1701978235 1852994932 1008754976 1646796860 857744928
+a_52 cws6 a_51 992572721 1930067232 1769234804 1852383331 1701734764 1852405024
+a_53 cws6 a_52 1597125492 811671668 1919447903 1852405032 1597125492 744562804
+a_54 cws6 a_53 1852405024 1597125492 694296692 1914731296 1920300133 543236206
+a_55 cws6 a_54 673201726 539369570 695546163 175972411 1952543859 1763730281
+a_56 cws6 a_55 1852402798 1868701797 1629514863 1902468912 1852405032 1597125492
+a_57 cws6 a_56 744562804 1852405024 1597125492 694296692 1914731296 1920300133
+a_58 cws6 a_57 543236206 1646279997 175972411 1952543859 1763730281 1852402798
+a_59 cws6 a_58 1868701797 1629514863 1701732144 1852405032 1597125492 744562804
+a_60 cws6 a_59 1852405024 1597125492 694296692 1914731296 1920300133 543236206
+a_61 cws6 a_60 1646279969 175972411 1952543859 1763730281 1852402798 1868701797
+a_62 cws6 a_61 1629514863 1953259312 1852405032 1597125492 744562804 1852405024
+a_63 cws6 a_62 1597125492 694296692 1914731296 1920300133 543236206 996286524
+a_64 cws6 a_63 1930067232 1769234804 1852383331 1701734764 1869570592 811671660
+a_65 cws6 a_64 677735519 1953393013 1952395827 539779360 1953393013 1952395827
+a_66 cws6 a_65 539583008 1701978235 1852994932 1008754976 996286525 1930067232
+a_67 cws6 a_66 1769234804 1852383331 1701734764 1869570592 811671660 678717279
+a_68 cws6 a_67 1953393013 1952395827 539779360 1953393013 1952395827 539583008
+a_69 cws6 a_68 1701978235 1852994932 1042309408 540762656 1953696381 1667855457
+a_70 cws6 a_69 1819175200 543518313 1819242338 1597006112 1965581671 863268457
+a_71 cws6 a_70 544497458 1965042785 863268457 544497458 2065705314 1952805408
+a_72 cws6 a_71 544109173 1027481697 540762656 1953696381 1667855457 1819175200
+a_73 cws6 a_72 543518313 1953393013 1952395827 1597006112 678848868 1953393013
+a_74 cws6 a_73 1952395827 539779360 1953393013 1952395827 539583008 1701978235
+a_75 cws6 a_74 1852994932 1025532448 1966088253 807419680 1717986936 1717986918
+a_76 cws6 a_75 975205734 790651168 540762656 1953696381 1667855457 1819175200
+a_77 cws6 a_76 543518313 1953393013 1952395827 1597006112 678258034 1953393013
+a_78 cws6 a_77 1952395827 539779360 1953393013 1952395827 539583008 1701978235
+a_79 cws6 a_78 1852994932 1025532448 1966088253 1629503264 1629501984 1646273824
+cws6 a_79 175972411 10 0 0 0 0
+
+fn emitc io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32 u32 u32 u32 u32 -> io
+a fold cpre N A
+nt sub J K
+b fold ctd nt a B C K
+nf sub M L
+fold cfn nf b E F G B C H I D L
+
+fn cemit io u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32 u32 u32 u32 u32 -> io
+r emitc A C D E F G H I J K L M N O
+
+fn cstw (u32x128,u32) u32 u32x128 -> (u32x128,u32)
+pg at A 0
+sum at A 1
+v get C B
+l and v 32767
+pg2 set pg B sum
+s2 add sum l
+r (pg2 s2)
+
+fn cstpg (u32x128x64,u32) u32 u32x128x64 -> (u32x128x64,u32)
+st at A 0
+sum at A 1
+pg get C B
+zp zpage
+s0 (zp sum)
+s fold cstw 128 s0 pg
+npg at s 0
+ns at s 1
+st2 set st B npg
+r (st2 ns)
+
+fn cfnm u32x128x16 u32 u32x128x45 u32x128x64 u32x128x64 -> u32x128x16
+b mul B 7
+sy cfw C b 0
+sp >> sy 7
+sl and sy 127
+stg get E sp
+start get stg sl
+ing get D sp
+iv get ing sl
+len and iv 32767
+w mul B 2
+wp >> w 7
+wl and w 127
+pg get A wp
+pg1 set pg wl start
+w1 add wl 1
+pg2 set pg1 w1 len
+r set A wp pg2
+
+fn cunit io u32x512x64 u32 u32x128x8 u32 bool bool -> (io,u32,u32x128x8,u32)
+lx lexsrc B C
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+s1 pass1 B toks ntok
+sinfo at s1 1
+ta at s1 2
+tv at s1 3
+hdrs at s1 5
+nsym at s1 7
+umode at s1 10
+uerr at s1 11
+uetok at s1 12
+nhdr at s1 15
+uopen ne umode 0
+uerr0 eq uerr 0
+ueof and uerr0 uopen
+e1 select ueof 1 uerr
+et1 select ueof ntok uetok
+s2 pass2 B sinfo nsym
+pool at s2 0
+s3 pass3 B toks ta hdrs nhdr e1 et1 ntok
+types at s3 0
+tlist at s3 2
+hout at s3 4
+ntypes at s3 5
+ntlist at s3 6
+e3 at s3 11
+et3 at s3 12
+nhc at s3 18
+nhn at s3 19
+s4 pass4 hout nhn nhc
+fns0 at s4 0
+names at s4 1
+derr at s4 2
+dtok at s4 3
+dup ne derr 0
+e4 select dup derr e3
+et4 select dup dtok et3
+s5 pass5 fns0 names B toks ta tv ntok e4 et4 0
+fns at s5 0
+nodes at s5 1
+alo at s5 2
+narg at s5 5
+args bodyargs alo narg fns0 names B toks ta tv ntok e4 et4
+fcs at s1 7
+fcu at s1 8
+fcp at s2 1
+fch at s3 19
+fct at s3 5
+fcl at s3 6
+fcn at s5 4
+ovr fecap toks ntok fcs fcp fcu fch fct fcl fcn narg
+pcode0 at s5 8
+pcode select ovr 4 pcode0
+cfrom cumin E nhc
+ck checkir types tlist fns nodes args D ntypes ntlist nhc cfrom
+types2 at ck 0
+tlist2 at ck 2
+ntys at ck 4
+fstat at ck 7
+ntypes2 at ck 8
+cerr at ck 10
+ns127 add nsym 127
+nsp >> ns127 7
+$z64 z64
+st0 ($z64 0)
+st fold cstpg nsp st0 sinfo
+starts at st 0
+$z16 z16
+fnm fold cfnm nhc $z16 fns sinfo starts
+grew ne ntypes2 ntypes
+added and grew F
+pok eq pcode 0
+c1 select added 5 0
+cok eq cerr 0
+c2 select cok c1 cerr
+code0 select pok c2 pcode
+prof at s1 16
+unsup refuse prof nodes fcn
+ok0 eq code0 0
+ref and ok0 unsup
+code select ref 2 code0
+ok eq code 0
+go select ok 1 0
+hw select G 1 0
+tfrom select G 3 ntypes2
+t fold cemit go A types2 tlist2 fns nodes args ntys pool fnm ntypes2 tfrom E nhc hw
+r (t code fstat nhc)
+
+fn emitcio io -> u32
+rs readsrc A
+src at rs 0
+n at rs 1
+t1 at rs 2
+$z8 z8
+u cunit t1 src n $z8 0 false true
+code at u 1
+

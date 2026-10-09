@@ -1,0 +1,128 @@
+use "sgwords.a0"
+use "sgio.a0"
+
+fn hd u32x128x512 u32 -> u32
+pg get A 0
+r get pg B
+
+fn whd u32x128x512 u32 u32 u32 -> u32x128x512
+pg get A 0
+pg2 set pg C D
+r set A 0 pg2
+
+fn wstart u32x128x512 u32 -> u32
+b hd A 3
+i << B 2
+j add b i
+r rd512 A j
+
+fn wlen u32x128x512 u32 -> u32
+b hd A 3
+i << B 2
+j add b i
+k add j 1
+r rd512 A k
+
+fn whash u32x128x512 u32 -> u32
+b hd A 3
+i << B 2
+j add b i
+k add j 2
+r rd512 A k
+
+fn isword u32x128x512 u32 u32 u32 -> bool
+l wlen A D
+s wstart A D
+le0 eq l C
+e seq A B l s
+r and le0 e
+
+fn seedb u32x128x512 u32 u32x4118 u32 -> u32x128x512
+b get C B
+pos add D B
+w0 >> pos 2
+pi >> w0 7
+wi and w0 127
+pg get A pi
+w get pg wi
+b0 and pos 3
+sh << b0 3
+v << b sh
+w2 or w v
+pg2 set pg wi w2
+r set A pi pg2
+
+fn wtb u32x128x512 u32 u32x4118 u32 u32 -> u32x128x512
+b get C B
+h hd A 100
+ws hd A 101
+wn hd A 102
+e eq b 124
+c select e 1 0
+x xor h b
+h2 mul x 16777619
+en << wn 2
+e0 add E en
+e1 add e0 1
+e2 add e0 2
+len sub B ws
+st add D ws
+s1 fold wr512 c A e0 st
+s2 fold wr512 c s1 e1 len
+s3 fold wr512 c s2 e2 h
+hn select e 2166136261 h2
+i1 add B 1
+wsn select e i1 ws
+wn1 add wn 1
+wnn select e wn1 wn
+s4 fold whd 1 s3 100 hn
+s5 fold whd 1 s4 101 wsn
+s6 fold whd 1 s5 102 wnn
+
+fn seedw u32x128x512 u32 -> u32x128x512
+lit wlit
+base << B 9
+s1 fold seedb 4118 A lit base
+wtp add B 8
+wt << wtp 7
+s2 fold whd 1 s1 100 2166136261
+s3 fold whd 1 s2 101 0
+s4 fold whd 1 s3 102 0
+s5 fold wtb 4118 s4 lit base wt
+n hd s5 102
+s6 fold whd 1 s5 1 base
+s7 fold whd 1 s6 2 n
+s8 fold whd 1 s7 3 wt
+nxt add wtp 16
+r fold whd 1 s8 7 nxt
+
+fn rdpg (u32x128x512,io,u32,u32) u32 -> (u32x128x512,io,u32,u32)
+s at A 0
+t at A 1
+fp at A 2
+nw at A 3
+b << B 7
+rest sub nw b
+big gt rest 128
+cnt select big 128 rest
+r rdpage t cnt
+pg at r 0
+t2 at r 1
+pi add fp B
+s2 set s pi pg
+o (s2 t2 fp nw)
+
+fn rdfile u32x128x512 io u32 -> (u32x128x512,io,u32,u32)
+r0 read B
+n at r0 0
+t at r0 1
+n3 add n 3
+nw >> n3 2
+nw127 add nw 127
+np >> nw127 7
+s0 (A t C nw)
+s fold rdpg np s0
+st at s 0
+t2 at s 1
+o (st t2 n np)
+
