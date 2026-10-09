@@ -201,6 +201,8 @@ export interface DenseStyle {
   readonly inferResult?: boolean;
   /** `-N` for a u32 literal `2^32 - N` when that text is shorter than the decimal. */
   readonly negative?: boolean;
+  /** `foldN BODY REST` for `fold BODY N REST` with N a number. */
+  readonly foldN?: boolean;
 }
 
 /**
@@ -220,6 +222,9 @@ function negativeSpelling(value: number): string | undefined {
 }
 
 const NEGATIVE = /^-([1-9][0-9]*)$/;
+
+/** `foldN`: a fold whose count is the number N (`foldN`). */
+const FOLD_N = /^fold(0|[1-9][0-9]*)$/;
 
 /** Words of the compact spellings: the printer escapes an id spelled like one (`$min`). */
 const SUGAR: ReadonlySet<string> = new Set(['tab', 'min', 'max']);
@@ -287,7 +292,7 @@ const DOT_ACCESS = /^(\$?[a-z][a-z0-9_]*|[A-Z]|p(?:0|[1-9][0-9]*))\.(0|[1-9][0-9
 
 /** An id spelled like the word of a compact spelling that is on: it is printed escaped (`$bit`). */
 function sugarWord(id: string, ctx: PrintCtx): boolean {
-  return compactOn(ctx) && (SUGAR.has(id) || BIT_WORDS.has(id));
+  return compactOn(ctx) && (SUGAR.has(id) || BIT_WORDS.has(id) || FOLD_N.test(id));
 }
 
 function operandWord(o: Operand, ctx: PrintCtx): string {
@@ -562,6 +567,14 @@ function printNodeTokens(
     const body = callee(node.callee as string);
     const tab = ctx.style.tab && sugarFree('tab', ctx) ? tabBody(body, rest) : undefined;
     if (tab !== undefined) return tab;
+    const count = node.args[0];
+    if (
+      ctx.style.foldN &&
+      count?.kind === 'u32' &&
+      plan.nest[k]?.[0] === undefined &&
+      sugarFree(`fold${count.value}`, ctx)
+    )
+      return [`fold${count.value}`, body, ...rest.slice(1)].join(' ');
     return ['fold', body, ...rest].join(' ');
   }
   if (node.op === 'loop')
@@ -759,6 +772,7 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       dot: options.style?.dot === true,
       inferResult: options.style?.inferResult === true,
       negative: options.style?.negative === true,
+      foldN: options.style?.foldN === true,
     },
   };
   return options.comments === true || options.style?.inline === false
@@ -1148,6 +1162,26 @@ export class FunctionParser {
           op: 'select',
           args: [c, { kind: 'u32', value: x }, { kind: 'u32', value: y }],
         });
+      };
+    if (FOLD_N.test(w))
+      return () => {
+        // `foldN BODY REST` is `fold BODY N REST`: the tokens are rewritten.
+        const at = this.pos - 1;
+        let end = this.pos + 1;
+        if (this.toks[this.pos]?.kind === 'lbrace') {
+          while (end <= this.toks.length && this.toks[end - 1]?.kind !== 'rbrace') end += 1;
+          if (end > this.toks.length) fail("missing '}'", this.line);
+        }
+        const word = (text: string): Tok => ({ kind: 'word', text });
+        this.toks = [
+          ...this.toks.slice(0, at),
+          word('fold'),
+          ...this.toks.slice(this.pos, end),
+          word(w.slice('fold'.length)),
+          ...this.toks.slice(end),
+        ];
+        this.pos = at;
+        return this.expr();
       };
     const neg = NEGATIVE.exec(w);
     if (neg !== null) {

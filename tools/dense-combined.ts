@@ -40,6 +40,7 @@ export const RULES: readonly { readonly n: number; readonly name: string; readon
     { n: 3, name: 'record access X.K', style: { dot: true } },
     { n: 4, name: 'result type from the body', style: { inferResult: true } },
     { n: 5, name: 'negative literal wrap', style: { negative: true } },
+    { n: 6, name: 'foldN count fusion', style: { foldN: true } },
   ];
 
 /** Rule 7 (default names with `i` first) was dropped in the pre-registration, before implementation. */
