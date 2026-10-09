@@ -197,6 +197,8 @@ export interface DenseStyle {
   readonly bit?: boolean;
   /** `X.K` for `at X K` (X a parameter or named value, K a number). */
   readonly dot?: boolean;
+  /** Leave out `-> T` whenever the reader infers T from the result, after a type list too. */
+  readonly inferResult?: boolean;
 }
 
 /**
@@ -660,19 +662,18 @@ function printLines(
   // A type list always ends with its `->`; without a list a u32 result is left out.
   // The parser infers an unwritten result from the last statement, so it is only left out when that agrees (an
   // ill-typed body keeps its written `-> u32`, which keeps the text lossless).
-  const implicitResult =
-    plain &&
-    fn.result === 'u32' &&
-    [undefined, 'u32'].includes(
-      typerFor(
-        fn,
-        new Map(
-          ctx.program.functions.map(
-            (f) => [f.name, { params: f.params, result: f.result }] as const,
-          ),
-        ),
-      )(fn.ret) as never,
-    );
+  const inferred = typerFor(
+    fn,
+    new Map(
+      ctx.program.functions.map((f) => [f.name, { params: f.params, result: f.result }] as const),
+    ),
+  )(fn.ret);
+  // Under `inferResult` any result the reader infers the same way is left out, after a type list too.
+  const implicitResult = ctx.style.inferResult
+    ? inferred === undefined
+      ? fn.result === 'u32'
+      : typeEquals(inferred, fn.result)
+    : plain && fn.result === 'u32' && [undefined, 'u32'].includes(inferred as never);
   const sig =
     (plain ? '' : fn.params.map(formatType).join(' ')) +
     (implicitResult
@@ -742,6 +743,7 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       fill: options.style?.fill === true,
       bit: options.style?.bit === true,
       dot: options.style?.dot === true,
+      inferResult: options.style?.inferResult === true,
     },
   };
   return options.comments === true || options.style?.inline === false
@@ -1771,7 +1773,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
         expanded.push(it);
         continue;
       }
-      const { rest } = parseDenseHeader(it.text, it.line);
+      const { rest } = parseDenseHeader(it.text, it.line, true);
       const segs = splitTop(rest).map((s) => s.trim());
       if (segs.length <= 1) {
         expanded.push({ ...it, text: `fn ${it.text}` });
@@ -1837,7 +1839,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
         it.line,
         'statements belong inside a function: start it with `fn NAME`',
       );
-    const written = parseDenseHeader(it.text.slice(2).trim(), it.line);
+    const written = parseDenseHeader(it.text.slice(2).trim(), it.line, options.compact === true);
     const declared = declaredParams(written.rest);
     const head = declared > 0 ? { ...written, rest: '' } : written;
     if (functions.some((f) => f.name === head.name) || arities.has(head.name))
