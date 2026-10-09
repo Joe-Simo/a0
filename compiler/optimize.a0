@@ -67,7 +67,9 @@
 #
 # Known differences from src/optimize.ts: the limits above, and the evaluator's capacities
 # (1024 frames, 16368 environment words, 40832 heap words): a call that exhausts them is code
-# 4, a fold that does so is kept as a loop, where TypeScript has no capacity.
+# 4, a fold that does so is kept as a loop, where TypeScript has no capacity. Not yet ported:
+# src/optimize.ts `readThroughFills` (a `get` of a fill-run fold read as the fill value): a
+# function where it fires would differ from TypeScript; no program of the selfhost check has one.
 #
 # compiler/optimize.a0 is generated from compiler/optimize.a0s by tools/a0s.ts (an expression
 # language that compiles to one-node-per-line A0; see its header): edit the source, not this

@@ -1210,13 +1210,85 @@ function forwardAggregates(body: Body, strict: boolean): Body | undefined {
   return changed ? { ...body, nodes } : undefined;
 }
 
+/**
+ * Read-through of fill runs: `get A k`, where A is a fill run (see `fillRun`: trip i of the
+ * fold stores f(i, extras) at index i, for i below its trip count) and the element read is
+ * provably one the fold wrote, is f with the element index in place of the trip counter and the
+ * fold's extra operands in place of the body's extra parameters. The element read is `k mod
+ * length` (canonical `get` wraps); it is provably below the trip count when `upperBound(k)` is
+ * below the count (then it is k itself), or, canonically, when the count is the whole length
+ * (then it is `rem k length`, which strength reduction makes a mask for a power of two). Under
+ * strict, `get` traps instead of wrapping, so only the first form applies. When no read of the
+ * fold remains, dead-code elimination removes it. f is copied once per read, so it is limited
+ * to FUSE_RECOMPUTE_COST (nodeCost units): the read it replaces is one load, and this is the
+ * cost loop fusion already accepts for recomputing a producer's element instead of loading it.
+ */
+function readThroughFills(fn: TypedFunc, body: Body): Body | undefined {
+  const strict = fn.profile === 'strict';
+  const names = new Names(body.types.keys());
+  const types = new Map(body.types);
+  const defs = new Map<string, Node>();
+  const out: Node[] = [];
+  let changed = false;
+  for (const n of body.nodes) {
+    defs.set(n.id, n);
+    const [a, k] = n.args;
+    const fold = n.op === 'get' && a?.kind === 'node' ? defs.get(a.id) : undefined;
+    const run = fold === undefined ? undefined : fillRunIn(types, body.calls, fold);
+    const arr = fold === undefined ? undefined : arrayOf(types.get(fold.id));
+    if (fold === undefined || run === undefined || arr === undefined || k === undefined) {
+      out.push(n);
+      continue;
+    }
+    if (run.nodes.reduce((c, m) => c + nodeCost(m.op), 0) > FUSE_RECOMPUTE_COST) {
+      out.push(n);
+      continue;
+    }
+    let index: Operand | undefined;
+    if (upperBound(k, defs) < run.count) index = k;
+    else if (!strict && run.count === arr.length) {
+      const id = names.fresh();
+      const rem: Node = { id, op: 'rem', args: [k, { kind: 'u32', value: arr.length }] };
+      out.push(rem);
+      defs.set(id, rem);
+      types.set(id, 'u32');
+      index = { kind: 'node', id };
+    }
+    if (index === undefined) {
+      out.push(n);
+      continue;
+    }
+    const map = new Map<string, Operand>();
+    const sub = (o: Operand): Operand => {
+      if (o.kind === 'param')
+        return o.index === 1 ? (index as Operand) : (fold.args[o.index] as Operand);
+      if (o.kind === 'node') return map.get(o.id) ?? o;
+      return o;
+    };
+    for (const m of run.nodes) {
+      const id = names.fresh();
+      const copy: Node = { id, op: m.op, args: m.args.map(sub) };
+      out.push(copy);
+      defs.set(id, copy);
+      types.set(id, 'u32');
+      map.set(m.id, { kind: 'node', id });
+    }
+    const mov: Node = { id: n.id, op: 'mov', args: [sub(run.value)] };
+    out.push(mov);
+    defs.set(n.id, mov);
+    changed = true;
+  }
+  return changed ? { ...body, nodes: out, types } : undefined;
+}
+
 export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: OptimizeStats } {
   // Whole program: callees are optimized first, so IR inlining and the backends that inline
   // (arm64, x86-64, wasm) see the optimized bodies, not the source ones.
   const calls = new Map([...fn.calls].map(([name, callee]) => [name, optimizedCallee(callee)]));
-  let body = pass(fn, expand({ nodes: fn.nodes, ret: fn.ret, types: new Map(fn.types), calls }));
+  const source: Body = { nodes: fn.nodes, ret: fn.ret, types: new Map(fn.types), calls };
+  let body = pass(fn, expand(readThroughFills(fn, source) ?? source));
   for (let round = 0; round < 8; round += 1) {
-    const next = forwardAggregates(body, fn.profile === 'strict');
+    const next = readThroughFills(fn, body) ?? forwardAggregates(body, fn.profile === 'strict');
     if (next === undefined) break;
     body = pass(fn, next);
   }
