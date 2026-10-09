@@ -199,6 +199,8 @@ export interface DenseStyle {
   readonly dot?: boolean;
   /** Leave out `-> T` whenever the reader infers T from the result, after a type list too. */
   readonly inferResult?: boolean;
+  /** `-N` for a u32 literal `2^32 - N` when that text is shorter than the decimal. */
+  readonly negative?: boolean;
 }
 
 /**
@@ -210,6 +212,14 @@ function hexSpelling(value: number): string | undefined {
   const h = value.toString(16);
   return /^(.)\1*$/.test(h) && 2 + h.length <= String(value).length ? `0x${h}` : undefined;
 }
+
+/** `-N` for the u32 `2^32 - N` when that text is strictly shorter than the decimal (`negative`). */
+function negativeSpelling(value: number): string | undefined {
+  const n = 2 ** 32 - value;
+  return value > 0 && 1 + String(n).length < String(value).length ? `-${n}` : undefined;
+}
+
+const NEGATIVE = /^-([1-9][0-9]*)$/;
 
 /** Words of the compact spellings: the printer escapes an id spelled like one (`$min`). */
 const SUGAR: ReadonlySet<string> = new Set(['tab', 'min', 'max']);
@@ -290,7 +300,11 @@ function operandWord(o: Operand, ctx: PrintCtx): string {
     case 'param':
       return ctx.style.letters ? paramWord(o.index) : `p${o.index}`;
     case 'u32':
-      return (ctx.style.hex ? hexSpelling(o.value) : undefined) ?? String(o.value);
+      return (
+        (ctx.style.negative ? negativeSpelling(o.value) : undefined) ??
+        (ctx.style.hex ? hexSpelling(o.value) : undefined) ??
+        String(o.value)
+      );
     case 'bool':
       return o.value ? 'true' : 'false';
   }
@@ -744,6 +758,7 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       bit: options.style?.bit === true,
       dot: options.style?.dot === true,
       inferResult: options.style?.inferResult === true,
+      negative: options.style?.negative === true,
     },
   };
   return options.comments === true || options.style?.inline === false
@@ -1134,6 +1149,12 @@ export class FunctionParser {
           args: [c, { kind: 'u32', value: x }, { kind: 'u32', value: y }],
         });
       };
+    const neg = NEGATIVE.exec(w);
+    if (neg !== null) {
+      const n = Number(neg[1]);
+      if (n > U32_MAX) fail(`literal ${w} exceeds u32`, this.line);
+      return () => ({ kind: 'u32', value: 2 ** 32 - n });
+    }
     const dot = DOT_ACCESS.exec(w);
     if (dot !== null && denseOp(dot[1] as string) === undefined && !this.fnNames.has(dot[1] as string))
       return () =>
