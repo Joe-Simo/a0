@@ -4,7 +4,7 @@ Date: 2026-10-09. Committed before `src/dense.ts` changes and before `tools/lang
 
 ## Starting point
 
-A read-only analysis (text rewrites of the dense kernel texts and of the 81 migrated `dense/` files, counted with o200k_base; not recorded in `results/`, so it backs no claim) ranked ten surface rules. It found no combination of general rules that brings the kernel sum near the 2x line (161 against the best single language, 323; 150 against per-kernel bests, 300). The rest of the kernel tokens are operations, names and number literals, already one token each where the tokenizer allows. This note does not expect, and does not claim, progress toward that line.
+A read-only analysis (text rewrites of the dense kernel texts and of the 81 migrated `dense/` files, counted with o200k_base; not recorded in `results/`, so it backs no claim) ranked ten surface rules. It found no combination of general rules that brings the kernel sum near the 2x line (161 against the best single language, 323; 150 against per-kernel bests, 300; `results/lang-axes.json`). The rest of the kernel tokens are operations, names and number literals, already one token each where the tokenizer allows. This note does not expect, and does not claim, progress toward that line.
 
 ## Chosen candidate
 
@@ -24,7 +24,7 @@ o200k_base via `bun tools/lang-axes.ts --tokens-only` (per-kernel dense tokens, 
 
 ## Win rule
 
-Kept only if all hold: (1) canonical -> dense -> canonical stays lossless on every program the existing dense round-trip tests and `tools/dense-tokens.ts` cover; (2) no kernel's dense count rises; (3) the dense corpus total falls. A tie on (3) is recorded as no gain and the change is reverted. Whatever is measured is recorded, including that the 2x line stays out of reach.
+Kept only if all hold: (1) canonical -> dense -> canonical stays lossless on every program the existing dense round-trip tests and `tools/dense-tokens.ts` cover; (2) no kernel's dense count rises; (3) the dense corpus total falls (both read from `results/lang-axes.json` and `results/dense-tokens.json` as the tools write them). A tie on (3) is recorded as no gain and the change is reverted. Whatever is measured is recorded, including that the 2x line stays out of reach.
 
 ## Outcome (measured after the commit above)
 
