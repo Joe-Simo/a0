@@ -187,6 +187,12 @@ export interface DenseStyle {
   readonly trailingParams?: boolean;
   /** One line per function: no `fn`, statements joined with `;`. */
   readonly oneLine?: boolean;
+  /*
+   * The combined compact rules (docs/history/2026-10-09-dense-combined-rules-preregistration.md),
+   * off by default and read by `parseDense(text, { compact: true })`.
+   */
+  /** `[e;k]` also when the repeated element is a named value (`repeat` covers numbers and parameters). */
+  readonly fill?: boolean;
 }
 
 /**
@@ -479,7 +485,7 @@ function printNodeTokens(
     const same =
       ctx.style.repeat &&
       node.args.length >= 3 &&
-      first.kind !== 'node' &&
+      (first.kind !== 'node' || ctx.style.fill) &&
       plan.nest[k]?.every((c) => c === undefined) === true &&
       node.args.every((a) => operandWord(a, ctx) === operandWord(first, ctx));
     return same ? `[${args[0]};${args.length}]` : `[${args.join(' ')}]`;
@@ -708,6 +714,7 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       hex: options.style?.hex === true,
       trailingParams: options.style?.trailingParams === true,
       oneLine: options.style?.oneLine === true,
+      fill: options.style?.fill === true,
     },
   };
   return options.comments === true || options.style?.inline === false
