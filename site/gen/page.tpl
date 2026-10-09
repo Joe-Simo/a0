@@ -180,9 +180,6 @@ s 13 glsl
 +id tok-t
 "10 benchmark kernels: 193 tokens in A0's dense form, 323 in Forth (o200k; results/lang-axes.json).
 >
-.p status
-"Next: a compact dense form takes 158 tokens on the same kernels, 2.04x fewer than Forth, and about 9% fewer than today's dense form on held-out code (results/dense-combined.json). Edit-accuracy check in progress; not the default yet.
->
 .div lrow me
 .span lbl
 "A0 dense
@@ -259,7 +256,7 @@ w 100
 >
 >
 .p tokcap
-"Fewer tokens per edit. The measured cost of a whole edit is below.
+"Tokens to write the same 10 benchmark programs (o200k tokenizer). What a whole AI edit costs is measured below.
 >
 >
 .p honest
