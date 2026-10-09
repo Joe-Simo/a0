@@ -1,0 +1,27 @@
+# Pre-registration: general dense-text reductions (written before any change or re-measurement)
+
+Date: 2026-10-09. Committed before `src/dense.ts` changes and before `tools/lang-axes.ts --tokens-only` or `tools/dense-tokens.ts` is re-run.
+
+## Starting point
+
+A read-only analysis (text rewrites of the dense kernel texts and of the 81 migrated `dense/` files, counted with o200k_base; not recorded in `results/`, so it backs no claim) ranked ten surface rules. It found no combination of general rules that brings the kernel sum near the 2x line (161 against the best single language, 323; 150 against per-kernel bests, 300). The rest of the kernel tokens are operations, names and number literals, already one token each where the tokenizer allows. This note does not expect, and does not claim, progress toward that line.
+
+## Chosen candidate
+
+Only rules with a corpus-wide saving and an argued low risk to AI edit accuracy qualify:
+
+- **Rule 7: no blank line between functions.** Each function already starts with its `fn` header line, which the reader uses as the boundary (blank lines are ignored by `parseDense`), so the blank line carries no information. Risk to edit accuracy argued low: function starts stay on their own line, nothing is renamed and no line gets longer.
+
+Not chosen:
+
+- Rule 3 (drop the final newline): `tools/dense-tokens.ts` and `tools/lang-axes.ts` already count `trimEnd()` text, so it changes nothing measured.
+- Rule 1 (one line per function body, `;`-joined): medium risk; long lines make edits harder to anchor. It needs an AI edit-accuracy measurement first, which is out of scope here.
+- Rules 2, 4, 5, 6 (medium or high risk), 8, 9, 10 (cost tokens).
+
+## Measure
+
+o200k_base via `bun tools/lang-axes.ts --tokens-only` (per-kernel dense tokens, sum against 323 and 300) and `bun tools/dense-tokens.ts` (kernels and corpus sample, canonical, dense exact, dense). Before = this commit; after = the change commit, same tools, same inputs.
+
+## Win rule
+
+Kept only if all hold: (1) canonical -> dense -> canonical stays lossless on every program the existing dense round-trip tests and `tools/dense-tokens.ts` cover; (2) no kernel's dense count rises; (3) the dense corpus total falls. A tie on (3) is recorded as no gain and the change is reverted. Whatever is measured is recorded, including that the 2x line stays out of reach.
