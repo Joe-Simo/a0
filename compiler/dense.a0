@@ -411,8 +411,9 @@ r rec isq sqcn sqsn sqen qerr2 inq2
 ret r
 end
 
-# The type reading state of a byte of a word (lexb): each part is 0 at a byte that is not of a word, so the
-# step runs only for a byte of a word (a fold of 1 or 0 steps from zeros).
+# The type reading state of a byte of a word (lexb): each part is 0 at a byte that is not of a word. In state 0
+# a byte that does not complete u32, bool or io and is not an `x` that starts the word only counts a digit and
+# keeps the rest, so the step runs only for the other bytes of a word (a fold of 1 or 0 steps from that state).
 fn lexty (u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 u32 bool u32 u32 u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32)
 zq0 eq p2 0
 mw1 mul p3 256
@@ -524,6 +525,65 @@ end
 
 # One byte of the source (i < n) or the virtual newline (i == n): the state after it. p4 is the class table
 # (lextab).
+# The word state after a byte of a word (lexb): its start, length, packed words, hash, value, flags and class
+# mask. Run only for a byte of a word (a fold of 1 or 0 steps); after any other byte the word state is empty
+# (the start is kept).
+fn lexwd (u32,u32,u32,u32,u32,u32,bool,bool,bool,u32) u32 u32 bool u32 u32 u32 u32 u32 u32 u32 bool bool bool bool bool u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,bool,bool,bool,u32)
+z0 eq p2 0
+ue and p3 z0
+wstn select ue p4 p5
+wlna add p2 1
+wlnn select p3 wlna 0
+lt4 lt p2 4
+m1 mul p6 256
+m2 add m1 p7
+w0a select lt4 m2 p6
+w0n select p3 w0a 0
+ge4 ge p2 4
+lt8 lt p2 8
+g48 and ge4 lt8
+m3 mul p8 256
+m4 add m3 p7
+w1a select g48 m4 p8
+w1n select p3 w1a 0
+h1 mul p9 31
+h2 add h1 p7
+hha select z0 p7 h2
+hhn select p3 hha 0
+nb select z0 0 p10
+nd1 mul nb 10
+nd2 sub p7 48
+nd3 add nd1 nd2
+nu sub p7 65
+nz select p11 nu 0
+nwn select z0 nz p10
+nwx select p12 nd3 nwn
+nvn select p3 nwx 0
+dd and p13 p12
+dfa select z0 p12 dd
+dfn select p3 dfa false
+pdd and p14 p12
+pfa select z0 p15 pdd
+pfn select p3 pfa false
+lfa select z0 p11 false
+lfn select p3 lfa false
+xfbz select z0 p16 0
+xo1 gt nb 429496729
+xo2 eq nb 429496729
+xo3 gt nd2 5
+xo4 and xo2 xo3
+xo5 or xo1 xo4
+xo6 and p12 xo5
+xobit select xo6 256 0
+wmp select z0 0 p17
+wm1 or wmp p18
+wm2 or wm1 xfbz
+wm3 or wm2 xobit
+wmn select p3 wm3 0
+lexwd_r rec wstn wlnn w0n w1n hhn nvn dfn pfn lfn wmn
+ret lexwd_r
+end
+
 fn lexb ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool,u32,u32,bool) u32 u32x128x128 u32 u32x257 -> ((u32,u32,u32,u32,u32,u32,u32,u32)x128x32,u32,u32x128x16,u32,bool,bool,bool,u32,u32,u32,u32,u32,u32,bool,bool,bool,u32,bool,u32,u32,u32,u32,u32,u32,u32,bool,u32,u32,bool)
 tk at p0 0
 ntk at p0 1
@@ -599,8 +659,37 @@ upd and act wc
 endw and inw sepa2
 pval and act pr8
 endn select endw 1 0
-lexty_n select upd 1 0
-lexty_z rec 0 0 0 0 0 0 0
+ty_s0 eq tsq 0
+ty_ma mul w0 256
+ty_mb add ty_ma c
+ty_u0 eq wln 2
+ty_u1 eq ty_mb 7680818
+ty_u and ty_u0 ty_u1
+ty_b0 eq wln 3
+ty_b1 eq ty_mb 1651470188
+ty_b and ty_b0 ty_b1
+ty_i0 eq wln 1
+ty_i1 eq ty_mb 26991
+ty_i and ty_i0 ty_i1
+ty_h0 or ty_u ty_b
+ty_hit or ty_h0 ty_i
+ty_x eq c 120
+ty_tx0 and dlz ty_x
+ty_sl0 or ty_hit ty_tx0
+ty_ns eq ty_s0 false
+ty_sl1 or ty_sl0 ty_ns
+ty_slow and upd ty_sl1
+ty_cm mul tcd 10
+ty_cd sub c 48
+ty_ca add ty_cm ty_cd
+ty_cg gt ty_ca 1000000
+ty_cc select ty_cg 1000000 ty_ca
+ty_cf1 select dg ty_cc tcd
+ty_cf select ty_x 0 ty_cf1
+ty_fr rec 0 ty_cf tpr tnd td1 td2 tbk
+ty_zr rec 0 0 0 0 0 0 0
+lexty_n select ty_slow 1 0
+lexty_z select upd ty_fr ty_zr
 lexty_s fold lexty lexty_n lexty_z wln w0 c tsq upd tcd tpr tnd td1 td2 tbk
 tsnn at lexty_s 0
 cdnn at lexty_s 1
@@ -642,61 +731,23 @@ tbw or pvq lw0
 tbn select tbw 1 0
 tkb fold lextb tbn tka ixb tokb oktb
 ntkb add ntka pvn
-z0 eq wln 0
-ue and upd z0
-wstn select ue p1 wst
-wlna add wln 1
-wlnn select upd wlna 0
-lt4 lt wln 4
-m1 mul w0 256
-m2 add m1 c
-w0a select lt4 m2 w0
-w0n select upd w0a 0
-ge4 ge wln 4
-lt8 lt wln 8
-g48 and ge4 lt8
-m3 mul w1 256
-m4 add m3 c
-w1a select g48 m4 w1
-w1n select upd w1a 0
-h1 mul hh 31
-h2 add h1 c
-hha select z0 c h2
-hhn select upd hha 0
-nb select z0 0 nv
-nd1 mul nb 10
-nd2 sub c 48
-nd3 add nd1 nd2
-nu sub c 65
-nz select up nu 0
-nwn select z0 nz nv
-nwx select dg nd3 nwn
-nvn select upd nwx 0
-dd and dfl dg
-dfa select z0 dg dd
-dfn select upd dfa false
-pdd and pfl dg
-pfa select z0 pc pdd
-pfn select upd pfa false
-lfa select z0 up false
-lfn select upd lfa false
 hsx and hs ninq
 ch or cmt hsx
 cmtn select nl false ch
 eb mov err0
-xfbz select z0 xfb 0
-xo1 gt nb 429496729
-xo2 eq nb 429496729
-xo3 gt nd2 5
-xo4 and xo2 xo3
-xo5 or xo1 xo4
-xo6 and dg xo5
-xobit select xo6 256 0
-wmp select z0 0 wm
-wm1 or wmp xcb
-wm2 or wm1 xfbz
-wm3 or wm2 xobit
-wmn select upd wm3 0
+lexwd_n select upd 1 0
+lexwd_z rec wst 0 0 0 0 0 false false false 0
+lexwd_s fold lexwd lexwd_n lexwd_z wln upd p1 wst w0 c w1 hh nv up dg dfl pfl pc xfb wm xcb
+wstn at lexwd_s 0
+wlnn at lexwd_s 1
+w0n at lexwd_s 2
+w1n at lexwd_s 3
+hhn at lexwd_s 4
+nvn at lexwd_s 5
+dfn at lexwd_s 6
+pfn at lexwd_s 7
+lfn at lexwd_s 8
+wmn at lexwd_s 9
 we_z rec false false
 we_n select endw 1 0
 we fold lexwe we_n we_z p0
@@ -1132,6 +1183,160 @@ r get pg p1
 ret r
 end
 
+# The name bits of a scope (stmtc): a set of the hashes of the explicit ids of the nodes of the function (entries
+# 5091..5099 of the node table) or of the inline body (5100..5108) being read. The first entry holds the first node
+# of the scope plus one; the next 8 hold 2048 bits, 8 fields of 32 bits each. The set is valid when that first node
+# is the scope's: it was emptied when the scope had no node, and each explicit id written since added its bit (only
+# stmtc writes one, with the name token of the statement). A bit that is not set means no node of the scope has a
+# name with that hash, so the scan for a duplicate name is skipped; a set bit means the scan runs.
+
+# The bit p4 of field p3 of entry p2 of the set from p1.
+fn dbget (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32 u32 u32 -> bool
+i0 add p1 1
+i add i0 p2
+e call ntget p0 i
+x0 at e 0
+x1 at e 1
+x2 at e 2
+x3 at e 3
+x4 at e 4
+x5 at e 5
+x6 at e 6
+x7 at e 7
+f1 eq p3 1
+f2 eq p3 2
+f3 eq p3 3
+f4 eq p3 4
+f5 eq p3 5
+f6 eq p3 6
+f7 eq p3 7
+y1 select f1 x1 x0
+y2 select f2 x2 y1
+y3 select f3 x3 y2
+y4 select f4 x4 y3
+y5 select f5 x5 y4
+y6 select f6 x6 y5
+x select f7 x7 y6
+sh shr x p4
+b and sh 1
+r ne b 0
+ret r
+end
+
+# The node table with the bit p5 of field p4 of entry p3 of the set from p2 set (a fold step).
+fn dbput (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40
+i0 add p2 1
+i add i0 p3
+e call ntget p0 i
+x0 at e 0
+x1 at e 1
+x2 at e 2
+x3 at e 3
+x4 at e 4
+x5 at e 5
+x6 at e 6
+x7 at e 7
+f1 eq p4 1
+f2 eq p4 2
+f3 eq p4 3
+f4 eq p4 4
+f5 eq p4 5
+f6 eq p4 6
+f7 eq p4 7
+y1 select f1 x1 x0
+y2 select f2 x2 y1
+y3 select f3 x3 y2
+y4 select f4 x4 y3
+y5 select f5 x5 y4
+y6 select f6 x6 y5
+x select f7 x7 y6
+one mov 1
+m shl one p5
+nx or x m
+e0 put e 0 nx
+e1 put e 1 nx
+e2 put e 2 nx
+e3 put e 3 nx
+e4 put e 4 nx
+e5 put e 5 nx
+e6 put e 6 nx
+e7 put e 7 nx
+z1 select f1 e1 e0
+z2 select f2 e2 z1
+z3 select f3 e3 z2
+z4 select f4 e4 z3
+z5 select f5 e5 z4
+z6 select f6 e6 z5
+z7 select f7 e7 z6
+r call ntset p0 i z7
+ret r
+end
+
+# The node table with the set from p2 emptied for the scope whose first node is p3 - 1 (a fold step).
+fn dbreset (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40
+st rec p3 0 0 0 0 0 0 0 0 0 0
+z rec 0 0 0 0 0 0 0 0 0 0 0
+t0 call ntset p0 p2 st
+i1 add p2 1
+t1 call ntset t0 i1 z
+i2 add p2 2
+t2 call ntset t1 i2 z
+i3 add p2 3
+t3 call ntset t2 i3 z
+i4 add p2 4
+t4 call ntset t3 i4 z
+i5 add p2 5
+t5 call ntset t4 i5 z
+i6 add p2 6
+t6 call ntset t5 i6 z
+i7 add p2 7
+t7 call ntset t6 i7 z
+i8 add p2 8
+t8 call ntset t7 i8 z
+ret t8
+end
+
+# The function name bits: the hashes of the name tokens of the function table, in the same layout as the name
+# bits of a scope (dbget) from entry 5109 (bits in 5110..5117). seedg sets the bit of every name fnscan finds and hdr
+# the bit of each header's name, so a name whose bit is not set names no function and findfn is not run for it.
+
+# The bit of the hash of the token p1 in the function name bits of p0.
+fn fnbit (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 (u32,u32,u32,u32,u32,u32,u32,u32) -> bool
+h at p1 5
+h1 shr h 11
+h2 xor h h1
+x and h2 2047
+ei shr x 8
+f0 shr x 5
+f and f0 7
+bt and x 31
+r call dbget p0 5109 ei f bt
+ret r
+end
+
+# The node table p0 with the bit of the token p1 set in the function name bits.
+fn fnset (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 (u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40
+h at p1 5
+h1 shr h 11
+h2 xor h h1
+x and h2 2047
+ei shr x 8
+f0 shr x 5
+f and f0 7
+bt and x 31
+r fold dbput 1 p0 5109 ei f bt
+ret r
+end
+
+# A fold step over the function table p2: the bit of the name of function i set (p3: the token table).
+fn fnseed (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40
+fe call ftget p2 p1
+nm at fe 0
+tk call tkget p3 nm
+r call fnset p0 tk
+ret r
+end
+
 fn ftset (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4
 ix shr p1 7
 pg get p0 ix
@@ -1385,7 +1590,8 @@ cx at fsr 1
 ex at fsr 2
 meta rec 0 0 0 0 0 cx 0 0 0 0 0
 ntm call ntset nt0 2048 meta
-r rec ntm nn0 ftx nf0 pt0 np0 ex
+ntb fold fnseed cx ntm ftx p3
+r rec ntb nn0 ftx nf0 pt0 np0 ex
 ret r
 end
 
@@ -3030,7 +3236,9 @@ cand and enm0 ncp
 lka and ecallkw nxv
 lkn or cand lka
 lkt select ecallkw nxt t
-tn select lkn tot 0
+tnb call fnbit nt0 lkt
+tn0 select tnb tot 0
+tn select lkn tn0 0
 fj loop findfnot findfn tn 4294967295 p4 p2 lkt
 found ne fj 4294967295
 defd lt fj p5
@@ -3425,119 +3633,6 @@ r rec et2 dn2
 ret r
 end
 
-# The name bits of a scope (stmtc): a set of the hashes of the explicit ids of the nodes of the function (entries
-# 5091..5099 of the node table) or of the inline body (5100..5108) being read. The first entry holds the first node
-# of the scope plus one; the next 8 hold 2048 bits, 8 fields of 32 bits each. The set is valid when that first node
-# is the scope's: it was emptied when the scope had no node, and each explicit id written since added its bit (only
-# stmtc writes one, with the name token of the statement). A bit that is not set means no node of the scope has a
-# name with that hash, so the scan for a duplicate name is skipped; a set bit means the scan runs.
-
-# The bit p4 of field p3 of entry p2 of the set from p1.
-fn dbget (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32 u32 u32 -> bool
-i0 add p1 1
-i add i0 p2
-e call ntget p0 i
-x0 at e 0
-x1 at e 1
-x2 at e 2
-x3 at e 3
-x4 at e 4
-x5 at e 5
-x6 at e 6
-x7 at e 7
-f1 eq p3 1
-f2 eq p3 2
-f3 eq p3 3
-f4 eq p3 4
-f5 eq p3 5
-f6 eq p3 6
-f7 eq p3 7
-y1 select f1 x1 x0
-y2 select f2 x2 y1
-y3 select f3 x3 y2
-y4 select f4 x4 y3
-y5 select f5 x5 y4
-y6 select f6 x6 y5
-x select f7 x7 y6
-sh shr x p4
-b and sh 1
-r ne b 0
-ret r
-end
-
-# The node table with the bit p5 of field p4 of entry p3 of the set from p2 set (a fold step).
-fn dbput (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40
-i0 add p2 1
-i add i0 p3
-e call ntget p0 i
-x0 at e 0
-x1 at e 1
-x2 at e 2
-x3 at e 3
-x4 at e 4
-x5 at e 5
-x6 at e 6
-x7 at e 7
-f1 eq p4 1
-f2 eq p4 2
-f3 eq p4 3
-f4 eq p4 4
-f5 eq p4 5
-f6 eq p4 6
-f7 eq p4 7
-y1 select f1 x1 x0
-y2 select f2 x2 y1
-y3 select f3 x3 y2
-y4 select f4 x4 y3
-y5 select f5 x5 y4
-y6 select f6 x6 y5
-x select f7 x7 y6
-one mov 1
-m shl one p5
-nx or x m
-e0 put e 0 nx
-e1 put e 1 nx
-e2 put e 2 nx
-e3 put e 3 nx
-e4 put e 4 nx
-e5 put e 5 nx
-e6 put e 6 nx
-e7 put e 7 nx
-z1 select f1 e1 e0
-z2 select f2 e2 z1
-z3 select f3 e3 z2
-z4 select f4 e4 z3
-z5 select f5 e5 z4
-z6 select f6 e6 z5
-z7 select f7 e7 z6
-r call ntset p0 i z7
-ret r
-end
-
-# The node table with the set from p2 emptied for the scope whose first node is p3 - 1 (a fold step).
-fn dbreset (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40
-st rec p3 0 0 0 0 0 0 0 0 0 0
-z rec 0 0 0 0 0 0 0 0 0 0 0
-t0 call ntset p0 p2 st
-i1 add p2 1
-t1 call ntset t0 i1 z
-i2 add p2 2
-t2 call ntset t1 i2 z
-i3 add p2 3
-t3 call ntset t2 i3 z
-i4 add p2 4
-t4 call ntset t3 i4 z
-i5 add p2 5
-t5 call ntset t4 i5 z
-i6 add p2 6
-t6 call ntset t5 i6 z
-i7 add p2 7
-t7 call ntset t6 i7 z
-i8 add p2 8
-t8 call ntset t7 i8 z
-ret t8
-end
-
 # The statement core: the tokens p2..p3 of a function or of an inline body, as a prefix expression read
 # from node count nn on. The state: (node table, node count, first node of the function or body, result
 # kind, result value, error). p4 and p5 (the function table and the current function) resolve callee
@@ -3568,7 +3663,9 @@ mt0 call ntget gnt 2048
 tt0 at mt0 5
 tt1 lt tt0 513
 tot select tt1 tt0 512
-cn0 select nmk0 tot 0
+cnb call fnbit gnt t0
+cn1 select cnb tot 0
+cn0 select nmk0 cn1 0
 fj0 loop findfnot findfn cn0 4294967295 p4 p1 t0
 isf0 ne fj0 4294967295
 nisf eq isf0 false
@@ -4024,7 +4121,8 @@ npar select hasp cntf 4294967295
 nfn rec nmt npar gnp ress rese gnn 0 0 0
 ft2 call ftset gft gnf nfn
 nfns2 add gnf 1
-g1 rec gnt gnn ft2 nfns2 ptf npt2 gerr
+gntb call fnset gnt nmtk
+g1 rec gntb gnn ft2 nfns2 ptf npt2 gerr
 ssok lt ssn p3
 g2 call stmt g1 p1 ssn p3
 g3 select ssok g2 g1
