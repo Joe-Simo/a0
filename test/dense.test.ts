@@ -750,3 +750,49 @@ test('dense: a callee signature copied from the view without its `#` is skipped 
     'fn h u32 -> u32\nstep add p0 1\nret step\nend\n',
   );
 });
+
+const COMPACT_ALL: DenseStyle = {
+  tab: true,
+  minmax: true,
+  hex: true,
+  trailingParams: true,
+  oneLine: true,
+};
+
+test('dense compact spellings: the kernels print as measured and convert back exactly', () => {
+  const cases: [string, string][] = [
+    [
+      'fn clamp u32 u32 u32 -> u32\nc lt p2 p0\nb select c p2 p0\nd lt b p1\ne select d p1 b\nret e\nend',
+      'clamp b min C A;max b B',
+    ],
+    [
+      'fn put u32x8 u32 u32 -> u32x8\na add p1 p2\nb set p0 p1 a\nret b\nend\nfn arrfill u32 u32 -> u32\na arr 0 0 0 0 0 0 0 0\nb fold put 8 a p0\nc get b p1\nret c\nend',
+      'arrfill get tab 8 {add B C} A B',
+    ],
+    ['fn m u32 -> u32\na and p0 4294967295\nret a\nend', 'm and A 0xffffffff'],
+  ];
+  for (const [canonical, dense] of cases) {
+    const p = normalizeProgram(parse(canonical));
+    const text = formatDense(p, { style: COMPACT_ALL }).trimEnd();
+    assert.equal(text, dense);
+    assert.equal(formatProgram(parseDense(text, { compact: true })), formatProgram(p));
+  }
+  // A fold whose trailing operands are all the function's parameters leaves them out.
+  const step = 'fn st u32 u32 u32 -> u32\na add p0 p2\nret a\nend\n';
+  const p = normalizeProgram(parse(`${step}fn f u32 -> u32\na fold st 4 0 p0\nret a\nend`));
+  const text = formatDense(p, { style: COMPACT_ALL }).trimEnd();
+  assert.equal(text, 'f fold {add A C} 4 0');
+  assert.equal(formatProgram(parseDense(text, { compact: true })), formatProgram(p));
+});
+
+test('dense compact spellings: every program round-trips exactly with all of them on', async () => {
+  for (const path of files(ROOT)) {
+    const { program, known } = await parseFile(path, read);
+    for (const p of [program, normalizeProgram(program)]) {
+      const dense = formatDense(p, { known, style: COMPACT_ALL });
+      const back = parseDense(dense, { known, compact: true });
+      assert.equal(formatProgram(back), formatProgram(p), `${path}: canonical form differs`);
+      assert.equal(formatDense(back, { known, style: COMPACT_ALL }), dense, `${path}: fixed point`);
+    }
+  }
+});

@@ -172,6 +172,52 @@ export interface DenseStyle {
   readonly implicitRet?: boolean;
   /** Fold and loop bodies called once and named `CALLER_1`, ... written as `{statements}`. */
   readonly inline?: boolean;
+  /*
+   * Compact spellings (off by default: the default text is the one `compiler/dense.a0` reads; the
+   * reader here accepts every one of them always). See
+   * docs/history/2026-10-09-dense-six-rules-preregistration.md.
+   */
+  /** `tab N {E} REST` for `fold {set A B E} N [0;N] REST` when the body does not mention `A` otherwise. */
+  readonly tab?: boolean;
+  /** `min X Y` / `max X Y` for `select lt X Y X Y` / `select lt X Y Y X` over plain operands. */
+  readonly minmax?: boolean;
+  /** Hexadecimal for the literals whose hex text is fewer o200k tokens (see `HEX_SHORTER`). */
+  readonly hex?: boolean;
+  /** Leave out a fold's trailing operands that are all of the function's parameters in order. */
+  readonly trailingParams?: boolean;
+  /** One line per function: no `fn`, statements joined with `;`. */
+  readonly oneLine?: boolean;
+}
+
+/**
+ * Literals written in hexadecimal under `hex`: the values whose lowercase hex text is strictly fewer
+ * o200k_base tokens than the decimal (a tokenizer sweep, recorded in the pre-registration; the source
+ * does not depend on a tokenizer).
+ */
+const HEX_SHORTER: ReadonlySet<number> = new Set([0xffffff, 0xffffffff, 0xaaaaaaaa]);
+
+/** Words of the compact spellings: the printer escapes an id spelled like one (`$min`). */
+const SUGAR: ReadonlySet<string> = new Set(['tab', 'min', 'max']);
+
+/** Top-level `;` split of a line (not inside `{}`, `[]`, `()` or a text literal). */
+export function splitTop(text: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i] as string;
+    if (c === '"') {
+      i += 1;
+      while (i < text.length && text[i] !== '"') i += text[i] === '\\' ? 2 : 1;
+    } else if ('{[('.includes(c)) depth += 1;
+    else if ('}])'.includes(c)) depth -= 1;
+    else if (c === ';' && depth === 0) {
+      out.push(text.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(text.slice(start));
+  return out;
 }
 
 export interface DenseOptions {
@@ -194,17 +240,33 @@ interface PrintCtx {
   readonly style: Required<DenseStyle>;
   /** Printing a `pre`/`post` expression: the node operand `r` is the result, never an id. */
   readonly spec?: true;
+  /** Printing an inline fold or loop body (its parameters are not the function's). */
+  readonly inBody?: true;
+}
+
+/** The program uses a compact spelling's word as a function name (the spelling is then off). */
+function sugarFree(word: string, ctx: PrintCtx): boolean {
+  return !ctx.fnNames.has(word);
+}
+
+/** A compact spelling with a word of its own is on: ids spelled like those words are escaped. */
+function compactOn(ctx: PrintCtx): boolean {
+  return ctx.style.tab || ctx.style.minmax;
 }
 
 function operandWord(o: Operand, ctx: PrintCtx): string {
   switch (o.kind) {
     case 'node':
       if (ctx.spec === true) return o.id;
-      return needsEscape(o.id, ctx.fnNames) ? `$${o.id}` : o.id;
+      return needsEscape(o.id, ctx.fnNames) || (compactOn(ctx) && SUGAR.has(o.id))
+        ? `$${o.id}`
+        : o.id;
     case 'param':
       return ctx.style.letters ? paramWord(o.index) : `p${o.index}`;
     case 'u32':
-      return String(o.value);
+      return ctx.style.hex && HEX_SHORTER.has(o.value)
+        ? `0x${o.value.toString(16)}`
+        : String(o.value);
     case 'bool':
       return o.value ? 'true' : 'false';
   }
@@ -346,15 +408,70 @@ function planFunction(fn: Func, ctx: PrintCtx): Plan {
   }
 }
 
-function printNodeTokens(fn: Func, k: number, plan: Plan, ctx: PrintCtx): string {
+/**
+ * `tab N {S;...;E} REST` for the fold text `fold {S;...;set A B E} N [0;N] REST` (the body writes
+ * element B of an N-element array of zeros and reads the array nowhere else), or undefined.
+ */
+function tabBody(body: string, rest: readonly string[]): string | undefined {
+  const n = rest[0];
+  if (!body.startsWith('{') || !body.endsWith('}') || n === undefined || !NUMBER.test(n))
+    return undefined;
+  if (rest[1] !== `[0;${n}]`) return undefined;
+  const parts = splitTop(body.slice(1, -1));
+  const tail = parts[parts.length - 1] as string;
+  if (!tail.startsWith('set A B ')) return undefined;
+  const mentions = parts
+    .flatMap((s) => lexDense(s, 0))
+    .filter((t) => t.kind === 'word' && t.text === 'A').length;
+  if (mentions !== 1) return undefined;
+  const inner = [...parts.slice(0, -1), tail.slice('set A B '.length)].join(';');
+  return ['tab', n, `{${inner}}`, ...rest.slice(2)].join(' ');
+}
+
+/** `min X Y` / `max X Y` for `select lt X Y X Y` / `select lt X Y Y X` (plain operands), or undefined. */
+function minMax(fn: Func, k: number, plan: Plan, ctx: PrintCtx): string | undefined {
   const node = fn.nodes[k] as Node;
+  const nest = plan.nest[k] ?? [];
+  const c = nest[0];
+  if (c === undefined || nest[1] !== undefined || nest[2] !== undefined) return undefined;
+  const cmp = fn.nodes[c] as Node;
+  if (cmp.op !== 'lt' || plan.nest[c]?.some((x) => x !== undefined) === true) return undefined;
+  const [x, y, a, b] = [cmp.args[0], cmp.args[1], node.args[1], node.args[2]].map((o) =>
+    operandWord(o as Operand, ctx),
+  ) as [string, string, string, string];
+  if ([x, y].some((w) => w.startsWith('$'))) return undefined;
+  if (a === x && b === y && sugarFree('min', ctx)) return `min ${x} ${y}`;
+  if (a === y && b === x && sugarFree('max', ctx)) return `max ${x} ${y}`;
+  return undefined;
+}
+
+function printNodeTokens(
+  fn: Func,
+  k: number,
+  plan: Plan,
+  ctx: PrintCtx,
+  /** The node's text ends its statement (nothing is printed after it). */
+  atEnd = false,
+): string {
+  const node = fn.nodes[k] as Node;
+  const last = node.args.length - 1;
   const arg = (i: number): string => {
     const child = plan.nest[k]?.[i];
     return child === undefined
       ? operandWord(node.args[i] as Operand, ctx)
-      : printNodeTokens(fn, child, plan, ctx);
+      : printNodeTokens(
+          fn,
+          child,
+          plan,
+          ctx,
+          atEnd && i === last && node.op !== 'arr' && node.op !== 'rec',
+        );
   };
   const args = node.args.map((_, i) => arg(i));
+  if (ctx.style.minmax && node.op === 'select') {
+    const mm = minMax(fn, k, plan, ctx);
+    if (mm !== undefined) return mm;
+  }
   if (node.op === 'arr' && node.text !== undefined) return formatTextLiteral(node.text);
   if (node.op === 'arr') {
     const first = node.args[0] as Operand;
@@ -379,7 +496,28 @@ function printNodeTokens(fn: Func, k: number, plan: Plan, ctx: PrintCtx): string
     return [direct ? callee : `call ${callee}`, ...args].join(' ');
   }
   const callee = (name: string): string => ctx.inline.get(name) ?? name;
-  if (node.op === 'fold') return ['fold', callee(node.callee as string), ...args].join(' ');
+  if (node.op === 'fold') {
+    let rest = args;
+    // Trailing operands that are all of the function's parameters in order (the reader fills them).
+    const p = fn.params.length;
+    if (
+      ctx.style.trailingParams &&
+      atEnd &&
+      ctx.inBody !== true &&
+      ctx.spec !== true &&
+      p > 0 &&
+      node.args.length > p &&
+      node.args
+        .slice(node.args.length - p)
+        .every((a, i) => a.kind === 'param' && a.index === i) &&
+      plan.nest[k]?.slice(node.args.length - p).every((c) => c === undefined) === true
+    )
+      rest = args.slice(0, args.length - p);
+    const body = callee(node.callee as string);
+    const tab = ctx.style.tab && sugarFree('tab', ctx) ? tabBody(body, rest) : undefined;
+    if (tab !== undefined) return tab;
+    return ['fold', body, ...rest].join(' ');
+  }
   if (node.op === 'loop')
     return ['loop', callee(node.pred as string), callee(node.callee as string), ...args].join(' ');
   return [opWord(node.op, ctx), ...args].join(' ');
@@ -400,7 +538,9 @@ function printFunction(fn: Func, outer: PrintCtx): string[] {
   const inline = new Map<string, string>();
   for (const name of own) {
     const f = byName.get(name) as Func;
-    const text = statementsOf(f, { ...outer, inline: new Map() }).body.map((b) => b.text);
+    const text = statementsOf(f, { ...outer, inline: new Map(), inBody: true }).body.map(
+      (b) => b.text,
+    );
     inline.set(name, `{${text.join(';')}}`);
   }
   const ctx: PrintCtx = { ...outer, inline };
@@ -416,11 +556,15 @@ function statementsOf(
   const keepRet = explicitRet(fn, ctx);
   // A first statement named `pre` or `post` would read as a spec line: it is written `$pre`.
   const idWord = (id: string, first: boolean): string =>
-    needsEscape(id, ctx.fnNames) || (first && SPEC_NAMES.has(id)) ? `$${id}` : id;
+    needsEscape(id, ctx.fnNames) ||
+    (first && SPEC_NAMES.has(id)) ||
+    (compactOn(ctx) && SUGAR.has(id))
+      ? `$${id}`
+      : id;
   const body: { text: string; comments: Comments | undefined; named: boolean }[] = [];
   for (const r of plan.roots) {
     const node = fn.nodes[r] as Node;
-    const expr = printNodeTokens(fn, r, plan, ctx);
+    const expr = printNodeTokens(fn, r, plan, ctx, true);
     body.push({
       text: plan.named.has(r)
         ? `${idWord(node.id, r === plan.roots[0])} ${expr}`
@@ -560,6 +704,11 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       join: options.style?.join !== false,
       implicitRet: options.style?.implicitRet !== false,
       inline: options.style?.inline !== false,
+      tab: options.style?.tab === true,
+      minmax: options.style?.minmax === true,
+      hex: options.style?.hex === true,
+      trailingParams: options.style?.trailingParams === true,
+      oneLine: options.style?.oneLine === true,
     },
   };
   return options.comments === true || options.style?.inline === false
@@ -605,9 +754,18 @@ export function formatDense(program: Program, options: DenseOptions = {}): strin
     return [...commentLines(c), `use "${u}"${trailing(c)}`].join('\n');
   });
   const skipped = new Set([...ctx.lambdas.values()].flat());
+  // One line per function: no `fn`, the lines after the header joined with `;` (a function named
+  // `profile` would read as the directive, so such a program keeps the `fn` lines).
+  const oneLine =
+    ctx.style.oneLine && !comments && !program.functions.some((f) => f.name === 'profile');
   const fns = program.functions
     .filter((f) => !skipped.has(f.name))
-    .map((f) => printFunction(f, ctx).join('\n'));
+    .map((f) => {
+      const lines = printFunction(f, ctx);
+      if (!oneLine) return lines.join('\n');
+      const head = (lines[0] as string).slice('fn '.length);
+      return lines.length === 1 ? head : `${head} ${lines.slice(1).join(';')}`;
+    });
   const tail = comments ? (program.tailComments ?? []) : [];
   const directive =
     program.profile === 'strict'
@@ -617,7 +775,7 @@ export function formatDense(program: Program, options: DenseOptions = {}): strin
         })()
       : '';
   const head = [directive, ...withUse].filter((p) => p !== '').join('\n');
-  const body = fns.join('\n\n');
+  const body = fns.join(oneLine ? '\n' : '\n\n');
   const parts = [head, body, tail.join('\n')].filter((p) => p !== '');
   return parts.length === 0 ? '' : `${parts.join('\n\n')}\n`;
 }
@@ -759,6 +917,8 @@ export interface LambdaCtx {
   readonly sigs: Map<string, Sig>;
   readonly paramTypes: readonly Type[] | undefined;
   readonly nested: boolean;
+  /** Fill a fold's operands missing at the end of a statement with A, B, ... (`compact` texts). */
+  readonly fill?: boolean;
   readonly counter: { n: number };
 }
 
@@ -904,6 +1064,82 @@ export class FunctionParser {
   private peek(): Tok | undefined {
     this.skipCommas();
     return this.toks[this.pos];
+  }
+
+  private atStatementEnd(): boolean {
+    const t = this.peek();
+    return t === undefined || t.kind === 'close' || t.kind === 'semi' || t.kind === 'rbrace';
+  }
+
+  /** `min X`, `max X`, `tab N` start the compact spellings; `min OP ...` names a value `min`. */
+  sugarOperand(t: Tok | undefined): boolean {
+    return (
+      t?.kind === 'word' &&
+      t.text !== '=' &&
+      denseOp(t.text) === undefined &&
+      !this.fnNames.has(t.text) &&
+      !this.arities.has(t.text)
+    );
+  }
+
+  /** `min X Y` is `select lt X Y X Y`, `max X Y` is `select lt X Y Y X` (X, Y plain operands). */
+  private minMax(w: 'min' | 'max'): Operand {
+    const plain = (): Operand => {
+      const before = this.nodes.length;
+      const o = this.expr();
+      if (this.nodes.length !== before)
+        fail(
+          `${w} takes two plain operands (a parameter, a number or a named value)`,
+          this.line,
+          'name the value on its own line above first',
+        );
+      return o;
+    };
+    const x = plain();
+    const y = plain();
+    const cmp = this.make({ op: 'lt', args: [x, y] });
+    return this.make({ op: 'select', args: w === 'min' ? [cmp, x, y] : [cmp, y, x] });
+  }
+
+  /** `tab N {S;...;E} REST` is `fold {S;...;set A B E} N [0;N] REST`: the tokens are rewritten. */
+  private tab(): Operand {
+    const at = this.pos - 1;
+    const n = this.eat('an array length after tab');
+    if (n.kind !== 'word' || !NUMBER.test(n.text))
+      return fail(`tab expects an array length, got '${n.text}'`, this.line);
+    if (this.peek()?.kind !== 'lbrace') return fail("tab expects '{body}' after its length", this.line);
+    this.pos += 1;
+    const groups: Tok[][] = [[]];
+    let depth = 0;
+    for (;;) {
+      const t = this.toks[this.pos];
+      if (t === undefined) return fail("missing '}'", this.line);
+      this.pos += 1;
+      if (t.kind === 'rbrace') break;
+      if (t.kind === 'open') depth += 1;
+      if (t.kind === 'close') depth -= 1;
+      if (t.kind === 'semi' && depth === 0) groups.push([]);
+      else (groups[groups.length - 1] as Tok[]).push(t);
+    }
+    const word = (text: string): Tok => ({ kind: 'word', text });
+    const semi: Tok = { kind: 'semi', text: ';' };
+    const last = groups.pop() as Tok[];
+    const body = [...groups.flatMap((g) => [...g, semi]), word('set'), word('A'), word('B'), ...last];
+    const rewritten: Tok[] = [
+      word('fold'),
+      { kind: 'lbrace', text: '{' },
+      ...body,
+      { kind: 'rbrace', text: '}' },
+      n,
+      { kind: 'open', text: '[' },
+      word('0'),
+      semi,
+      n,
+      { kind: 'close', text: ']' },
+    ];
+    this.toks = [...this.toks.slice(0, at), ...rewritten, ...this.toks.slice(this.pos)];
+    this.pos = at;
+    return this.expr();
   }
 
   private eat(what: string): Tok {
@@ -1055,6 +1291,8 @@ export class FunctionParser {
     const local = this.names.get(w);
     if (local !== undefined) return this.ref(local);
     if (this.external.has(w)) return { kind: 'node', id: w };
+    if (w === 'min' || w === 'max') return this.minMax(w);
+    if (w === 'tab') return this.tab();
     const lenient = this.lenientWord(w);
     if (lenient !== undefined) return lenient;
     return fail(
@@ -1105,11 +1343,16 @@ export class FunctionParser {
       const spec = this.bodySpec('a function name or {body} after fold');
       const n = spec.name === undefined ? (spec.inline as Inline).arity : this.callArity(spec.name);
       const label = `fold ${spec.name ?? '{...}'}`;
-      const args = this.operands(
-        n,
-        label,
-        spec.name === undefined ? '' : ` (${spec.name} has ${n} parameters)`,
-      );
+      const note = spec.name === undefined ? '' : ` (${spec.name} has ${n} parameters)`;
+      // Operands left out at the end of a statement in a function body are its parameters A, B, ...
+      // in order (style `trailingParams`); elsewhere a missing operand stays an error.
+      const args: Operand[] = [];
+      if (this.lam?.fill === true && !this.lam.nested) {
+        while (args.length < n && !this.atStatementEnd()) args.push(this.expr());
+        if (args.length >= 1)
+          for (let i = 0; args.length < n; i += 1) args.push({ kind: 'param', index: i });
+      }
+      args.push(...this.operands(n - args.length, label, note));
       const callee = spec.name ?? this.lift(spec.inline as Inline, args, 'state');
       return this.make({ op, callee, args });
     }
@@ -1179,6 +1422,7 @@ export class FunctionParser {
             !this.fnNames.has(t0.text) &&
             !this.arities.has(t0.text) &&
             denseOp(t0.text) === undefined &&
+            !(SUGAR.has(t0.text) && !this.names.has(t0.text) && this.sugarOperand(t1)) &&
             // `mod A 4` is the remainder (see `lenientWord`); `mod add A 1` still names a value `mod`
             !(
               t0.text === 'mod' &&
@@ -1195,8 +1439,8 @@ export class FunctionParser {
     const before = this.nodes.length;
     let value = this.expr();
     this.skipCommas();
-    if (this.pos < tokens.length) {
-      const extra = tokens[this.pos] as Tok;
+    if (this.pos < this.toks.length) {
+      const extra = this.toks[this.pos] as Tok;
       fail(
         `unexpected '${extra.text}' after a complete expression`,
         line,
@@ -1417,6 +1661,13 @@ export interface DenseParseOptions {
   readonly known?: Arities;
   /** More function names that exist but whose parameter count is not known yet. */
   readonly names?: ReadonlySet<string>;
+  /**
+   * The text uses the compact spellings: a line with no `fn` is a function (style `oneLine`), and a
+   * fold's operands missing at the end of a statement are the parameters A, B, ... (`trailingParams`).
+   * Off, both keep their errors (a statement outside a function, a missing operand), which edit
+   * replies rely on. The other compact spellings (`tab`, `min`, `max`, hex) are always read.
+   */
+  readonly compact?: boolean;
 }
 
 /** Parse dense text into the same `Program` the canonical form of it would give. */
@@ -1436,6 +1687,32 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     items.push(comments === undefined ? { text, line: i + 1 } : { text, line: i + 1, comments });
   });
   const trailingPending = pending;
+  // One line per function (style `oneLine`, asked for by `options.oneLine`): no line starts with `fn`. Each
+  // line is read as the `fn` header it stands for, with its `;`-separated statements as lines.
+  const directive = (t: string): boolean => /^(use|profile)(\s|$)/.test(t);
+  if (
+    options.compact === true &&
+    items.some((it) => !directive(it.text)) &&
+    !items.some((it) => /^fn(\s|$)/.test(it.text))
+  ) {
+    const expanded: Item[] = [];
+    for (const it of items) {
+      if (directive(it.text)) {
+        expanded.push(it);
+        continue;
+      }
+      const { rest } = parseDenseHeader(it.text, it.line);
+      const segs = splitTop(rest).map((s) => s.trim());
+      if (segs.length <= 1) {
+        expanded.push({ ...it, text: `fn ${it.text}` });
+        continue;
+      }
+      const header = it.text.slice(0, it.text.length - rest.length).trim();
+      expanded.push({ ...it, text: `fn ${header}` });
+      for (const s of segs) if (s !== '') expanded.push({ text: s, line: it.line });
+    }
+    items.splice(0, items.length, ...expanded);
+  }
 
   const arities = new Map<string, number>(options.known ?? []);
   const fnNames = new Set<string>([...arities.keys(), ...(options.names ?? [])]);
@@ -1502,6 +1779,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
       sigs,
       paramTypes: head.params,
       nested: false,
+      fill: options.compact === true,
       counter: { n: 0 },
     });
     fp.shadowing = options.shadowing === true;
