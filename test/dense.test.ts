@@ -126,7 +126,9 @@ test('dense: natural nested sources compile to the same behavior as the canonica
 });
 
 // Measured 11 s (bun test) on the full tree; the 5 s default is too short.
-test('dense: every kernel, example, compiler and site program round-trips exactly', { timeout: 60_000 }, async () => {
+test('dense: every kernel, example, compiler and site program round-trips exactly', {
+  timeout: 60_000,
+}, async () => {
   const all = files(ROOT);
   assert.ok(all.length >= 30, `found ${all.length} files`);
   for (const path of all) {
@@ -792,7 +794,9 @@ test('dense compact spellings: the kernels print as measured and convert back ex
 });
 
 // Measured 13 s (bun test) on the full tree; the 5 s default is too short.
-test('dense compact spellings: every program round-trips exactly with all of them on', { timeout: 60_000 }, async () => {
+test('dense compact spellings: every program round-trips exactly with all of them on', {
+  timeout: 60_000,
+}, async () => {
   for (const path of files(ROOT)) {
     const { program, known } = await parseFile(path, read);
     for (const p of [program, normalizeProgram(program)]) {
@@ -834,7 +838,9 @@ test('dense combined compact rules: small programs print as designed and convert
 });
 
 // Measured 16 s (bun test) on the full tree.
-test('dense combined compact rules: every program round-trips exactly with all of them on', { timeout: 60_000 }, async () => {
+test('dense combined compact rules: every program round-trips exactly with all of them on', {
+  timeout: 60_000,
+}, async () => {
   for (const path of files(ROOT)) {
     const { program, known } = await parseFile(path, read);
     for (const p of [program, normalizeProgram(program)]) {

@@ -379,9 +379,7 @@ function operandWord(o: Operand, ctx: PrintCtx): string {
   switch (o.kind) {
     case 'node':
       if (ctx.spec === true) return o.id;
-      return needsEscape(o.id, ctx.fnNames) || sugarWord(o.id, ctx)
-        ? `$${o.id}`
-        : o.id;
+      return needsEscape(o.id, ctx.fnNames) || sugarWord(o.id, ctx) ? `$${o.id}` : o.id;
     case 'param':
       return ctx.style.letters ? paramWord(o.index) : `p${o.index}`;
     case 'u32':
@@ -697,9 +695,7 @@ function statementsOf(
   const keepRet = explicitRet(fn, ctx);
   // A first statement named `pre` or `post` would read as a spec line: it is written `$pre`.
   const idWord = (id: string, first: boolean): string =>
-    needsEscape(id, ctx.fnNames) ||
-    (first && SPEC_NAMES.has(id)) ||
-    sugarWord(id, ctx)
+    needsEscape(id, ctx.fnNames) || (first && SPEC_NAMES.has(id)) || sugarWord(id, ctx)
       ? `$${id}`
       : id;
   const body: { text: string; comments: Comments | undefined; named: boolean }[] = [];
@@ -1294,7 +1290,11 @@ export class FunctionParser {
       return () => ({ kind: 'u32', value: 2 ** 32 - n });
     }
     const dot = DOT_ACCESS.exec(w);
-    if (dot !== null && denseOp(dot[1] as string) === undefined && !this.fnNames.has(dot[1] as string))
+    if (
+      dot !== null &&
+      denseOp(dot[1] as string) === undefined &&
+      !this.fnNames.has(dot[1] as string)
+    )
       return () =>
         this.make({
           op: 'at',
@@ -1667,7 +1667,9 @@ export class FunctionParser {
       if (
         name !== undefined &&
         this.lam?.compact !== true &&
-        this.peek()?.kind === 'word' && this.peek()?.text === '=')
+        this.peek()?.kind === 'word' &&
+        this.peek()?.text === '='
+      )
         this.pos += 1;
     }
     const before = this.nodes.length;

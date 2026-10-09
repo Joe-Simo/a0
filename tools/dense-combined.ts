@@ -33,16 +33,19 @@ interface Unit {
 /** The kept six-rule style with `tab` off (results/dense-six-rules.json). */
 export const START: DenseStyle = { minmax: true, hex: true, trailingParams: true, oneLine: true };
 
-export const RULES: readonly { readonly n: number; readonly name: string; readonly style: DenseStyle }[] =
-  [
-    { n: 1, name: 'array fill of a named value', style: { fill: true } },
-    { n: 2, name: 'bit/nbit select words', style: { bit: true } },
-    { n: 3, name: 'record access X.K', style: { dot: true } },
-    { n: 4, name: 'result type from the body', style: { inferResult: true } },
-    { n: 5, name: 'negative literal wrap', style: { negative: true } },
-    { n: 6, name: 'foldN count fusion', style: { foldN: true } },
-    { n: 8, name: 'operator symbols, glued', style: { ops: true } },
-  ];
+export const RULES: readonly {
+  readonly n: number;
+  readonly name: string;
+  readonly style: DenseStyle;
+}[] = [
+  { n: 1, name: 'array fill of a named value', style: { fill: true } },
+  { n: 2, name: 'bit/nbit select words', style: { bit: true } },
+  { n: 3, name: 'record access X.K', style: { dot: true } },
+  { n: 4, name: 'result type from the body', style: { inferResult: true } },
+  { n: 5, name: 'negative literal wrap', style: { negative: true } },
+  { n: 6, name: 'foldN count fusion', style: { foldN: true } },
+  { n: 8, name: 'operator symbols, glued', style: { ops: true } },
+];
 
 /** Rule 7 (default names with `i` first) was dropped in the pre-registration, before implementation. */
 const DROPPED_BEFORE = [
@@ -170,7 +173,11 @@ async function main(): Promise<void> {
     perKernel: Object.fromEntries(
       kernels.map((u) => [
         u.name,
-        { start: tokens(text(u, START)), combined: tokens(text(u, combined)), text: text(u, combined) },
+        {
+          start: tokens(text(u, START)),
+          combined: tokens(text(u, combined)),
+          text: text(u, combined),
+        },
       ]),
     ),
     lines: {

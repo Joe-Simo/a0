@@ -109,7 +109,7 @@ async function main(): Promise<void> {
   const { kernels, heldOut } = await loadSets();
   const base = { a: total(kernels, {}), b: total(heldOut, {}) };
   const callWords = (units: readonly Unit[]): number =>
-    units.reduce((n, u) => n + (text(u, {}).match(/(^|[ ;{(\[])call /gm)?.length ?? 0), 0);
+    units.reduce((n, u) => n + (text(u, {}).match(/(^|[ ;{([])call /gm)?.length ?? 0), 0);
   const all: DenseStyle = Object.assign({}, ...RULES.map((r) => r.style));
   const failures = [...kernels, ...heldOut]
     .map((u) => roundTrips(u, all))
