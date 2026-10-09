@@ -34,7 +34,10 @@ interface Unit {
 export const START: DenseStyle = { minmax: true, hex: true, trailingParams: true, oneLine: true };
 
 export const RULES: readonly { readonly n: number; readonly name: string; readonly style: DenseStyle }[] =
-  [{ n: 1, name: 'array fill of a named value', style: { fill: true } }];
+  [
+    { n: 1, name: 'array fill of a named value', style: { fill: true } },
+    { n: 2, name: 'bit/nbit select words', style: { bit: true } },
+  ];
 
 /** Rule 7 (default names with `i` first) was dropped in the pre-registration, before implementation. */
 const DROPPED_BEFORE = [

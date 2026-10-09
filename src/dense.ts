@@ -193,6 +193,8 @@ export interface DenseStyle {
    */
   /** `[e;k]` also when the repeated element is a named value (`repeat` covers numbers and parameters). */
   readonly fill?: boolean;
+  /** `bit C` / `nbit C` for `select C 1 0` / `select C 0 1`. */
+  readonly bit?: boolean;
 }
 
 /**
@@ -263,11 +265,19 @@ function compactOn(ctx: PrintCtx): boolean {
   return ctx.style.tab || ctx.style.minmax;
 }
 
+/** Words of the combined compact spellings, each read only in compact text (`compactWord`). */
+const BIT_WORDS: ReadonlySet<string> = new Set(['bit', 'nbit']);
+
+/** An id spelled like the word of a compact spelling that is on: it is printed escaped (`$bit`). */
+function sugarWord(id: string, ctx: PrintCtx): boolean {
+  return compactOn(ctx) && (SUGAR.has(id) || BIT_WORDS.has(id));
+}
+
 function operandWord(o: Operand, ctx: PrintCtx): string {
   switch (o.kind) {
     case 'node':
       if (ctx.spec === true) return o.id;
-      return needsEscape(o.id, ctx.fnNames) || (compactOn(ctx) && SUGAR.has(o.id))
+      return needsEscape(o.id, ctx.fnNames) || sugarWord(o.id, ctx)
         ? `$${o.id}`
         : o.id;
     case 'param':
@@ -479,6 +489,12 @@ function printNodeTokens(
     const mm = minMax(fn, k, plan, ctx);
     if (mm !== undefined) return mm;
   }
+  if (ctx.style.bit && node.op === 'select') {
+    const [, x, y] = node.args;
+    const one = (o: Operand | undefined, v: number): boolean => o?.kind === 'u32' && o.value === v;
+    const word = one(x, 1) && one(y, 0) ? 'bit' : one(x, 0) && one(y, 1) ? 'nbit' : undefined;
+    if (word !== undefined && sugarFree(word, ctx)) return `${word} ${args[0]}`;
+  }
   if (node.op === 'arr' && node.text !== undefined) return formatTextLiteral(node.text);
   if (node.op === 'arr') {
     const first = node.args[0] as Operand;
@@ -563,7 +579,7 @@ function statementsOf(
   const idWord = (id: string, first: boolean): string =>
     needsEscape(id, ctx.fnNames) ||
     (first && SPEC_NAMES.has(id)) ||
-    (compactOn(ctx) && SUGAR.has(id))
+    sugarWord(id, ctx)
       ? `$${id}`
       : id;
   const body: { text: string; comments: Comments | undefined; named: boolean }[] = [];
@@ -715,6 +731,7 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       trailingParams: options.style?.trailingParams === true,
       oneLine: options.style?.oneLine === true,
       fill: options.style?.fill === true,
+      bit: options.style?.bit === true,
     },
   };
   return options.comments === true || options.style?.inline === false
@@ -925,6 +942,8 @@ export interface LambdaCtx {
   readonly nested: boolean;
   /** Fill a fold's operands missing at the end of a statement with A, B, ... (`compact` texts). */
   readonly fill?: boolean;
+  /** The text uses the combined compact spellings (`parseDense(text, { compact: true })`). */
+  readonly compact?: boolean;
   readonly counter: { n: number };
 }
 
@@ -1086,6 +1105,24 @@ export class FunctionParser {
       !this.fnNames.has(t.text) &&
       !this.arities.has(t.text)
     );
+  }
+
+  /**
+   * A word of the combined compact spellings, read only in compact text, where the printer escapes
+   * an id spelled like one (`$bit`) and leaves a spelling out when a function has its word.
+   */
+  compactWord(w: string): (() => Operand) | undefined {
+    if (this.lam?.compact !== true || this.fnNames.has(w) || this.arities.has(w)) return undefined;
+    if (BIT_WORDS.has(w))
+      return () => {
+        const c = this.expr();
+        const [x, y] = w === 'bit' ? [1, 0] : [0, 1];
+        return this.make({
+          op: 'select',
+          args: [c, { kind: 'u32', value: x }, { kind: 'u32', value: y }],
+        });
+      };
+    return undefined;
   }
 
   /** `min X Y` is `select lt X Y X Y`, `max X Y` is `select lt X Y Y X` (X, Y plain operands). */
@@ -1301,6 +1338,8 @@ export class FunctionParser {
         args: this.operands(n, w, ` (${w} has ${n} parameter${n === 1 ? '' : 's'})`),
       });
     }
+    const compact = this.compactWord(w);
+    if (compact !== undefined) return compact();
     const local = this.names.get(w);
     if (local !== undefined) return this.ref(local);
     if (this.external.has(w)) return { kind: 'node', id: w };
@@ -1436,6 +1475,7 @@ export class FunctionParser {
             !this.arities.has(t0.text) &&
             denseOp(t0.text) === undefined &&
             !(SUGAR.has(t0.text) && !this.names.has(t0.text) && this.sugarOperand(t1)) &&
+            this.compactWord(t0.text) === undefined &&
             // `mod A 4` is the remainder (see `lenientWord`); `mod add A 1` still names a value `mod`
             !(
               t0.text === 'mod' &&
@@ -1793,6 +1833,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
       paramTypes: head.params,
       nested: false,
       fill: options.compact === true,
+      compact: options.compact === true,
       counter: { n: 0 },
     });
     fp.shadowing = options.shadowing === true;
