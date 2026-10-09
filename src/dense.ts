@@ -203,6 +203,8 @@ export interface DenseStyle {
   readonly negative?: boolean;
   /** `foldN BODY REST` for `fold BODY N REST` with N a number. */
   readonly foldN?: boolean;
+  /** `+ - * ^ & | = ? < >` for add sub mul xor and or eq select lt gt, glued to their neighbours. */
+  readonly ops?: boolean;
 }
 
 /**
@@ -222,6 +224,84 @@ function negativeSpelling(value: number): string | undefined {
 }
 
 const NEGATIVE = /^-([1-9][0-9]*)$/;
+
+/** Characters of the operator symbols: in compact text each ends a word (`lexDense`). */
+const SYMBOL_CHARS = '+-*/%&|^<>=!?';
+
+/** Two-character symbols, read before their first character alone (maximal munch). */
+const MUNCH: ReadonlySet<string> = new Set(['<<', '>>', '==', '!=', '<=', '>=', '->']);
+
+/** The symbol of an op under `ops` (`shl`/`shr` print `<<`/`>>` under `symbols`). */
+const OP_SYMBOLS: Readonly<Partial<Record<Op, string>>> = {
+  add: '+',
+  sub: '-',
+  mul: '*',
+  xor: '^',
+  and: '&',
+  or: '|',
+  eq: '=',
+  select: '?',
+  lt: '<',
+  gt: '>',
+};
+
+/** The ops whose symbol only compact text reads (`=` and `?`; the others are dense words always). */
+const COMPACT_SYMBOL_OPS: Readonly<Record<string, Op>> = { '=': 'eq', '?': 'select' };
+
+const sameTokens = (a: readonly Tok[], b: readonly Tok[]): boolean =>
+  a.length === b.length && a.every((t, i) => t.kind === b[i]?.kind && t.text === b[i]?.text);
+
+/**
+ * A statement with every space next to a symbol left out where the compact lexer reads the same
+ * tokens without it (so `<` `<`, `-` before a digit, ... keep theirs). Spaces never join tokens of a
+ * string literal, so comparing the two words around a space is exact.
+ */
+function glue(s: string): string {
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i] as string;
+    if (inString) {
+      out += c;
+      if (c === '\\') {
+        out += s[i + 1] ?? '';
+        i += 1;
+      } else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    if (c !== ' ') {
+      out += c;
+      continue;
+    }
+    const a = out[out.length - 1] ?? '';
+    const b = s[i + 1] ?? '';
+    if (!SYMBOL_CHARS.includes(a) && !SYMBOL_CHARS.includes(b)) {
+      out += c;
+      continue;
+    }
+    const left = out.slice(out.lastIndexOf(' ') + 1);
+    const rightEnd = s.indexOf(' ', i + 1);
+    const right = s.slice(i + 1, rightEnd < 0 ? s.length : rightEnd);
+    const lexes = (t: string): Tok[] | undefined => {
+      try {
+        return lexDense(t, 0, true);
+      } catch {
+        return undefined;
+      }
+    };
+    const spaced = lexes(`${left} ${right}`);
+    const joined = lexes(`${left}${right}`);
+    const same =
+      !left.includes('"') &&
+      !right.includes('"') &&
+      spaced !== undefined &&
+      joined !== undefined &&
+      sameTokens(spaced, joined);
+    if (!same) out += c;
+  }
+  return out;
+}
 
 /** `foldN`: a fold whose count is the number N (`foldN`). */
 const FOLD_N = /^fold(0|[1-9][0-9]*)$/;
@@ -322,6 +402,7 @@ function opWordFor(op: Op): string {
 
 /** The word printed for an op (`shl` and `shr` use their symbols). */
 function opWord(op: Op, ctx: PrintCtx): string {
+  if (ctx.style.ops && ctx.spec !== true && OP_SYMBOLS[op] !== undefined) return OP_SYMBOLS[op];
   if (!ctx.style.symbols) return op;
   return op === 'shl' ? '<<' : op === 'shr' ? '>>' : op;
 }
@@ -603,7 +684,8 @@ function printFunction(fn: Func, outer: PrintCtx): string[] {
     inline.set(name, `{${text.join(';')}}`);
   }
   const ctx: PrintCtx = { ...outer, inline };
-  const { body } = statementsOf(fn, ctx);
+  const { body: plain } = statementsOf(fn, ctx);
+  const body = ctx.style.ops ? plain.map((b) => ({ ...b, text: glue(b.text) })) : plain;
   return printLines(fn, ctx, body, explicitRet(fn, ctx));
 }
 
@@ -773,6 +855,7 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       inferResult: options.style?.inferResult === true,
       negative: options.style?.negative === true,
       foldN: options.style?.foldN === true,
+      ops: options.style?.ops === true,
     },
   };
   return options.comments === true || options.style?.inline === false
@@ -863,12 +946,26 @@ export interface Tok {
 }
 
 /** Split one statement into tokens: words, string literals, `[ ] ( ) ;`; commas are blanks. */
-export function lexDense(text: string, line: number): Tok[] {
+export function lexDense(text: string, line: number, compact = false): Tok[] {
   const out: Tok[] = [];
   let i = 0;
   while (i < text.length) {
     const c = text[i] as string;
-    if (c === ' ' || c === '\t') {
+    if (compact && SYMBOL_CHARS.includes(c)) {
+      // Compact text: a symbol ends a word and is read by maximal munch; `-` before a digit is a
+      // negative literal.
+      if (c === '-' && /[0-9]/.test(text[i + 1] ?? '')) {
+        let j = i + 1;
+        while (j < text.length && /[0-9]/.test(text[j] as string)) j += 1;
+        out.push({ kind: 'word', text: text.slice(i, j) });
+        i = j;
+        continue;
+      }
+      const two = text.slice(i, i + 2);
+      const sym = MUNCH.has(two) ? two : c;
+      out.push({ kind: 'word', text: sym });
+      i += sym.length;
+    } else if (c === ' ' || c === '\t') {
       i += 1;
     } else if (c === ',') {
       out.push({ kind: 'comma', text: c });
@@ -893,7 +990,12 @@ export function lexDense(text: string, line: number): Tok[] {
       i += 1;
     } else {
       let j = i;
-      while (j < text.length && !' \t,"[]();{}'.includes(text[j] as string)) j += 1;
+      while (
+        j < text.length &&
+        !' \t,"[]();{}'.includes(text[j] as string) &&
+        !(compact && SYMBOL_CHARS.includes(text[j] as string))
+      )
+        j += 1;
       out.push({ kind: 'word', text: text.slice(i, j) });
       i = j;
     }
@@ -1154,6 +1256,8 @@ export class FunctionParser {
    */
   compactWord(w: string): (() => Operand) | undefined {
     if (this.lam?.compact !== true || this.fnNames.has(w) || this.arities.has(w)) return undefined;
+    const symbol = COMPACT_SYMBOL_OPS[w];
+    if (symbol !== undefined) return () => this.operation(symbol);
     if (BIT_WORDS.has(w))
       return () => {
         const c = this.expr();
@@ -1542,7 +1646,7 @@ export class FunctionParser {
       } else if (
         isValidIdentifier(t0.text) &&
         t1 !== undefined &&
-        ((t1.kind === 'word' && t1.text === '=') ||
+        ((this.lam?.compact !== true && t1.kind === 'word' && t1.text === '=') ||
           (!KEYWORDS.has(t0.text) &&
             !TYPE_LIKE.test(t0.text) &&
             !this.fnNames.has(t0.text) &&
@@ -1560,7 +1664,10 @@ export class FunctionParser {
         name = t0.text;
         this.pos += 1;
       }
-      if (name !== undefined && this.peek()?.kind === 'word' && this.peek()?.text === '=')
+      if (
+        name !== undefined &&
+        this.lam?.compact !== true &&
+        this.peek()?.kind === 'word' && this.peek()?.text === '=')
         this.pos += 1;
     }
     const before = this.nodes.length;
@@ -1954,7 +2061,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     inZone = false;
     let retComments: Comments | undefined;
     body.forEach((b, bi) => {
-      const toks = lexDense(b.text, b.line);
+      const toks = lexDense(b.text, b.line, options.compact === true);
       const s = fp.statement(toks, b.line, b.comments);
       if (s.ret) retComments = b.comments;
       stmts.push({ value: s.value, ret: s.ret, line: b.line });
