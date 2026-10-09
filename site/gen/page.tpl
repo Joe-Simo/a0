@@ -125,20 +125,14 @@ s 13 glsl
 <section
 +id intro
 +class intro
-=h1 A0 is a small language for code an AI agent edits one function at a time, each edit checked before it lands; it has no floats, heap or recursion, so use C, Rust or TypeScript for those.
-=p Slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs. On a one-function file it costs $cmin_100$x TypeScript's tokens.
-.pre code
-<code
-"fn affine u32 u32 u32 -> u32\n
-"a mul p0 p1\n
-"b add a p2\n
-"ret b\n
-"end\n
-.span cm
-"\$\sa0 run examples/kernels.a0 affine 3 4 5\n
+.div herogrid
+.div herotext
+.p kicker
+"A programming language for AI agents
 >
-"17
->
+=h1 Small programs. Checked edits. Built for the agent that writes your code.
+.p lede
+"A0 is a small language for code an AI agent edits one function at a time, each edit checked before it lands. It has no floats, heap or recursion, so use C, Rust or TypeScript for those.
 >
 .p ctas
 .a pill
@@ -153,12 +147,137 @@ s 13 glsl
 >
 >
 >
+.div herocode
+.pre code
+<code
+"fn affine u32 u32 u32 -> u32\n
+"a mul p0 p1\n
+"b add a p2\n
+"ret b\n
+"end\n
+.span cm
+"\$\sa0 run examples/kernels.a0 affine 3 4 5\n
+>
+"17
+>
+>
+>
+>
+# The hero figure. Kernel tokens (o200k), sumKernelTokens in results/lang-axes.json: A0 dense 193, Forth 323,
+# Python 417, TypeScript 507, Rust 558. Bar widths are percent of the longest bar shown (Rust, 558).
+.div tokviz
++role group
++aria-labelledby tok-t
+.p tokbig
+.span num
+"1.67x
+>
+.span unit
+"\sfewer tokens than the tersest other language
+>
+>
+.p tokt
++id tok-t
+"The 10 benchmark kernels in A0's dense form take 193 tokens, first of 49 languages. Forth, the shortest of the other 48, takes 323 (o200k tokens; results/lang-axes.json).
+>
+.div lrow me
+.span lbl
+"A0 dense
+>
+.div track a0
+.div fill
+w 12
+w 1
+w 35
+>
+.span val
+"193
+>
+>
+>
+.div lrow
+.span lbl
+"Forth
+>
+.div track
+.div fill
+w 12
+w 1
+w 58
+>
+.span val
+"323
+>
+>
+>
+.div lrow
+.span lbl
+"Python
+>
+.div track
+.div fill
+w 12
+w 1
+w 75
+>
+.span val
+"417
+>
+>
+>
+.div lrow
+.span lbl
+"TypeScript
+>
+.div track
+.div fill
+w 12
+w 1
+w 91
+>
+.span val
+"507
+>
+>
+>
+.div lrow
+.span lbl
+"Rust
+>
+.div track
+.div fill
+w 12
+w 1
+w 100
+>
+.span val
+"558
+>
+>
+>
+.p tokcap
+"Fewer tokens per program means less for a model to read and write on every edit; what a whole edit costs, measured with models, is further down (results/lang-axes.json).
+>
+>
+.p honest
+"Slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs. On a one-function file it costs $cmin_100$x TypeScript's tokens.
+>
+>
 }
 {sec_install
 <section
 +id install
+.p kicker
+"Try it now, in three steps
+>
 =h2 Install and connect
-=p A0 is one binary with no package manager. Install it, then connect your agent.
+=p A0 is one binary with no package manager.
+.div steps
+.div step
+.span sn
+"1
+>
+=h3 Install
 .small cmdlabel
 "macOS and Linux
 >
@@ -193,8 +312,13 @@ s 13 glsl
 "Copy
 >
 >
+>
 <div
 +id connect
++class step
+.span sn
+"2
+>
 <h3
 "Connect your agent
 >
@@ -214,10 +338,45 @@ s 13 glsl
 >
 >
 >
+.div step
+.span sn
+"3
+>
+=h3 Make the first edit
+=p Ask your agent for a function in a new .a0 file. It reads and writes one function at a time through the a0 server, and an edit that does not type-check is refused before it reaches the file.
+>
+>
 =p Targets: machine code, C, wasm, JavaScript, JVM, .NET, Metal and SystemVerilog. $vr_full$ test cases ran on $vr_nfull$ paths. The native assembly targets ran the $vr_part$ that need no input or output, and SystemVerilog is simulated separately on $hw_cases$ (results/verification.json).
 =p MIT license, free for any use. Copyright 2026 Joe Simo.
 <p
-"Works? Then see where A0 loses:\s
+"Works? Then see why it matters:\s
+<a
++href #why
+"Why an agent needs this
+>
+>
+>
+}
+{sec_why
+<section
++id why
+=h2 Why it matters for AI agents
+.div whygrid
+.div why
+=h3 Cost per edit
+=p An agent pays for every token it reads and writes. A0 programs are short, and an edit names one function, so the agent never rewrites the file around it.
+>
+.div why
+=h3 Every edit checked
+=p The whole program is type-checked before an edit lands. A broken edit goes back to the model as an error, not into your code as a bug.
+>
+.div why
+=h3 Honest limits
+=p No floats, heap or recursion, and slower than C on some programs (results/exec-benchmark-full.json). The sections below show every loss.
+>
+>
+<p
+"First the losses:\s
 <a
 +href #fast
 "Where A0 is slower than C
@@ -232,6 +391,7 @@ s 13 glsl
 .p take
 "A0 is slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs, by up to $bk_slow$x on $bk_slowk$. Over all of them its machine code takes $c_ratio$x as long as hand-written C, a geometric mean (on an Apple M3; results/exec-benchmark-full.json).
 >
+=p In WebAssembly, A0 takes 1.1x to 1.3x clang's time per loop trip on 5 of 19 kernels (rotl, ident, noop, arrfill, filter2), measured at load 8 (results/wasm-benchmark.json).
 .div chart langs reveal
 +role group
 +aria-labelledby chart-1
@@ -383,6 +543,23 @@ c putfix %a
 >
 }
 {sec_close
+<section
++id start
++class closer
+=h2 Give your agent a language it can check.
+=p Install takes one line. Connecting Claude Code takes one more.
+.p ctas
+.a pill
++href #install
+"Install A0
+>
+"\s
+.a pill ghost
++href /docs/
+"Read the docs
+>
+>
+>
 >
 >
 >
