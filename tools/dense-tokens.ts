@@ -43,7 +43,7 @@ export const TOKEN_KERNELS: readonly string[] = [
 ];
 
 const OPSET = new Set<string>([...ALL_OPS, 'udiv', 'urem', '<<', '>>']);
-const NUMBER = /^(0|[1-9][0-9]*)$/;
+const NUMBER = /^(0|[1-9][0-9]*|0x[0-9a-f]+)$/;
 
 function classify(
   word: string,
@@ -108,9 +108,22 @@ function addTo(into: Record<string, number>, from: Record<string, number>): void
 }
 
 /** The dense text of a canonical source as a model writing dense text writes it. */
-export function denseOf(source: string): string {
-  return formatDense(normalizeProgram(parse(source))).trimEnd();
+export function denseOf(source: string, style: DenseStyle = {}): string {
+  return formatDense(normalizeProgram(parse(source)), { style }).trimEnd();
 }
+
+/**
+ * The compact spellings kept by the six-rule pre-registration (results/dense-six-rules.json). Rules 5
+ * and 6 are medium risk to AI edit accuracy: these counts are measured, not claimed, until an
+ * edit-accuracy run shows no loss.
+ */
+export const KEPT_COMPACT: DenseStyle = {
+  tab: true,
+  minmax: true,
+  hex: true,
+  trailingParams: true,
+  oneLine: true,
+};
 
 interface Unit {
   readonly name: string;
@@ -191,11 +204,12 @@ async function main(): Promise<void> {
         canonical,
         denseExact: tokens(formatDense(u.program, { known: u.known }).trimEnd()),
         dense: tokens(render(u, {})),
+        compact: tokens(render(u, KEPT_COMPACT)),
       };
     });
   const sum = (
-    r: readonly { canonical: number; denseExact: number; dense: number }[],
-    k: 'canonical' | 'denseExact' | 'dense',
+    r: readonly { canonical: number; denseExact: number; dense: number; compact: number }[],
+    k: 'canonical' | 'denseExact' | 'dense' | 'compact',
   ): number => r.reduce((n, x) => n + x[k], 0);
   const kernelRows = rows(kernels);
   const corpusRows = rows(corpus);
@@ -233,18 +247,20 @@ async function main(): Promise<void> {
     tool: 'tools/dense-tokens.ts',
     tokenizer: 'o200k_base (js-tiktoken)',
     meaning:
-      "canonical: today's text. denseExact: the dense text of the same program (lossless, same ids and node order). dense: the dense text after normalizeProgram (behavior unchanged; node order and ids chosen for the dense form), what a model writing dense text writes. attribution: tokens per construct summed over the set. ablation: tokens each dense feature saves (the same programs printed with that one feature off, minus the dense text).",
+      "canonical: today's text. denseExact: the dense text of the same program (lossless, same ids and node order). dense: the dense text after normalizeProgram (behavior unchanged; node order and ids chosen for the dense form), what a model writing dense text writes. compact: dense with the kept compact spellings (results/dense-six-rules.json; measured, not claimed: rules 5 and 6 await an AI edit-accuracy run). attribution: tokens per construct summed over the set. ablation: tokens each dense feature saves (the same programs printed with that one feature off, minus the dense text).",
     kernels: kernelRows,
     kernelTotals: {
       canonical: sum(kernelRows, 'canonical'),
       denseExact: sum(kernelRows, 'denseExact'),
       dense: sum(kernelRows, 'dense'),
+      compact: sum(kernelRows, 'compact'),
     },
     corpus: corpusRows,
     corpusTotals: {
       canonical: sum(corpusRows, 'canonical'),
       denseExact: sum(corpusRows, 'denseExact'),
       dense: sum(corpusRows, 'dense'),
+      compact: sum(corpusRows, 'compact'),
     },
     attribution,
     ablation,

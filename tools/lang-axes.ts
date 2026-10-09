@@ -42,7 +42,7 @@ import { getEncoding } from 'js-tiktoken';
 import { compile } from '../src/backends.js';
 import { parseAndValidate } from '../src/core.js';
 import { findClang, runTool } from '../src/toolchain.js';
-import { denseOf } from './dense-tokens.js';
+import { denseOf, KEPT_COMPACT } from './dense-tokens.js';
 import { a0TokenText, cDriver, KERNELS, type Kernel, rustDriver } from './exec-bench-kernels.js';
 import {
   type Cmd,
@@ -362,7 +362,20 @@ function denseTokenRow(): Record<string, unknown> {
     sumProgram += row.program;
     ratios.push(row.kernel / tok(a0TokenText(k)));
   }
+  // The kept compact spellings (docs/history/2026-10-09-dense-six-rules-preregistration.md): recorded
+  // beside the dense row, not used by the rank or the ledger until an AI edit-accuracy run backs them.
+  const compactKernels: Record<string, number> = {};
+  for (const k of KERNELS)
+    if (EXEC_KERNELS.includes(k.name))
+      compactKernels[k.name] = tok(denseOf(a0TokenText(k), KEPT_COMPACT));
+  const compactSum = Object.values(compactKernels).reduce((a, b) => a + b, 0);
   return {
+    compact: {
+      meaning:
+        'dense text with the kept compact spellings (results/dense-six-rules.json); measured, not claimed: rules 5 and 6 need an AI edit-accuracy run first. The text reads back with parseDense(text, { compact: true }).',
+      sumKernelTokens: compactSum,
+      kernels: compactKernels,
+    },
     meaning:
       'o200k tokens of the dense text of each kernel (src/dense.ts) after normalizeProgram: same behavior as the canonical kernel, nodes ordered and named for the dense form; canonical -> dense -> canonical is lossless, tools/dense-tokens.ts measures every feature.',
     sumKernelTokens: sumKernel,

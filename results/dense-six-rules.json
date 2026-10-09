@@ -1,0 +1,123 @@
+{
+  "generatedAt": "2026-10-09T16:58:10.591Z",
+  "tool": "tools/dense-six-rules.ts",
+  "tokenizer": "o200k_base (js-tiktoken)",
+  "preregistration": "docs/history/2026-10-09-dense-six-rules-preregistration.md",
+  "meaning": "Dense text after normalizeProgram, trimmed. (a) the 10 lang-axes kernels; (b) held-out: every in-tree .a0 program outside corpus/reject plus the generated corpus. Saved = tokens without the rule minus tokens with that rule alone. kept follows the pre-registered rule.",
+  "heldOutPrograms": 54,
+  "roundTripFailures": [],
+  "before": {
+    "kernels": 193,
+    "heldOut": 536374
+  },
+  "rules": [
+    {
+      "rule": 1,
+      "name": "tab",
+      "kernelsSaved": 8,
+      "heldOutSaved": 0,
+      "kept": true,
+      "why": "neutral on the held-out set, argued general in the pre-registration"
+    },
+    {
+      "rule": 2,
+      "name": "min/max",
+      "kernelsSaved": 6,
+      "heldOutSaved": 66,
+      "kept": true,
+      "why": "saves tokens on the held-out set"
+    },
+    {
+      "rule": 3,
+      "name": "hex",
+      "kernelsSaved": 0,
+      "heldOutSaved": 828,
+      "kept": true,
+      "why": "saves tokens on the held-out set"
+    },
+    {
+      "rule": 4,
+      "name": "no 'call'",
+      "kernelsSaved": 0,
+      "heldOutSaved": 0,
+      "kept": false,
+      "why": "already the printer's spelling: 'call' remains only before a callee named like an operation or structure word (0 in (a), 7 in (b))"
+    },
+    {
+      "rule": 5,
+      "name": "trailing parameters",
+      "kernelsSaved": 2,
+      "heldOutSaved": 86,
+      "kept": true,
+      "why": "saves tokens on the held-out set"
+    },
+    {
+      "rule": 6,
+      "name": "one line per function",
+      "kernelsSaved": 14,
+      "heldOutSaved": 7467,
+      "kept": true,
+      "why": "saves tokens on the held-out set"
+    }
+  ],
+  "kept": {
+    "style": {
+      "tab": true,
+      "minmax": true,
+      "hex": true,
+      "trailingParams": true,
+      "oneLine": true
+    },
+    "kernels": 163,
+    "heldOut": 527931
+  },
+  "perKernel": {
+    "affine": {
+      "before": 7,
+      "after": 7
+    },
+    "rotl": {
+      "before": 13,
+      "after": 12
+    },
+    "clamp": {
+      "before": 17,
+      "after": 10
+    },
+    "mix": {
+      "before": 33,
+      "after": 31
+    },
+    "ident": {
+      "before": 3,
+      "after": 2
+    },
+    "noop": {
+      "before": 3,
+      "after": 2
+    },
+    "chain3": {
+      "before": 25,
+      "after": 22
+    },
+    "branchy": {
+      "before": 32,
+      "after": 30
+    },
+    "arrfill": {
+      "before": 31,
+      "after": 21
+    },
+    "loop64": {
+      "before": 29,
+      "after": 26
+    }
+  },
+  "lines": {
+    "bestSingleLanguage": 323,
+    "perKernelBests": 300,
+    "twoX": 161,
+    "kernelsOverBestSingleLanguage": 0.505,
+    "kernelsOverPerKernelBests": 0.543
+  }
+}
