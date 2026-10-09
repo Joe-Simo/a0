@@ -1308,6 +1308,56 @@ const describe = (r: PathReport): string => {
   return `${String(r.moduleBytes).padStart(7)} bytes  ${tables}  source: ${source}`;
 };
 
+const FILL_ZEROS = Array.from({ length: 16 }, () => '0').join(' ');
+const FILL_READ_SOURCE = `fn fadd u32x16 u32 u32 -> u32x16
+v add p1 p2
+n set p0 p1 v
+ret n
+end
+fn fxor u32x16 u32 u32 -> u32x16
+w mul p1 p2
+v xor w 5
+n set p0 p1 v
+ret n
+end
+fn fcost u32x16 u32 u32 -> u32x16
+w mul p1 p2
+u mul w p1
+v add u 9
+n set p0 p1 v
+ret n
+end
+fn whole u32 u32 -> u32
+z arr ${FILL_ZEROS}
+a fold fadd 16 z p0
+x get a p1
+y get a 3
+s add x y
+ret s
+end
+fn masked u32 u32 -> u32
+z arr ${FILL_ZEROS}
+a fold fxor 12 z p0
+m and p1 7
+x get a m
+ret x
+end
+fn kept u32 u32 -> u32
+z arr ${FILL_ZEROS}
+a fold fadd 12 z p0
+x get a p1
+y get a 13
+s add x y
+ret s
+end
+fn costly u32 u32 -> u32
+z arr ${FILL_ZEROS}
+a fold fcost 16 z p0
+x get a p1
+ret x
+end
+`;
+
 async function main(): Promise<void> {
   const clang = findClang();
   if (clang.path === undefined) throw new Error('clang not found');
@@ -1335,6 +1385,9 @@ async function main(): Promise<void> {
   const chainrot = BEHAVIOR_SPEC.find((b) => b.name === 'chainrot');
   if (chainrot === undefined) throw new Error('behavior program chainrot is missing');
   programs.push(['behavior/chainrot', parseAndValidate(chainrot.source), small]);
+  // reads of fill-run folds (src/optimize.ts `readThroughFills`): the wrapped whole-length form,
+  // a masked index below a shorter count, and reads that keep the fold
+  programs.push(['fillread', parseAndValidate(FILL_READ_SOURCE), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,

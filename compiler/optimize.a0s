@@ -1,7 +1,8 @@
 raw # A0 optimizer, written in A0 (DESIGN.md 7a): the port of src/optimize.ts `optimizeFunction`
-raw # (expand, pass, forwardAggregates, schedule, literal iterations), node for node what the
-raw # TypeScript optimizer gives: same nodes in the same order, same operands, same ret, tools/
-raw # selfhost-wasm.ts `a0IrCheck` compares them (and the literal iteration bound) on every function.
+raw # (readThroughFills, expand, pass, forwardAggregates, schedule, literal iterations), node for
+raw # node what the TypeScript optimizer gives: same nodes in the same order, same operands, same
+raw # ret, tools/selfhost-wasm.ts `a0IrCheck` compares them (and the literal iteration bound) on
+raw # every function.
 raw #
 raw # One run optimizes ONE function (`ozone`, mode 7 of `emitwasmio`): a single A0 value, a fold
 raw # state included, is at most 65536 words, and a function's operand table alone can fill that, so
@@ -50,7 +51,8 @@ raw #   src/core.ts);
 raw #   algebraic identities; reassociation of literal chains; strength reduction (div and rem by a
 raw #   power of two); common-subexpression elimination (hash table, not arr rec; commutative ops
 raw #   as a multiset); dead-code elimination from the ret and the anchored nodes.
-raw # - forwardAggregates (`fwda`..`fwdo`) and up to eight more passes while it changes something.
+raw # - readThroughFills (`rtda`..`rtds`) before expand, and in each of up to eight more rounds
+raw #   (else forwardAggregates, `fwda`..`fwdo`), each followed by a pass while it changes something.
 raw # - schedule (`schstep`): the demand-driven order when nothing is effectful and no set/put
 raw #   remains; literal iterations (`listep`); output (`ozwnode`).
 raw #
@@ -67,9 +69,7 @@ raw # and the stage; it computes the summaries itself and asks for every callee 
 raw #
 raw # Known differences from src/optimize.ts: the limits above, and the evaluator's capacities
 raw # (1024 frames, 16368 environment words, 40832 heap words): a call that exhausts them is code
-raw # 4, a fold that does so is kept as a loop, where TypeScript has no capacity. Not yet ported:
-raw # src/optimize.ts `readThroughFills` (a `get` of a fill-run fold read as the fill value): a
-raw # function where it fires would differ from TypeScript; no program of the selfhost check has one.
+raw # 4, a fold that does so is kept as a loop, where TypeScript has no capacity.
 raw #
 raw # compiler/optimize.a0 is generated from compiler/optimize.a0s by tools/a0s.ts (an expression
 raw # language that compiles to one-node-per-line A0; see its header): edit the source, not this
@@ -1152,6 +1152,351 @@ fn fwdo(fd: u32x128x225, gate: u32, sq: u32x128x32, cl1: u32x128x193, oa: u32x12
 end
 
 # ---------------------------------------------------------------------------------------------
+# Read-through of fill runs (src/optimize.ts `readThroughFills`): `get A k`, where A is a fill
+# run (src/optimize.ts `fillRunIn`: a fold of a literal count, 0 < count <= length, of a u32
+# array whose body is `set p0 p1 v` with p0 read nowhere else and every other node a lane op of
+# u32 type over scalar u32 parameters and literals) whose nodes cost at most FUSE_RECOMPUTE_COST
+# (nodeCost units), and the element read is provably one the fold wrote, is the body's value
+# with the element index in place of p1 and the fold's operands in place of the other
+# parameters: k when its upper bound (src/optimize.ts `upperBound`) is below the count, else
+# `rem k length` when the count is the whole length (canonical: `get` wraps). The read becomes
+# a `mov` of the value (same id), after the copies of the body nodes (new ids). Decisions in RT
+# (u32x128x425): the upper bound of every node seen at each depth 0..8 (depth d at R_UB + d *
+# AN; src/optimize.ts gives up past depth 8), per read its form FL (1 the index is k, 2 a `rem`),
+# its first new id and its first operand slot, the output sequence, the bodies requested, and
+# the scalars at R_SC. The copies of the body nodes are in body order, the `set` left out.
+const R_UB = 0
+const R_FL = 36864
+const R_BID = 40960
+const R_BSL = 45056
+const R_OUT = 49152
+const R_RQ = 53248
+const R_SC = 54272
+const R_NEXT = 0
+const R_SLOT = 1
+const R_OUTN = 2
+const R_CHG = 3
+const R_ERR = 4
+const U_TOP = 0xffffffff
+const FUSE_RECOMPUTE_COST = 4
+
+# the upper bound of operand (k, v) at depth e: a literal is itself, a node past depth 8 or
+# anything else is U_TOP
+def ubv(rt: u32x128x425, k: u32, v: u32, e: u32) -> u32
+  let isn = (k == 1) & (e <= 8)
+  let r = rt[isn ? R_UB + e * AN + v : 0]
+  return k == 3 ? v : isn ? r : U_TOP
+end
+# the upper bound of node id (op o, operands x y z) at depth d
+fn ubd(rt: u32x128x425, d: u32, id: u32, o: u32, xk: u32, xv: u32, yk: u32, yv: u32, zk: u32, zv: u32) -> u32x128x425
+  let e = d + 1
+  let x = ubv(rt, xk, xv, e)
+  let y = ubv(rt, yk, yv, e)
+  let z = ubv(rt, zk, zv, e)
+  let ym = y == 0 ? 0 : y - 1
+  let rm = x < ym ? x : ym
+  let mn = x < y ? x : y
+  let dv = ((yk == 3) & (yv > 0)) ? x / (yv == 0 ? 1 : yv) : x
+  let sh = yk == 3 ? x >> (yv & 31) : x
+  let sl = y > z ? y : z
+  let s = x + y
+  let ad = s < x ? U_TOP : s
+  let ov = (y != 0) & (x > U_TOP / (y == 0 ? 1 : y))
+  let ml = ov ? U_TOP : x * y
+  let m0 = x > y ? x : y
+  let m1 = m0 | (m0 >> 1)
+  let m2 = m1 | (m1 >> 2)
+  let m3 = m2 | (m2 >> 4)
+  let m4 = m3 | (m3 >> 8)
+  let m5 = m4 | (m4 >> 16)
+  let r0 = o == 1 ? x : U_TOP
+  let r1 = o == 5 ? mn : r0
+  let r2 = o == 11 ? rm : r1
+  let r3 = o == 10 ? dv : r2
+  let r4 = o == 9 ? sh : r3
+  let r5 = o == 18 ? sl : r4
+  let r6 = o == 2 ? ad : r5
+  let r7 = o == 4 ? ml : r6
+  let r8 = ((o == 6) | (o == 7)) ? m5 : r7
+  rt[R_UB + d * AN + id] = r8
+  return rt
+end
+
+# operand p of body node j (operands at as_, op o; the set is node s) as a fill run allows it
+fn fcarg(ok: u32, p: u32, op: u32x128x512, as_: u32, j: u32, s: u32, o: u32, pf: u32, pc: u32, tl: u32x128x65, ty: u32x384x65) -> u32
+  let (k, v) = rdp(op, as_ + p)
+  let isp = k == 2
+  let vi = (isp & (v < pc)) ? v : 0
+  let sp = isp & (v >= 1) & (v < pc) & (tyw(ty, tl[pf + vi], 0) == 1)
+  let usep0 = isp & (v == 0) & !((j == s) & (p == 0))
+  let notset = j != s
+  let bad1 = notset & ((k == 4) | (isp & !sp))
+  let shf = (o == 8) | (o == 9)
+  let uni = (k == 3) | (isp & (v >= 2) & sp)
+  let bad2 = notset & shf & (p == 1) & !uni
+  return ok & bit(!(usep0 | bad1 | bad2))
+end
+# body node j: (ok, cost of the nodes but the set, operand count of the nodes but the set)
+fn fcnode(st: (u32,u32,u32), j: u32, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, first: u32, s: u32, pf: u32, pc: u32, tl: u32x128x65, ty: u32x384x65) -> (u32,u32,u32)
+  let (ok, cost, na0) = st
+  let r = first + j
+  let o = nd[r * 6 + 1]
+  let na = nd[r * 6 + 2]
+  let notset = j != s
+  let lane = (o >= 2) & (o <= 9)
+  let u = tyw(ty, nt[r], 0) == 1
+  let ok1 = ok & bit(!notset | (lane & u))
+  let ok2 = fold(fcarg, na, ok1, op, nd[r * 6 + 3], j, s, o, pf, pc, tl, ty)
+  let c = notset ? (o == 4 ? 3 : 1) : 0
+  return (ok2, cost + c, na0 + (notset ? na : 0))
+end
+# the fill run of callee c (its body present): (ok, cost, operand count of the copies, set index)
+fn fcrun(g: u32, c: u32, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, tl: u32x128x65, ty: u32x384x65) -> (u32,u32,u32,u32)
+  let first = fnt[c * 7 + 4]
+  let nc = fnt[c * 7 + 5]
+  let pf = fnt[c * 7 + 2]
+  let pc = fnt[c * 7 + 1]
+  let w = fnt[c * 7 + 6]
+  let kind = w >> 28
+  let v = w & 0xfffffff
+  let (pk, pv) = rdp(op, kind == 5 ? v : 0)
+  let rk = kind == 5 ? pk : kind
+  let rv = kind == 5 ? pv : v
+  let isn = (rk == 1) & (rv < nc)
+  let s = isn ? rv : 0
+  let sr = first + s
+  let so = nd[sr * 6 + 1]
+  let sna = nd[sr * 6 + 2]
+  let sas = nd[sr * 6 + 3]
+  let (a0k, a0v) = rdp(op, sas)
+  let (a1k, a1v) = rdp(op, sas + 1)
+  let (vk, vv) = rdp(op, sna >= 3 ? sas + 2 : sas)
+  let vi = ((vk == 2) & (vv < pc)) ? vv : 0
+  let vsp = (vv >= 1) & (vv < pc) & (tyw(ty, tl[pf + vi], 0) == 1)
+  let okv = (vk != 4) & !((vk == 2) & !vsp)
+  let okset = isn & (so == 26) & (sna >= 3) & (a0k == 2) & (a0v == 0) & (a1k == 2) & (a1v == 1) & okv
+  let r = fold(fcnode, (g == 1) & okset ? nc : 0, (1, 0, 0), nd, nt, op, first, s, pf, pc, tl, ty)
+  let (ok, cost, na) = r
+  return (bit(okset) & ok, cost, na, s)
+end
+
+# the operand (k, v) of a body node copied for a read: p1 is the index (ik, iv), another
+# parameter the fold's operand (operands at fas), a body node its copy (copies from cb, the set
+# s left out)
+def rsub(oa: u32x128x512, k: u32, v: u32, ik: u32, iv: u32, fas: u32, cb: u32, s: u32) -> (u32, u32)
+  let isp = k == 2
+  let (fk, fv) = rdp(oa, fas + (isp ? v : 0))
+  return (isp ? (v == 1 ? ik : fk) : k, isp ? (v == 1 ? iv : fv) : (k == 1) ? cb + (v < s ? v : v - 1) : v)
+end
+# the copy of body node j (not the set): its upper bounds, its place in the output
+fn rtcp1(rt: u32x128x425, t: u32, j: u32, nd: u32x128x132, op: u32x128x512, oa: u32x128x512, first: u32, s: u32, cb: u32, ik: u32, iv: u32, fas: u32) -> u32x128x425
+  let r = first + j
+  let o = nd[r * 6 + 1]
+  let as_ = nd[r * 6 + 3]
+  let id = cb + (j < s ? j : j - 1)
+  let (xk0, xv0) = rdp(op, as_)
+  let (yk0, yv0) = rdp(op, as_ + 1)
+  let (xk, xv) = rsub(oa, xk0, xv0, ik, iv, fas, cb, s)
+  let (yk, yv) = rsub(oa, yk0, yv0, ik, iv, fas, cb, s)
+  let rt1 = fold(ubd, 9, rt, id, o, xk, xv, yk, yv, 0, 0)
+  let outn = rt1[R_SC + R_OUTN]
+  rt1[R_OUT + outn] = id
+  rt1[R_SC + R_OUTN] = outn + 1
+  return rt1
+end
+fn rtcp(rt: u32x128x425, j: u32, nd: u32x128x132, op: u32x128x512, oa: u32x128x512, first: u32, s: u32, cb: u32, ik: u32, iv: u32, fas: u32) -> u32x128x425
+  return fold(rtcp1, bit(j != s), rt, j, nd, op, oa, first, s, cb, ik, iv, fas)
+end
+# a read x replaced (form fl, count of new nodes nnew, the fold's callee c and operands fas, the
+# index k and the length len): the `rem`, the copies, then x as a `mov` of the value
+fn rtnew(rt: u32x128x425, t: u32, x: u32, fl: u32, c: u32, fas: u32, kk: u32, kv: u32, len: u32, s: u32, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512, oa: u32x128x512) -> u32x128x425
+  let bid = rt[R_SC + R_NEXT]
+  let isr = fl == 2
+  let outn = rt[R_SC + R_OUTN]
+  rt[R_OUT + outn] = bid if isr
+  rt[R_SC + R_OUTN] = outn + bit(isr)
+  let rt1 = fold(ubd, bit(isr), rt, bid, 11, kk, kv, 3, len, 0, 0)
+  let ik = isr ? 1 : kk
+  let iv = isr ? bid : kv
+  let cb = bid + bit(isr)
+  let first = fnt[c * 7 + 4]
+  let rt2 = fold(rtcp, fnt[c * 7 + 5], rt1, nd, op, oa, first, s, cb, ik, iv, fas)
+  let sas = nd[(first + s) * 6 + 3]
+  let (vk0, vv0) = rdp(op, sas + 2)
+  let (vk, vv) = rsub(oa, vk0, vv0, ik, iv, fas, cb, s)
+  let rt3 = fold(ubd, 9, rt2, x, 1, vk, vv, 0, 0, 0, 0)
+  let outn2 = rt3[R_SC + R_OUTN]
+  rt3[R_OUT + outn2] = x
+  rt3[R_SC + R_OUTN] = outn2 + 1
+  return rt3
+end
+# a node kept: its upper bounds, its place in the output
+fn rtold(rt: u32x128x425, t: u32, x: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x425
+  let as_ = cl[C_AS + x]
+  let (xk, xv) = rdp(oa, as_)
+  let (yk, yv) = rdp(oa, as_ + 1)
+  let (zk, zv) = rdp(oa, as_ + 2)
+  let rt1 = fold(ubd, 9, rt, x, cl[C_OP + x], xk, xv, yk, yv, zk, zv)
+  let outn = rt1[R_SC + R_OUTN]
+  rt1[R_OUT + outn] = x
+  rt1[R_SC + R_OUTN] = outn + 1
+  return rt1
+end
+# the node at sequence index i
+fn rtst(rt: u32x128x425, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, op: u32x128x512, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65) -> u32x128x425
+  let x = sq[i]
+  let as_ = cl[C_AS + x]
+  let (ak, av) = rdp(oa, as_)
+  let (kk, kv) = rdp(oa, as_ + 1)
+  let isget = (cl[C_OP + x] == 25) & (cl[C_NA + x] >= 2) & (ak == 1)
+  let f = isget ? av : 0
+  let isfold = isget & (cl[C_OP + f] == 20)
+  let tf = cl[C_TY + f]
+  let tag = tyw(ty, tf, 0)
+  let len = tyw(ty, tf, 1)
+  let el = tag == 4 ? tyw(ty, tf, 2) : 0
+  let isarr = isfold & (tag == 4) & (tyw(ty, el, 0) == 1)
+  let c = cl[C_CA + f]
+  let has = (fnt[c * 7] & 1) != 0
+  let fas = cl[C_AS + f]
+  let (ck, cv) = rdp(oa, fas)
+  let cnt = isarr & (ck == 3) & (cv > 0) & (cv <= len)
+  rt[R_RQ + c] = 1 if cnt & !has
+  let (ok, cost, na, s) = fcrun(bit(cnt & has), c, fnt, nd, nt, op, tl, ty)
+  let run = cnt & has & (ok == 1) & (cost <= FUSE_RECOMPUTE_COST)
+  let ub = kk == 3 ? kv : kk == 1 ? rt[R_UB + (kk == 1 ? kv : 0)] : U_TOP
+  let f1 = run & (ub < cv)
+  let f2 = run & !f1 & (cv == len)
+  let rep = f1 | f2
+  let fl = f1 ? 1 : 2
+  let bid = rt[R_SC + R_NEXT]
+  let bsl = rt[R_SC + R_SLOT]
+  let next = bid + bit(f2) + fnt[c * 7 + 5] - 1
+  let slot = bsl + (f2 ? 2 : 0) + na + 1
+  let fits = (next <= AN) & (slot <= NSL)
+  rt[R_FL + x] = fl if rep
+  rt[R_BID + x] = bid if rep
+  rt[R_BSL + x] = bsl if rep
+  rt[R_SC + R_ERR] = 1 if rep & !fits
+  rt[R_SC + R_CHG] = 1 if rep
+  let rt1 = fold(rtnew, bit(rep & fits), rt, x, fl, c, fas, kk, kv, len, s, fnt, nd, op, oa)
+  rt1[R_SC + R_NEXT] = next if rep & fits
+  rt1[R_SC + R_SLOT] = slot if rep & fits
+  return fold(rtold, bit(!(rep & fits)), rt1, x, cl, oa)
+end
+
+# materialization: the node rows (the `rem`, the copies, x as a `mov`), the operands, the sequence
+fn rtclc1(cl: u32x128x193, t: u32, j: u32, nd: u32x128x132, nt: u32x128x24, first: u32, s: u32, cb: u32) -> u32x128x193
+  let r = first + j
+  let id = cb + (j < s ? j : j - 1)
+  let slot = cl[C_SC + C_NSLOT]
+  let na = nd[r * 6 + 2]
+  cl[C_OP + id] = nd[r * 6 + 1]
+  cl[C_NA + id] = na
+  cl[C_AS + id] = slot
+  cl[C_CA + id] = 0
+  cl[C_PR + id] = 0
+  cl[C_TY + id] = nt[r]
+  cl[C_SC + C_NSLOT] = slot + na
+  return cl
+end
+fn rtclc(cl: u32x128x193, j: u32, nd: u32x128x132, nt: u32x128x24, first: u32, s: u32, cb: u32) -> u32x128x193
+  return fold(rtclc1, bit(j != s), cl, j, nd, nt, first, s, cb)
+end
+fn rtcl1(cl: u32x128x193, t: u32, x: u32, rt: u32x128x425, oa: u32x128x512, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, ty: u32x384x65, tl: u32x128x65) -> u32x128x193
+  let (ak, f) = rdp(oa, cl[C_AS + x])
+  let c = cl[C_CA + f]
+  let (ok, cost, na, s) = fcrun(0, c, fnt, nd, nt, op, tl, ty)
+  let isr = rt[R_FL + x] == 2
+  let bid = rt[R_BID + x]
+  let bsl = rt[R_BSL + x]
+  cl[C_OP + bid] = 11 if isr
+  cl[C_NA + bid] = 2 if isr
+  cl[C_AS + bid] = bsl if isr
+  cl[C_CA + bid] = 0 if isr
+  cl[C_PR + bid] = 0 if isr
+  cl[C_TY + bid] = cl[C_TY + x] if isr
+  cl[C_SC + C_NSLOT] = bsl + (isr ? 2 : 0)
+  let cl1 = fold(rtclc, fnt[c * 7 + 5], cl, nd, nt, fnt[c * 7 + 4], s, bid + bit(isr))
+  let slot = cl1[C_SC + C_NSLOT]
+  cl1[C_OP + x] = 1
+  cl1[C_NA + x] = 1
+  cl1[C_AS + x] = slot
+  cl1[C_CA + x] = 0
+  cl1[C_PR + x] = 0
+  return cl1
+end
+fn rtcl(cl: u32x128x193, i: u32, sq: u32x128x32, rt: u32x128x425, oa: u32x128x512, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, ty: u32x384x65, tl: u32x128x65) -> u32x128x193
+  let x = sq[i]
+  return fold(rtcl1, bit(rt[R_FL + x] != 0), cl, x, rt, oa, fnt, nd, nt, op, ty, tl)
+end
+fn rtoaa(oa: u32x128x512, p: u32, as_: u32, dst: u32, ik: u32, iv: u32, fas: u32, cb: u32, s: u32, op: u32x128x512) -> u32x128x512
+  let (k0, v0) = rdp(op, as_ + p)
+  let (k, v) = rsub(oa, k0, v0, ik, iv, fas, cb, s)
+  return wrp(oa, dst + p, k, v)
+end
+fn rtoac1(oa: u32x128x512, t: u32, j: u32, nd: u32x128x132, op: u32x128x512, cl1: u32x128x193, first: u32, s: u32, cb: u32, ik: u32, iv: u32, fas: u32) -> u32x128x512
+  let r = first + j
+  let id = cb + (j < s ? j : j - 1)
+  return fold(rtoaa, nd[r * 6 + 2], oa, nd[r * 6 + 3], cl1[C_AS + id], ik, iv, fas, cb, s, op)
+end
+fn rtoac(oa: u32x128x512, j: u32, nd: u32x128x132, op: u32x128x512, cl1: u32x128x193, first: u32, s: u32, cb: u32, ik: u32, iv: u32, fas: u32) -> u32x128x512
+  return fold(rtoac1, bit(j != s), oa, j, nd, op, cl1, first, s, cb, ik, iv, fas)
+end
+fn rtoa1(oa: u32x128x512, t: u32, x: u32, rt: u32x128x425, cl0: u32x128x193, cl1: u32x128x193, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, ty: u32x384x65, tl: u32x128x65) -> u32x128x512
+  let as_ = cl0[C_AS + x]
+  let (ak, f) = rdp(oa, as_)
+  let (kk, kv) = rdp(oa, as_ + 1)
+  let c = cl0[C_CA + f]
+  let fas = cl0[C_AS + f]
+  let (ok, cost, na, s) = fcrun(0, c, fnt, nd, nt, op, tl, ty)
+  let isr = rt[R_FL + x] == 2
+  let bid = rt[R_BID + x]
+  let bsl = rt[R_BSL + x]
+  let len = tyw(ty, cl0[C_TY + f], 1)
+  let oa1 = wrp(oa, bsl, kk, kv)
+  let oa2 = wrp(oa1, bsl + 1, 3, len)
+  let oa3 = isr ? oa2 : oa
+  let ik = isr ? 1 : kk
+  let iv = isr ? bid : kv
+  let cb = bid + bit(isr)
+  let first = fnt[c * 7 + 4]
+  let oa4 = fold(rtoac, fnt[c * 7 + 5], oa3, nd, op, cl1, first, s, cb, ik, iv, fas)
+  let (vk0, vv0) = rdp(op, nd[(first + s) * 6 + 3] + 2)
+  let (vk, vv) = rsub(oa4, vk0, vv0, ik, iv, fas, cb, s)
+  return wrp(oa4, cl1[C_AS + x], vk, vv)
+end
+fn rtoa(oa: u32x128x512, i: u32, sq: u32x128x32, rt: u32x128x425, cl0: u32x128x193, cl1: u32x128x193, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, ty: u32x384x65, tl: u32x128x65) -> u32x128x512
+  let x = sq[i]
+  return fold(rtoa1, bit(rt[R_FL + x] != 0), oa, x, rt, cl0, cl1, fnt, nd, nt, op, ty, tl)
+end
+fn rtsq(sq: u32x128x32, i: u32, rt: u32x128x425) -> u32x128x32
+  sq[i] = rt[R_OUT + i]
+  return sq
+end
+fn rqorr(rq: u32x128x7, f: u32, rt: u32x128x425) -> u32x128x7
+  rq[f] = rq[f] | rt[R_RQ + f]
+  return rq
+end
+fn rtda(gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, n: u32, nid: u32, nslot: u32, op: u32x128x512, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65) -> u32x128x425
+  let rt0 = zeros(425)
+  rt0[R_SC + R_NEXT] = nid
+  rt0[R_SC + R_SLOT] = nslot
+  return fold(rtst, n * gate, rt0, sq, cl, oa, op, fnt, nd, nt, ty, tl)
+end
+fn rtdc(rt: u32x128x425, gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, n: u32, op: u32x128x512, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65) -> u32x128x193
+  let cl1 = fold(rtcl, n * gate, cl, sq, rt, oa, fnt, nd, nt, op, ty, tl)
+  cl1[C_SC + C_NSLOT] = rt[R_SC + R_SLOT] if gate == 1
+  return cl1
+end
+fn rtdo(rt: u32x128x425, gate: u32, sq: u32x128x32, cl0: u32x128x193, cl1: u32x128x193, oa: u32x128x512, n: u32, op: u32x128x512, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65) -> u32x128x512
+  return fold(rtoa, n * gate, oa, sq, rt, cl0, cl1, fnt, nd, nt, op, ty, tl)
+end
+fn rtds(rt: u32x128x425, gate: u32, sq: u32x128x32) -> u32x128x32
+  return fold(rtsq, rt[R_SC + R_OUTN] * gate, sq, rt)
+end
+
+# ---------------------------------------------------------------------------------------------
 # The demand-driven order (src/optimize.ts `schedule`): each node just before its first
 # consumer, by a post-order walk from the result and then from each node. Applies when nothing
 # is effectful and no `set` / `put` remains. State SD (u32x128x129): placed PL, stack node STN,
@@ -1264,19 +1609,27 @@ def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt
   let retk = big ? bk : rkind
   let retv = big ? bv : rval
 
-  # expansion
+  # read-through of fill runs on the source, then expansion
+  let rtS = rtda(1, sq1, cl1, op, ng, ng, no, op, fnt, nd, nt, ty, tl)
+  let ctS = rtS[R_SC + R_CHG]
+  let clS = rtdc(rtS, ctS, sq1, cl1, op, ng, op, fnt, nd, nt, ty, tl)
+  let oaS = rtdo(rtS, ctS, sq1, cl1, clS, op, ng, op, fnt, nd, nt, ty, tl)
+  let sqS = rtds(rtS, ctS, sq1)
+  let nS = ctS == 1 ? rtS[R_SC + R_OUTN] : ng
+  let nidS = ctS == 1 ? rtS[R_SC + R_NEXT] : ng
+  let nslotS = ctS == 1 ? rtS[R_SC + R_SLOT] : no
   let ed0 = zeros(393)
-  ed0[E_SC + E_NEXT] = ng
-  ed0[E_SC + E_SLOT] = no
+  ed0[E_SC + E_NEXT] = nidS
+  ed0[E_SC + E_SLOT] = nslotS
   let run1 = (stage == 0) | (stage >= 1)
-  let ed1 = fold(edstep, bit(run1) * ng, ed0, sq1, cl1, op, sm, fnt, nd, rqall)
+  let ed1 = fold(edstep, bit(run1) * nS, ed0, sqS, clS, oaS, sm, fnt, nd, rqall)
   let chg = ed1[E_SC + E_CHG]
   let outn = ed1[E_SC + E_OUTN]
   let next = ed1[E_SC + E_NEXT]
-  let sq2 = fold(cpout, outn * chg, sq1, ed1)
-  let n2 = chg == 1 ? outn : ng
-  let cl2 = fold(clnew, (next - ng) * chg, cl1, ed1, ng, fnt, nd, nt)
-  let oa2 = fold(oawr, outn * chg, op, ed1, cl2, ng, op, nd, fnt)
+  let sq2 = fold(cpout, outn * chg, sqS, ed1)
+  let n2 = chg == 1 ? outn : nS
+  let cl2 = fold(clnew, (next - nidS) * chg, clS, ed1, nidS, fnt, nd, nt)
+  let oa2 = fold(oawr, outn * chg, oaS, ed1, cl2, nidS, op, nd, fnt)
   let (rrk, rrv) = rn(ed1, retk, retv)
   let r2k = chg == 1 ? rrk : retk
   let r2v = chg == 1 ? rrv : retv
@@ -1286,8 +1639,8 @@ def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt
   let pio = fold(piostep, fnt[g * 7 + 1], zpage(), tl, ti, fnt[g * 7 + 2])
 
   # a pass
-  let nid2 = chg == 1 ? next : ng
-  let nslot2 = chg == 1 ? ed1[E_SC + E_SLOT] : no
+  let nid2 = chg == 1 ? next : nidS
+  let nslot2 = chg == 1 ? ed1[E_SC + E_SLOT] : nslotS
   let run2 = bit((stage == 0) | (stage >= 2))
   let fwA = passa(run2, sq2, cl2, oa2, n2, r2k, r2v, nid2, ti, pio, dir, fnt, nd, op)
   let sqA = passb(fwA, run2, sq2, cl2, oa2, r2k, r2v)
@@ -1300,159 +1653,248 @@ def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt
   let nidA = run2 == 1 ? fwA[F_SC + P_NEXT] : nid2
   let nslotA = run2 == 1 ? clA[C_SC + C_NSLOT] : nslot2
   let rq1 = fold(rqor, nf, zeros(7), ed1)
-  let rqA = fold(rqorf, nf, rq1, fwA)
-  # round 0: forward, then a pass
+  let rqS = fold(rqorr, nf, rq1, rtS)
+  let rqA = fold(rqorf, nf, rqS, fwA)
+  # round 0: read through fills, else forward; then a pass
   let gf0 = run2 * bit((stage == 0) | (stage >= 3))
-  let fd0 = fwda(gf0, sqA, clA, oaA, nA, rAk2, rAv2)
-  let clf0 = fwdc(fd0, gf0, sqA, clA, nA, nslotA)
-  let oaf0 = fwdo(fd0, gf0, sqA, clf0, oaA, nA)
-  let ch0 = fd0[D_SC] * gf0
-  let nsf0 = ch0 == 1 ? clf0[C_SC + C_NSLOT] : nslotA
+  let rt0 = rtda(gf0, sqA, clA, oaA, nA, nidA, nslotA, op, fnt, nd, nt, ty, tl)
+  let ct0 = rt0[R_SC + R_CHG] * gf0
+  let clt0 = rtdc(rt0, ct0, sqA, clA, oaA, nA, op, fnt, nd, nt, ty, tl)
+  let oat0 = rtdo(rt0, ct0, sqA, clA, clt0, oaA, nA, op, fnt, nd, nt, ty, tl)
+  let sqt0 = rtds(rt0, ct0, sqA)
+  let nt0 = ct0 == 1 ? rt0[R_SC + R_OUTN] : nA
+  let nidt0 = ct0 == 1 ? rt0[R_SC + R_NEXT] : nidA
+  let nst0 = ct0 == 1 ? rt0[R_SC + R_SLOT] : nslotA
+  let gw0 = gf0 * (1 - ct0)
+  let fd0 = fwda(gw0, sqt0, clt0, oat0, nt0, rAk2, rAv2)
+  let clf0 = fwdc(fd0, gw0, sqt0, clt0, nt0, nst0)
+  let oaf0 = fwdo(fd0, gw0, sqt0, clf0, oat0, nt0)
+  let cf0 = fd0[D_SC] * gw0
+  let ch0 = cf0 | ct0
+  let nsf0 = cf0 == 1 ? clf0[C_SC + C_NSLOT] : nst0
   let gp0 = ch0 * bit((stage == 0) | (stage >= 4))
-  let fwR0 = passa(gp0, sqA, clf0, oaf0, nA, rAk2, rAv2, nidA, ti, pio, dir, fnt, nd, op)
-  let sqR0 = passb(fwR0, gp0, sqA, clf0, oaf0, rAk2, rAv2)
+  let fwR0 = passa(gp0, sqt0, clf0, oaf0, nt0, rAk2, rAv2, nidt0, ti, pio, dir, fnt, nd, op)
+  let sqR0 = passb(fwR0, gp0, sqt0, clf0, oaf0, rAk2, rAv2)
   let clR0 = passc(fwR0, gp0, sqR0, clf0, nsf0)
   let oaR0 = passd(fwR0, gp0, sqR0, clR0, oaf0)
-  let nR0 = gp0 == 1 ? sqR0[4095] : nA
+  let nR0 = gp0 == 1 ? sqR0[4095] : nt0
   let (rR0k, rR0v) = pres(fwR0, rAk2, rAv2)
   let rR0k2 = gp0 == 1 ? rR0k : rAk2
   let rR0v2 = gp0 == 1 ? rR0v : rAv2
-  let nidR0 = gp0 == 1 ? fwR0[F_SC + P_NEXT] : nidA
+  let nidR0 = gp0 == 1 ? fwR0[F_SC + P_NEXT] : nidt0
   let nslotR0 = gp0 == 1 ? clR0[C_SC + C_NSLOT] : nsf0
-  let rqR0 = fold(rqorf, nf, rqA, fwR0)
-  # round 1: forward, then a pass
+  let rqt0 = fold(rqorr, nf, rqA, rt0)
+  let rqR0 = fold(rqorf, nf, rqt0, fwR0)
+  # round 1: read through fills, else forward; then a pass
   let gf1 = gp0 * bit((stage == 0) | (stage >= 5))
-  let fd1 = fwda(gf1, sqR0, clR0, oaR0, nR0, rR0k2, rR0v2)
-  let clf1 = fwdc(fd1, gf1, sqR0, clR0, nR0, nslotR0)
-  let oaf1 = fwdo(fd1, gf1, sqR0, clf1, oaR0, nR0)
-  let ch1 = fd1[D_SC] * gf1
-  let nsf1 = ch1 == 1 ? clf1[C_SC + C_NSLOT] : nslotR0
+  let rt1 = rtda(gf1, sqR0, clR0, oaR0, nR0, nidR0, nslotR0, op, fnt, nd, nt, ty, tl)
+  let ct1 = rt1[R_SC + R_CHG] * gf1
+  let clt1 = rtdc(rt1, ct1, sqR0, clR0, oaR0, nR0, op, fnt, nd, nt, ty, tl)
+  let oat1 = rtdo(rt1, ct1, sqR0, clR0, clt1, oaR0, nR0, op, fnt, nd, nt, ty, tl)
+  let sqt1 = rtds(rt1, ct1, sqR0)
+  let nt1 = ct1 == 1 ? rt1[R_SC + R_OUTN] : nR0
+  let nidt1 = ct1 == 1 ? rt1[R_SC + R_NEXT] : nidR0
+  let nst1 = ct1 == 1 ? rt1[R_SC + R_SLOT] : nslotR0
+  let gw1 = gf1 * (1 - ct1)
+  let fd1 = fwda(gw1, sqt1, clt1, oat1, nt1, rR0k2, rR0v2)
+  let clf1 = fwdc(fd1, gw1, sqt1, clt1, nt1, nst1)
+  let oaf1 = fwdo(fd1, gw1, sqt1, clf1, oat1, nt1)
+  let cf1 = fd1[D_SC] * gw1
+  let ch1 = cf1 | ct1
+  let nsf1 = cf1 == 1 ? clf1[C_SC + C_NSLOT] : nst1
   let gp1 = ch1 * bit((stage == 0) | (stage >= 6))
-  let fwR1 = passa(gp1, sqR0, clf1, oaf1, nR0, rR0k2, rR0v2, nidR0, ti, pio, dir, fnt, nd, op)
-  let sqR1 = passb(fwR1, gp1, sqR0, clf1, oaf1, rR0k2, rR0v2)
+  let fwR1 = passa(gp1, sqt1, clf1, oaf1, nt1, rR0k2, rR0v2, nidt1, ti, pio, dir, fnt, nd, op)
+  let sqR1 = passb(fwR1, gp1, sqt1, clf1, oaf1, rR0k2, rR0v2)
   let clR1 = passc(fwR1, gp1, sqR1, clf1, nsf1)
   let oaR1 = passd(fwR1, gp1, sqR1, clR1, oaf1)
-  let nR1 = gp1 == 1 ? sqR1[4095] : nR0
+  let nR1 = gp1 == 1 ? sqR1[4095] : nt1
   let (rR1k, rR1v) = pres(fwR1, rR0k2, rR0v2)
   let rR1k2 = gp1 == 1 ? rR1k : rR0k2
   let rR1v2 = gp1 == 1 ? rR1v : rR0v2
-  let nidR1 = gp1 == 1 ? fwR1[F_SC + P_NEXT] : nidR0
+  let nidR1 = gp1 == 1 ? fwR1[F_SC + P_NEXT] : nidt1
   let nslotR1 = gp1 == 1 ? clR1[C_SC + C_NSLOT] : nsf1
-  let rqR1 = fold(rqorf, nf, rqR0, fwR1)
-  # round 2: forward, then a pass
+  let rqt1 = fold(rqorr, nf, rqR0, rt1)
+  let rqR1 = fold(rqorf, nf, rqt1, fwR1)
+  # round 2: read through fills, else forward; then a pass
   let gf2 = gp1 * bit((stage == 0) | (stage >= 7))
-  let fd2 = fwda(gf2, sqR1, clR1, oaR1, nR1, rR1k2, rR1v2)
-  let clf2 = fwdc(fd2, gf2, sqR1, clR1, nR1, nslotR1)
-  let oaf2 = fwdo(fd2, gf2, sqR1, clf2, oaR1, nR1)
-  let ch2 = fd2[D_SC] * gf2
-  let nsf2 = ch2 == 1 ? clf2[C_SC + C_NSLOT] : nslotR1
+  let rt2 = rtda(gf2, sqR1, clR1, oaR1, nR1, nidR1, nslotR1, op, fnt, nd, nt, ty, tl)
+  let ct2 = rt2[R_SC + R_CHG] * gf2
+  let clt2 = rtdc(rt2, ct2, sqR1, clR1, oaR1, nR1, op, fnt, nd, nt, ty, tl)
+  let oat2 = rtdo(rt2, ct2, sqR1, clR1, clt2, oaR1, nR1, op, fnt, nd, nt, ty, tl)
+  let sqt2 = rtds(rt2, ct2, sqR1)
+  let nt2 = ct2 == 1 ? rt2[R_SC + R_OUTN] : nR1
+  let nidt2 = ct2 == 1 ? rt2[R_SC + R_NEXT] : nidR1
+  let nst2 = ct2 == 1 ? rt2[R_SC + R_SLOT] : nslotR1
+  let gw2 = gf2 * (1 - ct2)
+  let fd2 = fwda(gw2, sqt2, clt2, oat2, nt2, rR1k2, rR1v2)
+  let clf2 = fwdc(fd2, gw2, sqt2, clt2, nt2, nst2)
+  let oaf2 = fwdo(fd2, gw2, sqt2, clf2, oat2, nt2)
+  let cf2 = fd2[D_SC] * gw2
+  let ch2 = cf2 | ct2
+  let nsf2 = cf2 == 1 ? clf2[C_SC + C_NSLOT] : nst2
   let gp2 = ch2 * bit((stage == 0) | (stage >= 8))
-  let fwR2 = passa(gp2, sqR1, clf2, oaf2, nR1, rR1k2, rR1v2, nidR1, ti, pio, dir, fnt, nd, op)
-  let sqR2 = passb(fwR2, gp2, sqR1, clf2, oaf2, rR1k2, rR1v2)
+  let fwR2 = passa(gp2, sqt2, clf2, oaf2, nt2, rR1k2, rR1v2, nidt2, ti, pio, dir, fnt, nd, op)
+  let sqR2 = passb(fwR2, gp2, sqt2, clf2, oaf2, rR1k2, rR1v2)
   let clR2 = passc(fwR2, gp2, sqR2, clf2, nsf2)
   let oaR2 = passd(fwR2, gp2, sqR2, clR2, oaf2)
-  let nR2 = gp2 == 1 ? sqR2[4095] : nR1
+  let nR2 = gp2 == 1 ? sqR2[4095] : nt2
   let (rR2k, rR2v) = pres(fwR2, rR1k2, rR1v2)
   let rR2k2 = gp2 == 1 ? rR2k : rR1k2
   let rR2v2 = gp2 == 1 ? rR2v : rR1v2
-  let nidR2 = gp2 == 1 ? fwR2[F_SC + P_NEXT] : nidR1
+  let nidR2 = gp2 == 1 ? fwR2[F_SC + P_NEXT] : nidt2
   let nslotR2 = gp2 == 1 ? clR2[C_SC + C_NSLOT] : nsf2
-  let rqR2 = fold(rqorf, nf, rqR1, fwR2)
-  # round 3: forward, then a pass
+  let rqt2 = fold(rqorr, nf, rqR1, rt2)
+  let rqR2 = fold(rqorf, nf, rqt2, fwR2)
+  # round 3: read through fills, else forward; then a pass
   let gf3 = gp2 * bit((stage == 0) | (stage >= 9))
-  let fd3 = fwda(gf3, sqR2, clR2, oaR2, nR2, rR2k2, rR2v2)
-  let clf3 = fwdc(fd3, gf3, sqR2, clR2, nR2, nslotR2)
-  let oaf3 = fwdo(fd3, gf3, sqR2, clf3, oaR2, nR2)
-  let ch3 = fd3[D_SC] * gf3
-  let nsf3 = ch3 == 1 ? clf3[C_SC + C_NSLOT] : nslotR2
+  let rt3 = rtda(gf3, sqR2, clR2, oaR2, nR2, nidR2, nslotR2, op, fnt, nd, nt, ty, tl)
+  let ct3 = rt3[R_SC + R_CHG] * gf3
+  let clt3 = rtdc(rt3, ct3, sqR2, clR2, oaR2, nR2, op, fnt, nd, nt, ty, tl)
+  let oat3 = rtdo(rt3, ct3, sqR2, clR2, clt3, oaR2, nR2, op, fnt, nd, nt, ty, tl)
+  let sqt3 = rtds(rt3, ct3, sqR2)
+  let nt3 = ct3 == 1 ? rt3[R_SC + R_OUTN] : nR2
+  let nidt3 = ct3 == 1 ? rt3[R_SC + R_NEXT] : nidR2
+  let nst3 = ct3 == 1 ? rt3[R_SC + R_SLOT] : nslotR2
+  let gw3 = gf3 * (1 - ct3)
+  let fd3 = fwda(gw3, sqt3, clt3, oat3, nt3, rR2k2, rR2v2)
+  let clf3 = fwdc(fd3, gw3, sqt3, clt3, nt3, nst3)
+  let oaf3 = fwdo(fd3, gw3, sqt3, clf3, oat3, nt3)
+  let cf3 = fd3[D_SC] * gw3
+  let ch3 = cf3 | ct3
+  let nsf3 = cf3 == 1 ? clf3[C_SC + C_NSLOT] : nst3
   let gp3 = ch3 * bit((stage == 0) | (stage >= 10))
-  let fwR3 = passa(gp3, sqR2, clf3, oaf3, nR2, rR2k2, rR2v2, nidR2, ti, pio, dir, fnt, nd, op)
-  let sqR3 = passb(fwR3, gp3, sqR2, clf3, oaf3, rR2k2, rR2v2)
+  let fwR3 = passa(gp3, sqt3, clf3, oaf3, nt3, rR2k2, rR2v2, nidt3, ti, pio, dir, fnt, nd, op)
+  let sqR3 = passb(fwR3, gp3, sqt3, clf3, oaf3, rR2k2, rR2v2)
   let clR3 = passc(fwR3, gp3, sqR3, clf3, nsf3)
   let oaR3 = passd(fwR3, gp3, sqR3, clR3, oaf3)
-  let nR3 = gp3 == 1 ? sqR3[4095] : nR2
+  let nR3 = gp3 == 1 ? sqR3[4095] : nt3
   let (rR3k, rR3v) = pres(fwR3, rR2k2, rR2v2)
   let rR3k2 = gp3 == 1 ? rR3k : rR2k2
   let rR3v2 = gp3 == 1 ? rR3v : rR2v2
-  let nidR3 = gp3 == 1 ? fwR3[F_SC + P_NEXT] : nidR2
+  let nidR3 = gp3 == 1 ? fwR3[F_SC + P_NEXT] : nidt3
   let nslotR3 = gp3 == 1 ? clR3[C_SC + C_NSLOT] : nsf3
-  let rqR3 = fold(rqorf, nf, rqR2, fwR3)
-  # round 4: forward, then a pass
+  let rqt3 = fold(rqorr, nf, rqR2, rt3)
+  let rqR3 = fold(rqorf, nf, rqt3, fwR3)
+  # round 4: read through fills, else forward; then a pass
   let gf4 = gp3 * bit((stage == 0) | (stage >= 11))
-  let fd4 = fwda(gf4, sqR3, clR3, oaR3, nR3, rR3k2, rR3v2)
-  let clf4 = fwdc(fd4, gf4, sqR3, clR3, nR3, nslotR3)
-  let oaf4 = fwdo(fd4, gf4, sqR3, clf4, oaR3, nR3)
-  let ch4 = fd4[D_SC] * gf4
-  let nsf4 = ch4 == 1 ? clf4[C_SC + C_NSLOT] : nslotR3
+  let rt4 = rtda(gf4, sqR3, clR3, oaR3, nR3, nidR3, nslotR3, op, fnt, nd, nt, ty, tl)
+  let ct4 = rt4[R_SC + R_CHG] * gf4
+  let clt4 = rtdc(rt4, ct4, sqR3, clR3, oaR3, nR3, op, fnt, nd, nt, ty, tl)
+  let oat4 = rtdo(rt4, ct4, sqR3, clR3, clt4, oaR3, nR3, op, fnt, nd, nt, ty, tl)
+  let sqt4 = rtds(rt4, ct4, sqR3)
+  let nt4 = ct4 == 1 ? rt4[R_SC + R_OUTN] : nR3
+  let nidt4 = ct4 == 1 ? rt4[R_SC + R_NEXT] : nidR3
+  let nst4 = ct4 == 1 ? rt4[R_SC + R_SLOT] : nslotR3
+  let gw4 = gf4 * (1 - ct4)
+  let fd4 = fwda(gw4, sqt4, clt4, oat4, nt4, rR3k2, rR3v2)
+  let clf4 = fwdc(fd4, gw4, sqt4, clt4, nt4, nst4)
+  let oaf4 = fwdo(fd4, gw4, sqt4, clf4, oat4, nt4)
+  let cf4 = fd4[D_SC] * gw4
+  let ch4 = cf4 | ct4
+  let nsf4 = cf4 == 1 ? clf4[C_SC + C_NSLOT] : nst4
   let gp4 = ch4 * bit((stage == 0) | (stage >= 12))
-  let fwR4 = passa(gp4, sqR3, clf4, oaf4, nR3, rR3k2, rR3v2, nidR3, ti, pio, dir, fnt, nd, op)
-  let sqR4 = passb(fwR4, gp4, sqR3, clf4, oaf4, rR3k2, rR3v2)
+  let fwR4 = passa(gp4, sqt4, clf4, oaf4, nt4, rR3k2, rR3v2, nidt4, ti, pio, dir, fnt, nd, op)
+  let sqR4 = passb(fwR4, gp4, sqt4, clf4, oaf4, rR3k2, rR3v2)
   let clR4 = passc(fwR4, gp4, sqR4, clf4, nsf4)
   let oaR4 = passd(fwR4, gp4, sqR4, clR4, oaf4)
-  let nR4 = gp4 == 1 ? sqR4[4095] : nR3
+  let nR4 = gp4 == 1 ? sqR4[4095] : nt4
   let (rR4k, rR4v) = pres(fwR4, rR3k2, rR3v2)
   let rR4k2 = gp4 == 1 ? rR4k : rR3k2
   let rR4v2 = gp4 == 1 ? rR4v : rR3v2
-  let nidR4 = gp4 == 1 ? fwR4[F_SC + P_NEXT] : nidR3
+  let nidR4 = gp4 == 1 ? fwR4[F_SC + P_NEXT] : nidt4
   let nslotR4 = gp4 == 1 ? clR4[C_SC + C_NSLOT] : nsf4
-  let rqR4 = fold(rqorf, nf, rqR3, fwR4)
-  # round 5: forward, then a pass
+  let rqt4 = fold(rqorr, nf, rqR3, rt4)
+  let rqR4 = fold(rqorf, nf, rqt4, fwR4)
+  # round 5: read through fills, else forward; then a pass
   let gf5 = gp4 * bit((stage == 0) | (stage >= 13))
-  let fd5 = fwda(gf5, sqR4, clR4, oaR4, nR4, rR4k2, rR4v2)
-  let clf5 = fwdc(fd5, gf5, sqR4, clR4, nR4, nslotR4)
-  let oaf5 = fwdo(fd5, gf5, sqR4, clf5, oaR4, nR4)
-  let ch5 = fd5[D_SC] * gf5
-  let nsf5 = ch5 == 1 ? clf5[C_SC + C_NSLOT] : nslotR4
+  let rt5 = rtda(gf5, sqR4, clR4, oaR4, nR4, nidR4, nslotR4, op, fnt, nd, nt, ty, tl)
+  let ct5 = rt5[R_SC + R_CHG] * gf5
+  let clt5 = rtdc(rt5, ct5, sqR4, clR4, oaR4, nR4, op, fnt, nd, nt, ty, tl)
+  let oat5 = rtdo(rt5, ct5, sqR4, clR4, clt5, oaR4, nR4, op, fnt, nd, nt, ty, tl)
+  let sqt5 = rtds(rt5, ct5, sqR4)
+  let nt5 = ct5 == 1 ? rt5[R_SC + R_OUTN] : nR4
+  let nidt5 = ct5 == 1 ? rt5[R_SC + R_NEXT] : nidR4
+  let nst5 = ct5 == 1 ? rt5[R_SC + R_SLOT] : nslotR4
+  let gw5 = gf5 * (1 - ct5)
+  let fd5 = fwda(gw5, sqt5, clt5, oat5, nt5, rR4k2, rR4v2)
+  let clf5 = fwdc(fd5, gw5, sqt5, clt5, nt5, nst5)
+  let oaf5 = fwdo(fd5, gw5, sqt5, clf5, oat5, nt5)
+  let cf5 = fd5[D_SC] * gw5
+  let ch5 = cf5 | ct5
+  let nsf5 = cf5 == 1 ? clf5[C_SC + C_NSLOT] : nst5
   let gp5 = ch5 * bit((stage == 0) | (stage >= 14))
-  let fwR5 = passa(gp5, sqR4, clf5, oaf5, nR4, rR4k2, rR4v2, nidR4, ti, pio, dir, fnt, nd, op)
-  let sqR5 = passb(fwR5, gp5, sqR4, clf5, oaf5, rR4k2, rR4v2)
+  let fwR5 = passa(gp5, sqt5, clf5, oaf5, nt5, rR4k2, rR4v2, nidt5, ti, pio, dir, fnt, nd, op)
+  let sqR5 = passb(fwR5, gp5, sqt5, clf5, oaf5, rR4k2, rR4v2)
   let clR5 = passc(fwR5, gp5, sqR5, clf5, nsf5)
   let oaR5 = passd(fwR5, gp5, sqR5, clR5, oaf5)
-  let nR5 = gp5 == 1 ? sqR5[4095] : nR4
+  let nR5 = gp5 == 1 ? sqR5[4095] : nt5
   let (rR5k, rR5v) = pres(fwR5, rR4k2, rR4v2)
   let rR5k2 = gp5 == 1 ? rR5k : rR4k2
   let rR5v2 = gp5 == 1 ? rR5v : rR4v2
-  let nidR5 = gp5 == 1 ? fwR5[F_SC + P_NEXT] : nidR4
+  let nidR5 = gp5 == 1 ? fwR5[F_SC + P_NEXT] : nidt5
   let nslotR5 = gp5 == 1 ? clR5[C_SC + C_NSLOT] : nsf5
-  let rqR5 = fold(rqorf, nf, rqR4, fwR5)
-  # round 6: forward, then a pass
+  let rqt5 = fold(rqorr, nf, rqR4, rt5)
+  let rqR5 = fold(rqorf, nf, rqt5, fwR5)
+  # round 6: read through fills, else forward; then a pass
   let gf6 = gp5 * bit((stage == 0) | (stage >= 15))
-  let fd6 = fwda(gf6, sqR5, clR5, oaR5, nR5, rR5k2, rR5v2)
-  let clf6 = fwdc(fd6, gf6, sqR5, clR5, nR5, nslotR5)
-  let oaf6 = fwdo(fd6, gf6, sqR5, clf6, oaR5, nR5)
-  let ch6 = fd6[D_SC] * gf6
-  let nsf6 = ch6 == 1 ? clf6[C_SC + C_NSLOT] : nslotR5
+  let rt6 = rtda(gf6, sqR5, clR5, oaR5, nR5, nidR5, nslotR5, op, fnt, nd, nt, ty, tl)
+  let ct6 = rt6[R_SC + R_CHG] * gf6
+  let clt6 = rtdc(rt6, ct6, sqR5, clR5, oaR5, nR5, op, fnt, nd, nt, ty, tl)
+  let oat6 = rtdo(rt6, ct6, sqR5, clR5, clt6, oaR5, nR5, op, fnt, nd, nt, ty, tl)
+  let sqt6 = rtds(rt6, ct6, sqR5)
+  let nt6 = ct6 == 1 ? rt6[R_SC + R_OUTN] : nR5
+  let nidt6 = ct6 == 1 ? rt6[R_SC + R_NEXT] : nidR5
+  let nst6 = ct6 == 1 ? rt6[R_SC + R_SLOT] : nslotR5
+  let gw6 = gf6 * (1 - ct6)
+  let fd6 = fwda(gw6, sqt6, clt6, oat6, nt6, rR5k2, rR5v2)
+  let clf6 = fwdc(fd6, gw6, sqt6, clt6, nt6, nst6)
+  let oaf6 = fwdo(fd6, gw6, sqt6, clf6, oat6, nt6)
+  let cf6 = fd6[D_SC] * gw6
+  let ch6 = cf6 | ct6
+  let nsf6 = cf6 == 1 ? clf6[C_SC + C_NSLOT] : nst6
   let gp6 = ch6 * bit((stage == 0) | (stage >= 16))
-  let fwR6 = passa(gp6, sqR5, clf6, oaf6, nR5, rR5k2, rR5v2, nidR5, ti, pio, dir, fnt, nd, op)
-  let sqR6 = passb(fwR6, gp6, sqR5, clf6, oaf6, rR5k2, rR5v2)
+  let fwR6 = passa(gp6, sqt6, clf6, oaf6, nt6, rR5k2, rR5v2, nidt6, ti, pio, dir, fnt, nd, op)
+  let sqR6 = passb(fwR6, gp6, sqt6, clf6, oaf6, rR5k2, rR5v2)
   let clR6 = passc(fwR6, gp6, sqR6, clf6, nsf6)
   let oaR6 = passd(fwR6, gp6, sqR6, clR6, oaf6)
-  let nR6 = gp6 == 1 ? sqR6[4095] : nR5
+  let nR6 = gp6 == 1 ? sqR6[4095] : nt6
   let (rR6k, rR6v) = pres(fwR6, rR5k2, rR5v2)
   let rR6k2 = gp6 == 1 ? rR6k : rR5k2
   let rR6v2 = gp6 == 1 ? rR6v : rR5v2
-  let nidR6 = gp6 == 1 ? fwR6[F_SC + P_NEXT] : nidR5
+  let nidR6 = gp6 == 1 ? fwR6[F_SC + P_NEXT] : nidt6
   let nslotR6 = gp6 == 1 ? clR6[C_SC + C_NSLOT] : nsf6
-  let rqR6 = fold(rqorf, nf, rqR5, fwR6)
-  # round 7: forward, then a pass
+  let rqt6 = fold(rqorr, nf, rqR5, rt6)
+  let rqR6 = fold(rqorf, nf, rqt6, fwR6)
+  # round 7: read through fills, else forward; then a pass
   let gf7 = gp6 * bit((stage == 0) | (stage >= 17))
-  let fd7 = fwda(gf7, sqR6, clR6, oaR6, nR6, rR6k2, rR6v2)
-  let clf7 = fwdc(fd7, gf7, sqR6, clR6, nR6, nslotR6)
-  let oaf7 = fwdo(fd7, gf7, sqR6, clf7, oaR6, nR6)
-  let ch7 = fd7[D_SC] * gf7
-  let nsf7 = ch7 == 1 ? clf7[C_SC + C_NSLOT] : nslotR6
+  let rt7 = rtda(gf7, sqR6, clR6, oaR6, nR6, nidR6, nslotR6, op, fnt, nd, nt, ty, tl)
+  let ct7 = rt7[R_SC + R_CHG] * gf7
+  let clt7 = rtdc(rt7, ct7, sqR6, clR6, oaR6, nR6, op, fnt, nd, nt, ty, tl)
+  let oat7 = rtdo(rt7, ct7, sqR6, clR6, clt7, oaR6, nR6, op, fnt, nd, nt, ty, tl)
+  let sqt7 = rtds(rt7, ct7, sqR6)
+  let nt7 = ct7 == 1 ? rt7[R_SC + R_OUTN] : nR6
+  let nidt7 = ct7 == 1 ? rt7[R_SC + R_NEXT] : nidR6
+  let nst7 = ct7 == 1 ? rt7[R_SC + R_SLOT] : nslotR6
+  let gw7 = gf7 * (1 - ct7)
+  let fd7 = fwda(gw7, sqt7, clt7, oat7, nt7, rR6k2, rR6v2)
+  let clf7 = fwdc(fd7, gw7, sqt7, clt7, nt7, nst7)
+  let oaf7 = fwdo(fd7, gw7, sqt7, clf7, oat7, nt7)
+  let cf7 = fd7[D_SC] * gw7
+  let ch7 = cf7 | ct7
+  let nsf7 = cf7 == 1 ? clf7[C_SC + C_NSLOT] : nst7
   let gp7 = ch7 * bit((stage == 0) | (stage >= 18))
-  let fwR7 = passa(gp7, sqR6, clf7, oaf7, nR6, rR6k2, rR6v2, nidR6, ti, pio, dir, fnt, nd, op)
-  let sqR7 = passb(fwR7, gp7, sqR6, clf7, oaf7, rR6k2, rR6v2)
+  let fwR7 = passa(gp7, sqt7, clf7, oaf7, nt7, rR6k2, rR6v2, nidt7, ti, pio, dir, fnt, nd, op)
+  let sqR7 = passb(fwR7, gp7, sqt7, clf7, oaf7, rR6k2, rR6v2)
   let clR7 = passc(fwR7, gp7, sqR7, clf7, nsf7)
   let oaR7 = passd(fwR7, gp7, sqR7, clR7, oaf7)
-  let nR7 = gp7 == 1 ? sqR7[4095] : nR6
+  let nR7 = gp7 == 1 ? sqR7[4095] : nt7
   let (rR7k, rR7v) = pres(fwR7, rR6k2, rR6v2)
   let rR7k2 = gp7 == 1 ? rR7k : rR6k2
   let rR7v2 = gp7 == 1 ? rR7v : rR6v2
-  let nidR7 = gp7 == 1 ? fwR7[F_SC + P_NEXT] : nidR6
+  let nidR7 = gp7 == 1 ? fwR7[F_SC + P_NEXT] : nidt7
   let nslotR7 = gp7 == 1 ? clR7[C_SC + C_NSLOT] : nsf7
-  let rqR7 = fold(rqorf, nf, rqR6, fwR7)
+  let rqt7 = fold(rqorr, nf, rqR6, rt7)
+  let rqR7 = fold(rqorf, nf, rqt7, fwR7)
 
   # the demand-driven order, the literal iteration bound
   let eff = fold(effall, nR7, 0, sqR7, clR7, oaR7, ti, pio)
@@ -1467,7 +1909,7 @@ def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt
   let sqs = fold(cpsd, nsch, sqR7, sd1)
   let li = fold(listep, nR7, 1, sqs, clR7, oaR7, fnt)
   let nreq = fold(rqcnt, nf, 0, rqR7)
-  let err = ed1[E_SC + E_ERR] | fwA[F_SC + P_ERR] | fwR0[F_SC + P_ERR] | fwR1[F_SC + P_ERR] | fwR2[F_SC + P_ERR] | fwR3[F_SC + P_ERR] | fwR4[F_SC + P_ERR] | fwR5[F_SC + P_ERR] | fwR6[F_SC + P_ERR] | fwR7[F_SC + P_ERR] | bit(nR7 >= 4095)
+  let err = ed1[E_SC + E_ERR] | rtS[R_SC + R_ERR] | rt0[R_SC + R_ERR] | rt1[R_SC + R_ERR] | rt2[R_SC + R_ERR] | rt3[R_SC + R_ERR] | rt4[R_SC + R_ERR] | rt5[R_SC + R_ERR] | rt6[R_SC + R_ERR] | rt7[R_SC + R_ERR] | fwA[F_SC + P_ERR] | fwR0[F_SC + P_ERR] | fwR1[F_SC + P_ERR] | fwR2[F_SC + P_ERR] | fwR3[F_SC + P_ERR] | fwR4[F_SC + P_ERR] | fwR5[F_SC + P_ERR] | fwR6[F_SC + P_ERR] | fwR7[F_SC + P_ERR] | bit(nR7 >= 4095)
   let ok = (nreq == 0) & (err == 0)
 
   return (sqs, clR7, oaR7, nR7, rR7k2, rR7v2, li, nreq, rqR7, err)
