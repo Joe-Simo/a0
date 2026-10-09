@@ -46,7 +46,7 @@ import {
   validateFunction,
 } from './core.js';
 import { formatDenseFunction, formatDenseSignature } from './dense.js';
-import { denseEditBody } from './dense-edit.js';
+import { COMPACT_EDIT_STYLE, denseEditBody } from './dense-edit.js';
 import { diag } from './diagnostics.js';
 import { fixAll } from './fix.js';
 import { constructLegend, lazyDiagnostic, lazyHints } from './lazy.js';
@@ -649,6 +649,11 @@ export interface ViewOptions {
    */
   readonly dense?: boolean;
   /**
+   * With `dense`: print the compact spellings (`COMPACT_EDIT_STYLE`, src/dense-edit.ts) and read the
+   * replies under this handle as compact dense text. Off by default; ignored without `dense`.
+   */
+  readonly compact?: boolean;
+  /**
    * 'show' (default): the function's spec lines (`ex`, `pre`, `post`, src/spec.ts) are part of the
    * view. 'hide': the view leaves them out (a numbered view always shows them, since the numbers
    * address them); a whole-function replacement sent under such a handle keeps the function's
@@ -691,12 +696,14 @@ export function scopedViewDense(
   program: TypedProgram,
   scope: 'function' | 'deps' | 'bodies',
   hideSpecs = false,
+  compact = false,
 ): string {
   const shown = (f: TypedFunc): TypedFunc => (hideSpecs ? withoutSpec(f) : f);
-  const text = formatDenseFunction(shown(fn), program);
+  const opts = compact ? { style: COMPACT_EDIT_STYLE } : {};
+  const text = formatDenseFunction(shown(fn), program, opts);
   if (scope === 'function') return text;
   const sigs = [...fn.calls.values()].map((c) =>
-    scope === 'bodies' ? formatDenseFunction(shown(c), program) : denseSignatureLine(c),
+    scope === 'bodies' ? formatDenseFunction(shown(c), program, opts) : denseSignatureLine(c),
   );
   return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
 }
@@ -918,6 +925,8 @@ interface OpenHandle {
   readonly scope: ViewOptions['scope'];
   /** Dense view: the view is dense text and replies under this handle are dense text. */
   readonly dense?: boolean;
+  /** Dense view with the compact spellings (`ViewOptions.compact`). */
+  readonly compact?: boolean;
   /** Program handles opened with `scope: 'deps'`: the function the view is centred on. */
   readonly target?: string;
   readonly numbered?: boolean;
@@ -1241,6 +1250,7 @@ export class EditSession {
     const rev = revision(fn);
     const numbered = options.numbered === true;
     const dense = options.dense === true;
+    const compact = dense && options.compact === true;
     const hideSpecs = options.specs === 'hide' && !numbered && fn.spec !== undefined;
     this.#handles.set(handle, {
       functionName,
@@ -1248,9 +1258,10 @@ export class EditSession {
       scope: options.scope,
       ...(numbered ? { numbered } : {}),
       ...(dense ? { dense } : {}),
+      ...(compact ? { compact } : {}),
       ...(options.specs === 'hide' && !numbered ? { hideSpecs: true } : {}),
     });
-    const body = this.#functionText(fn, options.scope, numbered, dense, hideSpecs);
+    const body = this.#functionText(fn, options.scope, numbered, dense, hideSpecs, compact);
     return { handle, functionName, revision: rev, text: `${handle}\n${body}` };
   }
 
@@ -1262,7 +1273,7 @@ export class EditSession {
       return `${handle}\n${this.#programText(bound.target, bound.dense === true)}`;
     const fn = this.#program.byName.get(bound.functionName);
     if (fn === undefined) throw diag('A0613', [handle], { line: 1 });
-    return `${handle}\n${this.#functionText(fn, bound.scope, bound.numbered === true, bound.dense === true, bound.hideSpecs === true)}`;
+    return `${handle}\n${this.#functionText(fn, bound.scope, bound.numbered === true, bound.dense === true, bound.hideSpecs === true, bound.compact === true)}`;
   }
 
   #functionText(
@@ -1271,8 +1282,9 @@ export class EditSession {
     numbered: boolean,
     dense = false,
     hideSpecs = false,
+    compact = false,
   ): string {
-    const text = this.#plainFunctionText(fn, scope, numbered, dense, hideSpecs);
+    const text = this.#plainFunctionText(fn, scope, numbered, dense, hideSpecs, compact);
     const shown = dense && scope === 'bodies' ? [fn, ...fn.calls.values()] : [fn];
     const legend = process.env.A0_KEY_LEGEND === 'off' ? '' : keyLegend(shown);
     const lazy = lazyHints() && !dense ? constructLegend(shown) : '';
@@ -1286,8 +1298,9 @@ export class EditSession {
     numbered: boolean,
     dense: boolean,
     hideSpecs: boolean,
+    compact = false,
   ): string {
-    if (dense) return scopedViewDense(fn, this.#program, scope ?? 'function', hideSpecs);
+    if (dense) return scopedViewDense(fn, this.#program, scope ?? 'function', hideSpecs, compact);
     if (scope === 'deps' || scope === 'bodies') return scopedView(fn, numbered, hideSpecs);
     return numbered ? numberedFunction(fn) : formatFunction(hideSpecs ? withoutSpec(fn) : fn);
   }
@@ -1539,7 +1552,10 @@ export class EditSession {
       body = body.slice(0, -1);
     while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === '')
       body = body.slice(0, -1);
-    if (bound.dense === true) body = denseEditBody(body, this.#program, fn, this.#denseNames);
+    if (bound.dense === true)
+      body = denseEditBody(body, this.#program, fn, this.#denseNames, {
+        compact: bound.compact === true,
+      });
     // Whole `fn ... end` blocks are program-level edits wherever they appear: the handled
     // function sent back whole replaces itself, and any other function is added or replaced
     // exactly as under a program handle. Edit lines before the first block apply to the

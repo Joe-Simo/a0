@@ -41,7 +41,7 @@ async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, 'utf8')) as T;
 }
 
-const x = (n: number): string => (n >= 10 ? n.toFixed(0) : n.toFixed(1)) + 'x';
+const x = (n: number): string => `${n >= 10 ? n.toFixed(0) : n.toFixed(1)}x`;
 
 /** The three cards, with every number read from the results files. */
 export async function computeCards(root = '.'): Promise<readonly Card[]> {
@@ -162,7 +162,7 @@ body{font-family:"Geist",sans-serif;color:#fff;position:relative}
 
 function findChrome(): string {
   const cands = [
-    process.env['CHROME'],
+    process.env.CHROME,
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
     'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
     '/usr/bin/google-chrome',

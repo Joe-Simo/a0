@@ -9,6 +9,8 @@
  *
  * A0 cell options: A0_EXPERIMENT_DENSE=1 (the structured A0 cell shows the dense view and reads
  * dense replies, src/dense.ts; use with a dense primer such as MODEL_GUIDE.dense.txt),
+ * A0_EXPERIMENT_DENSE_STYLE=compact (with A0_EXPERIMENT_DENSE=1: the function view uses the compact
+ * spellings and reads compact replies; primer experiments/primers/dense/C1.txt),
  * A0_EXPERIMENT_GUIDE (primer file),
  * A0_EXPERIMENT_PRIMER=always|none|lazy|rules|rules-merged,
  * A0_EXPERIMENT_PROGRAM_VIEW=all|deps
@@ -166,6 +168,10 @@ const A0_NUMBERED_VIEW = process.env.A0_EXPERIMENT_A0_VIEW === 'numbered';
 // handles) and its replies are dense text; the program, the acceptance tests and the checker
 // are the same.
 const A0_DENSE_VIEW = process.env.A0_EXPERIMENT_DENSE === '1';
+// A0_EXPERIMENT_DENSE_STYLE=compact: with the dense view, the function handle prints the compact spellings
+// (COMPACT_EDIT_STYLE, src/dense-edit.ts) and reads its replies as compact text; use with a compact
+// primer such as experiments/primers/dense/C1.txt. Off by default (plain dense text).
+const A0_COMPACT_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_STYLE === 'compact';
 // A0_EXPERIMENT_DENSE_VIEW=lean: with the dense view, show only the function view (no handle line,
 // no program handle): the reply is applied to the one open handle, which is implied.
 const A0_LEAN_VIEW =
@@ -529,6 +535,7 @@ async function buildCell(
               scope: A0_BARE_VIEW ? 'function' : A0_BODIES_VIEW ? 'bodies' : 'deps',
               numbered: A0_NUMBERED_VIEW,
               dense: A0_DENSE_VIEW,
+              compact: A0_COMPACT_VIEW,
             });
             if (!A0_LEAN_VIEW)
               sh.openProgram({ scope: programScope, target: fnName, dense: A0_DENSE_VIEW });
@@ -539,6 +546,7 @@ async function buildCell(
         scope: A0_BARE_VIEW ? 'function' : A0_BODIES_VIEW ? 'bodies' : 'deps',
         numbered: A0_NUMBERED_VIEW,
         dense: A0_DENSE_VIEW,
+        compact: A0_COMPACT_VIEW,
       }).text; // e0
       if (A0_LEAN_VIEW)
         return {
@@ -1409,7 +1417,7 @@ async function main(): Promise<void> {
     programView: programScope,
     systemLayout,
     a0View: A0_NUMBERED_VIEW ? 'numbered' : 'plain',
-    a0Syntax: A0_DENSE_VIEW ? 'dense' : 'canonical',
+    a0Syntax: A0_DENSE_VIEW ? (A0_COMPACT_VIEW ? 'dense-compact' : 'dense') : 'canonical',
     method,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',

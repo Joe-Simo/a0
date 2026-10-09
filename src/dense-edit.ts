@@ -27,6 +27,7 @@ import {
   type TypedProgram,
 } from './core.js';
 import {
+  type DenseStyle,
   denseNodeTexts,
   FunctionParser,
   lexDense,
@@ -56,6 +57,32 @@ interface EditCtx {
   readonly taken: Set<string>;
   /** Ids that edit lines defined (a later line may refer to them). */
   readonly defined: Set<string>;
+  /** The reply uses the compact spellings (`parseDense(text, { compact: true })`). */
+  readonly compact: boolean;
+}
+
+/**
+ * The compact spellings an edit view prints when asked (`ViewOptions.compact`): every compact rule of
+ * src/dense.ts except `oneLine`, so a reply still writes whole functions as `fn` blocks. Off by default.
+ */
+export const COMPACT_EDIT_STYLE: DenseStyle = {
+  tab: true,
+  minmax: true,
+  hex: true,
+  trailingParams: true,
+  fill: true,
+  bit: true,
+  dot: true,
+  inferResult: true,
+  negative: true,
+  foldN: true,
+  ops: true,
+};
+
+/** How `denseEditBody` reads a reply. */
+export interface DenseEditOptions {
+  /** Read the compact spellings (off by default: the reply is plain dense text). */
+  readonly compact?: boolean;
 }
 
 /** `+ex ...`, `+pre EXPR` and `+post EXPR` (optionally `f:` first): the dense expressions as canonical lines. */
@@ -85,11 +112,24 @@ function translateEditLine(text: string, ctx: EditCtx): string[] {
   const m = /^(.*?)\s+@\s+([a-z][a-z0-9_]*)$/.exec(text);
   const after = m?.[2];
   const stmt = m?.[1] ?? text;
-  const tokens = lexDense(stmt, 1);
+  const tokens = lexDense(stmt, 1, ctx.compact);
   const fp = new FunctionParser(
     ctx.arities,
     ctx.fnNames,
     new Set([...ctx.target.nodes.map((n) => n.id), ...ctx.defined]),
+    ctx.compact
+      ? {
+          fnName: '',
+          lifted: [],
+          sigs: new Map(),
+          paramTypes: ctx.target.params,
+          // an edit line has no inline body, as without the compact spellings
+          nested: true,
+          fill: true,
+          compact: true,
+          counter: { n: 0 },
+        }
+      : undefined,
   );
   fp.paramTypes = ctx.target.params;
   const s = fp.statement(tokens, 1, undefined);
@@ -155,7 +195,9 @@ export function denseEditBody(
   handled: TypedFunc | undefined,
   /** Receives, per function the reply defines or edits, the dense text of its nodes by id. */
   sink?: Map<string, Map<string, string>>,
+  options: DenseEditOptions = {},
 ): string[] {
+  const compact = options.compact === true;
   type Item = { kind: 'block'; index: number } | { kind: 'line'; text: string };
   const blocks: string[][] = [];
   const outer: Item[] = [];
@@ -205,6 +247,7 @@ export function denseEditBody(
           names: new Set(names),
           signatures,
           shadowing: true,
+          ...(compact ? { compact } : {}),
         });
         parsed.set(i, [...p.functions]);
         for (const f of p.functions) arities.set(f.name, f.params.length);
@@ -237,6 +280,7 @@ export function denseEditBody(
           target,
           taken: new Set(target.nodes.map((n) => n.id)),
           defined: new Set(),
+          compact,
         };
   const out: string[] = [];
   for (const item of outer) {
