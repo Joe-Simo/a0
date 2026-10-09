@@ -35,7 +35,7 @@ how the project got here, session by session, is in [docs/history/](docs/history
 | Bootstrap | the compiler written by its own output reaches a byte-identical fixed point on the C path, the AArch64 path and the Mach-O path | `results/bootstrap.json`, `results/bootstrap-arm64.json`, `results/bootstrap-macho.json` |
 | Native `a0 check` | the self-hosted checker as an arm64 executable agrees with the reference on 124 of 124 sources | `results/native-check.json` |
 | Execution speed | geometric mean of baseline time per call over A0's emitted C: hand-written C 0.996 (parity), Rust 0.999, TypeScript 1.52, Java 1.41, Go 1.66, JavaScript 7.95, Python 173.6; recorded load 6.4 to 8.0 on 8 cores, under the gate of 10 but not idle | `results/exec-benchmark.json` |
-| Token counts | the ten lang-axes kernels: 559 tokens canonical, 202 in the dense view (o200k_base) | `results/dense-tokens.json`, `results/lang-axes.json` |
+| Token counts | the ten lang-axes kernels: 541 tokens canonical, 193 in the dense view (o200k_base). Corrected 2026-10-09 from 559 and 202: the token axis now counts A0 noop as the identity every competitor writes (`ret p0`), not the timed noop with three redundant ops (docs/history/2026-10-09-noop-token-identity-declaration.md); noop is 13 canonical and 3 dense against best 5 (OCaml) | `results/dense-tokens.json`, `results/lang-axes.json` |
 
 Token counts use `js-tiktoken` encodings (`o200k_base`, `cl100k_base`); they are not the tokenizer of any particular model.
 Recorded model usage, where a run has it, is stored in the AI-edit result files.
