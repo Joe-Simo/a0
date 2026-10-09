@@ -37,6 +37,7 @@ import {
   type Value,
 } from './core.js';
 import { formatDense, normalizeProgram } from './dense.js';
+import { readDenseA0 } from './dense-a0.js';
 import { diag } from './diagnostics.js';
 import { applyPatch, parsePatch, revision, scopedView, scopedViewDense } from './edit.js';
 import { diagnosticLine, fixAll } from './fix.js';
@@ -62,6 +63,7 @@ function usage(): never {
       '  a0 dense <file.a0> [out] [--normalize] [--comments]   # canonical file to dense text',
       '  a0 canon <file.a0d> [out]               # dense file to canonical text',
       '  (any command: --dense reads files as dense text; .a0d files always are)',
+      '  (--dense=a0 reads them with the dense reader written in A0, compiler/dense.a0)',
       "  (any command: --profile strict|canonical overrides the program's `profile` line; strict runs in the interpreter and on js, c, java, dotnet, wasm, riscv64, arm32 and avr)",
       '  a0 view <file.a0> <function>          # function plus callee signatures',
       '  a0 mcp <file-or-dir>                  # MCP server (stdio), paths confined to the root;',
@@ -84,11 +86,19 @@ async function readSource(path: string): Promise<string> {
 /** The `--profile strict|canonical` override: which profile the whole program is compiled under. */
 let profileOverride: Profile | undefined;
 
+/** `--dense=a0`: dense files are read by the reader written in A0 (src/dense-a0.ts). */
+let denseA0 = false;
+
 /** Load a file and everything it `use`s as one validated program. */
 async function loadProgram(path: string, dense = false): Promise<TypedProgram> {
   return (
     await link(path, (p) => readFile(p, 'utf8'), {
       dense,
+      ...(denseA0
+        ? {
+            denseReader: (text, used, p) => readDenseA0(text, used, p).text,
+          }
+        : {}),
       ...(profileOverride === undefined ? {} : { profile: profileOverride }),
     })
   ).program;
@@ -166,8 +176,9 @@ async function main(args: readonly string[]): Promise<void> {
     process.stdout.write(`a0 ${A0_VERSION} (compiler ${COMPILER_VERSION})\n`);
     return;
   }
-  const dense = args.includes('--dense');
-  const [cmd, ...rest] = takeProfile(args.filter((a) => a !== '--dense'));
+  denseA0 = args.includes('--dense=a0');
+  const dense = denseA0 || args.includes('--dense');
+  const [cmd, ...rest] = takeProfile(args.filter((a) => a !== '--dense' && a !== '--dense=a0'));
   switch (cmd) {
     case 'check': {
       const flags = rest.filter((a) => a.startsWith('--'));

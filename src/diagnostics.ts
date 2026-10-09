@@ -1560,6 +1560,16 @@ export const DIAGNOSTICS = {
     why: ['A `use` target must be an .a0 file inside the project root (after symlinks).'],
     unrunnable: 'needs files on disk; covered by the linker tests (test/core.test.ts)',
   },
+  A0625: {
+    cls: 'structure',
+    message: '{0}: the dense reader in A0 (compiler/dense.a0) refuses the function {1} at byte {2}',
+    fix: 'read the file with `--dense` (the reference reader), or rewrite the function in the forms the A0 reader covers',
+    why: [
+      '`--dense=a0` reads dense text with the reader written in A0. It covers fewer forms than the',
+      'reference reader (src/dense.ts); a function outside them, or past one input of the reader, is refused.',
+    ],
+    unrunnable: 'needs a file on disk and --dense=a0; covered by test/dense-cli.test.ts',
+  },
   A0623: {
     cls: 'limit',
     message: 'linked program exceeds {0} bytes',
