@@ -43,7 +43,7 @@ import { compile } from '../src/backends.js';
 import { parseAndValidate } from '../src/core.js';
 import { findClang, runTool } from '../src/toolchain.js';
 import { denseOf } from './dense-tokens.js';
-import { cDriver, KERNELS, type Kernel, rustDriver } from './exec-bench-kernels.js';
+import { a0TokenText, cDriver, KERNELS, type Kernel, rustDriver } from './exec-bench-kernels.js';
 import {
   type Cmd,
   LANGUAGES as CORE_LANGUAGES,
@@ -355,12 +355,12 @@ function denseTokenRow(): Record<string, unknown> {
   const ratios: number[] = [];
   for (const k of KERNELS) {
     if (!EXEC_KERNELS.includes(k.name)) continue;
-    const text = denseOf(k.a0);
+    const text = denseOf(a0TokenText(k));
     const row = { kernel: tok(text), program: tok(`${text}\n`) };
     kernels[k.name] = row;
     sumKernel += row.kernel;
     sumProgram += row.program;
-    ratios.push(row.kernel / tok(k.a0));
+    ratios.push(row.kernel / tok(a0TokenText(k)));
   }
   return {
     meaning:
@@ -376,7 +376,7 @@ function denseTokenRow(): Record<string, unknown> {
 
 function tokenAxis(subjects: readonly Subject[]): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  const a0Kernel = new Map(KERNELS.map((k) => [k.name, tok(k.a0)]));
+  const a0Kernel = new Map(KERNELS.map((k) => [k.name, tok(a0TokenText(k))]));
   // A0 through the Node CLI is the same source as A0: one token row.
   for (const s of subjects.filter((x) => x.id !== 'a0node')) {
     const perKernel: Record<string, TokenRow | { status: 'no-source' }> = {};
@@ -386,7 +386,7 @@ function tokenAxis(subjects: readonly Subject[]): Record<string, unknown> {
     let covered = 0;
     for (const k of KERNELS) {
       if (!EXEC_KERNELS.includes(k.name)) continue;
-      const src = s.kernelSource(k);
+      const src = s.family === 'a0' ? a0TokenText(k) : s.kernelSource(k);
       if (src === undefined) {
         perKernel[k.name] = { status: 'no-source' };
         continue;
@@ -561,7 +561,7 @@ async function sample(job: Job, n: number): Promise<string | null> {
 
 async function prepare(s: Subject, k: Kernel, root: string): Promise<Job | JobFailure> {
   if (s.missing !== undefined) return { status: 'not-installed', detail: s.missing };
-  const src = s.kernelSource(k);
+  const src = s.family === 'a0' ? a0TokenText(k) : s.kernelSource(k);
   if (src === undefined)
     return { status: 'no-source', detail: `${s.label}: no ${k.name} kernel written` };
   const dir = join(root, s.id, k.name);
@@ -739,7 +739,7 @@ async function main(): Promise<void> {
     cpus: cpus().length,
     node: process.version,
     meaning:
-      'Deterministic axes over the exec-bench language set on the exec-bench kernel programs. tokens: o200k_base (js-tiktoken) tokens of each kernel source as written in the exec-bench tables (kernel) and of the whole runnable program file including its driver (program); A0 kernel and program are the same text. validation: per edit on a warm project directory, the edited file gets one appended comment line; checkMs is the static step (build, or the toolchain checker for a language with no build step; null when none exists), checkRunMs is the static step plus what running needs plus a one-iteration run whose checksum must equal the A0 result (A0 native: one `a0 bench FILE K 1` process that runs the front end and then evaluates the checked IR; a0node: the Node CLI check, `emit c` and clang). Medians per kernel over the rounds, then the median over kernels. Wall-clock under the recorded load; samples interleaved across all (language, kernel) pairs, order rotated per round. Startup is not re-measured here (results/exec-benchmark.json). Cold processes throughout: no language server or daemon is kept running (A0 included).',
+      'Deterministic axes over the exec-bench language set on the exec-bench kernel programs. tokens: o200k_base (js-tiktoken) tokens of each kernel source as written in the exec-bench tables (kernel) and of the whole runnable program file including its driver (program); A0 kernel and program are the same text; A0 noop is counted as its identity text (a0TokenSource, docs/history/2026-10-09-noop-token-identity-declaration.md), the timed noop keeps its redundant ops. validation: per edit on a warm project directory, the edited file gets one appended comment line; checkMs is the static step (build, or the toolchain checker for a language with no build step; null when none exists), checkRunMs is the static step plus what running needs plus a one-iteration run whose checksum must equal the A0 result (A0 native: one `a0 bench FILE K 1` process that runs the front end and then evaluates the checked IR; a0node: the Node CLI check, `emit c` and clang). Medians per kernel over the rounds, then the median over kernels. Wall-clock under the recorded load; samples interleaved across all (language, kernel) pairs, order rotated per round. Startup is not re-measured here (results/exec-benchmark.json). Cold processes throughout: no language server or daemon is kept running (A0 included).',
     load: {
       perRound: load,
       note: 'os.loadavg() (a CPU-utilisation estimate on Windows, see loadSource) at the start of each round and after the last; a 1-minute value above the CPU count means the timings were taken on a loaded machine and are comparable only within this run.',

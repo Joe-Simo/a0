@@ -16,12 +16,13 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { getEncoding } from 'js-tiktoken';
 import { ALL_OPS, formatProgram, type Program, parse } from '../src/core.js';
 import { type Arities, type DenseStyle, formatDense, normalizeProgram } from '../src/dense.js';
 import { parseFile } from '../src/link.js';
 import { generateCorpus } from './corpus.js';
-import { KERNELS } from './exec-bench-kernels.js';
+import { a0TokenText, KERNELS } from './exec-bench-kernels.js';
 import { reportJson } from './scrub-results.js';
 
 const enc = getEncoding('o200k_base');
@@ -159,8 +160,8 @@ async function main(): Promise<void> {
     join('results', 'dense-tokens.json');
   const kernels: Unit[] = KERNELS.filter((k) => TOKEN_KERNELS.includes(k.name)).map((k) => ({
     name: k.name,
-    canonical: k.a0,
-    program: parse(k.a0),
+    canonical: a0TokenText(k),
+    program: parse(a0TokenText(k)),
     known: new Map(),
   }));
   const corpus: Unit[] = [];
@@ -252,7 +253,7 @@ async function main(): Promise<void> {
   process.stderr.write(`wrote ${out}\n`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   main().catch((e: unknown) => {
     process.stderr.write(`${e instanceof Error ? (e.stack ?? e.message) : String(e)}\n`);
     process.exit(1);

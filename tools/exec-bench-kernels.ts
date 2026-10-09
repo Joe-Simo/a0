@@ -15,6 +15,12 @@ export interface Kernel {
   readonly js: string;
   /** Hand-written Rust with identical wrapping semantics (compiled with rustc -O). */
   readonly rust: string;
+  /**
+   * Token axis only (tools/lang-axes.ts, tools/dense-tokens.ts): the A0 text to count when the
+   * timed `a0` source is deliberately not the plain program every competitor writes (noop keeps
+   * redundant identity ops so exec-bench checks the optimizer adds no work). Never timed.
+   */
+  readonly a0TokenSource?: string;
   /** Divides the iteration counts for kernels whose single call does much more work. */
   readonly iterScale?: number;
   /** Reason the direct arm64 backend is not timed on this kernel (reported as blocked). */
@@ -140,6 +146,8 @@ export const KERNELS: readonly Kernel[] = [
     name: 'noop', // already-optimal computation: the optimizer must not add work
     arity: 1,
     a0: 'fn noop u32 -> u32\na add p0 0\nb mul a 1\nc xor b 0\nret c\nend',
+    // the identity every competitor writes; docs/history/2026-10-09-noop-token-identity-declaration.md
+    a0TokenSource: 'fn noop u32 -> u32\nret p0\nend',
     c: 'static inline uint32_t hw_noop(uint32_t x) { return x; }',
     js: 'export function noop(x) { return x; }',
     rust: '#[inline] fn hw_noop(x: u32) -> u32 { x }',
@@ -350,3 +358,6 @@ fn main() {
 }
 `;
 }
+
+/** The A0 text the token axis counts for a kernel (its timed source unless a token-only text is set). */
+export const a0TokenText = (k: Kernel): string => k.a0TokenSource ?? k.a0;
