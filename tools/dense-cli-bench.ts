@@ -71,8 +71,7 @@ function main(): void {
       for (let i = 0; i < samples; i += 1) {
         const a = time(['check', canonPath]);
         const b = time(['check', '--dense=a0', densePath]);
-        if (!a.ok || !b.ok || a.out !== b.out)
-          same = false;
+        if (!a.ok || !b.ok || a.out !== b.out) same = false;
         canon.push(a.ms);
         dense.push(b.ms);
       }
