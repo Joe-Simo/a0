@@ -195,6 +195,8 @@ export interface DenseStyle {
   readonly fill?: boolean;
   /** `bit C` / `nbit C` for `select C 1 0` / `select C 0 1`. */
   readonly bit?: boolean;
+  /** `X.K` for `at X K` (X a parameter or named value, K a number). */
+  readonly dot?: boolean;
 }
 
 /**
@@ -267,6 +269,9 @@ function compactOn(ctx: PrintCtx): boolean {
 
 /** Words of the combined compact spellings, each read only in compact text (`compactWord`). */
 const BIT_WORDS: ReadonlySet<string> = new Set(['bit', 'nbit']);
+
+/** `X.K`: field K of the record X, a parameter or a named value (`at X K`). */
+const DOT_ACCESS = /^(\$?[a-z][a-z0-9_]*|[A-Z]|p(?:0|[1-9][0-9]*))\.(0|[1-9][0-9]*)$/;
 
 /** An id spelled like the word of a compact spelling that is on: it is printed escaped (`$bit`). */
 function sugarWord(id: string, ctx: PrintCtx): boolean {
@@ -494,6 +499,10 @@ function printNodeTokens(
     const one = (o: Operand | undefined, v: number): boolean => o?.kind === 'u32' && o.value === v;
     const word = one(x, 1) && one(y, 0) ? 'bit' : one(x, 0) && one(y, 1) ? 'nbit' : undefined;
     if (word !== undefined && sugarFree(word, ctx)) return `${word} ${args[0]}`;
+  }
+  if (ctx.style.dot && node.op === 'at' && node.args[1]?.kind === 'u32') {
+    const word = `${args[0]}.${node.args[1].value}`;
+    if (plan.nest[k]?.[0] === undefined && DOT_ACCESS.test(word)) return word;
   }
   if (node.op === 'arr' && node.text !== undefined) return formatTextLiteral(node.text);
   if (node.op === 'arr') {
@@ -732,6 +741,7 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       oneLine: options.style?.oneLine === true,
       fill: options.style?.fill === true,
       bit: options.style?.bit === true,
+      dot: options.style?.dot === true,
     },
   };
   return options.comments === true || options.style?.inline === false
@@ -1122,6 +1132,13 @@ export class FunctionParser {
           args: [c, { kind: 'u32', value: x }, { kind: 'u32', value: y }],
         });
       };
+    const dot = DOT_ACCESS.exec(w);
+    if (dot !== null && denseOp(dot[1] as string) === undefined && !this.fnNames.has(dot[1] as string))
+      return () =>
+        this.make({
+          op: 'at',
+          args: [this.word(dot[1] as string), { kind: 'u32', value: Number(dot[2]) }],
+        });
     return undefined;
   }
 
@@ -1303,6 +1320,8 @@ export class FunctionParser {
 
   private word(w: string): Operand {
     if (w === 'true' || w === 'false') return { kind: 'bool', value: w === 'true' };
+    const compact = this.compactWord(w);
+    if (compact !== undefined) return compact();
     if (NUMBER.test(w)) {
       const value = Number(w);
       if (value > U32_MAX) fail(`literal ${w} exceeds u32`, this.line);
@@ -1338,8 +1357,6 @@ export class FunctionParser {
         args: this.operands(n, w, ` (${w} has ${n} parameter${n === 1 ? '' : 's'})`),
       });
     }
-    const compact = this.compactWord(w);
-    if (compact !== undefined) return compact();
     const local = this.names.get(w);
     if (local !== undefined) return this.ref(local);
     if (this.external.has(w)) return { kind: 'node', id: w };
