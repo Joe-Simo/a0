@@ -36,12 +36,10 @@ import {
   type TypedProgram,
   type Value,
 } from './core.js';
-import { formatDense, normalizeProgram } from './dense.js';
 import { diag } from './diagnostics.js';
-import { applyPatch, parsePatch, revision, scopedView, scopedViewDense } from './edit.js';
-import { diagnosticLine, fixAll } from './fix.js';
 import { link, parseFile } from './link.js';
 import type { ContractResult } from './prove.js';
+import { revision } from './revision.js';
 import { COMPILER_VERSION, isTarget, TARGETS } from './targets.js';
 import { A0_VERSION } from './version.js';
 
@@ -122,6 +120,7 @@ function takeProfile(args: readonly string[]): string[] {
 async function fixFile(path: string): Promise<void> {
   const source = await readSource(path);
   if (/^\s*use\s/m.test(source)) return;
+  const { fixAll } = await import('./fix.js');
   const out = fixAll(source, (t) => {
     parseAndValidate(t);
   });
@@ -203,6 +202,7 @@ async function main(args: readonly string[]): Promise<void> {
           failed++;
           if (json && e instanceof A0Error) {
             const source = await readFile(file, 'utf8').catch(() => '');
+            const { diagnosticLine } = await import('./fix.js');
             const line = diagnosticLine(source, e) ?? e.line ?? null;
             process.stdout.write(
               `${JSON.stringify({ ok: false, file, diagnostics: [{ ...e.toJSON(), line }] })}\n`,
@@ -363,6 +363,7 @@ async function main(args: readonly string[]): Promise<void> {
       const [file, patchFile, out] = rest;
       if (file === undefined || patchFile === undefined) usage();
       const program = await loadProgram(file, dense);
+      const { applyPatch, parsePatch } = await import('./edit.js');
       const patch = parsePatch(await readSource(patchFile));
       const next = applyPatch(program, patch);
       const text = formatSource(next);
@@ -376,6 +377,7 @@ async function main(args: readonly string[]): Promise<void> {
       const program = await loadProgram(file, dense);
       const fn = program.byName.get(name);
       if (fn === undefined) throw diag('A0812', [name]);
+      const { scopedView, scopedViewDense } = await import('./edit.js');
       process.stdout.write(`${dense ? scopedViewDense(fn, program, 'deps') : scopedView(fn)}\n`);
       return;
     }
@@ -393,6 +395,7 @@ async function main(args: readonly string[]): Promise<void> {
       const [file, out] = rest.filter((a) => !a.startsWith('--'));
       if (file === undefined) usage();
       const { program, known } = await parseFile(file, (p) => readFile(p, 'utf8'));
+      const { formatDense, normalizeProgram } = await import('./dense.js');
       const shown = flags.includes('--normalize') ? normalizeProgram(program) : program;
       const text = formatDense(shown, { known, comments: flags.includes('--comments') });
       if (out === undefined) process.stdout.write(text);

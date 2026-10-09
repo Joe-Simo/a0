@@ -12,6 +12,16 @@
  *   a0 calls <file.a0>                 calls from stdin, the test-driver protocol of
  *                                      tools/verify.ts: "index args... [n input...]" per line
  *
+ * Launcher (the shipped `a0`): when a full command line is found next to this executable (a file
+ * `a0-cli.exe`, `a0-cli` or `a0-cli.js` in the same directory) or named by A0_CLI, this executable
+ * is the `a0` command itself. `a0 check FILE.a0` and nothing else is answered here when the native
+ * checker accepts the program: it prints the lines of `--lines`, which are what the TypeScript CLI
+ * prints for an accepted program (test/native-fast.test.ts). Every other command, and every check
+ * that does not end in an accept (a diagnostic, an unsupported program, an unreadable file), runs
+ * the full command line with the same arguments and exits with its code, so the output is the
+ * TypeScript CLI's in every case; nothing is written before that hand-over. `a0-cli.js` runs on
+ * `node` (A0_NODE names another). A0_CLI=0 turns the launcher off.
+ *
  * Linking: `use "path"` lines are resolved as src/link.ts resolves them (relative to the using
  * file, symlinks followed, inside the project root: the nearest ancestor with a package.json,
  * each file once, dependencies first, cycles rejected); the use lines are blanked and the
@@ -66,7 +76,13 @@ static int a0_clock(struct timespec *t) {
 static a0_io io;
 static const char *const KINDS[] = {"ok", "parse", "structure", "type", "limit"};
 
+/* The launcher's arguments (NULL: not the launcher) and its hand-over (below). */
+static int launch_argc;
+static char **launch_argv;
+static void hand_over(void);
+
 static void die(int code, const char *fmt, ...) {
+  if (launch_argv != NULL) hand_over();
   va_list ap;
   va_start(ap, fmt);
   fputs("a0: ", stderr);
@@ -1228,7 +1244,134 @@ static uint32_t stub_stamp;
 static Buf lines_out;
 static bool want_lines;
 
+/* ------------------------------------------------------------------ launcher */
+
+/* The full command line to hand over to (see the header). */
+static char cli_path[PATH_MAX + 32];
+static bool cli_is_js;
+
+static bool file_exists(const char *p) { return access(p, 0) == 0; }
+
+/* The directory of the running executable, with its trailing separator; "" when unknown. */
+static void self_dir(const char *argv0, char *out, size_t n) {
+  char exe[PATH_MAX];
+  exe[0] = '\0';
+#ifdef _WIN32
+  DWORD k = GetModuleFileNameA(NULL, exe, sizeof exe);
+  if (k == 0 || k >= sizeof exe) exe[0] = '\0';
+#else
+  ssize_t k = readlink("/proc/self/exe", exe, sizeof exe - 1);
+  if (k > 0) exe[k] = '\0';
+  else if (strchr(argv0, '/') == NULL || realpath(argv0, exe) == NULL) exe[0] = '\0';
+#endif
+  char *slash = NULL;
+  for (char *c = exe; *c; c++)
+    if (*c == '/' || *c == '\\') slash = c;
+  if (slash == NULL) {
+    out[0] = '\0';
+    return;
+  }
+  slash[1] = '\0';
+  snprintf(out, n, "%s", exe);
+}
+
+/* Whether this executable is the launcher: whether a full command line was found. */
+static bool find_cli(const char *argv0) {
+  const char *forced = getenv("A0_CLI");
+  if (forced != NULL && strcmp(forced, "0") == 0) return false;
+  if (forced != NULL && forced[0] != '\0') {
+    if (!file_exists(forced)) return false;
+    snprintf(cli_path, sizeof cli_path, "%s", forced);
+  } else {
+    char dir[PATH_MAX];
+    self_dir(argv0, dir, sizeof dir);
+    if (dir[0] == '\0') return false;
+#ifdef _WIN32
+    static const char *const names[] = {"a0-cli.exe", "a0-cli.js"};
+#else
+    static const char *const names[] = {"a0-cli", "a0-cli.js"};
+#endif
+    bool found = false;
+    for (int i = 0; i < 2 && !found; i++) {
+      snprintf(cli_path, sizeof cli_path, "%s%s", dir, names[i]);
+      found = file_exists(cli_path);
+    }
+    if (!found) return false;
+  }
+  size_t n = strlen(cli_path);
+  cli_is_js = n > 3 && strcmp(cli_path + n - 3, ".js") == 0;
+  return true;
+}
+
+#ifdef _WIN32
+/* One argument for a CreateProcess command line, quoted as CommandLineToArgvW reads it. */
+static void quote_arg(Buf *b, const char *a) {
+  if (a[0] != '\0' && strpbrk(a, " \t\n\v\"") == NULL) {
+    bputs(b, a);
+    return;
+  }
+  bput(b, "\"", 1);
+  for (const char *c = a;; c++) {
+    size_t slashes = 0;
+    while (*c == '\\') {
+      slashes++;
+      c++;
+    }
+    if (*c == '\0') {
+      for (size_t i = 0; i < slashes * 2; i++) bput(b, "\\", 1);
+      break;
+    }
+    if (*c == '"') {
+      for (size_t i = 0; i < slashes * 2 + 1; i++) bput(b, "\\", 1);
+      bput(b, "\"", 1);
+    } else {
+      for (size_t i = 0; i < slashes; i++) bput(b, "\\", 1);
+      bput(b, c, 1);
+    }
+  }
+  bput(b, "\"", 1);
+}
+#endif
+
+/* Run the full command line with the launcher's arguments and exit with its code. */
+static void hand_over(void) {
+  fflush(stdout);
+  const char *node = getenv("A0_NODE");
+  if (node == NULL || node[0] == '\0') node = "node";
+  char **args = malloc((size_t)(launch_argc + 2) * sizeof *args);
+  int k = 0;
+  if (cli_is_js) args[k++] = (char *)node;
+  args[k++] = cli_path;
+  for (int i = 1; i < launch_argc; i++) args[k++] = launch_argv[i];
+  args[k] = NULL;
+#ifdef _WIN32
+  Buf cmd = {0};
+  for (int i = 0; i < k; i++) {
+    if (i > 0) bput(&cmd, " ", 1);
+    quote_arg(&cmd, args[i]);
+  }
+  STARTUPINFOA si;
+  PROCESS_INFORMATION pi;
+  memset(&si, 0, sizeof si);
+  si.cb = sizeof si;
+  if (!CreateProcessA(NULL, cmd.p, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    fprintf(stderr, "a0: cannot start %s\n", args[0]);
+    exit(70);
+  }
+  WaitForSingleObject(pi.hProcess, INFINITE);
+  DWORD code = 70;
+  GetExitCodeProcess(pi.hProcess, &code);
+  exit((int)code);
+#else
+  if (cli_is_js) execvp(args[0], args);
+  else execv(args[0], args);
+  fprintf(stderr, "a0: cannot start %s\n", args[0]);
+  exit(70);
+#endif
+}
+
 static void give_up(const char *why) {
+  if (launch_argv != NULL) hand_over();
   fprintf(stderr, "a0: %s: native check unsupported (%s); use the TypeScript checker\n", entry_abs,
           why);
   exit(65);
@@ -1568,6 +1711,7 @@ static int cmd_check(const char *file, bool lines) {
     else puts("ok");
     return 0;
   }
+  if (launch_argv != NULL) hand_over();
   const char *path;
   uint32_t line;
   line_of(d->off, &path, &line);
@@ -1601,6 +1745,15 @@ int main(int argc, char **argv) {
   _setmode(_fileno(stderr), _O_BINARY);
   _setmode(_fileno(stdin), _O_BINARY);
 #endif
+  if (find_cli(argv[0])) {
+    /* the launcher: `check FILE.a0` here, everything else by the full command line */
+    launch_argc = argc;
+    launch_argv = argv;
+    size_t n = argc == 3 ? strlen(argv[2]) : 0;
+    if (argc == 3 && strcmp(argv[1], "check") == 0 && n > 3 && strcmp(argv[2] + n - 3, ".a0") == 0)
+      return cmd_check(argv[2], true);
+    hand_over();
+  }
   if (argc < 3) usage();
   const char *cmd = argv[1], *file = argv[2];
   if (strcmp(cmd, "check") == 0) {

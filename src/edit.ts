@@ -22,7 +22,6 @@ import {
   type Func,
   formatFunction,
   formatOperand,
-  formatProgram,
   formatType,
   freshRetId,
   isProfileEdit,
@@ -37,7 +36,6 @@ import {
   parseNode,
   parseOperand,
   retOperandError,
-  reusing,
   stripComment,
   type TypedFunc,
   type TypedProgram,
@@ -50,6 +48,7 @@ import { denseEditBody } from './dense-edit.js';
 import { diag } from './diagnostics.js';
 import { fixAll } from './fix.js';
 import { constructLegend, lazyDiagnostic, lazyHints } from './lazy.js';
+import { programRevision, revision } from './revision.js';
 import { applySpecEdits, type SpecEdit, type SpecWord, withoutSpec, withSpec } from './spec.js';
 import { keyLegend } from './wordkey.js';
 
@@ -58,32 +57,7 @@ const SHA256_HEX = /^[0-9a-f]{64}$/;
 const HANDLE = /^e(0|[1-9][0-9]*)$/;
 const PROGRAM_HANDLE = /^g(0|[1-9][0-9]*)$/;
 
-/** Content revision of a function: SHA-256 of its canonical source form. */
-const revisions = new WeakMap<Func, string>();
-
-export function revision(fn: Func): string {
-  if (!reusing()) return bytesToHex(sha256(new TextEncoder().encode(formatFunction(fn))));
-  let rev = revisions.get(fn);
-  if (rev === undefined) {
-    rev = bytesToHex(sha256(new TextEncoder().encode(formatFunction(fn))));
-    revisions.set(fn, rev);
-  }
-  return rev;
-}
-
-/** Content revision of a whole program. */
-const programRevisions = new WeakMap<Program, string>();
-
-export function programRevision(program: Program): string {
-  const hash = (): string => bytesToHex(sha256(new TextEncoder().encode(formatProgram(program))));
-  if (!reusing()) return hash();
-  let rev = programRevisions.get(program);
-  if (rev === undefined) {
-    rev = hash();
-    programRevisions.set(program, rev);
-  }
-  return rev;
-}
+export { programRevision, revision };
 
 export interface Replacement {
   readonly functionName: string;
