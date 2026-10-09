@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T18:24:39.678Z",
+  "generatedAt": "2026-10-09T19:32:16.410Z",
   "tool": "tools/dense-combined.ts",
   "tokenizer": "o200k_base (js-tiktoken)",
   "preregistration": "docs/history/2026-10-09-dense-combined-rules-preregistration.md",
@@ -22,6 +22,29 @@
       "why": "the letter was chosen by searching all 26 against the held-out total: a constant fitted to the data the gate measures"
     }
   ],
+  "digitRules": {
+    "preregistration": "docs/history/2026-10-09-param-digit-glue-preregistration.md",
+    "rules1to8": {
+      "kernels": 162,
+      "heldOut": 486694,
+      "roundTripFailures": 0
+    },
+    "plus9": {
+      "kernels": 159,
+      "heldOut": 480262,
+      "roundTripFailures": 0
+    },
+    "plus10": {
+      "kernels": 161,
+      "heldOut": 486642,
+      "roundTripFailures": 0
+    },
+    "plus9and10": {
+      "kernels": 158,
+      "heldOut": 480210,
+      "roundTripFailures": 0
+    }
+  },
   "alone": [
     {
       "rule": 1,
@@ -85,6 +108,24 @@
       "roundTripFailures": [],
       "kept": true,
       "why": "saves tokens on the held-out set and round-trips"
+    },
+    {
+      "rule": 9,
+      "name": "parameter-digit glue B0",
+      "kernelsSaved": 3,
+      "heldOutSaved": 8088,
+      "roundTripFailures": [],
+      "kept": true,
+      "why": "saves tokens on the held-out set and round-trips"
+    },
+    {
+      "rule": 10,
+      "name": "comma before a digit -,5",
+      "kernelsSaved": 0,
+      "heldOutSaved": 12,
+      "roundTripFailures": [],
+      "kept": true,
+      "why": "saves tokens on the held-out set and round-trips"
     }
   ],
   "combined": {
@@ -99,10 +140,12 @@
       "inferResult": true,
       "negative": true,
       "foldN": true,
-      "ops": true
+      "ops": true,
+      "paramDigit": true,
+      "commaDigit": true
     },
-    "headlineKernelSum": 162,
-    "heldOut": 486694,
+    "headlineKernelSum": 158,
+    "heldOut": 480210,
     "roundTripFailures": [],
     "leaveOneOut": [
       {
@@ -113,12 +156,12 @@
       {
         "rule": 2,
         "kernelsSaved": 0,
-        "heldOutSaved": 4309
+        "heldOutSaved": 4259
       },
       {
         "rule": 3,
         "kernelsSaved": 0,
-        "heldOutSaved": 4271
+        "heldOutSaved": 2715
       },
       {
         "rule": 4,
@@ -128,7 +171,7 @@
       {
         "rule": 5,
         "kernelsSaved": 0,
-        "heldOutSaved": 678
+        "heldOutSaved": 623
       },
       {
         "rule": 6,
@@ -137,24 +180,34 @@
       },
       {
         "rule": 8,
-        "kernelsSaved": 7,
-        "heldOutSaved": 11411
+        "kernelsSaved": 8,
+        "heldOutSaved": 11456
+      },
+      {
+        "rule": 9,
+        "kernelsSaved": 3,
+        "heldOutSaved": 6432
+      },
+      {
+        "rule": 10,
+        "kernelsSaved": 1,
+        "heldOutSaved": 52
       }
     ]
   },
   "sideColumns": {
     "withTab": {
-      "kernels": 156,
-      "heldOut": 486694
+      "kernels": 152,
+      "heldOut": 480210
     },
     "withRotate": {
-      "kernels": 155,
-      "kernelsMatched": 1,
-      "heldOutMatched": 3,
+      "kernels": 158,
+      "kernelsMatched": 0,
+      "heldOutMatched": 0,
       "note": "estimate: a text rewrite, not read back by the reader"
     },
     "withTabAndRotate": {
-      "kernels": 149
+      "kernels": 152
     }
   },
   "perKernel": {
@@ -165,8 +218,8 @@
     },
     "rotl": {
       "start": 12,
-      "combined": 12,
-      "text": "rotl |<<A B>>A- 32 B"
+      "combined": 11,
+      "text": "rotl |<<A B>>A-,32 B"
     },
     "clamp": {
       "start": 10,
@@ -190,13 +243,13 @@
     },
     "chain3": {
       "start": 22,
-      "combined": 22,
-      "text": "inc1 +A 1\ndbl +A A\nchain3 +inc1 dbl inc1 A B"
+      "combined": 21,
+      "text": "inc1 +A1\ndbl +A A\nchain3 +inc1 dbl inc1 A B"
     },
     "branchy": {
       "start": 30,
-      "combined": 26,
-      "text": "branchy f?=A B 0?<A B-B A-A B;?=&f 1 1 f A"
+      "combined": 25,
+      "text": "branchy f?=A B0?<A B-B A-A B;?=&f 1 1 f A"
     },
     "arrfill": {
       "start": 29,
@@ -205,14 +258,14 @@
     },
     "loop64": {
       "start": 26,
-      "combined": 24,
-      "text": "loop64 fold64 {b*^A C 2654435761;+^b>>b 15 B}"
+      "combined": 23,
+      "text": "loop64 fold64 {b*^A C2654435761;+^b>>b 15 B}"
     }
   },
   "lines": {
     "bestSingleLanguage": 323,
     "twoX": 161,
-    "headlineOverBestSingleLanguage": 0.502,
-    "reachesTwoX": false
+    "headlineOverBestSingleLanguage": 0.489,
+    "reachesTwoX": true
   }
 }

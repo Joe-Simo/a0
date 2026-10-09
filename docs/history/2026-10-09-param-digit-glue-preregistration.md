@@ -23,3 +23,18 @@ Rule 9 is the stated scratch estimate: 159 for the kernel sum (an estimate from 
 2. **Lossless**: 0 round-trip failures on every kernel and held-out program with every kept rule on.
 
 The kernel sum is reported whatever it is; above 161 the answer is no.
+
+## Outcome (measured after the change; `results/dense-combined.json`, `digitRules` and `alone`)
+
+**Yes.** With rules 1 to 10 on, `tab` off and no rotate, the kernel sum is **158** (2x is 161); round-trip failures 0 on all 10 kernels and 54 held-out programs, as written and normalized. The held-out total falls from 486694 (rules 1 to 8) to 480210.
+
+| over rules 1 to 8 | kernels | held-out | failures |
+| --- | --- | --- | --- |
+| none (rules 1 to 8) | 162 | 486694 | 0 |
+| + rule 9 | 159 | 480262 | 0 |
+| + rule 10 | 161 | 486642 | 0 |
+| + rules 9 and 10 | 158 | 480210 | 0 |
+
+Alone over the start style: rule 9 saves 3 kernel tokens and 8088 held-out; rule 10 saves 0 and 12. Both pass both gates and are kept. Rule 9 matched the scratch estimate (159). Side column with `tab`: 152 (not the headline).
+
+Finding: canonical A0 already rejects an uppercase node id (`invalid node identifier 'A1'`), so the guard is that rejection plus the compact reader always splitting `A1`; the printer escapes such an id (`$A1`) whenever a compact spelling is on. `compiler/dense.a0` reads neither rule; that is the follow-up.

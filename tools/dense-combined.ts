@@ -45,7 +45,12 @@ export const RULES: readonly {
   { n: 5, name: 'negative literal wrap', style: { negative: true } },
   { n: 6, name: 'foldN count fusion', style: { foldN: true } },
   { n: 8, name: 'operator symbols, glued', style: { ops: true } },
+  { n: 9, name: 'parameter-digit glue B0', style: { paramDigit: true } },
+  { n: 10, name: 'comma before a digit -,5', style: { commaDigit: true } },
 ];
+
+/** Rules 9 and 10 (docs/history/2026-10-09-param-digit-glue-preregistration.md), over rules 1-8. */
+const DIGIT_RULES = [9, 10];
 
 /** Rule 7 (default names with `i` first) was dropped in the pre-registration, before implementation. */
 const DROPPED_BEFORE = [
@@ -135,6 +140,23 @@ async function main(): Promise<void> {
       heldOutSaved: total(heldOut, without) - total(heldOut, combined),
     };
   });
+  const before: DenseStyle = Object.assign(
+    {},
+    START,
+    ...kept.filter((r) => !DIGIT_RULES.includes(r.n)).map((r) => r.style),
+  );
+  const over = (style: DenseStyle) => ({
+    kernels: total(kernels, style),
+    heldOut: total(heldOut, style),
+    roundTripFailures: failuresOf(all, style).length,
+  });
+  const digitRules = {
+    preregistration: 'docs/history/2026-10-09-param-digit-glue-preregistration.md',
+    rules1to8: over(before),
+    plus9: over({ ...before, paramDigit: true }),
+    plus10: over({ ...before, commaDigit: true }),
+    plus9and10: over({ ...before, paramDigit: true, commaDigit: true }),
+  };
   const failures = failuresOf(all, combined);
   const headline = total(kernels, combined);
   const withTab = total(kernels, { ...combined, tab: true });
@@ -152,6 +174,7 @@ async function main(): Promise<void> {
     heldOutPrograms: heldOut.length,
     start: { style: START, ...start },
     droppedBeforeImplementation: DROPPED_BEFORE,
+    digitRules,
     alone,
     combined: {
       style: combined,

@@ -205,6 +205,11 @@ export interface DenseStyle {
   readonly foldN?: boolean;
   /** `+ - * ^ & | = ? < >` for add sub mul xor and or eq select lt gt, glued to their neighbours. */
   readonly ops?: boolean;
+  /* docs/history/2026-10-09-param-digit-glue-preregistration.md, read by the compact reader. */
+  /** A parameter letter followed by a digit is written without the space: `B0` for `B 0`. */
+  readonly paramDigit?: boolean;
+  /** An operator symbol whose space before a digit must stay writes a comma there: `-,5`. */
+  readonly commaDigit?: boolean;
 }
 
 /**
@@ -303,6 +308,57 @@ function glue(s: string): string {
   return out;
 }
 
+/** A parameter letter glued to a literal (`B0`, `B0x10`): the compact lexer splits the word. */
+const PARAM_DIGIT = /^[A-Z][0-9]/;
+
+const WORD_CHAR = /[A-Za-z0-9_$.]/;
+
+/**
+ * Rules 9 and 10 of docs/history/2026-10-09-param-digit-glue-preregistration.md, outside text
+ * literals: `B 0` is `B0` (`paramDigit`); a symbol, a space and a digit is `-,5` outside `( )`
+ * (`commaDigit`). The statement is kept as it was unless the compact lexer reads the same tokens,
+ * commas aside.
+ */
+export function glueDigits(s: string, style: Required<DenseStyle>): string {
+  let out = '';
+  let inString = false;
+  let paren = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i] as string;
+    if (inString) {
+      out += c;
+      if (c === '\\') {
+        out += s[i + 1] ?? '';
+        i += 1;
+      } else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    if (c === '(') paren += 1;
+    if (c === ')') paren -= 1;
+    const a = out[out.length - 1] ?? '';
+    if (c === ' ' && /[0-9]/.test(s[i + 1] ?? '')) {
+      if (style.paramDigit && /[A-Z]/.test(a) && !WORD_CHAR.test(out[out.length - 2] ?? ''))
+        continue;
+      if (style.commaDigit && paren === 0 && SYMBOL_CHARS.includes(a)) {
+        out += ',';
+        continue;
+      }
+    }
+    out += c;
+  }
+  const read = (t: string): Tok[] | undefined => {
+    try {
+      return lexDense(t, 0, true).filter((x) => x.kind !== 'comma');
+    } catch {
+      return undefined;
+    }
+  };
+  const before = read(s);
+  const after = read(out);
+  return before !== undefined && after !== undefined && sameTokens(before, after) ? out : s;
+}
+
 /** `foldN`: a fold whose count is the number N (`foldN`). */
 const FOLD_N = /^fold(0|[1-9][0-9]*)$/;
 
@@ -372,7 +428,10 @@ const DOT_ACCESS = /^(\$?[a-z][a-z0-9_]*|[A-Z]|p(?:0|[1-9][0-9]*))\.(0|[1-9][0-9
 
 /** An id spelled like the word of a compact spelling that is on: it is printed escaped (`$bit`). */
 function sugarWord(id: string, ctx: PrintCtx): boolean {
-  return compactOn(ctx) && (SUGAR.has(id) || BIT_WORDS.has(id) || FOLD_N.test(id));
+  return (
+    compactOn(ctx) &&
+    (SUGAR.has(id) || BIT_WORDS.has(id) || FOLD_N.test(id) || PARAM_DIGIT.test(id))
+  );
 }
 
 function operandWord(o: Operand, ctx: PrintCtx): string {
@@ -683,7 +742,11 @@ function printFunction(fn: Func, outer: PrintCtx): string[] {
   }
   const ctx: PrintCtx = { ...outer, inline };
   const { body: plain } = statementsOf(fn, ctx);
-  const body = ctx.style.ops ? plain.map((b) => ({ ...b, text: glue(b.text) })) : plain;
+  const glued = ctx.style.ops ? plain.map((b) => ({ ...b, text: glue(b.text) })) : plain;
+  const body =
+    ctx.style.paramDigit || ctx.style.commaDigit
+      ? glued.map((b) => ({ ...b, text: glueDigits(b.text, ctx.style) }))
+      : glued;
   return printLines(fn, ctx, body, explicitRet(fn, ctx));
 }
 
@@ -852,6 +915,8 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       negative: options.style?.negative === true,
       foldN: options.style?.foldN === true,
       ops: options.style?.ops === true,
+      paramDigit: options.style?.paramDigit === true,
+      commaDigit: options.style?.commaDigit === true,
     },
   };
   return options.comments === true || options.style?.inline === false
@@ -992,7 +1057,11 @@ export function lexDense(text: string, line: number, compact = false): Tok[] {
         !(compact && SYMBOL_CHARS.includes(text[j] as string))
       )
         j += 1;
-      out.push({ kind: 'word', text: text.slice(i, j) });
+      const w = text.slice(i, j);
+      if (compact && PARAM_DIGIT.test(w)) {
+        // Compact text: a parameter letter glued to a literal (`B0`) is the two words.
+        out.push({ kind: 'word', text: w[0] as string }, { kind: 'word', text: w.slice(1) });
+      } else out.push({ kind: 'word', text: w });
       i = j;
     }
   }

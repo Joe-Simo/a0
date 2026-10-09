@@ -18,6 +18,7 @@ import {
   type DenseStyle,
   formatDense,
   formatDenseSignature,
+  glueDigits,
   normalizeProgram,
   parseDense,
 } from '../src/dense.js';
@@ -837,6 +838,39 @@ test('dense combined compact rules: small programs print as designed and convert
   }
 });
 
+const DIGITS: DenseStyle = { ...COMBINED, paramDigit: true, commaDigit: true };
+
+test('dense parameter-digit glue: B0 is B then 0, never inside a text literal; hex and -N still read', () => {
+  const cases: [string, string][] = [
+    ['fn r u32 -> u32\na sub p0 5\nret a\nend', 'r -A5'],
+    ['fn s u32 -> u32\na sub 5 p0\nret a\nend', 's -,5 A'],
+    ['fn x u32 -> u32\na xor p0 4294967291\nret a\nend', 'x ^A-5'],
+    ['fn h u32 -> u32\na and p0 268435455\nret a\nend', 'h &A0xfffffff'],
+  ];
+  for (const [canonical, dense] of cases) {
+    const p = normalizeProgram(parse(canonical));
+    const text = formatDense(p, { style: DIGITS }).trimEnd();
+    assert.equal(text, dense);
+    assert.equal(formatProgram(parseDense(text, { compact: true })), formatProgram(p));
+  }
+  // A text literal keeps its spaces.
+  const style = { ...DIGITS, paramDigit: true, commaDigit: true } as Required<DenseStyle>;
+  assert.equal(glueDigits('f "B 0" B 0', style), 'f "B 0" B0');
+});
+
+test('dense parameter-digit glue guard: an id spelled letter plus digits is rejected or escaped', () => {
+  // Canonical text rejects it as a node id ...
+  assert.throws(() => parse('fn h u32 -> u32\nA1 add p0 17\nret A1\nend'), /A1/);
+  // ... and compact text reads `A1` as the parameter A and the literal 1, never as an id.
+  const back = parseDense('h +A1', { compact: true });
+  assert.equal(
+    formatProgram(back),
+    formatProgram(normalizeProgram(parse('fn h u32 -> u32\na add p0 1\nret a\nend'))),
+  );
+  // An escaped `$A1` is a name, not a split.
+  assert.throws(() => parseDense('h +$A1 2', { compact: true }));
+});
+
 // Measured 16 s (bun test) on the full tree.
 test('dense combined compact rules: every program round-trips exactly with all of them on', {
   timeout: 60_000,
@@ -844,10 +878,10 @@ test('dense combined compact rules: every program round-trips exactly with all o
   for (const path of files(ROOT)) {
     const { program, known } = await parseFile(path, read);
     for (const p of [program, normalizeProgram(program)]) {
-      const dense = formatDense(p, { known, style: COMBINED });
+      const dense = formatDense(p, { known, style: DIGITS });
       const back = parseDense(dense, { known, compact: true });
       assert.equal(formatProgram(back), formatProgram(p), `${path}: canonical form differs`);
-      assert.equal(formatDense(back, { known, style: COMBINED }), dense, `${path}: fixed point`);
+      assert.equal(formatDense(back, { known, style: DIGITS }), dense, `${path}: fixed point`);
     }
   }
 });
