@@ -17,7 +17,7 @@ All are printer spellings the reader inverts; the reader accepts each always, th
 
 1. **tab**: `fold {S;...;set A B E} N [0;N] REST` is written `tab N {S;...;E} REST` when `N` is a number literal, the initial array is `N` zeros, and the body does not mention `A` except as the `set` target. The zero fill is part of the rule (a different fill has no `tab` spelling, so the text stays lossless).
 2. **min/max**: `select lt X Y X Y` is written `min X Y` and `select lt X Y Y X` is written `max X Y`, when the comparison is used once and `X` and `Y` are operands (parameter, number, named value), not nested operations. The `le`, `gt` and `ge` forms keep their spelling: one word can stand for only one canonical form, or the text is not lossless.
-3. **hex**: a u32 literal is written in hexadecimal when that is strictly fewer o200k tokens. The source code must not depend on a tokenizer, so the rule is the result of a tokenizer sweep done before this note (every value written as one repeated hex digit of 2 to 8 digits, every 2^k and 2^k-1, and 200000 other values): only `0xffffff`, `0xffffffff` and `0xaaaaaaaa` are shorter. The printer writes those three in hex.
+3. **hex**: a u32 literal is written in hexadecimal when that is strictly fewer o200k tokens. The source code must not depend on a tokenizer, so the rule is the result of a tokenizer sweep done before this note (every value written as one repeated hex digit of 2 to 8 digits, every 2^k and 2^k-1, and 200000 other values): only `0xffffff`, `0xffffffff` and `0xaaaaaaaa` are shorter. The printer writes those three in hex. claim-ok: the sweep chose the rule before measurement; its effect is measured in results/dense-six-rules.json.
 4. **no `call`**: the printer already writes a call to a declared function without `call`; it keeps `call` only when the callee's name is an operation or a structure word, where leaving it out would change the meaning. Expected: no change; the tool counts the remaining `call` words to confirm.
 5. **trailing parameters**: the operands of a `fold` that are exactly all of the enclosing function's parameters in order (`A B ...`), at the end of the fold and at the end of the statement, are left out; the reader fills operands missing at the end of a statement with `A`, `B`, ... Not inside an inline body.
 6. **one line per function**: `fn ` is dropped and a function's lines are joined with `;` on one line (`name [types] stmt;stmt`). `use` and `profile` lines keep their markers; a text with comments keeps the line-per-statement form. The reader takes a text with no `fn` line as this form.
@@ -32,7 +32,7 @@ A rule is kept only if (1) the round trip stays lossless on every program in (a)
 
 ## Risk
 
-Rules 4 to 6 are medium risk to AI edit accuracy (fewer anchors: long lines, operands not written). Before any public claim from them, an AI edit-accuracy run must show no loss; until then they are measured but not claimed. The site is not edited.
+Rules 4 to 6 are medium risk to AI edit accuracy (fewer anchors: long lines, operands not written). Before any public claim from them, an AI edit-accuracy run must show no loss; until then they are measured but not claimed. The site is not edited. claim-ok: a condition for a future claim, not a measured value.
 
 ## Outcome (measured after the change; `results/dense-six-rules.json`)
 

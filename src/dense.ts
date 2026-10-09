@@ -507,9 +507,7 @@ function printNodeTokens(
       ctx.spec !== true &&
       p > 0 &&
       node.args.length > p &&
-      node.args
-        .slice(node.args.length - p)
-        .every((a, i) => a.kind === 'param' && a.index === i) &&
+      node.args.slice(node.args.length - p).every((a, i) => a.kind === 'param' && a.index === i) &&
       plan.nest[k]?.slice(node.args.length - p).every((c) => c === undefined) === true
     )
       rest = args.slice(0, args.length - p);
@@ -1107,7 +1105,8 @@ export class FunctionParser {
     const n = this.eat('an array length after tab');
     if (n.kind !== 'word' || !NUMBER.test(n.text))
       return fail(`tab expects an array length, got '${n.text}'`, this.line);
-    if (this.peek()?.kind !== 'lbrace') return fail("tab expects '{body}' after its length", this.line);
+    if (this.peek()?.kind !== 'lbrace')
+      return fail("tab expects '{body}' after its length", this.line);
     this.pos += 1;
     const groups: Tok[][] = [[]];
     let depth = 0;
@@ -1124,7 +1123,13 @@ export class FunctionParser {
     const word = (text: string): Tok => ({ kind: 'word', text });
     const semi: Tok = { kind: 'semi', text: ';' };
     const last = groups.pop() as Tok[];
-    const body = [...groups.flatMap((g) => [...g, semi]), word('set'), word('A'), word('B'), ...last];
+    const body = [
+      ...groups.flatMap((g) => [...g, semi]),
+      word('set'),
+      word('A'),
+      word('B'),
+      ...last,
+    ];
     const rewritten: Tok[] = [
       word('fold'),
       { kind: 'lbrace', text: '{' },

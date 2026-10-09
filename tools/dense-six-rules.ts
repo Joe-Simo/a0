@@ -77,7 +77,8 @@ function roundTrips(u: Unit, style: DenseStyle): string | undefined {
       return `${u.name}: ${e instanceof Error ? e.message : String(e)}`;
     }
     if (formatProgram(back) !== formatProgram(p)) return `${u.name}: canonical form differs`;
-    if (formatDense(back, { known: u.known, style }) !== dense) return `${u.name}: not a fixed point`;
+    if (formatDense(back, { known: u.known, style }) !== dense)
+      return `${u.name}: not a fixed point`;
   }
   return undefined;
 }
@@ -140,7 +141,10 @@ async function main(): Promise<void> {
     ...RULES.filter((r) => rules.find((x) => x.rule === r.n)?.kept).map((r) => r.style),
   );
   const perKernel = Object.fromEntries(
-    kernels.map((u) => [u.name, { before: tokens(text(u, {})), after: tokens(text(u, keptStyle)) }]),
+    kernels.map((u) => [
+      u.name,
+      { before: tokens(text(u, {})), after: tokens(text(u, keptStyle)) },
+    ]),
   );
   const kernelSum = total(kernels, keptStyle);
   const report = {
