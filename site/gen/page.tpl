@@ -128,11 +128,11 @@ s 13 glsl
 .div herogrid
 .div herotext
 .p kicker
-"A programming language for AI agents
+"For the code your AI agent writes
 >
-=h1 Small programs. Checked edits. Built for the agent that writes your code.
+=h1 Your agent edits one function. A0 checks it before it lands.
 .p lede
-"A0 is a small language for code an AI agent edits one function at a time, each edit checked before it lands. It has no floats, heap or recursion, so use C, Rust or TypeScript for those.
+"A small, typed language your agent edits through a server. A broken edit comes back as an error, never as a bug in your file.
 >
 .p ctas
 .a pill
@@ -173,12 +173,15 @@ s 13 glsl
 "1.67x
 >
 .span unit
-"\sfewer tokens than the tersest other language
+"\sfewer tokens than Forth, the next shortest of 49 languages
 >
 >
 .p tokt
 +id tok-t
-"The 10 benchmark kernels in A0's dense form take 193 tokens, first of 49 languages. Forth, the shortest of the other 48, takes 323 (o200k tokens; results/lang-axes.json).
+"10 benchmark kernels: 193 tokens in A0's dense form, 323 in Forth (o200k; results/lang-axes.json).
+>
+.p status
+"Next: a compact dense form takes 158 tokens on the same kernels, 2.04x fewer than Forth, and about 9% fewer than today's dense form on held-out code (results/dense-combined.json). Edit-accuracy check in progress; not the default yet.
 >
 .div lrow me
 .span lbl
@@ -256,7 +259,7 @@ w 100
 >
 >
 .p tokcap
-"Fewer tokens per program means less for a model to read and write on every edit; what a whole edit costs, measured with models, is further down (results/lang-axes.json).
+"Fewer tokens per edit. The measured cost of a whole edit is below.
 >
 >
 .p honest
@@ -267,9 +270,6 @@ w 100
 {sec_install
 <section
 +id install
-.p kicker
-"Try it now, in three steps
->
 =h2 Install and connect
 =p A0 is one binary with no package manager.
 .div steps
@@ -343,16 +343,16 @@ w 100
 "3
 >
 =h3 Make the first edit
-=p Ask your agent for a function in a new .a0 file. It reads and writes one function at a time through the a0 server, and an edit that does not type-check is refused before it reaches the file.
+=p Ask your agent for a function in a new .a0 file. An edit that fails type-checking is refused.
 >
 >
 =p Targets: machine code, C, wasm, JavaScript, JVM, .NET, Metal and SystemVerilog. $vr_full$ test cases ran on $vr_nfull$ paths. The native assembly targets ran the $vr_part$ that need no input or output, and SystemVerilog is simulated separately on $hw_cases$ (results/verification.json).
 =p MIT license, free for any use. Copyright 2026 Joe Simo.
 <p
-"Works? Then see why it matters:\s
+"Next:\s
 <a
 +href #why
-"Why an agent needs this
+"Why agents need this
 >
 >
 >
@@ -364,7 +364,7 @@ w 100
 .div whygrid
 .div why
 =h3 Cost per edit
-=p An agent pays for every token it reads and writes. A0 programs are short, and an edit names one function, so the agent never rewrites the file around it.
+=p Short programs, one-function edits: the agent never rewrites the file around a change.
 >
 .div why
 =h3 Every edit checked
@@ -372,11 +372,11 @@ w 100
 >
 .div why
 =h3 Honest limits
-=p No floats, heap or recursion, and slower than C on some programs (results/exec-benchmark-full.json). The sections below show every loss.
+=p No floats, heap or recursion: use C, Rust or TypeScript for those. Slower than C on some programs (results/exec-benchmark-full.json); the sections below show every loss.
 >
 >
 <p
-"First the losses:\s
+"Next:\s
 <a
 +href #fast
 "Where A0 is slower than C
@@ -391,7 +391,7 @@ w 100
 .p take
 "A0 is slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs, by up to $bk_slow$x on $bk_slowk$. Over all of them its machine code takes $c_ratio$x as long as hand-written C, a geometric mean (on an Apple M3; results/exec-benchmark-full.json).
 >
-=p In WebAssembly, A0 takes 1.1x to 1.3x clang's time per loop trip on 5 of 19 kernels (rotl, ident, noop, arrfill, filter2), measured at load 8 (results/wasm-benchmark.json).
+=p In WebAssembly, A0 takes 1.1x to 1.3x clang's time per loop trip on 5 of 19 kernels (results/wasm-benchmark.json).
 .div chart langs reveal
 +role group
 +aria-labelledby chart-1
@@ -547,7 +547,7 @@ c putfix %a
 +id start
 +class closer
 =h2 Give your agent a language it can check.
-=p Install takes one line. Connecting Claude Code takes one more.
+=p One line to install, one to connect Claude Code.
 .p ctas
 .a pill
 +href #install
