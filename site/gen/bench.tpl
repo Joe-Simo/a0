@@ -270,12 +270,12 @@ c nav
 "Is an edit checked quickly?
 >
 >
-=td 3 to 6 ms per edit in a warm session, against 531 to 2277 ms for a whole-project tsc check
+=td 5 to 23 ms per edit in a warm session, against 531 to 3918 ms for a whole-project tsc check
 =td Checking from scratch in a fresh process is slower than tsc-rs on Linux and macOS, and than tsgo on macOS
 >
 >
 >
-# claim-ok: the headline row values are the cells of results/app-edit-keys.json (Sonnet 14 of 14, 1485.2 against 7277.3 tokens, Haiku 10 and 13) and results/check-latency-*.json (A0 edit medians 5.2, 5.8 and 2.8 ms; tsc medians 531, 779 and 2277 ms), checked by test/bench-tables.test.ts
+# claim-ok: the headline row values are the cells of results/app-edit-keys.json (Sonnet 14 of 14, 1485.2 against 7277.3 tokens, Haiku 10 and 13) and results/check-latency-*.json (A0 edit medians 5.2, 5.8 and 22.7 ms; tsc medians 531, 779 and 3918 ms), checked by test/bench-tables.test.ts
 .p cap
 "Sources: results/exec-benchmark-full.json, results/lang-axes.json, results/ai-edit-experiment.*.json, results/app-edit-keys.json, results/check-latency-*.json.
 >
@@ -1829,8 +1829,8 @@ c putratio %a
 "Checking an edit to a 4,100-line front end: A0 per edit against whole-project TypeScript checkers
 >
 .p take
-# claim-ok: the sentence restates results/check-latency-*.json (A0 edit medians 5.2, 5.8 and 2.8 ms; fresh-process verdicts against tsgo and tsc-rs), checked by test/bench-tables.test.ts
-"A0 validates one edit in 3 to 6 ms in a warm session. In a fresh process, checking the whole front end from scratch takes 73 ms on macOS and 91 ms on Linux, slower than tsc-rs on both and than tsgo on macOS.
+# claim-ok: the sentence restates results/check-latency-*.json (A0 edit medians 5.2, 5.8 and 22.7 ms; fresh-process verdicts against tsgo and tsc-rs), checked by test/bench-tables.test.ts
+"A0 validates one edit in 5 to 23 ms in a warm session. In a fresh process, checking the whole front end from scratch takes 73 ms on macOS and 91 ms on Linux, slower than tsc-rs on both and than tsgo on macOS.
 >
 .p sub
 "Two different jobs, stated in each row. One edit, warm session: A0 applies the edit in process on a session that is already open, and the others are whole-project checks that start a fresh process every time, wall time. Whole front end, fresh process: both sides start cold and check everything, the like-for-like row, and the one that A0 loses. The same front end is 4,103 lines in A0 and 637 lines in TypeScript. The A0 edit times were recorded before edits were validated incrementally (results/edit-incremental.json: 7.24 ms before and 1.82 ms after, median of the same 14 edits). Windows was measured on a saturated machine, so tsc and tsgo moved by several times between runs there: read the Windows rows as contended and do not compare them as ratios.
@@ -1932,13 +1932,13 @@ c putratio %a
 "one edit, warm session
 >
 .td mono
-"2.8 ms
+"22.7 ms
 >
 .td mono
-"2277 ms
+"3918 ms
 >
 .td mono
-"1834 ms
+"25652 ms
 >
 .td mono
 "not run
@@ -1951,13 +1951,13 @@ c putratio %a
 "whole front end, fresh process
 >
 .td mono
-"550 ms
+"847 ms
 >
 .td mono
-"2277 ms
+"3918 ms
 >
 .td mono
-"1834 ms
+"25652 ms
 >
 .td mono
 "not run
