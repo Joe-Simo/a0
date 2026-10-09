@@ -2706,6 +2706,13 @@ r rec sp2 cdone pkn pvn
 ret r
 end
 
+# The predicate of the cascade loop: a value is pending. A step without one leaves the state as it is, so the
+# cascade stops at the first such step.
+fn cascp (((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32),bool,u32,u32) u32 -> bool
+r at p0 1
+ret r
+end
+
 # A statement token: its frame, its value and its errors; then the cascade of its value.
 # The fold or loop word of a statement token (spt1): its frame fields, its errors, the skipped tokens and the
 # inline bodies. Run only for the words fold and loop (a fold of 1 or 0 steps); for any other token its state is
@@ -2834,6 +2841,131 @@ bi1b add bi1a s2nn
 bi1 select efk bi1b p16
 sfk_r rec callarx ecallx zopx k0x v0x zk3 zv3 sk1 efbad bi1
 ret sfk_r
+end
+
+# The repeat `;n` of an array literal (spt1): whether it is read, its error, the node table with the element
+# repeated and the top frame with its count. Run only for a `;` token (a fold of 1 or 0 steps); for any other token
+# nothing is read (the table and frame then given are not used).
+fn sqb (bool,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32),bool) u32 u32 bool bool u32 u32 u32 u32 bool bool bool (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32 bool u32 u32 u32 u32 u32 u32 u32 -> (bool,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32),bool)
+qb_h1 eq p2 1
+qb_s0 and p3 qb_h1
+qb_s1 and qb_s0 p4
+qb_nd0 and p5 1
+qb_nd ne qb_nd0 0
+qb_nvl ge p6 1
+qb_nvh le p6 65536
+qb_rd0 eq p7 0
+qb_rd1 eq p7 1
+qb_re2a sub p7 1
+qb_re2b mul qb_re2a 64
+qb_re2c add qb_re2b 5632
+qb_re12 select qb_rd1 5632 qb_re2c
+qb_rend0 select qb_rd0 5184 qb_re12
+qb_rbn ge p7 8
+qb_rend select qb_rbn 0 qb_rend0
+qb_end add p8 p6
+qb_fit le qb_end qb_rend
+qb_sm1 and p9 qb_s1
+qb_sm2 and qb_sm1 p10
+qb_sm3 and qb_sm2 p11
+qb_sm4 and qb_sm3 qb_nd
+qb_sm5 and qb_sm4 qb_nvl
+qb_sm6 and qb_sm5 qb_nvh
+qb_smok and qb_sm6 qb_fit
+qb_nsm eq qb_smok false
+qb_smbad and p9 qb_nsm
+qb_fe call pget p12 p8
+qb_fk at qb_fe 0
+qb_fv at qb_fe 1
+qb_nm1 sub p6 1
+qb_cp select qb_smok qb_nm1 0
+qb_vp1 add p8 1
+qb_nts fold pputr qb_cp p12 qb_vp1 qb_fk qb_fv
+qb_topsm rec p13 p14 p6 p15 p16 p17 p18 p19 p20 p8 p21 p22
+sqb_r rec qb_smok qb_nts qb_topsm qb_smbad
+ret sqb_r
+end
+
+# The next free places of the regions (spt1) after a literal or a wide record closes at the top frame: its
+# elements are taken. Run only when one closes (a fold of 1 or 0 steps); the entry is not written otherwise.
+fn sqa ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)) u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 bool (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32))
+qa_j0 eq p2 0
+qa_j1 eq p2 1
+qa_j2 eq p2 2
+qa_j3 eq p2 3
+qa_j4 eq p2 4
+qa_j5 eq p2 5
+qa_j6 eq p2 6
+qa_j7 eq p2 7
+qa_n0 add p3 p4
+qa_n1 add p5 p4
+qa_n2 add p6 p4
+qa_n3 add p7 p4
+qa_n4 add p8 p4
+qa_n5 add p9 p4
+qa_n6 add p10 p4
+qa_n7 add p11 p4
+qa_m0 and p12 qa_j0
+qa_m1 and p12 qa_j1
+qa_m2 and p12 qa_j2
+qa_m3 and p12 qa_j3
+qa_m4 and p12 qa_j4
+qa_m5 and p12 qa_j5
+qa_m6 and p12 qa_j6
+qa_m7 and p12 qa_j7
+qa_c0 select qa_m0 qa_n0 p3
+qa_c1 select qa_m1 qa_n1 p5
+qa_c2 select qa_m2 qa_n2 p6
+qa_c3 select qa_m3 qa_n3 p7
+qa_c4 select qa_m4 qa_n4 p8
+qa_c5 select qa_m5 qa_n5 p9
+qa_c6 select qa_m6 qa_n6 p10
+qa_c7 select qa_m7 qa_n7 p11
+qa_x8 at p13 8
+qa_x9 at p13 9
+qa_x10 at p13 10
+qa_cten rec qa_c0 qa_c1 qa_c2 qa_c3 qa_c4 qa_c5 qa_c6 qa_c7 qa_x8 qa_x9 qa_x10
+sqa_r rec qa_cten
+ret sqa_r
+end
+
+# The regions entry and the first place of the region of the depth (spt1), read only for a token that opens
+# or closes a group or a literal (a fold of 1 or 0 steps); no other token uses them.
+fn sqr (u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 -> (u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32)
+qa_cte call ntget p2 3554
+qa_f0 at qa_cte 0
+qa_f1 at qa_cte 1
+qa_f2 at qa_cte 2
+qa_f3 at qa_cte 3
+qa_f4 at qa_cte 4
+qa_f5 at qa_cte 5
+qa_f6 at qa_cte 6
+qa_f7 at qa_cte 7
+qa_i0 eq p3 0
+qa_i1 eq p3 1
+qa_i2 eq p3 2
+qa_i3 eq p3 3
+qa_i4 eq p3 4
+qa_i5 eq p3 5
+qa_i6 eq p3 6
+qa_i7 eq p3 7
+qa_bm0 select qa_i0 qa_f0 0
+qa_bm1 select qa_i1 qa_f1 qa_bm0
+qa_bm2 select qa_i2 qa_f2 qa_bm1
+qa_bm3 select qa_i3 qa_f3 qa_bm2
+qa_bm4 select qa_i4 qa_f4 qa_bm3
+qa_bm5 select qa_i5 qa_f5 qa_bm4
+qa_bm6 select qa_i6 qa_f6 qa_bm5
+qa_bm7 select qa_i7 qa_f7 qa_bm6
+qa_s1 select qa_i1 5184 3072
+qa_s2a sub p3 2
+qa_s2b mul qa_s2a 64
+qa_s2c add qa_s2b 5632
+qa_ge2 ge p3 2
+qa_start select qa_ge2 qa_s2c qa_s1
+qa_base add qa_start qa_bm7
+sqr_r rec qa_base qa_cte qa_f0 qa_f1 qa_f2 qa_f3 qa_f4 qa_f5 qa_f6 qa_f7
+ret sqr_r
 end
 
 fn spt1 ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4 u32 u32 bool -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32)
@@ -2990,38 +3122,23 @@ erp eq kd 4
 ecm eq kd 7
 eab eq kd 5
 ecb eq kd 6
-qa_cte call ntget ntq 3554
-qa_f0 at qa_cte 0
-qa_f1 at qa_cte 1
-qa_f2 at qa_cte 2
-qa_f3 at qa_cte 3
-qa_f4 at qa_cte 4
-qa_f5 at qa_cte 5
-qa_f6 at qa_cte 6
-qa_f7 at qa_cte 7
-qa_i0 eq dp0 0
-qa_i1 eq dp0 1
-qa_i2 eq dp0 2
-qa_i3 eq dp0 3
-qa_i4 eq dp0 4
-qa_i5 eq dp0 5
-qa_i6 eq dp0 6
-qa_i7 eq dp0 7
-qa_bm0 select qa_i0 qa_f0 0
-qa_bm1 select qa_i1 qa_f1 qa_bm0
-qa_bm2 select qa_i2 qa_f2 qa_bm1
-qa_bm3 select qa_i3 qa_f3 qa_bm2
-qa_bm4 select qa_i4 qa_f4 qa_bm3
-qa_bm5 select qa_i5 qa_f5 qa_bm4
-qa_bm6 select qa_i6 qa_f6 qa_bm5
-qa_bm7 select qa_i7 qa_f7 qa_bm6
-qa_s1 select qa_i1 5184 3072
-qa_s2a sub dp0 2
-qa_s2b mul qa_s2a 64
-qa_s2c add qa_s2b 5632
-qa_ge2 ge dp0 2
-qa_start select qa_ge2 qa_s2c qa_s1
-qa_base add qa_start qa_bm7
+qa_g0 or eg1 eab
+qa_g1 or ecb erp
+qa_gt or qa_g0 qa_g1
+qa_z rec 0 0 0 0 0 0 0 0 0 0 0
+sqr_n select qa_gt 1 0
+sqr_z rec 0 qa_z 0 0 0 0 0 0 0 0
+sqr_s fold sqr sqr_n sqr_z ntq dp0
+qa_base at sqr_s 0
+qa_cte at sqr_s 1
+qa_f0 at sqr_s 2
+qa_f1 at sqr_s 3
+qa_f2 at sqr_s 4
+qa_f3 at sqr_s 5
+qa_f4 at sqr_s 6
+qa_f5 at sqr_s 7
+qa_f6 at sqr_s 8
+qa_f7 at sqr_s 9
 qa_afr rec 27 4294967295 0 false 0 0 0 0 6 qa_base 0 0
 cfr rec zopx callarx 0 false k0x v0x 0 0 6 pb zk3 zv3
 c0fr rec zopx 0 0 false k0x v0x 0 0 6 0 zk3 zv3
@@ -3115,78 +3232,18 @@ qa_pv1 select qa_hp qa_pm1 0
 qa_nfr rec qa_nop 0 have false 0 0 qa_pk1 qa_pv1 6 qa_bs 0 0
 frm1 select qa_cl qa_nfr frm0
 frm select etx qc_tfr frm1
-qa_j0 eq tpi0 0
-qa_j1 eq tpi0 1
-qa_j2 eq tpi0 2
-qa_j3 eq tpi0 3
-qa_j4 eq tpi0 4
-qa_j5 eq tpi0 5
-qa_j6 eq tpi0 6
-qa_j7 eq tpi0 7
-qa_n0 add qa_f0 have
-qa_n1 add qa_f1 have
-qa_n2 add qa_f2 have
-qa_n3 add qa_f3 have
-qa_n4 add qa_f4 have
-qa_n5 add qa_f5 have
-qa_n6 add qa_f6 have
-qa_n7 add qa_f7 have
-qa_m0 and qa_cl qa_j0
-qa_m1 and qa_cl qa_j1
-qa_m2 and qa_cl qa_j2
-qa_m3 and qa_cl qa_j3
-qa_m4 and qa_cl qa_j4
-qa_m5 and qa_cl qa_j5
-qa_m6 and qa_cl qa_j6
-qa_m7 and qa_cl qa_j7
-qa_c0 select qa_m0 qa_n0 qa_f0
-qa_c1 select qa_m1 qa_n1 qa_f1
-qa_c2 select qa_m2 qa_n2 qa_f2
-qa_c3 select qa_m3 qa_n3 qa_f3
-qa_c4 select qa_m4 qa_n4 qa_f4
-qa_c5 select qa_m5 qa_n5 qa_f5
-qa_c6 select qa_m6 qa_n6 qa_f6
-qa_c7 select qa_m7 qa_n7 qa_f7
-qa_x8 at qa_cte 8
-qa_x9 at qa_cte 9
-qa_x10 at qa_cte 10
-qa_cten rec qa_c0 qa_c1 qa_c2 qa_c3 qa_c4 qa_c5 qa_c6 qa_c7 qa_x8 qa_x9 qa_x10
+sqa_n select qa_cl 1 0
+sqa_z rec qa_cte
+sqa_s fold sqa sqa_n sqa_z tpi0 qa_f0 have qa_f1 qa_f2 qa_f3 qa_f4 qa_f5 qa_f6 qa_f7 qa_cl qa_cte
+qa_cten at sqa_s 0
 esm eq kd 10
-qb_h1 eq have 1
-qb_s0 and qa_is27 qb_h1
-qb_s1 and qb_s0 qa_dpp
-qb_nd0 and nxf 1
-qb_nd ne qb_nd0 0
-qb_nvl ge nxn 1
-qb_nvh le nxn 65536
-qb_rd0 eq tpi0 0
-qb_rd1 eq tpi0 1
-qb_re2a sub tpi0 1
-qb_re2b mul qb_re2a 64
-qb_re2c add qb_re2b 5632
-qb_re12 select qb_rd1 5632 qb_re2c
-qb_rend0 select qb_rd0 5184 qb_re12
-qb_rbn ge tpi0 8
-qb_rend select qb_rbn 0 qb_rend0
-qb_end add v2 nxn
-qb_fit le qb_end qb_rend
-qb_sm1 and esm qb_s1
-qb_sm2 and qb_sm1 nxin
-qb_sm3 and qb_sm2 nxw
-qb_sm4 and qb_sm3 qb_nd
-qb_sm5 and qb_sm4 qb_nvl
-qb_sm6 and qb_sm5 qb_nvh
-qb_smok and qb_sm6 qb_fit
-qb_nsm eq qb_smok false
-qb_smbad and esm qb_nsm
-qb_fe call pget ntq v2
-qb_fk at qb_fe 0
-qb_fv at qb_fe 1
-qb_nm1 sub nxn 1
-qb_cp select qb_smok qb_nm1 0
-qb_vp1 add v2 1
-qb_nts fold pputr qb_cp ntq qb_vp1 qb_fk qb_fv
-qb_topsm rec topop needt nxn cma k0 v0 k1 v1 k2 v2 k3 v3
+sqb_n select esm 1 0
+sqb_z rec false ntq top false
+sqb_s fold sqb sqb_n sqb_z have qa_is27 qa_dpp nxf nxn tpi0 v2 esm nxin nxw ntq topop needt cma k0 v0 k1 v1 k2 k3 v3
+qb_smok at sqb_s 0
+qb_nts at sqb_s 1
+qb_topsm at sqb_s 2
+qb_smbad at sqb_s 3
 spm call mknode sp0 frm
 erpnb eq badrp false
 erpg and erp erpnb
@@ -3297,7 +3354,7 @@ sps1 rec ntr3 nnr nf0 frb dpn rs0 rk0 rv0 serrn bs0 sk2 bi1
 cs0 rec sps1 pendv pkn pvn
 dpn1 add dpn 1
 cdn select pendv dpn1 0
-csr fold casc cdn cs0
+csr loop cascp casc cdn cs0
 r at csr 0
 ret r
 end
