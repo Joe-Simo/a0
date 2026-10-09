@@ -57,7 +57,7 @@ import {
   type TypedFunc,
   type Value,
 } from '../src/core.js';
-import { defaultNames, formatDense, parseDense } from '../src/dense.js';
+import { defaultNames, FunctionParser, formatDense, parseDense } from '../src/dense.js';
 import {
   arities,
   type Caps,
@@ -399,7 +399,13 @@ function generator(seed0: number): {
 }
 
 /** Programs with an expression that nests deeper than the 8 frames of the reader (ten writes in one). */
-const DEEP: ReadonlySet<string> = new Set(['compiler/macho.a0', 'site/lib/frame.a0']);
+const DEEP: ReadonlySet<string> = new Set([
+  'compiler/macho.a0',
+  'site/lib/frame.a0',
+  'compiler/emit_c.a0',
+  'compiler/emit_arm64.a0',
+  'compiler/emit_wasm.a0',
+]);
 
 /** Whether the sizes of a program are within the capacities of the reader (see compiler/dense.a0). */
 function withinCapacity(p: Program, dense: string): boolean {
@@ -415,10 +421,10 @@ function withinCapacity(p: Program, dense: string): boolean {
     // the depth of an array node: the frames open around it in the dense text are not known here, so
     // the size of every array is held against the largest region (the first level) and the total
     for (const n of f.nodes) {
-      // a text literal keeps its token, not its bytes
-      if (n.op === 'arr' && n.text === undefined) used[0] = (used[0] as number) + n.args.length;
-      // a record has up to four fields in a frame of the reader
-      if (n.op === 'rec' && n.args.length > 4) return false;
+      // a text literal keeps its token, not its bytes; the fields of a record of more than four fields
+      // are kept like the elements of an array
+      if ((n.op === 'arr' && n.text === undefined) || (n.op === 'rec' && n.args.length > 4))
+        used[0] = (used[0] as number) + n.args.length;
     }
   }
   return nodes <= 2048 && (used[0] as number) <= (regions[0] as number);
@@ -656,8 +662,8 @@ test('stubs: a stub line is a header, before the functions, with nothing after i
 
 /**
  * The programs of the reader's forms with the functions of their used files as stubs, split into the
- * programs that have a function the reader refuses whatever the chunk (a limit of the reader, or a
- * capacity of one input that the function alone exceeds) and the programs without one.
+ * programs that have a function the reader refuses whatever the chunk (a capacity of one input that the
+ * function alone exceeds) and the programs without one.
  */
 function chunkMembers() {
   const all: { name: string; program: Program; planned: Planned; bytes: number }[] = [];
@@ -724,7 +730,7 @@ test('chunks: the planner cuts a program at function boundaries within the capac
   t.diagnostic(
     `${all.length} programs: ${readable.length} without a function refused up front, ${refused.length} with one; reasons (functions): ${[...reasons].map(([k, v]) => `${k} ${v}`).join('; ')}`,
   );
-  assert.ok(readable.length > 50 && refused.length > 10, 'both kinds are present');
+  assert.ok(readable.length > 70 && refused.length >= 4, 'both kinds are present');
 });
 
 /**
@@ -754,17 +760,17 @@ function chunkInvariance(t: TestContext, label: string, caps: Caps): number {
 
 test('chunks: a program cut at 16 KB reads to the text of the whole program', (t) => {
   const n = chunkInvariance(t, '16 KB', READER_CAPS);
-  assert.equal(n, 64, `${n} programs`);
+  assert.equal(n, 75, `${n} programs`);
 });
 
 test('chunks: a program cut at 4 KB reads to the same text', (t) => {
   const n = chunkInvariance(t, '4 KB', { ...READER_CAPS, bytes: 4096 });
-  assert.equal(n, 64, `${n} programs`);
+  assert.equal(n, 75, `${n} programs`);
 });
 
 test('chunks: a program cut after every function reads to the same text', (t) => {
   const n = chunkInvariance(t, 'one function per chunk', { ...READER_CAPS, bytes: 1 });
-  assert.equal(n, 64, `${n} programs`);
+  assert.equal(n, 75, `${n} programs`);
 });
 
 test('chunks: generated call programs cut at random budgets read to the text of the whole program', (t) => {
@@ -2712,10 +2718,10 @@ function textOfBytes(n: number, rnd: (n: number) => number): string {
   while (left > 0) {
     const r = rnd(24);
     if (r === 0 && left >= 2) {
-      s += 'é';
+      s += 'Ã©';
       left -= 2;
     } else if (r === 1 && left >= 3) {
-      s += '€';
+      s += 'â‚¬';
       left -= 3;
     } else {
       s += TEXT_CHARS[rnd(TEXT_CHARS.length)] as string;
@@ -2883,7 +2889,7 @@ const TEXT_CURATED: Curated[] = [
   ['a literal in an array', 'fn f -> u32x2x3\n["abc" "def"]\n'],
   ['a literal of two lengths in an array', 'fn f -> u32x2\n["abc" "de"]\n'],
   ['a literal as an argument', 'fn g u32x3 -> u32\nget A 0\n\nfn f -> u32\ng "xyz"\n'],
-  ['a literal of other bytes', 'fn f -> u32x6\n"é€"\n'],
+  ['a literal of other bytes', 'fn f -> u32x6\n"Ã©â‚¬"\n'],
   ['a literal as the result, not written', 'fn f\n"abc"\n', true],
   ['a literal read through get, not written', 'fn f\nget "abc" 1\n'],
   ['a word before a literal', 'fn f -> u32x2\na"b"\n'],
@@ -2931,4 +2937,396 @@ test('the B3.4 reader: text literals and use lines read as the reference reads t
   }
   t.diagnostic(`${equal} read to the reference text, ${rejected} rejected, ${refused} refused`);
   assert.ok(equal > 20 && rejected > 12, 'both kinds are covered');
+});
+
+// ---------------------------------------------------------------------------
+// Stage B5.1: records of more than four fields
+// ---------------------------------------------------------------------------
+
+/**
+ * The capacities of the regions of the array elements by the depth of the frame of the literal (compiler/dense.a0):
+ * the elements of an array literal, and the fields of a record literal of more than four fields, are kept there.
+ */
+const REGION_CAPS = [2112, 448, 64, 64, 64, 64, 64, 64];
+
+/**
+ * What the dense text puts in each region, by the reference: for an array literal or a record literal of more
+ * than four fields, its element count at the depth of its frame (the frames open around it). A depth
+ * of 8 or more has no region.
+ */
+function regionUse(dense: string): number[] {
+  const proto = FunctionParser.prototype as unknown as {
+    expr: () => unknown;
+    toks: { text: string }[];
+    pos: number;
+    nodes: { op: string; args: unknown[]; text?: string }[];
+  };
+  const orig = proto.expr;
+  const use: number[] = Array.from({ length: 64 }, () => 0);
+  let depth = 0;
+  proto.expr = function (this: typeof proto) {
+    const t = this.toks[this.pos];
+    const before = this.nodes.length;
+    const open = t !== undefined && (t.text === '(' || t.text === '[');
+    const frame = depth;
+    depth += 1;
+    try {
+      return orig.call(this);
+    } finally {
+      depth -= 1;
+      const last = this.nodes[this.nodes.length - 1];
+      if (
+        open &&
+        this.nodes.length > before &&
+        last !== undefined &&
+        ((last.op === 'arr' && last.text === undefined) ||
+          (last.op === 'rec' && last.args.length > 4))
+      )
+        use[frame] = (use[frame] as number) + last.args.length;
+    }
+  };
+  try {
+    parseDense(dense);
+  } catch (e) {
+    if (!(e instanceof A0Error)) throw e;
+  } finally {
+    proto.expr = orig;
+  }
+  return use;
+}
+
+/** Whether a region of the array elements is over its capacity, by the reference reading of the text. */
+function regionsOver(dense: string): boolean {
+  return regionUse(dense).some((n, d) => n > (REGION_CAPS[d] ?? 0));
+}
+
+type RecType = 'u32' | 'bool' | RecType[];
+
+function recTypeDepth(t: RecType): number {
+  return typeof t === 'string' ? 0 : 1 + Math.max(0, ...t.map(recTypeDepth));
+}
+
+function formatRecType(t: RecType): string {
+  return typeof t === 'string' ? t : `(${t.map(formatRecType).join(',')})`;
+}
+
+/**
+ * A canonical program of records of one to a hundred and fifty fields: parameters of u32, bool and record
+ * types, records of values and literals, at and put on records, and u32 operations.
+ */
+function recordProgram(rnd: (n: number) => number): string {
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  const skip = new Set(['i', 's']);
+  const parts: string[] = [];
+  const nf = 1 + rnd(3);
+  for (let f = 0; f < nf; f += 1) {
+    const np = rnd(4);
+    const params: RecType[] = Array.from({ length: np }, () =>
+      rnd(3) === 0
+        ? Array.from({ length: 2 + rnd(7) }, () => pick<RecType>(['u32', 'u32', 'bool']))
+        : pick<RecType>(['u32', 'bool']),
+    );
+    const values: { ref: string; t: RecType }[] = params.map((t, i) => ({ ref: `p${i}`, t }));
+    const lines: string[] = [];
+    let dk = 0;
+    const nextId = (): string => {
+      for (;;) {
+        let n = dk + 1;
+        let s = '';
+        dk += 1;
+        while (n > 0) {
+          n -= 1;
+          s = String.fromCharCode(97 + (n % 26)) + s;
+          n = Math.floor(n / 26);
+        }
+        if (!skip.has(s) && !/^(at|or|eq|ne|lt|le|gt|ge|io|fn|do|if)$/.test(s)) return s;
+      }
+    };
+    const literal = (t?: RecType): { ref: string; t: RecType } => {
+      if (t === 'bool' || (t === undefined && rnd(5) === 0))
+        return { ref: pick(['true', 'false']), t: 'bool' };
+      return { ref: String(rnd(60)), t: 'u32' };
+    };
+    // a type is kept small: the types of the header nest at most four deep and fill at most 300 bytes
+    const small = (t: RecType): boolean => recTypeDepth(t) <= 3 && formatRecType(t).length <= 300;
+    const operand = (): { ref: string; t: RecType } => {
+      const ok = values.filter((v) => small(v.t));
+      return rnd(4) === 0 || ok.length === 0
+        ? literal()
+        : (pick(ok) as { ref: string; t: RecType });
+    };
+    const nodes = 2 + rnd(9);
+    let big = 0;
+    for (let k = 0; k < nodes; k += 1) {
+      const id = nextId();
+      const kind = rnd(10);
+      const recs = values.filter((v) => typeof v.t !== 'string' && small(v.t));
+      if (kind < 2) {
+        const u = values.filter((v) => v.t === 'u32');
+        const a = u.length > 0 && rnd(3) !== 0 ? pick(u) : literal('u32');
+        const b = u.length > 0 && rnd(3) !== 0 ? pick(u) : literal('u32');
+        lines.push(`${id} ${pick(BIN_OPS)} ${a.ref} ${b.ref}`);
+        values.push({ ref: id, t: 'u32' });
+      } else if (kind < 7 || recs.length === 0) {
+        const n = pick([1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 12, 17, 29, 40, 40, 64, 100, 150]);
+        // keep the total of the large records within the first region
+        const m = big + n > 400 && n > 4 ? 1 + rnd(4) : n;
+        if (m > 4) big += m;
+        let fields = Array.from({ length: m }, operand);
+        if (formatRecType(fields.map((x) => x.t)).length > 1500)
+          fields = Array.from({ length: m }, () => literal());
+        lines.push(`${id} rec ${fields.map((x) => x.ref).join(' ')}`);
+        values.push({ ref: id, t: fields.map((x) => x.t) });
+      } else if (kind < 9) {
+        const r = pick(recs);
+        const ft = r.t as RecType[];
+        const i = rnd(ft.length);
+        lines.push(`${id} at ${r.ref} ${i}`);
+        values.push({ ref: id, t: ft[i] as RecType });
+      } else {
+        const r = pick(recs);
+        const ft = r.t as RecType[];
+        const i = rnd(ft.length);
+        const want = ft[i] as RecType;
+        const cand = values.filter((v) => formatRecType(v.t) === formatRecType(want));
+        const v = cand.length > 0 && rnd(3) !== 0 ? pick(cand) : literal(want);
+        lines.push(`${id} put ${r.ref} ${i} ${v.ref}`);
+        values.push({ ref: id, t: r.t });
+      }
+    }
+    const named = values.filter((v) => !v.ref.startsWith('p'));
+    const last = (rnd(3) === 0 ? pick(named) : named[named.length - 1]) as {
+      ref: string;
+      t: RecType;
+    };
+    const header = `fn r${f}x${rnd(9)}${params.map((p) => ` ${formatRecType(p)}`).join('')} -> ${formatRecType(last.t)}`;
+    parts.push(`${header}\n${lines.join('\n')}\nret ${last.ref}\nend\n`);
+  }
+  return parts.join('\n');
+}
+
+test('the B5.1 reader: generated programs with records of more than four fields read to their canonical text', (t) => {
+  const read = loadReader();
+  const rnd = rngFrom(5151);
+  let checked = 0;
+  let wide = 0;
+  let widest = 0;
+  let over = 0;
+  for (let k = 0; k < 150; k += 1) {
+    const program = parse(recordProgram(rnd));
+    const dense = formatDense(program);
+    if (Buffer.byteLength(dense) > PAGES * PAGE) continue;
+    const got = read(dense);
+    if (regionsOver(dense)) {
+      // a region of the array elements is full: the reader says so and writes no wrong text
+      assert.equal(got.err, true, `program ${k}: a full region sets the error flag\n${dense}`);
+      over += 1;
+      continue;
+    }
+    assert.equal(got.err, false, `program ${k}: the error flag is clear\n${dense}`);
+    assert.equal(got.text, formatProgram(program), `program ${k}\n${dense}`);
+    checked += 1;
+    for (const f of program.functions)
+      for (const n of f.nodes)
+        if (n.op === 'rec' && n.args.length > 4) {
+          wide += 1;
+          widest = Math.max(widest, n.args.length);
+        }
+  }
+  t.diagnostic(
+    `${checked} programs read, ${over} over a region and flagged; ${wide} records of more than four fields, the widest ${widest}`,
+  );
+  assert.ok(checked > 100 && wide > 500 && widest >= 100, 'the forms are covered');
+});
+
+const RECORD_MUTANT_TOKENS = [
+  ...ARRAY_MUTANT_TOKENS,
+  '(',
+  ')',
+  ',',
+  '(1,)',
+  '(1 2 3 4 5 6)',
+  '(A 1 2 3 4 5 6 7)',
+  'at',
+  'put',
+];
+
+test('the B5.1 reader: mutants of programs with large records are rejected exactly when the reference rejects them', (t) => {
+  const read = loadReader();
+  const rnd = rngFrom(515);
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  const bases = Array.from({ length: 40 }, () => formatDense(parse(recordProgram(rnd))));
+  let equal = 0;
+  let rejected = 0;
+  let refused = 0;
+  let full = 0;
+  for (let m = 0; m < 250; m += 1) {
+    const text = mutateArrays(pick(bases), rnd, pick, RECORD_MUTANT_TOKENS);
+    if (Buffer.byteLength(text) > PAGES * PAGE) continue;
+    let program: Program | undefined;
+    let want: string | null = null;
+    try {
+      program = parseDense(text);
+      want = formatProgram(program);
+    } catch (e) {
+      if (!(e instanceof A0Error)) throw e;
+    }
+    const got = read(text);
+    if (want === null) {
+      assert.equal(
+        got.err,
+        true,
+        `mutant ${m}: the reader flags what the reference rejects\n${text}`,
+      );
+      rejected += 1;
+    } else if (regionsOver(text)) {
+      assert.equal(got.err, true, `mutant ${m}: a full region sets the error flag\n${text}`);
+      full += 1;
+    } else if (got.err) {
+      assert.ok(
+        outsideTheReaderB34(text, program as Program),
+        `mutant ${m}: the reader refuses a text of the forms it reads\n${text}`,
+      );
+      refused += 1;
+    } else {
+      assert.equal(got.text, want, `mutant ${m}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(
+    `${rejected} mutants rejected, ${equal} read to the reference text, ${full} over a region, ${refused} refused`,
+  );
+  assert.ok(rejected > 50, 'many mutants are rejected');
+  assert.ok(equal > 30, 'some mutants are accepted');
+});
+
+/** n fields, each one of the digits in turn. */
+function fieldsOf(n: number): string {
+  return Array.from({ length: n }, (_, i) => String(i % 10)).join(' ');
+}
+
+/** The type of a record of n u32. */
+function recType(n: number): string {
+  return `(${Array.from({ length: n }, () => 'u32').join(',')})`;
+}
+
+const RECORD_CURATED: Curated[] = [
+  ['five fields', 'fn f -> (u32,u32,u32,u32,u32)\n(1 2 3 4 5)\n'],
+  ['five fields named', 'fn f -> (u32,u32,u32,u32,u32)\nr (1 2 3 4 5)\nret r\n'],
+  [
+    'five fields with parameters',
+    'fn f u32 bool -> (u32,bool,u32,u32,u32)\n(A B add A 1 2 mul A A)\n',
+  ],
+  ['a record of records', 'fn f u32 -> ((u32,u32),u32,u32,u32,u32)\n((A 1) 2 3 4 add A 5)\n'],
+  [
+    'a record of five holding a record of five',
+    'fn f u32 -> ((u32,u32,u32,u32,u32),u32,u32,u32,u32)\n((A 1 2 3 4) 2 3 4 5)\n',
+  ],
+  ['at on the fifth field', 'fn f u32 -> u32\nr (A 1 2 3 4 5 6)\nat r 4\n'],
+  ['at on the last field of twenty', `fn f -> u32\nat (${fieldsOf(20)}) 19\n`],
+  ['put on the sixth field', 'fn f u32 -> (u32,u32,u32,u32,u32,u32)\nr (A 1 2 3 4 5)\nput r 5 A\n'],
+  [
+    'the record is the argument of a call',
+    'fn g (u32,u32,u32,u32,u32,u32) -> u32\nat A 5\n\nfn f u32 -> u32\ng (A 1 2 3 4 5)\n',
+  ],
+  [
+    'the record is the result of a call',
+    'fn g u32 -> (u32,u32,u32,u32,u32,u32)\n(A 1 2 3 4 5)\n\nfn f u32 -> u32\nr g A\nat r 3\n',
+  ],
+  ['an implicit parameter in the sixth field', 'fn f\nat (1 2 3 4 5 B) 5\n'],
+  ['a parameter used only in the seventh field', 'fn f\nat (1 2 3 4 5 6 C) 0\n'],
+  ['a record with commas as blanks', 'fn f -> (u32,u32,u32,u32,u32)\n(1, 2, 3, 4, 5)\n'],
+  ['the widest record of the programs, 29 fields', `fn f -> u32\nat (${fieldsOf(29)}) 28\n`],
+  ['a record of 200 fields', `fn f -> u32\nat (${fieldsOf(200)}) 199\n`],
+  [
+    'a record of 2112 fields fills the region of depth 0',
+    `fn f -> u32\nr (${fieldsOf(2112)})\nat r 5\n`,
+  ],
+  [
+    'a record of 2113 fields in the region of depth 0',
+    `fn f -> u32\nr (${fieldsOf(2113)})\nat r 5\n`,
+    true,
+  ],
+  ['a record of 2112 fields at depth 1', `fn f -> u32\nat (${fieldsOf(2112)}) 5\n`, true],
+  [
+    'two records that share the region of the first level',
+    `fn f -> u32\nr (${fieldsOf(1100)})\nat r 1\n\nfn g -> u32\nr (${fieldsOf(1100)})\nat r 1\n`,
+    true,
+  ],
+  [
+    'two records within the region of depth 0',
+    `fn f -> u32\nr (${fieldsOf(1000)})\nat r 1\n\nfn g -> u32\nr (${fieldsOf(1000)})\nat r 1\n`,
+  ],
+  [
+    'an array and a record in the same region',
+    `fn f -> u32\nget [${fieldsOf(300)}] 0\n\nfn g -> u32\nat (${fieldsOf(100)}) 0\n`,
+  ],
+  [
+    'an array and a record over the same region',
+    `fn f -> u32\nget [${fieldsOf(300)}] 0\n\nfn g -> u32\nat (${fieldsOf(200)}) 0\n`,
+    true,
+  ],
+  ['the region of depth 1 holds 448', `fn f -> u32\nat (${fieldsOf(448)}) 3\n`],
+  [
+    'a record of 449 fields in the region of depth 1',
+    `fn f -> u32\nat (${fieldsOf(449)}) 3\n`,
+    true,
+  ],
+  ['the region of depth 2 holds 64', `fn f -> u32\nadd 1 at (${fieldsOf(64)}) 3\n`],
+  [
+    'a record of 65 fields in the region of depth 2',
+    `fn f -> u32\nadd 1 at (${fieldsOf(65)}) 3\n`,
+    true,
+  ],
+  ['a record of 2 fields has no region', 'fn f -> u32\nadd 1 add 2 add 3 at (1 2) 1\n'],
+  ['a record of four fields never uses a region', `fn f -> u32\nadd 1 at (${fieldsOf(4)}) 1\n`],
+  ['a record of five fields at depth 1', 'fn f u32 -> u32\nadd A at (1 2 3 4 5) 4\n'],
+  [
+    'a record in an array of records',
+    'fn f u32 -> u32\nat get [(A 1 2 3 4 5) (1 2 3 4 5 6)] 1 5\n',
+  ],
+  [
+    'a record of five at the depth of the last region, 7',
+    'fn f -> u32\nadd 1 add 1 add 1 add 1 add 1 add 1 at (1 2 3 4 5) 0\n',
+  ],
+  [
+    'a record of five over the last region, 8',
+    'fn f -> u32\nadd 1 add 1 add 1 add 1 add 1 add 1 add 1 add 1 at (1 2 3 4 5) 0\n',
+    true,
+  ],
+  ['a record type of 300 fields in a header', `fn f ${recType(300)} -> u32\nat A 299\n`],
+  [
+    'a record type at the limit of bits, 2097152',
+    'fn f (u32x32768,u32x32768) -> u32\nget at A 0 5\n',
+  ],
+  ['a record type over the limit of bits', 'fn f (u32x32768,u32x32768,u32) -> u32\nget at A 0 5\n'],
+];
+
+test('the B5.1 reader: records of more than four fields, their regions and their types read as the reference reads them', (t) => {
+  const read = loadReader();
+  let equal = 0;
+  let rejected = 0;
+  let flagged = 0;
+  for (const [label, text, over] of RECORD_CURATED) {
+    const want = reference(text);
+    const got = read(text);
+    const shown = text.slice(0, 300);
+    if (want === null) {
+      assert.equal(
+        got.err,
+        true,
+        `${label}: the reader flags what the reference rejects\n${shown}`,
+      );
+      rejected += 1;
+    } else if (over === true) {
+      assert.equal(got.err, true, `${label}: the error flag is set\n${shown}`);
+      flagged += 1;
+    } else {
+      assert.equal(got.err, false, `${label}: the error flag is clear\n${shown}`);
+      assert.equal(got.text, want, `${label}: canonical text`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(`${equal} read to the reference text, ${rejected} rejected, ${flagged} flagged`);
+  assert.ok(equal > 20 && flagged >= 5, 'both kinds are covered');
 });

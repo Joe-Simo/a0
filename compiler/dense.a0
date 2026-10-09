@@ -53,6 +53,14 @@
 # written) ends a chunk; a chunk is its stubs (the header of every earlier function it calls, whole, with its types)
 # and its functions, the reader writes the canonical text of the functions of the chunk, and the canonical text of
 # the program is the outputs of the chunks joined with one newline. The reader sets the error flag on any overflow.
+# Stage B5.1 adds records of more than four fields: a record literal `(a b c d e ...)` of any number of fields up to the
+# capacity of its region (the elements of the array literals, below). The frame of a group (op 99) writes each field to the
+# next place of the region of its depth as it completes, and keeps its first four in the frame as before; `)` makes the
+# node from the frame when the group has up to four fields (a region place past the end of its region is not written then),
+# and from the region when it has more: the node is then a rec node (op 23) laid out like an array node (k1 and v1 the
+# highest parameter its fields use, k2 = 6 and v2 the first of its nargs fields), its region advances, and its nargs
+# is over 4. A field past the end of the region, or a group of more than four fields at a depth with no region (8 and over),
+# sets the error flag.
 # Not yet read (the error flag is set): spec lines, hex
 # literals, profile lines, commas used as blanks, the `rec` and `arr` words, record and array states and
 # extra operands of inline bodies, and records and arrays as an unwritten result.
@@ -1156,7 +1164,8 @@ end
 # Pass 2: tokens to functions and nodes. A statement is a prefix expression over fixed arities,
 # read forward with a frame stack; a node is created when its last operand completes, so the
 # nodes come in canonical order. A parenthesized group is a record (or a single operand).
-# Frames: (op, need, have, comma, k0, v0, k1, v1, k2, v2, k3, v3); op 99 is a group.
+# Frames: (op, need, have, comma, k0, v0, k1, v1, k2, v2, k3, v3); op 99 is a group, whose need is the first place of the
+# region of its depth (it is never full).
 # Functions: (name token, parameter count or 4294967295 when implicit, first parameter span,
 # result token span or 4294967295 for u32, first node, return kind, return value).
 
@@ -2111,7 +2120,11 @@ v3 at nd 10
 isc1 ge op 24
 isc2 le op 27
 isc and isc1 isc2
-nac select isc 0 na
+isr23 eq op 23
+rg4 gt na 4
+isrb and isr23 rg4
+ispl or isc isrb
+nac select ispl 0 na
 n0 gt nac 0
 n1 gt nac 1
 n2 gt nac 2
@@ -2124,7 +2137,7 @@ a select n0 a0 15
 b select n1 b0 15
 c select n2 c0 15
 d select n3 d0 15
-cn select isc na 0
+cn select ispl na 0
 zst rec false true 0 0
 pa fold tyarg cn zst p0 p2 v2 p3 p4
 pae at pa 0
@@ -2397,7 +2410,11 @@ r0 mov 4
 r1 select o1 a r0
 r2 select binp binr r1
 r3 select o16 selr r2
-r4 select o23 recr r3
+rcp1 select pae 4 0
+rcp2 select pan 8 0
+rcp or rcp1 rcp2
+recr2 select isrb rcp recr
+r4 select o23 recr2 r3
 r5 select o24 callr r4
 r6 select isfl foldr r5
 r7 select o17 u_gres r6
@@ -2669,19 +2686,29 @@ k2n select e2 pk k2o
 v2n select e2 pv v2o
 k3n select e3 pk k3o
 v3n select e3 pv v3o
-cwr and ce nof
-pix0 add v2o have
+grw and ce grp
+cwr0 and ce nof
+cwr or cwr0 grw
+bas select grp need v2o
+pix0 add bas have
 rd0 eq tpi 0
 rd1 eq tpi 1
 re2a sub tpi 1
 re2b mul re2a 64
 re2c add re2b 5632
 re12 select rd1 5632 re2c
-rend select rd0 5184 re12
+rend0 select rd0 5184 re12
+rbn ge tpi 8
+rend select rbn 0 rend0
 ovr0 ge pix0 rend
 ovr1 and isar ovr0
-ovre and ce ovr1
-pixg select ovr1 6016 pix0
+ovg0 and grp ovr0
+hv4 ge have 4
+ovg1 and ovg0 hv4
+ovr2 or ovr1 ovg1
+ovre and ce ovr2
+rdr or ovr1 ovg0
+pixg select rdr 6016 pix0
 pix select cwr pixg 6016
 cwn select cwr 1 0
 ntw fold pputf cwn nt pix pk pv
@@ -3040,7 +3067,7 @@ icio and ic1 ic2
 cm13 sub code 13
 opn select icio cm13 code
 nfr rec opn ar 0 false 0 0 0 0 0 0 0 0
-gfr rec 99 4294967295 0 false 0 0 0 0 0 0 0 0
+gfr rec 99 qa_base 0 false 0 0 0 0 0 0 0 0
 pf1 select ecpush cfr nfr
 pf2 select eab qa_afr pf1
 pushfr select eg1 gfr pf2
@@ -3077,11 +3104,9 @@ ncma eq cma false
 single and hv1e ncma
 bad1 eq topgrp false
 bad2 eq have 0
-bad3 gt have 4
 dz eq dp0 0
 bad4 or bad1 bad2
-bad5 or bad4 bad3
-badrp or bad5 dz
+badrp or bad4 dz
 rfr rec 23 0 have false k0 v0 k1 v1 k2 v2 k3 v3
 etx eq kd 8
 qc_a eq code 37
@@ -3102,16 +3127,23 @@ qa_dpp gt dp0 0
 qa_a1 and qa_is27 qa_hvp
 qa_arrok and qa_a1 qa_dpp
 qa_ecbok and ecb qa_arrok
+qa_bg0 and erp topgrp
+qa_bg1 gt have 4
+qa_bg2 and qa_bg0 qa_bg1
+qa_bg and qa_bg2 qa_dpp
+qa_cl or qa_ecbok qa_bg
+qa_bs select topgrp needt v2
+qa_nop select topgrp 23 27
 qa_nok eq qa_arrok false
 qa_ecbbad and ecb qa_nok
-qa_cnt select qa_ecbok have 0
-qa_psm fold ppar qa_cnt 0 ntq v2
+qa_cnt select qa_cl have 0
+qa_psm fold ppar qa_cnt 0 ntq qa_bs
 qa_hp gt qa_psm 0
 qa_pk1 select qa_hp 2 0
 qa_pm1 sub qa_psm 1
 qa_pv1 select qa_hp qa_pm1 0
-qa_nfr rec 27 0 have false 0 0 qa_pk1 qa_pv1 6 v2 0 0
-frm1 select qa_ecbok qa_nfr frm0
+qa_nfr rec qa_nop 0 have false 0 0 qa_pk1 qa_pv1 6 qa_bs 0 0
+frm1 select qa_cl qa_nfr frm0
 frm select etx qc_tfr frm1
 qa_j0 eq tpi0 0
 qa_j1 eq tpi0 1
@@ -3129,14 +3161,14 @@ qa_n4 add qa_f4 have
 qa_n5 add qa_f5 have
 qa_n6 add qa_f6 have
 qa_n7 add qa_f7 have
-qa_m0 and qa_ecbok qa_j0
-qa_m1 and qa_ecbok qa_j1
-qa_m2 and qa_ecbok qa_j2
-qa_m3 and qa_ecbok qa_j3
-qa_m4 and qa_ecbok qa_j4
-qa_m5 and qa_ecbok qa_j5
-qa_m6 and qa_ecbok qa_j6
-qa_m7 and qa_ecbok qa_j7
+qa_m0 and qa_cl qa_j0
+qa_m1 and qa_cl qa_j1
+qa_m2 and qa_cl qa_j2
+qa_m3 and qa_cl qa_j3
+qa_m4 and qa_cl qa_j4
+qa_m5 and qa_cl qa_j5
+qa_m6 and qa_cl qa_j6
+qa_m7 and qa_cl qa_j7
 qa_c0 select qa_m0 qa_n0 qa_f0
 qa_c1 select qa_m1 qa_n1 qa_f1
 qa_c2 select qa_m2 qa_n2 qa_f2
@@ -3163,7 +3195,9 @@ qb_re2a sub tpi0 1
 qb_re2b mul qb_re2a 64
 qb_re2c add qb_re2b 5632
 qb_re12 select qb_rd1 5632 qb_re2c
-qb_rend select qb_rd0 5184 qb_re12
+qb_rend0 select qb_rd0 5184 qb_re12
+qb_rbn ge tpi0 8
+qb_rend select qb_rbn 0 qb_rend0
 qb_end add v2 nxn
 qb_fit le qb_end qb_rend
 qb_sm1 and esm qb_s1
@@ -3195,7 +3229,7 @@ spr select mkany spm sp0
 ntr at spr 0
 nnr at spr 1
 qa_ntw call ntset ntr 3554 qa_cten
-ntr2 select qa_ecbok qa_ntw ntr
+ntr2 select qa_cl qa_ntw ntr
 ntr3 select qb_smok qb_nts ntr2
 sk2 select qb_smok nix2 sk1
 rkrp select single k0 1
@@ -3291,7 +3325,9 @@ r4 select erpv rvrp r3
 pvn select qa_zk nn0 r4
 sps1 rec ntr3 nnr nf0 frb dpn rs0 rk0 rv0 serrn bs0 sk2 bi1
 cs0 rec sps1 pendv pkn pvn
-csr fold casc 9 cs0
+dpn1 add dpn 1
+cdn select pendv dpn1 0
+csr fold casc cdn cs0
 r at csr 0
 ret r
 end
@@ -4516,7 +4552,11 @@ isc2 le op 26
 isc and isc1 isc2
 isl eq op 26
 ip2 le op 27
-ispool and isc1 ip2
+ispool0 and isc1 ip2
+isr23 eq op 23
+rg4 gt na 4
+isrb and isr23 rg4
+ispool or ispool0 isrb
 nac select ispool 0 na
 q0 gt nac 0
 q1 gt nac 1

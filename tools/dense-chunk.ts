@@ -226,8 +226,6 @@ export interface Block {
   readonly cost: Cost;
   /** The names of the text that are functions of the program or of its used files, other than the block's own. */
   readonly calls: readonly string[];
-  /** Why the reader cannot read this function, whatever the chunk: it is refused without being read. */
-  readonly limit?: string;
 }
 
 /** A program as the host cuts it: the blocks of its dense text, and the signature of every function. */
@@ -257,17 +255,17 @@ export function planned(program: Program, used: ReadonlyMap<string, Signature>):
     // the blank line that follows the block is one more line and one more byte
     const own = textCost(trimmed);
     let cost = { ...own, bytes: own.bytes + 1, lines: own.lines + 1 };
-    let limit: string | undefined;
     for (;;) {
       const f = program.functions[next];
       if (f === undefined) throw new Error(`no function for the block ${name}`);
       next += 1;
       const lifted = f.name !== name;
-      for (const n of f.nodes)
-        if (n.op === 'rec' && n.args.length > 4)
-          limit = 'a record of more than 4 fields (a frame of the reader holds 4)';
+      // the elements of an array literal and the fields of a record of more than four fields are kept in the
+      // regions of the array elements
       const elems = f.nodes
-        .filter((n) => n.op === 'arr' && n.text === undefined)
+        .filter(
+          (n) => (n.op === 'arr' && n.text === undefined) || (n.op === 'rec' && n.args.length > 4),
+        )
         .reduce((s, n) => s + n.args.length, 0);
       const args = f.nodes
         .filter((n) => n.op === 'call' || n.op === 'fold' || n.op === 'loop')
@@ -295,7 +293,6 @@ export function planned(program: Program, used: ReadonlyMap<string, Signature>):
       text: trimmed,
       cost,
       calls: [...calls].sort(),
-      ...(limit ? { limit } : {}),
     });
   }
   return { blocks, sigs };
@@ -344,12 +341,6 @@ export function planChunks(p: Planned, caps: Caps = READER_CAPS): Chunk[] {
   const chunks: Chunk[] = [];
   let cur: Block[] = [];
   for (const b of p.blocks) {
-    if (b.limit !== undefined) {
-      if (cur.length > 0) chunks.push(chunkOf(cur, p.sigs));
-      chunks.push(chunkOf([b], p.sigs));
-      cur = [];
-      continue;
-    }
     const grown = chunkOf([...cur, b], p.sigs);
     if (cur.length === 0 || fits(grown.cost, caps)) cur.push(b);
     else {
@@ -362,13 +353,13 @@ export function planChunks(p: Planned, caps: Caps = READER_CAPS): Chunk[] {
 }
 
 /**
- * The functions the reader refuses whatever the chunk, with the reason, known before reading: a limit of the
- * reader in the function, or a capacity of one input that the function exceeds alone.
+ * The functions the reader refuses whatever the chunk, with the reason, known before reading: a capacity of one
+ * input that the function exceeds alone.
  */
 export function refusedUpFront(p: Planned): Map<string, string> {
   const out = new Map<string, string>();
   for (const b of p.blocks) {
-    const why = b.limit ?? over(chunkOf([b], p.sigs).cost, READER_CAPS);
+    const why = over(chunkOf([b], p.sigs).cost, READER_CAPS);
     if (why !== undefined) out.set(b.name, why);
   }
   return out;
@@ -387,7 +378,7 @@ export interface ChunkedRead {
   readonly retries: number;
   /** The functions refused on their own. */
   readonly refused: readonly string[];
-  /** The reason of each function refused for a limit of the reader known beforehand. */
+  /** The reason of each function refused for a capacity it exceeds alone, known beforehand. */
   readonly reasons: ReadonlyMap<string, string>;
   /** The chunks the reader flagged although the planner counted them within the capacities. */
   readonly flagged: readonly string[];
@@ -406,10 +397,10 @@ export function readChunked(read: DenseReader, p: Planned, caps: Caps = READER_C
   let chunks = 0;
   let retries = 0;
   const go = (c: Chunk): void => {
-    // a function that cannot be read in any chunk is refused without being read: a limit of the reader, or
-    // a capacity of one input that it exceeds alone (the budget of the planner is only where chunks are cut)
+    // a function that cannot be read in any chunk is refused without being read: a capacity of one input
+    // that it exceeds alone (the budget of the planner is only where chunks are cut)
     const only = c.blocks.length === 1 ? (c.blocks[0] as Block) : undefined;
-    const why = only === undefined ? undefined : (only.limit ?? over(c.cost, READER_CAPS));
+    const why = only === undefined ? undefined : over(c.cost, READER_CAPS);
     if (only !== undefined && why !== undefined) {
       chunks += 1;
       refused.push(only.name);
