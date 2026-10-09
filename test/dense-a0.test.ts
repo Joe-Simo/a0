@@ -36,6 +36,10 @@
  * array) and the operations read, write and puts; 250 generated programs that use the token once as
  * the checker demands, 500 mutants of 60 of them, and a curated list. The `io` word for the one io
  * parameter of a function (the reference reads it) is outside the reader.
+ * Stage B5.1 adds records of more than four fields (their fields are kept in the regions of the array elements):
+ * generated programs with records of up to 150 fields, mutants, and curated cases at the limits of the regions and the
+ * types. Stage B5.2 sizes the frames for the nesting of the programs (27): generated and curated nestings on both
+ * sides of the bound, and `pre`, `post` and `ex` as ids (a spec line only where the reference reads one).
  * Stage B3.4 adds text literals, `"abc"` and `text "abc"` (the escapes \n, \t, \" and \\; a raw tab
  * is written \t), and the `use` line as one string: 250 generated programs with texts of every
  * byte the lexer marks, 500 mutants of 60 of them, and a curated list.
@@ -398,15 +402,6 @@ function generator(seed0: number): {
   return { rnd, program, callProgram };
 }
 
-/** Programs with an expression that nests deeper than the 8 frames of the reader (ten writes in one). */
-const DEEP: ReadonlySet<string> = new Set([
-  'compiler/macho.a0',
-  'site/lib/frame.a0',
-  'compiler/emit_c.a0',
-  'compiler/emit_arm64.a0',
-  'compiler/emit_wasm.a0',
-]);
-
 /** Whether the sizes of a program are within the capacities of the reader (see compiler/dense.a0). */
 function withinCapacity(p: Program, dense: string): boolean {
   if (Buffer.byteLength(dense, 'utf8') > PAGES * PAGE) return false;
@@ -447,7 +442,7 @@ test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A form
     const dense = formatDense(program);
     if (!isStageB3(program, dense)) continue;
     const name = relative(ROOT, abs).split(sep).join('/');
-    if (!withinCapacity(program, dense) || DEEP.has(name)) {
+    if (!withinCapacity(program, dense)) {
       tooBig += 1;
       continue;
     }
@@ -490,8 +485,6 @@ test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A form
   );
 });
 
-const SPEC_WORD_IDS = ['site/sentinel/locomotion.a0', 'site/sentinel/render.a0'];
-
 test('stubs: programs that call functions of the files they use read to their canonical text', (t) => {
   const read = loadReader();
   const members: string[] = [];
@@ -511,11 +504,7 @@ test('stubs: programs that call functions of the files they use read to their ca
     );
     if (!calls) continue;
     const name = relative(ROOT, abs).split(sep).join('/');
-    if (
-      !withinCapacity(program, text) ||
-      Buffer.byteLength(dense) > PAGES * PAGE ||
-      DEEP.has(name)
-    ) {
+    if (!withinCapacity(program, text) || Buffer.byteLength(dense) > PAGES * PAGE) {
       tooBig += 1;
       continue;
     }
@@ -530,17 +519,10 @@ test('stubs: programs that call functions of the files they use read to their ca
   t.diagnostic(
     `${members.length - refused.length} of ${members.length} programs with calls into used files read; ${tooBig} over the capacities; refused: ${refused.join(' ')}`,
   );
-  // `pre`, `post` and `ex` as ids are spec words to the reader (outside its forms, like spec lines)
-  assert.deepEqual(refused, SPEC_WORD_IDS, 'the reader refuses a program with stubs');
-  for (const name of refused)
-    assert.match(
-      denseWithStubs(
-        parse(readFileSync(join(ROOT, name), 'utf8')),
-        usedSignatures(join(ROOT, name)),
-      ).dense,
-      /^(pre|post|ex) /m,
-      `${name}: an id that is a spec word`,
-    );
+  assert.deepEqual(refused, [], 'the reader refuses a program with stubs');
+  // ids named pre, post and ex (not a spec word where they stand)
+  for (const name of ['site/sentinel/locomotion.a0', 'site/sentinel/render.a0'])
+    assert.ok(members.includes(name), `${name}: a program with an id that is a spec word is read`);
   assert.ok(members.length > 0, 'some programs call functions of used files');
 });
 
@@ -670,8 +652,6 @@ function chunkMembers() {
   for (const abs of listSources(ROOT)) {
     if (isReject(abs, ROOT)) continue;
     const name = relative(ROOT, abs).split(sep).join('/');
-    // an expression nested deeper than the 8 frames of the reader; ids that are spec words
-    if (DEEP.has(name) || SPEC_WORD_IDS.includes(name)) continue;
     const program = parse(readFileSync(abs, 'utf8'));
     const sigs = usedSignatures(abs);
     const own = new Set(program.functions.map((f) => f.name));
@@ -730,7 +710,7 @@ test('chunks: the planner cuts a program at function boundaries within the capac
   t.diagnostic(
     `${all.length} programs: ${readable.length} without a function refused up front, ${refused.length} with one; reasons (functions): ${[...reasons].map(([k, v]) => `${k} ${v}`).join('; ')}`,
   );
-  assert.ok(readable.length > 70 && refused.length >= 4, 'both kinds are present');
+  assert.ok(readable.length > 75 && refused.length >= 5, 'both kinds are present');
 });
 
 /**
@@ -760,17 +740,17 @@ function chunkInvariance(t: TestContext, label: string, caps: Caps): number {
 
 test('chunks: a program cut at 16 KB reads to the text of the whole program', (t) => {
   const n = chunkInvariance(t, '16 KB', READER_CAPS);
-  assert.equal(n, 75, `${n} programs`);
+  assert.equal(n, 81, `${n} programs`);
 });
 
 test('chunks: a program cut at 4 KB reads to the same text', (t) => {
   const n = chunkInvariance(t, '4 KB', { ...READER_CAPS, bytes: 4096 });
-  assert.equal(n, 75, `${n} programs`);
+  assert.equal(n, 81, `${n} programs`);
 });
 
 test('chunks: a program cut after every function reads to the same text', (t) => {
   const n = chunkInvariance(t, 'one function per chunk', { ...READER_CAPS, bytes: 1 });
-  assert.equal(n, 75, `${n} programs`);
+  assert.equal(n, 81, `${n} programs`);
 });
 
 test('chunks: generated call programs cut at random budgets read to the text of the whole program', (t) => {
@@ -1605,7 +1585,9 @@ test('the B2 reader: capacities set the error flag, never wrong output', () => {
   const nest = (d: number): string => `fn f ${'add 1 fold {A} 3 '.repeat(d)}0\n`;
   assert.equal(read(nest(3)).err, false);
   assert.equal(read(nest(3)).text, reference(nest(3)));
-  assert.equal(read(nest(9)).err, true, 'more nested frames than the stack holds');
+  assert.equal(read(nest(13)).err, false, 'twenty-six frames');
+  assert.equal(read(nest(13)).text, reference(nest(13)));
+  assert.equal(read(nest(14)).err, true, 'more nested frames than the stack holds');
 });
 
 // ---------------------------------------------------------------------------
@@ -2088,11 +2070,17 @@ test('the B3.1 reader: the array regions set the error flag on overflow, never w
   assert.equal(read(d2(64)).err, false, 'an array that fills the region of depth 2');
   assert.equal(read(d2(64)).text, reference(d2(64)));
   assert.equal(read(d2(65)).err, true, 'an array over the region of depth 2');
-  // nesting: the frames hold eight levels
+  // nesting: the arrays have regions down to the depth of 8 frames
   const deep = (d: number): string => `fn f -> u32\n${'get ['.repeat(d)}1${' ] 0'.repeat(d)}\n`;
   assert.equal(read(deep(3)).err, false, 'arrays nested three deep');
   assert.equal(read(deep(3)).text, reference(deep(3)));
-  assert.equal(read(deep(5)).err, true, 'arrays nested over the frames');
+  assert.equal(
+    read(deep(4)).err,
+    false,
+    'arrays nested four deep, the last in the region of depth 7',
+  );
+  assert.equal(read(deep(4)).text, reference(deep(4)));
+  assert.equal(read(deep(5)).err, true, 'an array at the depth of 8 frames has no region');
 });
 
 // ---------------------------------------------------------------------------
@@ -2950,39 +2938,44 @@ test('the B3.4 reader: text literals and use lines read as the reference reads t
 const REGION_CAPS = [2112, 448, 64, 64, 64, 64, 64, 64];
 
 /**
- * What the dense text puts in each region, by the reference: for an array literal or a record literal of more
- * than four fields, its element count at the depth of its frame (the frames open around it). A depth
- * of 8 or more has no region.
+ * What the reference reading of a dense text asks of the frames and the regions of the reader: the most frames
+ * open at once (an operation with operands, a call, a fold, a group or an array literal is a frame; a name, a
+ * number, a text and a call of no operand are not), and for each array literal and each record literal of more
+ * than four fields, its element count at the depth of its frame (the frames open around it). The body of an
+ * inline fold or loop has its own frames. A depth of 8 or more has no region.
  */
-function regionUse(dense: string): number[] {
+function readerUse(dense: string): { frames: number; regions: number[] } {
   const proto = FunctionParser.prototype as unknown as {
     expr: () => unknown;
-    toks: { text: string }[];
+    toks: { text: string; kind: string }[];
     pos: number;
     nodes: { op: string; args: unknown[]; text?: string }[];
   };
   const orig = proto.expr;
-  const use: number[] = Array.from({ length: 64 }, () => 0);
-  let depth = 0;
+  const regions: number[] = Array.from({ length: 64 }, () => 0);
+  const depths = new WeakMap<object, number>();
+  let frames = 0;
   proto.expr = function (this: typeof proto) {
     const t = this.toks[this.pos];
     const before = this.nodes.length;
     const open = t !== undefined && (t.text === '(' || t.text === '[');
-    const frame = depth;
-    depth += 1;
+    const frame = depths.get(this) ?? 0;
+    depths.set(this, frame + 1);
     try {
       return orig.call(this);
     } finally {
-      depth -= 1;
+      depths.set(this, frame);
       const last = this.nodes[this.nodes.length - 1];
+      const made = this.nodes.length > before && last !== undefined;
+      if (open || (made && t?.kind !== 'str' && (last?.args.length ?? 0) > 0))
+        frames = Math.max(frames, frame + 1);
       if (
         open &&
-        this.nodes.length > before &&
-        last !== undefined &&
-        ((last.op === 'arr' && last.text === undefined) ||
-          (last.op === 'rec' && last.args.length > 4))
+        made &&
+        ((last?.op === 'arr' && last.text === undefined) ||
+          (last?.op === 'rec' && last.args.length > 4))
       )
-        use[frame] = (use[frame] as number) + last.args.length;
+        regions[frame] = (regions[frame] as number) + (last?.args.length ?? 0);
     }
   };
   try {
@@ -2992,12 +2985,13 @@ function regionUse(dense: string): number[] {
   } finally {
     proto.expr = orig;
   }
-  return use;
+  return { frames, regions };
 }
 
-/** Whether a region of the array elements is over its capacity, by the reference reading of the text. */
-function regionsOver(dense: string): boolean {
-  return regionUse(dense).some((n, d) => n > (REGION_CAPS[d] ?? 0));
+/** Whether the frames or a region of the array elements are over their capacity, by the reference reading. */
+function overCapacity(dense: string): boolean {
+  const use = readerUse(dense);
+  return use.frames > FRAME_CAP || use.regions.some((n, d) => n > (REGION_CAPS[d] ?? 0));
 }
 
 type RecType = 'u32' | 'bool' | RecType[];
@@ -3117,7 +3111,7 @@ test('the B5.1 reader: generated programs with records of more than four fields 
     const dense = formatDense(program);
     if (Buffer.byteLength(dense) > PAGES * PAGE) continue;
     const got = read(dense);
-    if (regionsOver(dense)) {
+    if (overCapacity(dense)) {
       // a region of the array elements is full: the reader says so and writes no wrong text
       assert.equal(got.err, true, `program ${k}: a full region sets the error flag\n${dense}`);
       over += 1;
@@ -3179,7 +3173,7 @@ test('the B5.1 reader: mutants of programs with large records are rejected exact
         `mutant ${m}: the reader flags what the reference rejects\n${text}`,
       );
       rejected += 1;
-    } else if (regionsOver(text)) {
+    } else if (overCapacity(text)) {
       assert.equal(got.err, true, `mutant ${m}: a full region sets the error flag\n${text}`);
       full += 1;
     } else if (got.err) {
@@ -3329,4 +3323,300 @@ test('the B5.1 reader: records of more than four fields, their regions and their
   }
   t.diagnostic(`${equal} read to the reference text, ${rejected} rejected, ${flagged} flagged`);
   assert.ok(equal > 20 && flagged >= 5, 'both kinds are covered');
+});
+
+// ---------------------------------------------------------------------------
+// Stage B5.2: nesting up to the frames of the reader; pre, post and ex as ids
+// ---------------------------------------------------------------------------
+
+/** The frames of the reader: the most nested expression of the programs of the set needs this many. */
+const FRAME_CAP = 27;
+
+/**
+ * A nested expression of the u32 operations, calls of a function of two parameters, moves, and records read by
+ * at, with the child in a random place among the operands.
+ */
+function nestedExpression(rnd: (n: number) => number, depth: number): string {
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  const leaf = (): string => pick(['A', 'B', '1', '7', '255', 'A', 'B']);
+  const wrap = (d: number): string => {
+    if (d <= 0) return leaf();
+    const kind = rnd(8);
+    const child = wrap(d - 1);
+    if (kind < 3) {
+      const op = pick(BIN_OPS);
+      return rnd(2) === 0 ? `${op} ${child} ${leaf()}` : `${op} ${leaf()} ${child}`;
+    }
+    if (kind === 3) return `mov ${child}`;
+    if (kind === 4) return rnd(2) === 0 ? `g ${child} ${leaf()}` : `g ${leaf()} ${child}`;
+    if (kind === 5) return `call g ${child} ${leaf()}`;
+    // a record of two to four fields with the child among them, read by at
+    const n = 2 + rnd(3);
+    const at = rnd(n);
+    const fields = Array.from({ length: n }, (_, i) => (i === at ? child : leaf()));
+    return `at (${fields.join(' ')}) ${at}`;
+  };
+  return wrap(depth);
+}
+
+test('the B5.2 reader: nested expressions read when the reference needs the frames of the reader, and set the error flag over them', (t) => {
+  const read = loadReader();
+  const rnd = rngFrom(5252);
+  let readOk = 0;
+  let over = 0;
+  for (let k = 0; k < 70; k += 1) {
+    const depth = k < 30 ? FRAME_CAP - 14 + (k % 14) : 4 + rnd(FRAME_CAP);
+    const body = nestedExpression(rnd, depth);
+    const text = `fn g u32 u32 -> u32\nadd A B\n\nfn f u32 u32 -> u32\nret ${body}\nend\n`;
+    const want = reference(text);
+    assert.notEqual(want, null, `program ${k}: the reference reads it\n${text}`);
+    const use = readerUse(text);
+    const got = read(text);
+    if (use.frames > FRAME_CAP || use.regions.some((n, d) => n > (REGION_CAPS[d] ?? 0))) {
+      assert.equal(got.err, true, `program ${k}: ${use.frames} frames set the error flag\n${text}`);
+      over += 1;
+    } else {
+      assert.equal(
+        got.err,
+        false,
+        `program ${k}: ${use.frames} frames, the error flag is clear\n${text}`,
+      );
+      assert.equal(got.text, want, `program ${k}: canonical text\n${text}`);
+      readOk += 1;
+    }
+  }
+  t.diagnostic(`${readOk} programs read, ${over} over the frames and flagged`);
+  assert.ok(readOk > 25 && over > 10, 'both sides of the bound are covered');
+});
+
+/** A chain of exactly n frames. */
+function chainOf(n: number, head = 'fn f u32 -> u32\nret '): string {
+  return `${head}${'add '.repeat(n)}A${' 1'.repeat(n)}\nend\n`;
+}
+
+test('the B5.2 reader: the frames hold exactly the nesting of the programs, in every kind of frame', () => {
+  const read = loadReader();
+  const cases: [string, (n: number) => string][] = [
+    ['an operation', (n) => chainOf(n)],
+    ['an operation on the header line', (n) => chainOf(n, 'fn f u32 -> u32 ')],
+    ['mov', (n) => `fn f u32 -> u32\nret ${'mov '.repeat(n)}A\nend\n`],
+    [
+      'a parenthesized group',
+      (n) => `fn f u32 -> u32\nret ${'('.repeat(n)}A 1${')'.repeat(n)}\nend\n`,
+    ],
+    [
+      'records inside records, read by at',
+      (n) => {
+        let r = '(A 1)';
+        for (let i = 1; i < n >> 1; i += 1) r = `(${r} 1)`;
+        return `fn f u32 -> u32\nret ${'at '.repeat(n >> 1)}${r}${' 0'.repeat(n >> 1)}\nend\n`;
+      },
+    ],
+    ['a call', (n) => `fn g u32 -> u32\nmov A\n\nfn f u32 -> u32\nret ${'g '.repeat(n)}A\nend\n`],
+    [
+      'a call keyword',
+      (n) => `fn g u32 -> u32\nmov A\n\nfn f u32 -> u32\nret ${'call g '.repeat(n)}A\nend\n`,
+    ],
+    [
+      'get and an array literal (the literal has no region deeper than 7)',
+      (n) => `fn f u32 -> u32\nret ${'get ['.repeat(n)}1${' ] 0'.repeat(n)}\nend\n`,
+    ],
+  ];
+  for (const [label, make] of cases) {
+    for (const n of [1, 8, 9, 14, FRAME_CAP - 1, FRAME_CAP, FRAME_CAP + 1, FRAME_CAP + 3, 40]) {
+      const text = make(n);
+      const want = reference(text);
+      assert.notEqual(want, null, `${label} ${n}: the reference reads it`);
+      const use = readerUse(text);
+      const got = read(text);
+      const over = use.frames > FRAME_CAP || use.regions.some((c, d) => c > (REGION_CAPS[d] ?? 0));
+      if (over)
+        assert.equal(got.err, true, `${label} ${n} (${use.frames} frames): the error flag is set`);
+      else {
+        assert.equal(
+          got.err,
+          false,
+          `${label} ${n} (${use.frames} frames): the error flag is clear`,
+        );
+        assert.equal(got.text, want, `${label} ${n}: canonical text`);
+      }
+    }
+  }
+  // the bound itself, for the chain of operations
+  assert.equal(read(chainOf(FRAME_CAP)).err, false, `${FRAME_CAP} frames`);
+  assert.equal(read(chainOf(FRAME_CAP + 1)).err, true, `${FRAME_CAP + 1} frames`);
+});
+
+/** The programs that the pre, post and ex words concern: canonical text of the reference, and whether it has specs. */
+function specOf(text: string): { text: string; spec: boolean } | null {
+  try {
+    const program = parseDense(text);
+    return {
+      text: formatProgram(program),
+      spec: program.functions.some((f) => f.spec !== undefined),
+    };
+  } catch (e) {
+    if (e instanceof A0Error) return null;
+    throw e;
+  }
+}
+
+const SPEC_WORD_CURATED: [string, string][] = [
+  ['pre as the second statement', 'fn f u32 -> u32\na add A 1\npre add a 2\nret pre\nend\n'],
+  ['post as the second statement', 'fn f u32 -> u32\na add A 1\npost add a 2\nret post\nend\n'],
+  ['ex as the second statement', 'fn f u32 -> u32\na add A 1\nex add a 2\nret ex\nend\n'],
+  ['pre as the first statement is a spec line', 'fn f u32 -> u32\npre lt A 100\nadd A 1\nend\n'],
+  ['post as the first statement is a spec line', 'fn f u32 -> u32\npost lt r 100\nadd A 1\nend\n'],
+  ['pre after a comment is a spec line', 'fn f u32 -> u32\n# note\npre lt A 100\nadd A 1\nend\n'],
+  ['pre as an id on the header line', 'fn f u32 -> u32 pre add A 1\nret pre\nend\n'],
+  [
+    'pre on the line after a header statement',
+    'fn f u32 -> u32 a add A 1\npre add a 2\nret pre\nend\n',
+  ],
+  ['$pre as the first statement', 'fn f u32 -> u32\n$pre add A 1\nret pre\nend\n'],
+  ['$post as the first statement', 'fn f u32 -> u32\n$post add A 1\nret post\nend\n'],
+  ['ex as the first statement, no arrow', 'fn f u32 -> u32\nex add A 1\nret ex\nend\n'],
+  ['ex as the first statement, with an arrow', 'fn f u32 -> u32\nex 3 -> 4\nadd A 1\nend\n'],
+  [
+    'pre as a value of two statements',
+    'fn f u32 -> u32\na add A 1\npre add a 2\npost add pre a\nadd post pre\nend\n',
+  ],
+  ['pre used before it is defined', 'fn f u32 -> u32\nadd pre 1\nend\n'],
+  ['pre2 is no spec word', 'fn f u32 -> u32\npre2 add A 1\nret pre2\nend\n'],
+  ['pre_x is no spec word', 'fn f u32 -> u32\npre_x add A 1\nret pre_x\nend\n'],
+  ['post1 is no spec word', 'fn f u32 -> u32\npost1 add A 1\nret post1\nend\n'],
+  [
+    'the first statement of the second function',
+    'fn g u32 -> u32\nadd A 1\n\nfn f u32 -> u32\npre lt A 100\ng A\nend\n',
+  ],
+  ['pre as the id after a record', 'fn f u32 -> u32\nr (A 1)\npre at r 0\nret pre\nend\n'],
+  ['pre named twice', 'fn f u32 -> u32\na add A 1\npre add a 2\npre add pre 3\nret pre\nend\n'],
+  [
+    'pre as the name of a fold result',
+    'fn step u32 u32 -> u32\nadd A 1\n\nfn f u32 -> u32\na add A 1\npre fold step 3 a\nret pre\nend\n',
+  ],
+];
+
+test('the B5.2 reader: pre, post and ex are ids except where they start a spec line', () => {
+  const read = loadReader();
+  let equal = 0;
+  let flagged = 0;
+  for (const [label, text] of SPEC_WORD_CURATED) {
+    const want = specOf(text);
+    const got = read(text);
+    if (want === null || want.spec) {
+      assert.equal(got.err, true, `${label}: the error flag is set\n${text}`);
+      flagged += 1;
+    } else {
+      assert.equal(got.err, false, `${label}: the error flag is clear\n${text}`);
+      assert.equal(got.text, want.text, `${label}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  assert.ok(equal >= 12 && flagged >= 5, 'both kinds are covered');
+});
+
+/** A dense program whose statements are named pre, post, ex and ordinary ids. */
+function specWordProgram(rnd: (n: number) => number): string {
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  const names = ['pre', 'post', 'ex', 'pre2', 'post_x', 'exx', 'q', 'a', 'b', 'k1'];
+  const parts: string[] = [];
+  const nf = 1 + rnd(3);
+  for (let f = 0; f < nf; f += 1) {
+    const taken: string[] = [];
+    const lines: string[] = [];
+    const operand = (): string =>
+      taken.length > 0 && rnd(2) === 0 ? pick(taken) : pick(['A', 'B', '3', '9']);
+    const n = 2 + rnd(5);
+    const onHeader = rnd(4) === 0;
+    for (let k = 0; k < n; k += 1) {
+      let name = pick(names);
+      while (taken.includes(name)) name = `${pick(names)}${rnd(100)}`;
+      // a first statement named pre or post is written \$pre, as the printer writes it, or left a spec line
+      const first = k === 0 && !onHeader;
+      const written = first && /^(pre|post)$/.test(name) && rnd(3) !== 0 ? `$${name}` : name;
+      lines.push(`${written} ${pick(BIN_OPS)} ${operand()} ${operand()}`);
+      taken.push(name);
+    }
+    const last = taken[taken.length - 1] as string;
+    const header = `fn s${f}x${rnd(9)} u32 u32 -> u32`;
+    if (onHeader)
+      parts.push(`${header} ${lines[0]}\n${lines.slice(1).join('\n')}\nret ${last}\nend\n`);
+    else parts.push(`${header}\n${lines.join('\n')}\nret ${last}\nend\n`);
+  }
+  return parts.join('\n');
+}
+
+test('the B5.2 reader: generated programs with ids named pre, post and ex read to the reference text, or set the error flag on a spec line', (t) => {
+  const read = loadReader();
+  const rnd = rngFrom(9191);
+  let equal = 0;
+  let flagged = 0;
+  let withId = 0;
+  for (let k = 0; k < 200; k += 1) {
+    const text = specWordProgram(rnd);
+    const want = specOf(text);
+    const got = read(text);
+    if (want === null || want.spec) {
+      assert.equal(got.err, true, `program ${k}: the error flag is set\n${text}`);
+      flagged += 1;
+    } else {
+      assert.equal(got.err, false, `program ${k}: the error flag is clear\n${text}`);
+      assert.equal(got.text, want.text, `program ${k}: canonical text\n${text}`);
+      equal += 1;
+      if (/^(pre|post|ex) /m.test(text)) withId += 1;
+    }
+  }
+  t.diagnostic(`${equal} read, ${withId} with such an id; ${flagged} flagged`);
+  assert.ok(equal > 80 && withId > 40 && flagged > 10, 'both kinds are covered');
+});
+
+test('the B5.2 reader: mutants of programs with ids named pre, post and ex are read as the reference reads them', (t) => {
+  const read = loadReader();
+  const rnd = rngFrom(1313);
+  const pick = <T>(xs: readonly T[]): T => xs[rnd(xs.length)] as T;
+  const tokens = [
+    ...ARRAY_MUTANT_TOKENS,
+    'pre',
+    'post',
+    'ex',
+    '$pre',
+    '$post',
+    '->',
+    'pre2',
+    'ret',
+  ];
+  const bases = Array.from({ length: 40 }, () => specWordProgram(rnd));
+  let equal = 0;
+  let rejected = 0;
+  let flagged = 0;
+  for (let m = 0; m < 300; m += 1) {
+    const text = mutateArrays(pick(bases), rnd, pick, tokens);
+    if (Buffer.byteLength(text) > PAGES * PAGE) continue;
+    const want = specOf(text);
+    const got = read(text);
+    if (want === null) {
+      assert.equal(
+        got.err,
+        true,
+        `mutant ${m}: the reader flags what the reference rejects\n${text}`,
+      );
+      rejected += 1;
+    } else if (want.spec) {
+      assert.equal(got.err, true, `mutant ${m}: a spec line sets the error flag\n${text}`);
+      flagged += 1;
+    } else if (got.err) {
+      assert.ok(
+        outsideTheReaderB34(text, parseDense(text)),
+        `mutant ${m}: the reader refuses a text of the forms it reads\n${text}`,
+      );
+    } else {
+      assert.equal(got.text, want.text, `mutant ${m}: canonical text\n${text}`);
+      equal += 1;
+    }
+  }
+  t.diagnostic(
+    `${rejected} mutants rejected, ${equal} read to the reference text, ${flagged} spec lines`,
+  );
+  assert.ok(rejected > 50 && equal > 20, 'both kinds are covered');
 });

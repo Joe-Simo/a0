@@ -61,6 +61,14 @@
 # highest parameter its fields use, k2 = 6 and v2 the first of its nargs fields), its region advances, and its nargs
 # is over 4. A field past the end of the region, or a group of more than four fields at a depth with no region (8 and over),
 # sets the error flag.
+# Stage B5.2 sizes the frame stack for the nesting of the programs: 27 frames (the most nested expression of the
+# programs the reader is tested on, compiler/emit_wasm.a0, holds 27 at once; a frame is an operation with operands, a
+# call, a fold or loop, a group or an array literal), the error flag above. The regions of the array elements stay at
+# the depths 0 to 7: an array literal, or a record of more than four fields, at the depth of 8 frames or more sets the
+# error flag. A token cascades its value for as many steps as the stack is deep. The words `pre` and `post` are ids
+# like any other, except as the first word of the first line of a function whose header has no statement, where the
+# reference reads a spec line (error flag); a word `ex` is an id (an `ex` line is a spec line only with an arrow, and the
+# arrow is an error here).
 # Not yet read (the error flag is set): spec lines, hex
 # literals, profile lines, commas used as blanks, the `rec` and `arr` words, record and array states and
 # extra operands of inline bodies, and records and arrays as an unwritten result.
@@ -68,7 +76,7 @@
 # Input: the dense bytes src[0..n) as 128-byte pages (n <= 16384). Output: the canonical bytes as
 # pages of 128 (at most 16384 bytes) and the error flag, set when the input or the output is over
 # a capacity (16384 bytes, 4096 tokens, 2048 lines, 2048 nodes, 1024 nodes of inline bodies, 512
-# inline bodies, 512 functions, 2048 parameters, 8 nested frames, 3072 call arguments, 2944 array
+# inline bodies, 512 functions, 2048 parameters, 27 nested frames, 3072 call arguments, 2944 array
 # elements: 2112 in the arrays at the first level, 448 at the second, 64 at each of the next six) or a
 # construct is outside the forms above. The name and id tables of a function
 # hold 2048 entries, the node capacity, so every node of an accepted program has its own entry.
@@ -1054,27 +1062,13 @@ r1d and r1a r1b
 r1e and r1d r1c
 r1f and r1e isw
 s51 select r1f 37 s50
-r2a eq ln 3
-r2b eq w0 7369317
-r2c eq w1 0
-r2d and r2a r2b
-r2e and r2d r2c
-r2f and r2e isw
-s52 select r2f 37 s51
-r3a eq ln 4
-r3b eq w0 1886352244
-r3c eq w1 0
-r3d and r3a r3b
-r3e and r3d r3c
-r3f and r3e isw
-s53 select r3f 37 s52
 r4a eq ln 4
 r4b eq w0 1667329132
 r4c eq w1 0
 r4d and r4a r4b
 r4e and r4d r4c
 r4f and r4e isw
-s54 select r4f 38 s53
+s54 select r4f 38 s51
 r5a eq ln 4
 r5b eq w0 1718578276
 r5c eq w1 0
@@ -1231,12 +1225,12 @@ r set p0 ix pg2
 ret r
 end
 
-fn frget (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9 u32 -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)
+fn frget (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28 u32 -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)
 r get p0 p1
 ret r
 end
 
-fn frset (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9 u32 (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9
+fn frset (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28 u32 (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28
 r set p0 p1 p2
 ret r
 end
@@ -1246,9 +1240,9 @@ r rec 0 0 0 false 0 0 0 0 0 0 0 0
 ret r
 end
 
-fn zfrms -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9
+fn zfrms -> (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28
 zf call zfrm
-r arr zf zf zf zf zf zf zf zf zf
+r arr zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf zf
 ret r
 end
 
@@ -2552,7 +2546,7 @@ ret r
 end
 
 # The statement state with the node of a frame (its op and operands) appended.
-fn mknode ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32,u32,u32) (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32) -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32,u32,u32)
+fn mknode ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32) (u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32) -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32)
 nt at p0 0
 nn at p0 1
 nf at p0 2
@@ -2623,7 +2617,7 @@ end
 # One cascade step: a pending value goes to the top frame (or to the root); a full frame becomes
 # a node, and its value is pending for the frame below it. An array frame (op 27) is never full: the
 # value goes to the next place of the region of its depth in the call-argument pool, and `]` makes the node.
-fn casc (((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32,u32,u32),bool,u32,u32) u32 -> (((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32,u32,u32),bool,u32,u32)
+fn casc (((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32),bool,u32,u32) u32 -> (((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32),bool,u32,u32)
 sp at p0 0
 pe at p0 1
 pk at p0 2
@@ -2764,7 +2758,7 @@ ret r
 end
 
 # A statement token: its frame, its value and its errors; then the cascade of its value.
-fn spt1 ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32,u32,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4 u32 u32 bool -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32,u32,u32)
+fn spt1 ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4 u32 u32 bool -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32)
 ix add p3 p1
 t call tkget p2 ix
 kd at t 0
@@ -3277,7 +3271,7 @@ nfbad and enm1 nfbad0
 ncg eq topgrp false
 cmz or ncg dz
 cmbad and ecm cmz
-dfull eq dp0 8
+dfull eq dp0 27
 pof and push dfull
 erpbad and erp badrp
 ea1 or se0 kwbad
@@ -3333,7 +3327,7 @@ ret r
 end
 
 # A statement token, unless it is a function name taken by a fold or loop before it (skipped).
-fn spt ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32,u32,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4 u32 u32 bool -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x9,u32,bool,u32,u32,bool,u32,u32,u32)
+fn spt ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4 u32 u32 bool -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,u32,(u32,u32,u32,bool,u32,u32,u32,u32,u32,u32,u32,u32)x28,u32,bool,u32,u32,bool,u32,u32,u32)
 ix add p3 p1
 sk at p0 10
 skp lt ix sk
@@ -3897,9 +3891,55 @@ r call hdr p0 p2 p3 p4
 ret r
 end
 
+# A statement line. A line that starts with the word pre or post (not written with `$`), as the first line of a
+# function whose header has no statement, is a spec line, which the reader does not read (anywhere else they are ids).
 fn stmtf ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool) u32 (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 u32 u32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
 r call stmt p0 p2 p3 p4
-ret r
+gnn at p0 1
+gft at p0 2
+gnf at p0 3
+has gt gnf 0
+cm1 sub gnf 1
+cur select has cm1 0
+fe call ftget gft cur
+nf0 at fe 5
+rk0 at fe 6
+t call tkget p2 p3
+kd at t 0
+tl at t 1
+tw0 at t 3
+tw1 at t 4
+tfl at t 7
+isw eq kd 1
+la eq tl 3
+lb eq tw0 7369317
+lc eq tw1 0
+ld and la lb
+le and ld lc
+lf eq tl 4
+lg eq tw0 1886352244
+lh and lf lg
+li and lh lc
+lj or le li
+lk0 and lj isw
+dsc and tfl 128
+nds eq dsc 0
+lk and lk0 nds
+nk eq rk0 0
+nn eq gnn nf0
+nz and nk nn
+ns and nz has
+bad and lk ns
+o0 at r 0
+o1 at r 1
+o2 at r 2
+o3 at r 3
+o4 at r 4
+o5 at r 5
+o6 at r 6
+ne or o6 bad
+out rec o0 o1 o2 o3 o4 o5 ne
+ret out
 end
 
 # A stub, `use fn NAME TYPES -> RESULT`: the header of a function that a used file defines, read as a header
