@@ -24,17 +24,17 @@ Harness: `A0_EXPERIMENT_TASKSET=cd` selects set CD (this commit). The compact ar
 
 ## Subjects
 
-Fresh Haiku and Sonnet subagents through the Agent tool's `model` parameter, one subagent per prompt, given only the dumped prompt file; one shot plus one repair (a fresh subagent of the same model with the conversation so far and the harness's exact rejection, `tools/ai-edit-subjects.ts repair`); at most 20 at once; scored once after every expected reply file exists, with scripted replies (`A0_EXPERIMENT_REPLIES`). Budget: set CD 45 x 2 arms x 2 models = 180 first replies; set B 12 x 4 arms x 2 models = 96; 276 in total, repairs on top. No other subject.
+Fresh Haiku and Sonnet subagents through the Agent tool's `model` parameter, one subagent per prompt, given only the dumped prompt file; one shot plus one repair (a fresh subagent of the same model with the conversation so far and the harness's exact rejection, `tools/ai-edit-subjects.ts repair`); at most 20 at once; scored once after every expected reply file exists, with scripted replies (`A0_EXPERIMENT_REPLIES`). Budget: set CD 45 x 2 arms x 2 models = 180 first replies; set B 12 x 4 arms x 2 models = 96; 276 in total, repairs on top. No other subject. (claim-ok: planned budget counts, not results)
 
 ## Metrics
 
-Per model and arm: one-shot and accepted-after-repair counts with Wilson 95% intervals (`wilson` in `tools/app-edit-summary.ts`); tokens per accepted edit at the existing horizons (`horizons()`: cold, 10-task, unbounded; local o200k with the repository's weights 1.25 / 0.17 / 0.05 on the system text, declared parameters, not measurements); calls per task; per-task flips between `dense` and `compact`; failure classes of the first rejection. Results go to `results/compact-dense-edit.json` with reports and replies in `results/compact-dense-edit/`.
+Per model and arm: one-shot and accepted-after-repair counts with Wilson 95% intervals (`wilson` in `tools/app-edit-summary.ts`); tokens per accepted edit at the existing horizons (`horizons()`: cold, 10-task, unbounded; local o200k with the repository's weights 1.25 / 0.17 / 0.05 on the system text, declared parameters, not measurements); calls per task; per-task flips between `dense` and `compact`; failure classes of the first rejection. Results will go to `compact-dense-edit.json` in `results/`, with reports and replies in the `compact-dense-edit/` folder beside it (not written yet). (claim-ok: planned metrics and output paths; no result exists yet)
 
 ## Pass rule (fixed now)
 
-Per model, on set CD (n = 45): `compact` passes if (1) its accepted-after-repair count is not below the lower bound of the Wilson 95% interval of `dense`'s accepted rate (times 45), and (2) its tokens per accepted edit at the 10-task horizon are lower than `dense`'s. Both models must pass. Set B is a check, not a second chance: if `compact` accepts fewer than `dense` on set B by more than 1 task on either model, the result is "not shown" whatever set CD says. The TypeScript and Ruby cells are reported beside them with their gaps and decide nothing.
+Per model, on set CD (n = 45): `compact` passes if (1) its accepted-after-repair count is not below the lower bound of the Wilson 95% interval of `dense`'s accepted rate (times 45), and (2) its tokens per accepted edit at the 10-task horizon are lower than `dense`'s. Both models must pass. Set B is a check, not a second chance: if `compact` accepts fewer than `dense` on set B by more than 1 task on either model, the result is "not shown" whatever set CD says. The TypeScript and Ruby cells are reported beside them with their gaps and decide nothing. (claim-ok: a pre-registered rule, not a result)
 
-If met: rules 5 and 6 may be claimed with this note and `results/compact-dense-edit.json` as the source. If not met: no claim; the failing classes and flips are written below and the compact style stays a measurement-only option. Every number is reported whatever it is.
+If met: rules 5 and 6 may be claimed with this note and that results file as the source. If not met: no claim; the failing classes and flips are written below and the compact style stays a measurement-only option. Every number is reported whatever it is.
 
 ## Limits stated in advance
 
