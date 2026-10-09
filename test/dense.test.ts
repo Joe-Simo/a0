@@ -803,3 +803,45 @@ test('dense compact spellings: every program round-trips exactly with all of the
     }
   }
 });
+
+const COMBINED: DenseStyle = {
+  ...COMPACT_ALL,
+  tab: false,
+  fill: true,
+  bit: true,
+  dot: true,
+  inferResult: true,
+  negative: true,
+  foldN: true,
+  ops: true,
+};
+
+test('dense combined compact rules: small programs print as designed and convert back exactly', () => {
+  const cases: [string, string][] = [
+    ['fn affine u32 u32 u32 -> u32\na mul p0 p1\nb add a p2\nret b\nend', 'affine +*A B C'],
+    ['fn m u32 -> u32\na and p0 4294967295\nret a\nend', 'm &A-1'],
+    ['fn b u32 u32 -> u32\na lt p0 p1\nc select a 1 0\nret c\nend', 'b bit<A B'],
+    ['fn r u32 -> u32\na sub p0 5\nret a\nend', 'r -A 5'],
+    // `-` before a digit is a negative literal: the space stays
+    ['fn s u32 -> u32\na sub 5 p0\nret a\nend', 's - 5 A'],
+  ];
+  for (const [canonical, dense] of cases) {
+    const p = normalizeProgram(parse(canonical));
+    const text = formatDense(p, { style: COMBINED }).trimEnd();
+    assert.equal(text, dense);
+    assert.equal(formatProgram(parseDense(text, { compact: true })), formatProgram(p));
+  }
+});
+
+// Measured 16 s (bun test) on the full tree.
+test('dense combined compact rules: every program round-trips exactly with all of them on', { timeout: 60_000 }, async () => {
+  for (const path of files(ROOT)) {
+    const { program, known } = await parseFile(path, read);
+    for (const p of [program, normalizeProgram(program)]) {
+      const dense = formatDense(p, { known, style: COMBINED });
+      const back = parseDense(dense, { known, compact: true });
+      assert.equal(formatProgram(back), formatProgram(p), `${path}: canonical form differs`);
+      assert.equal(formatDense(back, { known, style: COMBINED }), dense, `${path}: fixed point`);
+    }
+  }
+});

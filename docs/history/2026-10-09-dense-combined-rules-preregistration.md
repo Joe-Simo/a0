@@ -43,3 +43,28 @@ A rule that fails either gate is dropped and the reason recorded; the kernel sum
 ## Not in this change
 
 `compiler/dense.a0` (the self-hosted reader) reads none of these spellings; reading them there is a follow-up. Rules 4 to 8 change what a model reads and writes; no AI edit-accuracy claim is made from this measurement. claim-ok: a condition, not a measured value.
+
+## Outcome (measured after the change; `results/dense-combined.json`)
+
+**No.** With every kept rule on, `tab` off and no rotate shorthand, the kernel sum is **162**, one token above the 2x line (161); 162/323 = 0.502 of the best single language. Every rule passed both gates; with all of them on, all 10 kernels and all 54 held-out programs read back to the identical canonical text and print again to the identical dense text (`roundTripFailures` is empty). The held-out total falls from 527935 to 486694.
+
+Saved alone over the start style, kernels / held-out (`alone` in the result):
+
+| rule | kernels | held-out | kept |
+| --- | --- | --- | --- |
+| 1 fill | 0 | 12684 | yes |
+| 2 bit/nbit | 0 | 4372 | yes |
+| 3 record access `X.K` | 0 | 4149 | yes |
+| 4 result type from the body | 0 | 7278 | yes |
+| 5 negative literal | 0 | 689 | yes |
+| 6 foldN | 2 | 658 | yes |
+| 7 default names with `i` first | - | - | dropped before implementation (fitted to the held-out set) |
+| 8 operator symbols, glued | 7 | 11368 | yes |
+
+Side columns, not the headline: with `tab` 156; with the rotate text rewrite 155 (an estimate, not read back); with both 149.
+
+Deviations and findings:
+- The start held-out total is 527935, not 527933: compact text now escapes ids spelled like the new words (`bit`, `nbit`, `foldN`) whenever a compact spelling is on, so the compact reader can read every spelling always.
+- Rule 4 saves 7278 on the held-out set, far more than the sweep's estimate for its "verified subset": the general form leaves out every result the reader's own inference reproduces.
+- The pre-registration said no held-out program has the rotate pattern; the rotate rewrite in `tools/dense-combined.ts` matches 3 held-out programs (`heldOutMatched`). Rotate stays a side column: it is not implemented in the reader, so it is not round-tripped.
+- `compiler/dense.a0` reads none of rules 1 to 8; that reader is the follow-up.
