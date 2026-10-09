@@ -181,20 +181,130 @@ export interface DenseStyle {
   readonly tab?: boolean;
   /** `min X Y` / `max X Y` for `select lt X Y X Y` / `select lt X Y Y X` over plain operands. */
   readonly minmax?: boolean;
-  /** Hexadecimal for the literals whose hex text is fewer o200k tokens (see `HEX_SHORTER`). */
+  /** Hexadecimal for the literals of one repeated hex digit (see `hexSpelling`). */
   readonly hex?: boolean;
   /** Leave out a fold's trailing operands that are all of the function's parameters in order. */
   readonly trailingParams?: boolean;
   /** One line per function: no `fn`, statements joined with `;`. */
   readonly oneLine?: boolean;
+  /*
+   * The combined compact rules (docs/history/2026-10-09-dense-combined-rules-preregistration.md),
+   * off by default and read by `parseDense(text, { compact: true })`.
+   */
+  /** `[e;k]` also when the repeated element is a named value (`repeat` covers numbers and parameters). */
+  readonly fill?: boolean;
+  /** `bit C` / `nbit C` for `select C 1 0` / `select C 0 1`. */
+  readonly bit?: boolean;
+  /** `X.K` for `at X K` (X a parameter or named value, K a number). */
+  readonly dot?: boolean;
+  /** Leave out `-> T` whenever the reader infers T from the result, after a type list too. */
+  readonly inferResult?: boolean;
+  /** `-N` for a u32 literal `2^32 - N` when that text is shorter than the decimal. */
+  readonly negative?: boolean;
+  /** `foldN BODY REST` for `fold BODY N REST` with N a number. */
+  readonly foldN?: boolean;
+  /** `+ - * ^ & | = ? < >` for add sub mul xor and or eq select lt gt, glued to their neighbours. */
+  readonly ops?: boolean;
 }
 
 /**
- * Literals written in hexadecimal under `hex`: the values whose lowercase hex text is strictly fewer
- * o200k_base tokens than the decimal (a tokenizer sweep, recorded in the pre-registration; the source
- * does not depend on a tokenizer).
+ * A literal is written in hexadecimal under `hex` when its hex digits are one repeated digit (all
+ * ones, `0xaaaaaaaa`, ...) and `0x` plus those digits is no longer than the decimal text: a general
+ * test on the literal itself, with no value list and no tokenizer.
  */
-const HEX_SHORTER: ReadonlySet<number> = new Set([0xffffff, 0xffffffff, 0xaaaaaaaa]);
+function hexSpelling(value: number): string | undefined {
+  const h = value.toString(16);
+  return /^(.)\1*$/.test(h) && 2 + h.length <= String(value).length ? `0x${h}` : undefined;
+}
+
+/** `-N` for the u32 `2^32 - N` when that text is strictly shorter than the decimal (`negative`). */
+function negativeSpelling(value: number): string | undefined {
+  const n = 2 ** 32 - value;
+  return value > 0 && 1 + String(n).length < String(value).length ? `-${n}` : undefined;
+}
+
+const NEGATIVE = /^-([1-9][0-9]*)$/;
+
+/** Characters of the operator symbols: in compact text each ends a word (`lexDense`). */
+const SYMBOL_CHARS = '+-*/%&|^<>=!?';
+
+/** Two-character symbols, read before their first character alone (maximal munch). */
+const MUNCH: ReadonlySet<string> = new Set(['<<', '>>', '==', '!=', '<=', '>=', '->']);
+
+/** The symbol of an op under `ops` (`shl`/`shr` print `<<`/`>>` under `symbols`). */
+const OP_SYMBOLS: Readonly<Partial<Record<Op, string>>> = {
+  add: '+',
+  sub: '-',
+  mul: '*',
+  xor: '^',
+  and: '&',
+  or: '|',
+  eq: '=',
+  select: '?',
+  lt: '<',
+  gt: '>',
+};
+
+/** The ops whose symbol only compact text reads (`=` and `?`; the others are dense words always). */
+const COMPACT_SYMBOL_OPS: Readonly<Record<string, Op>> = { '=': 'eq', '?': 'select' };
+
+const sameTokens = (a: readonly Tok[], b: readonly Tok[]): boolean =>
+  a.length === b.length && a.every((t, i) => t.kind === b[i]?.kind && t.text === b[i]?.text);
+
+/**
+ * A statement with every space next to a symbol left out where the compact lexer reads the same
+ * tokens without it (so `<` `<`, `-` before a digit, ... keep theirs). Spaces never join tokens of a
+ * string literal, so comparing the two words around a space is exact.
+ */
+function glue(s: string): string {
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i] as string;
+    if (inString) {
+      out += c;
+      if (c === '\\') {
+        out += s[i + 1] ?? '';
+        i += 1;
+      } else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    if (c !== ' ') {
+      out += c;
+      continue;
+    }
+    const a = out[out.length - 1] ?? '';
+    const b = s[i + 1] ?? '';
+    if (!SYMBOL_CHARS.includes(a) && !SYMBOL_CHARS.includes(b)) {
+      out += c;
+      continue;
+    }
+    const left = out.slice(out.lastIndexOf(' ') + 1);
+    const rightEnd = s.indexOf(' ', i + 1);
+    const right = s.slice(i + 1, rightEnd < 0 ? s.length : rightEnd);
+    const lexes = (t: string): Tok[] | undefined => {
+      try {
+        return lexDense(t, 0, true);
+      } catch {
+        return undefined;
+      }
+    };
+    const spaced = lexes(`${left} ${right}`);
+    const joined = lexes(`${left}${right}`);
+    const same =
+      !left.includes('"') &&
+      !right.includes('"') &&
+      spaced !== undefined &&
+      joined !== undefined &&
+      sameTokens(spaced, joined);
+    if (!same) out += c;
+  }
+  return out;
+}
+
+/** `foldN`: a fold whose count is the number N (`foldN`). */
+const FOLD_N = /^fold(0|[1-9][0-9]*)$/;
 
 /** Words of the compact spellings: the printer escapes an id spelled like one (`$min`). */
 const SUGAR: ReadonlySet<string> = new Set(['tab', 'min', 'max']);
@@ -254,19 +364,30 @@ function compactOn(ctx: PrintCtx): boolean {
   return ctx.style.tab || ctx.style.minmax;
 }
 
+/** Words of the combined compact spellings, each read only in compact text (`compactWord`). */
+const BIT_WORDS: ReadonlySet<string> = new Set(['bit', 'nbit']);
+
+/** `X.K`: field K of the record X, a parameter or a named value (`at X K`). */
+const DOT_ACCESS = /^(\$?[a-z][a-z0-9_]*|[A-Z]|p(?:0|[1-9][0-9]*))\.(0|[1-9][0-9]*)$/;
+
+/** An id spelled like the word of a compact spelling that is on: it is printed escaped (`$bit`). */
+function sugarWord(id: string, ctx: PrintCtx): boolean {
+  return compactOn(ctx) && (SUGAR.has(id) || BIT_WORDS.has(id) || FOLD_N.test(id));
+}
+
 function operandWord(o: Operand, ctx: PrintCtx): string {
   switch (o.kind) {
     case 'node':
       if (ctx.spec === true) return o.id;
-      return needsEscape(o.id, ctx.fnNames) || (compactOn(ctx) && SUGAR.has(o.id))
-        ? `$${o.id}`
-        : o.id;
+      return needsEscape(o.id, ctx.fnNames) || sugarWord(o.id, ctx) ? `$${o.id}` : o.id;
     case 'param':
       return ctx.style.letters ? paramWord(o.index) : `p${o.index}`;
     case 'u32':
-      return ctx.style.hex && HEX_SHORTER.has(o.value)
-        ? `0x${o.value.toString(16)}`
-        : String(o.value);
+      return (
+        (ctx.style.negative ? negativeSpelling(o.value) : undefined) ??
+        (ctx.style.hex ? hexSpelling(o.value) : undefined) ??
+        String(o.value)
+      );
     case 'bool':
       return o.value ? 'true' : 'false';
   }
@@ -279,6 +400,7 @@ function opWordFor(op: Op): string {
 
 /** The word printed for an op (`shl` and `shr` use their symbols). */
 function opWord(op: Op, ctx: PrintCtx): string {
+  if (ctx.style.ops && ctx.spec !== true && OP_SYMBOLS[op] !== undefined) return OP_SYMBOLS[op];
   if (!ctx.style.symbols) return op;
   return op === 'shl' ? '<<' : op === 'shr' ? '>>' : op;
 }
@@ -472,13 +594,23 @@ function printNodeTokens(
     const mm = minMax(fn, k, plan, ctx);
     if (mm !== undefined) return mm;
   }
+  if (ctx.style.bit && node.op === 'select') {
+    const [, x, y] = node.args;
+    const one = (o: Operand | undefined, v: number): boolean => o?.kind === 'u32' && o.value === v;
+    const word = one(x, 1) && one(y, 0) ? 'bit' : one(x, 0) && one(y, 1) ? 'nbit' : undefined;
+    if (word !== undefined && sugarFree(word, ctx)) return `${word} ${args[0]}`;
+  }
+  if (ctx.style.dot && node.op === 'at' && node.args[1]?.kind === 'u32') {
+    const word = `${args[0]}.${node.args[1].value}`;
+    if (plan.nest[k]?.[0] === undefined && DOT_ACCESS.test(word)) return word;
+  }
   if (node.op === 'arr' && node.text !== undefined) return formatTextLiteral(node.text);
   if (node.op === 'arr') {
     const first = node.args[0] as Operand;
     const same =
       ctx.style.repeat &&
       node.args.length >= 3 &&
-      first.kind !== 'node' &&
+      (first.kind !== 'node' || ctx.style.fill) &&
       plan.nest[k]?.every((c) => c === undefined) === true &&
       node.args.every((a) => operandWord(a, ctx) === operandWord(first, ctx));
     return same ? `[${args[0]};${args.length}]` : `[${args.join(' ')}]`;
@@ -514,6 +646,14 @@ function printNodeTokens(
     const body = callee(node.callee as string);
     const tab = ctx.style.tab && sugarFree('tab', ctx) ? tabBody(body, rest) : undefined;
     if (tab !== undefined) return tab;
+    const count = node.args[0];
+    if (
+      ctx.style.foldN &&
+      count?.kind === 'u32' &&
+      plan.nest[k]?.[0] === undefined &&
+      sugarFree(`fold${count.value}`, ctx)
+    )
+      return [`fold${count.value}`, body, ...rest.slice(1)].join(' ');
     return ['fold', body, ...rest].join(' ');
   }
   if (node.op === 'loop')
@@ -542,7 +682,8 @@ function printFunction(fn: Func, outer: PrintCtx): string[] {
     inline.set(name, `{${text.join(';')}}`);
   }
   const ctx: PrintCtx = { ...outer, inline };
-  const { body } = statementsOf(fn, ctx);
+  const { body: plain } = statementsOf(fn, ctx);
+  const body = ctx.style.ops ? plain.map((b) => ({ ...b, text: glue(b.text) })) : plain;
   return printLines(fn, ctx, body, explicitRet(fn, ctx));
 }
 
@@ -554,9 +695,7 @@ function statementsOf(
   const keepRet = explicitRet(fn, ctx);
   // A first statement named `pre` or `post` would read as a spec line: it is written `$pre`.
   const idWord = (id: string, first: boolean): string =>
-    needsEscape(id, ctx.fnNames) ||
-    (first && SPEC_NAMES.has(id)) ||
-    (compactOn(ctx) && SUGAR.has(id))
+    needsEscape(id, ctx.fnNames) || (first && SPEC_NAMES.has(id)) || sugarWord(id, ctx)
       ? `$${id}`
       : id;
   const body: { text: string; comments: Comments | undefined; named: boolean }[] = [];
@@ -628,19 +767,18 @@ function printLines(
   // A type list always ends with its `->`; without a list a u32 result is left out.
   // The parser infers an unwritten result from the last statement, so it is only left out when that agrees (an
   // ill-typed body keeps its written `-> u32`, which keeps the text lossless).
-  const implicitResult =
-    plain &&
-    fn.result === 'u32' &&
-    [undefined, 'u32'].includes(
-      typerFor(
-        fn,
-        new Map(
-          ctx.program.functions.map(
-            (f) => [f.name, { params: f.params, result: f.result }] as const,
-          ),
-        ),
-      )(fn.ret) as never,
-    );
+  const inferred = typerFor(
+    fn,
+    new Map(
+      ctx.program.functions.map((f) => [f.name, { params: f.params, result: f.result }] as const),
+    ),
+  )(fn.ret);
+  // Under `inferResult` any result the reader infers the same way is left out, after a type list too.
+  const implicitResult = ctx.style.inferResult
+    ? inferred === undefined
+      ? fn.result === 'u32'
+      : typeEquals(inferred, fn.result)
+    : plain && fn.result === 'u32' && [undefined, 'u32'].includes(inferred as never);
   const sig =
     (plain ? '' : fn.params.map(formatType).join(' ')) +
     (implicitResult
@@ -707,6 +845,13 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       hex: options.style?.hex === true,
       trailingParams: options.style?.trailingParams === true,
       oneLine: options.style?.oneLine === true,
+      fill: options.style?.fill === true,
+      bit: options.style?.bit === true,
+      dot: options.style?.dot === true,
+      inferResult: options.style?.inferResult === true,
+      negative: options.style?.negative === true,
+      foldN: options.style?.foldN === true,
+      ops: options.style?.ops === true,
     },
   };
   return options.comments === true || options.style?.inline === false
@@ -797,12 +942,26 @@ export interface Tok {
 }
 
 /** Split one statement into tokens: words, string literals, `[ ] ( ) ;`; commas are blanks. */
-export function lexDense(text: string, line: number): Tok[] {
+export function lexDense(text: string, line: number, compact = false): Tok[] {
   const out: Tok[] = [];
   let i = 0;
   while (i < text.length) {
     const c = text[i] as string;
-    if (c === ' ' || c === '\t') {
+    if (compact && SYMBOL_CHARS.includes(c)) {
+      // Compact text: a symbol ends a word and is read by maximal munch; `-` before a digit is a
+      // negative literal.
+      if (c === '-' && /[0-9]/.test(text[i + 1] ?? '')) {
+        let j = i + 1;
+        while (j < text.length && /[0-9]/.test(text[j] as string)) j += 1;
+        out.push({ kind: 'word', text: text.slice(i, j) });
+        i = j;
+        continue;
+      }
+      const two = text.slice(i, i + 2);
+      const sym = MUNCH.has(two) ? two : c;
+      out.push({ kind: 'word', text: sym });
+      i += sym.length;
+    } else if (c === ' ' || c === '\t') {
       i += 1;
     } else if (c === ',') {
       out.push({ kind: 'comma', text: c });
@@ -827,7 +986,12 @@ export function lexDense(text: string, line: number): Tok[] {
       i += 1;
     } else {
       let j = i;
-      while (j < text.length && !' \t,"[]();{}'.includes(text[j] as string)) j += 1;
+      while (
+        j < text.length &&
+        !' \t,"[]();{}'.includes(text[j] as string) &&
+        !(compact && SYMBOL_CHARS.includes(text[j] as string))
+      )
+        j += 1;
       out.push({ kind: 'word', text: text.slice(i, j) });
       i = j;
     }
@@ -917,6 +1081,8 @@ export interface LambdaCtx {
   readonly nested: boolean;
   /** Fill a fold's operands missing at the end of a statement with A, B, ... (`compact` texts). */
   readonly fill?: boolean;
+  /** The text uses the combined compact spellings (`parseDense(text, { compact: true })`). */
+  readonly compact?: boolean;
   readonly counter: { n: number };
 }
 
@@ -1078,6 +1244,63 @@ export class FunctionParser {
       !this.fnNames.has(t.text) &&
       !this.arities.has(t.text)
     );
+  }
+
+  /**
+   * A word of the combined compact spellings, read only in compact text, where the printer escapes
+   * an id spelled like one (`$bit`) and leaves a spelling out when a function has its word.
+   */
+  compactWord(w: string): (() => Operand) | undefined {
+    if (this.lam?.compact !== true || this.fnNames.has(w) || this.arities.has(w)) return undefined;
+    const symbol = COMPACT_SYMBOL_OPS[w];
+    if (symbol !== undefined) return () => this.operation(symbol);
+    if (BIT_WORDS.has(w))
+      return () => {
+        const c = this.expr();
+        const [x, y] = w === 'bit' ? [1, 0] : [0, 1];
+        return this.make({
+          op: 'select',
+          args: [c, { kind: 'u32', value: x }, { kind: 'u32', value: y }],
+        });
+      };
+    if (FOLD_N.test(w))
+      return () => {
+        // `foldN BODY REST` is `fold BODY N REST`: the tokens are rewritten.
+        const at = this.pos - 1;
+        let end = this.pos + 1;
+        if (this.toks[this.pos]?.kind === 'lbrace') {
+          while (end <= this.toks.length && this.toks[end - 1]?.kind !== 'rbrace') end += 1;
+          if (end > this.toks.length) fail("missing '}'", this.line);
+        }
+        const word = (text: string): Tok => ({ kind: 'word', text });
+        this.toks = [
+          ...this.toks.slice(0, at),
+          word('fold'),
+          ...this.toks.slice(this.pos, end),
+          word(w.slice('fold'.length)),
+          ...this.toks.slice(end),
+        ];
+        this.pos = at;
+        return this.expr();
+      };
+    const neg = NEGATIVE.exec(w);
+    if (neg !== null) {
+      const n = Number(neg[1]);
+      if (n > U32_MAX) fail(`literal ${w} exceeds u32`, this.line);
+      return () => ({ kind: 'u32', value: 2 ** 32 - n });
+    }
+    const dot = DOT_ACCESS.exec(w);
+    if (
+      dot !== null &&
+      denseOp(dot[1] as string) === undefined &&
+      !this.fnNames.has(dot[1] as string)
+    )
+      return () =>
+        this.make({
+          op: 'at',
+          args: [this.word(dot[1] as string), { kind: 'u32', value: Number(dot[2]) }],
+        });
+    return undefined;
   }
 
   /** `min X Y` is `select lt X Y X Y`, `max X Y` is `select lt X Y Y X` (X, Y plain operands). */
@@ -1258,6 +1481,8 @@ export class FunctionParser {
 
   private word(w: string): Operand {
     if (w === 'true' || w === 'false') return { kind: 'bool', value: w === 'true' };
+    const compact = this.compactWord(w);
+    if (compact !== undefined) return compact();
     if (NUMBER.test(w)) {
       const value = Number(w);
       if (value > U32_MAX) fail(`literal ${w} exceeds u32`, this.line);
@@ -1421,13 +1646,14 @@ export class FunctionParser {
       } else if (
         isValidIdentifier(t0.text) &&
         t1 !== undefined &&
-        ((t1.kind === 'word' && t1.text === '=') ||
+        ((this.lam?.compact !== true && t1.kind === 'word' && t1.text === '=') ||
           (!KEYWORDS.has(t0.text) &&
             !TYPE_LIKE.test(t0.text) &&
             !this.fnNames.has(t0.text) &&
             !this.arities.has(t0.text) &&
             denseOp(t0.text) === undefined &&
             !(SUGAR.has(t0.text) && !this.names.has(t0.text) && this.sugarOperand(t1)) &&
+            this.compactWord(t0.text) === undefined &&
             // `mod A 4` is the remainder (see `lenientWord`); `mod add A 1` still names a value `mod`
             !(
               t0.text === 'mod' &&
@@ -1438,7 +1664,12 @@ export class FunctionParser {
         name = t0.text;
         this.pos += 1;
       }
-      if (name !== undefined && this.peek()?.kind === 'word' && this.peek()?.text === '=')
+      if (
+        name !== undefined &&
+        this.lam?.compact !== true &&
+        this.peek()?.kind === 'word' &&
+        this.peek()?.text === '='
+      )
         this.pos += 1;
     }
     const before = this.nodes.length;
@@ -1706,7 +1937,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
         expanded.push(it);
         continue;
       }
-      const { rest } = parseDenseHeader(it.text, it.line);
+      const { rest } = parseDenseHeader(it.text, it.line, true);
       const segs = splitTop(rest).map((s) => s.trim());
       if (segs.length <= 1) {
         expanded.push({ ...it, text: `fn ${it.text}` });
@@ -1772,7 +2003,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
         it.line,
         'statements belong inside a function: start it with `fn NAME`',
       );
-    const written = parseDenseHeader(it.text.slice(2).trim(), it.line);
+    const written = parseDenseHeader(it.text.slice(2).trim(), it.line, options.compact === true);
     const declared = declaredParams(written.rest);
     const head = declared > 0 ? { ...written, rest: '' } : written;
     if (functions.some((f) => f.name === head.name) || arities.has(head.name))
@@ -1785,6 +2016,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
       paramTypes: head.params,
       nested: false,
       fill: options.compact === true,
+      compact: options.compact === true,
       counter: { n: 0 },
     });
     fp.shadowing = options.shadowing === true;
@@ -1831,7 +2063,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     inZone = false;
     let retComments: Comments | undefined;
     body.forEach((b, bi) => {
-      const toks = lexDense(b.text, b.line);
+      const toks = lexDense(b.text, b.line, options.compact === true);
       const s = fp.statement(toks, b.line, b.comments);
       if (s.ret) retComments = b.comments;
       stmts.push({ value: s.value, ret: s.ret, line: b.line });

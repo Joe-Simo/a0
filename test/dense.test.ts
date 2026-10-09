@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import {
@@ -27,7 +27,12 @@ import { generateCases, generateCorpus } from '../tools/corpus.js';
 import { KERNELS } from '../tools/exec-bench-kernels.js';
 import { posix } from './vpath.js';
 
-const ROOT = resolve(import.meta.dirname, '..', '..');
+// The repository root: two levels up from the compiled dist/test, one level up when a runner reads
+// test/*.ts directly (`bun test`), where two levels up is the folder holding every worktree.
+const ROOT = ((here: string): string =>
+  existsSync(join(here, '..', 'package.json')) ? resolve(here, '..') : resolve(here, '..', '..'))(
+  import.meta.dirname,
+);
 
 function files(dir: string, out: string[] = []): string[] {
   for (const f of readdirSync(dir)) {
@@ -120,7 +125,10 @@ test('dense: natural nested sources compile to the same behavior as the canonica
   }
 });
 
-test('dense: every kernel, example, compiler and site program round-trips exactly', async () => {
+// Measured 11 s (bun test) on the full tree; the 5 s default is too short.
+test('dense: every kernel, example, compiler and site program round-trips exactly', {
+  timeout: 60_000,
+}, async () => {
   const all = files(ROOT);
   assert.ok(all.length >= 30, `found ${all.length} files`);
   for (const path of all) {
@@ -785,7 +793,10 @@ test('dense compact spellings: the kernels print as measured and convert back ex
   assert.equal(formatProgram(parseDense(text, { compact: true })), formatProgram(p));
 });
 
-test('dense compact spellings: every program round-trips exactly with all of them on', async () => {
+// Measured 13 s (bun test) on the full tree; the 5 s default is too short.
+test('dense compact spellings: every program round-trips exactly with all of them on', {
+  timeout: 60_000,
+}, async () => {
   for (const path of files(ROOT)) {
     const { program, known } = await parseFile(path, read);
     for (const p of [program, normalizeProgram(program)]) {
@@ -793,6 +804,50 @@ test('dense compact spellings: every program round-trips exactly with all of the
       const back = parseDense(dense, { known, compact: true });
       assert.equal(formatProgram(back), formatProgram(p), `${path}: canonical form differs`);
       assert.equal(formatDense(back, { known, style: COMPACT_ALL }), dense, `${path}: fixed point`);
+    }
+  }
+});
+
+const COMBINED: DenseStyle = {
+  ...COMPACT_ALL,
+  tab: false,
+  fill: true,
+  bit: true,
+  dot: true,
+  inferResult: true,
+  negative: true,
+  foldN: true,
+  ops: true,
+};
+
+test('dense combined compact rules: small programs print as designed and convert back exactly', () => {
+  const cases: [string, string][] = [
+    ['fn affine u32 u32 u32 -> u32\na mul p0 p1\nb add a p2\nret b\nend', 'affine +*A B C'],
+    ['fn m u32 -> u32\na and p0 4294967295\nret a\nend', 'm &A-1'],
+    ['fn b u32 u32 -> u32\na lt p0 p1\nc select a 1 0\nret c\nend', 'b bit<A B'],
+    ['fn r u32 -> u32\na sub p0 5\nret a\nend', 'r -A 5'],
+    // `-` before a digit is a negative literal: the space stays
+    ['fn s u32 -> u32\na sub 5 p0\nret a\nend', 's - 5 A'],
+  ];
+  for (const [canonical, dense] of cases) {
+    const p = normalizeProgram(parse(canonical));
+    const text = formatDense(p, { style: COMBINED }).trimEnd();
+    assert.equal(text, dense);
+    assert.equal(formatProgram(parseDense(text, { compact: true })), formatProgram(p));
+  }
+});
+
+// Measured 16 s (bun test) on the full tree.
+test('dense combined compact rules: every program round-trips exactly with all of them on', {
+  timeout: 60_000,
+}, async () => {
+  for (const path of files(ROOT)) {
+    const { program, known } = await parseFile(path, read);
+    for (const p of [program, normalizeProgram(program)]) {
+      const dense = formatDense(p, { known, style: COMBINED });
+      const back = parseDense(dense, { known, compact: true });
+      assert.equal(formatProgram(back), formatProgram(p), `${path}: canonical form differs`);
+      assert.equal(formatDense(back, { known, style: COMBINED }), dense, `${path}: fixed point`);
     }
   }
 });

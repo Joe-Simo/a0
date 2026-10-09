@@ -42,11 +42,13 @@ Canonical -> dense -> canonical is lossless and a fixed point with every rule on
 | --- | --- | --- | --- |
 | 1 tab | 8 | 0 | yes (neutral on (b), argued general above) |
 | 2 min/max | 6 | 66 | yes |
-| 3 hex | 0 | 828 | yes |
+| 3 hex | 0 | 826 | yes (general test since the hex correction below; 828 with the fixed list) |
 | 4 no `call` | 0 | 0 | no: already the printer's spelling |
 | 5 trailing parameters | 2 | 86 | yes |
 | 6 one line per function | 14 | 7467 | yes |
 
-With the kept rules the kernel sum is 163 (from 193), 0.505 of the best single language (323) and 0.543 of per-kernel bests (300); the 2x line (161) is missed by 2 tokens. The held-out total falls from 536374 to 527931 (`results/dense-six-rules.json`); `results/dense-tokens.json` records the compact column (kernels 163, corpus sample 41929 against 43344 dense), and `results/lang-axes.json` records it beside the dense row as `dense.compact`, outside the rank and the ledger.
+With the kept rules the kernel sum is 163 (from 193), 0.505 of the best single language (323) and 0.543 of per-kernel bests (300); the 2x line (161) is missed by 2 tokens. The held-out total falls from 536374 to 527933 (527931 with the fixed hex list) (`results/dense-six-rules.json`); `results/dense-tokens.json` records the compact column (kernels 163, corpus sample 41929 against 43344 dense), and `results/lang-axes.json` records it beside the dense row as `dense.compact`, outside the rank and the ledger.
 
 Deviations: rule 2 covers only the `lt` forms (lossless needs one canonical form per word). The one-line form and the filled fold operands are read only when the caller says the text is compact (`parseDense(text, { compact: true })`): read always, a statement written outside a function and a fold missing operands would lose their diagnostics, which the edit protocol relies on. Rule 1 saves nothing on (b): no held-out program has the tabulate pattern, so its kernel saving rests on the argument, not on held-out evidence. Rules 5 and 6 are not claimed until an AI edit-accuracy run shows no loss. `compiler/dense.a0` does not read any compact spelling (follow-up).
+
+Correction (hex): the fixed list of three values is replaced by a general test on the literal: hex when its hex digits are one repeated digit and `0x` plus them is no longer than the decimal text (`hexSpelling` in `src/dense.ts`). Measured in `results/dense-six-rules.json`: held-out saving 826 (the list saved 828), kernels unchanged (0); every program still round-trips.
