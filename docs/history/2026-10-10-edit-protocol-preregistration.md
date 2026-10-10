@@ -72,3 +72,15 @@ count stands in for the vendor tokenizer in that comparison. `tools/edit-protoco
 The combined protocol may replace the shipped default only if it passes against the control for both models. Against
 TypeScript and Rust the same three tests are reported as wins or losses. Every failed test is recorded as a loss
 (`bun run loss-ledger -- --update --reason ...`, STATUS and this file), whatever the other tests say.
+
+## Deviations
+
+- First subject attempt: the subagent prompts were not delivered, so no subject replied. The run was repeated with
+  each subject's manifest prompt (`tools/edit-protocol-setup.ts`, `subjectPrompt`) sent verbatim as its agent prompt.
+  Three replies in `a0-combined/haiku/b` came from the earlier attempt and were overwritten by the repeated run.
+- Four first-shot subjects wrote no `reply.txt` (TypeScript Haiku `f-sumlow-bound`; Rust Haiku `f-divrem-pair`,
+  `f-remaining-order`, `f-highbyte-shr`). The harness scores them as `no reply` (not accepted) and they get no repair
+  round, since there is no first reply or rejection to repair.
+- The Rust arm could not be scored on the scoring machine: no `rustc` is installed, the harness self-check fails and
+  every Rust reply is rejected as `rustc: ` with no compiler output. Those rejections measure the machine, not the
+  subjects, so no Rust repair round was set up; the Rust first shots wait for a machine with a Rust toolchain.
