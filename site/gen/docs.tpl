@@ -133,9 +133,12 @@ c nav
 "43
 >
 >
->
 =h3 3. Edit it
-=p Ask for a view with `a0 view hello.a0 affine`; it prints the function under a handle (e0) with its revision. Reply with the handle, then edits, one per line:
+<p
+"Ask for a view with\s
+=code a0 view hello.a0 affine
+"; it prints the function under a handle (e0) with its revision. Reply with the handle, then edits, one per line:
+>
 .pre code
 <code
 "id op args           replace instruction id, or insert it before ret\n
@@ -148,7 +151,10 @@ c nav
 >
 =p The edit is applied only if it parses, type-checks and was written against the current revision. Otherwise it is rejected with a code and the one fix that resolves it, and the handle stays valid.
 =h3 4. Connect an agent
-=p `a0 mcp .` serves A0 to an agent over stdio with seven tools: a0_open, a0_program, a0_apply, a0_check, a0_run, a0_emit and a0_save. In Claude Code:
+<p
+=code a0 mcp .
+"\sserves A0 to an agent over stdio with seven tools: a0_open, a0_program, a0_apply, a0_check, a0_run, a0_emit and a0_save. In Claude Code:
+>
 .pre code
 <code
 "claude mcp add a0 -- a0 mcp .\n
@@ -176,7 +182,19 @@ l primer
 <section
 +id programs
 =h2 Programs and functions
-=p A program is a list of functions. A function is a header `fn NAME T... -> T`, then one instruction per line `ID OP ARGS`, then `ret ARG` (or `ret OP ARGS`, which names a fresh node), then `end`. Names are lowercase identifiers. Parameters are p0, p1, ... in header order. An argument is an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions.
+<p
+"A program is a list of functions. A function is a header\s
+=code fn NAME T... -> T
+", then one instruction per line\s
+=code ID OP ARGS
+", then\s
+=code ret ARG
+"\s(or\s
+=code ret OP ARGS
+", which names a fresh node), then\s
+=code end
+". Names are lowercase identifiers. Parameters are p0, p1, ... in header order. An argument is an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions.
+>
 .pre code
 <code
 .span cm
@@ -207,7 +225,11 @@ l primer
 <section
 +id modules
 =h2 Modules
-=p A file starts with zero or more `use "path.a0"` lines, relative to the file. The linker loads every used file once, orders them by dependency, and checks the result as one program with one namespace. Cycles and duplicate function names are rejected, and diagnostics name the file and line.
+<p
+"A file starts with zero or more\s
+=code use "path.a0"
+"\slines, relative to the file. The linker loads every used file once, orders them by dependency, and checks the result as one program with one namespace. Cycles and duplicate function names are rejected, and diagnostics name the file and line.
+>
 .pre code
 <code
 "use "ui.a0"\nuse "../examples/life.a0"\nfn page io -> io\na call open p0 5\nb call close a\nret b\nend

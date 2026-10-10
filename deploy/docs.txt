@@ -15,9 +15,8 @@ end
 
 # a0 run hello.a0 affine 6 7 1
  43
-
 3. Edit it
-Ask for a view with `a0 view hello.a0 affine`; it prints the function under a handle (e0) with its revision. Reply with the handle, then edits, one per line:
+Ask for a view with a0 view hello.a0 affine; it prints the function under a handle (e0) with its revision. Reply with the handle, then edits, one per line:
 id op args replace instruction id, or insert it before ret
 id op args @ x insert after instruction x
 -id delete instruction id
@@ -26,7 +25,7 @@ fn... end add or replace a whole function (program handle g0)
 -fn name remove a function
 The edit is applied only if it parses, type-checks and was written against the current revision. Otherwise it is rejected with a code and the one fix that resolves it, and the handle stays valid.
 4. Connect an agent
-`a0 mcp.` serves A0 to an agent over stdio with seven tools: a0_open, a0_program, a0_apply, a0_check, a0_run, a0_emit and a0_save. In Claude Code:
+a0 mcp. serves A0 to an agent over stdio with seven tools: a0_open, a0_program, a0_apply, a0_check, a0_run, a0_emit and a0_save. In Claude Code:
 claude mcp add a0 -- a0 mcp.
 npx skills add Joe-Simo/a0
 The second line installs the Agent Skill, which loads the primer and the edit protocol on demand. Configurations for other agents are in the repository.
@@ -40,7 +39,7 @@ arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v
 EDIT: reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret; `c add a b @ x` inserts after x), `-c`, `ret c`, `fn f...` (adds/replaces a function), `-fn f`.
 
 Programs and functions
-A program is a list of functions. A function is a header `fn NAME T... -> T`, then one instruction per line `ID OP ARGS`, then `ret ARG` (or `ret OP ARGS`, which names a fresh node), then `end`. Names are lowercase identifiers. Parameters are p0, p1,... in header order. An argument is an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions.
+A program is a list of functions. A function is a header fn NAME T... -> T, then one instruction per line ID OP ARGS, then ret ARG (or ret OP ARGS, which names a fresh node), then end. Names are lowercase identifiers. Parameters are p0, p1,... in header order. An argument is an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions.
 # clamp p0 into [p1, p2]
  fn clamp u32 u32 u32 -> u32
 lo lt p0 p1
@@ -67,7 +66,7 @@ ret r
 end
 
 Modules
-A file starts with zero or more `use "path.a0"` lines, relative to the file. The linker loads every used file once, orders them by dependency, and checks the result as one program with one namespace. Cycles and duplicate function names are rejected, and diagnostics name the file and line.
+A file starts with zero or more use "path.a0" lines, relative to the file. The linker loads every used file once, orders them by dependency, and checks the result as one program with one namespace. Cycles and duplicate function names are rejected, and diagnostics name the file and line.
 use "ui.a0"
 use "../examples/life.a0"
 fn page io -> io

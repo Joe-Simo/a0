@@ -12,7 +12,8 @@
 @font-face{font-family:"Geist Mono";src:url("/fonts/GeistMono-Variable.woff2") format("woff2");font-weight:100 900;font-display:swap}
 :root{color-scheme:dark;--bg:#000;--fg:#fff;--fg2:#d8dbe0;--body:#c9ccd1;--muted:#8a8f98;--dim:#5c6169;--line:#1f2227;--line2:#33373d;--card:#0b0c0e;--pillbg:#fff;--pillfg:#000;--ghost:#17191d;--a0:#ffd166;--c:#7aa2ff;--rust:#f0885a;--gray:#9aa0a6;--win:#5ad19a;--loss:#ff7a7a;--glow1:rgba(120,140,255,.22);--glow2:rgba(255,209,102,.12)}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:80px}
+:root{--hdr:64px;--railh:0px}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--hdr) + var(--railh) + 16px)}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 "Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 a{color:inherit}
 .pixel{font-family:"Geist Pixel","Geist Mono",monospace;font-weight:400}
@@ -87,7 +88,7 @@ a{color:inherit}
 .track.a0 .fill{background:var(--a0)}
 .track.c .fill{background:var(--c)}
 .track.rust .fill{background:var(--rust)}
-.fill:not(.grown){width:0!important}
+.js .fill:not(.grown){width:0!important}
 .track .val{transition:none;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;font-family:"Geist Mono",ui-monospace,monospace}
 .single .row{grid-template-columns:150px minmax(0,1fr) auto}
 .lrow{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;padding:3px 0}
@@ -150,8 +151,8 @@ table.ops{width:100%;border-collapse:collapse;font-size:.9rem;margin:12px 0 20px
 .foot a{color:var(--fg2);text-decoration:none}
 .card:hover{border-color:var(--line2)}
 a:focus-visible,.pill:focus-visible{outline:2px solid var(--c);outline-offset:3px;border-radius:4px}
-.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}
-.reveal.in{opacity:1;transform:none}
+.reveal{transition:opacity .35s ease,transform .35s ease}
+.js .reveal:not(.in){opacity:0;transform:translateY(8px)}
 .docs .hero{min-height:0;padding:120px 24px 0;align-items:flex-start;flex-direction:column;justify-content:flex-start}
 .docs .hero::after{display:none}
 .docs .hero .name{font-size:clamp(2.6rem,7vw,5rem)}
@@ -337,7 +338,7 @@ pre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6
 .legend span::before{border-radius:1px}
 .chart .cov{border:0;padding:0;color:var(--muted)}
 .rank td,.rank th{font-family:"Geist",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
-.rail a.on{color:#fff;border-color:var(--a0)}
+.rail a.on{color:var(--fg);border-color:var(--a0)}
 @media (max-width:900px){.rail a.on{border:1px solid var(--a0);color:var(--a0);padding:6px 12px}}
 /* Header right group: Sponsor as text, X and GitHub as icon links (40px hit targets). The icons are
    the simple-icons paths for X and GitHub (simple-icons 16.33.0, CC0-1.0; the marks stay the property
@@ -368,13 +369,14 @@ pre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6
 @media (max-width:900px){
 .links a,.hright>a:not(.ico){display:inline-flex;align-items:center;min-height:44px}
 .layout{display:block;padding-top:56px}
-.rail{position:sticky;top:64px;z-index:15;flex-direction:row;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;background:#000;margin:0 -16px 24px;padding:6px 16px;border-bottom:1px solid var(--line);-webkit-mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.rail{position:sticky;top:var(--hdr);z-index:15;flex-direction:row;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;background:#000;margin:0 -16px 24px;padding:6px 16px;border-bottom:1px solid var(--line);-webkit-mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
 .rail::-webkit-scrollbar{display:none}
 .rail a{flex:none;scroll-snap-align:start;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;white-space:nowrap;font-size:14px}
 .rail a.on{padding:0 16px}
 .rail .rh{display:none}
 }
-@media (max-width:640px){.rail{top:56px}}
+@media (max-width:640px){:root{--hdr:56px}}
+@media (max-width:900px){:root:has(.rail){--railh:57px}:root:has(.docs .rail){--railh:0px}}
 /* Benchmark charts, one visual language: bold outlined bars, A0 the only saturated solid (the accent), every other language graphite or hollow, a large value on every bar, monospace figures, generous space, one grow-in */
 :root{--g-fill:#262626;--g-line:#d4d4d4;--g-dash:#a3a3a3}
 .chart{padding:32px 0 28px;margin:40px 0 48px}
@@ -434,7 +436,7 @@ pre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6
 .docs .layout{grid-template-columns:220px minmax(0,780px);gap:48px}
 .docs .main p{max-width:70ch;line-height:1.65}
 .docs .main h3{font-size:1.05rem;font-weight:600;margin:28px 0 10px;color:var(--fg)}
-.docs .main section{scroll-margin-top:80px}
+.docs .main section{scroll-margin-top:calc(var(--hdr) + 16px)}
 .docs pre.code{font-size:14px;line-height:1.6}
 .docs .toc>summary{list-style:none;cursor:pointer}
 .docs .toc>summary::-webkit-details-marker{display:none}
@@ -458,7 +460,7 @@ body{overflow-x:clip}
 pre.code:focus-visible{outline:2px solid var(--a0);outline-offset:2px}
 @media (max-width:640px){
 .hero{min-height:46vh;min-height:46svh}
-.center{padding-top:48px}
+.center{padding-top:calc(var(--hdr) + 32px)}
 #start{display:flex;flex-direction:column}
 #start>p:has(.pill){order:-1;margin:20px 0 0}
 .pill{min-height:44px;font-size:.8125rem}
@@ -591,6 +593,14 @@ p+a{display:inline-block;padding:12px 0}
 }
 /* Light theme: the same roles on white; the code rain is a dark-only backdrop */
 @media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){color-scheme:light;--bg:#fff;--fg:#111;--fg2:#333;--body:#444;--muted:#595959;--dim:#6b6b6b;--line:#e6e6e6;--line2:#d0d0d0;--a0:#007a1f;--win:#007a1f;--loss:#333;--g-fill:#e4e4e4;--g-line:#555;--g-dash:#666;--markbg:rgba(0,122,31,.1)}:root:where(:not([data-theme=dark])) body{background:#fff}:root:where(:not([data-theme=dark])) header.top{background:rgba(255,255,255,.86)}:root:where(:not([data-theme=dark])) .stage{display:none}:root:where(:not([data-theme=dark])) .layout::before{background:transparent;box-shadow:none}:root:where(:not([data-theme=dark])) pre.code{background:#f6f6f6;color:#222}:root:where(:not([data-theme=dark])) .home .pill:not(.ghost),:root:where(:not([data-theme=dark])) .home .step .sn{color:#fff}:root:where(:not([data-theme=dark])) .tblwrap,:root:where(:not([data-theme=dark])) .tblwrap td:first-child,:root:where(:not([data-theme=dark])) .tblwrap th:first-child,:root:where(:not([data-theme=dark])) .rail{background:#fff}:root:where(:not([data-theme=dark])) ::selection{color:#fff}}:root:where([data-theme=light]){color-scheme:light;--bg:#fff;--fg:#111;--fg2:#333;--body:#444;--muted:#595959;--dim:#6b6b6b;--line:#e6e6e6;--line2:#d0d0d0;--a0:#007a1f;--win:#007a1f;--loss:#333;--g-fill:#e4e4e4;--g-line:#555;--g-dash:#666;--markbg:rgba(0,122,31,.1)}:root:where([data-theme=light]) body{background:#fff}:root:where([data-theme=light]) header.top{background:rgba(255,255,255,.86)}:root:where([data-theme=light]) .stage{display:none}:root:where([data-theme=light]) .layout::before{background:transparent;box-shadow:none}:root:where([data-theme=light]) pre.code{background:#f6f6f6;color:#222}:root:where([data-theme=light]) .home .pill:not(.ghost),:root:where([data-theme=light]) .home .step .sn{color:#fff}:root:where([data-theme=light]) .tblwrap,:root:where([data-theme=light]) .tblwrap td:first-child,:root:where([data-theme=light]) .tblwrap th:first-child,:root:where([data-theme=light]) .rail{background:#fff}:root:where([data-theme=light]) ::selection{color:#fff}
+/* Inner pages: one rule for code blocks (scroll sideways, never widen the page), long paths in prose may break, chart labels and values on one line */
+pre{max-width:100%;overflow-x:auto}
+.main p,.main li,.cap,.sub{overflow-wrap:break-word}
+.main p code,.main li code{font-family:"Geist Mono",ui-monospace,monospace;font-size:.9em;color:var(--fg);overflow-wrap:anywhere}
+.chart .lrow .lbl,.chart .row .lbl,.chart .track .val{white-space:nowrap}
+@media (min-width:601px){.chart .lrow,.chart .row{grid-template-columns:168px minmax(0,1fr)}.chart .row{grid-template-columns:168px minmax(0,1fr) auto}}
+@media (max-width:600px){.chart .lrow,.chart .lrow.wide{grid-template-columns:120px minmax(0,1fr)}}
+@media (max-width:600px){.chart .track .val{white-space:normal;min-width:0}}
 
 </style>
 </head>

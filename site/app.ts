@@ -641,11 +641,13 @@ async function main(): Promise<void> {
   };
   // Generic motion hooks: `.reveal` elements get `in` when scrolled into view, `.fill`
   // bars grow after layout, and `.count` numbers count up once. The program chooses the classes.
+  // Content is visible without JS; the `js` class turns on the hidden start state of the motion hooks.
+  document.documentElement.classList.add('js');
   const observer = new IntersectionObserver(
     (entries) => {
       for (const e of entries) if (e.isIntersecting) e.target.classList.add('in');
     },
-    { threshold: 0.15 },
+    { threshold: 0, rootMargin: '0px 0px 15% 0px' },
   );
   const animate = (): void => {
     spy();

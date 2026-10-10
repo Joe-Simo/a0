@@ -1032,10 +1032,8 @@ c putfix %a
 >
 >
 >
->
 .p cap
 "Load time (compile plus instantiate) is a separate result: A0 is slower than clang on some test programs, noisy between runs; every one is in the loss ledger. results/wasm-benchmark.json, results/loss-ledger.json.
->
 >
 .p nx
 "Next: tokens, what it costs to read and write the same program.\s
