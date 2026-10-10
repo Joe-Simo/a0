@@ -49,6 +49,10 @@ test('native check: same verdict as the TypeScript checker on the corpus, the so
     assert.equal(rows.filter((r) => r.label.startsWith('app-edit/')).length, 15);
     assert.ok(rows.filter((r) => r.label.startsWith('mutant-')).length >= 24);
     assert.ok(rows.filter((r) => r.label.startsWith('pair-')).length >= 12);
+    // operands that cross the front end's 16384-operand half inside one segment (parse.a0)
+    assert.ok(
+      rows.filter((r) => r.label.startsWith('half-') && r.outcome === 'same').length >= 200,
+    );
     assert.ok(rows.filter((r) => !r.reference.ok && r.outcome === 'same').length >= 60);
     // accepted whole, at 200 KB and beyond (the whole files; a linked program is larger still)
     assert.ok(largest >= 200_000, `largest accepted program ${largest} bytes`);

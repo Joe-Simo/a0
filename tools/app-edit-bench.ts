@@ -4,7 +4,8 @@
  * A0 front end, lexer and parser: compiler/parse.a0 linked with compiler/lex.a0 (106 functions) on the
  * A0 side, its TypeScript reference tools/ref-parse.ts (refLex, refParse: the same token grammar and the
  * same word IR, test/core.test.ts checks they agree) on the TypeScript side. The 14 sealed tasks are in
- * tools/app-edit-tasks.ts (tools/app-edit-tasks.sha256).
+ * tools/app-edit-tasks.ts (tools/app-edit-tasks.sha256). The A0 start program is the sealed copy of
+ * parse.a0 and lex.a0 in tools/app-edit-start/, so a later fix to compiler/parse.a0 leaves the set as sealed.
  *
  * A0 side: the shipped MODEL_GUIDE.min.txt plus the structured protocol paragraph of
  * tools/ai-edit-experiment.ts; the view is each target function under an e handle (dependency scope)
@@ -80,7 +81,7 @@ export interface Programs {
 }
 
 export async function startPrograms(): Promise<Programs> {
-  const linked = await link('compiler/parse.a0', (p) => readFile(p, 'utf8'));
+  const linked = await link('tools/app-edit-start/parse.a0', (p) => readFile(p, 'utf8'));
   const a0 = formatProgram(parseAndValidate(linked.text));
   const full = await readFile('tools/ref-parse.ts', 'utf8');
   const cut = full.indexOf(TS_CUT);
