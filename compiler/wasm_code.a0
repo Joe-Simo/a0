@@ -4,7 +4,8 @@ use "emit_c.a0"
 
 # A0 port of the instruction-list post-processing `Code.finish` of src/wasm.ts (DESIGN.md 7a): the
 # function body arrives as a list of instructions with SYMBOLIC local indices; `wfzfin` stackifies
-# adjacent local.set/local.get pairs, drops dead stores, renumbers the non-parameter locals so that
+# a set and the one get that reads its value when the code between them is balanced (see pass 2),
+# turns other set/get pairs into tees, drops dead stores, renumbers the non-parameter locals so that
 # ones with disjoint live ranges (widened across loops) share an index, and serializes the list.
 # The result is byte-identical to the TypeScript (compiler/wasm_code.a0 is checked against `finish`
 # on random lists and on every function body of the test programs).
@@ -39,9 +40,10 @@ use "emit_c.a0"
 # words, element i at page i>>7, word i&127), updated in place; tables read by a pass are fold
 # extras (borrowed, never copied), and a write is a one-trip fold of a tiny body (`wfzp1`, ...).
 # 1. wfzcnt: gets and sets per local (a LTEE counts as a set) over the original list.
-# 2. wfzstk: stackify on a copy of the list: a set directly followed by a get of the same local
-#    vanishes with it (one read, one write) or becomes a tee; a dead set becomes OP 0x1a, a dead
-#    tee vanishes. A removed instruction is kind 0; positions stay the original indices.
+# 2. wfzfw, wfzver, wfzout: stackify (the three folds of pass 2 and the effect tables before them):
+#    a set whose one read is balanced code away stays on the operand stack with that read removed;
+#    a set directly followed by its read becomes a tee; a dead set becomes OP 0x1a, a dead tee
+#    vanishes. A removed instruction is kind 0; positions stay the original indices.
 # 3. wfzrng: per local its first and last access and the top-level (outermost) loop around each;
 #    per top-level loop its start and end. Since loops nest, repeated widening against all loops
 #    is the hull with the outermost loop around the first access (start) and last access (end).
@@ -126,13 +128,6 @@ a call zpage
 b arr a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
 ret b
 end
-# page p1 of the input list p2 copied into the state (a fold of 352 trips)
-fn wfzcp u32x128x512 u32 u32x128x352 -> u32x128x512
-a get p2 p1
-b set p0 p1 a
-ret b
-end
-
 # ---------------------------------------------------------------------------------------------
 # Local ids
 
@@ -507,87 +502,369 @@ ret ah
 end
 
 # ---------------------------------------------------------------------------------------------
-# Pass 2: stackify. State: the copy of the list; extras: the count table, np, n.
+# Pass 2: stackify (src/wasm.ts `stackify`). Three folds over the list and one table of effects:
+# the forward pass wfzfw (state W, see below) records the depth before every instruction and the
+# partner get of every set that qualifies; the verification wfzver (state F) takes the pairs in
+# order of their sets, checking the span between with wfzspan; the output wfzout (state O, two
+# words per instruction) writes the stackified list. A removed instruction is kind 0.
+#
+# The stack effect of an instruction of kind p0 and value p1 (src/wasm.ts `effectOf` and
+# `runEffect`): net is its change of depth, low the lowest depth it reaches relative to its start
+# (two's complement: 4294967295 is -1). An instruction with no known effect (kind 0, 6, 8, 9, 12..15,
+# 18..21, or an OP byte outside the table) is a barrier.
 
-# instruction p1: a set directly followed by a get of the same local (original adjacency) becomes
-# nothing together with the get when the local has one get and one set, else a tee; a set whose
-# local is never read is OP 0x1a (drop); a tee whose local is never read vanishes. Parameters
-# are untouched. A removed instruction is kind 0.
-fn wfzstk u32x128x512 u32 u32x128x512 u32 u32 -> u32x128x512
+# the single-byte op p0 has a known stack effect: drop 0x1a, select 0x1b, eqz 0x45, a comparison
+# 0x46..0x4f, a unary op 0x67..0x69 or a binary op 0x6a..0x78
+fn wfzopok u32 -> bool
+a eq p0 26
+b eq p0 27
+c eq p0 69
+d ge p0 70
+e le p0 79
+f and d e
+g ge p0 103
+h le p0 120
+i and g h
+j or a b
+k or j c
+l or k f
+m or l i
+ret m
+end
+# the net depth change of the single-byte op p0
+fn wfzopnet u32 -> u32
+a eq p0 26
+b eq p0 27
+c ge p0 70
+d le p0 79
+e and c d
+f ge p0 106
+g le p0 120
+h and f g
+i select h 4294967295 0
+j select e 4294967295 i
+k select b 4294967294 j
+l select a 4294967295 k
+ret l
+end
+# the lowest depth the single-byte op p0 reaches relative to its start
+fn wfzoplow u32 -> u32
+a eq p0 26
+b eq p0 27
+c eq p0 69
+d ge p0 70
+e le p0 79
+f and d e
+g ge p0 103
+h le p0 105
+i and g h
+j ge p0 106
+k le p0 120
+l and j k
+m select l 4294967294 0
+n select f 4294967294 m
+o select b 4294967293 n
+p select a 4294967295 o
+q select i 4294967295 p
+r select c 4294967295 q
+ret r
+end
+# 1 when an instruction of kind p0 and value p1 is a barrier (has no known stack effect)
+fn wfzbar u32 u32 -> bool
+a eq p0 1
+b call wfzopok p1
+c eq p0 2
+d eq p0 3
+e eq p0 4
+f eq p0 5
+g eq p0 7
+h eq p0 10
+i eq p0 11
+j eq p0 16
+k eq p0 17
+l eq p0 22
+m eq p0 23
+n or c d
+o or n e
+p or o f
+q or p g
+r or q h
+s or r i
+t or s j
+u or t k
+v or u l
+w or v m
+x select a b w
+y eq x false
+ret y
+end
+# the net depth change of an instruction of kind p0 and value p1
+fn wfznet u32 u32 -> u32
+a eq p0 2
+b eq p0 3
+c eq p0 7
+d eq p0 22
+e or a b
+f or e c
+g or f d
+h eq p0 4
+i eq p0 23
+j or h i
+k eq p0 11
+l eq p0 16
+m eq p0 17
+n or l m
+o call wfzopnet p1
+p select g 1 0
+q select j 4294967295 p
+r select k 4294967294 q
+s select n 4294967293 r
+t eq p0 1
+u select t o s
+ret u
+end
+# the lowest depth an instruction of kind p0 and value p1 reaches relative to its start
+fn wfzlow u32 u32 -> u32
+a eq p0 2
+b eq p0 3
+c eq p0 7
+d eq p0 22
+e or a b
+f or e c
+g or f d
+h eq p0 4
+i eq p0 23
+j or h i
+k eq p0 5
+l eq p0 10
+m or k l
+n eq p0 11
+o eq p0 16
+p eq p0 17
+q or o p
+r call wfzoplow p1
+s eq p0 1
+t or j m
+u select n 4294967294 0
+v select q 4294967293 u
+w select t 4294967295 v
+x select s r w
+ret x
+end
+
+# Forward pass, one trip per instruction k = p1 of the list p2 (np = p3). State W, all words of
+# one u32x128x512 table: word k is the depth before instruction k, counted from the start of its
+# run (the code between barriers) and biased by 2^20 (the depth is never below 2^20 - 22528);
+# word 22528 + k is 1 + the position of the get that pairs with the set at k, 0 when there is no
+# pair (set at k and get of the same local, one get in the set's range, the set's run the get's run,
+# and no earlier get of the local in the outermost loop before the set); words 45056 + c (c the
+# compact index of a local, wfzcidx) hold 2(p + 1) + loopOK of the open range of c (p the set's
+# position, 0 when no range is open), words 53376 + c hold the last get of c plus 1 at bits 17..31,
+# the run of the open range at bits 2..16 and the gets the range has read at bits 0..1 (0, 1, or 2
+# for more or a get in another run); words 61696..61699 hold the depth, the run, the loop depth and
+# the loop start. Word 65530 absorbs the writes that do not apply.
+fn wfzfw u32x128x512 u32 u32x128x352 u32 -> u32x128x512
 a shl p1 1
-b shr a 7
-c and a 127
-d get p0 b
-e get d c
-f add a 1
-g shr f 7
-h and f 127
-i get p0 g
-j get i h
-k add a 2
-l shr k 7
-m and k 127
-n get p0 l
-o get n m
-p add a 3
-q shr p 7
-r and p 127
-s get p0 q
-t get s r
-u call wfzisl e
-v ge j p3
-w lt p1 p4
-x and u v
-y and x w
-z call wfzcidx j
-aa add z 8320
-ab shr z 7
-ac and z 127
-ad get p2 ab
-ae get ad ac
-af shr aa 7
-ag and aa 127
-ah get p2 af
-ai get ah ag
-aj add p1 1
-ak lt aj p4
-al eq o 3
-am eq t j
-an and al am
-ao and an ak
-ap eq e 4
-aq eq e 5
-ar eq ae 1
-as eq ai 1
-au and ar as
-av eq ae 0
-aw select au 0 5
-ax select av 1 4
-ay select ao aw ax
-az select av 26 j
-a0 select ao j az
-a1 select av 0 5
-a2 select aq a1 e
-a3 select ap ay a2
-a4 select ap a0 j
-a5 select y a3 e
-a6 select y a4 j
-a7 and y ap
-a8 and a7 ao
-a9 select a8 0 o
-ba shr a 7
-bb get p0 ba
-bc and a 127
-bd set bb bc a5
-be add bc 1
-bf set bd be a6
-bg set p0 ba bf
-bh shr k 7
-bi get bg bh
-bj and k 127
-bk set bi bj a9
-bl set bg bh bk
-ret bl
+b call wfzgi p2 a
+c add a 1
+d call wfzgi p2 c
+e call wfzg p0 61696
+f call wfzg p0 61697
+g call wfzg p0 61698
+h call wfzg p0 61699
+i call wfzbar b d
+j eq b 8
+k eq b 9
+l eq g 0
+m and j l
+n add g 1
+o sub g 1
+q select j n g
+r select k o q
+s select m p1 h
+u call wfznet b d
+v add e u
+w select i 1048576 v
+x add f 1
+y select i x f
+z eq b 3
+aa eq b 4
+ab eq b 5
+ac or aa ab
+ad or ac z
+ae ge d p3
+af and ad ae
+ag call wfzcidx d
+ah add ag 45056
+ai add ag 53376
+aj call wfzg p0 ah
+ak call wfzg p0 ai
+al ne aj 0
+am shr aj 1
+an and aj 1
+ao eq an 1
+ap shr ak 17
+aq shr ak 2
+ar and aq 32767
+as and ak 3
+at eq as 0
+au eq ar f
+av and at au
+aw and av ao
+ax add p1 1
+ay select aw ax 0
+az sub am 1
+ba add az 22528
+bb and z al
+bd select bb ba 65530
+bf shl ax 17
+bg and ak 131068
+bh select av 1 2
+bi add bf bg
+bj add bi bh
+bk gt g 0
+bl select bk h p1
+bm le ap bl
+bn shl ax 1
+bo select bm 1 0
+bp add bn bo
+bq shl ap 17
+br shl f 2
+bs add bq br
+bt and z af
+bv and aa af
+bw or bt bv
+bx and ab af
+by or bv bx
+bz select bw ai 65530
+ca select bt bj bs
+cb select by ah 65530
+cc select bv bp 0
+cd call wfzp1 p0 p1 p1 e
+ce call wfzp1 cd p1 bd ay
+cf call wfzp1 ce p1 cb cc
+cg call wfzp1 cf p1 bz ca
+ch call wfzp1 cg p1 61696 w
+ci call wfzp1 ch p1 61697 y
+cj call wfzp1 ci p1 61698 r
+ck call wfzp1 cj p1 61699 s
+ret ck
+end
+# the span check of a pair: trip t of the span from its set p5 (after = p6): the instruction at
+# p5 + 1 + t has a depth plus low that is not below after, and does not end a taken pair (state
+# F = p4, the end flag of position k at 22528 + k); the accumulator p0 is kept only then
+fn wfzspan u32 u32 u32x128x512 u32x128x352 u32x128x512 u32 u32 -> u32
+a add p5 1
+b add a p1
+c call wfzg p2 b
+d shl b 1
+e call wfzgi p3 d
+f add d 1
+g call wfzgi p3 f
+h call wfzlow e g
+i add c h
+j ge i p6
+k add b 22528
+l call wfzg p4 k
+m eq l 0
+n and j m
+o select n p0 0
+ret o
+end
+# Verification, one trip per position p1 in order (state F: word p is 1 when the instruction at p is
+# removed, word 22528 + p is 1 when a taken pair's get ends at p; extras: the forward state W = p2,
+# the list L = p3). The pair of p (word 22528 + p of W, minus 1) is taken when the depth at its get
+# is the depth after the set (the set's depth minus 1) and every instruction between passes wfzspan.
+fn wfzver u32x128x512 u32 u32x128x512 u32x128x352 -> u32x128x512
+a add p1 22528
+b call wfzg p2 a
+c ne b 0
+d sub b 1
+e call wfzg p2 p1
+f add e 4294967295
+g select c d p1
+h call wfzg p2 g
+i eq h f
+j sub d p1
+k sub j 1
+l select c k 0
+m fold wfzspan l 1 p2 p3 p0 p1 f
+n eq m 1
+o and c i
+q and o n
+r select q p1 65530
+s select q g 65530
+t add g 22528
+u select q t 65530
+v call wfzp1 p0 p1 r 1
+w call wfzp1 v p1 s 1
+x call wfzp1 w p1 u 1
+ret x
+end
+# Output, one trip per instruction i = p1 (state O: two words per instruction; extras: the list
+# p2, the verification state p3, the count table p4 (gets of a local, wfzcnt), np = p5, n = p6). An
+# instruction that is removed, or a get that follows a set of its local (the tee takes that pair),
+# is kind 0; a set followed by its get is a tee; a set never read is OP 0x1a; a tee never read is
+# kind 0. Parameters are untouched.
+fn wfzout u32x128x512 u32 u32x128x352 u32x128x512 u32x128x512 u32 u32 -> u32x128x512
+a shl p1 1
+b call wfzgi p2 a
+c add a 1
+d call wfzgi p2 c
+e call wfzg p3 p1
+f eq p1 0
+g sub p1 1
+h select f p1 g
+i shl h 1
+j call wfzgi p2 i
+k add i 1
+l call wfzgi p2 k
+m call wfzg p3 h
+o add p1 1
+q lt o p6
+r select q o p1
+s shl r 1
+t call wfzgi p2 s
+u add s 1
+w call wfzgi p2 u
+x eq b 3
+y eq b 4
+z eq b 5
+aa ge d p5
+ab ne e 0
+ac eq j 4
+ad ge l p5
+ae eq m 0
+af eq d l
+ag eq f false
+ah and ac ad
+ai and ah ae
+aj and ai x
+ak and aj af
+al and ak ag
+am eq w d
+an eq t 3
+ao and an am
+ap call wfzcidx d
+aq call wfzg p4 ap
+ar eq aq 0
+as and y aa
+at and z aa
+au or ab al
+ax select ar 1 4
+ay select ao 5 ax
+az select ar 26 d
+ba select ar 0 5
+bb select ar 0 d
+bc select at ba b
+bd select at bb d
+be select as ay bc
+bf select as az bd
+bg select au 0 be
+bh select au 0 bf
+bi call wfzp1 p0 p1 a bg
+bj call wfzp1 bi p1 c bh
+ret bj
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -869,14 +1146,18 @@ fn wfzfin u32x128x352 u32 u32 -> u32x128x512
 a gt p1 22528
 b select a 22528 p1
 c call wfzz
-d fold wfzcp 352 c p0
-e call wfzz
-f fold wfzcnt b e p0 p2 b
+d call wfzp1 c 0 61696 1048576
+e fold wfzfw b d p0 p2
 g call wfzz
-h fold wfzstk b d f p2 b
-i fold wfzrng b g h p2
+i fold wfzver b g e p0
 j call wfzz
-k fold wfzalc b j h i p2
+f fold wfzcnt b j p0 p2 b
+zo call wfzz
+h fold wfzout b zo p0 i f p2 b
+zr call wfzz
+rg fold wfzrng b zr h p2
+za call wfzz
+k fold wfzalc b za h rg p2
 l shr 16640 7
 m and 16640 127
 n get k l

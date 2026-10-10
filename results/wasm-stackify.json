@@ -1,0 +1,111 @@
+{
+  "change": "stackify: a set whose one read follows across balanced code is removed with that read, the value staying on the operand stack (src/wasm.ts stackify; compiler/wasm_code.a0 passes wfzfw, wfzver, wfzout)",
+  "compilerBefore": "a0c-0.1.41",
+  "compilerAfter": "a0c-0.1.42",
+  "bytes": {
+    "unit": "module bytes of the A0 direct wasm32 backend, one module per kernel of tools/exec-bench-kernels.ts with the tools/wasm-bench.ts driver (computed from the emitted modules)",
+    "totalBefore": 9298,
+    "totalAfter": 8371,
+    "changePercent": -10,
+    "perKernel": {
+      "affine": {
+        "before": 229,
+        "after": 219
+      },
+      "arrfill": {
+        "before": 334,
+        "after": 330
+      },
+      "arrfill4k": {
+        "before": 358,
+        "after": 354
+      },
+      "branchy": {
+        "before": 241,
+        "after": 233
+      },
+      "chain3": {
+        "before": 209,
+        "after": 201
+      },
+      "clamp": {
+        "before": 241,
+        "after": 237
+      },
+      "dot1k": {
+        "before": 267,
+        "after": 263
+      },
+      "filter2": {
+        "before": 589,
+        "after": 577
+      },
+      "fnv4k": {
+        "before": 354,
+        "after": 342
+      },
+      "hist256": {
+        "before": 385,
+        "after": 381
+      },
+      "ident": {
+        "before": 173,
+        "after": 169
+      },
+      "loop64": {
+        "before": 247,
+        "after": 247
+      },
+      "mat4": {
+        "before": 4000,
+        "after": 3176
+      },
+      "minmax1k": {
+        "before": 372,
+        "after": 364
+      },
+      "mix": {
+        "before": 225,
+        "after": 220
+      },
+      "noop": {
+        "before": 173,
+        "after": 169
+      },
+      "prefix1k": {
+        "before": 348,
+        "after": 340
+      },
+      "rotl": {
+        "before": 199,
+        "after": 195
+      },
+      "xs4k": {
+        "before": 354,
+        "after": 354
+      }
+    }
+  },
+  "timing": {
+    "method": "tools/wasm-bench.ts, 15 interleaved samples per kernel, medians; load = WebAssembly.compile + instantiate; the clang module does not change between the runs and is the noise control",
+    "loadAfterOverBeforeGeomean": 1.01,
+    "clangControlAfterOverBeforeGeomean": 0.972,
+    "runAfterOverBeforeGeomean": 1.001,
+    "loadBefore": [
+      0,
+      0,
+      0
+    ],
+    "loadAfter": [
+      0.65625,
+      0.65625,
+      0.65625
+    ],
+    "verdict": "no load-time or run-time change beyond the noise of the control: the size gain does not show in load time at these module sizes"
+  },
+  "checks": {
+    "selfhostWasm": "8 of 8 programs identical to src/wasm.ts (results/selfhost-wasm.json)",
+    "kernelResults": "emitted modules return the same a0_wb_run value as the pre-change modules on 1064 (n, h) inputs",
+    "behavior": "wasm-direct and wasm-c: 3083 of 3083 cases passed (bun run behavior)"
+  }
+}
