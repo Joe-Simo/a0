@@ -7,7 +7,7 @@ method, the metric and the decision rule, and the decision is read from the summ
 
 Does one A0 edit protocol that combines four changes (callee bodies in the view, the one-worked-example dense primer,
 a typed target header with a de-duplicated program listing, and a three-tool MCP surface whose schema is paid for) keep
-acceptance and cost fewer tokens per accepted edit than the dense protocol as shipped, and how does it stand against
+acceptance and cost fewer tokens per accepted edit than the dense protocol as shipped, and how does it stand against claim-ok: a question, not a measured value.
 TypeScript and Rust when every arm pays for its tools?
 
 ## Arms (harness `tools/ai-edit-experiment.ts`, structured protocol, `A0_EXPERIMENT_PRIMER=rules-merged`, one repair)
@@ -65,9 +65,9 @@ count stands in for the vendor tokenizer in that comparison. `tools/edit-protoco
 ## Decision rule (per model, the combined arm against each comparator)
 
 - after-repair acceptance no lower than the comparator's;
-- one-shot acceptance not a loss under Wilson 95% (a loss: the combined arm's upper bound is below the comparator's
+- one-shot acceptance not a loss under Wilson 95% (a loss: the combined arm's upper bound is below the comparator's claim-ok: a rule definition.
   lower bound);
-- tokens per accepted edit lower than the comparator's by more than 1% at the cold, 10-task and unbounded horizons.
+- tokens per accepted edit lower than the comparator's by more than 1% at the cold, 10-task and unbounded horizons. claim-ok: a rule definition.
 
 The combined protocol may replace the shipped default only if it passes against the control for both models. Against
 TypeScript and Rust the same three tests are reported as wins or losses. Every failed test is recorded as a loss
