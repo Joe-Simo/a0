@@ -2426,3 +2426,325 @@ ld call rd64 p3 7263
 s9 fold vfix2 1 s8 p2 473 0 ld
 ret s9
 end
+
+# ---- check latency and WebAssembly (the axes table p3: cl at 7300 + 16p, wasm at 7400; sgjson.a0)
+# a string variable of the constant word p5: name word p3, key p4 (fold body)
+fn vword u32x128x256 u32 u32x128x512 u32 u32 u32 -> u32x128x256
+h call whash p2 p3
+st call rd128 p0 0
+s call wstart p2 p5
+l call wlen p2 p5
+s1 fold vapst l p0 p2 s
+r0 call since s1 st
+r fold vdef 1 s1 h p4 r0 0
+ret r
+end
+# p0 * 97 / p1 + 3: a bar length 3..100 of a value against the largest p1 (both scaled down by 10)
+fn lbar u32 u32 -> u32
+a div p0 10
+b div p1 10
+c call max b 1
+n mul a 97
+q call rdiv n c
+r add q 3
+ret r
+end
+# append the bytes of the constant word p3 (fold body; p2 the store)
+fn vapw u32x128x256 u32 u32x128x512 u32 -> u32x128x256
+s call wstart p2 p3
+l call wlen p2 p3
+r fold vapst l p0 p2 s
+ret r
+end
+# the loss row: "macOS arm64: tsgo 56.7 ms, A0 72.6 ms" (fold body; platform p4, base p5, the
+# checker's word p6, its time in tenths p7)
+fn clloss u32x128x256 u32 u32x128x512 u32x128x64 u32 u32 u32 u32 -> u32x128x256
+st call rd128 p0 0
+ow add p4 553
+s1 fold vapw 1 p0 p2 ow
+s2 fold vapw 1 s1 p2 90
+ai add p5 10
+ar call rd64 p3 ai
+arm eq ar 1
+aw select arm 7 556
+s3 fold vapw 1 s2 p2 aw
+s4 fold vapb 1 s3 58
+s5 fold vapw 1 s4 p2 90
+s6 fold vapw 1 s5 p2 p6
+s7 fold vapw 1 s6 p2 90
+s8 fold vapf1 1 s7 p7
+s9 fold vapb 1 s8 32
+s10 fold vapb 1 s9 109
+s11 fold vapb 1 s10 115
+s12 fold vapw 1 s11 p2 85
+s13 fold vapw 1 s12 p2 73
+s14 fold vapw 1 s13 p2 90
+a0i add p5 3
+a0 call rd64 p3 a0i
+a0t call rdiv a0 100
+s15 fold vapf1 1 s14 a0t
+s16 fold vapb 1 s15 32
+s17 fold vapb 1 s16 109
+s18 fold vapb 1 s17 115
+r0 call since s18 st
+n call rd128 s18 31
+k call key1 n
+h call whash p2 574
+s19 fold vdef 1 s18 h k r0 0
+n1 add n 1
+r fold wr128 1 s19 31 n1
+ret r
+end
+fn clbar2 u32x128x256 u32 u32x128x512 u32x128x64 u32 u32 u32 bool bool u32 u32 -> u32x128x256
+pos call rd128 p0 29
+k call key2 p4 pos
+me eq p9 0
+nme ne p9 0
+s2 fold vflag 1 p0 p2 569 k me
+lw0 add p9 533
+lw select me 73 lw0
+s3 fold vword 1 s2 p2 570 k lw
+win and me p7
+s4 fold vflag 1 s3 p2 571 k win
+pc call lbar p10 p6
+s5 fold vnum 1 s4 p2 572 k pc
+t10 call rdiv p10 100
+s6 fold vfix1 1 s5 p2 573 k t10
+vdi0 add p5 6
+vdi add vdi0 p9
+vd call rd64 p3 vdi
+l0 eq vd 3
+l1 and l0 nme
+lose and l1 p8
+cl select lose 1 0
+s7 fold clloss cl s6 p2 p3 p4 p5 lw t10
+pos1 add pos 1
+s8 fold wr128 1 s7 29 pos1
+ret s8
+end
+# bar p1 of platform p4 (fold body; base p5, largest value p6, A0 wins every comparison p7, the
+# platform is publishable p8): 0 A0's whole front end in a fresh process, 1..3 tsc, tsgo, tsc-rs.
+# Only bars with a value are written, at the next position (variables word 29); a loss to a
+# publishable platform's checker is also written as the text of loss row (variables word 31).
+fn clbar u32x128x256 u32 u32x128x512 u32x128x64 u32 u32 u32 bool bool -> u32x128x256
+vi0 add p5 3
+vi add vi0 p1
+v call rd64 p3 vi
+has gt v 0
+c select has 1 0
+r fold clbar2 c p0 p2 p3 p4 p5 p6 p7 p8 p1 v
+ret r
+end
+# competitor p1 (0..2) of the platform at base p3 (fold body; state: A0 wins all so far, any read)
+fn clall (bool,bool) u32 u32x128x64 u32 -> (bool,bool)
+w at p0 0
+a at p0 1
+vi0 add p3 4
+vi add vi0 p1
+v call rd64 p2 vi
+has gt v 0
+di0 add p3 7
+di add di0 p1
+d call rd64 p2 di
+iw eq d 1
+nh select has false true
+ok or nh iw
+w2 and w ok
+a2 or a has
+r rec w2 a2
+ret r
+end
+# the platform's base and whether it is publishable: read, and load.max within load.limit
+fn clok u32x128x64 u32 -> bool
+b0 mul p1 16
+b add b0 7300
+rd call rd64 p0 b
+b1 add b 1
+b2 add b 2
+mx call rd64 p0 b1
+lm call rd64 p0 b2
+rd1 eq rd 1
+over gt mx lm
+lok select over false true
+r and rd1 lok
+ret r
+end
+# platform p1 (fold body)
+fn clplat u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
+b0 mul p1 16
+b add b0 7300
+k call key1 p1
+ok call clok p3 p1
+s1 fold vflag 1 p0 p2 561 k ok
+ow add p1 553
+s2 fold vword 1 s1 p2 562 k ow
+ai add b 10
+ar call rd64 p3 ai
+arm eq ar 1
+aw select arm 7 556
+s3 fold vword 1 s2 p2 563 k aw
+pw add p1 523
+s4 fold vword 1 s3 p2 580 k pw
+b1 add b 1
+b2 add b 2
+mx call rd64 p3 b1
+lm call rd64 p3 b2
+m10 call rdiv mx 10
+l10 call rdiv lm 10
+s5 fold vfix1 1 s4 p2 564 k m10
+s6 fold vfix1 1 s5 p2 565 k l10
+ci add b 11
+cu call rd64 p3 ci
+cpu eq cu 1
+s7 fold vflag 1 s6 p2 566 k cpu
+a0i add b 3
+a0 call rd64 p3 a0i
+a0t call rdiv a0 100
+s8 fold vfix1 1 s7 p2 575 k a0t
+i4 add b 4
+i5 add b 5
+i6 add b 6
+v4 call rd64 p3 i4
+v5 call rd64 p3 i5
+v6 call rd64 p3 i6
+m0 call max a0 v4
+m1 call max m0 v5
+m2 call max m1 v6
+tr eq 1 1
+fa eq 1 0
+st rec tr fa
+wa fold clall 3 st p3 b
+w at wa 0
+an at wa 1
+a0w and w an
+s9 fold wr128 1 s8 29 0
+s10 fold clbar 4 s9 p2 p3 p1 b m2 a0w ok
+nb call rd128 s10 29
+s11 fold vnum 1 s10 p2 567 k nb
+ret s11
+end
+# the verdicts of the publishable platforms (fold body over platforms and competitors: win, tie, loss)
+fn clcnt (u32,u32,u32) u32 u32x128x64 -> (u32,u32,u32)
+pl div p1 3
+j rem p1 3
+ok call clok p2 pl
+b0 mul pl 16
+b add b0 7300
+vi0 add b 7
+vi add vi0 j
+v call rd64 p2 vi
+w at p0 0
+t at p0 1
+l at p0 2
+iw eq v 1
+it eq v 2
+il eq v 3
+cw and ok iw
+ct and ok it
+cl and ok il
+w1 add w 1
+t1 add t 1
+l1 add l 1
+w2 select cw w1 w
+t2 select ct t1 t
+l2 select cl l1 l
+r rec w2 t2 l2
+ret r
+end
+fn ccl u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
+s1 fold vnum 1 p0 p2 560 0 3
+s2 fold wr128 1 s1 31 0
+s3 fold clplat 3 s2 p2 p3
+z rec 0 0 0
+c fold clcnt 9 z p3
+w at c 0
+t at c 1
+l at c 2
+wt add w t
+n add wt l
+s4 fold vnum 1 s3 p2 576 0 w
+s5 fold vnum 1 s4 p2 577 0 t
+s6 fold vnum 1 s5 p2 578 0 l
+s7 fold vnum 1 s6 p2 579 0 n
+ret s7
+end
+# WebAssembly: module bytes summed (wa_*) and time per trip as a multiple of A0's, geometric mean (wt_*);
+# row p1: 0 A0, 1 clang (fold body; A0 bytes p4, clang bytes p5, clang's time over A0's x 100 p6)
+fn warow u32x128x256 u32 u32x128x512 u32 u32 u32 -> u32x128x256
+k call key2 0 p1
+me eq p1 0
+s1 fold vflag 1 p0 p2 592 k me
+lw select me 73 546
+s2 fold vword 1 s1 p2 591 k lw
+bv select me p3 p4
+bm call max p3 p4
+sm lt p3 p4
+bw and me sm
+s3 fold vflag 1 s2 p2 593 k bw
+bp call lbar bv bm
+s4 fold vnum 1 s3 p2 594 k bp
+s5 fold vnum 1 s4 p2 595 k bv
+tv select me 100 p5
+tm call max 100 p5
+tw0 ge p5 120
+tw and me tw0
+s6 fold vflag 1 s5 p2 596 k tw
+t10 mul tv 10
+m10 mul tm 10
+tp call lbar t10 m10
+s7 fold vnum 1 s6 p2 597 k tp
+s8 fold vfix2 1 s7 p2 598 k tv
+ret s8
+end
+fn cwa u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
+n call rd64 p3 7400
+ab call rd64 p3 7401
+cb call rd64 p3 7402
+nb call rd64 p3 7403
+nw call rd64 p3 7404
+nt call rd64 p3 7405
+nl call rd64 p3 7406
+sl1 call rd64 p3 7407
+gm call rd64 p3 7408
+ml call rd64 p3 7409
+hl call rd64 p3 7410
+pf call rd64 p3 7411
+cpu call rd64 p3 7413
+hasn gt n 0
+hasp gt pf 0
+over gt hl ml
+lok select over false true
+o0 and hasn hasp
+ok and o0 lok
+s1 fold vflag 1 p0 p2 582 0 ok
+one select ok 1 0
+s2 fold vnum 1 s1 p2 581 0 one
+s3 fold vnum 1 s2 p2 583 0 n
+osw sub 556 pf
+s4 fold vword 1 s3 p2 584 0 osw
+arm eq pf 3
+aw select arm 7 556
+s5 fold vword 1 s4 p2 585 0 aw
+h10 call rdiv hl 10
+m10 call rdiv ml 10
+s6 fold vfix1 1 s5 p2 586 0 h10
+s7 fold vfix1 1 s6 p2 587 0 m10
+cf eq cpu 1
+s8 fold vflag 1 s7 p2 588 0 cf
+s9 fold vnum 1 s8 p2 590 0 2
+g100 call rdiv gm 10
+s10 fold warow 2 s9 p2 ab cb g100
+s11 fold vfix2 1 s10 p2 606 0 g100
+s12 fold vnum 1 s11 p2 599 0 nw
+s13 fold vnum 1 s12 p2 600 0 nt
+s14 fold vnum 1 s13 p2 601 0 nl
+sl sub sl1 1
+sl100 call rdiv sl 10
+s15 fold vfix2 1 s14 p2 602 0 sl100
+bg gt nb 0
+s16 fold vflag 1 s15 p2 603 0 bg
+s17 fold vnum 1 s16 p2 604 0 nb
+ls gt nl 0
+s18 fold vflag 1 s17 p2 605 0 ls
+ret s18
+end
