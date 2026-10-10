@@ -37,7 +37,7 @@ import { createRequire } from 'node:module';
 import { cpus, platform as osPlatform, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseAndValidate } from '../src/core.js';
 import { EditSession } from '../src/edit.js';
 import { link } from '../src/link.js';
@@ -203,7 +203,8 @@ export interface CheckLatencyReport {
      * Optional subjects of the native checker (tools/native-check.ts, src/native-fast.ts), by name:
      * `a0 native check (fresh process)` is the native checker alone on front.a0; `a0 binary check,
      * native fast path (fresh process)` is `a0 check front.a0` of the standalone executable with the
-     * native checker beside it; the two `compiler/check.a0` rows are the same pair on the 207 KB
+     * native checker beside it; `a0 native launcher check (fresh process)` is the native `a0` with
+     * the node command line beside it (tools/native/a0.c, its launcher); the two `compiler/check.a0` rows are the same pair on the 207 KB
      * linked checker (the binary row without the native checker beside it, as before). Absent where
      * no C compiler or no bun exists; reports before the native checker lack the field.
      */
@@ -638,6 +639,17 @@ export async function measure(opts: {
       throw new Error(
         `bun build --compile of src/a0.js failed: ${(fastBuilt.stderr ?? '').trim().split('\n')[0]}`,
       );
+    // the native `a0` as the launcher (tools/native/a0.c): the full command line beside it, which
+    // an accepted `a0 check FILE.a0` never starts
+    const launchDir = join(dir, 'launch');
+    await mkdir(launchDir, { recursive: true });
+    const launchBin = join(launchDir, `a0${exeSuffix}`);
+    await copyFile(nativeBuilt, launchBin);
+    await writeFile(
+      join(launchDir, 'a0-cli.js'),
+      `await import(${JSON.stringify(pathToFileURL(cliJs).href)});\n`,
+      'utf8',
+    );
     const checkerFile = join(dir, 'checker.a0');
     await writeFile(
       checkerFile,
@@ -648,6 +660,7 @@ export async function measure(opts: {
     const nativeSubjects: [string, string, string[], boolean][] = [
       ['a0 native check (fresh process)', nativePath, ['check', coldFile], true],
       ['a0 binary check, native fast path (fresh process)', fastBin, ['check', coldFile], true],
+      ['a0 native launcher check (fresh process)', launchBin, ['check', coldFile], true],
       [
         'a0 binary check, compiler/check.a0 (fresh process)',
         existsSync(binPath) ? binPath : fastBin,
