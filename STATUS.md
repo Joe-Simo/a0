@@ -232,3 +232,13 @@ pre-registered rule for Haiku and Sonnet (`results/edit-protocol-2026-10-10.json
 horizons, with equal after-repair acceptance: its system text is too short to cache, the control's is cached. Against
 TypeScript it costs 1.35x (Haiku) and 1.26x (Sonnet) and accepts one task fewer after repair. Recorded as losses in the
 ledger; the shipped default stays. Rust was not scored (no Rust toolchain on the scoring machine).
+
+Correction (2026-10-10): the ratios above priced every cache read at 0.05x (the Opus rate) and the unbounded horizon
+never charged the 1.25x cache write. Re-priced from the per-trial reports at the Haiku/Sonnet rule (write 1.25x once per
+session, read 0.1x, 512-token minimum; costs modelled from local o200k counts, not billed), the combined arm against
+the dense control costs 0.30x / 1.31x / 1.86x / 2.08x (Haiku; Sonnet 0.28x / 1.27x / 1.86x / 2.10x) at cold / 10 / 50 /
+unbounded edits (control 1825.4 / 419.4 / 294.4 / 263.2 tokens per accepted edit for Haiku, 1750.3 / 384.4 / 263.0 / 232.6
+for Sonnet; `results/edit-protocol-2026-10-10.json`). Against TypeScript the figures do not change (1.35x, 1.26x; neither
+system text is cached). The verdicts do not change: FAIL for both models. Fairness caveat: any A0 advantage over
+TypeScript at long horizons (the dense control at unbounded: 263.2 against 405.8 for Haiku, 232.6 against 388.6 for Sonnet)
+comes from A0's system text crossing the cache minimum while TypeScript's does not, not from shorter edits.

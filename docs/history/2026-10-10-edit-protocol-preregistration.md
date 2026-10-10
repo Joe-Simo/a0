@@ -108,3 +108,9 @@ Verdict: **FAIL for both models.** Against the control: acceptance passes, cold 
 Against TypeScript: one-shot is not a Wilson loss, but after-repair acceptance (one task lower) and tokens at all three
 horizons lose. The combined protocol does not replace the shipped default. The 12 failed tests are in
 `results/loss-ledger.json` (source `edit-protocol`).
+
+Correction (2026-10-10): the control figures above priced cache reads at 0.05x (the Opus rate) and the unbounded
+horizon never paid the 1.25x write. Re-priced from the per-trial reports at write 1.25x once per session and read 0.1x
+(Haiku, Sonnet), the control costs 1825.4 / 419.4 / 294.4 / 263.2 (Haiku) and 1750.3 / 384.4 / 263.0 / 232.6 (Sonnet) tokens
+per accepted edit at cold / 10 / 50 / unbounded edits (50 is reported, not scored); the combined arm and TypeScript are
+uncached and unchanged. Costs are modelled, not billed. Verdicts unchanged: FAIL for both models.
