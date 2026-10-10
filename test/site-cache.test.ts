@@ -169,11 +169,11 @@ test('a changed template or data file invalidates the generated source, and the 
     const wordTpl = join(root, 'word.tpl');
     await writeFile(
       wordTpl,
-      tpl.replace('each edit checked before it lands', 'each edit checked before it is kept'),
+      tpl.replace('A0 checks it before it lands', 'A0 checks it before it is kept'),
     );
     const changed = await generate(bin, wordTpl, { cache, onCache });
     assert.equal(seen[2], false, 'a changed template misses');
-    assert.match(changed, /each edit checked before it is kept/);
+    assert.match(changed, /A0 checks it before it is kept/);
 
     // a file a template names (its style sheet, copied so it can change) is part of the input
     const css = join(root, 'style.css');

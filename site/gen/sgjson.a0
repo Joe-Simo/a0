@@ -583,7 +583,7 @@ end
 # ---- axes: results/lang-axes.json, read into a table of its own. 128 languages; language s (< 64):
 # id hash 192 + s, label 256 + 8s, label length 768 + s, family 832 + s (as in exec), kernel
 # source tokens 896 + s, static check ms x 1000 + 1 at 1152 + s and check + run at 1216 + s (0 when
-# the language has none); 1344 the largest 1-minute load average x 100 of any round, 1345 cpus.
+# the language has none); 1355 tokens.a0.dense.vsBest.languagesRanked; 1344 the largest 1-minute load average x 100 of any round, 1345 cpus.
 fn haxes u32x128x64 u32 u32x128x512 -> u32x128x64
 t call g p0 15
 d call g p0 16
@@ -687,7 +687,21 @@ tkn call g s9 1346
 tkn1 add tkn 1
 tkc select tke 1 0
 s10 fold wr64 tkc s9 1346 tkn1
-ret s10
+# tokens.a0.dense.vsBest.languagesRanked at 1355: how many languages the dense token rank is over
+lr0 and isnum d5
+lr1 and lr0 kt
+la call kis s10 2 p2 47
+ldn call kis s10 3 p2 380
+lvb call kis s10 4 p2 493
+llr call kis s10 5 p2 494
+lr2 and lr1 la
+lr3 and lr2 ldn
+lr4 and lr3 lvb
+lr5 and lr4 llr
+clr select lr5 1 0
+lrv call num s10 1
+s11 fold wr64 clr s10 1355 lrv
+ret s11
 end
 
 # ---- hw: results/hardware.json, into the axes table. 1400 modules synthesized, 1401 their cells in

@@ -120,7 +120,7 @@ test('the home page is short: a pitch, one chart per question, the losses beside
   assert.ok(!html.includes('<details'), 'no hidden lists on the home page');
   assert.ok(!html.includes('class="rail"'), 'the section rail is on /benchmarks only');
   for (const h of [
-    'A0 is a small language for code an AI agent edits one function at a time',
+    'Your agent edits one function. A0 checks it before it lands.',
     'Install and connect',
     'Where A0 is slower than C',
     'How much does an edit cost?',
@@ -130,13 +130,18 @@ test('the home page is short: a pitch, one chart per question, the losses beside
     assert.ok(text.includes(h), `missing: ${h}`);
   const answers: readonly RegExp[] = [
     /\$ a0 run examples\/kernels\.a0 affine 3 4 5\n\s*17/,
-    /Slower than the best of C, Rust and Zig on \d+ of \d+ test programs\. On a one-function file it costs \d+\.\d\dx TypeScript/,
+    /Slower than the best of C, Rust and Zig on \d+ of \d+ test programs\.(?! On a one-function)/,
     /On a one-function file A0 costs \d+\.\d\dx TypeScript's tokens, because the instructions dominate\. Over a session of 10 edits it costs \d+ tokens per task in its canonical form and \d+ in its dense form \(place \d+ and \d+ of \d+ languages, 1 = fewest\)/,
     /type-checks the whole program in \d+\.\d\d ms at the median\. TypeScript with a warm compiler takes \d+\.\d ms/,
     /\d+ test cases ran on \d+ paths\. The native assembly targets ran the \d+ that need no input or output, and SystemVerilog is simulated separately on \d+/,
     /MIT license, free for any use\. Copyright 2026 Joe Simo\./,
   ];
   for (const re of answers) assert.match(text, re);
+  const axes = JSON.parse(await readFile('results/lang-axes.json', 'utf8'));
+  assert.ok(
+    text.includes(`the next shortest of ${axes.tokens.a0.dense.vsBest.languagesRanked} languages`),
+    'the hero language count is results/lang-axes.json languagesRanked',
+  );
   assert.match(html, /<a class="pill" href="#install"[^>]*>Install A0<\/a>/);
   assert.ok(html.includes('<a class="pill ghost" href="#connect">Connect your agent</a>'));
 });
@@ -153,7 +158,7 @@ test('splitting the stylesheet over functions leaves the rendered page unchanged
   try {
     for (const name of ['page', 'docs', 'bench'] as const) {
       const tpl = await readFile(`site/gen/${name}.tpl`, 'utf8');
-      const unsplit = tpl.replace(/\{css_a\n[\s\S]*?\{css_f\ns 9 css 45000\n\}\n/, 's 9 css\n');
+      const unsplit = tpl.replace(/\{css_a\n[\s\S]*?\ns 9 css \d+\n\}\n/, 's 9 css\n');
       assert.notEqual(unsplit, tpl, `${name}.tpl has the css section functions`);
       const file = join(dir, `${name}.tpl`);
       await writeFile(file, unsplit);
@@ -172,10 +177,12 @@ test('splitting the stylesheet over functions leaves the rendered page unchanged
       assert.equal(b.css, a.css, `${name}: stylesheet`);
       // the program must carry the whole stylesheet: a chunk that runs out of room silently drops the tail
       const cssSource = await readFile('site/gen/style.css', 'utf8');
+      const expected = scopeThemes(cssSource);
       assert.ok(
-        Math.abs(b.css.length - cssSource.length) <= 2,
-        `${name}: the program's stylesheet (${b.css.length}) is the whole of style.css (${cssSource.length})`,
+        Math.abs(b.css.length - expected.length) <= 2,
+        `${name}: the program's stylesheet (${b.css.length}) is the whole of style.css, theme-scoped (${expected.length})`,
       );
+      assert.equal(b.css.trimEnd(), expected.trimEnd(), `${name}: stylesheet text`);
     }
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -205,6 +212,29 @@ test('the generator refuses a function above the node table, naming it', () => {
     'page.tpl',
   );
 });
+
+// The theme scoping site/gen/sgcss.a0 documents, written independently: each
+// `@media (prefers-color-scheme:X){R}` block keeps R with each selector limited to `:root` without the
+// opposite forced theme, and is followed by R limited to `[data-theme=X]`.
+function scopeThemes(css: string): string {
+  const scope = (rules: string, cond: string): string =>
+    rules.replace(/([^{}]+)\{([^{}]*)\}/g, (_, sels: string, body: string) => {
+      const out = sels.split(',').map((raw) => {
+        const sel = raw.replace(/\s+/g, ' ').trim();
+        return sel.startsWith(':root')
+          ? `:root:where(${cond})${sel.slice(5)}`
+          : `:where(:root${cond}) ${sel}`;
+      });
+      return `${out.join(',')}{${body}}`;
+    });
+  return css.replace(
+    /@media \(prefers-color-scheme:(light|dark)\)\{((?:[^{}]*\{[^{}]*\})*)\}/g,
+    (_, x: string, rules: string) => {
+      const other = x === 'light' ? 'dark' : 'light';
+      return `@media (prefers-color-scheme:${x}){${scope(rules, `:not([data-theme=${other}])`)}}${scope(rules, `[data-theme=${x}]`)}`;
+    },
+  );
+}
 
 async function rendered(
   source: string,

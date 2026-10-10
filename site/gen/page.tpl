@@ -173,7 +173,7 @@ s 13 glsl
 "1.67x
 >
 .span unit
-"\sfewer tokens than Forth, the next shortest of 49 languages
+"\sfewer tokens than Forth, the next shortest of $tk_nl$ languages
 >
 >
 .p tokt
@@ -260,7 +260,7 @@ w 100
 >
 >
 .p honest
-"Slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs. On a one-function file it costs $cmin_100$x TypeScript's tokens.
+"Slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs.
 >
 >
 }

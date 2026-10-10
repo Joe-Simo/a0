@@ -699,14 +699,14 @@ Next: tokens, what it costs to read and write the same program. Tokens
 
 Tokens
 How many tokens does it take to write the same program in each language, and one small edit to it?
-Writing the 10 token test programs, A0 (canonical) takes 559 tokens: place 41 of 49 (1 = fewest), fewer than 8 of the other 48 languages, equal to 0 and more than 40. A0 (dense) takes 202: place 1, fewer than 48, equal to 0, more than 0; its lossless form, with the same ids and node order, takes 286: place 1. The dense totals are over the same 10 programs (results/dense-tokens.json); the speed tests below time more programs (19), but only 10 of them are counted for tokens.
+Writing the 10 token test programs, A0 (canonical) takes 541 tokens: place 38 of 49 (1 = fewest), fewer than 11 of the other 48 languages, equal to 0 and more than 37. A0 (dense) takes 193: place 1, fewer than 48, equal to 0, more than 0; its lossless form, with the same ids and node order, takes 277: place 1. The dense totals are over the same 10 programs (results/dense-tokens.json); the speed tests below time more programs (19), but only 10 of them are counted for tokens.
 A token is the unit a model reads and writes, so fewer tokens means less to read, write and pay for. Counts use the o200k tokenizer on the source of the same test programs. Dense is the same A0 program in a shorter surface form that converts losslessly to the canonical form; both are plotted.
 Source tokens of the 10 token test programs, per language
 Sum over the test programs of the o200k tokens of each program as written in that language, shorter bar = fewer tokens. Bar length is proportional to the count.
 measured: 49 of 49 languages
 A0 (canonical and dense) compiled JIT or VM interpreted
 A0 (dense)
-202 tok
+193 tok
 
 C#
 384 tok
@@ -744,15 +744,15 @@ TypeScript
 C
 512 tok
 
+A0 (canonical)
+541 tok
+
 Rust
 558 tok
 
-A0 (canonical)
-559 tok
-
 Show all 50 rows (49 languages, A0 in two forms)
 A0 (dense)
-202 tok
+193 tok
 
 Forth
 323 tok
@@ -865,6 +865,9 @@ Prolog
 Tcl
 528 tok
 
+A0 (canonical)
+541 tok
+
 Pascal
 548 tok
 
@@ -873,9 +876,6 @@ PHP
 
 Rust
 558 tok
-
-A0 (canonical)
-559 tok
 
 Clojure
 560 tok
@@ -1783,8 +1783,11 @@ One source, checked against one oracle: 10 paths (the interpreter, the optimizer
 
 # Home
 
-A0 is a small language for code an AI agent edits one function at a time, each edit checked before it lands; it has no floats, heap or recursion, so use C, Rust or TypeScript for those.
-Slower than the best of C, Rust and Zig on 8 of 19 test programs. On a one-function file it costs 2.42x TypeScript's tokens.
+For the code your AI agent writes
+Your agent edits one function. A0 checks it before it lands.
+A small, typed language your agent edits through a server. A broken edit comes back as an error, never as a bug in your file.
+ Connect your agent
+
 fn affine u32 u32 u32 -> u32
 a mul p0 p1
 b add a p2
@@ -1792,24 +1795,61 @@ ret b
 end
 $ a0 run examples/kernels.a0 affine 3 4 5
  17
- Connect your agent
+
+1.67x fewer tokens than Forth, the next shortest of 49 languages
+10 benchmark kernels: 193 tokens in A0's dense form, 323 in Forth (o200k; results/lang-axes.json).
+A0 dense
+193
+
+Forth
+323
+
+Python
+417
+
+TypeScript
+507
+
+Rust
+558
+
+Tokens to write the same 10 benchmark programs (o200k tokenizer). What a whole AI edit costs is measured below.
+
+Slower than the best of C, Rust and Zig on 8 of 19 test programs.
 
 Install and connect
-A0 is one binary with no package manager. Install it, then connect your agent.
+A0 is one binary with no package manager.
+1 Install
 macOS and Linuxcurl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
 
 Windows, PowerShellirm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex
 
-Connect your agent
+2 Connect your agent
 Claude Code: add the a0 MCP server with this one line. The a0 binary must be on PATH.
 claude mcp add a0 -- a0 mcp.
 
+3 Make the first edit
+Ask your agent for a function in a new.a0 file. An edit that fails type-checking is refused.
+
 Targets: machine code, C, wasm, JavaScript, JVM,.NET, Metal and SystemVerilog. 5262 test cases ran on 10 paths. The native assembly targets ran the 4297 that need no input or output, and SystemVerilog is simulated separately on 5262 (results/verification.json).
 MIT license, free for any use. Copyright 2026 Joe Simo.
-Works? Then see where A0 loses: Where A0 is slower than C
+Next: Why agents need this
+
+Why it matters for AI agents
+Cost per edit
+Short programs, one-function edits: the agent never rewrites the file around a change.
+
+Every edit checked
+The whole program is type-checked before an edit lands. A broken edit goes back to the model as an error, not into your code as a bug.
+
+Honest limits
+No floats, heap or recursion: use C, Rust or TypeScript for those. Slower than C on some programs (results/exec-benchmark-full.json); the sections below show every loss.
+
+Next: Where A0 is slower than C
 
 Where A0 is slower than C
 A0 is slower than the best of C, Rust and Zig on 8 of 19 test programs, by up to 4.31x on mat4. Over all of them its machine code takes 1.16x as long as hand-written C, a geometric mean (on an Apple M3; results/exec-benchmark-full.json).
+In WebAssembly, A0 takes 1.1x to 1.3x clang's time per loop trip on 5 of 19 kernels (results/wasm-benchmark.json).
 How long each language takes, as a multiple of A0's time
 A0 compiled JIT or VM interpreted
 C
@@ -1863,3 +1903,7 @@ A0 whole file
 0.53 ms
 
 Every number here is read from a file in results/. The benchmarks page shows the method and the losses.
+
+Give your agent a language it can check.
+One line to install, one to connect Claude Code.
+Install A0 Read the docs
