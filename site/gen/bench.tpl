@@ -95,25 +95,13 @@ m bestflag zigReleaseFast Zig ReleaseFast
 2event at r0 0
 2tok at r0 1
 # The stylesheet is one text literal of a byte per operand; the A0 toolchain keeps a function's operands in a
-# table of 32768 pairs, so it is spread over five functions by byte range (the chunks that start in each range).
+# table of 32768 pairs, so it is spread over two functions by byte range (the chunks that start in each range).
 # tools/site-gen.ts fails the build when a function is over 75% of that table: then add a range here.
 {css_a
 s 9 css 0 9000
 }
 {css_b
-s 9 css 9000 18000
-}
-{css_c
-s 9 css 18000 27000
-}
-{css_d
-s 9 css 27000 36000
-}
-{css_e
-s 9 css 36000 45000
-}
-{css_f
-s 9 css 45000
+s 9 css 9000
 }
 c nav
 {sec_bhead

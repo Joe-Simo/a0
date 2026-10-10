@@ -1,20 +1,20 @@
 # Site generator, module 9: the variables the template reads, and the integer arithmetic.
-# Variables table (u32x128x128): 0 end of the pool (a byte position), 1 number of variables,
+# Variables table (u32x128x256): 0 end of the pool (a byte position), 1 number of variables,
 # 2..31 refs of constant words, 32..351 refs of the data table strings (sgcalc.a0: 32 languages,
 # 96 kernels, 112 startup ids, 240 edit kinds, 256 parallel kernels, 272 parallel labels, 288 the
 # language labels of lang-axes.json), 352 + 4e variable e: name hash, key (dims << 28 | i << 14 | j),
-# ref (start << 16 | length, bytes of this table), number; the pool of string bytes from byte 56000
-# (so up to 3412 variables). A variable has 0, 1 or 2 dimensions: it is read with the loop indices
+# ref (start << 12 | length, bytes of this table), number; the pool of string bytes from byte 100000
+# (so up to 6162 variables). A variable has 0, 1 or 2 dimensions: it is read with the loop indices
 # i (outer) and j (inner) of the template.
 use "sgphase.a0"
 use "sgtables.a0"
 
-fn vhd u32x128x128 u32 -> u32
+fn vhd u32x128x256 u32 -> u32
 r call rd128 p0 p1
 ret r
 end
 # append byte p2 to the pool
-fn vapb u32x128x128 u32 u32 -> u32x128x128
+fn vapb u32x128x256 u32 u32 -> u32x128x256
 o call rd128 p0 0
 s1 fold wb128 1 p0 o p2
 o1 add o 1
@@ -22,44 +22,44 @@ r fold wr128 1 s1 0 o1
 ret r
 end
 # append store byte p3 + p1 / pool byte p2 + p1 / data table byte p3 + p1
-fn vapst u32x128x128 u32 u32x128x512 u32 -> u32x128x128
+fn vapst u32x128x256 u32 u32x128x512 u32 -> u32x128x256
 a add p3 p1
 b call sb p2 a
 r fold vapb 1 p0 b
 ret r
 end
-fn vapv u32x128x128 u32 u32 -> u32x128x128
+fn vapv u32x128x256 u32 u32 -> u32x128x256
 a add p2 p1
 b call vb p0 a
 r fold vapb 1 p0 b
 ret r
 end
-fn vappa u32x128x128 u32 u32x128x64 u32 -> u32x128x128
+fn vappa u32x128x256 u32 u32x128x64 u32 -> u32x128x256
 a add p3 p1
 b call pb p2 a
 r fold vapb 1 p0 b
 ret r
 end
 # append the bytes of ref p2
-fn vapref u32x128x128 u32 u32 -> u32x128x128
-s shr p2 16
-l and p2 65535
+fn vapref u32x128x256 u32 u32 -> u32x128x256
+s shr p2 12
+l and p2 4095
 r fold vapv l p0 s
 ret r
 end
-fn vdig u32x128x128 u32 u32 u32 -> u32x128x128
+fn vdig u32x128x256 u32 u32 u32 -> u32x128x256
 ch call digit p1 p2 p3
 r fold vapb 1 p0 ch
 ret r
 end
 # append the decimal rendering of p2
-fn vapd u32x128x128 u32 u32 -> u32x128x128
+fn vapd u32x128x256 u32 u32 -> u32x128x256
 nd call ndig p2
 r fold vdig nd p0 p2 nd
 ret r
 end
 # append p2 hundredths as "a.bc", tenths as "a.b"
-fn vapf2 u32x128x128 u32 u32 -> u32x128x128
+fn vapf2 u32x128x256 u32 u32 -> u32x128x256
 ip div p2 100
 fp rem p2 100
 t div fp 10
@@ -72,7 +72,7 @@ s3 fold vapb 1 s2 t1
 s4 fold vapb 1 s3 o1
 ret s4
 end
-fn vapf1 u32x128x128 u32 u32 -> u32x128x128
+fn vapf1 u32x128x256 u32 u32 -> u32x128x256
 ip div p2 10
 o rem p2 10
 o1 add o 48
@@ -82,15 +82,15 @@ s3 fold vapb 1 s2 o1
 ret s3
 end
 # the ref of the bytes appended since p1
-fn since u32x128x128 u32 -> u32
+fn since u32x128x256 u32 -> u32
 o call rd128 p0 0
 l sub o p1
-s shl p1 16
+s shl p1 12
 r or s l
 ret r
 end
 # variable: name hash p2, key p3, ref p4, number p5 (fold body)
-fn vdef u32x128x128 u32 u32 u32 u32 u32 -> u32x128x128
+fn vdef u32x128x256 u32 u32 u32 u32 u32 -> u32x128x256
 n call rd128 p0 1
 e0 shl n 2
 e add e0 352
@@ -117,7 +117,7 @@ r or b 536870912
 ret r
 end
 # a number variable: name word p3, key p4, number p5 (fold body; p2 the store)
-fn vnum u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+fn vnum u32x128x256 u32 u32x128x512 u32 u32 u32 -> u32x128x256
 h call whash p2 p3
 st call rd128 p0 0
 s1 fold vapd 1 p0 p5
@@ -126,7 +126,7 @@ r fold vdef 1 s1 h p4 r0 p5
 ret r
 end
 # a variable of p5 hundredths / tenths
-fn vfix2 u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+fn vfix2 u32x128x256 u32 u32x128x512 u32 u32 u32 -> u32x128x256
 h call whash p2 p3
 st call rd128 p0 0
 s1 fold vapf2 1 p0 p5
@@ -134,7 +134,7 @@ r0 call since s1 st
 r fold vdef 1 s1 h p4 r0 0
 ret r
 end
-fn vfix1 u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+fn vfix1 u32x128x256 u32 u32x128x512 u32 u32 u32 -> u32x128x256
 h call whash p2 p3
 st call rd128 p0 0
 s1 fold vapf1 1 p0 p5
@@ -143,12 +143,12 @@ r fold vdef 1 s1 h p4 r0 0
 ret r
 end
 # a string variable of ref p5 / a flag ("1" or empty) of p5
-fn vref u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+fn vref u32x128x256 u32 u32x128x512 u32 u32 u32 -> u32x128x256
 h call whash p2 p3
 r fold vdef 1 p0 h p4 p5 0
 ret r
 end
-fn vflag u32x128x128 u32 u32x128x512 u32 u32 bool -> u32x128x128
+fn vflag u32x128x256 u32 u32x128x512 u32 u32 bool -> u32x128x256
 h call whash p2 p3
 w call rd128 p0 13
 r0 select p5 w 0
@@ -156,7 +156,7 @@ r fold vdef 1 p0 h p4 r0 0
 ret r
 end
 # the constant word p2 appended to the pool, its ref at variables word p3 (fold body)
-fn vconst u32x128x128 u32 u32x128x512 u32 u32 -> u32x128x128
+fn vconst u32x128x256 u32 u32x128x512 u32 u32 -> u32x128x256
 st call rd128 p0 0
 s call wstart p2 p3
 l call wlen p2 p3

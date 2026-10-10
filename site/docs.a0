@@ -2,1223 +2,1072 @@
 use "ui.a0"
 fn css_a io -> io
 x1 write p0 9
-x2 text "@font-face{font-family:\"Geist\";src:url(\"/fonts/Geist-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n@font-face{font-family:\"Geist Mono\";src:url(\"/fonts/GeistMono-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n:root{color-scheme:dark;--bg:#000;--fg:#fff;--fg2:#d8dbe0;--body:#c9ccd1;--muted:#8a8f98;--dim:#5c6169;--line:#1f2227;--line2:#33373d;--card:#0b0c0e;--pillbg:#fff;--pillfg:#000;--ghost:#17191d;--a0:#ffd166;--c:#7aa2ff;--rust:#f0885a;--gray:#9aa0a6;--win:#5ad19a;--loss:#ff7a7a;--glow1:rgba(120,140,255,.22);--glow2:rgba(255,209,102,.12)}\n*{box-sizing:border-box}\n:root{--hdr:64px;--railh:0px}\nhtml{scroll-behavior:smooth;scroll-padding-top:calc(var(--hdr) + var(--railh) + 16px)}\nbody{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 \"Geist\",-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}\na{color:inherit}\n"
+x2 text "@font-face{font-family:\"Geist\";src:url(\"/fonts/Geist-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n@font-face{font-family:\"Geist Mono\";src:url(\"/fonts/GeistMono-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n:root{color-scheme:dark;--bg:#000;--fg:#ededed;--mute:#a1a1a1;--line:#1f1f1f;--card:#0a0a0a;--g:#00ff41;--bar:#3a3a3a;--rain:.55;--rain-c:#00ff41;--rain-h:#d6ffe0;--mono:\"Geist Mono\",ui-monospace,\"SF Mono\",\"Cascadia Code\",Menlo,Consolas,monospace;--sans:\"Geist\",Inter,\"Segoe UI\",system-ui,-apple-system,sans-serif;--hdr:60px}\n"
 x3 puts x1 x2
 x4 write x3 9
-x5 text ".pixel{font-family:\"Geist Pixel\",\"Geist Mono\",monospace;font-weight:400}\n.mono{font-family:\"Geist Mono\",ui-monospace,SFMono-Regular,Menlo,monospace}\n.top{position:fixed;inset:0 0 auto 0;z-index:20;height:64px;display:flex;align-items:center;padding:0 28px;background:linear-gradient(var(--bg),transparent)}\n.nav{display:flex;align-items:center;gap:28px;width:100%}\n.brand{font-size:1.25rem;letter-spacing:.02em;text-decoration:none;margin-right:12px}\n.links{display:flex;gap:22px;flex:1}\n.links a{color:var(--fg2);text-decoration:none;font-size:.9rem}\n.links a:hover{color:var(--fg)}\n.pill{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;background:var(--pillbg);color:var(--pillfg);text-decoration:none;font-size:.9rem;font-weight:500}\n.pill.ghost{background:var(--ghost);color:var(--fg)}\n.pill:hover{filter:brightness(.92)}\n"
+x5 text "@media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){color-scheme:light;--bg:#fafafa;--fg:#0a0a0a;--mute:#666;--line:#e4e4e4;--card:#fff;--g:#007a1f;--bar:#cfcfcf;--rain:.55;--rain-c:#00a832;--rain-h:#006b20}}:root:where([data-theme=light]){color-scheme:light;--bg:#fafafa;--fg:#0a0a0a;--mute:#666;--line:#e4e4e4;--card:#fff;--g:#007a1f;--bar:#cfcfcf;--rain:.55;--rain-c:#00a832;--rain-h:#006b20}\n*{box-sizing:border-box}\nhtml{scroll-behavior:smooth;scroll-padding-top:calc(var(--hdr) + 16px)}\nbody{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--sans);overflow-x:hidden;-webkit-font-smoothing:antialiased}\na{color:inherit}\ncode,.mono,.pixel{font-family:var(--mono)}\ncode{font-size:.9em}\n.mute{color:var(--mute)}\n.small{font-size:13px}\n:focus-visible{outline:2px solid var(--fg);outline-offset:2px}\n.skip{position:absolute;left:-9999px;top:8px;z-index:30;background:var(--fg);color:var(--bg);padding:8px 12px;border-radius:6px}\n.skip:focus{left:16px}\n"
 x6 puts x4 x5
 x7 write x6 9
-x8 text "@media (max-width:640px){.top{background:var(--bg);border-bottom:1px solid var(--line);height:56px;padding:0 20px}.links{gap:14px}.links a{font-size:.85rem}.pill{padding:6px 12px;font-size:.85rem}}\n.hero{position:relative;min-height:100vh;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 96px;overflow:hidden}\n@keyframes drift{from{transform:translate3d(-3%,-2%,0) scale(1)}to{transform:translate3d(3%,4%,0) scale(1.1)}}\n.hero>*{position:relative;z-index:1}\n.stage{position:absolute!important;inset:0;z-index:0!important}\n.stage canvas.scene{position:absolute;inset:0;width:100%;height:100%;display:block}\n.hero .name,.hero .tag{font-size:clamp(3.4rem,11vw,9.5rem);line-height:.95;letter-spacing:-.01em;margin:0;animation:rise .6s cubic-bezier(.2,.7,.2,1) both}\n.hero .tag{color:var(--fg2);animation-delay:.08s;text-align:right}\n"
+x8 text ".copy-status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}\n/* header and footer, shared by every page (site/ui.a0 nav and foot) */\n.top{position:sticky;top:0;z-index:20;height:var(--hdr);background:color-mix(in srgb,var(--bg) 85%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}\n.nav{display:flex;align-items:center;gap:24px;height:100%;max-width:1200px;margin:0 auto;padding:0 24px}\n.brand{font:700 20px var(--mono);text-decoration:none;color:var(--fg)}\n.links{display:flex;gap:20px;font-size:14px}\n.links a{text-decoration:none;color:var(--mute)}\n.links a:hover{color:var(--fg)}\n.nav .sp{flex:1}\n.btn{display:inline-block;font:600 14px var(--sans);padding:8px 14px;border-radius:6px;background:var(--fg);color:var(--bg);text-decoration:none;border:0;cursor:pointer}\n.btn:hover{opacity:.88}\n"
 x9 puts x7 x8
 x10 write x9 9
-x11 text ".hero .sub{position:absolute;left:28px;top:calc(50% - 10px);max-width:460px;color:var(--muted);font-size:1.05rem;animation:rise .6s .16s cubic-bezier(.2,.7,.2,1) both}\n@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}\n@media (max-width:720px){.hero{flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:8px;padding:96px 20px 56px;min-height:100vh}.hero .tag{text-align:left}}\n.center{max-width:720px;margin:0 auto;padding:96px 24px 40px;text-align:center}\n.center h1,.center h2{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;letter-spacing:-.02em;margin:0 auto 20px;font-weight:500;text-wrap:balance;max-width:640px}\n.center p{color:var(--body);font-size:1.05rem;margin:0 auto;max-width:600px}\n.trio{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;max-width:1080px;margin:40px auto 0;padding:0 24px}\n"
+x11 text ".theme{background:none;border:1px solid var(--line);color:var(--mute);border-radius:6px;height:34px;padding:0 10px;cursor:pointer;font:14px var(--mono)}\n.theme:hover{color:var(--fg)}\nhtml:not(.js) .theme{display:none}\n.foot{border-top:1px solid var(--line);padding:40px 0;font-size:13px;color:var(--mute);margin-top:48px}\n.fwrap{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;gap:24px;flex-wrap:wrap}\n.foot a{color:var(--mute)}\n.foot a:hover{color:var(--fg)}\n/* type */\nh1{font-size:clamp(34px,4.6vw,60px);line-height:1.04;letter-spacing:-.035em;margin:0 0 20px;font-weight:800}\nh2{font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-.025em;margin:0 0 12px}\nh3{font-size:18px;margin:0 0 6px}\n.eyebrow{font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 12px}\n.lede{color:var(--mute);font-size:18px;max-width:560px;margin:0}\n/* copy buttons and install lines */\n"
 x12 puts x10 x11
 x13 write x12 9
-x14 text ".tcard{position:relative;border:1px solid var(--line);border-radius:18px;background:var(--card);padding:22px 22px 18px;min-height:260px;display:flex;flex-direction:column;overflow:hidden;transition:border-color .3s}\n.tcard:hover{border-color:var(--line2)}\n.tcard .k{font-size:.75rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}\n.tcard .t{font-size:2rem;margin:2px 0 16px;letter-spacing:-.01em}\n.tcard .big{font-size:clamp(2.6rem,5vw,3.6rem);line-height:1;margin:8px 0 10px}\n.tcard .d{flex:1}\n.tcard .big.loss{color:var(--loss)}\n.tcard .d{color:var(--body);font-size:.95rem;margin:0 0 16px}\n.tcard .f{border-top:1px solid var(--line);padding-top:12px;font-size:.8rem;color:var(--muted);display:grid;gap:4px}\n.tcard .f span{font-variant-numeric:tabular-nums}\n.layout{display:grid;grid-template-columns:200px minmax(0,760px);gap:56px;justify-content:center;padding:80px 24px 0;max-width:1160px;margin:0 auto}\n"
+x14 text ".copy{position:relative;min-height:44px;min-width:44px;font:600 14px var(--sans);padding:8px 16px;border-radius:6px;background:none;border:1px solid var(--line);color:var(--fg);cursor:pointer;flex:none}\n.copy:hover{border-color:var(--mute)}\n.copy[hidden]{display:none}\n.copy[data-copied]{color:transparent}\n.copy[data-copied]::after{content:\"Copied\";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--fg)}\n.copy[data-copied=\"fail\"]::after{content:\"Select\"}\n.install{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 6px 6px 18px;font:15px var(--mono);margin:28px 0 12px;max-width:600px}\n.install code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;scrollbar-width:none;font-size:inherit}\n.install .pr{color:var(--mute)}\n.switch .os{display:flex;gap:4px;font:13px var(--mono)}\n"
 x15 puts x13 x14
 x16 write x15 9
-x17 text ".rail{position:sticky;top:96px;align-self:start;font-size:.8rem;display:flex;flex-direction:column;gap:10px}\n.rail .rh{color:var(--fg2);margin:14px 0 2px}\n.rail a{color:var(--muted);text-decoration:none;padding-left:12px}\n.rail a:hover{color:var(--fg)}\n.rail a.on{color:var(--fg);font-weight:500;border-left:2px solid var(--a0);padding-left:10px}\n@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr);gap:24px;padding-top:56px}.rail{position:static;flex-direction:row;flex-wrap:wrap;gap:8px}.rail .rh{display:none}.rail a{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:.78rem}}\n.main h2{font-size:clamp(1.6rem,3vw,2.1rem);font-weight:500;letter-spacing:-.02em;margin:0 0 16px}\n.main h3{font-size:1.15rem;font-weight:500;margin:28px 0 8px}\n.main p{color:var(--body);margin:0 0 14px;font-size:1.02rem}\n.main p strong{color:var(--fg);font-weight:500}\n.main section{padding:32px 0 40px;border-top:1px solid var(--line)}\n"
+x17 text ".switch .os button{background:none;border:1px solid transparent;color:var(--mute);padding:4px 10px;border-radius:6px;cursor:pointer;font:inherit}\n.switch .os button[aria-pressed=true]{border-color:var(--line);color:var(--fg)}\nhtml:not(.js) .switch>.os{display:none}\n.js .switch>.pane:not(.on){display:none}\n.home .switch .install{margin-bottom:8px}\n/* home page (site/gen/page.tpl) */\n.home .wrap{max-width:1200px;margin:0 auto;padding:0 24px}\n.home section{padding:96px 0;border-top:1px solid var(--line)}\n.home section.first{border-top:0}\n.home .hero{position:relative;overflow:hidden;padding:72px 0 88px}\n.home .rain{position:absolute;inset:0;opacity:var(--rain);pointer-events:none;color:transparent;font-size:0;overflow:hidden;--rain-color:var(--rain-c);--rain-head:var(--rain-h);-webkit-mask-image:linear-gradient(180deg,#000 0,#000 70%,transparent);mask-image:linear-gradient(180deg,#000 0,#000 70%,transparent)}\n"
 x18 puts x16 x17
 x19 write x18 9
-x20 text ".main section:last-child{padding-bottom:8px}\n.main section:first-child{border-top:0;padding-top:0}\n.main section.cont{border-top:0;padding-top:0}\n.chart{border:1px solid var(--line);border-radius:18px;background:var(--card);padding:22px 22px 18px;margin:22px 0 28px}\n.chart .ct{font-size:1.05rem;margin:0 0 4px;font-weight:500;color:var(--fg)}\n.chart .sub{color:var(--muted);font-size:.85rem;margin:0 0 16px}\n.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.82rem;color:var(--fg2);margin:0 0 14px}\n.legend span::before{content:\"\";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:1px}\n.legend .la0::before{background:var(--a0)}\n.legend .lc::before{background:var(--c)}\n.legend .lrust::before{background:var(--rust)}\n.legend .lgray::before{background:var(--gray)}\n.row{display:grid;grid-template-columns:118px minmax(0,1fr) auto;gap:12px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}\n.row:first-of-type{border-top:0}\n"
+x20 text ".home .rain canvas{position:absolute;inset:0;width:100%;height:100%;display:block}\n.home .hero .wrap{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:48px;align-items:start}\n.home .hcopy{background:radial-gradient(closest-side,var(--bg) 55%,transparent)}\n.badge{display:inline-flex;gap:8px;align-items:center;font:600 12px var(--mono);border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 4px;margin-bottom:24px;text-decoration:none;background:var(--card)}\n.badge b{background:var(--fg);color:var(--bg);border-radius:999px;padding:2px 8px}\n.home .row{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:14px;margin-top:14px}\n.home .row a:not(.btn){color:var(--mute);text-decoration:none}\n.home .row a:not(.btn):hover{color:var(--fg)}\n.panel{border:1px solid var(--line);background:var(--card);border-radius:10px;overflow:hidden;min-width:0}\n"
 x21 puts x19 x20
 x22 write x21 9
-x23 text ".row .lbl{font-family:\"Geist Mono\",ui-monospace,monospace;font-size:.78rem;color:var(--muted)}\n.row .ratio{text-align:right;font-variant-numeric:tabular-nums;font-size:.85rem;color:var(--fg);white-space:nowrap}\n.row .ratio.loss{color:var(--loss)}\n.row .ratio.win{color:var(--win)}\n.bars{display:grid;gap:4px}\n.track{display:grid;grid-template-columns:1fr 64px;gap:8px;align-items:center;height:9px}\n.track .fill{height:7px;border-radius:4px;background:var(--gray);min-width:2px;transition:width .7s cubic-bezier(.2,.7,.2,1)}\n.track.a0 .fill{background:var(--a0)}\n.track.c .fill{background:var(--c)}\n.track.rust .fill{background:var(--rust)}\n.js .fill:not(.grown){width:0!important}\n.track .val{transition:none;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;font-family:\"Geist Mono\",ui-monospace,monospace}\n.single .row{grid-template-columns:150px minmax(0,1fr) auto}\n"
+x23 text ".panel.tab>.os{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:none;font:13px var(--mono)}\n.panel.tab>.os button{flex:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:12px 14px}\n.panel.tab>.os button[aria-pressed=true]{border-color:var(--fg);color:var(--fg)}\n.home .chart{padding:20px;margin:0;border:0;border-radius:0}\n.home .panel.chart{border:1px solid var(--line);border-radius:10px}\n.home .chart+.chart{border-top:1px solid var(--line)}\n.home .chart .ct{font-size:16px;margin:0 0 4px}\n.home .chart .sub{font:12px var(--mono);color:var(--mute);margin:0 0 16px}\n.home .bars{display:grid;gap:7px}\n.brow{display:grid;grid-template-columns:minmax(84px,128px) minmax(0,1fr) auto;gap:12px;align-items:center}\n.brow .lbl{font-size:13px;line-height:1.15;color:var(--mute)}\n.brow.me .lbl{color:var(--fg);font-weight:700}\n.home .track{display:block;height:14px}\n"
 x24 puts x22 x23
 x25 write x24 9
-x26 text ".lrow{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;padding:3px 0}\n.rank td.first{color:var(--a0)}\n.rank td.behind{color:var(--fg2)}\n.lrow .lbl{font-size:.8rem;color:var(--fg2);white-space:nowrap}\n.lrow .track{height:10px;grid-template-columns:1fr 64px}\n.lrow .track .fill{height:8px}\n.lrow.me{background:color-mix(in srgb,var(--fg) 7%,transparent);border-radius:6px;padding-left:6px;padding-right:6px;margin:0 -6px}\n.lrow.me .lbl{color:var(--fg);font-weight:600}\n.track.nat .fill{background:var(--c)}\n.track.jit .fill{background:var(--rust)}\n.track.int .fill{background:var(--gray)}\n.legend .lnat::before{background:var(--c)}\n.legend .ljit::before{background:var(--rust)}\n.legend .lint::before{background:var(--gray)}\n@media (max-width:600px){.lrow{grid-template-columns:104px 1fr}.rank td.first{color:var(--a0)}\n.rank td.behind{color:var(--fg2)}\n.lrow .lbl{overflow:hidden;text-overflow:ellipsis}}\n.row .lbl{white-space:nowrap}\n.row .ratio{padding-right:4px}\n"
+x26 text ".home .track .fill{height:14px;max-width:100%;border-radius:2px;background:var(--bar);min-width:2px;transition:width .7s cubic-bezier(.2,.7,.2,1)}\n.track.win .fill{background:var(--g)!important}\n.home .val{font:12px var(--mono);text-align:right;white-space:nowrap;min-width:3.5em}\n.brow.me .val{font-weight:600}\n.home .alt{font:12px var(--mono);color:var(--mute);margin:10px 0 0}\n.home .verdict{margin:16px 0 0;font:600 14px var(--mono)}\n.home .losses{list-style:none;margin:8px 0 0;padding:0;font:13px var(--mono)}\n.home .losses li{padding:7px 0;border-top:1px solid var(--line);color:var(--mute)}\n.home .src{margin:10px 0 0;font-size:12px;color:var(--mute)}\n.home .src a{color:var(--fg)}\n.home .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));margin-top:40px}\n.home .grid.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}\n.card{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:22px}\n"
 x27 puts x25 x26
 x28 write x27 9
-x29 text "@media (max-width:600px){.row,.single .row{grid-template-columns:1fr auto;row-gap:2px}.row .lbl{grid-column:1/-1}.track{grid-template-columns:1fr 58px}.track .val{font-size:.7rem}.row .ratio{font-size:.78rem;white-space:nowrap}}\n.cap{color:var(--muted);font-size:.82rem;font-style:italic;margin:14px 0 0;border-top:1px solid var(--line);padding-top:12px}\n.plotwrap{display:grid;grid-template-columns:36px 1fr;gap:6px;margin-top:8px}\n.yl{position:relative;font-size:.7rem;color:var(--muted);font-family:\"Geist Mono\",ui-monospace,monospace}\n.yl span{position:absolute;right:0;transform:translateY(50%)}\n.plot{position:relative;height:280px;margin-top:28px;border-left:1px solid var(--line2);border-bottom:1px solid var(--line2);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:100% 18.4%,20% 100%;background-position:0 4%}\n"
+x29 text ".card p{color:var(--mute);margin:6px 0 14px;font-size:15px}\n.tag{font:600 11px var(--mono);letter-spacing:.1em;color:var(--mute);text-transform:uppercase}\n.cmd{font:13px var(--mono);color:var(--fg);overflow-wrap:anywhere}\n.cmd::before{content:\"$ \";color:var(--mute)}\n.steps{counter-reset:s;display:grid;margin:32px 0 0;padding:0}\n.steps li{list-style:none;display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;padding:18px 0;border-top:1px solid var(--line)}\n.steps li::before{counter-increment:s;content:counter(s,decimal-leading-zero);font:600 13px var(--mono);color:var(--mute)}\n.steps p{margin:4px 0 0;color:var(--mute);grid-column:2}\n.steps li>.cmd{grid-column:2;grid-row:1}\n.home p.small{margin-top:16px}\n.home table{width:100%;border-collapse:collapse;font-size:14px}\n.home td.small{font-size:12px;color:var(--mute)}\n/* inner pages: a sticky contents rail beside one column (benchmarks, docs) */\n.center{max-width:760px;margin:0 auto;padding:72px 24px 16px}\n"
 x30 puts x28 x29
 ret x30
 end
 
 fn css_b io -> io
 x32 write p0 9
-x33 text ".pt{position:absolute;width:11px;height:11px;transform:translate(-50%,50%) rotate(45deg);background:var(--gray);border-radius:2px}\n.pt.a0{background:var(--a0)}\n.pt.c{background:var(--c)}\n.pt.rust{background:var(--rust)}\n.pt.haiku{opacity:.5}\n.pt .lbl{position:absolute;left:50%;bottom:16px;transform:translateX(-50%) rotate(-45deg);font-size:.66rem;color:var(--muted);white-space:nowrap;font-family:\"Geist Mono\",ui-monospace,monospace;letter-spacing:.02em}\n.pt .lbl.below{bottom:auto;top:16px;transform:translateX(-50%) rotate(-45deg)}\n.xl{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);font-family:\"Geist Mono\",ui-monospace,monospace;margin:6px 0 0 42px}\n.xt{text-align:center;color:var(--muted);font-size:.78rem;margin:10px 0 0}\n.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0}\n.tile{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:16px}\n"
+x33 text ".center h1{font-size:clamp(34px,4.6vw,56px)}\n.center p{color:var(--mute);font-size:18px;margin:0 0 20px}\n.pill{display:inline-block;font:600 14px var(--sans);padding:8px 14px;border-radius:6px;background:var(--fg);color:var(--bg);text-decoration:none;margin:0 6px 6px 0}\n.pill.ghost{background:none;border:1px solid var(--line);color:var(--fg)}\n.docs .hero{max-width:1200px;margin:0 auto;padding:56px 24px 0}\n.docs .hero h1{font-family:var(--sans)}\n.layout{display:grid;grid-template-columns:220px minmax(0,760px);gap:48px;max-width:1200px;margin:0 auto;padding:40px 24px 0}\n.rail{position:sticky;top:calc(var(--hdr) + 24px);align-self:start;font-size:14px;display:flex;flex-direction:column;max-height:calc(100vh - var(--hdr) - 48px);overflow-y:auto}\n.rail .rh{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:20px 0 8px}\n.rail a{display:block;padding:4px 0;color:var(--mute);text-decoration:none}\n.rail a:hover,.rail a.on{color:var(--fg)}\n"
 x34 puts x32 x33
 x35 write x34 9
-x36 text ".tile .n{font-size:1.9rem;line-height:1;margin-bottom:8px;font-variant-numeric:tabular-nums}\n.tile .n.loss{color:var(--loss)}\n.tile p{color:var(--muted);font-size:.8rem;margin:0}\n.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin:20px 0}\n.grid.two{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}\n.grid.four{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}\n.card{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:18px}\n.card h3{margin:0 0 6px;font-size:1rem}\n.card p{color:var(--muted);font-size:.9rem;margin:0}\npre.code{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;overflow:auto;font:13px/1.65 \"Geist Mono\",ui-monospace,monospace;color:var(--fg2);margin:16px 0 0;white-space:pre}\npre.code .cm{color:var(--dim)}\npre.code+p{margin-top:16px}\npre.wrap{white-space:pre-wrap}\n"
+x36 text ".toc>summary{display:none}\n@media (min-width:901px){.toc::details-content{content-visibility:visible;display:block}.toc:not([open])>*:not(summary){display:block}}\n.main{min-width:0}\n.main section{padding:40px 0;border-top:1px solid var(--line)}\n.main section:first-child{border-top:0;padding-top:0}\n.main h2{font-size:clamp(26px,3.2vw,34px);margin:0 0 14px}\n.main h3{font-size:18px;margin:28px 0 8px}\n.main p{color:var(--mute);margin:0 0 14px}\n.main p strong,.main p b{color:var(--fg)}\n.main p.q{color:var(--fg);font-size:18px}\n.main p.take{color:var(--fg)}\n.main .nx{font-size:14px;margin-top:20px}\n.main .nx a{color:var(--fg)}\npre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto;font:13px/1.6 var(--mono);margin:0 0 16px}\npre.wrap{white-space:pre-wrap;overflow-wrap:anywhere}\npre code{font-size:inherit}\n.cm{color:var(--mute)}\n/* charts and tables of the benchmarks page; one neutral bar color, green only for an A0 bar that wins */\n"
 x37 puts x35 x36
 x38 write x37 9
-x39 text "@media (max-width:720px){pre.code{white-space:pre;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:12px}}\ntable.ops{width:100%;border-collapse:collapse;font-size:.9rem;margin:12px 0 20px}\n.ops th{text-align:left;color:var(--muted);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);font-size:.8rem}\n.ops td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--fg2)}\n.ops td:first-child{white-space:nowrap;color:var(--fg)}\n@media (max-width:720px){.ops tr{display:block;padding:8px 0;border-bottom:1px solid var(--line)}.ops td,.ops th{display:block;border:0;padding:2px 0}.ops th:last-child{display:none}.ops td:first-child{white-space:normal}}\n.limits{border-left:2px solid var(--loss);padding-left:16px}\n.foot{max-width:1160px;margin:32px auto 0;padding:32px 24px 48px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}\n"
+x39 text ".chart{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:20px;margin:22px 0 28px;min-width:0}\n.chart .ct{font-size:16px;margin:0 0 4px;font-weight:600;color:var(--fg)}\n.chart .sub{color:var(--mute);font-size:13px;margin:0 0 14px}\n.chart .cov,.chart .kh{font:12px var(--mono);color:var(--mute);margin:0 0 12px}\n.legend{display:none}\n.lrow{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;align-items:center;padding:3px 0}\n.lrow .lbl{font-size:13px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.lrow.me .lbl{color:var(--fg);font-weight:700}\n.lrow.wide{grid-template-columns:160px minmax(0,1fr)}\n.track{display:grid;grid-template-columns:minmax(0,1fr) 72px;gap:10px;align-items:center;height:12px}\n.track .fill{height:10px;border-radius:2px;background:var(--bar);min-width:2px;transition:width .7s cubic-bezier(.2,.7,.2,1)}\n.track .val,.lrow .val{font:12px var(--mono);color:var(--fg);white-space:nowrap;text-align:right}\n"
 x40 puts x38 x39
 x41 write x40 9
-x42 text ".foot a{color:var(--fg2);text-decoration:none}\n.card:hover{border-color:var(--line2)}\na:focus-visible,.pill:focus-visible{outline:2px solid var(--c);outline-offset:3px;border-radius:4px}\n.reveal{transition:opacity .35s ease,transform .35s ease}\n.js .reveal:not(.in){opacity:0;transform:translateY(8px)}\n.docs .hero{min-height:0;padding:120px 24px 0;align-items:flex-start;flex-direction:column;justify-content:flex-start}\n.docs .hero::after{display:none}\n.docs .hero .name{font-size:clamp(2.6rem,7vw,5rem)}\n.live{position:absolute;left:28px;right:28px;top:96px;height:calc(66vh - 96px);display:grid;grid-template-columns:29ch 25ch 22ch;gap:0 5ch;align-content:start;font-size:clamp(13px,1.2vw,16px);line-height:1.75;pointer-events:none}\n.col{opacity:0;will-change:opacity,transform}\n.col h6{margin:0 0 .6em;font:inherit;font-size:.8em;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:1em;white-space:nowrap}\n"
+x42 text ".js .fill:not(.grown){width:0!important}\n.bars{display:grid;gap:4px}\n.row{display:grid;grid-template-columns:140px minmax(0,1fr) auto;gap:12px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}\n.row .lbl{font:12px var(--mono);color:var(--mute);white-space:nowrap}\n.row .ratio{font:13px var(--mono);white-space:nowrap;text-align:right}\ndetails.more{margin-top:12px}\ndetails>summary{cursor:pointer;color:var(--mute);font:13px var(--mono);margin:8px 0}\n.cap{color:var(--mute);font-size:13px;margin:14px 0 0;border-top:1px solid var(--line);padding-top:12px}\n.tblwrap{overflow-x:auto;margin:16px 0}\ntable{width:100%;border-collapse:collapse;font-size:14px}\ncaption{text-align:left;color:var(--mute);font-size:13px;padding:0 0 8px}\nth,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}\nth{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}\ntd.mono{font-family:var(--mono);font-size:13px}\n"
 x43 puts x41 x42
 x44 write x43 9
-x45 text ".col h6 b{font-weight:400;color:var(--muted)}\n.ln{position:relative;height:1.75em;white-space:nowrap;color:var(--fg2)}\n.ln .ty{display:inline-block;overflow:hidden;vertical-align:bottom;width:auto}\n.ln::after{content:\"\";display:inline-block;width:.55ch;height:1.05em;margin-left:.1ch;background:var(--fg);vertical-align:-.15em;opacity:0}\n.ln.mark{margin:0 -.6ch;padding:0 .6ch;border-radius:4px}\n.ln .alt{position:absolute;left:.6ch;top:0}\n.stamp{margin-top:1.2em;display:flex;align-items:center;gap:.7ch;color:var(--win);white-space:nowrap}\n.stamp i{position:relative;width:.6em;height:.6em;border-radius:50%;background:var(--win);flex:none}\n.stamp i::after{content:\"\";position:absolute;inset:0;border-radius:50%;border:1px solid var(--win);opacity:0}\n.stamp b{font-weight:500}\n.stamp span{color:var(--muted)}\n.asm .ln{color:var(--fg2);opacity:0}\n.ns{margin-top:1.2em;color:var(--muted);white-space:nowrap}\n.ns b{font-weight:500;color:var(--fg)}\n.ns b::before{content:\"5.0\"}\n"
+x45 text "td.first{color:var(--fg);font-weight:700}\ntd.behind,td.loss,.val.loss,.ratio.loss{color:var(--mute)}\n.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0}\n.tile{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:16px}\n.tile .n{font:700 28px var(--mono);color:var(--fg)}\n/* phone widths */\n@media (max-width:900px){.home .hero .wrap,.layout{grid-template-columns:minmax(0,1fr)}.rail{position:static;flex-direction:row;flex-wrap:wrap;gap:8px;max-height:none}.rail .rh{display:none}.rail a{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:13px}.toc{width:100%}.toc>summary{display:block}.toc[open]{display:flex;flex-wrap:wrap;gap:8px}}\n"
 x46 puts x44 x45
 x47 write x46 9
-x48 text "@media (max-width:960px){.live{grid-template-columns:29ch 25ch;gap:1.2em 3ch;top:84px}.col.asm{grid-column:1}.col.model{grid-column:2;grid-row:1}}\n@media (max-width:720px){.hero{flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:8px;padding:0 20px 72px}.hero .tag{text-align:left}.live{left:20px;right:20px;grid-template-columns:29ch 1fr;gap:.6em 2ch;font-size:12px;top:78px}.col.model{grid-column:2;grid-row:1}.col.asm{grid-column:2;grid-row:2}.col.view{grid-row:1/3}}\n@media (max-width:400px){.live{grid-template-columns:1fr 1fr;gap:.8em 1ch}.col.view{grid-column:1/3;grid-row:1}.col.model{grid-column:1;grid-row:2}.col.asm{grid-column:2;grid-row:2}}\n/* the loop: every animation is the same 9.6s cycle; the runtime only adds \"in\" to .reveal */\n.reveal.in .col.view{animation:c1 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in .col.model{animation:c2 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in .col.asm{animation:c3 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n"
+x48 text "@media (max-width:640px){.nav,.fwrap,.home .wrap,.layout,.center,.docs .hero{padding-left:16px;padding-right:16px}.nav{gap:12px}.links{gap:12px}.nav .btn{display:none}.home section{padding:64px 0}.home .hero{padding:48px 0 56px}.home .chart,.chart{padding:16px}.brow{grid-template-columns:minmax(64px,92px) minmax(0,1fr) auto;gap:8px}.lrow,.lrow.wide{grid-template-columns:96px minmax(0,1fr)}.track{grid-template-columns:minmax(0,1fr) 60px}.row{grid-template-columns:minmax(0,1fr) auto}.row .lbl{grid-column:1/-1}.install{font-size:13px;padding-left:12px}}\n@media (max-width:400px){.links a[href^=\"https\"]{display:none}.theme{padding:0 8px}}\n@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}\n\n"
 x49 puts x47 x48
-x50 write x49 9
-x51 text ".reveal.in #v0 .ty{animation:v0 9600ms linear infinite}.reveal.in #v0::after{animation:v0c 9600ms steps(1,end) infinite}\n.reveal.in #v1 .ty{animation:v1 9600ms linear infinite}.reveal.in #v1::after{animation:v1c 9600ms steps(1,end) infinite}\n.reveal.in #v2 .ty{animation:v2 9600ms linear infinite}.reveal.in #v2::after{animation:v2c 9600ms steps(1,end) infinite}\n.reveal.in #v3 .ty{animation:v3 9600ms linear infinite}.reveal.in #v3::after{animation:v3c 9600ms steps(1,end) infinite}\n.reveal.in #v4 .ty{animation:v4 9600ms linear infinite}.reveal.in #v4::after{animation:v4c 9600ms steps(1,end) infinite}\n.reveal.in #v5 .ty{animation:v5 9600ms linear infinite}.reveal.in #v5::after{animation:v5c 9600ms steps(1,end) infinite}\n.reveal.in #v6 .ty{animation:v6 9600ms linear infinite}.reveal.in #v6::after{animation:v6c 9600ms steps(1,end) infinite}\n.reveal.in #v7 .ty{animation:v7 9600ms linear infinite}.reveal.in #v7::after{animation:v7c 9600ms steps(1,end) infinite}\n"
-x52 puts x50 x51
-x53 write x52 9
-x54 text ".reveal.in #r0 .ty{animation:r0 9600ms linear infinite}.reveal.in #r0::after{animation:r0c 9600ms steps(1,end) infinite}\n.reveal.in #r1 .ty{animation:r1 9600ms linear infinite}.reveal.in #r1::after{animation:r1c 9600ms steps(1,end) infinite}\n.reveal.in .stamp{animation:stamp 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in .stamp i::after{animation:ring 9600ms cubic-bezier(.1,.6,.3,1) infinite}\n.reveal.in #v3 #v3t{animation:v3 9600ms linear infinite,oldl 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #v4 #v4t{animation:v4 9600ms linear infinite,oldl 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #v3n,.reveal.in #v4n{animation:newl 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #v3{animation:mark 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #v4{animation:mark2 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #a0{animation:a0 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #a1{animation:a1 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n"
-x55 puts x53 x54
-x56 write x55 9
-x57 text ".reveal.in #a2{animation:a2 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #a3{animation:a3 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #a4{animation:a4 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in .ns b::before{animation:ns 9600ms steps(1,end) infinite}\n/* final state without motion */\n.reveal:not(.in) .col,.reveal:not(.in) .asm .ln{opacity:1}\n.reveal:not(.in) #v3t,.reveal:not(.in) #v4t{opacity:0}\n.reveal:not(.in) .ln .ty{width:auto}\n@media (prefers-reduced-motion:reduce){.reveal.in *,.reveal.in *::before,.reveal.in *::after{animation:none!important}.reveal .col,.reveal .asm .ln{opacity:1}.reveal #v3t,.reveal #v4t{opacity:0}.reveal #v4{background:var(--markbg)}}\n@keyframes v0{0%,5.208%{width:0;animation-timing-function:steps(2,end)}6.667%,100%{width:2ch}}\n@keyframes v0c{0%,5.198%{opacity:0}5.208%,8.750%{opacity:1}8.760%,100%{opacity:0}}\n@keyframes v1{0%,7.604%{width:0;animation-timing-function:steps(27,end)}13.792%,100%{width:27ch}}\n"
-x58 puts x56 x57
-x59 write x58 9
-x60 text "@keyframes v1c{0%,7.594%{opacity:0}7.604%,15.875%{opacity:1}15.885%,100%{opacity:0}}\n@keyframes v2{0%,14.729%{width:0;animation-timing-function:steps(11,end)}17.250%,100%{width:11ch}}\n@keyframes v2c{0%,14.719%{opacity:0}14.729%,19.333%{opacity:1}19.344%,100%{opacity:0}}\n@keyframes v3{0%,18.188%{width:0;animation-timing-function:steps(11,end)}20.708%,100%{width:11ch}}\n@keyframes v3c{0%,18.177%{opacity:0}18.188%,22.792%{opacity:1}22.802%,100%{opacity:0}}\n@keyframes v4{0%,21.646%{width:0;animation-timing-function:steps(17,end)}25.542%,100%{width:17ch}}\n@keyframes v4c{0%,21.635%{opacity:0}21.646%,27.625%{opacity:1}27.635%,100%{opacity:0}}\n@keyframes v5{0%,26.479%{width:0;animation-timing-function:steps(16,end)}30.146%,100%{width:16ch}}\n@keyframes v5c{0%,26.469%{opacity:0}26.479%,32.229%{opacity:1}32.240%,100%{opacity:0}}\n@keyframes v6{0%,31.083%{width:0;animation-timing-function:steps(5,end)}32.542%,100%{width:5ch}}\n"
-x61 puts x59 x60
-ret x61
-end
-
-fn css_c io -> io
-x63 write p0 9
-x64 text "@keyframes v6c{0%,31.073%{opacity:0}31.083%,34.625%{opacity:1}34.635%,100%{opacity:0}}\n@keyframes v7{0%,33.479%{width:0;animation-timing-function:steps(3,end)}34.938%,100%{width:3ch}}\n@keyframes v7c{0%,33.469%{opacity:0}33.479%,37.021%{opacity:1}37.031%,100%{opacity:0}}\n@keyframes r0{0%,40.625%{width:0;animation-timing-function:steps(2,end)}42.083%,100%{width:2ch}}\n@keyframes r0c{0%,40.615%{opacity:0}40.625%,44.167%{opacity:1}44.177%,100%{opacity:0}}\n@keyframes r1{0%,43.021%{width:0;animation-timing-function:steps(10,end)}45.313%,100%{width:10ch}}\n@keyframes r1c{0%,43.010%{opacity:0}43.021%,47.396%{opacity:1}47.406%,100%{opacity:0}}\n@keyframes c1{0%,2.083%{opacity:0;transform:translateY(6px)}7.292%,90.625%{opacity:1;transform:none}96.875%,100%{opacity:0;transform:translateY(-4px)}}\n@keyframes c2{0%,37.500%{opacity:0;transform:translateY(6px)}42.708%,90.625%{opacity:1;transform:none}96.875%,100%{opacity:0;transform:translateY(-4px)}}\n"
-x65 puts x63 x64
-x66 write x65 9
-x67 text "@keyframes c3{0%,58.333%{opacity:0;transform:translateY(6px)}63.542%,90.625%{opacity:1;transform:none}96.875%,100%{opacity:0;transform:translateY(-4px)}}\n@keyframes stamp{0%,50.000%{opacity:0;transform:translateY(4px)}53.750%,100%{opacity:1;transform:none}}\n@keyframes ring{0%,50.000%{transform:scale(1);opacity:.9}59.375%,100%{transform:scale(3.2);opacity:0}}\n@keyframes oldl{0%,52.083%{opacity:1;transform:none}56.458%,100%{opacity:0;transform:translateY(-55%)}}\n@keyframes newl{0%,52.083%{opacity:0;transform:translateY(55%)}56.458%,100%{opacity:1;transform:none}}\n@keyframes mark{0%,51.042%{background:transparent}54.688%{background:var(--markbg)}68.750%,100%{background:transparent}}\n@keyframes mark2{0%,51.042%{background:transparent}54.688%{background:var(--markbg)}79.167%,100%{background:transparent}}\n@keyframes a0{0%,60.417%{opacity:0;transform:translateY(5px)}64.792%,100%{opacity:1;transform:none}}\n"
-x68 puts x66 x67
-x69 write x68 9
-x70 text "@keyframes a1{0%,61.354%{opacity:0;transform:translateY(5px)}65.729%,100%{opacity:1;transform:none}}\n@keyframes a2{0%,62.292%{opacity:0;transform:translateY(5px)}66.667%,100%{opacity:1;transform:none}}\n@keyframes a3{0%,63.229%{opacity:0;transform:translateY(5px)}67.604%,100%{opacity:1;transform:none}}\n@keyframes a4{0%,64.167%{opacity:0;transform:translateY(5px)}68.542%,100%{opacity:1;transform:none}}\n@keyframes ns{0%,65.615%{opacity:0}65.625%{opacity:1;content:\"0.0\"}66.667%{opacity:1;content:\"1.2\"}67.708%{opacity:1;content:\"2.4\"}68.750%{opacity:1;content:\"3.4\"}69.792%{opacity:1;content:\"4.2\"}70.833%{opacity:1;content:\"4.7\"}71.875%{opacity:1;content:\"4.9\"}72.917%{opacity:1;content:\"5.0\"}100%{opacity:1;content:\"5.0\"}}\n/* Matrix theme: black screen, neutral type, green only as light */\n"
-x71 puts x69 x70
-x72 write x71 9
-x73 text ":root{--bg:#000;--fg:#ededed;--fg2:#c9c9c9;--body:#a8a8a8;--muted:#6f6f6f;--dim:#4a4a4a;--line:#161616;--line2:#262626;--card:#060606;--pillbg:#000;--pillfg:#00ff41;--ghost:#0d0d0d;--a0:#00ff41;--c:#d9d9d9;--rust:#8c8c8c;--gray:#4d4d4d;--win:#00ff41;--loss:#ff4d4d;--glow1:rgba(0,255,65,.07);--glow2:rgba(0,255,65,.03);--markbg:rgba(0,255,65,.12)}\n.hero .name,.hero .tag,.brand,.tcard .big,.tile .n:not(.loss){color:var(--a0)}\n.chart,.tcard,.card,.tile,pre.code{border-radius:3px}\n.pill{border-radius:2px;border:1px solid var(--a0);text-transform:uppercase;letter-spacing:.1em;font-size:.75rem}\n.pill:hover{background:var(--a0);color:#000;filter:none}\n.track .fill{border-radius:1px}\n.stage{position:absolute!important;inset:0;z-index:0!important;opacity:.8}\n.stage canvas.scene{position:absolute;inset:0;width:100%;height:100%;display:block}\n.hero .live{z-index:1}\n.live .col{background:rgba(0,0,0,.72);padding:10px 12px;border:1px solid var(--line2);border-radius:3px}\n"
-x74 puts x72 x73
-x75 write x74 9
-x76 text ".row .ratio.win{color:var(--a0)}\n.lrow.me .lbl{color:var(--a0)}\n::selection{background:var(--a0);color:#000}\n/* QA fixes */\nheader.top{background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}\n.col{min-width:0}\n.col .ln,.col .ty{font-size:13px}\n@media (max-width:640px){.live .col.model,.live .col.asm{display:none}.links{gap:10px}.links a{font-size:.78rem}.pill{padding:6px 9px;font-size:.68rem;letter-spacing:.05em}.nav{gap:12px}}\n.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}\n.tblwrap table.rank{min-width:540px}\n@media (max-width:720px){.tblwrap table.rank tr{display:table-row}.tblwrap table.rank td,.tblwrap table.rank th{display:table-cell;padding:7px 8px}.tblwrap table.rank th:last-child{display:table-cell}}\n.lrow{grid-template-columns:132px 1fr}\n.lrow .track{display:grid;grid-template-columns:1fr 78px;align-items:center;height:18px}\n"
-x77 puts x75 x76
-x78 write x77 9
-x79 text ".track .val{text-align:right;font-variant-numeric:tabular-nums;line-height:1}\n.lrow .lbl,.row .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n@media (max-width:600px){.lrow{grid-template-columns:108px 1fr}}\n:root{--muted:#8f8f8f;--dim:#6f6f6f}\n.col h6{font-size:11px}\n@media (max-width:720px){pre.code.wrap{white-space:pre-wrap;overflow-wrap:anywhere}}\nbutton:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n@media (max-width:640px){textarea{font-size:16px!important}}\n.lrow.wide .track{grid-template-columns:1fr 104px}\n.row .track{grid-template-columns:1fr 88px}\n.track .val.loss,.rank td.loss{color:var(--loss)}\n.chart .kh{font-size:.78rem;color:var(--fg2);margin:16px 0 4px;padding-top:10px;border-top:1px solid var(--line)}\n.chart .kh:first-of-type{border-top:0;padding-top:0}\n/* Plain-language layer: a one-sentence takeaway above every chart, a defined vocabulary, the long lists behind a disclosure */\n"
-x80 puts x78 x79
-x81 write x80 9
-x82 text ".main p.take{color:var(--fg);font-size:1.05rem;line-height:1.5;font-weight:500;margin:0 0 12px;padding-left:12px;border-left:2px solid var(--a0);letter-spacing:-.005em}\n.chart p.take{margin:6px 0 10px}\n.chart .sub{max-width:68ch}\n.chart details.more{margin:14px 0 0;border-top:1px solid var(--line)}\n.chart details.more>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;padding:12px 0 6px;color:var(--fg2);font-size:.88rem;user-select:none}\n.chart details.more>summary::-webkit-details-marker{display:none}\n.chart details.more>summary::before{content:\"+\";display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid var(--line2);border-radius:4px;color:var(--a0);font-size:1rem;line-height:1}\n.chart details.more[open]>summary::before{content:\"\\2212\"}\n.chart details.more>summary:hover{color:var(--fg)}\n.chart details.more>summary:focus-visible{outline:2px solid var(--a0);outline-offset:2px;border-radius:4px}\n"
-x83 puts x81 x82
-x84 write x83 9
-x85 text ".chart details.more[open]>summary{padding-bottom:10px}\n.tblwrap table.rank th{white-space:normal;vertical-align:bottom;line-height:1.3;font-size:.74rem}\n.tblwrap table.rank th,.tblwrap table.rank td{padding:8px 7px}\n.tblwrap table.rank th:first-child{min-width:0}\n.tblwrap table.rank td.first{color:var(--a0)}\n.tblwrap table.rank td.loss{color:var(--fg);font-weight:600}\n.tblwrap table.rank.fit{min-width:0}\n@media (max-width:720px){.tblwrap table.rank.fit th,.tblwrap table.rank.fit td{white-space:normal;padding:7px 6px;font-size:.82rem;line-height:1.35}.tblwrap table.rank.fit th{min-width:0}}\n@media (max-width:600px){.main p.take{font-size:1rem}.rank td{padding:7px 8px}}\n.chart .tblwrap{margin-top:18px}\n@media (max-width:600px){.lrow.wide{grid-template-columns:118px 1fr}.lrow.wide .track{grid-template-columns:1fr 84px}}\n/* Layout QA: hero scene columns per breakpoint (the prototype's own rules place the columns) */\n"
-x86 puts x84 x85
-x87 write x86 9
-x88 text "/* column widths fit the longest final line (27, 25 and 23 characters at 13px plus padding), so a line being typed never resizes or clips its column */\n.hero .live{grid-template-columns:calc(32ch + 26px) calc(29ch + 26px) calc(27ch + 26px)}\n.live .col .ln,.live .col .ty{font-size:13px}\n.hero .live{font-size:13px;letter-spacing:0}\n@media (max-width:960px){.hero .live{grid-template-columns:calc(32ch + 26px) calc(29ch + 26px)}}\n@media (max-width:640px){.hero .live{grid-template-columns:minmax(0,1fr);max-width:calc(100vw - 40px)}}\n.trio{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}\n.col h6,pre.code .cm{color:var(--muted)}\n.chart .cov{display:inline-block;margin:0 0 14px;padding:2px 8px;border:1px solid var(--line2);border-radius:2px;font-size:.72rem;color:var(--fg2);letter-spacing:.02em}\n.chart .cov.part{border-color:var(--muted)}\n"
-x89 puts x87 x88
-ret x89
-end
-
-fn css_d io -> io
-x91 write p0 9
-x92 text ".tblwrap{background:linear-gradient(90deg,var(--card) 30%,transparent) left/40px 100% no-repeat local,linear-gradient(270deg,var(--card) 30%,transparent) right/40px 100% no-repeat local,linear-gradient(90deg,color-mix(in srgb,var(--fg) 14%,transparent),transparent) left/14px 100% no-repeat scroll,linear-gradient(270deg,color-mix(in srgb,var(--fg) 14%,transparent),transparent) right/14px 100% no-repeat scroll}\n.tblwrap th,.tblwrap td{white-space:nowrap}\n.tblwrap td:first-child,.tblwrap th:first-child{position:sticky;left:0;background:var(--card);z-index:1}\n@media (max-width:600px){.layout{padding-left:16px;padding-right:16px}.trio{padding:0 16px}.center{padding-left:16px;padding-right:16px}.chart{padding:16px 14px 14px}.legend{gap:6px 14px}.lrow,.lrow.wide{grid-template-columns:112px 1fr;align-items:start}.lrow .lbl,.lrow.wide .lbl{white-space:normal;overflow:visible;line-height:1.25;padding-top:2px}.foot{padding-left:16px;padding-right:16px}}\n"
-x93 puts x91 x92
-x94 write x93 9
-x95 text "/* Minimal dark: black, neutral grays, green (#00ff41) only as an accent; Geist Sans for text, Geist Mono for code and the rain */\n:root{--bg:#000;--fg:#ededed;--fg2:#c4c4c4;--body:#a3a3a3;--muted:#7a7a7a;--dim:#555;--line:#1a1a1a;--line2:#2a2a2a;--card:transparent;--pillbg:transparent;--pillfg:#ededed;--ghost:transparent;--a0:#00ff41;--c:#bdbdbd;--rust:#6b6b6b;--gray:#3d3d3d;--win:#00ff41;--loss:#d4d4d4;--markbg:rgba(0,255,65,.1)}\nbody{font-family:\"Geist\",-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:16px;letter-spacing:0}\n.pixel,h1,h2,h3,.brand,.tcard .t{font-family:\"Geist\",-apple-system,sans-serif;font-weight:600;letter-spacing:-.03em}\n.row .lbl,.track .val,.yl,.xl,.pt .lbl{font-family:\"Geist\",-apple-system,sans-serif;font-variant-numeric:tabular-nums}\n.hero .name,.hero .tag,.brand,.tcard .big,.tile .n:not(.loss){color:var(--fg);text-shadow:none}\n.brand{color:var(--a0)}\n.stage{position:fixed!important;inset:0;z-index:-1!important;pointer-events:none}\n"
-x96 puts x94 x95
-x97 write x96 9
-x98 text ".stage::after{content:\"\";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.35),rgba(0,0,0,.78) 18%,rgba(0,0,0,.78) 82%,rgba(0,0,0,.35))}\nheader.top{background:rgba(0,0,0,.72);border-bottom:0}\n.chart,.tcard,.card,.tile{background:transparent;border:0;border-top:1px solid var(--line2);border-radius:0;padding-left:0;padding-right:0}\n.tcard{min-height:0}\npre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6px}\n.live .col{background:rgba(0,0,0,.8);border:0;border-left:1px solid var(--line2);border-radius:0}\n.pill{border:1px solid var(--line2);border-radius:6px;background:transparent;color:var(--fg);text-transform:none;letter-spacing:0;font-size:.85rem}\n.pill:hover{border-color:var(--a0);color:var(--a0);background:transparent}\n.tblwrap,.tblwrap td:first-child,.tblwrap th:first-child{background:#000}\n.legend span::before{border-radius:1px}\n.chart .cov{border:0;padding:0;color:var(--muted)}\n"
-x99 puts x97 x98
-x100 write x99 9
-x101 text ".rank td,.rank th{font-family:\"Geist\",-apple-system,sans-serif;font-variant-numeric:tabular-nums}\n.rail a.on{color:var(--fg);border-color:var(--a0)}\n@media (max-width:900px){.rail a.on{border:1px solid var(--a0);color:var(--a0);padding:6px 12px}}\n/* Header right group: Sponsor as text, X and GitHub as icon links (40px hit targets). The icons are\n   the simple-icons paths for X and GitHub (simple-icons 16.33.0, CC0-1.0; the marks stay the property\n   of their owners) as data: URIs used as a CSS mask, so they follow the text colour. No requests. */\n.ico-x{--ico:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M14.234%2010.162%2022.977%200h-2.072l-7.591%208.824L7.251%200H.258l9.168%2013.343L.258%2024H2.33l8.016-9.318L16.749%2024h6.993zm-2.837%203.299-.929-1.329L3.076%201.56h3.182l5.965%208.532.929%201.329%207.754%2011.09h-3.182z%22%2F%3E%3C%2Fsvg%3E\")}\n"
-x102 puts x100 x101
-x103 write x102 9
-x104 text ".ico-gh{--ico:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M12%20.297c-6.63%200-12%205.373-12%2012%200%205.303%203.438%209.8%208.205%2011.385.6.113.82-.258.82-.577%200-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422%2018.07%203.633%2017.7%203.633%2017.7c-1.087-.744.084-.729.084-.729%201.205.084%201.838%201.236%201.838%201.236%201.07%201.835%202.809%201.305%203.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93%200-1.31.465-2.38%201.235-3.22-.135-.303-.54-1.523.105-3.176%200%200%201.005-.322%203.3%201.23.96-.267%201.98-.399%203-.405%201.02.006%202.04.138%203%20.405%202.28-1.552%203.285-1.23%203.285-1.23.645%201.653.24%202.873.12%203.176.765.84%201.23%201.91%201.23%203.22%200%204.61-2.805%205.625-5.475%205.92.42.36.81%201.096.81%202.22%200%201.606-.015%202.896-.015%203.286%200%20.315.21.69.825.57C20.565%2022.092%2024%2017.592%2024%2012.297c0-6.627-5.373-12-12-12%22%2F%3E%3C%2Fsvg%3E\")}\n"
-x105 puts x103 x104
-x106 write x105 9
-x107 text ".hright{display:flex;align-items:center;gap:6px}\n.hright>a{color:var(--fg2);text-decoration:none;font-size:.9rem}\n.hright>a:hover{color:var(--a0)}\n.hright .ico{display:inline-block;width:40px;height:40px;background:currentColor;-webkit-mask:var(--ico) center/20px 20px no-repeat;mask:var(--ico) center/20px 20px no-repeat}\n.hright .ico:focus-visible{outline:2px solid var(--a0);outline-offset:-4px;border-radius:6px}\n.hright>a:first-child{margin-right:6px}\n@media (max-width:640px){.nav{gap:10px}.brand{margin-right:0}.links{gap:12px}.hright{gap:0}.hright>a:first-child{margin-right:2px;font-size:.85rem}}\n/* Accessibility and legibility: muted text at 7.5:1 on black, a 13px floor for labels, a skip link, 44px touch targets */\n:root{--muted:#9a9a9a;--dim:#808080}\n.skip{position:absolute;left:12px;top:-120px;z-index:100;padding:10px 16px;border-radius:6px;background:var(--a0);color:#000;font-weight:600;text-decoration:none}\n.skip:focus{top:10px}\n"
-x108 puts x106 x107
-x109 write x108 9
-x110 text ".tcard .f,.row .lbl,.track .val,.lrow .lbl,.yl,.pt .lbl,.xl,.xt,.tile p,.ops th,.tblwrap table.rank th,.chart .kh,.chart .cov,.rail,.rail a{font-size:13px}\n.col h6{font-size:12px}\n.ops th,.tblwrap table.rank th,.chart .ct,.cap{font-size:max(13px,.8rem)}\n.tblwrap caption,.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}\n.tblwrap table.rank.fit th,.tblwrap table.rank.fit td{font-size:13px}\n.tblwrap{background:linear-gradient(90deg,#000 30%,transparent) left/40px 100% no-repeat local,linear-gradient(270deg,#000 30%,transparent) right/40px 100% no-repeat local,linear-gradient(90deg,rgba(255,255,255,.22),transparent) left/20px 100% no-repeat scroll,linear-gradient(270deg,rgba(255,255,255,.22),transparent) right/20px 100% no-repeat scroll,#000}\n.tblwrap td:first-child,.tblwrap th:first-child{background:#000}\n"
-x111 puts x109 x110
-x112 write x111 9
-x113 text "@media (max-width:720px){pre.code{font-size:13px;background:linear-gradient(90deg,rgba(0,0,0,.9) 30%,transparent) left/40px 100% no-repeat local,linear-gradient(270deg,rgba(0,0,0,.9) 30%,transparent) right/40px 100% no-repeat local,linear-gradient(90deg,rgba(255,255,255,.22),transparent) left/20px 100% no-repeat scroll,linear-gradient(270deg,rgba(255,255,255,.22),transparent) right/20px 100% no-repeat scroll,rgba(0,0,0,.7)}pre.code.wrap{background:rgba(0,0,0,.7)}}\n@media (max-width:640px){.links a{font-size:.85rem}.pill{font-size:.8rem}}\n.skip:focus-visible,.rail a:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n@media (max-width:900px){\n.links a,.hright>a:not(.ico){display:inline-flex;align-items:center;min-height:44px}\n.layout{display:block;padding-top:56px}\n"
-x114 puts x112 x113
-x115 write x114 9
-x116 text ".rail{position:sticky;top:var(--hdr);z-index:15;flex-direction:row;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;background:#000;margin:0 -16px 24px;padding:6px 16px;border-bottom:1px solid var(--line);-webkit-mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}\n.rail::-webkit-scrollbar{display:none}\n.rail a{flex:none;scroll-snap-align:start;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;white-space:nowrap;font-size:14px}\n.rail a.on{padding:0 16px}\n.rail .rh{display:none}\n}\n@media (max-width:640px){:root{--hdr:56px}}\n@media (max-width:900px){:root:has(.rail){--railh:57px}:root:has(.docs .rail){--railh:0px}}\n"
-x117 puts x115 x116
-x118 write x117 9
-x119 text "/* Benchmark charts, one visual language: bold outlined bars, A0 the only saturated solid (the accent), every other language graphite or hollow, a large value on every bar, monospace figures, generous space, one grow-in */\n:root{--g-fill:#262626;--g-line:#d4d4d4;--g-dash:#a3a3a3}\n.chart{padding:32px 0 28px;margin:40px 0 48px}\n.chart .ct{font-size:clamp(1.25rem,2.4vw,1.6rem);font-weight:600;letter-spacing:-.02em;line-height:1.2;margin:0 0 10px;text-wrap:balance}\n.chart p.take{margin:0 0 14px;padding-left:0;border-left:0;color:var(--fg2);font-size:1.02rem;font-weight:400;line-height:1.5;max-width:68ch}\n.chart .sub{font-size:13px;line-height:1.5;color:var(--muted);margin:0 0 18px}\n.chart .cov{font-size:13px;margin:0 0 16px;font-family:\"Geist Mono\",ui-monospace,monospace}\n.chart .legend{gap:10px 22px;font-size:13px;color:var(--fg2);margin:0 0 22px}\n"
-x120 puts x118 x119
-ret x120
-end
-
-fn css_e io -> io
-x122 write p0 9
-x123 text ".chart .legend span::before{width:20px;height:14px;margin-right:9px;vertical-align:-2px;border:2px solid var(--g-line);border-radius:2px 6px 6px 2px;background:var(--g-fill)}\n.chart .legend .la0::before{background:var(--a0);border-color:var(--a0)}\n.chart .legend .lc::before,.chart .legend .lnat::before{background:var(--g-fill);border-color:var(--g-line)}\n.chart .legend .lrust::before,.chart .legend .ljit::before{background:transparent;border-color:var(--g-line)}\n.chart .legend .lgray::before,.chart .legend .lint::before{background:transparent;border:2px dashed var(--g-dash)}\n.chart .lrow{grid-template-columns:140px minmax(0,1fr);gap:14px;padding:5px 0}\n.chart .lrow .lbl{font-size:14px;color:var(--fg2)}\n.chart .lrow .track,.chart .row .track{height:30px;grid-template-columns:minmax(0,1fr) 86px;gap:10px}\n.chart .row .track{grid-template-columns:minmax(0,1fr) 100px}\n.chart .lrow .track{background:linear-gradient(var(--line2),var(--line2)) 0 50%/calc(100% - 96px) 1px no-repeat}\n"
-x124 puts x122 x123
-x125 write x124 9
-x126 text ".chart .track .fill{height:24px;min-width:12px;box-sizing:border-box;border:2px solid var(--g-line);border-radius:2px 5px 5px 2px;background:var(--g-fill);transition:width .8s cubic-bezier(.2,.7,.2,1)}\n.chart .track.a0 .fill{background:var(--a0);border-color:var(--a0)}\n.chart .track.c .fill,.chart .track.nat .fill{background:var(--g-fill);border-color:var(--g-line)}\n.chart .track.rust .fill,.chart .track.jit .fill{background:transparent;border-color:var(--g-line)}\n.chart .track.int .fill{background:transparent;border:2px dashed var(--g-dash)}\n.chart .track .val{font:600 15px \"Geist Mono\",ui-monospace,monospace;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums}\n.chart .track.a0 .val,.chart .lrow.me .val{color:var(--a0)}\n.chart .lrow.me{background:transparent;border-radius:0;margin:0;padding-left:0;padding-right:0}\n.chart .lrow.me .lbl{color:var(--a0);font-weight:600;font-size:15px}\n.chart .lrow.me .track{height:34px}\n.chart .lrow.me .fill{height:28px}\n"
-x127 puts x125 x126
-x128 write x127 9
-x129 text ".chart .row{grid-template-columns:140px minmax(0,1fr) auto;gap:14px;padding:12px 0}\n.chart .row .lbl{font-size:14px;color:var(--fg2)}\n.chart .bars{gap:6px}\n.chart .row .ratio{font:600 15px \"Geist Mono\",ui-monospace,monospace;color:var(--fg);padding:3px 10px;border:2px solid transparent;border-radius:999px}\n.chart .row .ratio.win{color:var(--a0);border-color:var(--a0)}\n.chart .row .ratio.loss{color:var(--fg);border:2px dashed var(--g-line)}\n.chart details.more{margin-top:20px}\n.chart .cap{font-size:13px;font-style:normal;color:var(--muted)}\n@media (max-width:600px){\n.chart{padding:24px 0 20px;margin:28px 0 36px}\n.chart .lrow,.chart .lrow.wide{grid-template-columns:96px minmax(0,1fr);gap:8px}\n.chart .lrow .lbl{font-size:13px}\n.chart .lrow .track,.chart .row .track{grid-template-columns:minmax(0,1fr) 64px;gap:6px}\n.chart .row .track{grid-template-columns:minmax(0,1fr) 76px}\n.chart .track .val{font-size:13px}\n"
-x130 puts x128 x129
-x131 write x130 9
-x132 text ".chart .row,.chart .single .row{grid-template-columns:minmax(0,1fr) auto;row-gap:6px}\n.chart .row .lbl{grid-column:1/-1}\n}\n@media (prefers-reduced-motion:reduce){.chart .track .fill{transition:none}}\n/* a page without the section rail (the landing page) is one centred column */\n.layout:not(:has(.rail)){grid-template-columns:minmax(0,820px)}\n/* the code rain belongs to the hero: behind the content it sits under a soft dark panel so text and charts stay legible */\n.layout{position:relative;z-index:1}\n.layout::before{content:\"\";position:absolute;inset:0 -32px;z-index:-1;background:rgba(0,0,0,.92);box-shadow:0 0 56px 40px rgba(0,0,0,.92);pointer-events:none}\n/* narrow phones: the header must fit the viewport (the text Sponsor link is hidden here; the icons stay) */\n@media (max-width:480px){.top{padding:0 12px}.hright>a:not(.ico){display:none}.links{gap:8px}.nav{gap:8px}}\n"
-x133 puts x131 x132
-x134 write x133 9
-x135 text "/* docs page only (scoped by the .docs ancestor): a readable column, a sticky contents on desktop, a collapsible one on mobile */\n.docs .layout{grid-template-columns:220px minmax(0,780px);gap:48px}\n.docs .main p{max-width:70ch;line-height:1.65}\n.docs .main h3{font-size:1.05rem;font-weight:600;margin:28px 0 10px;color:var(--fg)}\n.docs .main section{scroll-margin-top:calc(var(--hdr) + 16px)}\n.docs pre.code{font-size:14px;line-height:1.6}\n.docs .toc>summary{list-style:none;cursor:pointer}\n.docs .toc>summary::-webkit-details-marker{display:none}\n.docs .toc>summary:focus-visible{outline:2px solid var(--a0);outline-offset:2px;border-radius:6px}\n.docs .rail a{display:block;padding:6px 0 6px 12px}\n.docs .rail a.on{padding:6px 0 6px 10px}\n@media (min-width:901px){.docs .toc>summary{display:none}.docs .toc::details-content{content-visibility:visible;display:block}.docs .rail{max-height:calc(100vh - 120px);overflow-y:auto}}\n@media (max-width:900px){\n.docs .layout{display:block}\n"
-x136 puts x134 x135
-x137 write x136 9
-x138 text ".docs .rail{position:static;display:block;overflow:visible;margin:0 0 24px;padding:0;background:none;border:0;-webkit-mask:none;mask:none}\n.docs .toc>summary{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:8px;color:var(--fg);font-size:15px}\n.docs .toc>summary::after{content:\"+\";color:var(--muted)}\n.docs .toc[open]>summary::after{content:\"\\2212\"}\n.docs .toc[open] .rh{display:block;margin:14px 0 2px 12px}\n.docs .rail a,.docs .rail a.on{display:flex;align-items:center;min-height:44px;padding:0 12px;white-space:normal;border:0}\n}\n/* Phones, motion, tap targets and focus. The page was wider than the screen because the panel behind the content reaches 32px past each side. */\nbody{overflow-x:clip}\n@media (max-width:900px){.layout::before{inset:0}}\n.foot a{text-decoration:underline;text-underline-offset:3px;display:inline-block;padding:13px 6px;margin:-13px -6px}\n"
-x139 puts x137 x138
-x140 write x139 9
-x141 text "pre.code:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n@media (max-width:640px){\n.hero{min-height:46vh;min-height:46svh}\n.center{padding-top:calc(var(--hdr) + 32px)}\n#start{display:flex;flex-direction:column}\n#start>p:has(.pill){order:-1;margin:20px 0 0}\n.pill{min-height:44px;font-size:.8125rem}\n.brand{display:inline-flex;align-items:center;min-height:44px;min-width:44px}\n.links a{padding:0 7px}\n.hright .ico{width:44px;height:44px}\n.chart details.more>summary{min-height:44px}\np+a{display:inline-block;padding:12px 0}\n.rail{padding-left:20px;scroll-padding-left:20px;background:#000}\n}\n@media (max-width:400px){.hright .ico-x{display:none}}\n@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hero .name,.hero .tag,.hero .sub{animation:none}.reveal{transition:none}}\n\n@media (max-width:360px){.lrow,.lrow.wide{grid-template-columns:96px minmax(0,1fr)}.track,.lrow .track,.lrow.wide .track{grid-template-columns:minmax(0,1fr) auto}.track .val{min-width:0}}\n"
-x142 puts x140 x141
-x143 write x142 9
-x144 text "@media (max-width:360px){.layout{overflow-x:clip}.row,.single .row{grid-template-columns:minmax(0,1fr) auto}}\n@media (max-width:360px){.row .ratio{white-space:normal}.row .lbl{min-width:0}}\n/* /benchmarks: purpose lines, chart rules (A0 filled and accented, the rest outlined, a loss is a word), page head */\n.bench.center{max-width:1016px;padding:56px 24px 0;text-align:left}\n.bench.center h1,.bench.center p{margin:0 0 12px;max-width:none}\n.bench.layout{padding-top:24px}\n.bench .pill:not(.ghost){background:var(--a0);color:#000}\n.bench .pill.ghost{background:none;border:1px solid var(--line2);color:var(--fg)}\n.bench .q{color:var(--fg);margin:0 0 14px}\n.bench .nx{font-size:.9rem;color:var(--muted);margin:16px 0 0}\n.bench .nx a,.bench td a{color:var(--fg);text-underline-offset:3px;display:inline-block;padding:12px 0}\n.bench .tblwrap table.rank td{white-space:normal}\n@media (min-width:1064px){.bench.center{padding-left:0}}\n.bench p.take{border-color:var(--line2)}\n"
-x145 puts x143 x144
-x146 write x145 9
-x147 text ".bench .rail a.on{border-color:var(--fg)}\n.bench .rank td.first,.bench .tile .n:not(.loss){color:var(--fg)}\n.bench .lrow .track,.bench .row .track{grid-template-columns:1fr 130px;height:auto;min-height:18px}\n.bench .track .val{white-space:normal;line-height:1.2;color:var(--fg2)}\n.bench .ls .lrow:has(~.lrow.me) .val::after,.bench .track .val.loss::after{content:\" A0 slower\"}\n.bench .lm .lrow:has(~.lrow.me) .val::after,.bench .row .ratio.loss::after{content:\" A0 costlier\"}\n.bench .val::after,.bench .ratio::after{font-weight:700;color:var(--fg)}\n@media (max-width:600px){.bench .lrow,.bench .lrow.wide{grid-template-columns:1fr;gap:2px}.bench .lrow .track{grid-template-columns:1fr 100px}}\n/* Copy button (protocol word 14 COPY, site/app.ts): a small outlined button; the glyphs are drawn here, no images. data-copied is set by the runtime for 1.5 s. */\n"
-x148 puts x146 x147
-x149 write x148 9
-x150 text ".copy{position:relative;display:inline-flex;align-items:center;gap:8px;min-width:44px;min-height:44px;padding:0 14px 0 34px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--fg2);font:inherit;font-size:13px;line-height:1;cursor:pointer}\n.copy[hidden]{display:none}\n.copy:hover{color:var(--fg);border-color:var(--muted)}\n.copy:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n.copy::before,.copy::after{content:\"\";position:absolute;left:13px;top:50%;box-sizing:border-box;width:10px;height:12px;border:1.5px solid currentColor;border-radius:2px}\n.copy::before{transform:translate(-3px,-50%);margin-top:-3px}\n.copy::after{transform:translate(0,-50%);background:var(--bg)}\n.copy[data-copied]{border-color:var(--a0);color:var(--fg)}\n.copy[data-copied=\"1\"]::before{width:6px;height:11px;border:0;border-right:2px solid var(--a0);border-bottom:2px solid var(--a0);border-radius:0;transform:translate(0,-60%) rotate(45deg);margin-top:0}\n"
-x151 puts x149 x150
-ret x151
-end
-
-fn css_f io -> io
-x153 write p0 9
-x154 text ".copy[data-copied=\"1\"]::after{display:none}\n.copy[data-copied=\"fail\"]{border-color:var(--loss)}\n@media (prefers-reduced-motion:no-preference){.copy{transition:border-color .15s,color .15s}}\n.copy-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}\n/* Home page (site/gen/page.tpl; its root is div.home). A ruled column: the hero (statement, install line, an agent edit in a terminal over the code rain), the token figure, how an edit is checked, where A0 loses, install. Sections are sized by their content. */\n.home{--hg:var(--a0);--hink:#000;--hrain:.9;--hhead:#d6ffe0;--hcard:#0a0a0a;--hmute:#8a9a8e;--hline:#1f1f1f;--hred:#ff5f56}\n.home .hwrap{max-width:1232px;margin:0 auto;padding-top:var(--hdr);border-left:1px solid var(--hline);border-right:1px solid var(--hline)}\n.home section{border-bottom:1px solid var(--hline)}\n"
-x155 puts x153 x154
-x156 write x155 9
-x157 text ".home h1,.home h2,.home h3{font-family:\"Geist\",-apple-system,sans-serif;margin:0;color:var(--fg)}\n.home p{margin:0}\n.home .hhero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:center;border-top:1px solid var(--hline)}\n.home .rain{position:absolute;inset:0;opacity:var(--hrain);pointer-events:none;color:transparent;font-size:0;overflow:hidden;--rain-color:var(--hg);--rain-head:var(--hhead)}\n.home .rain canvas{position:absolute;inset:0;width:100%;height:100%;display:block}\n.home .hfade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0,color-mix(in srgb,var(--bg) 70%,transparent) 42%,transparent 75%),linear-gradient(0deg,var(--bg) 0,transparent 22%)}\n.home .hcopy,.home .hside{position:relative;z-index:1;padding:72px 48px;min-width:0}\n.home .hhero h1{font-size:64px;line-height:64px;font-weight:400;letter-spacing:-.06em;max-width:10ch}\n"
-x158 puts x156 x157
-x159 write x158 9
-x160 text ".home .lead{font-size:24px;line-height:32px;font-weight:450;letter-spacing:-.04em;color:var(--hmute);margin-top:24px;max-width:30ch}\n.home .hcmd{margin-top:40px;display:flex;align-items:center;gap:12px;height:40px;padding:0 4px 0 16px;border:1px solid var(--hline);background:var(--hcard);border-radius:999px;max-width:100%;font:13px/1 \"Geist Mono\",ui-monospace,monospace}\n.home .hcmd code{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg);font:inherit}\n.home .hcmd code .pr{color:var(--hg)}\n.home .hcmd .copy{flex:none;min-width:0;min-height:0;height:32px;padding:0 14px;border:0;border-radius:999px;background:var(--hg);color:var(--hink);font:500 14px \"Geist\",sans-serif;transition:opacity .15s}\n.home .hcmd .copy:hover{opacity:.85;color:var(--hink)}\n.home .hcmd .copy::before{display:none}\n.home .hcmd .copy::after{content:none}\n.home .hcmd .copy[data-copied]{color:transparent}\n"
-x161 puts x159 x160
-x162 write x161 9
-x163 text ".home .hcmd .copy[data-copied]::after{content:\"Copied\";display:block;position:absolute;inset:0;width:auto;height:auto;border:0;border-radius:0;margin:0;transform:none;background:none;color:var(--hink);line-height:32px;text-align:center}\n.home .hcmd .copy[data-copied=\"fail\"]::after{content:\"Select\"}\n.home .os{display:none;gap:4px;margin-top:12px;font:13px \"Geist Mono\",ui-monospace,monospace}\n.js .home .os{display:flex}\n.js .home .switch .pane:not(.on){display:none}\n.home .switch .pane+.pane{margin-top:12px}\n.js .home .switch .pane{margin-top:40px}\n.home .os button{background:none;border:0;color:var(--hmute);font:inherit;cursor:pointer;padding:2px 8px;border-radius:999px}\n.home .os button[aria-pressed=true]{color:var(--fg);background:var(--hcard);box-shadow:inset 0 0 0 1px var(--hline)}\n.home .connect{margin-top:20px;font-size:14px;color:var(--hmute)}\n.home .connect code{color:var(--fg);font-family:\"Geist Mono\",ui-monospace,monospace;overflow-wrap:anywhere}\n"
-x164 puts x162 x163
-x165 write x164 9
-x166 text ".home .hterm{position:relative;z-index:2;border:1px solid var(--hline);background:var(--hcard);border-radius:2px;font:13px/22px \"Geist Mono\",ui-monospace,monospace}\n.home .hterm .bar{height:36px;border-bottom:1px solid var(--hline);display:flex;align-items:center;justify-content:space-between;padding:0 14px;color:var(--hmute);font-size:12px}\n.home .hterm pre{margin:0;padding:16px;font:inherit;color:var(--fg);background:none;border:0;white-space:pre-wrap;word-break:break-word;min-height:300px;max-width:none;overflow:visible}\n.home .c-m{color:var(--hmute)}\n.home .c-g{color:var(--hg)}\n.home .c-r{color:var(--hred)}\n.home .cursor{display:inline-block;width:7px;height:14px;background:var(--hg);vertical-align:-2px;animation:hblink 1s steps(1) infinite}\n@keyframes hblink{50%{opacity:0}}\n.home .hsec{padding:80px 48px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:64px;align-items:center}\n.home h2{font-size:56px;line-height:56px;font-weight:450;letter-spacing:-.06em}\n"
-x167 puts x165 x166
-x168 write x167 9
-x169 text ".home .hsec p.body{margin-top:20px;color:var(--hmute);max-width:40ch}\n.home .src{display:block;margin-top:16px;font:13px/20px \"Geist Mono\",ui-monospace,monospace;color:var(--hmute);overflow-wrap:anywhere}\n.home .hbars{display:grid;gap:14px}\n.home .hrow{display:grid;grid-template-columns:96px minmax(0,1fr) 44px;gap:12px;align-items:center;font-size:14px;color:var(--hmute)}\n.home .hrow .n{text-align:right;font-variant-numeric:tabular-nums}\n.home .htrack{height:8px}\n.home .htrack .fill{height:100%;background:var(--hline);border-radius:1px;transition:width 1.2s cubic-bezier(.2,.7,.2,1)}\n.home .hrow.a0 .fill{background:var(--hg)}\n.home .hrow.a0 .lbl,.home .hrow.a0 .n{color:var(--fg)}\n.home .head{padding:80px 48px 40px}\n.home .how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--hline)}\n.home .how>div{padding:32px 32px 40px;min-width:0}\n.home .how>div+div{border-left:1px solid var(--hline)}\n"
-x170 puts x168 x169
-x171 write x170 9
-x172 text ".home .k{font:13px \"Geist Mono\",ui-monospace,monospace;color:var(--hg)}\n.home .how h3{font-size:20px;line-height:28px;font-weight:500;letter-spacing:-.03em;margin-top:8px}\n.home .how pre{margin:24px 0 0;padding:14px 16px;border:1px solid var(--hline);background:var(--hcard);font:13px/20px \"Geist Mono\",ui-monospace,monospace;color:var(--fg);overflow-x:auto;white-space:pre}\n.home .limits{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--hline);border-left:0;padding-left:0}\n.home .limits>div{padding:40px 48px 48px;min-width:0}\n.home .limits>div+div{border-left:1px solid var(--hline)}\n.home .limits p{font-size:24px;line-height:32px;font-weight:450;letter-spacing:-.04em;color:var(--hmute)}\n.home .limits strong{font-weight:inherit;color:var(--fg)}\n.home .nofit{padding:0 48px 48px;color:var(--hmute)}\n.home .hend{padding:96px 48px;text-align:center;display:flex;flex-direction:column;align-items:center}\n.home .hend .hcmd{width:640px;text-align:left}\n"
-x173 puts x171 x172
-x174 write x173 9
-x175 text ".home .gh{display:inline-block;margin-top:24px;padding:10px 0;font:14px \"Geist Mono\",ui-monospace,monospace;color:var(--hmute);text-decoration:none}\n.home .gh:hover{color:var(--fg)}\n.home button:focus-visible,.home a:focus-visible{outline:2px solid var(--hg);outline-offset:2px}\n.home .reveal{transition:opacity .7s,transform .7s}\n.js .home .reveal:not(.in){opacity:0;transform:translateY(12px)}\n@media (max-width:960px){.home .hhero,.home .hsec{grid-template-columns:minmax(0,1fr)}.home .hcopy,.home .hside{padding:48px 24px}.home .hside{padding-top:0}.home .hsec{padding:64px 24px;gap:40px}.home .head{padding:64px 24px 32px}.home .how,.home .limits{grid-template-columns:minmax(0,1fr)}.home .how>div{padding:32px 24px}.home .how>div+div,.home .limits>div+div{border-left:0;border-top:1px solid var(--hline)}.home .limits>div{padding:32px 24px 40px}.home .nofit{padding:0 24px 40px}.home .hend{padding:64px 24px}}\n"
-x176 puts x174 x175
-x177 write x176 9
-x178 text "@media (max-width:600px){.home .hwrap{border:0}.home .hhero h1{font-size:40px;line-height:48px;font-weight:450}.home h2{font-size:32px;line-height:40px;letter-spacing:-.04em}.home .lead,.home .limits p{font-size:20px;line-height:28px}.home .hrow{grid-template-columns:80px minmax(0,1fr) 36px;font-size:13px}.home .hterm{font-size:12px;line-height:20px}.home .hterm pre{min-height:0}.home .os button{min-height:44px;padding:0 12px}.home .hcmd{height:44px}.home .hcmd .copy{height:36px}.home .hcmd .copy[data-copied]::after{line-height:36px}.home .hend .hcmd{width:100%}}\n@media (max-width:360px){.home .hcopy,.home .hside,.home .hsec,.home .head,.home .how>div,.home .limits>div,.home .hend,.home .nofit{padding-left:16px;padding-right:16px}.home .hcmd{padding-left:12px;gap:8px}.home .hterm pre{padding:12px}}\n@media (prefers-reduced-motion:reduce){.home .reveal,.home .htrack .fill{transition:none}.home .cursor{animation:none}.js .home .reveal:not(.in){opacity:1;transform:none}}\n"
-x179 puts x177 x178
-x180 write x179 9
-x181 text "/* Light theme: the same roles on white; the code rain is a dark-only backdrop */\n"
-x182 puts x180 x181
-x183 write x182 9
-x184 text "@media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){color-scheme:light;--bg:#fff;--fg:#111;--fg2:#333;--body:#444;--muted:#595959;--dim:#6b6b6b;--line:#e6e6e6;--line2:#d0d0d0;--a0:#007a1f;--win:#007a1f;--loss:#333;--g-fill:#e4e4e4;--g-line:#555;--g-dash:#666;--markbg:rgba(0,122,31,.1)}:root:where(:not([data-theme=dark])) body{background:#fff}:root:where(:not([data-theme=dark])) header.top{background:rgba(255,255,255,.86)}:root:where(:not([data-theme=dark])) .stage{display:none}:root:where(:not([data-theme=dark])) .layout::before{background:transparent;box-shadow:none}:root:where(:not([data-theme=dark])) pre.code{background:#f6f6f6;color:#222}:root:where(:not([data-theme=dark])) .home{--hink:#fff;--hrain:.1;--hhead:#007a1f;--hcard:#fff;--hmute:#55635a;--hline:#e4e4e4;--hred:#c62828}:root:where(:not([data-theme=dark])) .tblwrap,:root:where(:not([data-theme=dark])) .tblwrap td:first-child,:root:where(:not([data-theme=dark])) .tblwrap th:first-child,:root:where(:not([data-theme=dark])) .rail{background:#fff}:root:where(:not([data-theme=dark])) ::selection{color:#fff}}:root:where([data-theme=light]){color-scheme:light;--bg:#fff;--fg:#111;--fg2:#333;--body:#444;--muted:#595959;--dim:#6b6b6b;--line:#e6e6e6;--line2:#d0d0d0;--a0:#007a1f;--win:#007a1f;--loss:#333;--g-fill:#e4e4e4;--g-line:#555;--g-dash:#666;--markbg:rgba(0,122,31,.1)}:root:where([data-theme=light]) body{background:#fff}:root:where([data-theme=light]) header.top{background:rgba(255,255,255,.86)}:root:where([data-theme=light]) .stage{display:none}:root:where([data-theme=light]) .layout::before{background:transparent;box-shadow:none}:root:where([data-theme=light]) pre.code{background:#f6f6f6;color:#222}:root:where([data-theme=light]) .home{--hink:#fff;--hrain:.1;--hhead:#007a1f;--hcard:#fff;--hmute:#55635a;--hline:#e4e4e4;--hred:#c62828}:root:where([data-theme=light]) .tblwrap,:root:where([data-theme=light]) .tblwrap td:first-child,:root:where([data-theme=light]) .tblwrap th:first-child,:root:where([data-theme=light]) .rail{background:#fff}:root:where([data-theme=light]) ::selection{color:#fff}\n"
-x185 puts x183 x184
-x186 write x185 9
-x187 text "/* Inner pages: one rule for code blocks (scroll sideways, never widen the page), long paths in prose may break, chart labels and values on one line */\npre{max-width:100%;overflow-x:auto}\n.main p,.main li,.cap,.sub{overflow-wrap:break-word}\n.main p code,.main li code{font-family:\"Geist Mono\",ui-monospace,monospace;font-size:.9em;color:var(--fg);overflow-wrap:anywhere}\n.chart .lrow .lbl,.chart .row .lbl,.chart .track .val{white-space:nowrap}\n@media (min-width:601px){.chart .lrow,.chart .row{grid-template-columns:168px minmax(0,1fr)}.chart .row{grid-template-columns:168px minmax(0,1fr) auto}}\n@media (max-width:600px){.chart .lrow,.chart .lrow.wide{grid-template-columns:120px minmax(0,1fr)}}\n@media (max-width:600px){.chart .track .val{white-space:normal;min-width:0}}\n\n"
-x188 puts x186 x187
-ret x188
+ret x49
 end
 
 fn sec_head io -> io
-x191 call open p0 5
-x192 write x191 4
-x193 write x192 2
-x194 text "docs"
-x195 puts x193 x194
-x196 call open x195 13
-x197 write x196 4
-x198 write x197 1
-x199 text "top"
-x200 puts x198 x199
-x201 write x200 4
-x202 write x201 2
-x203 text "hero"
-x204 puts x202 x203
-x205 call open x204 1
-x206 write x205 4
-x207 write x206 2
-x208 text "name pixel"
-x209 puts x207 x208
-x210 write x209 2
-x211 text "Docs"
-x212 puts x210 x211
-x213 call close x212 
-x214 call close x213 
-x215 call open x214 5
-x216 write x215 4
+x52 call open p0 5
+x53 write x52 4
+x54 write x53 2
+x55 text "docs"
+x56 puts x54 x55
+x57 call open x56 13
+x58 write x57 4
+x59 write x58 1
+x60 text "top"
+x61 puts x59 x60
+x62 write x61 4
+x63 write x62 2
+x64 text "hero"
+x65 puts x63 x64
+x66 call open x65 1
+x67 write x66 4
+x68 write x67 2
+x69 text "name pixel"
+x70 puts x68 x69
+x71 write x70 2
+x72 text "Docs"
+x73 puts x71 x72
+x74 call close x73 
+x75 call close x74 
+x76 call open x75 5
+x77 write x76 4
+x78 write x77 2
+x79 text "layout"
+x80 puts x78 x79
+x81 write x80 4
+x82 write x81 1
+x83 text "content"
+x84 puts x82 x83
+x85 call open x84 14
+x86 write x85 4
+x87 write x86 2
+x88 text "rail"
+x89 puts x87 x88
+x90 write x89 4
+x91 write x90 6
+x92 text "On this page"
+x93 puts x91 x92
+x94 call open x93 28
+x95 write x94 4
+x96 write x95 2
+x97 text "toc"
+x98 puts x96 x97
+x99 call open x98 29
+x100 write x99 2
+x101 text "On this page"
+x102 puts x100 x101
+x103 call close x102 
+x104 call open x103 5
+x105 write x104 4
+x106 write x105 2
+x107 text "rh"
+x108 puts x106 x107
+x109 write x108 2
+x110 text "Start"
+x111 puts x109 x110
+x112 call close x111 
+x113 call open x112 9
+x114 write x113 4
+x115 write x114 3
+x116 text "#quickstart"
+x117 puts x115 x116
+x118 write x117 2
+x119 text "Quick start"
+x120 puts x118 x119
+x121 call close x120 
+x122 call open x121 9
+x123 write x122 4
+x124 write x123 3
+x125 text "#primer"
+x126 puts x124 x125
+x127 write x126 2
+x128 text "The primer"
+x129 puts x127 x128
+x130 call close x129 
+x131 call open x130 5
+x132 write x131 4
+x133 write x132 2
+x134 text "rh"
+x135 puts x133 x134
+x136 write x135 2
+x137 text "The language"
+x138 puts x136 x137
+x139 call close x138 
+x140 call open x139 9
+x141 write x140 4
+x142 write x141 3
+x143 text "#programs"
+x144 puts x142 x143
+x145 write x144 2
+x146 text "Programs and functions"
+x147 puts x145 x146
+x148 call close x147 
+x149 call open x148 9
+x150 write x149 4
+x151 write x150 3
+x152 text "#types"
+x153 puts x151 x152
+x154 write x153 2
+x155 text "Types and values"
+x156 puts x154 x155
+x157 call close x156 
+x158 call open x157 9
+x159 write x158 4
+x160 write x159 3
+x161 text "#iteration"
+x162 puts x160 x161
+x163 write x162 2
+x164 text "Iteration"
+x165 puts x163 x164
+x166 call close x165 
+x167 call open x166 9
+x168 write x167 4
+x169 write x168 3
+x170 text "#modules"
+x171 puts x169 x170
+x172 write x171 2
+x173 text "Modules"
+x174 puts x172 x173
+x175 call close x174 
+x176 call open x175 5
+x177 write x176 4
+x178 write x177 2
+x179 text "rh"
+x180 puts x178 x179
+x181 write x180 2
+x182 text "Editing with a model"
+x183 puts x181 x182
+x184 call close x183 
+x185 call open x184 9
+x186 write x185 4
+x187 write x186 3
+x188 text "#editing"
+x189 puts x187 x188
+x190 write x189 2
+x191 text "Views and edits"
+x192 puts x190 x191
+x193 call close x192 
+x194 call open x193 9
+x195 write x194 4
+x196 write x195 3
+x197 text "#diagnostics"
+x198 puts x196 x197
+x199 write x198 2
+x200 text "Diagnostics"
+x201 puts x199 x200
+x202 call close x201 
+x203 call open x202 5
+x204 write x203 4
+x205 write x204 2
+x206 text "rh"
+x207 puts x205 x206
+x208 write x207 2
+x209 text "Reference"
+x210 puts x208 x209
+x211 call close x210 
+x212 call open x211 9
+x213 write x212 4
+x214 write x213 3
+x215 text "#operations"
+x216 puts x214 x215
 x217 write x216 2
-x218 text "layout"
+x218 text "Operations"
 x219 puts x217 x218
-x220 write x219 4
-x221 write x220 1
-x222 text "content"
-x223 puts x221 x222
-x224 call open x223 14
-x225 write x224 4
+x220 call close x219 
+x221 call open x220 9
+x222 write x221 4
+x223 write x222 3
+x224 text "#bounds"
+x225 puts x223 x224
 x226 write x225 2
-x227 text "rail"
+x227 text "Bounds and safety"
 x228 puts x226 x227
-x229 write x228 4
-x230 write x229 6
-x231 text "On this page"
-x232 puts x230 x231
-x233 call open x232 28
-x234 write x233 4
+x229 call close x228 
+x230 call open x229 9
+x231 write x230 4
+x232 write x231 3
+x233 text "#cli"
+x234 puts x232 x233
 x235 write x234 2
-x236 text "toc"
+x236 text "Targets and CLI"
 x237 puts x235 x236
-x238 call open x237 29
-x239 write x238 2
-x240 text "On this page"
-x241 puts x239 x240
-x242 call close x241 
-x243 call open x242 5
-x244 write x243 4
-x245 write x244 2
-x246 text "rh"
-x247 puts x245 x246
-x248 write x247 2
-x249 text "Start"
+x238 call close x237 
+x239 call close x238 
+x240 call close x239 
+x241 call open x240 5
+x242 write x241 4
+x243 write x242 2
+x244 text "main"
+x245 puts x243 x244
+x246 call open x245 13
+x247 write x246 4
+x248 write x247 1
+x249 text "quickstart"
 x250 puts x248 x249
-x251 call close x250 
-x252 call open x251 9
-x253 write x252 4
-x254 write x253 3
-x255 text "#quickstart"
-x256 puts x254 x255
+x251 call open x250 11
+x252 write x251 2
+x253 text "Quick start"
+x254 puts x252 x253
+x255 call close x254 
+x256 call open x255 2
 x257 write x256 2
-x258 text "Quick start"
+x258 text "A0 is a small language written by AI models, one operation per line, with exact integer arithmetic. A model edits a function through a view and a short reply instead of rewriting the file."
 x259 puts x257 x258
 x260 call close x259 
-x261 call open x260 9
-x262 write x261 4
-x263 write x262 3
-x264 text "#primer"
-x265 puts x263 x264
-x266 write x265 2
-x267 text "The primer"
-x268 puts x266 x267
-x269 call close x268 
-x270 call open x269 5
-x271 write x270 4
+x261 call open x260 15
+x262 write x261 2
+x263 text "1. Install"
+x264 puts x262 x263
+x265 call close x264 
+x266 call open x265 10
+x267 write x266 4
+x268 write x267 2
+x269 text "code"
+x270 puts x268 x269
+x271 call open x270 4
 x272 write x271 2
-x273 text "rh"
+x273 text "brew install a0\n"
 x274 puts x272 x273
 x275 write x274 2
-x276 text "The language"
+x276 text "curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh"
 x277 puts x275 x276
 x278 call close x277 
-x279 call open x278 9
-x280 write x279 4
-x281 write x280 3
-x282 text "#programs"
+x279 call close x278 
+x280 call open x279 15
+x281 write x280 2
+x282 text "2. Write and run"
 x283 puts x281 x282
-x284 write x283 2
-x285 text "Programs and functions"
-x286 puts x284 x285
-x287 call close x286 
-x288 call open x287 9
-x289 write x288 4
-x290 write x289 3
-x291 text "#types"
-x292 puts x290 x291
+x284 call close x283 
+x285 call open x284 10
+x286 write x285 4
+x287 write x286 2
+x288 text "code"
+x289 puts x287 x288
+x290 call open x289 4
+x291 call open x290 6
+x292 write x291 4
 x293 write x292 2
-x294 text "Types and values"
+x294 text "cm"
 x295 puts x293 x294
-x296 call close x295 
-x297 call open x296 9
-x298 write x297 4
-x299 write x298 3
-x300 text "#iteration"
-x301 puts x299 x300
-x302 write x301 2
-x303 text "Iteration"
-x304 puts x302 x303
-x305 call close x304 
-x306 call open x305 9
-x307 write x306 4
-x308 write x307 3
-x309 text "#modules"
+x296 write x295 2
+x297 text "# hello.a0: compute p0 * p1 + p2\n"
+x298 puts x296 x297
+x299 call close x298 
+x300 write x299 2
+x301 text "fn affine u32 u32 u32 -> u32\na mul p0 p1\nb add a p2\nret b\nend\n\n"
+x302 puts x300 x301
+x303 call open x302 6
+x304 write x303 4
+x305 write x304 2
+x306 text "cm"
+x307 puts x305 x306
+x308 write x307 2
+x309 text "# a0 run hello.a0 affine 6 7 1\n"
 x310 puts x308 x309
-x311 write x310 2
-x312 text "Modules"
-x313 puts x311 x312
-x314 call close x313 
-x315 call open x314 5
-x316 write x315 4
-x317 write x316 2
-x318 text "rh"
-x319 puts x317 x318
-x320 write x319 2
-x321 text "Editing with a model"
-x322 puts x320 x321
-x323 call close x322 
-x324 call open x323 9
-x325 write x324 4
-x326 write x325 3
-x327 text "#editing"
-x328 puts x326 x327
-x329 write x328 2
-x330 text "Views and edits"
-x331 puts x329 x330
-x332 call close x331 
-x333 call open x332 9
-x334 write x333 4
-x335 write x334 3
-x336 text "#diagnostics"
-x337 puts x335 x336
-x338 write x337 2
-x339 text "Diagnostics"
-x340 puts x338 x339
-x341 call close x340 
-x342 call open x341 5
-x343 write x342 4
+x311 call close x310 
+x312 write x311 2
+x313 text "43"
+x314 puts x312 x313
+x315 call close x314 
+x316 call close x315 
+x317 call open x316 15
+x318 write x317 2
+x319 text "3. Edit it"
+x320 puts x318 x319
+x321 call close x320 
+x322 call open x321 2
+x323 write x322 2
+x324 text "Ask for a view with "
+x325 puts x323 x324
+x326 call open x325 4
+x327 write x326 2
+x328 text "a0 view hello.a0 affine"
+x329 puts x327 x328
+x330 call close x329 
+x331 write x330 2
+x332 text "; it prints the function under a handle (e0) with its revision. Reply with the handle, then edits, one per line:"
+x333 puts x331 x332
+x334 call close x333 
+x335 call open x334 10
+x336 write x335 4
+x337 write x336 2
+x338 text "code"
+x339 puts x337 x338
+x340 call open x339 4
+x341 write x340 2
+x342 text "id op args           replace instruction id, or insert it before ret\n"
+x343 puts x341 x342
 x344 write x343 2
-x345 text "rh"
+x345 text "id op args @ x       insert after instruction x\n"
 x346 puts x344 x345
 x347 write x346 2
-x348 text "Reference"
+x348 text "-id                  delete instruction id\n"
 x349 puts x347 x348
-x350 call close x349 
-x351 call open x350 9
-x352 write x351 4
-x353 write x352 3
-x354 text "#operations"
+x350 write x349 2
+x351 text "ret x                change the result\n"
+x352 puts x350 x351
+x353 write x352 2
+x354 text "fn ... end           add or replace a whole function (program handle g0)\n"
 x355 puts x353 x354
 x356 write x355 2
-x357 text "Operations"
+x357 text "-fn name             remove a function"
 x358 puts x356 x357
 x359 call close x358 
-x360 call open x359 9
-x361 write x360 4
-x362 write x361 3
-x363 text "#bounds"
+x360 call close x359 
+x361 call open x360 2
+x362 write x361 2
+x363 text "The edit is applied only if it parses, type-checks and was written against the current revision. Otherwise it is rejected with a code and the one fix that resolves it, and the handle stays valid."
 x364 puts x362 x363
-x365 write x364 2
-x366 text "Bounds and safety"
-x367 puts x365 x366
-x368 call close x367 
-x369 call open x368 9
-x370 write x369 4
-x371 write x370 3
-x372 text "#cli"
-x373 puts x371 x372
-x374 write x373 2
-x375 text "Targets and CLI"
-x376 puts x374 x375
-x377 call close x376 
-x378 call close x377 
-x379 call close x378 
-x380 call open x379 5
-x381 write x380 4
-x382 write x381 2
-x383 text "main"
-x384 puts x382 x383
-x385 call open x384 13
-x386 write x385 4
-x387 write x386 1
-x388 text "quickstart"
+x365 call close x364 
+x366 call open x365 15
+x367 write x366 2
+x368 text "4. Connect an agent"
+x369 puts x367 x368
+x370 call close x369 
+x371 call open x370 2
+x372 call open x371 4
+x373 write x372 2
+x374 text "a0 mcp ."
+x375 puts x373 x374
+x376 call close x375 
+x377 write x376 2
+x378 text " serves A0 to an agent over stdio with seven tools: a0_open, a0_program, a0_apply, a0_check, a0_run, a0_emit and a0_save. In Claude Code:"
+x379 puts x377 x378
+x380 call close x379 
+x381 call open x380 10
+x382 write x381 4
+x383 write x382 2
+x384 text "code"
+x385 puts x383 x384
+x386 call open x385 4
+x387 write x386 2
+x388 text "claude mcp add a0 -- a0 mcp .\n"
 x389 puts x387 x388
-x390 call open x389 11
-x391 write x390 2
-x392 text "Quick start"
-x393 puts x391 x392
+x390 write x389 2
+x391 text "npx skills add Joe-Simo/a0"
+x392 puts x390 x391
+x393 call close x392 
 x394 call close x393 
 x395 call open x394 2
 x396 write x395 2
-x397 text "A0 is a small language written by AI models, one operation per line, with exact integer arithmetic. A model edits a function through a view and a short reply instead of rewriting the file."
+x397 text "The second line installs the Agent Skill, which loads the primer and the edit protocol on demand. Configurations for other agents are in the repository."
 x398 puts x396 x397
 x399 call close x398 
-x400 call open x399 15
-x401 write x400 2
-x402 text "1. Install"
-x403 puts x401 x402
-x404 call close x403 
-x405 call open x404 10
-x406 write x405 4
-x407 write x406 2
-x408 text "code"
-x409 puts x407 x408
-x410 call open x409 4
-x411 write x410 2
-x412 text "brew install a0\n"
-x413 puts x411 x412
-x414 write x413 2
-x415 text "curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh"
-x416 puts x414 x415
-x417 call close x416 
-x418 call close x417 
-x419 call open x418 15
-x420 write x419 2
-x421 text "2. Write and run"
-x422 puts x420 x421
-x423 call close x422 
-x424 call open x423 10
-x425 write x424 4
-x426 write x425 2
-x427 text "code"
-x428 puts x426 x427
-x429 call open x428 4
-x430 call open x429 6
-x431 write x430 4
-x432 write x431 2
-x433 text "cm"
-x434 puts x432 x433
-x435 write x434 2
-x436 text "# hello.a0: compute p0 * p1 + p2\n"
-x437 puts x435 x436
-x438 call close x437 
-x439 write x438 2
-x440 text "fn affine u32 u32 u32 -> u32\na mul p0 p1\nb add a p2\nret b\nend\n\n"
-x441 puts x439 x440
-x442 call open x441 6
-x443 write x442 4
-x444 write x443 2
-x445 text "cm"
-x446 puts x444 x445
-x447 write x446 2
-x448 text "# a0 run hello.a0 affine 6 7 1\n"
-x449 puts x447 x448
-x450 call close x449 
-x451 write x450 2
-x452 text "43"
-x453 puts x451 x452
-x454 call close x453 
-x455 call close x454 
-x456 call open x455 15
-x457 write x456 2
-x458 text "3. Edit it"
-x459 puts x457 x458
-x460 call close x459 
-x461 call open x460 2
-x462 write x461 2
-x463 text "Ask for a view with "
-x464 puts x462 x463
-x465 call open x464 4
-x466 write x465 2
-x467 text "a0 view hello.a0 affine"
-x468 puts x466 x467
-x469 call close x468 
-x470 write x469 2
-x471 text "; it prints the function under a handle (e0) with its revision. Reply with the handle, then edits, one per line:"
-x472 puts x470 x471
-x473 call close x472 
-x474 call open x473 10
-x475 write x474 4
-x476 write x475 2
-x477 text "code"
-x478 puts x476 x477
-x479 call open x478 4
-x480 write x479 2
-x481 text "id op args           replace instruction id, or insert it before ret\n"
-x482 puts x480 x481
-x483 write x482 2
-x484 text "id op args @ x       insert after instruction x\n"
-x485 puts x483 x484
-x486 write x485 2
-x487 text "-id                  delete instruction id\n"
-x488 puts x486 x487
-x489 write x488 2
-x490 text "ret x                change the result\n"
-x491 puts x489 x490
-x492 write x491 2
-x493 text "fn ... end           add or replace a whole function (program handle g0)\n"
-x494 puts x492 x493
-x495 write x494 2
-x496 text "-fn name             remove a function"
-x497 puts x495 x496
-x498 call close x497 
-x499 call close x498 
-x500 call open x499 2
-x501 write x500 2
-x502 text "The edit is applied only if it parses, type-checks and was written against the current revision. Otherwise it is rejected with a code and the one fix that resolves it, and the handle stays valid."
-x503 puts x501 x502
-x504 call close x503 
-x505 call open x504 15
-x506 write x505 2
-x507 text "4. Connect an agent"
-x508 puts x506 x507
-x509 call close x508 
-x510 call open x509 2
-x511 call open x510 4
-x512 write x511 2
-x513 text "a0 mcp ."
-x514 puts x512 x513
-x515 call close x514 
-x516 write x515 2
-x517 text " serves A0 to an agent over stdio with seven tools: a0_open, a0_program, a0_apply, a0_check, a0_run, a0_emit and a0_save. In Claude Code:"
-x518 puts x516 x517
-x519 call close x518 
-x520 call open x519 10
-x521 write x520 4
-x522 write x521 2
-x523 text "code"
-x524 puts x522 x523
-x525 call open x524 4
-x526 write x525 2
-x527 text "claude mcp add a0 -- a0 mcp .\n"
-x528 puts x526 x527
-x529 write x528 2
-x530 text "npx skills add Joe-Simo/a0"
-x531 puts x529 x530
-x532 call close x531 
-x533 call close x532 
-x534 call open x533 2
-x535 write x534 2
-x536 text "The second line installs the Agent Skill, which loads the primer and the edit protocol on demand. Configurations for other agents are in the repository."
-x537 puts x535 x536
-x538 call close x537 
-x539 call open x538 9
-x540 write x539 4
-x541 write x540 3
-x542 text "https://github.com/Joe-Simo/a0#readme"
-x543 puts x541 x542
-x544 write x543 2
-x545 text "Configurations for other agents"
-x546 puts x544 x545
-x547 call close x546 
-x548 call close x547 
-ret x548
+x400 call open x399 9
+x401 write x400 4
+x402 write x401 3
+x403 text "https://github.com/Joe-Simo/a0#readme"
+x404 puts x402 x403
+x405 write x404 2
+x406 text "Configurations for other agents"
+x407 puts x405 x406
+x408 call close x407 
+x409 call close x408 
+ret x409
 end
 
 fn sec_lang io -> io
-x550 call open p0 13
-x551 write x550 4
-x552 write x551 1
-x553 text "primer"
-x554 puts x552 x553
-x555 call open x554 11
-x556 write x555 2
-x557 text "The primer"
-x558 puts x556 x557
-x559 call close x558 
-x560 call open x559 2
-x561 write x560 2
-x562 text "This is everything a model is told before it writes or edits A0. The sections below say the same thing in full."
-x563 puts x561 x562
-x564 call close x563 
-x565 call open x564 10
-x566 write x565 4
-x567 write x566 2
-x568 text "code wrap"
-x569 puts x567 x568
-x570 call open x569 4
-x571 write x570 2
-x572 text "A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG`, `end`. Types u32 bool, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops exact mod 2^32.\n"
-x573 puts x571 x572
-x574 write x573 2
-x575 text "add sub mul and or xor (bool too) shl shr (count&31) div (b=0: 4294967295) rem (b=0: a) eq ne lt le gt ge (unsigned, -> bool) select c x y\n"
-x576 puts x574 x575
-x577 write x576 2
-x578 text "call F a... | fold F n s a... state=s; i<n: state=F(state,i,a...)\n"
-x579 puts x577 x578
-x580 write x579 2
-x581 text "arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v\n"
+x411 call open p0 13
+x412 write x411 4
+x413 write x412 1
+x414 text "primer"
+x415 puts x413 x414
+x416 call open x415 11
+x417 write x416 2
+x418 text "The primer"
+x419 puts x417 x418
+x420 call close x419 
+x421 call open x420 2
+x422 write x421 2
+x423 text "This is everything a model is told before it writes or edits A0. The sections below say the same thing in full."
+x424 puts x422 x423
+x425 call close x424 
+x426 call open x425 10
+x427 write x426 4
+x428 write x427 2
+x429 text "code wrap"
+x430 puts x428 x429
+x431 call open x430 4
+x432 write x431 2
+x433 text "A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG`, `end`. Types u32 bool, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops exact mod 2^32.\n"
+x434 puts x432 x433
+x435 write x434 2
+x436 text "add sub mul and or xor (bool too) shl shr (count&31) div (b=0: 4294967295) rem (b=0: a) eq ne lt le gt ge (unsigned, -> bool) select c x y\n"
+x437 puts x435 x436
+x438 write x437 2
+x439 text "call F a... | fold F n s a... state=s; i<n: state=F(state,i,a...)\n"
+x440 puts x438 x439
+x441 write x440 2
+x442 text "arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v\n"
+x443 puts x441 x442
+x444 write x443 2
+x445 text "EDIT: reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret; `c add a b @ x` inserts after x), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`.\n"
+x446 puts x444 x445
+x447 call close x446 
+x448 call close x447 
+x449 call close x448 
+x450 call open x449 13
+x451 write x450 4
+x452 write x451 1
+x453 text "programs"
+x454 puts x452 x453
+x455 call open x454 11
+x456 write x455 2
+x457 text "Programs and functions"
+x458 puts x456 x457
+x459 call close x458 
+x460 call open x459 2
+x461 write x460 2
+x462 text "A program is a list of functions. A function is a header "
+x463 puts x461 x462
+x464 call open x463 4
+x465 write x464 2
+x466 text "fn NAME T... -> T"
+x467 puts x465 x466
+x468 call close x467 
+x469 write x468 2
+x470 text ", then one instruction per line "
+x471 puts x469 x470
+x472 call open x471 4
+x473 write x472 2
+x474 text "ID OP ARGS"
+x475 puts x473 x474
+x476 call close x475 
+x477 write x476 2
+x478 text ", then "
+x479 puts x477 x478
+x480 call open x479 4
+x481 write x480 2
+x482 text "ret ARG"
+x483 puts x481 x482
+x484 call close x483 
+x485 write x484 2
+x486 text " (or "
+x487 puts x485 x486
+x488 call open x487 4
+x489 write x488 2
+x490 text "ret OP ARGS"
+x491 puts x489 x490
+x492 call close x491 
+x493 write x492 2
+x494 text ", which names a fresh node), then "
+x495 puts x493 x494
+x496 call open x495 4
+x497 write x496 2
+x498 text "end"
+x499 puts x497 x498
+x500 call close x499 
+x501 write x500 2
+x502 text ". Names are lowercase identifiers. Parameters are p0, p1, ... in header order. An argument is an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions."
+x503 puts x501 x502
+x504 call close x503 
+x505 call open x504 10
+x506 write x505 4
+x507 write x506 2
+x508 text "code"
+x509 puts x507 x508
+x510 call open x509 4
+x511 call open x510 6
+x512 write x511 4
+x513 write x512 2
+x514 text "cm"
+x515 puts x513 x514
+x516 write x515 2
+x517 text "# clamp p0 into [p1, p2]\n"
+x518 puts x516 x517
+x519 call close x518 
+x520 write x519 2
+x521 text "fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\nhi lt p2 p0\na select lo p1 p0\nr select hi p2 a\nret r\nend"
+x522 puts x520 x521
+x523 call close x522 
+x524 call close x523 
+x525 call close x524 
+x526 call open x525 13
+x527 write x526 4
+x528 write x527 1
+x529 text "types"
+x530 puts x528 x529
+x531 call open x530 11
+x532 write x531 2
+x533 text "Types and values"
+x534 puts x532 x533
+x535 call close x534 
+x536 call open x535 2
+x537 write x536 2
+x538 text "u32 is an exact 32-bit unsigned integer; every arithmetic result wraps modulo 2^32. bool is true or false, never a number. Arrays u32xN and records (T,T,...) are values: get, set, at, and put return a copy, they never alias. io is a linear token, meaning every io value is used exactly once; that is what makes output order checkable."
+x539 puts x537 x538
+x540 call close x539 
+x541 call close x540 
+x542 call open x541 13
+x543 write x542 4
+x544 write x543 1
+x545 text "iteration"
+x546 puts x544 x545
+x547 call open x546 11
+x548 write x547 2
+x549 text "Iteration"
+x550 puts x548 x549
+x551 call close x550 
+x552 call open x551 2
+x553 write x552 2
+x554 text "A function body has no loops. Repetition is fold and loop over an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. A literal count is checked against a per-function budget when the program is checked. A variable count is bounded by fuel (a step budget) in the reference interpreter, the plain slow implementation that every target is compared with; compiled targets have no execution budget."
+x555 puts x553 x554
+x556 call close x555 
+x557 call open x556 10
+x558 write x557 4
+x559 write x558 2
+x560 text "code"
+x561 puts x559 x560
+x562 call open x561 4
+x563 call open x562 6
+x564 write x563 4
+x565 write x564 2
+x566 text "cm"
+x567 puts x565 x566
+x568 write x567 2
+x569 text "# sum of squares 0..n-1 with fold; the step is an earlier function\n"
+x570 puts x568 x569
+x571 call close x570 
+x572 write x571 2
+x573 text "fn sqstep u32 u32 -> u32\ns mul p1 p1\nr add p0 s\nret r\nend\nfn sumsq -> u32\nr fold sqstep 10 0\nret r\nend"
+x574 puts x572 x573
+x575 call close x574 
+x576 call close x575 
+x577 call close x576 
+x578 call open x577 13
+x579 write x578 4
+x580 write x579 1
+x581 text "modules"
 x582 puts x580 x581
-x583 write x582 2
-x584 text "EDIT: reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret; `c add a b @ x` inserts after x), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`.\n"
-x585 puts x583 x584
-x586 call close x585 
+x583 call open x582 11
+x584 write x583 2
+x585 text "Modules"
+x586 puts x584 x585
 x587 call close x586 
-x588 call close x587 
-x589 call open x588 13
-x590 write x589 4
-x591 write x590 1
-x592 text "programs"
-x593 puts x591 x592
-x594 call open x593 11
-x595 write x594 2
-x596 text "Programs and functions"
-x597 puts x595 x596
-x598 call close x597 
-x599 call open x598 2
-x600 write x599 2
-x601 text "A program is a list of functions. A function is a header "
-x602 puts x600 x601
-x603 call open x602 4
-x604 write x603 2
-x605 text "fn NAME T... -> T"
-x606 puts x604 x605
-x607 call close x606 
-x608 write x607 2
-x609 text ", then one instruction per line "
-x610 puts x608 x609
-x611 call open x610 4
-x612 write x611 2
-x613 text "ID OP ARGS"
-x614 puts x612 x613
-x615 call close x614 
-x616 write x615 2
-x617 text ", then "
-x618 puts x616 x617
-x619 call open x618 4
-x620 write x619 2
-x621 text "ret ARG"
-x622 puts x620 x621
-x623 call close x622 
-x624 write x623 2
-x625 text " (or "
-x626 puts x624 x625
-x627 call open x626 4
-x628 write x627 2
-x629 text "ret OP ARGS"
-x630 puts x628 x629
-x631 call close x630 
-x632 write x631 2
-x633 text ", which names a fresh node), then "
-x634 puts x632 x633
-x635 call open x634 4
-x636 write x635 2
-x637 text "end"
-x638 puts x636 x637
-x639 call close x638 
-x640 write x639 2
-x641 text ". Names are lowercase identifiers. Parameters are p0, p1, ... in header order. An argument is an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions."
-x642 puts x640 x641
-x643 call close x642 
-x644 call open x643 10
-x645 write x644 4
-x646 write x645 2
-x647 text "code"
-x648 puts x646 x647
-x649 call open x648 4
-x650 call open x649 6
-x651 write x650 4
-x652 write x651 2
-x653 text "cm"
-x654 puts x652 x653
-x655 write x654 2
-x656 text "# clamp p0 into [p1, p2]\n"
-x657 puts x655 x656
-x658 call close x657 
-x659 write x658 2
-x660 text "fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\nhi lt p2 p0\na select lo p1 p0\nr select hi p2 a\nret r\nend"
-x661 puts x659 x660
-x662 call close x661 
-x663 call close x662 
-x664 call close x663 
-x665 call open x664 13
-x666 write x665 4
-x667 write x666 1
-x668 text "types"
-x669 puts x667 x668
-x670 call open x669 11
-x671 write x670 2
-x672 text "Types and values"
-x673 puts x671 x672
-x674 call close x673 
-x675 call open x674 2
-x676 write x675 2
-x677 text "u32 is an exact 32-bit unsigned integer; every arithmetic result wraps modulo 2^32. bool is true or false, never a number. Arrays u32xN and records (T,T,...) are values: get, set, at, and put return a copy, they never alias. io is a linear token, meaning every io value is used exactly once; that is what makes output order checkable."
-x678 puts x676 x677
-x679 call close x678 
-x680 call close x679 
-x681 call open x680 13
-x682 write x681 4
-x683 write x682 1
-x684 text "iteration"
-x685 puts x683 x684
-x686 call open x685 11
-x687 write x686 2
-x688 text "Iteration"
-x689 puts x687 x688
-x690 call close x689 
-x691 call open x690 2
-x692 write x691 2
-x693 text "A function body has no loops. Repetition is fold and loop over an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. A literal count is checked against a per-function budget when the program is checked. A variable count is bounded by fuel (a step budget) in the reference interpreter, the plain slow implementation that every target is compared with; compiled targets have no execution budget."
-x694 puts x692 x693
-x695 call close x694 
-x696 call open x695 10
-x697 write x696 4
-x698 write x697 2
-x699 text "code"
-x700 puts x698 x699
-x701 call open x700 4
-x702 call open x701 6
-x703 write x702 4
-x704 write x703 2
-x705 text "cm"
-x706 puts x704 x705
-x707 write x706 2
-x708 text "# sum of squares 0..n-1 with fold; the step is an earlier function\n"
-x709 puts x707 x708
-x710 call close x709 
-x711 write x710 2
-x712 text "fn sqstep u32 u32 -> u32\ns mul p1 p1\nr add p0 s\nret r\nend\nfn sumsq -> u32\nr fold sqstep 10 0\nret r\nend"
-x713 puts x711 x712
-x714 call close x713 
-x715 call close x714 
-x716 call close x715 
-x717 call open x716 13
-x718 write x717 4
-x719 write x718 1
-x720 text "modules"
-x721 puts x719 x720
-x722 call open x721 11
-x723 write x722 2
-x724 text "Modules"
-x725 puts x723 x724
-x726 call close x725 
-x727 call open x726 2
-x728 write x727 2
-x729 text "A file starts with zero or more "
-x730 puts x728 x729
-x731 call open x730 4
-x732 write x731 2
-x733 text "use \"path.a0\""
-x734 puts x732 x733
-x735 call close x734 
-x736 write x735 2
-x737 text " lines, relative to the file. The linker loads every used file once, orders them by dependency, and checks the result as one program with one namespace. Cycles and duplicate function names are rejected, and diagnostics name the file and line."
-x738 puts x736 x737
-x739 call close x738 
-x740 call open x739 10
-x741 write x740 4
-x742 write x741 2
-x743 text "code"
-x744 puts x742 x743
-x745 call open x744 4
-x746 write x745 2
-x747 text "use \"ui.a0\"\nuse \"../examples/life.a0\"\nfn page io -> io\na call open p0 5\nb call close a\nret b\nend"
-x748 puts x746 x747
-x749 call close x748 
-x750 call close x749 
-x751 call close x750 
-ret x751
+x588 call open x587 2
+x589 write x588 2
+x590 text "A file starts with zero or more "
+x591 puts x589 x590
+x592 call open x591 4
+x593 write x592 2
+x594 text "use \"path.a0\""
+x595 puts x593 x594
+x596 call close x595 
+x597 write x596 2
+x598 text " lines, relative to the file. The linker loads every used file once, orders them by dependency, and checks the result as one program with one namespace. Cycles and duplicate function names are rejected, and diagnostics name the file and line."
+x599 puts x597 x598
+x600 call close x599 
+x601 call open x600 10
+x602 write x601 4
+x603 write x602 2
+x604 text "code"
+x605 puts x603 x604
+x606 call open x605 4
+x607 write x606 2
+x608 text "use \"ui.a0\"\nuse \"../examples/life.a0\"\nfn page io -> io\na call open p0 5\nb call close a\nret b\nend"
+x609 puts x607 x608
+x610 call close x609 
+x611 call close x610 
+x612 call close x611 
+ret x612
 end
 
 fn sec_iter io -> io
-x753 call open p0 13
-x754 write x753 4
-x755 write x754 1
-x756 text "editing"
-x757 puts x755 x756
-x758 call open x757 11
-x759 write x758 2
-x760 text "Views and edits"
-x761 puts x759 x760
-x762 call close x761 
-x763 call open x762 2
-x764 write x763 2
-x765 text "A model never sees a whole file. It asks for a view of one function: the function with a handle line on top (e0), one signature line per callee, and a program handle (g0). The program view is scoped to the target, its transitive callees and its direct callers, so it stays the same size as the program grows. The revision is a short hash of the program text; an edit written against an older revision is rejected rather than applied to code that has moved. A reply is the handle line followed by edits, one per line, as in the quick start."
-x766 puts x764 x765
-x767 call close x766 
-x768 call open x767 10
-x769 write x768 4
-x770 write x769 2
-x771 text "code"
-x772 puts x770 x771
-x773 call open x772 4
-x774 call open x773 6
-x775 write x774 4
-x776 write x775 2
-x777 text "cm"
-x778 puts x776 x777
-x779 write x778 2
-x780 text "# a view of clamp, then a reply that fixes the upper bound\n"
-x781 puts x779 x780
-x782 call close x781 
-x783 write x782 2
-x784 text "e0 fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\nhi lt p2 p0\na select lo p1 p0\nr select hi p2 a\nret r\n\n"
-x785 puts x783 x784
-x786 call open x785 6
-x787 write x786 4
-x788 write x787 2
-x789 text "cm"
-x790 puts x788 x789
-x791 write x790 2
-x792 text "# reply\n"
-x793 puts x791 x792
-x794 call close x793 
-x795 write x794 2
-x796 text "e0\nhi lt p2 a\nr select hi p2 a"
-x797 puts x795 x796
-x798 call close x797 
-x799 call close x798 
-x800 call close x799 
-x801 call open x800 13
-x802 write x801 4
-x803 write x802 1
-x804 text "diagnostics"
-x805 puts x803 x804
-x806 call open x805 11
-x807 write x806 2
-x808 text "Diagnostics"
-x809 puts x807 x808
-x810 call close x809 
-x811 call open x810 2
-x812 write x811 2
-x813 text "Every rejection carries a stable code (parse, type, structure, handle, revision, limit), what was expected, what was seen, and the one fix that resolves it. The compiler never guesses: an ambiguous reply is rejected with the fix, not applied approximately."
-x814 puts x812 x813
-x815 call close x814 
-x816 call close x815 
-ret x816
+x614 call open p0 13
+x615 write x614 4
+x616 write x615 1
+x617 text "editing"
+x618 puts x616 x617
+x619 call open x618 11
+x620 write x619 2
+x621 text "Views and edits"
+x622 puts x620 x621
+x623 call close x622 
+x624 call open x623 2
+x625 write x624 2
+x626 text "A model never sees a whole file. It asks for a view of one function: the function with a handle line on top (e0), one signature line per callee, and a program handle (g0). The program view is scoped to the target, its transitive callees and its direct callers, so it stays the same size as the program grows. The revision is a short hash of the program text; an edit written against an older revision is rejected rather than applied to code that has moved. A reply is the handle line followed by edits, one per line, as in the quick start."
+x627 puts x625 x626
+x628 call close x627 
+x629 call open x628 10
+x630 write x629 4
+x631 write x630 2
+x632 text "code"
+x633 puts x631 x632
+x634 call open x633 4
+x635 call open x634 6
+x636 write x635 4
+x637 write x636 2
+x638 text "cm"
+x639 puts x637 x638
+x640 write x639 2
+x641 text "# a view of clamp, then a reply that fixes the upper bound\n"
+x642 puts x640 x641
+x643 call close x642 
+x644 write x643 2
+x645 text "e0 fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\nhi lt p2 p0\na select lo p1 p0\nr select hi p2 a\nret r\n\n"
+x646 puts x644 x645
+x647 call open x646 6
+x648 write x647 4
+x649 write x648 2
+x650 text "cm"
+x651 puts x649 x650
+x652 write x651 2
+x653 text "# reply\n"
+x654 puts x652 x653
+x655 call close x654 
+x656 write x655 2
+x657 text "e0\nhi lt p2 a\nr select hi p2 a"
+x658 puts x656 x657
+x659 call close x658 
+x660 call close x659 
+x661 call close x660 
+x662 call open x661 13
+x663 write x662 4
+x664 write x663 1
+x665 text "diagnostics"
+x666 puts x664 x665
+x667 call open x666 11
+x668 write x667 2
+x669 text "Diagnostics"
+x670 puts x668 x669
+x671 call close x670 
+x672 call open x671 2
+x673 write x672 2
+x674 text "Every rejection carries a stable code (parse, type, structure, handle, revision, limit), what was expected, what was seen, and the one fix that resolves it. The compiler never guesses: an ambiguous reply is rejected with the fix, not applied approximately."
+x675 puts x673 x674
+x676 call close x675 
+x677 call close x676 
+ret x677
 end
 
 fn sec_run io -> io
-x818 call open p0 13
-x819 write x818 4
-x820 write x819 1
-x821 text "operations"
-x822 puts x820 x821
-x823 call open x822 11
-x824 write x823 2
-x825 text "Operations"
-x826 puts x824 x825
-x827 call close x826 
-x828 call open x827 19
-x829 write x828 4
-x830 write x829 2
-x831 text "ops"
-x832 puts x830 x831
-x833 write x832 4
-x834 write x833 6
-x835 text "Operations"
-x836 puts x834 x835
-x837 call open x836 20
-x838 call open x837 22
-x839 write x838 2
-x840 text "Operation"
-x841 puts x839 x840
-x842 call close x841 
-x843 call open x842 22
+x679 call open p0 13
+x680 write x679 4
+x681 write x680 1
+x682 text "operations"
+x683 puts x681 x682
+x684 call open x683 11
+x685 write x684 2
+x686 text "Operations"
+x687 puts x685 x686
+x688 call close x687 
+x689 call open x688 19
+x690 write x689 4
+x691 write x690 2
+x692 text "ops"
+x693 puts x691 x692
+x694 write x693 4
+x695 write x694 6
+x696 text "Operations"
+x697 puts x695 x696
+x698 call open x697 20
+x699 call open x698 22
+x700 write x699 2
+x701 text "Operation"
+x702 puts x700 x701
+x703 call close x702 
+x704 call open x703 22
+x705 write x704 2
+x706 text "Meaning"
+x707 puts x705 x706
+x708 call close x707 
+x709 call close x708 
+x710 call open x709 20
+x711 call open x710 21
+x712 write x711 4
+x713 write x712 2
+x714 text "mono"
+x715 puts x713 x714
+x716 write x715 2
+x717 text "mov x"
+x718 puts x716 x717
+x719 call close x718 
+x720 call open x719 21
+x721 write x720 2
+x722 text "the value x"
+x723 puts x721 x722
+x724 call close x723 
+x725 call close x724 
+x726 call open x725 20
+x727 call open x726 21
+x728 write x727 4
+x729 write x728 2
+x730 text "mono"
+x731 puts x729 x730
+x732 write x731 2
+x733 text "add sub mul a b"
+x734 puts x732 x733
+x735 call close x734 
+x736 call open x735 21
+x737 write x736 2
+x738 text "wrapping arithmetic modulo 2^32"
+x739 puts x737 x738
+x740 call close x739 
+x741 call close x740 
+x742 call open x741 20
+x743 call open x742 21
+x744 write x743 4
+x745 write x744 2
+x746 text "mono"
+x747 puts x745 x746
+x748 write x747 2
+x749 text "and or xor a b"
+x750 puts x748 x749
+x751 call close x750 
+x752 call open x751 21
+x753 write x752 2
+x754 text "bitwise on two u32; logical on two bool"
+x755 puts x753 x754
+x756 call close x755 
+x757 call close x756 
+x758 call open x757 20
+x759 call open x758 21
+x760 write x759 4
+x761 write x760 2
+x762 text "mono"
+x763 puts x761 x762
+x764 write x763 2
+x765 text "shl shr a n"
+x766 puts x764 x765
+x767 call close x766 
+x768 call open x767 21
+x769 write x768 2
+x770 text "shift by n & 31; shr is logical"
+x771 puts x769 x770
+x772 call close x771 
+x773 call close x772 
+x774 call open x773 20
+x775 call open x774 21
+x776 write x775 4
+x777 write x776 2
+x778 text "mono"
+x779 puts x777 x778
+x780 write x779 2
+x781 text "div a b"
+x782 puts x780 x781
+x783 call close x782 
+x784 call open x783 21
+x785 write x784 2
+x786 text "unsigned quotient; b = 0 gives 4294967295"
+x787 puts x785 x786
+x788 call close x787 
+x789 call close x788 
+x790 call open x789 20
+x791 call open x790 21
+x792 write x791 4
+x793 write x792 2
+x794 text "mono"
+x795 puts x793 x794
+x796 write x795 2
+x797 text "rem a b"
+x798 puts x796 x797
+x799 call close x798 
+x800 call open x799 21
+x801 write x800 2
+x802 text "unsigned remainder; b = 0 gives a"
+x803 puts x801 x802
+x804 call close x803 
+x805 call close x804 
+x806 call open x805 20
+x807 call open x806 21
+x808 write x807 4
+x809 write x808 2
+x810 text "mono"
+x811 puts x809 x810
+x812 write x811 2
+x813 text "eq ne a b"
+x814 puts x812 x813
+x815 call close x814 
+x816 call open x815 21
+x817 write x816 2
+x818 text "equality on two u32 or two bool, result bool"
+x819 puts x817 x818
+x820 call close x819 
+x821 call close x820 
+x822 call open x821 20
+x823 call open x822 21
+x824 write x823 4
+x825 write x824 2
+x826 text "mono"
+x827 puts x825 x826
+x828 write x827 2
+x829 text "lt le gt ge a b"
+x830 puts x828 x829
+x831 call close x830 
+x832 call open x831 21
+x833 write x832 2
+x834 text "unsigned comparison, result bool"
+x835 puts x833 x834
+x836 call close x835 
+x837 call close x836 
+x838 call open x837 20
+x839 call open x838 21
+x840 write x839 4
+x841 write x840 2
+x842 text "mono"
+x843 puts x841 x842
 x844 write x843 2
-x845 text "Meaning"
+x845 text "select c x y"
 x846 puts x844 x845
 x847 call close x846 
-x848 call close x847 
-x849 call open x848 20
-x850 call open x849 21
-x851 write x850 4
-x852 write x851 2
-x853 text "mono"
-x854 puts x852 x853
-x855 write x854 2
-x856 text "mov x"
-x857 puts x855 x856
-x858 call close x857 
-x859 call open x858 21
+x848 call open x847 21
+x849 write x848 2
+x850 text "x if c else y; both are computed, so no effects inside"
+x851 puts x849 x850
+x852 call close x851 
+x853 call close x852 
+x854 call open x853 20
+x855 call open x854 21
+x856 write x855 4
+x857 write x856 2
+x858 text "mono"
+x859 puts x857 x858
 x860 write x859 2
-x861 text "the value x"
+x861 text "call F a..."
 x862 puts x860 x861
 x863 call close x862 
-x864 call close x863 
-x865 call open x864 20
-x866 call open x865 21
-x867 write x866 4
-x868 write x867 2
-x869 text "mono"
-x870 puts x868 x869
-x871 write x870 2
-x872 text "add sub mul a b"
-x873 puts x871 x872
-x874 call close x873 
-x875 call open x874 21
+x864 call open x863 21
+x865 write x864 2
+x866 text "call an earlier function"
+x867 puts x865 x866
+x868 call close x867 
+x869 call close x868 
+x870 call open x869 20
+x871 call open x870 21
+x872 write x871 4
+x873 write x872 2
+x874 text "mono"
+x875 puts x873 x874
 x876 write x875 2
-x877 text "wrapping arithmetic modulo 2^32"
+x877 text "fold F n s a..."
 x878 puts x876 x877
 x879 call close x878 
-x880 call close x879 
-x881 call open x880 20
-x882 call open x881 21
-x883 write x882 4
-x884 write x883 2
-x885 text "mono"
-x886 puts x884 x885
-x887 write x886 2
-x888 text "and or xor a b"
-x889 puts x887 x888
-x890 call close x889 
-x891 call open x890 21
+x880 call open x879 21
+x881 write x880 2
+x882 text "state = s; for i in 0..n-1: state = F(state, i, a...)"
+x883 puts x881 x882
+x884 call close x883 
+x885 call close x884 
+x886 call open x885 20
+x887 call open x886 21
+x888 write x887 4
+x889 write x888 2
+x890 text "mono"
+x891 puts x889 x890
 x892 write x891 2
-x893 text "bitwise on two u32; logical on two bool"
+x893 text "loop P F n s a..."
 x894 puts x892 x893
 x895 call close x894 
-x896 call close x895 
-x897 call open x896 20
-x898 call open x897 21
-x899 write x898 4
-x900 write x899 2
-x901 text "mono"
-x902 puts x900 x901
-x903 write x902 2
-x904 text "shl shr a n"
-x905 puts x903 x904
-x906 call close x905 
-x907 call open x906 21
+x896 call open x895 21
+x897 write x896 2
+x898 text "fold that stops before iteration i when P(state, i, a...) is false"
+x899 puts x897 x898
+x900 call close x899 
+x901 call close x900 
+x902 call open x901 20
+x903 call open x902 21
+x904 write x903 4
+x905 write x904 2
+x906 text "mono"
+x907 puts x905 x906
 x908 write x907 2
-x909 text "shift by n & 31; shr is logical"
+x909 text "arr e... / rec e..."
 x910 puts x908 x909
 x911 call close x910 
-x912 call close x911 
-x913 call open x912 20
-x914 call open x913 21
-x915 write x914 4
-x916 write x915 2
-x917 text "mono"
-x918 puts x916 x917
-x919 write x918 2
-x920 text "div a b"
-x921 puts x919 x920
-x922 call close x921 
-x923 call open x922 21
+x912 call open x911 21
+x913 write x912 2
+x914 text "build an array or a record"
+x915 puts x913 x914
+x916 call close x915 
+x917 call close x916 
+x918 call open x917 20
+x919 call open x918 21
+x920 write x919 4
+x921 write x920 2
+x922 text "mono"
+x923 puts x921 x922
 x924 write x923 2
-x925 text "unsigned quotient; b = 0 gives 4294967295"
+x925 text "text \"...\""
 x926 puts x924 x925
 x927 call close x926 
-x928 call close x927 
-x929 call open x928 20
-x930 call open x929 21
-x931 write x930 4
-x932 write x931 2
-x933 text "mono"
-x934 puts x932 x933
-x935 write x934 2
-x936 text "rem a b"
-x937 puts x935 x936
-x938 call close x937 
-x939 call open x938 21
+x928 call open x927 21
+x929 write x928 2
+x930 text "an array of UTF-8 bytes"
+x931 puts x929 x930
+x932 call close x931 
+x933 call close x932 
+x934 call open x933 20
+x935 call open x934 21
+x936 write x935 4
+x937 write x936 2
+x938 text "mono"
+x939 puts x937 x938
 x940 write x939 2
-x941 text "unsigned remainder; b = 0 gives a"
+x941 text "get a i / set a i v"
 x942 puts x940 x941
 x943 call close x942 
-x944 call close x943 
-x945 call open x944 20
-x946 call open x945 21
-x947 write x946 4
-x948 write x947 2
-x949 text "mono"
-x950 puts x948 x949
-x951 write x950 2
-x952 text "eq ne a b"
-x953 puts x951 x952
-x954 call close x953 
-x955 call open x954 21
+x944 call open x943 21
+x945 write x944 2
+x946 text "read or copy-with-update at index i mod N"
+x947 puts x945 x946
+x948 call close x947 
+x949 call close x948 
+x950 call open x949 20
+x951 call open x950 21
+x952 write x951 4
+x953 write x952 2
+x954 text "mono"
+x955 puts x953 x954
 x956 write x955 2
-x957 text "equality on two u32 or two bool, result bool"
+x957 text "at r k / put r k v"
 x958 puts x956 x957
 x959 call close x958 
-x960 call close x959 
-x961 call open x960 20
-x962 call open x961 21
-x963 write x962 4
-x964 write x963 2
-x965 text "mono"
-x966 puts x964 x965
-x967 write x966 2
-x968 text "lt le gt ge a b"
-x969 puts x967 x968
-x970 call close x969 
-x971 call open x970 21
+x960 call open x959 21
+x961 write x960 2
+x962 text "read or copy-with-update of field k (a literal)"
+x963 puts x961 x962
+x964 call close x963 
+x965 call close x964 
+x966 call open x965 20
+x967 call open x966 21
+x968 write x967 4
+x969 write x968 2
+x970 text "mono"
+x971 puts x969 x970
 x972 write x971 2
-x973 text "unsigned comparison, result bool"
+x973 text "read t / write t v / puts t a"
 x974 puts x972 x973
 x975 call close x974 
-x976 call close x975 
-x977 call open x976 20
-x978 call open x977 21
-x979 write x978 4
-x980 write x979 2
-x981 text "mono"
-x982 puts x980 x981
-x983 write x982 2
-x984 text "select c x y"
-x985 puts x983 x984
-x986 call close x985 
-x987 call open x986 21
-x988 write x987 2
-x989 text "x if c else y; both are computed, so no effects inside"
-x990 puts x988 x989
-x991 call close x990 
-x992 call close x991 
-x993 call open x992 20
-x994 call open x993 21
-x995 write x994 4
-x996 write x995 2
-x997 text "mono"
-x998 puts x996 x997
-x999 write x998 2
-x1000 text "call F a..."
-x1001 puts x999 x1000
-x1002 call close x1001 
-x1003 call open x1002 21
-x1004 write x1003 2
-x1005 text "call an earlier function"
-x1006 puts x1004 x1005
-x1007 call close x1006 
-x1008 call close x1007 
-x1009 call open x1008 20
-x1010 call open x1009 21
+x976 call open x975 21
+x977 write x976 2
+x978 text "io: read one word (0 when exhausted) as (u32,io); write one word; write length then elements"
+x979 puts x977 x978
+x980 call close x979 
+x981 call close x980 
+x982 call close x981 
+x983 call close x982 
+x984 call open x983 13
+x985 write x984 4
+x986 write x985 1
+x987 text "bounds"
+x988 puts x986 x987
+x989 call open x988 11
+x990 write x989 2
+x991 text "Bounds and safety"
+x992 puts x990 x991
+x993 call close x992 
+x994 call open x993 2
+x995 write x994 2
+x996 text "Static caps: 65536 functions per program (also after linking), 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. io output is bounded by the caller's buffer. There is no heap, no recursion, no exceptions, and no undefined behavior: div and rem by zero are defined, shifts mask the count, indices wrap modulo the array length."
+x997 puts x995 x996
+x998 call close x997 
+x999 call close x998 
+x1000 call open x999 13
+x1001 write x1000 4
+x1002 write x1001 1
+x1003 text "cli"
+x1004 puts x1002 x1003
+x1005 call open x1004 11
+x1006 write x1005 2
+x1007 text "Targets and CLI"
+x1008 puts x1006 x1007
+x1009 call close x1008 
+x1010 call open x1009 10
 x1011 write x1010 4
 x1012 write x1011 2
-x1013 text "mono"
+x1013 text "code"
 x1014 puts x1012 x1013
-x1015 write x1014 2
-x1016 text "fold F n s a..."
-x1017 puts x1015 x1016
-x1018 call close x1017 
-x1019 call open x1018 21
-x1020 write x1019 2
-x1021 text "state = s; for i in 0..n-1: state = F(state, i, a...)"
-x1022 puts x1020 x1021
-x1023 call close x1022 
-x1024 call close x1023 
-x1025 call open x1024 20
-x1026 call open x1025 21
-x1027 write x1026 4
+x1015 call open x1014 4
+x1016 write x1015 2
+x1017 text "a0 check <file.a0>                     # parse, type, validate; diagnostics with codes\n"
+x1018 puts x1016 x1017
+x1019 write x1018 2
+x1020 text "a0 run <file.a0> <fn> <args...>        # reference interpreter\n"
+x1021 puts x1019 x1020
+x1022 write x1021 2
+x1023 text "a0 emit <target> <file.a0> [out]      # arm64 x86_64 riscv64 arm32 avr wasm c js java sv\n"
+x1024 puts x1022 x1023
+x1025 write x1024 2
+x1026 text "a0 emit c --parallel[=auto|gpu] <file.a0>  # automatic parallel folds: threads, or Metal\n"
+x1027 puts x1025 x1026
 x1028 write x1027 2
-x1029 text "mono"
+x1029 text "a0 wasm <file.a0> <out.wasm>           # wasm32 through the C backend, Clang, and wasm-ld\n"
 x1030 puts x1028 x1029
 x1031 write x1030 2
-x1032 text "loop P F n s a..."
+x1032 text "a0 view <file.a0> <fn>                 # dependency-scoped view with an edit handle\n"
 x1033 puts x1031 x1032
-x1034 call close x1033 
-x1035 call open x1034 21
-x1036 write x1035 2
-x1037 text "fold that stops before iteration i when P(state, i, a...) is false"
-x1038 puts x1036 x1037
-x1039 call close x1038 
-x1040 call close x1039 
-x1041 call open x1040 20
-x1042 call open x1041 21
-x1043 write x1042 4
-x1044 write x1043 2
-x1045 text "mono"
-x1046 puts x1044 x1045
-x1047 write x1046 2
-x1048 text "arr e... / rec e..."
-x1049 puts x1047 x1048
+x1034 write x1033 2
+x1035 text "a0 patch <file.a0> <patch>             # apply a revision-checked patch"
+x1036 puts x1034 x1035
+x1037 call close x1036 
+x1038 call close x1037 
+x1039 call open x1038 2
+x1040 write x1039 2
+x1041 text "Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal come from the verification tools (bun run dotnet, bun run gpu). The home page Targets section gives the verified split: which targets are checked against the reference interpreter, and on which cases."
+x1042 puts x1040 x1041
+x1043 call close x1042 
+x1044 call open x1043 2
+x1045 write x1044 2
+x1046 text "--parallel makes the C backend split reductions (add, mul, and, or, xor, min, max) and element-wise array maps across threads when a cost model says the loop is large enough; --parallel=gpu also offloads to Metal when built as Objective-C. Results are the same bits as the serial program."
+x1047 puts x1045 x1046
+x1048 call close x1047 
+x1049 call close x1048 
 x1050 call close x1049 
-x1051 call open x1050 21
-x1052 write x1051 2
-x1053 text "build an array or a record"
-x1054 puts x1052 x1053
-x1055 call close x1054 
-x1056 call close x1055 
-x1057 call open x1056 20
-x1058 call open x1057 21
-x1059 write x1058 4
-x1060 write x1059 2
-x1061 text "mono"
-x1062 puts x1060 x1061
-x1063 write x1062 2
-x1064 text "text \"...\""
-x1065 puts x1063 x1064
-x1066 call close x1065 
-x1067 call open x1066 21
-x1068 write x1067 2
-x1069 text "an array of UTF-8 bytes"
-x1070 puts x1068 x1069
-x1071 call close x1070 
-x1072 call close x1071 
-x1073 call open x1072 20
-x1074 call open x1073 21
-x1075 write x1074 4
-x1076 write x1075 2
-x1077 text "mono"
-x1078 puts x1076 x1077
-x1079 write x1078 2
-x1080 text "get a i / set a i v"
-x1081 puts x1079 x1080
-x1082 call close x1081 
-x1083 call open x1082 21
-x1084 write x1083 2
-x1085 text "read or copy-with-update at index i mod N"
-x1086 puts x1084 x1085
-x1087 call close x1086 
-x1088 call close x1087 
-x1089 call open x1088 20
-x1090 call open x1089 21
-x1091 write x1090 4
-x1092 write x1091 2
-x1093 text "mono"
-x1094 puts x1092 x1093
-x1095 write x1094 2
-x1096 text "at r k / put r k v"
-x1097 puts x1095 x1096
-x1098 call close x1097 
-x1099 call open x1098 21
-x1100 write x1099 2
-x1101 text "read or copy-with-update of field k (a literal)"
-x1102 puts x1100 x1101
-x1103 call close x1102 
-x1104 call close x1103 
-x1105 call open x1104 20
-x1106 call open x1105 21
-x1107 write x1106 4
-x1108 write x1107 2
-x1109 text "mono"
-x1110 puts x1108 x1109
-x1111 write x1110 2
-x1112 text "read t / write t v / puts t a"
-x1113 puts x1111 x1112
-x1114 call close x1113 
-x1115 call open x1114 21
-x1116 write x1115 2
-x1117 text "io: read one word (0 when exhausted) as (u32,io); write one word; write length then elements"
-x1118 puts x1116 x1117
-x1119 call close x1118 
-x1120 call close x1119 
-x1121 call close x1120 
-x1122 call close x1121 
-x1123 call open x1122 13
-x1124 write x1123 4
-x1125 write x1124 1
-x1126 text "bounds"
-x1127 puts x1125 x1126
-x1128 call open x1127 11
-x1129 write x1128 2
-x1130 text "Bounds and safety"
-x1131 puts x1129 x1130
-x1132 call close x1131 
-x1133 call open x1132 2
-x1134 write x1133 2
-x1135 text "Static caps: 65536 functions per program (also after linking), 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. io output is bounded by the caller's buffer. There is no heap, no recursion, no exceptions, and no undefined behavior: div and rem by zero are defined, shifts mask the count, indices wrap modulo the array length."
-x1136 puts x1134 x1135
-x1137 call close x1136 
-x1138 call close x1137 
-x1139 call open x1138 13
-x1140 write x1139 4
-x1141 write x1140 1
-x1142 text "cli"
-x1143 puts x1141 x1142
-x1144 call open x1143 11
-x1145 write x1144 2
-x1146 text "Targets and CLI"
-x1147 puts x1145 x1146
-x1148 call close x1147 
-x1149 call open x1148 10
-x1150 write x1149 4
-x1151 write x1150 2
-x1152 text "code"
-x1153 puts x1151 x1152
-x1154 call open x1153 4
-x1155 write x1154 2
-x1156 text "a0 check <file.a0>                     # parse, type, validate; diagnostics with codes\n"
-x1157 puts x1155 x1156
-x1158 write x1157 2
-x1159 text "a0 run <file.a0> <fn> <args...>        # reference interpreter\n"
-x1160 puts x1158 x1159
-x1161 write x1160 2
-x1162 text "a0 emit <target> <file.a0> [out]      # arm64 x86_64 riscv64 arm32 avr wasm c js java sv\n"
-x1163 puts x1161 x1162
-x1164 write x1163 2
-x1165 text "a0 emit c --parallel[=auto|gpu] <file.a0>  # automatic parallel folds: threads, or Metal\n"
-x1166 puts x1164 x1165
-x1167 write x1166 2
-x1168 text "a0 wasm <file.a0> <out.wasm>           # wasm32 through the C backend, Clang, and wasm-ld\n"
-x1169 puts x1167 x1168
-x1170 write x1169 2
-x1171 text "a0 view <file.a0> <fn>                 # dependency-scoped view with an edit handle\n"
-x1172 puts x1170 x1171
-x1173 write x1172 2
-x1174 text "a0 patch <file.a0> <patch>             # apply a revision-checked patch"
-x1175 puts x1173 x1174
-x1176 call close x1175 
-x1177 call close x1176 
-x1178 call open x1177 2
-x1179 write x1178 2
-x1180 text "Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal come from the verification tools (bun run dotnet, bun run gpu). The home page Targets section gives the verified split: which targets are checked against the reference interpreter, and on which cases."
-x1181 puts x1179 x1180
-x1182 call close x1181 
-x1183 call open x1182 2
-x1184 write x1183 2
-x1185 text "--parallel makes the C backend split reductions (add, mul, and, or, xor, min, max) and element-wise array maps across threads when a cost model says the loop is large enough; --parallel=gpu also offloads to Metal when built as Objective-C. Results are the same bits as the serial program."
-x1186 puts x1184 x1185
-x1187 call close x1186 
-x1188 call close x1187 
-x1189 call close x1188 
-x1190 call close x1189 
-x1191 call close x1190 
-ret x1191
+x1051 call close x1050 
+x1052 call close x1051 
+ret x1052
 end
 
 fn session io -> u32
@@ -1226,18 +1075,14 @@ r0 read p0
 event at r0 0
 tok at r0 1
 x31 call css_a tok
-x62 call css_b x31
-x90 call css_c x62
-x121 call css_d x90
-x152 call css_e x121
-x189 call css_f x152
-x190 call nav x189 
-x549 call sec_head x190
-x752 call sec_lang x549
-x817 call sec_iter x752
-x1192 call sec_run x817
-x1193 call foot x1192 
-x1194 write x1193 6
-x1195 write x1194 0
+x50 call css_b x31
+x51 call nav x50 
+x410 call sec_head x51
+x613 call sec_lang x410
+x678 call sec_iter x613
+x1053 call sec_run x678
+x1054 call foot x1053 
+x1055 write x1054 6
+x1056 write x1055 0
 ret event
 end

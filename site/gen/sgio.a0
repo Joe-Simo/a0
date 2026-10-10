@@ -17,9 +17,9 @@ z call zpage
 t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
 ret t
 end
-fn z128 -> u32x128x128
+fn z128 -> u32x128x256
 z call zpage
-t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
 ret t
 end
 fn z512 -> u32x128x512
@@ -36,7 +36,7 @@ pg get p0 pi
 r get pg wi
 ret r
 end
-fn rd128 u32x128x128 u32 -> u32
+fn rd128 u32x128x256 u32 -> u32
 pi shr p1 7
 wi and p1 127
 pg get p0 pi
@@ -58,7 +58,7 @@ pg2 set pg wi p3
 r set p0 pi pg2
 ret r
 end
-fn wr128 u32x128x128 u32 u32 u32 -> u32x128x128
+fn wr128 u32x128x256 u32 u32 u32 -> u32x128x256
 pi shr p2 7
 wi and p2 127
 pg get p0 pi
@@ -84,7 +84,7 @@ v shr w sh
 r and v 255
 ret r
 end
-fn vb u32x128x128 u32 -> u32
+fn vb u32x128x256 u32 -> u32
 w0 shr p1 2
 w call rd128 p0 w0
 b0 and p1 3
@@ -103,7 +103,7 @@ r and v 255
 ret r
 end
 # byte p3 at byte position p2 of a packed table whose bytes there are still zero
-fn wb128 u32x128x128 u32 u32 u32 -> u32x128x128
+fn wb128 u32x128x256 u32 u32 u32 -> u32x128x256
 w0 shr p2 2
 pi shr w0 7
 wi and w0 127
@@ -256,14 +256,14 @@ fn cpst io bool bool u32x128x512 u32 u32 -> io
 r fold cpb p5 p0 p3 p4 p1 p2
 ret r
 end
-fn cpv io u32 u32x128x128 u32 bool bool -> io
+fn cpv io u32 u32x128x256 u32 bool bool -> io
 pos add p3 p1
 b call vb p2 pos
 r call putx p0 p4 p5 b
 ret r
 end
 # the bytes [p4, p4 + p5) of a packed table of 128 pages, escaped when p2
-fn cpvt io bool bool u32x128x128 u32 u32 -> io
+fn cpvt io bool bool u32x128x256 u32 u32 -> io
 r fold cpv p5 p0 p3 p4 p1 p2
 ret r
 end

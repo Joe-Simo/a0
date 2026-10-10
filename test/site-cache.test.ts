@@ -169,11 +169,14 @@ test('a changed template or data file invalidates the generated source, and the 
     const wordTpl = join(root, 'word.tpl');
     await writeFile(
       wordTpl,
-      tpl.replace('A language for agents to edit.', 'A language for agents to change.'),
+      tpl.replace(
+        'A typed language AI edits one function at a time.',
+        'A typed language AI changes one function at a time.',
+      ),
     );
     const changed = await generate(bin, wordTpl, { cache, onCache });
     assert.equal(seen[2], false, 'a changed template misses');
-    assert.match(changed, /A language for agents to change./);
+    assert.match(changed, /A typed language AI changes one function at a time./);
 
     // a file a template names (its style sheet, copied so it can change) is part of the input
     const css = join(root, 'style.css');

@@ -1781,76 +1781,347 @@ One source, checked against one oracle: 10 paths (the interpreter, the optimizer
 
 # Home
 
-fn add mul ret u32 end
-
-A language for agents to edit.
-A small typed language your agent edits one function at a time. Every edit is type-checked before it reaches the file.
-$ curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
+fn let match ret u32 end check A0
+MEASURED Every number links to its results file A typed language AI edits one function at a time.
+A model changes one function; A0 checks it against the whole program and compiles to C, native arm64 and WebAssembly.
+> curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
 PS> irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex
-macOS / Linux Windows
+macOS & Linux Windows
 
-Then connect your agent: claude mcp add a0 -- a0 mcp.
+View install script Then follow the quick start
 
-kernels.a0 checked
-agent edit_function affine
- fn affine u32 u32 u32 -> u32
- a mul p0 p1
- b add a p3
- ret b
-end
-✕ refused p3: affine takes 3 parameters
- file unchanged
-
- agent edit_function affine
- fn affine u32 u32 u32 -> u32
- a mul p0 p1
- b add a p2
- ret b
-end
-✓ checked written to kernels.a0
-
- $ a0 run examples/kernels.a0 affine 3 4 5
- 17
-
-193 tokens. Forth takes 323.
-The same 10 programs written in 49 languages. Forth is the shortest after A0.
-results/lang-axes.json, results/dense-tokens.json
+Edit cost Tokens Speed
+One AI edit, start to accepted
+Tokens per task · Haiku and Sonnet pooled · 24 tasks a language · lower is better
 A0
+
+275
+Ruby
+
+321
+TypeScript
+
+340
+JavaScript
+
+352
+Go
+
+364
+C++
+
+374
+OCaml
+
+374
+Rust
+
+389
+Lua
+
+393
+Forth
+
+393
+Python
+
+424
+Java
+
+435
+C#
+
+443
+C
+
+455
+Zig
+
+474
+PHP
+
+557
+
+A0 dense, lean view (not shipped): 237.5
++ Fewest tokens of 49 languages: A0 275
+− Session of 10 edits: place 12 of 49
+Source: results/ai-edit-b48-dense.json · method →
+
+The same 10 programs, written by hand
+o200k tokens · sum over the programs · lower is better
+A0 (dense)
 
 193
 Forth
 
 323
+OCaml
+
+364
+C#
+
+384
+Ruby
+
+386
+Go
+
+389
+Lua
+
+408
 Python
 
 417
+Java
+
+427
+JavaScript
+
+454
+C++
+
+479
+Zig
+
+499
 TypeScript
 
 507
+C
+
+512
+A0 (canonical)
+
+541
+PHP
+
+549
 Rust
 
 558
 
-How it works.
++ A0 dense: 193 against Forth 323
+− A0 canonical: 541, place 38 of 49
+Source: results/lang-axes.json · results/dense-tokens.json · method →
 
-01 The agent asks for one function.
-edit_function affine
+Small programs, compiled
+Time per call as a multiple of A0's · geometric mean · log scale · shorter is faster
+C
 
-02 A0 type-checks the edit.
-b add a p3
-✕ affine takes 3 parameters
+0.86x
+Rust
 
-03 The file changes only if it passes.
-✓ written to kernels.a0
+0.93x
+C++
 
-Where it loses.
+0.94x
+A0
 
-Slower than the best of C, Rust and Zig on 8 of 19 programs.
-results/exec-benchmark-full.json
+1.00x
+Zig
 
-Unsigned integers, booleans and fixed arrays. No floats, heap or recursion; for those, use C, Rust or TypeScript.
+1.11x
+Java
 
-Install A0.
-$ curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
-Then connect your agent: claude mcp add a0 -- a0 mcp.
-github.com/Joe-Simo/a0 ›
+1.30x
+TypeScript
+
+1.40x
+Go
+
+1.53x
+C#
+
+1.57x
+OCaml
+
+2.72x
+JavaScript
+
+5.77x
+Forth
+
+15.3x
+PHP
+
+19.6x
+Lua
+
+19.6x
+Ruby
+
+73.9x
+Python
+
+169x
+
+3 of 48 languages within 5% of A0; 8 faster
+− Slower than the best of C, Rust and Zig on 8 of 19 programs, worst 4.31x (mat4)
+Source: results/exec-benchmark-full.json · method →
+
+01 / What A0 is
+A typed language built for model edits.
+Language Typed, explicit, short
+Every function states its types. One operation per line.
+a0 check sq.a0
+
+Edits One function, checked
+A patch replaces one function; A0 re-validates the program or rejects the patch with a diagnostic.
+a0 patch sq.a0 edit.patch
+
+Targets C, arm64, WebAssembly
+One front end; the same behaviour table runs on every target.
+a0 emit arm64 sq.a0
+
+Agents MCP server
+Models read, edit and check A0 through tools instead of raw text.
+a0 mcp.
+
+02 / A minute with A0
+From install to a checked edit.
+printf 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n' > sq.a0
+One typed function.
+
+a0 run sq.a0 sq 12
+Prints the square.
+
+a0 check sq.a0
+Reports type and bounds errors. --fix applies the exact fixes.
+
+a0 emit arm64 sq.a0
+A0's own machine code; also c, js, java, sv.
+
+a0 mcp.
+Serves the folder to an agent over MCP.
+
+Full list in the CLI reference.
+
+03 / Against other languages
+Edit cost and speed against other languages.
+Full tables and methods on Benchmarks.
+The same 10 programs, written by hand
+o200k tokens · sum over the programs · lower is better
+A0 (dense)
+
+193
+Forth
+
+323
+OCaml
+
+364
+C#
+
+384
+Ruby
+
+386
+Go
+
+389
+Lua
+
+408
+Python
+
+417
+Java
+
+427
+JavaScript
+
+454
+C++
+
+479
+Zig
+
+499
+TypeScript
+
+507
+C
+
+512
+A0 (canonical)
+
+541
+PHP
+
+549
+Rust
+
+558
+
++ A0 dense: 193 against Forth 323
+− A0 canonical: 541, place 38 of 49
+Source: results/lang-axes.json · results/dense-tokens.json · method →
+
+Small programs, compiled
+Time per call as a multiple of A0's · geometric mean · log scale · shorter is faster
+C
+
+0.86x
+Rust
+
+0.93x
+C++
+
+0.94x
+A0
+
+1.00x
+Zig
+
+1.11x
+Java
+
+1.30x
+TypeScript
+
+1.40x
+Go
+
+1.53x
+C#
+
+1.57x
+OCaml
+
+2.72x
+JavaScript
+
+5.77x
+Forth
+
+15.3x
+PHP
+
+19.6x
+Lua
+
+19.6x
+Ruby
+
+73.9x
+Python
+
+169x
+
+3 of 48 languages within 5% of A0; 8 faster
+− Slower than the best of C, Rust and Zig on 8 of 19 programs, worst 4.31x (mat4)
+Source: results/exec-benchmark-full.json · method →
+
+04 / Where A0 loses
+Measured losses.
+Loss — Measured — Source
+Native speed against the best of C, Rust and Zig — slower on 8 of 19 programs, worst 4.31x — exec-benchmark-full.json
+Sessions of 10 AI edits — place 12 of 49 — ai-edit-b48-dense.json
+Canonical source size — 541 tokens, place 38 of 49 — lang-axes.json
+What the language lacks — floats, heap, recursion — STATUS.md
+
+05 / Install
+Install
+> curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
+Quick start Source on GitHub ↗

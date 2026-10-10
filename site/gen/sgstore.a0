@@ -55,7 +55,7 @@ ret r
 end
 
 # ---- the words: the literal packed at byte p3, then one table entry per word
-fn seedb u32x128x512 u32 u32x4180 u32 -> u32x128x512
+fn seedb u32x128x512 u32 u32x4322 u32 -> u32x128x512
 b get p2 p1
 pos add p3 p1
 w0 shr pos 2
@@ -71,7 +71,7 @@ pg2 set pg wi w2
 r set p0 pi pg2
 ret r
 end
-fn wtb u32x128x512 u32 u32x4180 u32 u32 -> u32x128x512
+fn wtb u32x128x512 u32 u32x4322 u32 u32 -> u32x128x512
 b get p2 p1
 h call hd p0 100
 ws call hd p0 101
@@ -103,18 +103,18 @@ end
 fn seedw u32x128x512 u32 -> u32x128x512
 lit call wlit
 base shl p1 9
-s1 fold seedb 4180 p0 lit base
-wtp add p1 8
+s1 fold seedb 4322 p0 lit base
+wtp add p1 9
 wt shl wtp 7
 s2 fold whd 1 s1 100 2166136261
 s3 fold whd 1 s2 101 0
 s4 fold whd 1 s3 102 0
-s5 fold wtb 4180 s4 lit base wt
+s5 fold wtb 4322 s4 lit base wt
 n call hd s5 102
 s6 fold whd 1 s5 1 base
 s7 fold whd 1 s6 2 n
 s8 fold whd 1 s7 3 wt
-nxt add wtp 16
+nxt add wtp 17
 r fold whd 1 s8 7 nxt
 ret r
 end

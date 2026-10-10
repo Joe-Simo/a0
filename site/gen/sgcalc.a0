@@ -39,21 +39,21 @@ v call rd64 p0 c
 r gt v 0
 ret r
 end
-fn cref u32x128x128 u32 -> u32
+fn cref u32x128x256 u32 -> u32
 r call rd128 p0 p1
 ret r
 end
 # FNV-1a of the pool bytes of ref p1
-fn vhb u32 u32 u32x128x128 u32 -> u32
+fn vhb u32 u32 u32x128x256 u32 -> u32
 a add p3 p1
 b call vb p2 a
 x xor p0 b
 r mul x 16777619
 ret r
 end
-fn vhash u32x128x128 u32 -> u32
-s shr p1 16
-l and p1 65535
+fn vhash u32x128x256 u32 -> u32
+s shr p1 12
+l and p1 4095
 r fold vhb l 2166136261 p0 s
 ret r
 end
@@ -127,14 +127,14 @@ r fold mfstep c 0 l p0 p1 p2
 ret r
 end
 # is the label of ref p2 (bytes in the pool of p1) a key of the `top` map: the well-known languages
-fn intop u32x128x512 u32x128x128 u32 -> bool
+fn intop u32x128x512 u32x128x256 u32 -> bool
 h call vhash p1 p2
 pos call mfind p0 234 h
 r ne pos 0
 ret r
 end
 # ---- the strings of the data table into the pool (fold bodies over the strings of a kind)
-fn cpstr u32x128x128 u32 u32x128x64 u32 u32 u32 u32 u32 -> u32x128x128
+fn cpstr u32x128x256 u32 u32x128x64 u32 u32 u32 u32 u32 -> u32x128x256
 sw0 mul p1 p4
 sw add p3 sw0
 lw0 mul p1 p6
@@ -148,16 +148,17 @@ d add p7 p1
 r fold wr128 1 s1 d r0
 ret r
 end
-fn cword u32x128x128 u32 u32x128x512 u32 u32 -> u32x128x128
+fn cword u32x128x256 u32 u32x128x512 u32 u32 -> u32x128x256
 w add p3 p1
 d add p4 p1
 r fold vconst 1 p0 p2 w d
 ret r
 end
-fn strings u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
+fn strings u32x128x256 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x256
 s1 fold cword 18 p0 p2 73 2
 s2 fold vconst 1 s1 p2 46 20
-s3 fold vconst 1 s2 p2 47 21
+s3a fold vconst 1 s2 p2 47 21
+s3 fold vconst 1 s3a p2 519 30
 nl call rd64 p4 2701
 s4 fold cpstr nl s3 p4 3460 8 3396 1 32
 nk call rd64 p4 2700
@@ -266,7 +267,7 @@ r fold covstep p1 0 p0 p2 p3
 ret r
 end
 # the coverage variables: word p3 the count, word p4 the partial flag (fold body)
-fn vcov u32x128x128 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x128
+fn vcov u32x128x256 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x256
 s1 fold vnum 1 p0 p2 p3 0 p5
 part ne p5 p6
 s2 fold vflag 1 s1 p2 p4 0 part
@@ -347,7 +348,7 @@ r rec t c
 ret r
 end
 # the language rows: (label ref, family 0 a0 1 compiled 2 interpreted 3 other, log, label hash)
-fn lgstep (u32x64,u32x64,u32x64,u32x64,u32) u32 u32x128x64 u32x128x128 -> (u32x64,u32x64,u32x64,u32x64,u32)
+fn lgstep (u32x64,u32x64,u32x64,u32x64,u32) u32 u32x128x64 u32x128x256 -> (u32x64,u32x64,u32x64,u32x64,u32)
 rf at p0 0
 fm at p0 1
 lg at p0 2
@@ -390,7 +391,7 @@ n1 add n 1
 o rec rf2 fm2 lg2 hs2 n1
 ret o
 end
-fn langs u32x128x64 u32x128x128 -> (u32x64,u32x64,u32x64,u32x64,u32)
+fn langs u32x128x64 u32x128x256 -> (u32x64,u32x64,u32x64,u32x64,u32)
 z call z64l
 s0 rec z z z z 0
 c call cref p1 3
@@ -416,7 +417,7 @@ b call bias
 s5 fold addrow 1 s4 a0 0 b ah
 ret s5
 end
-fn clsref u32x128x128 u32 -> u32
+fn clsref u32x128x256 u32 -> u32
 a eq p1 0
 b eq p1 1
 c eq p1 2
@@ -429,7 +430,7 @@ r1 select b x2 r0
 r select a x3 r1
 ret r
 end
-fn lgrow u32x128x128 u32 u32x128x512 u32x64 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+fn lgrow u32x128x256 u32 u32x128x512 u32x64 u32x64 u32x64 u32x64 u32 u32 -> u32x128x256
 i get p3 p1
 k call key1 p1
 rf get p4 i
@@ -449,7 +450,7 @@ s6 fold vflag 1 s5 p2 238 k tp
 ret s6
 end
 # ahead: labels (in order) whose log is below p5, joined with ", "
-fn ahstep u32x128x128 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+fn ahstep u32x128x256 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x256
 i get p2 p1
 l get p4 i
 rf get p3 i
@@ -486,7 +487,7 @@ r sub x b
 ret r
 end
 # all languages: A0, C, Rust, JavaScript, then the languages that ran (label hashes)
-fn allstep (u32x64,u32) u32 u32x128x64 u32x128x128 -> (u32x64,u32)
+fn allstep (u32x64,u32) u32 u32x128x64 u32x128x256 -> (u32x64,u32)
 l at p0 0
 n at p0 1
 ri add p1 3332
@@ -501,7 +502,7 @@ nn select ok n1 n
 o rec l2 nn
 ret o
 end
-fn alllangs u32x128x64 u32x128x128 -> (u32x64,u32)
+fn alllangs u32x128x64 u32x128x256 -> (u32x64,u32)
 z call z64l
 a call cref p1 2
 b call cref p1 3
@@ -555,7 +556,7 @@ z call z64l
 r fold dblstep p1 z p0 p2
 ret r
 end
-fn cexec u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn cexec u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
 nl call rd64 p3 2701
 pyh call whash p2 49
 py call lookup p3 3204 nl pyh
@@ -628,7 +629,7 @@ br2 select b p3 br
 r rec n1 fn2 bv2 br2
 ret r
 end
-fn rklang (u32,u32,u32,u32) u32 u32x128x64 u32x128x128 u32 u32 -> (u32,u32,u32,u32)
+fn rklang (u32,u32,u32,u32) u32 u32x128x64 u32x128x256 u32 u32 -> (u32,u32,u32,u32)
 rn call ranon p2 p1 p4
 c select rn 1 0
 v call med p2 p1 p4
@@ -645,7 +646,7 @@ r select o a p0
 ret r
 end
 # the entries of kernel p2 (vars p0, table p1): (entries, entries faster than A0, fastest other, its label ref)
-fn rkcalc u32x128x128 u32x128x64 u32 -> (u32,u32,u32,u32)
+fn rkcalc u32x128x256 u32x128x64 u32 -> (u32,u32,u32,u32)
 arm call kf p1 p2 1
 s0 rec 1 0 4294967295 0
 c call kf p1 p2 2
@@ -662,7 +663,7 @@ s4 fold rklang nl s3 p1 p0 p2 arm
 ret s4
 end
 # kernels A0 is first on, and the largest ratio x 100 of A0 to the fastest other (at least 100) (fold body)
-fn rkst (u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x64 -> (u32,u32,u32,u32,u32,u32)
+fn rkst (u32,u32,u32,u32,u32,u32) u32 u32x128x256 u32x128x64 -> (u32,u32,u32,u32,u32,u32)
 w at p0 0
 m at p0 1
 mk at p0 2
@@ -703,7 +704,7 @@ ln select has lw l2
 o rec wn mn kn an tn ln
 ret o
 end
-fn rkrow u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn rkrow u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
 h call kf p3 p1 0
 has eq h 1
 ch select has 1 0
@@ -748,7 +749,7 @@ sp2 call rdiv 10000 ra1
 v15 fold vfix2 ch v14 p2 482 k sp2
 ret v15
 end
-fn cranks u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn cranks u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
 nk call rd64 p3 2700
 nr fold hasstep nk 0 p3
 s1 fold vnum 1 p0 p2 108 0 nr
@@ -802,7 +803,7 @@ nn select ok n1 n
 r rec l2 nn
 ret r
 end
-fn strow (u32x64,u32x64,u32x64,u32x64,u32) u32 u32x128x64 u32x128x128 u32x128x512 u32 -> (u32x64,u32x64,u32x64,u32x64,u32)
+fn strow (u32x64,u32x64,u32x64,u32x64,u32) u32 u32x128x64 u32x128x256 u32x128x512 u32 -> (u32x64,u32x64,u32x64,u32x64,u32)
 e0 shl p5 5
 e add e0 p1
 hi add e 5252
@@ -836,7 +837,7 @@ h call vhash p3 ref
 r fold addrow 1 p0 ref fam m h
 ret r
 end
-fn strowv u32x128x128 u32 u32x128x512 u32x64 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+fn strowv u32x128x256 u32 u32x128x512 u32x64 u32x64 u32x64 u32x64 u32 u32 -> u32x128x256
 i get p3 p1
 k call key1 p1
 rf get p4 i
@@ -872,7 +873,7 @@ r0 call rdiv v 1000
 r add p0 r0
 ret r
 end
-fn binkb u32 u32 u32x128x64 u32x128x128 u32 -> u32
+fn binkb u32 u32 u32x128x64 u32x128x256 u32 -> u32
 ra add p1 96
 rf call rd128 p3 ra
 h call vhash p3 rf
@@ -882,7 +883,7 @@ k shr v 10
 r select e k p0
 ret r
 end
-fn cstart u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn cstart u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
 z call z64l
 nk call rd64 p3 2700
 s0 rec z 0
@@ -952,7 +953,7 @@ end
 
 # copy the value of map word p3, key hash p4 into the pool (fold body); variables word p5 := ref,
 # or the ref at variables word p6 when the key is not in the map
-fn vmapv u32x128x128 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x128
+fn vmapv u32x128x256 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x256
 pos call mfind p2 p3 p4
 has ne pos 0
 mv call mval p2 pos
@@ -1004,7 +1005,7 @@ r at s 0
 ret r
 end
 # the labels of the cost map into variables words 22 + r (fold body over the entries)
-fn clab u32x128x128 u32 u32x128x512 -> u32x128x128
+fn clab u32x128x256 u32 u32x128x512 -> u32x128x256
 pos call mnth p2 p1 62
 mv call mval p2 pos
 a at mv 0
@@ -1213,7 +1214,7 @@ r fold szstep c s0 l p0
 ret r
 end
 # label hashes of the rows' representations (fold body over rows)
-fn lhstep u32x64 u32 u32x64 u32x128x128 -> u32x64
+fn lhstep u32x64 u32 u32x64 u32x128x256 -> u32x64
 r0 get p2 p1
 a add r0 22
 rf call rd128 p3 a
@@ -1221,7 +1222,7 @@ h call vhash p3 rf
 r set p0 p1 h
 ret r
 end
-fn csumrow u32x128x128 u32 u32x128x512 u32x128x64 u32x64 u32x64 -> u32x128x128
+fn csumrow u32x128x256 u32 u32x128x512 u32x128x64 u32x64 u32x64 -> u32x128x256
 i get p5 p1
 sz get p4 i
 k call key1 p1
@@ -1243,7 +1244,7 @@ cl select w wr lr
 s6 fold vref 1 s5 p2 139 k cl
 ret s6
 end
-fn cbrow u32x128x128 u32 u32x128x512 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+fn cbrow u32x128x256 u32 u32x128x512 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x256
 i get p5 p1
 k call key2 p3 p1
 r0 get p4 i
@@ -1261,7 +1262,7 @@ s3 fold vnum 1 s2 p2 157 k pc
 s4 fold vnum 1 s3 p2 158 k t
 ret s4
 end
-fn ctrow u32x128x128 u32 u32x128x512 u32 (u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32) u32 -> u32x128x128
+fn ctrow u32x128x256 u32 u32x128x512 u32 (u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32) u32 -> u32x128x256
 k call key2 p3 p1
 rp at p4 0
 tt at p4 1
@@ -1308,7 +1309,7 @@ cz select nh 1 0
 s11 fold vref cz s10 p2 169 k 0
 ret s11
 end
-fn cszrow u32x128x128 u32 u32x128x512 u32x128x64 u32x64 u32x64 u32 -> u32x128x128
+fn cszrow u32x128x256 u32 u32x128x512 u32x128x64 u32x64 u32x64 u32 -> u32x128x256
 sz get p4 p1
 k call key1 p1
 s1 fold vnum 1 p0 p2 148 k sz
@@ -1355,7 +1356,7 @@ s8 fold vnum 1 s7 p2 159 k n
 s9 fold ctrow n s8 p2 p1 rs a
 ret s9
 end
-fn ccost u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
+fn ccost u32x128x256 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x256
 nr call mcount p2 62
 s0 fold clab nr p0 p2
 sz call sizes p2
@@ -1438,7 +1439,7 @@ r set p0 p1 v
 ret r
 end
 # FNV-1a of a pool string up to its first "." (fold body: (hash, stopped))
-fn pfxb (u32,bool) u32 u32x128x128 u32 -> (u32,bool)
+fn pfxb (u32,bool) u32 u32x128x256 u32 -> (u32,bool)
 h at p0 0
 d at p0 1
 a add p3 p1
@@ -1451,15 +1452,15 @@ hn select st h h2
 r rec hn st
 ret r
 end
-fn pfxhash u32x128x128 u32 -> u32
-s shr p1 16
-l and p1 65535
+fn pfxhash u32x128x256 u32 -> u32
+s shr p1 12
+l and p1 4095
 s0 rec 2166136261 false
 r0 fold pfxb l s0 p0 s
 r at r0 0
 ret r
 end
-fn elrow u32x128x128 u32 u32x128x512 u32x128x64 u32x64 u32 u32 -> u32x128x128
+fn elrow u32x128x256 u32 u32x128x512 u32x128x64 u32x64 u32 u32 -> u32x128x256
 i get p4 p1
 k call key1 p1
 a mul i 11
@@ -1483,7 +1484,7 @@ s5 fold vnum 1 s4 p2 175 k m10
 ret s5
 end
 # the label hash of row p1's language (the `m ellang` value), for the coverage line
-fn elcov u32x64 u32 u32x128x128 u32x128x512 -> u32x64
+fn elcov u32x64 u32 u32x128x256 u32x128x512 -> u32x64
 kr add p1 240
 kref call rd128 p2 kr
 ph call pfxhash p2 kref
@@ -1495,7 +1496,7 @@ h call shash p3 a n
 r set p0 p1 h
 ret r
 end
-fn cedit u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
+fn cedit u32x128x256 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x256
 a0h call whash p2 52
 tsh call whash p2 53
 ia call elfind p3 a0h
@@ -1583,7 +1584,7 @@ r rec lo2 hi2
 ret r
 end
 # the labels of the parallel map into variables words 272 + j (fold body)
-fn plab u32x128x128 u32 u32x128x512 -> u32x128x128
+fn plab u32x128x256 u32 u32x128x512 -> u32x128x256
 pos call mnth p2 p1 65
 mv call mval p2 pos
 a at mv 0
@@ -1595,7 +1596,7 @@ d add p1 272
 r fold wr128 1 s1 d r0
 ret r
 end
-fn prrow u32x128x128 u32 u32x128x512 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+fn prrow u32x128x256 u32 u32x128x512 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x256
 i get p6 p1
 k call key2 p3 p1
 j get p4 i
@@ -1619,7 +1620,7 @@ rr select z 1 r100
 s5 fold vnum 1 s4 p2 190 k rr
 ret s5
 end
-fn pkrow u32x128x128 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x128
+fn pkrow u32x128x256 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x256
 k call key1 p1
 nr0 add p1 256
 nm call rd128 p0 nr0
@@ -1643,7 +1644,7 @@ s5 fold prrow n s4 p2 p1 jl rl pm p4 p5
 ret s5
 end
 # the losses of kernel p1 appended: "k (label r.rrx)", separated by "; " (fold body over kernels)
-fn plossr u32x128x128 u32 u32x128x512 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+fn plossr u32x128x256 u32 u32x128x512 u32x64 u32x64 u32x64 u32 u32 -> u32x128x256
 i get p5 p1
 j get p3 i
 r get p4 i
@@ -1677,7 +1678,7 @@ xr call cref s6 17
 s7 fold vapref c s6 xr
 ret s7
 end
-fn ploss u32x128x128 u32 u32x128x512 u32x128x64 u32 -> u32x128x128
+fn ploss u32x128x256 u32 u32x128x512 u32x128x64 u32 -> u32x128x256
 rs call prows p3 p1
 jl at rs 0
 rl at rs 1
@@ -1686,7 +1687,7 @@ pm call sortperm rl n
 r fold plossr n p0 p2 jl rl pm p1 p4
 ret r
 end
-fn pcovh (u32x64,u32) u32 u32x128x512 u32x128x128 -> (u32x64,u32)
+fn pcovh (u32x64,u32) u32 u32x128x512 u32x128x256 -> (u32x64,u32)
 l at p0 0
 n at p0 1
 pos call mnth p2 p1 65
@@ -1732,7 +1733,7 @@ a add p0 1
 r select z a p0
 ret r
 end
-fn cpar u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
+fn cpar u32x128x256 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x256
 nj call rd64 p3 8119
 s0 fold plab nj p0 p2
 nk call rd64 p3 7952
@@ -1835,7 +1836,7 @@ r select c p1 p0
 ret r
 end
 # a value variable: the number (p6 = 0) or milliseconds x 1000 shown in hundredths (fold body)
-fn axval u32x128x128 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x128
+fn axval u32x128x256 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x256
 t ne p5 0
 c1 select t 1 0
 c0 select t 0 1
@@ -1847,7 +1848,7 @@ end
 # the row at sorted position p1 of an axis (fold body): perm p3, values p4, families p5, first
 # variables word p6 (label, class, A0 flag, bar length, value, well-known flag), mode p7 (0 linear,
 # 1 logarithmic), the biased logs p8 p9 of the bar range and the largest value p10
-fn axrow u32x128x128 u32 u32x128x512 u32x64 u32x64 u32x64 u32 u32 u32 u32 u32 -> u32x128x128
+fn axrow u32x128x256 u32 u32x128x512 u32x64 u32x64 u32x64 u32 u32 u32 u32 u32 u32 -> u32x128x256
 s get p3 p1
 v get p4 s
 fm get p5 s
@@ -1855,10 +1856,14 @@ k call key1 p1
 lw add s 288
 rf call rd128 p0 lw
 s1 fold vref 1 p0 p2 p6 k rf
-cl call clsref s1 fm
+cl0 call clsref s1 fm
+me eq fm 0
+lt0 lt v p11
+wn and me lt0
+wr call cref s1 30
+cl select wn wr cl0
 w1 add p6 1
 s2 fold vref 1 s1 p2 w1 k cl
-me eq fm 0
 w2 add p6 2
 s3 fold vflag 1 s2 p2 w2 k me
 lv call lg v
@@ -1880,11 +1885,21 @@ w5 add p6 5
 s6 fold vflag 1 s5 p2 w5 k tp
 ret s6
 end
+# the smallest value of a language other than A0 (fold body over slots: values p2, families p3)
+fn minoth u32 u32 u32x64 u32x64 -> u32
+v get p2 p1
+f get p3 p1
+o ne f 0
+l lt v p0
+c and o l
+r select c v p0
+ret r
+end
 # one axis (fold body): its rows in ascending order of value and its summary variables. Keys p3
 # (the largest u32 when a language has none), families p4, slots p5, first variables word p6
 # (rows start there; +6 the row count, +7 A0's value, +8 its place, +9 the best language, +10 its
 # value, +11 the median, +12 and +13 the coverage), mode p7, languages in all p8.
-fn axaxis u32x128x128 u32 u32x128x512 u32x64 u32x64 u32 u32 u32 u32 u32 -> u32x128x128
+fn axaxis u32x128x256 u32 u32x128x512 u32x64 u32x64 u32 u32 u32 u32 u32 -> u32x128x256
 pm call sortperm p3 p5
 nv fold vldstep p5 0 p3
 l1 sub nv 1
@@ -1898,7 +1913,8 @@ l10 call lg 10
 lo0 add lmn l9
 lo sub lo0 l10
 hi call lg mxv
-s1 fold axrow nv p0 p2 pm p3 p4 p6 p7 lo hi mxv
+mo fold minoth p5 4294967295 p3 p4
+s1 fold axrow nv p0 p2 pm p3 p4 p6 p7 lo hi mxv mo
 w6 add p6 6
 s2 fold vnum 1 s1 p2 w6 0 nv
 ai fold axa0 nv nv pm p4 nv
@@ -1927,7 +1943,7 @@ s8 fold vcov 1 s7 p2 w12 w13 nvc p8
 ret s8
 end
 # the label hashes of the cost map's representations (fold body)
-fn mhstep u32x64 u32 u32x128x128 -> u32x64
+fn mhstep u32x64 u32 u32x128x256 -> u32x64
 a add p1 22
 rf call rd128 p2 a
 h call vhash p2 rf
@@ -1936,7 +1952,7 @@ ret r
 end
 # the labels of the languages with a token count that are not among the hashes p3 (p4 of them),
 # joined with ", " (fold body over slots); p5 the start of the pool string
-fn cmstep u32x128x128 u32 u32x64 u32x64 u32 u32 u32x64 -> u32x128x128
+fn cmstep u32x128x256 u32 u32x64 u32x64 u32 u32 u32x64 -> u32x128x256
 v get p2 p1
 ok0 lt v 4294967295
 fam get p6 p1
@@ -1981,7 +1997,7 @@ ret r
 end
 # the A0 subjects of a token axis: place and wins, ties and losses against the other languages
 # (fold body: values p3, families p4, the canonical slot p5, the dense slot p6, the lossless dense total p7)
-fn tkx u32x128x128 u32 u32x128x512 u32x64 u32x64 u32 u32 u32 u32 -> u32x128x128
+fn tkx u32x128x256 u32 u32x128x512 u32x64 u32x64 u32 u32 u32 u32 -> u32x128x256
 cv get p3 p5
 dv get p3 p6
 lc fold cmpo p8 0 p3 p4 cv 0
@@ -2006,7 +2022,11 @@ s9 fold vnum 1 s8 p2 391 0 dv
 s10 fold vnum 1 s9 p2 392 0 p7
 s11 fold vnum 1 s10 p2 393 0 xr
 s12 fold vnum 1 s11 p2 442 0 cv
-ret s12
+dw eq ld 0
+cw eq lc 0
+s13 fold vflag 1 s12 p2 517 0 dw
+s14 fold vflag 1 s13 p2 518 0 cw
+ret s14
 end
 # the session cost of 10 tasks per slot (the largest u32 when the slot has none): set b, proto2
 # (fold body: state list, slot p1, table p2, token values p3, subject hash of the dense slot p4)
@@ -2035,9 +2055,43 @@ k select ok v1 4294967295
 r set p0 p1 k
 ret r
 end
+# the cost of one task per slot, primer + read + write of the pooled cell (the largest u32 for the
+# dense slot and for a slot without one): set b, proto2 (fold body, arguments as ecstep)
+fn etstep u32x64 u32 u32x128x64 u32x64 u32 u32x128x512 -> u32x64
+tv get p3 p1
+nsl call rd64 p2 128
+isd eq p1 nsl
+ia add p1 192
+ih0 call rd64 p2 ia
+tsw call whash p5 441
+ist eq ih0 tsw
+tsh call whash p5 48
+ih select ist tsh ih0
+nb call rd64 p2 1899
+bi call lookup p2 1900 nb ih
+found lt bi nb
+pa add bi 2200
+ra add bi 2260
+wa add bi 2320
+pv call rd64 p2 pa
+rv call rd64 p2 ra
+wv call rd64 p2 wa
+s0 add pv rv
+v add s0 wv
+v1 call rdiv v 100
+ok0 lt tv 4294967295
+okv gt v1 0
+ok1 and ok0 found
+ok2 and ok1 okv
+nd select isd false true
+ok and ok2 nd
+k select ok v1 4294967295
+r set p0 p1 k
+ret r
+end
 # a scalar of a subject's pooled cell: field p1 of the subject at index p4 into the variable word p5 + p1
 # (fold body)
-fn ecf u32x128x128 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x128
+fn ecf u32x128x256 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x256
 f60 mul p1 60
 a add f60 1960
 b add a p4
@@ -2048,7 +2102,7 @@ r fold vnum 1 p0 p2 w 0 v1
 ret r
 end
 # the metric table row p1: A0 and the dense A0 against the other 48 languages (fold body)
-fn emrow u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn emrow u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
 k call key1 p1
 r0 add p1 372
 sc add p1 340
@@ -2090,7 +2144,7 @@ ret s12
 end
 # the kernel source tokens of the language whose lang-axes.json id is word p4 into variable word p5
 # (fold body; the axes table p3, ids at 192 + s, tokens at 896 + s; not set when the language is missing)
-fn tklv u32x128x128 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x128
+fn tklv u32x128x256 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x256
 h call whash p2 p4
 n call rd64 p3 128
 i call lookup p3 192 n h
@@ -2101,7 +2155,7 @@ v call rd64 p3 vi
 r fold vnum c p0 p2 p5 0 v
 ret r
 end
-fn caxes u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
+fn caxes u32x128x256 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x256
 nax call rd64 p4 128
 nax1 add nax 1
 z call z64l
@@ -2201,11 +2255,29 @@ s31 fold tklv 1 s30 p2 p4 496 497
 s32 fold tklv 1 s31 p2 p4 49 498
 s33 fold tklv 1 s32 p2 p4 441 499
 s34 fold tklv 1 s33 p2 p4 9 500
-ret s34
+z4 call z64l
+kt fold etstep nax1 z4 p4 vt dh p2
+rs3 fold wr128 1 s34 da orig
+s35 fold axaxis 1 rs3 p2 kt fm nax1 501 0 na 1
+ev get kt ia
+er fold cntlt nax1 0 kt ev
+ew eq er 0
+s36 fold vflag 1 s35 p2 516 0 ew
+dp add dbi 2200
+dr0 add dbi 2260
+dw0 add dbi 2320
+dpv call rd64 p4 dp
+drv call rd64 p4 dr0
+dwv call rd64 p4 dw0
+ds0 add dpv drv
+ds add ds0 dwv
+ds10 call rdiv ds 10
+s37 fold vfix1 1 s36 p2 515 0 ds10
+ret s37
 end
 # ---- tokens.json fixtures and hardware.json totals (the axes table p3)
 # the o200k tokens of the fixture whose name is word p4 into variable word p5 (fold body)
-fn tfv u32x128x128 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x128
+fn tfv u32x128x256 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x256
 h call whash p2 p4
 n call rd64 p3 1450
 i call lookup p3 1456 n h
@@ -2216,7 +2288,7 @@ v call rd64 p3 vi
 r fold vnum c p0 p2 p5 0 v
 ret r
 end
-fn ctok u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn ctok u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
 s1 fold tfv 1 p0 p2 p3 311 324
 s2 fold tfv 1 s1 p2 p3 312 325
 s3 fold tfv 1 s2 p2 p3 313 326
@@ -2253,7 +2325,7 @@ k0 select pos v 4294967295
 k set p0 p1 k0
 ret k
 end
-fn chw u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn chw u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
 a call rd64 p3 1400
 b call rd64 p3 1401
 c call rd64 p3 1402
@@ -2286,7 +2358,7 @@ end
 
 # ---- A0 against the best of C, Rust and Zig (arm64VsBestFlags of the exec file, the table p3)
 # row of kernel p1 (fold body): name, A0's time, the best flags and time, A0's speedup, the verdict
-fn bkrow u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn bkrow u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
 k call key1 p1
 kr add p1 96
 nm call rd128 p0 kr
@@ -2330,7 +2402,7 @@ k2 select c p1 k
 r rec m2 k2
 ret r
 end
-fn cbk u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn cbk u32x128x256 u32 u32x128x512 u32x128x64 -> u32x128x256
 nk call rd64 p3 2700
 s1 fold vnum 1 p0 p2 459 0 nk
 s2 fold vnum 1 s1 p2 474 0 nk

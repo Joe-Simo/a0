@@ -108,9 +108,10 @@ test('the benchmarks page explains every benchmark in plain words', {
   );
 });
 
-// The home page is short: a pitch with the install line and a checked edit, the token figure, how
-// an edit is checked, the losses, install; every number computed from results/*.json, the rest on /benchmarks.
-test('the home page is short: a pitch, the token figure, how it works, the losses, install', {
+// The home page is short: the pitch with the install line and the measured charts (edit cost, tokens,
+// speed), what A0 is, a minute with A0, the comparison charts, the losses, install; every number is
+// computed from results/*.json, the rest is on /benchmarks.
+test('the home page is short: a pitch with measured charts, what A0 is, the losses, install', {
   timeout: 600_000,
 }, async () => {
   const program = (await link('site/page.a0', (f) => readFile(f, 'utf8'), { root: '.' })).program;
@@ -119,46 +120,42 @@ test('the home page is short: a pitch, the token figure, how it works, the losse
   assert.ok(!html.includes('<details'), 'no hidden lists on the home page');
   assert.ok(!html.includes('class="rail"'), 'the section rail is on /benchmarks only');
   for (const h of [
-    'A language for agents to edit.',
-    'How it works.',
-    'Where it loses.',
-    'Install A0.',
+    'A typed language AI edits one function at a time.',
+    'A typed language built for model edits.',
+    'Measured losses.',
+    'Install',
   ])
     assert.ok(text.includes(h), `missing: ${h}`);
-  const answers: readonly RegExp[] = [
-    /\$ a0 run examples\/kernels\.a0 affine 3 4 5\n\s*17/,
-    /refused\s+p3: affine takes 3 parameters/,
-    /Slower than the best of C, Rust and Zig on \d+ of \d+ programs\./,
-  ];
-  for (const re of answers) assert.match(text, re);
-  // the one-function cost came from a run with an earlier, longer guide; the newer set-b runs
-  // (results/ai-edit-b48-dense.json, proto2) show A0 cheaper, so it is not listed as a loss
+  assert.match(text, /slower on \d+ of \d+ programs, worst \d+\.\d+x/);
+  // the one-function cost came from a run with an earlier, longer guide; not listed as a loss
   assert.ok(!text.includes('one-function file'), 'no one-function loss on the home page');
+  // the edit cost leads with the shipped A0: primer + read + write of the pooled proto2 cell of
+  // results/ai-edit-b48-dense.json; the dense lean view is a secondary, labelled line
+  const b48 = JSON.parse(await readFile('results/ai-edit-b48-dense.json', 'utf8'));
+  const cell = b48.proto2.languages.a0.pooled;
+  const shipped = Math.round(cell.primer + cell.read + cell.write);
+  assert.ok(
+    html.includes(
+      `<span class="lbl">A0</span><div class="track a0 win"><div class="fill grown" style="width:`,
+    ),
+    'the shipped A0 row leads the edit-cost chart and wins',
+  );
+  assert.ok(text.includes(`Fewest tokens of 49 languages: A0 ${shipped}`), `A0 costs ${shipped}`);
+  assert.match(text, /A0 dense, lean view \(not shipped\): \d+\.\d/);
   // the token figure is read from results/lang-axes.json and results/dense-tokens.json, never typed
   const axes = JSON.parse(await readFile('results/lang-axes.json', 'utf8'));
   const dense = JSON.parse(await readFile('results/dense-tokens.json', 'utf8'));
   const tok = (id: string): number => axes.tokens[id].sumKernelTokens;
+  assert.ok(text.includes(`A0 dense: ${dense.kernelTotals.dense} against Forth ${tok('forth')}`));
+  assert.ok(!/\b163\b/.test(text), 'no compact-form figure');
+  // green (class win) only on an A0 bar that is below every other language
+  for (const m of html.matchAll(/<span class="lbl">([^<]*)<\/span><div class="track ([^"]*)">/g))
+    if ((m[2] ?? '').includes('win')) assert.match(m[1] ?? '', /^A0/, `${m[1]} is not A0`);
   assert.ok(
-    text.includes(`${dense.kernelTotals.dense} tokens. Forth takes ${tok('forth')}.`),
-    'the token headline is A0 dense against Forth',
+    html.includes(`<span class="lbl">A0 (canonical)</span><div class="track a0"><div`),
+    'the canonical token count loses, so its bar is not green',
   );
-  assert.ok(text.includes(`written in ${axes.tokens.a0.dense.vsBest.languagesRanked} languages`));
-  for (const [label, v] of [
-    ['A0', dense.kernelTotals.dense],
-    ['Forth', tok('forth')],
-    ['Python', tok('python')],
-    ['TypeScript', tok('typescript')],
-    ['Rust', tok('rust')],
-  ] as const) {
-    const pct = Math.floor((v * 100) / tok('rust'));
-    assert.ok(
-      html.includes(
-        `<span class="lbl">${label}</span><div class="htrack"><div class="fill grown" style="width:${pct}%"></div></div><span class="n">${v}</span>`,
-      ),
-      `${label} bar is ${v} tokens, ${pct}% of Rust`,
-    );
-  }
-  // both install commands carry the COPY protocol; the terminal's final state is in the page without JS
+  // both install commands carry the COPY protocol
   assert.ok(
     html.includes(
       'data-copy="curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh"',
@@ -169,11 +166,6 @@ test('the home page is short: a pitch, the token figure, how it works, the losse
       'data-copy="irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex"',
     ),
   );
-  assert.match(
-    html,
-    /<pre[^>]*class="typing"[^>]*>[\s\S]*written to kernels\.a0[\s\S]*17\n<\/pre>/,
-  );
-  assert.ok(html.includes('<code>claude mcp add a0 -- a0 mcp .</code>'));
 });
 
 // A page program must fit the A0 toolchain: a function holds at most 32768 operand pairs and a text
@@ -194,10 +186,13 @@ test('splitting the stylesheet over functions leaves the rendered page unchanged
       await writeFile(file, unsplit);
       const whole = await generate(bin, file, { budget: false });
       const split = await generate(bin, `site/gen/${name}.tpl`);
-      assert.ok(
-        functionBudgets(whole).some((f) => f.operands > OPERAND_LIMIT),
-        `${name}: the unsplit program is over the budget`,
-      );
+      // the split is needed only while one literal of the whole stylesheet would pass the budget
+      const cssBytes = Buffer.byteLength(await readFile('site/gen/style.css', 'utf8'));
+      if (cssBytes > OPERAND_LIMIT)
+        assert.ok(
+          functionBudgets(whole).some((f) => f.operands > OPERAND_LIMIT),
+          `${name}: the unsplit program is over the budget`,
+        );
       assert.ok(functionBudgets(split).every((f) => f.operands <= OPERAND_LIMIT / 1.5));
       const a = await rendered(whole);
       const b = await rendered(split);

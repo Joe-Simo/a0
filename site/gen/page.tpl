@@ -62,12 +62,23 @@ m par java Java
 m par js JavaScript
 m par python Python
 m parcov c_openmp C
-# The well-known languages that open each chart of the many-language sections; every other language is behind a disclosure.
+# The languages each home chart shows (A0's rows always show); the benchmarks page has them all.
 m top A0
 m top C
+m top C++
 m top Rust
-m top TypeScript
+m top Zig
 m top Go
+m top Java
+m top C#
+m top TypeScript
+m top JavaScript
+m top Python
+m top Ruby
+m top OCaml
+m top PHP
+m top Forth
+m top Lua
 # The best of the three optimized baselines per test program, as named by arm64VsBestFlags in results/exec-benchmark-full.json.
 m bestflag cO3Native C -O3 native
 m bestflag rustO3Native Rust -O3 native
@@ -85,59 +96,48 @@ m bestflag zigReleaseFast Zig ReleaseFast
 2event at r0 0
 2tok at r0 1
 # The stylesheet is one text literal of a byte per operand; the A0 toolchain keeps a function's operands in a
-# table of 32768 pairs, so it is spread over five functions by byte range (the chunks that start in each range).
+# table of 32768 pairs, so it is spread over two functions by byte range (the chunks that start in each range).
 # tools/site-gen.ts fails the build when a function is over 75% of that table: then add a range here.
 {css_a
 s 9 css 0 9000
 }
 {css_b
-s 9 css 9000 18000
-}
-{css_c
-s 9 css 18000 27000
-}
-{css_d
-s 9 css 27000 36000
-}
-{css_e
-s 9 css 36000 45000
-}
-{css_f
-s 9 css 45000 54000
-}
-{css_g
-s 9 css 54000
+s 9 css 9000
 }
 c nav
 # The hero: statement, install line (one pane per shell; the runtime's `.switch` hook shows one at a
-# time, both without JS), and an agent edit typed into a terminal over the code rain. The runtime
-# turns `.rain` into a canvas (its text is the words that fall) and replays `.typing` (each `.beat`
-# span lands whole after a pause); without JS the terminal shows its final state.
+# time, both without JS) over the code rain (the runtime turns `.rain` into a canvas; its text is the
+# words that fall), and the measured charts, one tab each (the same `.switch` hook).
 {sec_hero
 <div
 +class home
 <div
 +id content
-+class hwrap
 <section
 +id top
-+class hhero
++class hero first
 .div rain
 +aria-hidden true
-"fn add mul ret u32 end
+"fn let match ret u32 end check A0
 >
-.div hfade
->
+.div wrap
 .div hcopy
-=h1 A language for agents to edit.
-.p lead
-"A small typed language your agent edits one function at a time. Every edit is type-checked before it reaches the file.
+.a badge
++href /benchmarks
+<b
+"MEASURED
+>
+"\sEvery number links to its results file
+>
+=h1 A typed language AI edits one function at a time.
+.p lede
+"A model changes one function; A0 checks it against the whole program and compiles to C, native arm64 and WebAssembly.
 >
 .div switch
-.div hcmd pane on
+.div install pane on
 <code
 .span pr
-"\$
+">
 >
 "\scurl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
 >
@@ -149,7 +149,7 @@ c nav
 "Copy
 >
 >
-.div hcmd pane
+.div install pane
 <code
 .span pr
 "PS>
@@ -166,10 +166,10 @@ c nav
 >
 .div os
 +role group
-+aria-label Shell
++aria-label Operating system
 <button
 +type button
-"macOS / Linux
+"macOS & Linux
 >
 <button
 +type button
@@ -177,171 +177,437 @@ c nav
 >
 >
 >
-.p connect
-+id connect
-"Then connect your agent:\s
-<code
-"claude mcp add a0 -- a0 mcp .
+.div row
+<a
++href https://github.com/Joe-Simo/a0/blob/main/install.sh
+"View install script
+>
+<a
++href /docs/#quickstart
+"Then follow the quick start
 >
 >
 >
-.div hside
-.div hterm
+}
+{sec_hero1
+.div panel switch tab
+.div os
 +role group
-+aria-label An agent edit being checked
-.div bar
-<span
-"kernels.a0
++aria-label Chart
+<button
++type button
+"Edit cost
 >
-.span tstat
-"checked
+<button
++type button
+"Tokens
+>
+<button
++type button
+"Speed
 >
 >
-.pre typing
-.span c-m
-"agent\s\sedit_function affine\n
+}
+{sec_edit
+.div pane chart on
+.h3 ct
+"One AI edit, start to accepted
 >
-"fn affine u32 u32 u32 -> u32\n\s\sa mul p0 p1\n\s\sb add a p3\n\s\sret b\nend\n
-.span c-r beat
-"✕ refused\s\sp3: affine takes 3 parameters\n\s\sfile unchanged\n\n
+.p sub
+"Tokens per task · Haiku and Sonnet pooled · $ec_c_n$ tasks a language · lower is better
 >
-.span c-m
-"agent\s\sedit_function affine\n
+.div bars
+[etrows et_top
+.div brow{et_me| me}
+.span lbl
+"$et_label$
 >
-"fn affine u32 u32 u32 -> u32\n\s\sa mul p0 p1\n\s\sb add a p2\n\s\sret b\nend\n
-.span c-g beat
-"✓ checked\s\swritten to kernels.a0\n\n
+.div track $et_cls$
+.div fill
+w 12
+w 1
+w $et_pct$
 >
-.span c-m
-"\$ a0 run examples/kernels.a0 affine 3 4 5\n
 >
-"17\n
+.span val
+"$et_val$
+>
+>
+]
+>
+.p alt
+"A0 dense, lean view (not shipped):\s
+.span mono
+"$et_dv$
+>
+>
+.p verdict
+"{et_win|+ Fewest tokens of $etrows$ languages: A0 $et_a0$|A0: $et_a0$, place $et_rank$ of $etrows$}
+>
+<ul
++class losses
+<li
+"− Session of 10 edits: place $ec_cr10$ of $n_langs1$
+>
+>
+.p src
+"Source:\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/results/ai-edit-b48-dense.json
+"results/ai-edit-b48-dense.json
+>
+"\s·\s
+<a
++href /benchmarks#cost
+"method →
+>
+>
+>
+}
+{sec_hero2
+.div pane chart
+.h3 ct
+"The same $tk_nk$ programs, written by hand
+>
+.p sub
+"o200k tokens · sum over the programs · lower is better
+>
+.div bars
+[tkrows tk_top
+.div brow{tk_me| me}
+.span lbl
+"$tk_label$
+>
+.div track $tk_cls$
+.div fill
+w 12
+w 1
+w $tk_pct$
+>
+>
+.span val
+"$tk_val$
+>
+>
+]
+>
+.p verdict
+"{tk_dwin|+ A0 dense: $tk_dv$ against Forth $tk_forth$|A0 dense: $tk_dv$, place $tk_dr$}
+>
+<ul
++class losses
+<li
+"− A0 canonical: $tk_cv$, place $tk_cr$ of $n_langs1$
+>
+>
+.p src
+"Source:\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/results/lang-axes.json
+"results/lang-axes.json
+>
+"\s·\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/results/dense-tokens.json
+"results/dense-tokens.json
+>
+"\s·\s
+<a
++href /benchmarks#tokens
+"method →
+>
+>
+>
+}
+{sec_hero3
+.div pane chart
+.h3 ct
+"Small programs, compiled
+>
+.p sub
+# claim-ok: axis note of the chart; every value is a variable from results/exec-benchmark-full.json
+"Time per call as a multiple of A0's · geometric mean · log scale · shorter is faster
+>
+.div bars
+[langs lg_top
+.div brow{lg_me| me}
+.span lbl
+"$lg_label$
+>
+.div track $lg_cls$
+.div fill
+w 12
+w 1
+w $lg_pct$
+>
+>
+.span val
+n a mov $lg_g100$
+c putratio %a
+"x
+>
+>
+]
+>
+.p verdict
+"$n_ties$ of $n_langs$ languages within 5% of A0; $n_ahead$ faster
+>
+<ul
++class losses
+<li
+"− Slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ programs, worst $bk_slow$x ($bk_slowk$)
+>
+>
+.p src
+"Source:\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/results/exec-benchmark-full.json
+"results/exec-benchmark-full.json
+>
+"\s·\s
+<a
++href /benchmarks#native
+"method →
+>
+>
 >
 >
 >
 >
 }
-# Kernel source tokens (o200k) of the $tk_nk$ token programs: A0's dense form from results/dense-tokens.json,
-# the languages' sumKernelTokens from results/lang-axes.json; bars are a share of the longest shown (Rust).
-{sec_tokens
+{sec_what
 <section
-+id tokens
-+class hsec reveal
-<div
-=h2 $tk_dv$ tokens. Forth takes $tk_forth$.
-.p body
-"The same $tk_nk$ programs written in $tk_nl$ languages. Forth is the shortest after A0.
++id what
+.div wrap
+.p eyebrow
+"01 / What A0 is
 >
-.span src
-"results/lang-axes.json, results/dense-tokens.json
+=h2 A typed language built for model edits.
+.div grid
+.div card
+.span tag
+"Language
 >
->
-.div hbars
-+role group
-+aria-label Source tokens of the same programs
-.div hrow a0
-.span lbl
-"A0
->
-.div htrack
-n a mov $tk_dv$
-n m mov $tk_rs$
-c fill %a %m
->
-.span n
-"$tk_dv$
+=h3 Typed, explicit, short
+=p Every function states its types. One operation per line.
+.div cmd
+"a0 check sq.a0
 >
 >
-.div hrow
-.span lbl
-"Forth
+.div card
+.span tag
+"Edits
 >
-.div htrack
-n a mov $tk_forth$
-n m mov $tk_rs$
-c fill %a %m
->
-.span n
-"$tk_forth$
+=h3 One function, checked
+=p A patch replaces one function; A0 re-validates the program or rejects the patch with a diagnostic.
+.div cmd
+"a0 patch sq.a0 edit.patch
 >
 >
-.div hrow
-.span lbl
-"Python
+.div card
+.span tag
+"Targets
 >
-.div htrack
-n a mov $tk_py$
-n m mov $tk_rs$
-c fill %a %m
->
-.span n
-"$tk_py$
+=h3 C, arm64, WebAssembly
+=p One front end; the same behaviour table runs on every target.
+.div cmd
+"a0 emit arm64 sq.a0
 >
 >
-.div hrow
-.span lbl
-"TypeScript
+.div card
+.span tag
+"Agents
 >
-.div htrack
-n a mov $tk_ts$
-n m mov $tk_rs$
-c fill %a %m
+=h3 MCP server
+=p Models read, edit and check A0 through tools instead of raw text.
+.div cmd
+"a0 mcp .
 >
-.span n
-"$tk_ts$
->
->
-.div hrow
-.span lbl
-"Rust
->
-.div htrack
-n a mov $tk_rs$
-n m mov $tk_rs$
-c fill %a %m
->
-.span n
-"$tk_rs$
 >
 >
 >
 >
 }
-{sec_how
+{sec_minute
 <section
-+id how
-+class reveal
-.div head
-=h2 How it works.
++id minute
+.div wrap
+.p eyebrow
+"02 / A minute with A0
 >
-.div how
-<div
-.span k
-"01
+=h2 From install to a checked edit.
+.ul steps
+<li
+.div cmd
+"printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0
 >
-=h3 The agent asks for one function.
-=pre edit_function affine
+=p One typed function.
 >
-<div
-.span k
-"02
+<li
+.div cmd
+"a0 run sq.a0 sq 12
 >
-=h3 A0 type-checks the edit.
-<pre
-"b add a p3\n
-.span c-r
-"✕ affine takes 3 parameters
+=p Prints the square.
+>
+<li
+.div cmd
+"a0 check sq.a0
+>
+<p
+"Reports type and bounds errors.\s
+.span mono
+"--fix
+>
+"\sapplies the exact fixes.
+>
+>
+<li
+.div cmd
+"a0 emit arm64 sq.a0
+>
+=p A0's own machine code; also c, js, java, sv.
+>
+<li
+.div cmd
+"a0 mcp .
+>
+=p Serves the folder to an agent over MCP.
+>
+>
+<p
++class small mute
+"Full list in\s
+<a
++href /docs/#cli
+"the CLI reference
+>
+".
 >
 >
 >
-<div
-.span k
-"03
+}
+{sec_vs
+<section
++id against
+.div wrap
+.p eyebrow
+"03 / Against other languages
 >
-=h3 The file changes only if it passes.
-<pre
-.span c-g
-"✓ written to kernels.a0
+=h2 Edit cost and speed against other languages.
+<p
++class lede
+"Full tables and methods on\s
+<a
++href /benchmarks
+"Benchmarks
+>
+".
+>
+.div grid two
+.div panel chart
+.h3 ct
+"The same $tk_nk$ programs, written by hand
+>
+.p sub
+"o200k tokens · sum over the programs · lower is better
+>
+.div bars
+[tkrows tk_top
+.div brow{tk_me| me}
+.span lbl
+"$tk_label$
+>
+.div track $tk_cls$
+.div fill
+w 12
+w 1
+w $tk_pct$
+>
+>
+.span val
+"$tk_val$
+>
+>
+]
+>
+.p verdict
+"{tk_dwin|+ A0 dense: $tk_dv$ against Forth $tk_forth$|A0 dense: $tk_dv$, place $tk_dr$}
+>
+<ul
++class losses
+<li
+"− A0 canonical: $tk_cv$, place $tk_cr$ of $n_langs1$
+>
+>
+.p src
+"Source:\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/results/lang-axes.json
+"results/lang-axes.json
+>
+"\s·\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/results/dense-tokens.json
+"results/dense-tokens.json
+>
+"\s·\s
+<a
++href /benchmarks#tokens
+"method →
+>
+>
+>
+}
+{sec_vs2
+.div panel chart
+.h3 ct
+"Small programs, compiled
+>
+.p sub
+# claim-ok: axis note of the chart; every value is a variable from results/exec-benchmark-full.json
+"Time per call as a multiple of A0's · geometric mean · log scale · shorter is faster
+>
+.div bars
+[langs lg_top
+.div brow{lg_me| me}
+.span lbl
+"$lg_label$
+>
+.div track $lg_cls$
+.div fill
+w 12
+w 1
+w $lg_pct$
+>
+>
+.span val
+n a mov $lg_g100$
+c putratio %a
+"x
+>
+>
+]
+>
+.p verdict
+"$n_ties$ of $n_langs$ languages within 5% of A0; $n_ahead$ faster
+>
+<ul
++class losses
+<li
+"− Slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ programs, worst $bk_slow$x ($bk_slowk$)
+>
+>
+.p src
+"Source:\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/results/exec-benchmark-full.json
+"results/exec-benchmark-full.json
+>
+"\s·\s
+<a
++href /benchmarks#native
+"method →
+>
 >
 >
 >
@@ -351,38 +617,75 @@ c fill %a %m
 {sec_limits
 <section
 +id limits
-+class reveal
-.div head
-=h2 Where it loses.
+.div wrap
+.p eyebrow
+"04 / Where A0 loses
 >
-.div limits
-<div
-<p
-"Slower than the best of C, Rust and Zig on\s
-<strong
-"$bk_nloss$ of $bk_n$ programs
+=h2 Measured losses.
+.div tblwrap
++tabindex 0
++role group
++aria-label Table, scrolls sideways
+<table
++class loss
+<tr
+=th Loss
+=th Measured
+=th Source
 >
-".
+<tr
+=td Native speed against the best of C, Rust and Zig
+.td mono
+"slower on $bk_nloss$ of $bk_n$ programs, worst $bk_slow$x
 >
-.span src
-"results/exec-benchmark-full.json
+.td mono small
+"exec-benchmark-full.json
+>
+>
+<tr
+=td Sessions of 10 AI edits
+.td mono
+"place $ec_cr10$ of $n_langs1$
+>
+.td mono small
+"ai-edit-b48-dense.json
+>
+>
+<tr
+=td Canonical source size
+.td mono
+"$tk_cv$ tokens, place $tk_cr$ of $n_langs1$
+>
+.td mono small
+"lang-axes.json
+>
+>
+<tr
+=td What the language lacks
+.td mono
+"floats, heap, recursion
+>
+.td mono small
+"STATUS.md
 >
 >
 >
-.p nofit
-"Unsigned integers, booleans and fixed arrays. No floats, heap or recursion; for those, use C, Rust or TypeScript.
+>
 >
 >
 }
 {sec_end
 <section
 +id install
-+class hend reveal
-=h2 Install A0.
-.div hcmd
+.div wrap
+.p eyebrow
+"05 / Install
+>
+=h2 Install
+.div install
 <code
 .span pr
-"\$
+">
 >
 "\scurl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
 >
@@ -394,15 +697,16 @@ c fill %a %m
 "Copy
 >
 >
-.p connect
-"Then connect your agent:\s
-<code
-"claude mcp add a0 -- a0 mcp .
+.div row
+.a btn
++href /docs/#quickstart
+"Quick start
 >
->
-.a gh
+<a
 +href https://github.com/Joe-Simo/a0
-"github.com/Joe-Simo/a0 ›
+"Source on GitHub ↗
+>
+>
 >
 >
 >

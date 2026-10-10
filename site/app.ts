@@ -437,6 +437,8 @@ function mountRain(el: HTMLElement): () => void {
     draw();
   };
   scheme.addEventListener('change', recolor);
+  const themeWatch = new MutationObserver(recolor);
+  themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   const stop = still
     ? () => undefined
     : whileVisible(el, 30, () => {
@@ -446,6 +448,7 @@ function mountRain(el: HTMLElement): () => void {
   return () => {
     stop();
     ro.disconnect();
+    themeWatch.disconnect();
     scheme.removeEventListener('change', recolor);
   };
 }
@@ -565,6 +568,32 @@ function mountSwitch(el: HTMLElement): void {
   };
   buttons.forEach((b, i) => b.addEventListener('click', () => pick(i)));
   pick(Math.max(0, panes.findIndex((p) => p.classList.contains('on'))));
+}
+
+/** The viewer's theme choice, kept in localStorage; without one the system setting applies. */
+const THEME_KEY = 'a0-theme';
+function applyStoredTheme(): void {
+  try {
+    const t = localStorage.getItem(THEME_KEY);
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch {
+    // storage blocked: the system setting applies
+  }
+}
+
+/** `.theme`: a button that flips between the light and the dark theme and remembers the choice. */
+function mountTheme(el: HTMLElement): void {
+  el.addEventListener('click', () => {
+    const d = document.documentElement;
+    const cur = d.dataset.theme ?? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    d.dataset.theme = next;
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // storage blocked: the choice lasts for this page only
+    }
+  });
 }
 
 // --- COPY (word 14) ---------------------------------------------------------------
@@ -919,6 +948,7 @@ async function main(): Promise<void> {
   // bars grow after layout, and `.count` numbers count up once. The program chooses the classes.
   // Content is visible without JS; the `js` class turns on the hidden start state of the motion hooks.
   document.documentElement.classList.add('js');
+  applyStoredTheme();
   const observer = new IntersectionObserver(
     (entries) => {
       for (const e of entries) if (e.isIntersecting) e.target.classList.add('in');
@@ -935,6 +965,10 @@ async function main(): Promise<void> {
     for (const el of Array.from(root.querySelectorAll<HTMLElement>('.typing:not(.mounted)'))) {
       el.classList.add('mounted');
       scenes.push(mountTyping(el));
+    }
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>('.theme:not(.mounted)'))) {
+      el.classList.add('mounted');
+      mountTheme(el);
     }
     for (const el of Array.from(root.querySelectorAll<HTMLElement>('.switch:not(.mounted)'))) {
       el.classList.add('mounted');
