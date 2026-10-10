@@ -2577,7 +2577,11 @@ nv2 get nodes n2
 nv3 get nodes n3
 nv4 get nodes n4
 nw arr nv0 nv1 nv2 nv3 nv4
-ra sub nargs p7
+# the arg window starts at page 0 of the half while the operands are still below it: a
+# segment that crosses into the half writes its first operands there (`txtseg` does the same)
+abel lt nargs p7
+ra0 sub nargs p7
+ra select abel 0 ra0
 a2 mul ra 2
 abp shr a2 7
 abase mul abp 128

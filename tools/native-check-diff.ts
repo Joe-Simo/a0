@@ -341,6 +341,39 @@ export function mutants(text: string, count: number, seed: number): [string, str
   return out;
 }
 
+/**
+ * Programs whose operands cross the front end's operand half (16384: a text literal's bytes are
+ * operands, and the second half is a second run of pass 5, parse.a0 `bodyargs`) inside one token
+ * segment: a text literal of `16384 - 40 + k` bytes, then a function of plain operands. A segment
+ * that started below the half and crossed it wrote its operands to a wrapped window (the site
+ * page that failed after a 16 to 17 byte class name). Lengths step by one byte around the
+ * boundary; some fill with a 3-byte UTF-8 character so the byte and character counts differ.
+ */
+export function halfBoundaryPrograms(): [string, string][] {
+  const out: [string, string][] = [];
+  const tail: string[] = ['fn tail io -> io', 'y0 write p0 1'];
+  for (let i = 1; i < 300; i += 1) tail.push(`y${i} write y${i - 1} ${i % 7}`);
+  tail.push('ret y299', 'end');
+  const program = (fill: string): string =>
+    [
+      'fn fill io -> io',
+      'x1 write p0 9',
+      `x2 text "${fill}"`,
+      'x3 puts x1 x2',
+      'ret x3',
+      'end',
+      ...tail,
+      '',
+    ].join('\n');
+  for (let k = 0; k <= 160; k += 1) {
+    const n = 16384 - 40 + k;
+    out.push([`half-ascii-${n}`, program('a'.repeat(n))]);
+    // the same byte count with arrows (U+2192, 3 bytes) at the end
+    if (k % 4 === 0) out.push([`half-utf8-${n}`, program(`${'a'.repeat(n - 15)}${'→'.repeat(5)}`)]);
+  }
+  return out;
+}
+
 /** Every program of the differential; texts are written under `dir`. */
 export async function programSet(
   dir: string,
@@ -362,6 +395,7 @@ export async function programSet(
       ...closures('corpus', corpus),
       ...KERNELS.map((k): [string, string] => [`kernel/${k.name}`, k.a0]),
       ...(await appEditPrograms()),
+      ...halfBoundaryPrograms(),
     ]),
   );
   if (mutantCount > 0) {
