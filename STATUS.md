@@ -222,3 +222,13 @@ The checker now rewrites operator symbols in op position, `add mul and or xor` w
 ## V4 tiebreak on set BB (2026-10-07)
 
 A third blind sealed set (BB, 30 tasks) settles the disagreement between sets Z (V4 fails on Haiku) and AA (V4 passes): pooled over Z, AA and BB, V4 accepts 69 against 73 (Haiku) and 88 against 91 (Sonnet) of 92, and costs 355.5 against 353.3 and 208.3 against 203.0 tokens per accepted edit at the 10-task horizon, so the registered rule is not met (`results/primer-v4-tiebreak.json`, `docs/history/2026-10-07-primer-v4-tiebreak-preregistration.md`). V4 is cheaper only on the cold task. The shipped canonical primer V3 stays; nothing else changes.
+
+## Combined edit protocol, pre-registered run (2026-10-10)
+
+The combined A0 edit protocol (bodies view, DR2 primer, typed header, compact three-tool MCP surface) FAILS its
+pre-registered rule for Haiku and Sonnet (`results/edit-protocol-2026-10-10.json`,
+[record](docs/history/2026-10-10-edit-protocol-preregistration.md)). Against the shipped dense control it costs
+0.30x / 1.57x / 2.95x tokens per accepted edit (Haiku; Sonnet 0.28x / 1.53x / 3.04x) at the cold / 10-task / unbounded
+horizons, with equal after-repair acceptance: its system text is too short to cache, the control's is cached. Against
+TypeScript it costs 1.35x (Haiku) and 1.26x (Sonnet) and accepts one task fewer after repair. Recorded as losses in the
+ledger; the shipped default stays. Rust was not scored (no Rust toolchain on the scoring machine).

@@ -84,3 +84,27 @@ TypeScript and Rust the same three tests are reported as wins or losses. Every f
 - The Rust arm could not be scored on the scoring machine: no `rustc` is installed, the harness self-check fails and
   every Rust reply is rejected as `rustc: ` with no compiler output. Those rejections measure the machine, not the
   subjects, so no Rust repair round was set up; the Rust first shots wait for a machine with a Rust toolchain.
+
+## Result (2026-10-10, `results/edit-protocol-2026-10-10.json`)
+
+Scored with scripted replies (one shot, plus the one repair where it ran; 16 repairs) through `tools/ai-edit-experiment.ts`,
+summarised by `tools/edit-protocol-summary.ts`. n = 36 per cell. Wilson 95% intervals in brackets. Tokens per accepted edit,
+o200k, cold / 10-task / unbounded. The combined arm's system text is under the 512-token cache minimum, so it is billed at
+weight 1 at every horizon; TypeScript's too.
+
+| model | arm | one-shot | after repair | tokens/accepted |
+|---|---|---|---|---|
+| haiku | A0 combined | 32 [0.75, 0.96] | 34 [0.82, 0.98] | 548.5 / 548.5 / 548.5 |
+| haiku | A0 control | 31 [0.71, 0.94] | 34 [0.82, 0.98] | 1816 / 348.8 / 185.8 |
+| haiku | TypeScript | 33 [0.78, 0.97] | 35 [0.86, 0.99] | 405.8 / 405.8 / 405.8 |
+| sonnet | A0 combined | 35 [0.86, 0.99] | 35 [0.86, 0.99] | 489.5 / 489.5 / 489.5 |
+| sonnet | A0 control | 33 [0.78, 0.97] | 35 [0.86, 0.99] | 1744.8 / 319.5 / 161.2 |
+| sonnet | TypeScript | 35 [0.86, 0.99] | 36 [0.90, 1.00] | 388.6 / 388.6 / 388.6 |
+
+Ratios A0 combined / comparator (cold / 10-task / unbounded): control Haiku 0.30 / 1.57 / 2.95, Sonnet 0.28 / 1.53 / 3.04;
+TypeScript Haiku 1.35 at every horizon, Sonnet 1.26. Rust: not scored (no `rustc` on the scoring machine; see Deviations).
+
+Verdict: **FAIL for both models.** Against the control: acceptance passes, cold tokens pass, 10-task and unbounded tokens lose.
+Against TypeScript: one-shot is not a Wilson loss, but after-repair acceptance (one task lower) and tokens at all three
+horizons lose. The combined protocol does not replace the shipped default. The 12 failed tests are in
+`results/loss-ledger.json` (source `edit-protocol`).

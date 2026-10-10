@@ -674,6 +674,66 @@ function primerLike(
   return out;
 }
 
+/**
+ * The pre-registered edit-protocol run (results/edit-protocol-2026-10-10.json,
+ * docs/history/2026-10-10-edit-protocol-preregistration.md): the combined A0 arm against each
+ * comparator per model. After-repair acceptance may not be lower (no band); one-shot is a tie within
+ * one trial (the report's Wilson verdict is stricter); tokens per accepted edit at each horizon must
+ * be more than 1 % lower, so the gap is measured against 0.99 of the comparator with no band.
+ */
+function editProtocolObservations(root: string): Observation[] {
+  const cells = obj(readJson(root, 'edit-protocol-2026-10-10.json')?.cells);
+  if (cells === undefined) return [];
+  const out: Observation[] = [];
+  const source = 'edit-protocol';
+  for (const model of ['haiku', 'sonnet']) {
+    const a = obj(obj(cells['a0-combined'])?.[model]);
+    if (a === undefined) continue;
+    for (const other of ['a0-control', 'ts', 'rust']) {
+      const b = obj(obj(cells[other])?.[model]);
+      if (b === undefined) continue;
+      const n = num(a.n) ?? 1;
+      for (const [axis, key, noise] of [
+        ['primer-accepted-one-shot', 'oneShot', 1 / n],
+        ['primer-accepted-repaired', 'accepted', 0],
+      ] as const) {
+        const mine = (num(a[key]) ?? 0) / n;
+        const theirs = (num(b[key]) ?? 0) / (num(b.n) ?? 1);
+        out.push({
+          id: `${source}|${model}/a0-combined|${axis}|${other}`,
+          source,
+          kernel: `${model}/a0-combined`,
+          axis,
+          competitor: other,
+          a0: mine,
+          other: theirs,
+          gap: theirs - mine,
+          noise,
+          load: null,
+        });
+      }
+      for (const h of ['cold', 'session10', 'unbounded']) {
+        const mine = num(obj(a.perAccepted)?.[h]) ?? 0;
+        const theirs = num(obj(b.perAccepted)?.[h]) ?? 0;
+        if (theirs <= 0) continue;
+        out.push({
+          id: `${source}|${model}/a0-combined/${h}|primer-tokens-per-accepted|${other}`,
+          source,
+          kernel: `${model}/a0-combined/${h}`,
+          axis: 'primer-tokens-per-accepted',
+          competitor: other,
+          a0: mine,
+          other: theirs,
+          gap: mine / theirs - 0.99,
+          noise: 0,
+          load: null,
+        });
+      }
+    }
+  }
+  return out;
+}
+
 /** Every observation the results files give, losses and ties and wins alike. */
 export function observations(root = '.'): Observation[] {
   return [
@@ -685,6 +745,7 @@ export function observations(root = '.'): Observation[] {
     ...primerObservations(root),
     ...appEditObservations(root),
     ...checkLatencyObservations(root),
+    ...editProtocolObservations(root),
   ];
 }
 
