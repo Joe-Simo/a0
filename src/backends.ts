@@ -40,7 +40,14 @@ import { DIAGNOSTICS, diag } from './diagnostics.js';
 import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { trapModuleOf } from './native-trap.js';
-import { callTraps, mayTrapFn, optimizeFunction, siteOf, strictTrapSite } from './optimize.js';
+import {
+  callTraps,
+  mayTrapFn,
+  nodeDefs,
+  optimizeFunction,
+  siteOf,
+  strictTrapSite,
+} from './optimize.js';
 import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { COMPILER_VERSION, isTarget, TARGETS, type Target } from './targets.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
@@ -932,6 +939,12 @@ interface CContext {
   readonly projections: Projections;
   /** The large node built directly in the caller's `out` storage (the result's root). */
   readonly retOut?: string | undefined;
+  /** Storage owners built in their single consumer's storage (placements). */
+  readonly dests: ReadonlyMap<string, Placement>;
+  /** The operands built in their consumer's storage: the consumer's fill skips them. */
+  readonly placed: Set<string>;
+  /** Nodes whose storage is declared already (a consumer's storage is declared by its first child). */
+  readonly declared: Set<string>;
   /** Arena allocations emitted so far (the body then saves and restores the arena top). */
   arena: number;
 }
@@ -1072,7 +1085,7 @@ const cIdx = (fn: TypedFunc, node: Node, index: string): string => {
   return siteOf(fn, node) === 'bounds' ? `a0_ck(${index}, ${n}u)` : `${index} % ${n}u`;
 };
 
-function cExpr(ctx: CContext, node: Node, index: number): string {
+function cExpr(ctx: CContext, node: Node): string {
   const fn = ctx.fn;
   const vals = node.args.map((o) => cVal(ctx, o));
   const [a, b, c] = vals;
@@ -1136,21 +1149,12 @@ function cExpr(ctx: CContext, node: Node, index: number): string {
       return `a0mk_${mangleType(fn.types.get(node.id) ?? 'u32')}(${vals.join(', ')})`;
     case 'get':
       return `${a}.e[${cIdx(fn, node, b as string)}]`;
-    case 'set': {
-      const idx = cIdx(fn, node, b as string);
-      // In place: an assignment statement; the node aliases its operand's storage. The index
-      // check (strict) is part of the subscript, so it runs before the store.
-      if (cInPlace(ctx, node, index)) return `${a}.e[${idx}] = ${c};`;
-      const checked = site === 'bounds' ? idx : b;
-      return `a0set_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}(${a}, ${checked}, ${c})`;
-    }
+    // A small aggregate update is a statement (cSmallUpdate); a large one is cLargeNode's.
+    case 'set':
+    case 'put':
+      throw new A0Error(`${node.op} is emitted as a statement`);
     case 'at':
       return `${a}.f${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}`;
-    case 'put': {
-      const k = node.args[1]?.kind === 'u32' ? node.args[1].value : 0;
-      if (cInPlace(ctx, node, index)) return `${a}.f${k} = ${c};`;
-      return `a0put_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}_${k}(${a}, ${c})`;
-    }
     case 'read':
       return fn.profile === 'strict' ? `a0_sread(${a})` : `a0_read(${a})`;
     case 'write':
@@ -1206,12 +1210,102 @@ function cVariantSignature(fn: TypedFunc, variant: CVariant): string {
     : `static inline ${cType(fn.result)} a0r_${fn.name}(${params})`;
 }
 
-/** Storage for a large node: the caller's `out` when it is the result's root, else the arena. */
-function cLargeStorage(ctx: CContext, n: Node): string {
-  const t = cType(ctx.fn.types.get(n.id) ?? 'u32');
+/**
+ * A node's own storage, declared once: the caller's `out` when it is the result's root, else the
+ * arena. Empty when already declared (its first part declared it).
+ */
+function cNodeStorage(ctx: CContext, n: Node, t: string): string {
+  if (ctx.declared.has(n.id)) return '';
+  ctx.declared.add(n.id);
   if (ctx.retOut === n.id) return `${t} *const n_${n.id} = out;`;
   ctx.arena += 1;
   return `${t} *const n_${n.id} = (${t} *)a0arena_alloc(sizeof(${t}));`;
+}
+
+/** Is the operand a child built in its consumer's storage (see cLargeStorage)? */
+const isPlaced = (ctx: CContext, o: Operand): boolean => o.kind === 'node' && ctx.placed.has(o.id);
+
+/**
+ * Storage for a large node. A placed node (see placements) is the field or element of its
+ * consumer's storage, declared here with the consumer's own; the consumer's fill then skips it.
+ */
+function cLargeStorage(ctx: CContext, n: Node): string {
+  const t = cType(ctx.fn.types.get(n.id) ?? 'u32');
+  const place = ctx.dests.get(n.id);
+  if (place === undefined) return cNodeStorage(ctx, n, t);
+  const { consumer, top } = place;
+  const slot = consumer.args.findIndex((o) => o.kind === 'node' && o.id === top);
+  const declare = cNodeStorage(ctx, consumer, cType(ctx.fn.types.get(consumer.id) ?? 'u32'));
+  ctx.placed.add(top);
+  const part = consumer.op === 'rec' ? `f${slot}` : `e[${slot}]`;
+  return `${declare} ${t} *const n_${n.id} = &n_${consumer.id}->${part};`;
+}
+
+/** A storage owner placed in its consumer: the consumer and the operand (the top) it takes. */
+interface Placement {
+  readonly consumer: Node;
+  readonly top: string;
+}
+
+/**
+ * Large operands built in their single consumer's storage. A large `rec` or `arr` (not the owned
+ * loop state, whose stores cStateStores chooses) takes each operand that is a fresh large value
+ * used only there, and builds it directly in the operand's slot instead of a temporary copied
+ * into it. The operand may be an in-place update chain (`set` of a value used once, updated in
+ * place, cInPlace): the storage is the chain's owner, the first fresh value, and the in-place
+ * updates write into it. The value is new storage and no other node reads it, so value semantics
+ * hold. The returned map is by owner: owner id to its consumer and the operand (the chain's top)
+ * placed in the consumer's slot.
+ */
+function placements(fn: TypedFunc, variant: CVariant): Map<string, Placement> {
+  const out = new Map<string, Placement>();
+  const uses = useCounts(fn);
+  const defs = nodeDefs(fn);
+  const pos = new Map(fn.nodes.map((n, i) => [n.id, i] as const));
+  const owned = cOwned(variant, fn);
+  const projections = cProjections(fn, variant);
+  // The node whose storage holds `n`'s value: `n` itself when it allocates, else the owner of the
+  // value it updates in place (cInPlace's test: the earlier uses of that value only read it).
+  const ownerOf = (n: Node): Node | undefined => {
+    if (n.op === 'arr' || n.op === 'rec' || n.op === 'call') return n;
+    if (n.op !== 'set' && n.op !== 'put') return undefined;
+    const target = n.args[0] as Operand;
+    if (
+      target.kind === 'node' &&
+      cMutableHere(fn, target, pos.get(n.id) ?? 0, owned, true, projections)
+    ) {
+      const t = defs.get(target.id);
+      return t === undefined ? undefined : ownerOf(t);
+    }
+    return n;
+  };
+  const last = fn.nodes[fn.nodes.length - 1];
+  for (const consumer of fn.nodes) {
+    if (consumer.op !== 'rec' && consumer.op !== 'arr') continue;
+    if (!isLargeC(fn.types.get(consumer.id) ?? 'u32')) continue;
+    if (variant === 'owned' && consumer.op === 'rec' && consumer === last) continue;
+    for (const o of consumer.args) {
+      if (o.kind !== 'node' || (uses.get(o.id) ?? 0) !== 1) continue;
+      if (fn.ret.kind === 'node' && fn.ret.id === o.id) continue;
+      const top = defs.get(o.id);
+      const owner = top === undefined ? undefined : ownerOf(top);
+      if (owner === undefined || !isLargeC(fn.types.get(owner.id) ?? 'u32')) continue;
+      if (fn.ret.kind === 'node' && fn.ret.id === owner.id) continue;
+      out.set(owner.id, { consumer, top: o.id });
+    }
+  }
+  return out;
+}
+
+/** How many operand positions (and the result) name each node: the node's uses. */
+function useCounts(fn: TypedFunc): Map<string, number> {
+  const uses = new Map<string, number>();
+  const count = (o: Operand): void => {
+    if (o.kind === 'node') uses.set(o.id, (uses.get(o.id) ?? 0) + 1);
+  };
+  for (const n of fn.nodes) n.args.forEach(count);
+  count(fn.ret);
+  return uses;
 }
 
 /** Statements computing a large-typed (non-iteration) node through its pointer. */
@@ -1242,13 +1336,16 @@ function cLargeNode(ctx: CContext, n: Node, index: number): string {
         t.kind === 'arr' &&
         isPrimitive(t.elem) &&
         n.args.every((o) => (o.kind === 'u32' && o.value === 0) || (o.kind === 'bool' && !o.value));
+      // A placed operand is already in its slot (cLargeStorage of that operand).
       const fill = zeros
         ? `a0zero_${mangleType(t)}(${name});`
-        : n.args.map((o, k) => `${name}->e[${k}] = ${cVal(ctx, o)};`).join(' ');
+        : n.args
+            .flatMap((o, k) => (isPlaced(ctx, o) ? [] : [`${name}->e[${k}] = ${cVal(ctx, o)};`]))
+            .join(' ');
       return `  ${cLargeStorage(ctx, n)} ${fill}`;
     }
     case 'rec':
-      return `  ${cLargeStorage(ctx, n)} ${n.args.map((o, k) => `${name}->f${k} = ${cVal(ctx, o)};`).join(' ')}`;
+      return `  ${cLargeStorage(ctx, n)} ${n.args.flatMap((o, k) => (isPlaced(ctx, o) ? [] : [`${name}->f${k} = ${cVal(ctx, o)};`])).join(' ')}`;
     // Only the result's root in `out` is a copy; any other read borrows (see cBorrow).
     case 'get':
       return `  ${cLargeStorage(ctx, n)} *${name} = ${a}.e[${cIdx(fn, n, b as string)}];`;
@@ -1319,6 +1416,107 @@ function cStateStores(ctx: CContext, rec: Node): string | undefined {
   return stores.length === 0 ? '' : `  ${stores.join(' ')}`;
 }
 
+/** The same value: the same node or parameter, or the same literal. */
+function sameValue(x: Operand, y: Operand): boolean {
+  if (x.kind === 'node') return y.kind === 'node' && y.id === x.id;
+  if (x.kind === 'param') return y.kind === 'param' && y.index === x.index;
+  if (x.kind === 'u32') return y.kind === 'u32' && y.value === x.value;
+  return y.kind === 'bool' && y.value === x.value;
+}
+
+/** The part a `set` (element `.e[i]`) or `put` (field `.fk`) of `node` names in its container. */
+function cPart(ctx: CContext, node: Node): string {
+  if (node.op === 'set') return `.e[${cIdx(ctx.fn, node, cVal(ctx, node.args[1] as Operand))}]`;
+  return `.f${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}`;
+}
+
+/**
+ * A `set`/`put` of a small aggregate (by value in C). In place when its target is unshared here
+ * (`cInPlace`): an assignment to the part. Otherwise one copy of the target, then the part is
+ * updated: `T n = a; n.e[i] = v;`. The helper form (`a0set_T(a, i, v)`, `a0put_T_k(a, v)`) took the
+ * target by value and returned it, two whole copies for one element.
+ */
+function cSmallUpdate(ctx: CContext, node: Node, index: number): string {
+  const a = cVal(ctx, node.args[0] as Operand);
+  const c = cVal(ctx, node.args[2] as Operand);
+  const part = cPart(ctx, node);
+  if (cInPlace(ctx, node, index)) return `  ${a}${part} = ${c};`;
+  const t = cType(ctx.fn.types.get(node.id) ?? 'u32');
+  return `  ${t} n_${node.id} = ${a}; n_${node.id}${part} = ${c}; (void)n_${node.id};`;
+}
+
+/** The nested updates of a body (see nestedUpdates). */
+interface NestedUpdates {
+  /** The outer update node, mapped to the inner update it nests. */
+  readonly heads: ReadonlyMap<string, Node>;
+  /**
+   * The inner update of each head, and the borrow only it reads: not emitted (their bounds checks
+   * still are, cSkipped).
+   */
+  readonly skipped: ReadonlySet<string>;
+}
+
+/**
+ * Nested in-place updates. `set(C, i, set(get(C, i), j, v))`, or with `put`/`at` for records, is
+ * the element's own update, `C.e[i].e[j] = v`: the inner update copies the element (a borrow of C
+ * cannot be updated), then the store writes the copy back. When C is updated in place at the
+ * store (`cMutableHere`, the same test as `cInPlace`), the store writes the part directly. The
+ * inner update must be used once (by the store), so no other node sees its copy. The borrow stays
+ * a pointer while other nodes read it: those reads precede the store, the only write to C in
+ * between, and a read after the store is refused by `cMutableHere`. Value semantics hold: C is
+ * unshared and unread after the store, and the value written is read at the store exactly as at
+ * the inner update, since C does not change in between. The strict bounds checks of the borrow
+ * and the inner update still run at their own positions, so a trap is the same one.
+ */
+function nestedUpdates(ctx: CContext): NestedUpdates {
+  const { fn } = ctx;
+  const heads = new Map<string, Node>();
+  const skipped = new Set<string>();
+  const defs = new Map(fn.nodes.map((n) => [n.id, n] as const));
+  const pos = new Map(fn.nodes.map((n, i) => [n.id, i] as const));
+  const uses = useCounts(fn);
+  const owned = cOwned(ctx.variant, fn);
+  for (const outer of fn.nodes) {
+    if (outer.op !== 'set' && outer.op !== 'put') continue;
+    const [target, key, value] = outer.args;
+    if (target === undefined || key === undefined || value?.kind !== 'node') continue;
+    const inner = defs.get(value.id);
+    if (inner === undefined || (inner.op !== 'set' && inner.op !== 'put')) continue;
+    const borrowOp = outer.op === 'set' ? 'get' : 'at';
+    const borrowOf = inner.args[0];
+    if (borrowOf?.kind !== 'node') continue;
+    const borrow = defs.get(borrowOf.id);
+    if (borrow === undefined || borrow.op !== borrowOp) continue;
+    const [of, at] = borrow.args;
+    if (of === undefined || at === undefined || !sameValue(of, target) || !sameValue(at, key))
+      continue;
+    // The inner update's one use is the store (a use by the result counts too, so a returned
+    // inner update fails here). The borrow stays: its other reads precede the store, and a read
+    // after it is a borrow of the target read after the update, which `cMutableHere` refuses.
+    if (uses.get(inner.id) !== 1) continue;
+    if (!cMutableHere(fn, target, pos.get(outer.id) ?? 0, owned, true, ctx.projections)) continue;
+    heads.set(outer.id, inner);
+    skipped.add(inner.id);
+    // A borrow whose only use was the inner update is not needed either (no unused variable).
+    if (uses.get(borrow.id) === 1) skipped.add(borrow.id);
+  }
+  return { heads, skipped };
+}
+
+/** A skipped borrow or inner update: only its strict bounds check remains, at its own position. */
+function cSkipped(ctx: CContext, node: Node): string {
+  return siteOf(ctx.fn, node) === 'bounds'
+    ? `  (void)${cIdx(ctx.fn, node, cVal(ctx, node.args[1] as Operand))};`
+    : '';
+}
+
+/** The store of a nested update (see nestedUpdates): the part of the target, updated in place. */
+function cNestedUpdate(ctx: CContext, outer: Node, inner: Node): string {
+  const target = outer.args[0] as Operand;
+  ctx.aliases.set(outer.id, cRoot(ctx, target));
+  return `  ${cVal(ctx, target)}${cPart(ctx, outer)}${cPart(ctx, inner)} = ${cVal(ctx, inner.args[2] as Operand)};`;
+}
+
 function cBody(
   fn: TypedFunc,
   variant: CVariant,
@@ -1350,6 +1548,9 @@ function cBodyWith(
     borrows: new Set(),
     projections: cProjections(fn, variant),
     retOut,
+    dests: placements(fn, variant),
+    placed: new Set(),
+    declared: new Set(),
     arena: 0,
   };
   const hooked = (site: CFoldSite): string => {
@@ -1368,6 +1569,7 @@ function cBodyWith(
   // A frame (function name on the shadow stack) is kept by every function under the iteration
   // trap runtime, and under strict by exactly the functions that can trap.
   const framed = trap || mayTrapFn(fn);
+  const nested = nestedUpdates(ctx);
   const lines = fn.nodes.map((n, index) => {
     const t = cType(fn.types.get(n.id) ?? 'u32');
     if (n.op === 'fold' || n.op === 'loop') {
@@ -1413,6 +1615,9 @@ function cBodyWith(
           : `${t} n_${n.id} = ${init};`;
       return hooked({ fn, node: n, count: `${count}`, extra, state, decl, loop });
     }
+    const inner = nested.heads.get(n.id);
+    if (inner !== undefined) return cNestedUpdate(ctx, n, inner);
+    if (nested.skipped.has(n.id)) return cSkipped(ctx, n);
     const borrow = cBorrow(ctx, n);
     if (borrow !== undefined) return borrow;
     if (
@@ -1425,7 +1630,8 @@ function cBodyWith(
       if (stores !== undefined) return stores;
     }
     if (isLargeC(fn.types.get(n.id) ?? 'u32')) return cLargeNode(ctx, n, index);
-    const expr = cExpr(ctx, n, index);
+    if (n.op === 'set' || n.op === 'put') return cSmallUpdate(ctx, n, index);
+    const expr = cExpr(ctx, n);
     if (ctx.aliases.has(n.id)) return `  ${expr}`;
     // `const T x` for values; `T *const x` for the io pointer (the pointee is mutable state).
     const decl = t.endsWith('*') ? `${t}const` : `const ${t}`;
@@ -1443,10 +1649,12 @@ function cBodyWith(
   const roots = new Set(
     [...ctx.aliases.values()].filter((o) => o.kind === 'node').map((o) => cOperand(o)),
   );
-  const body = lines.map((line) => {
-    const m = /^ {2}const \S+ (n_[a-z0-9_]+) =/.exec(line);
-    return m !== null && roots.has(m[1] as string) ? line.replace('  const ', '  ') : line;
-  });
+  const body = lines
+    .filter((line) => line !== '')
+    .map((line) => {
+      const m = /^ {2}const \S+ (n_[a-z0-9_]+) =/.exec(line);
+      return m !== null && roots.has(m[1] as string) ? line.replace('  const ', '  ') : line;
+    });
   const root = cRoot(ctx, fn.ret);
   const tail: string[] = framed ? ['  a0_leave();'] : [];
   if (variant === 'owned') {

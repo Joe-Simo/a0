@@ -1297,9 +1297,9 @@ test('C emission: owned iteration bodies update the loop state in place; large a
       c,
     ),
   );
-  // A value still read later is copied (a0set_), and the copy is then updated in place.
+  // A value still read later is copied once (`T n = *p0`), and the copy is then updated in place.
   assert.ok(
-    /a0o_keepold[^}]*a0t_a8_u n_n = a0set_a8_u\(\(\*p0\), p1, p2\);[^}]*n_n\.e\[0u % 8u\] = n_a;\n {2}\*p0 = n_n;/.test(
+    /a0o_keepold[^}]*a0t_a8_u n_n = \(\*p0\); n_n\.e\[p1 % 8u\] = p2; \(void\)n_n;[^}]*n_n\.e\[0u % 8u\] = n_a;\n {2}\*p0 = n_n;/.test(
       c,
     ),
   );
