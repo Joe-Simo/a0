@@ -1,0 +1,19 @@
+{
+  "name": "fill-read-through",
+  "rule": "src/optimize.ts readThroughFills: get A k on a fill-run fold, element index provably below the trip count (upperBound(k) < count, or canonical count == length so the index is rem k length), becomes f(index, extras); f limited to FUSE_RECOMPUTE_COST (4 nodeCost units); the fold is dead when no read remains",
+  "kernel": "arrfill (tools/exec-bench-kernels.ts)",
+  "ir_after": ["o_k add p0 p0", "o_0 and p1 7", "o_j add o_k o_0", "s add o_j 3", "ret s"],
+  "wasm_arrfill_body_hex": "01027f200020006a210220014107712103200220036a41036a0b",
+  "wasm_arrfill_body_bytes": 26,
+  "wasm_arrfill_i32_load_store": 0,
+  "wasm_evidence_method": "byte decode of the arrfill function body from compile(program, 'wasm'): local.get/i32.add/i32.const/i32.and/local.set only; no 0x28 i32.load or 0x36 i32.store",
+  "timing": {
+    "publishable": false,
+    "reason": "Win32_Processor LoadPercentage was 100 on five consecutive samples (threshold 25); no wasm-ab samples taken"
+  },
+  "selfhost": {
+    "ported_to_compiler_optimize_a0s": false,
+    "selfhost_wasm": "8/8 programs identical (the rule fires on no function of the selfhost check)",
+    "note": "recorded as a known difference in compiler/optimize.a0s"
+  }
+}
