@@ -30,11 +30,15 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - name: Full gate
-        run: node dist/tools/dev/a0-dev.js gate 2>&1 | tee gate.log
+        shell: bash
+        run: |
+          set -o pipefail
+          node dist/tools/dev/a0-dev.js gate 2>&1 | tee gate.log
+          grep -q "GATE RESULT: pass" gate.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
-          name: gate-${{ github.ref_name }}
+          name: gate-${{ github.run_id }}
           path: |
             gate.log
             results/
