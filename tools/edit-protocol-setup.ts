@@ -12,12 +12,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path';
 
 export function subjectPrompt(dir: string): string {
-  return [
-    `You are a subject in a measured experiment. Your working directory is ${dir} and you may use nothing outside it.`,
-    `Do not read, list, search or open any file or directory outside ${dir} (no repository, no other subject directory, no web).`,
-    `Read ${join(dir, 'prompt.txt')}. It holds a SYSTEM text and a REQUEST: follow the SYSTEM text as your instructions and answer the REQUEST.`,
-    `Write your reply, exactly the text you would send and nothing else, to ${join(dir, 'reply.txt')}. Then stop.`,
-  ].join('\n');
+  return `Experiment subject. Directory: ${dir}. Read and write only inside it; never read, list or search anything outside it (no repository, no other directory, no web). Read prompt.txt there (a SYSTEM text, then a REQUEST), follow the SYSTEM text and answer the REQUEST. Write only your reply text to reply.txt in that directory, then stop.`;
 }
 
 if (import.meta.main) {
