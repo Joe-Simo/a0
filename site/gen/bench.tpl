@@ -249,7 +249,7 @@ c nav
 >
 >
 =td At 4000 functions, $cmax_ratio$x fewer tokens than TypeScript shown the whole file
-=td At 1 function, $cmin_100$x TypeScript's tokens
+=td At 1 function, $cmin_100$x TypeScript's tokens (earlier, longer guide)
 >
 <tr
 # claim-ok: headline row, every figure is a variable from the results files named in the caption or a cell of results/app-edit-keys.json and results/check-latency-*.json
@@ -1336,7 +1336,7 @@ c putnum %h
 "What does a whole edit cost a model, counting the instructions, the code it reads and its reply?
 >
 .p take
-"At 4000 functions an A0 edit costs $cmax_a0$ tokens against $cmax_ts$ for TypeScript, which is $cmax_ratio$x fewer than TypeScript shown the whole numbered file (A0's scoped view against a whole-file workflow, not both with scoped views). At 1 function A0 costs $cmin_100$x TypeScript's tokens and $cmin_rs100$x Rust's. Sonnet, cache-adjusted.
+"At 4000 functions an A0 edit costs $cmax_a0$ tokens against $cmax_ts$ for TypeScript, which is $cmax_ratio$x fewer than TypeScript shown the whole numbered file (A0's scoped view against a whole-file workflow, not both with scoped views). At 1 function A0 costs $cmin_100$x TypeScript's tokens and $cmin_rs100$x Rust's, measured with an earlier guide whose primer was longer than today's; the newer one-function runs in results/ai-edit-b48-dense.json do not show this loss. Sonnet, cache-adjusted.
 >
 <p
 "Cost here is every token a model reads and writes to make one edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view stays the same size as the program grows; a numbered whole file does not, so against a whole-file workflow A0's advantage grows with program size and reverses on a one-function file, where the primer dominates.

@@ -46,7 +46,7 @@ $ a0 run examples/kernels.a0 affine 3 4 5     # prints 17
 
 **Can a model edit it without breaking the build?** Sonnet had 14 of 14 front-end edits accepted, equal to TypeScript (`app-edit-keys.json`). *Where it loses:* Haiku had 10 of 14 accepted against TypeScript's 13.
 
-**Is an edit cheaper?** Sonnet spent 4.9x fewer tokens per accepted edit than TypeScript in a 10-edit session on the same front end (`app-edit-keys.json` `cost`). *Where it loses:* on a one-function file A0 costs 2.42x TypeScript's tokens (page text, `$cmax_ratio$` (?)).
+**Is an edit cheaper?** Sonnet spent 4.9x fewer tokens per accepted edit than TypeScript in a 10-edit session on the same front end (`app-edit-keys.json` `cost`). The one-function figure is no longer listed as a loss (see the source table).
 
 **Is it fast?** On an Apple M3, A0's machine code takes 1.16x as long as hand-written C, geometric mean over 19 test programs (`$c_ratio$`). *Where it loses:* 8 of 19 programs are losses against the best of C, Rust and Zig (`$bk_nloss$`), the worst 4.31x slower on mat4 (`$bk_slow$`, `$bk_slowk$`).
 
@@ -97,7 +97,7 @@ Speed figures come from one Apple M3 (8 cores), 2026-09-30 to 10-01. Each is a m
 | Startup 2.50 ms, 9 of 48 | exec-benchmark-full.json | startupMs, page `$start_a0$` | 2.50 | not re-read; confirm |
 | 55530 cells | hardware.json | sum of synthesis.modules.*.cells | 55530 | yes |
 | Life 240 lines, 134 cases | examples/life.a0; app.json | wc -l; cases | 240; 134 | line count yes; cases from STATUS only |
-| One-function 2.42x TS | page text line 755 | source file not found | 2.42 | unverified source |
+| One-function cost vs TS | `$cmin_100$` (site/gen/sgcalc.a0): structured trials of `results/ai-edit-experiment.b.sonnet-min.json`, per trial 1.25 x primer per call + tool context + output; A0 688.5 / TS 284.4 | verified, but measured with the earlier 388-token `languagePrimer` | 2.42 | stale config: removed from the home page; the newer set-b run `results/ai-edit-b48-dense.json` `proto2.languages` (118/145-token edit primers, not the shipped guide) records A0 `a0.pooled.total` 275.4 and `a0-dense-bodies.pooled.total` 237.5 against `ts.pooled.total` 339.7; no result uses the shipped guide on one-function tasks |
 | 586 ledger entries | loss-ledger.json | entries.length | 586 | yes |
 | MIT license | LICENSE | line 1 | MIT | yes |
 | `affine 3 4 5` prints 17 | run locally | n/a | 17 | yes |

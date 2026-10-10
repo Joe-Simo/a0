@@ -358,18 +358,6 @@ c fill %a %m
 .div limits
 <div
 <p
-"On a one-function file, a whole edit costs\s
-<strong
-"$cmin_100$× TypeScript's tokens
->
-".
->
-.span src
-"results/ai-edit-b48-dense.json, results/ai-edit-experiment.b.sonnet-min.json
->
->
-<div
-<p
 "Slower than the best of C, Rust and Zig on\s
 <strong
 "$bk_nloss$ of $bk_n$ programs

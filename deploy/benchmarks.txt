@@ -6,7 +6,7 @@ Reproduce a result Where A0 loses
 Is native code fast? — 1.16x the time of hand-written C, geometric mean over 19 test programs on an Apple M3 — Slower than the best of C, Rust and Zig on 8 of 19 test programs, worst 4.31x on mat4
 How does it compare with other languages? — 3 of 48 other languages are within 5% of A0's speed and the rest are slower — 8 of 48 languages are more than 5% faster
 Does it start quickly? — 2.50 ms from launch to first result, place 9 of 48 languages — Every language placed above it starts faster
-Is an edit cheaper? — At 4000 functions, 203.8x fewer tokens than TypeScript shown the whole file — At 1 function, 2.42x TypeScript's tokens
+Is an edit cheaper? — At 4000 functions, 203.8x fewer tokens than TypeScript shown the whole file — At 1 function, 2.42x TypeScript's tokens (earlier, longer guide)
 Do models get the edit right? — Sonnet: 14 of 14 front-end edits accepted after one repair, equal to TypeScript, at 4.9x fewer tokens per accepted edit — Haiku: 10 of 14 accepted against TypeScript's 13
 Is an edit checked quickly? — 5 to 23 ms per edit in a warm session, against 531 to 3918 ms for a whole-project tsc check — Checking from scratch in a fresh process is slower than tsc-rs on Linux and macOS, and than tsgo on macOS
 
@@ -774,7 +774,7 @@ Next: what a whole edit costs with real models. Cost
 
 Cost
 What does a whole edit cost a model, counting the instructions, the code it reads and its reply?
-At 4000 functions an A0 edit costs 706 tokens against 143854 for TypeScript, which is 203.8x fewer than TypeScript shown the whole numbered file (A0's scoped view against a whole-file workflow, not both with scoped views). At 1 function A0 costs 2.42x TypeScript's tokens and 2.29x Rust's. Sonnet, cache-adjusted.
+At 4000 functions an A0 edit costs 706 tokens against 143854 for TypeScript, which is 203.8x fewer than TypeScript shown the whole numbered file (A0's scoped view against a whole-file workflow, not both with scoped views). At 1 function A0 costs 2.42x TypeScript's tokens and 2.29x Rust's, measured with an earlier guide whose primer was longer than today's; the newer one-function runs in results/ai-edit-b48-dense.json do not show this loss. Sonnet, cache-adjusted.
 Cost here is every token a model reads and writes to make one edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view stays the same size as the program grows; a numbered whole file does not, so against a whole-file workflow A0's advantage grows with program size and reverses on a one-function file, where the primer dominates.
 That is an advantage of the workflow, not of the language. When TypeScript, Rust, Python, Go, Java, C and Ruby are given an equal view (a parse-derived function and its callees, numbered line edits), pooled over the four program sizes (96 trials per cell) A0 canonical costs 318 tokens for one cold task and 176 in an unbounded session, against 386 and 138 for TypeScript and 375 and 115 for Ruby, so it is cheaper cold and dearer once the primer is cached; A0 dense costs 273 and 99. results/ai-edit-scoped.json.
 Edit cost across 49 languages, with A0 in two forms

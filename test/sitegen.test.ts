@@ -128,10 +128,12 @@ test('the home page is short: a pitch, the token figure, how it works, the losse
   const answers: readonly RegExp[] = [
     /\$ a0 run examples\/kernels\.a0 affine 3 4 5\n\s*17/,
     /refused\s+p3: affine takes 3 parameters/,
-    /On a one-function file, a whole edit costs \d+\.\d\d× TypeScript's tokens\./,
     /Slower than the best of C, Rust and Zig on \d+ of \d+ programs\./,
   ];
   for (const re of answers) assert.match(text, re);
+  // the one-function cost came from a run with an earlier, longer guide; the newer set-b runs
+  // (results/ai-edit-b48-dense.json, proto2) show A0 cheaper, so it is not listed as a loss
+  assert.ok(!text.includes('one-function file'), 'no one-function loss on the home page');
   // the token figure is read from results/lang-axes.json and results/dense-tokens.json, never typed
   const axes = JSON.parse(await readFile('results/lang-axes.json', 'utf8'));
   const dense = JSON.parse(await readFile('results/dense-tokens.json', 'utf8'));
