@@ -291,6 +291,282 @@ function mountShader(el: HTMLElement, fragment: string): void {
   });
 }
 
+// --- Motion hooks the program chooses by class -------------------------------------
+
+const reducedMotion = (): boolean => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * Run `tick` about `fps` times a second while `el` is on screen and the tab is shown; nothing runs
+ * otherwise. Returns the stop function.
+ */
+function whileVisible(el: Element, fps: number, tick: () => void): () => void {
+  let visible = false;
+  let frame = 0;
+  let last = 0;
+  const loop = (now: number): void => {
+    frame = 0;
+    if (!visible || document.hidden) return;
+    if (now - last >= 1000 / fps) {
+      last = now;
+      tick();
+    }
+    frame = requestAnimationFrame(loop);
+  };
+  const wake = (): void => {
+    if (frame === 0 && visible && !document.hidden) frame = requestAnimationFrame(loop);
+  };
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) visible = e.isIntersecting;
+    wake();
+  });
+  io.observe(el);
+  document.addEventListener('visibilitychange', wake);
+  return () => {
+    cancelAnimationFrame(frame);
+    io.disconnect();
+    document.removeEventListener('visibilitychange', wake);
+  };
+}
+
+interface RainColumn {
+  g: string[];
+  y: number;
+  v: number;
+  len: number;
+}
+
+/**
+ * `.rain`: falling glyph columns on a 2D canvas filling the element. The element's text is the
+ * words that sometimes fall whole (the page's CSS hides it); the colors are the element's
+ * `--rain-color` and `--rain-head`. Reduced motion draws one still frame.
+ */
+function mountRain(el: HTMLElement): () => void {
+  const words = (el.textContent ?? '').split(/\s+/).filter((w) => w.length > 0);
+  const canvas = document.createElement('canvas');
+  canvas.setAttribute('aria-hidden', 'true');
+  el.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  if (ctx === null) return () => canvas.remove();
+  const fs = 16;
+  let w = 0;
+  let h = 0;
+  let color = '#00ff41';
+  let head = '#d6ffe0';
+  let cols: RainColumn[] = [];
+  const glyph = (): string =>
+    Math.random() < 0.6
+      ? String.fromCharCode(0x30a1 + Math.floor(Math.random() * 86))
+      : String(Math.floor(Math.random() * 10));
+  const colors = (): void => {
+    const cs = getComputedStyle(el);
+    color = cs.getPropertyValue('--rain-color').trim() || color;
+    head = cs.getPropertyValue('--rain-head').trim() || head;
+  };
+  const seed = (): void => {
+    cols = [];
+    const rows = Math.ceil(h / fs) + 1;
+    for (let i = 0; i < Math.ceil(w / fs); i += 1) {
+      const g = Array.from({ length: rows }, glyph);
+      if (words.length > 0 && Math.random() < 0.3) {
+        const word = words[Math.floor(Math.random() * words.length)] as string;
+        const at = Math.floor(Math.random() * Math.max(1, rows - word.length));
+        for (let q = 0; q < word.length && at + q < rows; q += 1) g[at + q] = word[q] as string;
+      }
+      cols.push({
+        g,
+        y: Math.random() * (rows + 30) - 10,
+        v: 0.12 + Math.random() * 0.22,
+        len: 10 + Math.floor(Math.random() * 22),
+      });
+    }
+  };
+  const size = (): void => {
+    const d = Math.min(devicePixelRatio || 1, 2);
+    w = el.clientWidth;
+    h = el.clientHeight;
+    canvas.width = Math.max(1, Math.floor(w * d));
+    canvas.height = Math.max(1, Math.floor(h * d));
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    seed();
+  };
+  const draw = (): void => {
+    ctx.clearRect(0, 0, w, h);
+    ctx.font = `500 ${fs * 0.86}px "Geist Mono", ui-monospace, monospace`;
+    ctx.textBaseline = 'top';
+    cols.forEach((k, i) => {
+      const top = Math.floor(k.y);
+      for (let t = 0; t < k.len; t += 1) {
+        const r = top - t;
+        if (r < 0 || r >= k.g.length) continue;
+        ctx.globalAlpha = t === 0 ? 1 : (1 - t / k.len) ** 1.6 * 0.8;
+        ctx.fillStyle = t === 0 ? head : color;
+        ctx.fillText(k.g[r] as string, i * fs + 2, r * fs);
+      }
+    });
+    ctx.globalAlpha = 1;
+  };
+  const step = (): void => {
+    for (const k of cols) {
+      k.y += k.v;
+      if (Math.random() < 0.03) k.g[Math.floor(Math.random() * k.g.length)] = glyph();
+      if (k.y - k.len > k.g.length) {
+        k.y = -Math.random() * 20;
+        k.v = 0.12 + Math.random() * 0.22;
+      }
+    }
+  };
+  const still = reducedMotion();
+  const settle = (): void => {
+    if (still) for (let i = 0; i < 40; i += 1) step();
+  };
+  colors();
+  size();
+  settle();
+  draw();
+  void document.fonts?.ready.then(draw);
+  const ro = new ResizeObserver(() => {
+    if (el.clientWidth === w && el.clientHeight === h) return;
+    size();
+    settle();
+    draw();
+  });
+  ro.observe(el);
+  const scheme = matchMedia('(prefers-color-scheme: light)');
+  const recolor = (): void => {
+    colors();
+    draw();
+  };
+  scheme.addEventListener('change', recolor);
+  const stop = still
+    ? () => undefined
+    : whileVisible(el, 30, () => {
+        step();
+        draw();
+      });
+  return () => {
+    stop();
+    ro.disconnect();
+    scheme.removeEventListener('change', recolor);
+  };
+}
+
+interface TypedPart {
+  readonly cls: string;
+  readonly text: string;
+}
+
+/**
+ * `.typing`: the element's text is replayed as if typed, its spans keeping their classes. A span
+ * with class `beat` lands whole after a pause. An element `.tstat` in the same parent shows the
+ * second word of the last beat while replaying. The final state is what the page shows without JS
+ * (and with reduced motion); the replay starts a few seconds after load, repeats, and waits while
+ * the element is off screen or the tab is hidden.
+ */
+function mountTyping(el: HTMLElement): () => void {
+  if (reducedMotion()) return () => undefined;
+  const parts: TypedPart[] = Array.from(el.childNodes).map((n) => ({
+    cls: n instanceof HTMLElement ? n.className : '',
+    text: n.textContent ?? '',
+  }));
+  const status = el.parentElement?.querySelector<HTMLElement>('.tstat') ?? null;
+  const final = status?.textContent ?? '';
+  const say = (s: string): void => {
+    if (status !== null) status.textContent = s;
+  };
+  const paint = (upto: number, chars: number): void => {
+    const nodes: Node[] = [];
+    parts.forEach((p, i) => {
+      if (i > upto) return;
+      const text = i === upto ? p.text.slice(0, chars) : p.text;
+      if (p.cls === '') nodes.push(document.createTextNode(text));
+      else {
+        const s = document.createElement('span');
+        s.className = p.cls;
+        s.textContent = text;
+        nodes.push(s);
+      }
+    });
+    const c = document.createElement('span');
+    c.className = 'cursor';
+    nodes.push(c);
+    el.replaceChildren(...nodes);
+  };
+  let visible = false;
+  let timer = 0;
+  let live = true;
+  let part = 0;
+  let chars = 0;
+  const later = (ms: number, fn: () => void): void => {
+    const run = (): void => {
+      if (!live) return;
+      if (!visible || document.hidden) {
+        timer = window.setTimeout(run, 400);
+        return;
+      }
+      fn();
+    };
+    timer = window.setTimeout(run, ms);
+  };
+  const step = (): void => {
+    const p = parts[part];
+    if (p === undefined) {
+      paint(parts.length - 1, Number.MAX_SAFE_INTEGER);
+      say(final);
+      later(5000, start);
+      return;
+    }
+    if (p.cls.split(/\s+/).includes('beat')) {
+      say('…');
+      later(600, () => {
+        paint(part, Number.MAX_SAFE_INTEGER);
+        say(p.text.trim().split(/\s+/)[1] ?? '');
+        part += 1;
+        chars = 0;
+        later(900, step);
+      });
+      return;
+    }
+    chars += 1;
+    paint(part, chars);
+    if (chars >= p.text.length) {
+      part += 1;
+      chars = 0;
+      later(300, step);
+    } else later(p.cls === '' ? 18 : 28, step);
+  };
+  const start = (): void => {
+    part = 0;
+    chars = 0;
+    say('…');
+    step();
+  };
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) visible = e.isIntersecting;
+  });
+  io.observe(el);
+  later(4000, start);
+  return () => {
+    live = false;
+    window.clearTimeout(timer);
+    io.disconnect();
+  };
+}
+
+/**
+ * `.switch`: the buttons of its `.os` group choose which of its `.pane` children shows (`on`).
+ * Without JS every pane shows and the page's CSS hides the buttons.
+ */
+function mountSwitch(el: HTMLElement): void {
+  const panes = Array.from(el.querySelectorAll<HTMLElement>(':scope > .pane'));
+  const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>(':scope > .os button'));
+  const pick = (i: number): void => {
+    panes.forEach((p, j) => p.classList.toggle('on', j === i));
+    buttons.forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+  };
+  buttons.forEach((b, i) => b.addEventListener('click', () => pick(i)));
+  pick(Math.max(0, panes.findIndex((p) => p.classList.contains('on'))));
+}
+
 // --- COPY (word 14) ---------------------------------------------------------------
 
 /** How long `data-copied` stays on an element after a copy, in milliseconds. */
@@ -651,6 +927,19 @@ async function main(): Promise<void> {
   );
   const animate = (): void => {
     spy();
+    // Each mounted hook stops with the next render, like the shader scenes.
+    for (const el of Array.from(root.querySelectorAll<HTMLElement>('.rain:not(.mounted)'))) {
+      el.classList.add('mounted');
+      scenes.push(mountRain(el));
+    }
+    for (const el of Array.from(root.querySelectorAll<HTMLElement>('.typing:not(.mounted)'))) {
+      el.classList.add('mounted');
+      scenes.push(mountTyping(el));
+    }
+    for (const el of Array.from(root.querySelectorAll<HTMLElement>('.switch:not(.mounted)'))) {
+      el.classList.add('mounted');
+      mountSwitch(el);
+    }
     // Anything already on screen is shown at once; only what scrolls into view later fades in.
     root.querySelectorAll('.reveal').forEach((el) => {
       if (el.getBoundingClientRect().top < innerHeight) el.classList.add('in');

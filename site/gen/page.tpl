@@ -2,7 +2,6 @@
 # where the template language is described). Every number comes from the results files below. The benchmarks are on bench.tpl.
 f tags site/gen/tags.tpl
 f css site/gen/style.css
-f glsl site/gen/scene.glsl
 f exec results/exec-benchmark-full.json
 f cost 1 sonnet min results/ai-edit-experiment.b.sonnet-min.json
 f cost 1 sonnet langs results/ai-edit-experiment.b.sonnet-langs.json
@@ -104,185 +103,43 @@ s 9 css 27000 36000
 s 9 css 36000 45000
 }
 {css_f
-s 9 css 45000
+s 9 css 45000 54000
+}
+{css_g
+s 9 css 54000
 }
 c nav
+# The hero: statement, install line (one pane per shell; the runtime's `.switch` hook shows one at a
+# time, both without JS), and an agent edit typed into a terminal over the code rain. The runtime
+# turns `.rain` into a canvas (its text is the words that fall) and replays `.typing` (each `.beat`
+# span lands whole after a pause); without JS the terminal shows its final state.
 {sec_hero
 <div
 +class home
+<div
++id content
++class hwrap
 <section
 +id top
-+class hero
-.div stage
-s 13 glsl
++class hhero
+.div rain
++aria-hidden true
+"fn add mul ret u32 end
 >
+.div hfade
 >
-<div
-+class layout
-+id content
-<div
-+class main
-<section
-+id intro
-+class intro
-.div herogrid
-.div herotext
-.p kicker
-"For the code your AI agent writes
+.div hcopy
+=h1 A language for agents to edit.
+.p lead
+"A small typed language your agent edits one function at a time. Every edit is type-checked before it reaches the file.
 >
-=h1 Your agent edits one function. A0 checks it before it lands.
-.p lede
-"A small, typed language your agent edits through a server. A broken edit comes back as an error, never as a bug in your file.
->
-.p ctas
-.a pill
-+href #install
-^curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
-"Install A0
->
-"\s
-.a pill ghost
-+href #connect
-"Connect your agent
->
->
->
-.div herocode
-.pre code
+.div switch
+.div hcmd pane on
 <code
-"fn affine u32 u32 u32 -> u32\n
-"a mul p0 p1\n
-"b add a p2\n
-"ret b\n
-"end\n
-.span cm
-"\$\sa0 run examples/kernels.a0 affine 3 4 5\n
+.span pr
+"\$
 >
-"17
->
->
->
->
-# The hero figure. Kernel tokens (o200k), sumKernelTokens in results/lang-axes.json: A0 dense 193, Forth 323,
-# Python 417, TypeScript 507, Rust 558. Bar widths are percent of the longest bar shown (Rust, 558).
-.div tokviz
-+role group
-+aria-labelledby tok-t
-.p tokbig
-.span num
-"1.67x
->
-.span unit
-"\sfewer tokens than Forth, the next shortest of $tk_nl$ languages
->
->
-.p tokt
-+id tok-t
-"10 benchmark kernels: 193 tokens in A0's dense form, 323 in Forth (o200k; results/lang-axes.json).
->
-.div lrow me
-.span lbl
-"A0 dense
->
-.div track a0
-.div fill
-w 12
-w 1
-w 35
->
-.span val
-"193
->
->
->
-.div lrow
-.span lbl
-"Forth
->
-.div track
-.div fill
-w 12
-w 1
-w 58
->
-.span val
-"323
->
->
->
-.div lrow
-.span lbl
-"Python
->
-.div track
-.div fill
-w 12
-w 1
-w 75
->
-.span val
-"417
->
->
->
-.div lrow
-.span lbl
-"TypeScript
->
-.div track
-.div fill
-w 12
-w 1
-w 91
->
-.span val
-"507
->
->
->
-.div lrow
-.span lbl
-"Rust
->
-.div track
-.div fill
-w 12
-w 1
-w 100
->
-.span val
-"558
->
->
->
-.p tokcap
-"Tokens to write the same 10 benchmark programs (o200k tokenizer). What a whole AI edit costs is measured below.
->
->
-.p honest
-"Slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs.
->
->
-}
-{sec_install
-<section
-+id install
-=h2 Install and connect
-=p A0 is one binary with no package manager.
-.div steps
-.div step
-.span sn
-"1
->
-=h3 Install
-.small cmdlabel
-"macOS and Linux
->
-.div cmd
-.pre code
-<code
-"curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
->
+"\scurl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
 >
 <button
 +type button
@@ -292,14 +149,12 @@ w 100
 "Copy
 >
 >
-.small cmdlabel
-"Windows, PowerShell
->
-.div cmd
-.pre code
+.div hcmd pane
 <code
-"irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 \| iex
+.span pr
+"PS>
 >
+"\sirm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 \| iex
 >
 <button
 +type button
@@ -309,253 +164,257 @@ w 100
 "Copy
 >
 >
+.div os
++role group
++aria-label Shell
+<button
++type button
+"macOS / Linux
 >
-<div
+<button
++type button
+"Windows
+>
+>
+>
+.p connect
 +id connect
-+class step
-.span sn
-"2
->
-<h3
-"Connect your agent
->
-=p Claude Code: add the a0 MCP server with this one line. The a0 binary must be on PATH.
-.div cmd
-.pre code
+"Then connect your agent:\s
 <code
 "claude mcp add a0 -- a0 mcp .
 >
 >
+>
+.div hside
+.div hterm
++role group
++aria-label An agent edit being checked
+.div bar
+<span
+"kernels.a0
+>
+.span tstat
+"checked
+>
+>
+.pre typing
+.span c-m
+"agent\s\sedit_function affine\n
+>
+"fn affine u32 u32 u32 -> u32\n\s\sa mul p0 p1\n\s\sb add a p3\n\s\sret b\nend\n
+.span c-r beat
+"✕ refused\s\sp3: affine takes 3 parameters\n\s\sfile unchanged\n\n
+>
+.span c-m
+"agent\s\sedit_function affine\n
+>
+"fn affine u32 u32 u32 -> u32\n\s\sa mul p0 p1\n\s\sb add a p2\n\s\sret b\nend\n
+.span c-g beat
+"✓ checked\s\swritten to kernels.a0\n\n
+>
+.span c-m
+"\$ a0 run examples/kernels.a0 affine 3 4 5\n
+>
+"17\n
+>
+>
+>
+>
+}
+# Kernel source tokens (o200k) of the $tk_nk$ token programs: A0's dense form from results/dense-tokens.json,
+# the languages' sumKernelTokens from results/lang-axes.json; bars are a share of the longest shown (Rust).
+{sec_tokens
+<section
++id tokens
++class hsec reveal
+<div
+=h2 $tk_dv$ tokens. Forth takes $tk_forth$.
+.p body
+"The same $tk_nk$ programs written in $tk_nl$ languages. Forth is the shortest after A0.
+>
+.span src
+"results/lang-axes.json, results/dense-tokens.json
+>
+>
+.div hbars
++role group
++aria-label Source tokens of the same programs
+.div hrow a0
+.span lbl
+"A0
+>
+.div htrack
+n a mov $tk_dv$
+n m mov $tk_rs$
+c fill %a %m
+>
+.span n
+"$tk_dv$
+>
+>
+.div hrow
+.span lbl
+"Forth
+>
+.div htrack
+n a mov $tk_forth$
+n m mov $tk_rs$
+c fill %a %m
+>
+.span n
+"$tk_forth$
+>
+>
+.div hrow
+.span lbl
+"Python
+>
+.div htrack
+n a mov $tk_py$
+n m mov $tk_rs$
+c fill %a %m
+>
+.span n
+"$tk_py$
+>
+>
+.div hrow
+.span lbl
+"TypeScript
+>
+.div htrack
+n a mov $tk_ts$
+n m mov $tk_rs$
+c fill %a %m
+>
+.span n
+"$tk_ts$
+>
+>
+.div hrow
+.span lbl
+"Rust
+>
+.div htrack
+n a mov $tk_rs$
+n m mov $tk_rs$
+c fill %a %m
+>
+.span n
+"$tk_rs$
+>
+>
+>
+>
+}
+{sec_how
+<section
++id how
++class reveal
+.div head
+=h2 How it works.
+>
+.div how
+<div
+.span k
+"01
+>
+=h3 The agent asks for one function.
+=pre edit_function affine
+>
+<div
+.span k
+"02
+>
+=h3 A0 type-checks the edit.
+<pre
+"b add a p3\n
+.span c-r
+"✕ affine takes 3 parameters
+>
+>
+>
+<div
+.span k
+"03
+>
+=h3 The file changes only if it passes.
+<pre
+.span c-g
+"✓ written to kernels.a0
+>
+>
+>
+>
+>
+}
+{sec_limits
+<section
++id limits
++class reveal
+.div head
+=h2 Where it loses.
+>
+.div limits
+<div
+<p
+"On a one-function file, a whole edit costs\s
+<strong
+"$cmin_100$× TypeScript's tokens
+>
+".
+>
+.span src
+"results/ai-edit-b48-dense.json, results/ai-edit-experiment.b.sonnet-min.json
+>
+>
+<div
+<p
+"Slower than the best of C, Rust and Zig on\s
+<strong
+"$bk_nloss$ of $bk_n$ programs
+>
+".
+>
+.span src
+"results/exec-benchmark-full.json
+>
+>
+>
+.p nofit
+"Unsigned integers, booleans and fixed arrays. No floats, heap or recursion; for those, use C, Rust or TypeScript.
+>
+>
+}
+{sec_end
+<section
++id install
++class hend reveal
+=h2 Install A0.
+.div hcmd
+<code
+.span pr
+"\$
+>
+"\scurl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
+>
 <button
 +type button
 +class copy
-+aria-label Copy the Claude Code command
-^claude mcp add a0 -- a0 mcp .
++aria-label Copy the install command
+^curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
 "Copy
 >
 >
->
-.div step
-.span sn
-"3
->
-=h3 Make the first edit
-=p Ask your agent for a function in a new .a0 file. An edit that fails type-checking is refused.
+.p connect
+"Then connect your agent:\s
+<code
+"claude mcp add a0 -- a0 mcp .
 >
 >
-=p Targets: machine code, C, wasm, JavaScript, JVM, .NET, Metal and SystemVerilog. $vr_full$ test cases ran on $vr_nfull$ paths. The native assembly targets ran the $vr_part$ that need no input or output, and SystemVerilog is simulated separately on $hw_cases$ (results/verification.json).
-=p MIT license, free for any use. Copyright 2026 Joe Simo.
-<p
-"Next:\s
-<a
-+href #why
-"Why agents need this
->
->
->
-}
-{sec_why
-<section
-+id why
-=h2 Why it matters for AI agents
-.div whygrid
-.div why
-=h3 Cost per edit
-=p Short programs, one-function edits: the agent never rewrites the file around a change.
->
-.div why
-=h3 Every edit checked
-=p The whole program is type-checked before an edit lands. A broken edit goes back to the model as an error, not into your code as a bug.
->
-.div why
-=h3 Honest limits
-=p No floats, heap or recursion: use C, Rust or TypeScript for those. Slower than C on some programs (results/exec-benchmark-full.json); the sections below show every loss.
->
->
-<p
-"Next:\s
-<a
-+href #fast
-"Where A0 is slower than C
->
->
->
-}
-{sec_fast
-<section
-+id fast
-=h2 Where A0 is slower than C
-.p take
-"A0 is slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ test programs, by up to $bk_slow$x on $bk_slowk$. Over all of them its machine code takes $c_ratio$x as long as hand-written C, a geometric mean (on an Apple M3; results/exec-benchmark-full.json).
->
-=p In WebAssembly, A0 takes 1.1x to 1.3x clang's time per loop trip on 5 of 19 kernels (results/wasm-benchmark.json).
-.div chart langs reveal
-+role group
-+aria-labelledby chart-1
-.p ct
-+id chart-1
-"How long each language takes, as a multiple of A0's time
->
-.div legend
-.span la0
-"A0
->
-.span lnat
-"compiled
->
-.span ljit
-"JIT or VM
->
-.span lint
-"interpreted
->
->
-[langs lg_top
-.div lrow{lg_me| me}
-.span lbl
-"$lg_label$
->
-.div track $lg_cls$
-.div fill
-w 12
-w 1
-w $lg_pct$
->
-.span val
-n a mov $lg_g100$
-c putratio %a
-"x
->
->
->
-]
->
-<p
-"Speed is not the point; edits are.\s
-<a
-+href #edit
-"What does an edit cost?
->
->
->
-}
-{sec_edit
-<section
-+id edit
-=h2 How much does an edit cost?
-.p take
-"On a one-function file A0 costs $cmin_100$x TypeScript's tokens, because the instructions dominate. Over a session of 10 edits it costs $ec_c_t10$ tokens per task in its canonical form and $ec_d_t10$ in its dense form (place $ec_cr10$ and $ec_dr10$ of $n_langs1$ languages, 1 = fewest); results/ai-edit-b48-dense.json and results/ai-edit-experiment.b.sonnet-min.json.
->
-.div chart langs reveal
-+role group
-+aria-labelledby chart-2
-.p ct
-+id chart-2
-"Tokens per task, session of 10 edits
->
-.div legend
-.span la0
-"A0 (canonical and dense)
->
-.span lnat
-"compiled
->
-.span ljit
-"JIT or VM
->
-.span lint
-"interpreted
->
->
-[ecrows ec_top
-.div lrow{ec_me| me}
-.span lbl
-"$ec_label$
->
-.div track $ec_cls$
-.div fill
-w 12
-w 1
-w $ec_pct$
->
-.span val
-n a mov $ec_val$
-c putnum %a
-" tok
->
->
->
-]
->
-<p
-"Cheap only if it is also caught:\s
-<a
-+href #check
-"How quickly do I know an edit is wrong?
->
->
->
-}
-{sec_check
-<section
-+id check
-=h2 How quickly do I know an edit is wrong?
-.p take
-"A0 applies a model's edit and type-checks the whole program in $el_a0$ ms at the median. TypeScript with a warm compiler takes $el_tsw$ ms (results/edit-loop.json).
->
-.div chart langs reveal
-+role group
-+aria-labelledby chart-3
-.p ct
-+id chart-3
-"Milliseconds from a model's reply to a type-checked program
->
-[el el_a0row
-.div lrow wide me
-.span lbl
-"$el_label$
->
-.div track a0
-.div fill
-w 12
-w 1
-w $el_pct$
->
-.span val
-n a mov $el_med100$
-c putfix %a
-" ms
->
->
->
-]
->
-<p
-"Every number here is read from a file in results/.\s
-<a
-+href /benchmarks
-"The benchmarks page shows the method and the losses.
->
->
->
-}
-{sec_close
-<section
-+id start
-+class closer
-=h2 Give your agent a language it can check.
-=p One line to install, one to connect Claude Code.
-.p ctas
-.a pill
-+href #install
-"Install A0
->
-"\s
-.a pill ghost
-+href /docs/
-"Read the docs
->
->
+.a gh
++href https://github.com/Joe-Simo/a0
+"github.com/Joe-Simo/a0 ›
 >
 >
 >

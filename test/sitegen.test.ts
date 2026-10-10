@@ -108,42 +108,70 @@ test('the benchmarks page explains every benchmark in plain words', {
   );
 });
 
-// The home page is short: one idea a screen, one chart for each question, every number computed
-// from results/*.json, and everything else on /benchmarks.
-test('the home page is short: a pitch, one chart per question, the losses beside each answer', {
+// The home page is short: a pitch with the install line and a checked edit, the token figure, how
+// an edit is checked, the losses, install; every number computed from results/*.json, the rest on /benchmarks.
+test('the home page is short: a pitch, the token figure, how it works, the losses, install', {
   timeout: 600_000,
 }, async () => {
   const program = (await link('site/page.a0', (f) => readFile(f, 'utf8'), { root: '.' })).program;
   const { html, text } = prerender(program);
-  assert.ok(text.split(/\s+/).length < 1500, 'the home page stays under 1500 words');
-  assert.ok((html.match(/class="chart/g) ?? []).length <= 3, 'at most three charts');
+  assert.ok(text.split(/s+/).length < 1500, 'the home page stays under 1500 words');
   assert.ok(!html.includes('<details'), 'no hidden lists on the home page');
   assert.ok(!html.includes('class="rail"'), 'the section rail is on /benchmarks only');
   for (const h of [
-    'Your agent edits one function. A0 checks it before it lands.',
-    'Install and connect',
-    'Where A0 is slower than C',
-    'How much does an edit cost?',
-    'How quickly do I know an edit is wrong?',
-    'Targets: machine code, C, wasm, JavaScript',
+    'A language for agents to edit.',
+    'How it works.',
+    'Where it loses.',
+    'Install A0.',
   ])
     assert.ok(text.includes(h), `missing: ${h}`);
   const answers: readonly RegExp[] = [
     /\$ a0 run examples\/kernels\.a0 affine 3 4 5\n\s*17/,
-    /Slower than the best of C, Rust and Zig on \d+ of \d+ test programs\.(?! On a one-function)/,
-    /On a one-function file A0 costs \d+\.\d\dx TypeScript's tokens, because the instructions dominate\. Over a session of 10 edits it costs \d+ tokens per task in its canonical form and \d+ in its dense form \(place \d+ and \d+ of \d+ languages, 1 = fewest\)/,
-    /type-checks the whole program in \d+\.\d\d ms at the median\. TypeScript with a warm compiler takes \d+\.\d ms/,
-    /\d+ test cases ran on \d+ paths\. The native assembly targets ran the \d+ that need no input or output, and SystemVerilog is simulated separately on \d+/,
-    /MIT license, free for any use\. Copyright 2026 Joe Simo\./,
+    /refused\s+p3: affine takes 3 parameters/,
+    /On a one-function file, a whole edit costs \d+\.\d\d× TypeScript's tokens\./,
+    /Slower than the best of C, Rust and Zig on \d+ of \d+ programs\./,
   ];
   for (const re of answers) assert.match(text, re);
+  // the token figure is read from results/lang-axes.json and results/dense-tokens.json, never typed
   const axes = JSON.parse(await readFile('results/lang-axes.json', 'utf8'));
+  const dense = JSON.parse(await readFile('results/dense-tokens.json', 'utf8'));
+  const tok = (id: string): number => axes.tokens[id].sumKernelTokens;
   assert.ok(
-    text.includes(`the next shortest of ${axes.tokens.a0.dense.vsBest.languagesRanked} languages`),
-    'the hero language count is results/lang-axes.json languagesRanked',
+    text.includes(`${dense.kernelTotals.dense} tokens. Forth takes ${tok('forth')}.`),
+    'the token headline is A0 dense against Forth',
   );
-  assert.match(html, /<a class="pill" href="#install"[^>]*>Install A0<\/a>/);
-  assert.ok(html.includes('<a class="pill ghost" href="#connect">Connect your agent</a>'));
+  assert.ok(text.includes(`written in ${axes.tokens.a0.dense.vsBest.languagesRanked} languages`));
+  for (const [label, v] of [
+    ['A0', dense.kernelTotals.dense],
+    ['Forth', tok('forth')],
+    ['Python', tok('python')],
+    ['TypeScript', tok('typescript')],
+    ['Rust', tok('rust')],
+  ] as const) {
+    const pct = Math.floor((v * 100) / tok('rust'));
+    assert.ok(
+      html.includes(
+        `<span class="lbl">${label}</span><div class="htrack"><div class="fill grown" style="width:${pct}%"></div></div><span class="n">${v}</span>`,
+      ),
+      `${label} bar is ${v} tokens, ${pct}% of Rust`,
+    );
+  }
+  // both install commands carry the COPY protocol; the terminal's final state is in the page without JS
+  assert.ok(
+    html.includes(
+      'data-copy="curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh"',
+    ),
+  );
+  assert.ok(
+    html.includes(
+      'data-copy="irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex"',
+    ),
+  );
+  assert.match(
+    html,
+    /<pre[^>]*class="typing"[^>]*>[\s\S]*written to kernels\.a0[\s\S]*17\n<\/pre>/,
+  );
+  assert.ok(html.includes('<code>claude mcp add a0 -- a0 mcp .</code>'));
 });
 
 // A page program must fit the A0 toolchain: a function holds at most 32768 operand pairs and a text

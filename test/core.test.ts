@@ -924,9 +924,9 @@ test('site page program: A0 UI protocol, stylesheet, and sized bars', async () =
   const d0 = decode(first.output);
   assert.equal(d0.state.length, 0); // the home page keeps no state
   assert.ok(d0.css.includes('body{') && d0.css.length > 3000);
-  assert.ok(d0.sized > 5); // the few chart bars of the short landing page are sized by the program
+  assert.ok(d0.sized >= 5); // the five token bars of the landing page are sized by the program
   const all = d0.texts.join(' ');
-  for (const needle of ['Docs', 'Benchmarks', 'GitHub', 'Made by', 'Where A0 is slower than C'])
+  for (const needle of ['Docs', 'Benchmarks', 'GitHub', 'Made by', 'Where it loses.'])
     assert.ok(all.includes(needle), `missing ${needle}`);
   assert.ok(!all.includes('Clicked'), 'demo removed');
   // Emitted JS produces the identical stream.

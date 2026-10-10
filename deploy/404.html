@@ -511,88 +511,83 @@ p+a{display:inline-block;padding:12px 0}
 .copy[data-copied="fail"]{border-color:var(--loss)}
 @media (prefers-reduced-motion:no-preference){.copy{transition:border-color .15s,color .15s}}
 .copy-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
-/* Home page (site/gen/page.tpl; its root is div.home, which holds the hero and div.layout). The statement, the sample and the install action sit in the first viewport at 1280x800 and 390x844; the sections follow in one column, each ending with a hand-off line. */
-.home .layout{padding-top:96px}
-.home .hero{min-height:0;height:0;padding:0;display:block;overflow:visible}
-.home .main section{padding:28px 0 24px}
-.home .main .intro{padding:0}
-.home .intro h1{font-size:clamp(1.75rem,3.2vw,2.4rem);line-height:1.18;letter-spacing:-.025em;font-weight:600;margin:0 0 20px;max-width:none;text-align:left;text-wrap:pretty}
-.home .intro>p:not(.ctas){color:var(--fg2);font-size:1.1rem;line-height:1.55;margin:0;max-width:62ch}
-.home .intro pre.code{margin:28px 0 0}
-.home .ctas{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0 0}
-.home .pill{min-height:44px;padding:0 20px;font-size:.9rem;justify-content:center}
-.home .pill:not(.ghost){background:var(--a0);border-color:var(--a0);color:#000}
-.home .pill:not(.ghost):hover{background:var(--a0);border-color:var(--a0);color:#000;filter:brightness(.92)}
-.home .pill.ghost:hover{border-color:var(--a0);color:var(--a0)}
-.home .cmdlabel{display:block;font-size:13px;color:var(--muted);margin:22px 0 6px}
-.home .cmd{display:flex;align-items:stretch;gap:8px;margin:0}
-.home .cmd pre.code{flex:1 1 auto;min-width:0;margin:0;padding:12px 14px;font-size:13px;line-height:1.5;white-space:pre;overflow-x:auto}
-.home .cmd .copy{flex:none;align-self:center}
-.home #connect+p{margin-top:20px}
-.home #connect{margin-top:32px}
-.home #connect h3{margin:0 0 8px}
-.home .main section>p:last-child:not(.ctas){margin:20px 0 0;color:var(--fg2)}
-.home .chart{margin:16px 0 32px;padding:20px 0 12px}
-.home .main section>p:last-child a:not(.pill){display:inline-block;padding:10px 0;text-decoration:underline;text-underline-offset:3px}
-@media (max-width:900px){.home .layout{padding-top:88px}}
-@media (max-width:600px){.home .cmd{flex-direction:column;align-items:stretch}.home .cmd .copy{align-self:flex-start}.home .cmd pre.code{white-space:pre-wrap;overflow-wrap:anywhere}}
-/* Landing page, marketing layout: a two-column hero (statement and actions beside the sample), the token figure under it, three numbered steps, three reasons; one column below 900px, never a sideways scroll */
-.home .layout:not(:has(.rail)){grid-template-columns:minmax(0,1080px)}
-.home .layout{padding-top:112px}
-.home .main section:not(.intro){max-width:760px;margin-left:auto;margin-right:auto}
-.home .kicker{font:500 13px/1.4 "Geist Mono",ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--a0);margin:0 0 16px}
-.home .herogrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:56px;align-items:center}
-.home .intro h1{font-size:clamp(2.1rem,5.2vw,4rem);line-height:1.04;letter-spacing:-.04em;font-weight:650;margin:0 0 24px;text-wrap:balance}
-.home .intro .lede{color:var(--fg2);font-size:1.15rem;line-height:1.55;margin:0;max-width:56ch}
-.home .ctas{margin:32px 0 0}
-.home .pill{min-height:48px;padding:0 24px;font-size:.95rem;font-weight:600;border-radius:8px}
-.home .herocode pre.code{margin:0;padding:24px;font-size:15px;line-height:1.7;border-radius:12px;box-shadow:0 24px 64px -24px color-mix(in srgb,var(--a0) 30%,transparent)}
-.home .tokviz{margin:72px 0 0;padding:32px;border:1px solid var(--line2);border-radius:16px;background:color-mix(in srgb,var(--bg) 88%,transparent)}
-.home .tokbig{margin:0 0 8px;line-height:1}
-.home .tokbig .num{font:700 clamp(3rem,9vw,5.5rem)/1 "Geist",-apple-system,sans-serif;letter-spacing:-.05em;color:var(--a0)}
-.home .tokbig .unit{font-size:clamp(1.05rem,2.2vw,1.4rem);font-weight:600;color:var(--fg);letter-spacing:-.02em}
-.home .tokt{color:var(--fg2);font-size:1rem;margin:12px 0;max-width:72ch}
-.home .status{display:flex;align-items:flex-start;max-width:72ch;line-height:1.5;gap:8px;margin:16px 0 8px;padding:10px 14px;border:1px dashed var(--fg2);border-radius:10px;font:500 13px/1.3 "Geist Mono",ui-monospace,monospace;color:var(--fg)}
-.home .status::before{content:"";width:8px;height:8px;border-radius:50%;border:2px solid var(--a0);flex:none;margin-top:5px}
-.home .tokviz .lrow{grid-template-columns:160px minmax(0,1fr);gap:14px;padding:5px 0}
-.home .tokviz .lbl{font-size:14px;color:var(--fg2)}
-.home .tokviz .lrow.me .lbl{color:var(--a0);font-weight:600}
-.home .tokviz .track{height:30px;grid-template-columns:minmax(0,1fr) 56px;gap:10px}
-.home .tokviz .fill{height:24px;min-width:12px;border:2px solid var(--g-line);border-radius:2px 5px 5px 2px;background:var(--g-fill)}
-.home .tokviz .track.a0 .fill{background:var(--a0);border-color:var(--a0)}
-.home .tokviz .track.a0s .fill{background:transparent;border-color:var(--a0)}
-.home .tokviz .val{font:600 15px "Geist Mono",ui-monospace,monospace;color:var(--fg);text-align:right}
-.home .tokviz .lrow.me .val{color:var(--a0)}
-.home .tokcap{color:var(--muted);font-size:14px;line-height:1.55;margin:20px 0 0;max-width:80ch}
-.home .intro .honest{color:var(--fg2);font-size:1rem;margin:24px 0 0;padding-left:14px;border-left:2px solid var(--line2)}
-.home .main section{padding:72px 0 24px;border-top:0}
-.home .main section h2{font-size:clamp(1.8rem,3.6vw,2.6rem);letter-spacing:-.035em;line-height:1.1;margin:0 0 16px}
-.home .steps{display:grid;gap:16px;margin:32px 0}
-.home .step{position:relative;padding:24px 24px 24px 72px;border:1px solid var(--line2);border-radius:12px}
-.home .step .sn{position:absolute;left:24px;top:22px;width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:var(--a0);color:#000;font:700 15px "Geist Mono",ui-monospace,monospace}
-.home .step h3{margin:4px 0 8px;font-size:1.2rem}
-.home #connect{margin-top:0}
-.home #connect+p{margin-top:0}
-.home .whygrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:24px 0}
-.home .why{padding:24px;border:1px solid var(--line2);border-radius:12px;border-top:2px solid var(--a0)}
-.home .why h3{margin:0 0 8px;font-size:1.15rem}
-.home .why p{margin:0;font-size:.98rem}
-.home .main .closer{text-align:center;padding:96px 0 48px}
-.home .main .closer h2{font-size:clamp(2rem,4.5vw,3.2rem)}
-.home .closer .ctas{justify-content:center}
-@media (max-width:900px){.home .herogrid{grid-template-columns:minmax(0,1fr);gap:32px}.home .layout{padding-top:88px}}
-@media (max-width:600px){
-.home .tokviz{margin-top:48px;padding:20px 16px;border-radius:12px}
-.home .tokviz .lrow{grid-template-columns:minmax(0,1fr);gap:2px;padding:6px 0}
-.home .tokviz .track{grid-template-columns:minmax(0,1fr) 40px}
-.home .herocode pre.code{padding:16px;font-size:13px}
-.home .main section{padding-top:56px}
-.home .step{padding:20px 16px 20px 60px}
-.home .step .sn{left:16px;top:18px}
-.home .ctas .pill{flex:1 1 100%}
-}
+/* Home page (site/gen/page.tpl; its root is div.home). A ruled column: the hero (statement, install line, an agent edit in a terminal over the code rain), the token figure, how an edit is checked, where A0 loses, install. Sections are sized by their content. */
+.home{--hg:var(--a0);--hink:#000;--hrain:.9;--hhead:#d6ffe0;--hcard:#0a0a0a;--hmute:#8a9a8e;--hline:#1f1f1f;--hred:#ff5f56}
+.home .hwrap{max-width:1232px;margin:0 auto;padding-top:var(--hdr);border-left:1px solid var(--hline);border-right:1px solid var(--hline)}
+.home section{border-bottom:1px solid var(--hline)}
+.home h1,.home h2,.home h3{font-family:"Geist",-apple-system,sans-serif;margin:0;color:var(--fg)}
+.home p{margin:0}
+.home .hhero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:center;border-top:1px solid var(--hline)}
+.home .rain{position:absolute;inset:0;opacity:var(--hrain);pointer-events:none;color:transparent;font-size:0;overflow:hidden;--rain-color:var(--hg);--rain-head:var(--hhead)}
+.home .rain canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.home .hfade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0,color-mix(in srgb,var(--bg) 70%,transparent) 42%,transparent 75%),linear-gradient(0deg,var(--bg) 0,transparent 22%)}
+.home .hcopy,.home .hside{position:relative;z-index:1;padding:72px 48px;min-width:0}
+.home .hhero h1{font-size:64px;line-height:64px;font-weight:400;letter-spacing:-.06em;max-width:10ch}
+.home .lead{font-size:24px;line-height:32px;font-weight:450;letter-spacing:-.04em;color:var(--hmute);margin-top:24px;max-width:30ch}
+.home .hcmd{margin-top:40px;display:flex;align-items:center;gap:12px;height:40px;padding:0 4px 0 16px;border:1px solid var(--hline);background:var(--hcard);border-radius:999px;max-width:100%;font:13px/1 "Geist Mono",ui-monospace,monospace}
+.home .hcmd code{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg);font:inherit}
+.home .hcmd code .pr{color:var(--hg)}
+.home .hcmd .copy{flex:none;min-width:0;min-height:0;height:32px;padding:0 14px;border:0;border-radius:999px;background:var(--hg);color:var(--hink);font:500 14px "Geist",sans-serif;transition:opacity .15s}
+.home .hcmd .copy:hover{opacity:.85;color:var(--hink)}
+.home .hcmd .copy::before{display:none}
+.home .hcmd .copy::after{content:none}
+.home .hcmd .copy[data-copied]{color:transparent}
+.home .hcmd .copy[data-copied]::after{content:"Copied";display:block;position:absolute;inset:0;width:auto;height:auto;border:0;border-radius:0;margin:0;transform:none;background:none;color:var(--hink);line-height:32px;text-align:center}
+.home .hcmd .copy[data-copied="fail"]::after{content:"Select"}
+.home .os{display:none;gap:4px;margin-top:12px;font:13px "Geist Mono",ui-monospace,monospace}
+.js .home .os{display:flex}
+.js .home .switch .pane:not(.on){display:none}
+.home .switch .pane+.pane{margin-top:12px}
+.js .home .switch .pane{margin-top:40px}
+.home .os button{background:none;border:0;color:var(--hmute);font:inherit;cursor:pointer;padding:2px 8px;border-radius:999px}
+.home .os button[aria-pressed=true]{color:var(--fg);background:var(--hcard);box-shadow:inset 0 0 0 1px var(--hline)}
+.home .connect{margin-top:20px;font-size:14px;color:var(--hmute)}
+.home .connect code{color:var(--fg);font-family:"Geist Mono",ui-monospace,monospace;overflow-wrap:anywhere}
+.home .hterm{position:relative;z-index:2;border:1px solid var(--hline);background:var(--hcard);border-radius:2px;font:13px/22px "Geist Mono",ui-monospace,monospace}
+.home .hterm .bar{height:36px;border-bottom:1px solid var(--hline);display:flex;align-items:center;justify-content:space-between;padding:0 14px;color:var(--hmute);font-size:12px}
+.home .hterm pre{margin:0;padding:16px;font:inherit;color:var(--fg);background:none;border:0;white-space:pre-wrap;word-break:break-word;min-height:300px;max-width:none;overflow:visible}
+.home .c-m{color:var(--hmute)}
+.home .c-g{color:var(--hg)}
+.home .c-r{color:var(--hred)}
+.home .cursor{display:inline-block;width:7px;height:14px;background:var(--hg);vertical-align:-2px;animation:hblink 1s steps(1) infinite}
+@keyframes hblink{50%{opacity:0}}
+.home .hsec{padding:80px 48px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:64px;align-items:center}
+.home h2{font-size:56px;line-height:56px;font-weight:450;letter-spacing:-.06em}
+.home .hsec p.body{margin-top:20px;color:var(--hmute);max-width:40ch}
+.home .src{display:block;margin-top:16px;font:13px/20px "Geist Mono",ui-monospace,monospace;color:var(--hmute);overflow-wrap:anywhere}
+.home .hbars{display:grid;gap:14px}
+.home .hrow{display:grid;grid-template-columns:96px minmax(0,1fr) 44px;gap:12px;align-items:center;font-size:14px;color:var(--hmute)}
+.home .hrow .n{text-align:right;font-variant-numeric:tabular-nums}
+.home .htrack{height:8px}
+.home .htrack .fill{height:100%;background:var(--hline);border-radius:1px;transition:width 1.2s cubic-bezier(.2,.7,.2,1)}
+.home .hrow.a0 .fill{background:var(--hg)}
+.home .hrow.a0 .lbl,.home .hrow.a0 .n{color:var(--fg)}
+.home .head{padding:80px 48px 40px}
+.home .how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--hline)}
+.home .how>div{padding:32px 32px 40px;min-width:0}
+.home .how>div+div{border-left:1px solid var(--hline)}
+.home .k{font:13px "Geist Mono",ui-monospace,monospace;color:var(--hg)}
+.home .how h3{font-size:20px;line-height:28px;font-weight:500;letter-spacing:-.03em;margin-top:8px}
+.home .how pre{margin:24px 0 0;padding:14px 16px;border:1px solid var(--hline);background:var(--hcard);font:13px/20px "Geist Mono",ui-monospace,monospace;color:var(--fg);overflow-x:auto;white-space:pre}
+.home .limits{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--hline);border-left:0;padding-left:0}
+.home .limits>div{padding:40px 48px 48px;min-width:0}
+.home .limits>div+div{border-left:1px solid var(--hline)}
+.home .limits p{font-size:24px;line-height:32px;font-weight:450;letter-spacing:-.04em;color:var(--hmute)}
+.home .limits strong{font-weight:inherit;color:var(--fg)}
+.home .nofit{padding:0 48px 48px;color:var(--hmute)}
+.home .hend{padding:96px 48px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.home .hend .hcmd{width:640px;text-align:left}
+.home .gh{display:inline-block;margin-top:24px;padding:10px 0;font:14px "Geist Mono",ui-monospace,monospace;color:var(--hmute);text-decoration:none}
+.home .gh:hover{color:var(--fg)}
+.home button:focus-visible,.home a:focus-visible{outline:2px solid var(--hg);outline-offset:2px}
+.home .reveal{transition:opacity .7s,transform .7s}
+.js .home .reveal:not(.in){opacity:0;transform:translateY(12px)}
+@media (max-width:960px){.home .hhero,.home .hsec{grid-template-columns:minmax(0,1fr)}.home .hcopy,.home .hside{padding:48px 24px}.home .hside{padding-top:0}.home .hsec{padding:64px 24px;gap:40px}.home .head{padding:64px 24px 32px}.home .how,.home .limits{grid-template-columns:minmax(0,1fr)}.home .how>div{padding:32px 24px}.home .how>div+div,.home .limits>div+div{border-left:0;border-top:1px solid var(--hline)}.home .limits>div{padding:32px 24px 40px}.home .nofit{padding:0 24px 40px}.home .hend{padding:64px 24px}}
+@media (max-width:600px){.home .hwrap{border:0}.home .hhero h1{font-size:40px;line-height:48px;font-weight:450}.home h2{font-size:32px;line-height:40px;letter-spacing:-.04em}.home .lead,.home .limits p{font-size:20px;line-height:28px}.home .hrow{grid-template-columns:80px minmax(0,1fr) 36px;font-size:13px}.home .hterm{font-size:12px;line-height:20px}.home .hterm pre{min-height:0}.home .os button{min-height:44px;padding:0 12px}.home .hcmd{height:44px}.home .hcmd .copy{height:36px}.home .hcmd .copy[data-copied]::after{line-height:36px}.home .hend .hcmd{width:100%}}
+@media (max-width:360px){.home .hcopy,.home .hside,.home .hsec,.home .head,.home .how>div,.home .limits>div,.home .hend,.home .nofit{padding-left:16px;padding-right:16px}.home .hcmd{padding-left:12px;gap:8px}.home .hterm pre{padding:12px}}
+@media (prefers-reduced-motion:reduce){.home .reveal,.home .htrack .fill{transition:none}.home .cursor{animation:none}.js .home .reveal:not(.in){opacity:1;transform:none}}
 /* Light theme: the same roles on white; the code rain is a dark-only backdrop */
-@media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){color-scheme:light;--bg:#fff;--fg:#111;--fg2:#333;--body:#444;--muted:#595959;--dim:#6b6b6b;--line:#e6e6e6;--line2:#d0d0d0;--a0:#007a1f;--win:#007a1f;--loss:#333;--g-fill:#e4e4e4;--g-line:#555;--g-dash:#666;--markbg:rgba(0,122,31,.1)}:root:where(:not([data-theme=dark])) body{background:#fff}:root:where(:not([data-theme=dark])) header.top{background:rgba(255,255,255,.86)}:root:where(:not([data-theme=dark])) .stage{display:none}:root:where(:not([data-theme=dark])) .layout::before{background:transparent;box-shadow:none}:root:where(:not([data-theme=dark])) pre.code{background:#f6f6f6;color:#222}:root:where(:not([data-theme=dark])) .home .pill:not(.ghost),:root:where(:not([data-theme=dark])) .home .step .sn{color:#fff}:root:where(:not([data-theme=dark])) .tblwrap,:root:where(:not([data-theme=dark])) .tblwrap td:first-child,:root:where(:not([data-theme=dark])) .tblwrap th:first-child,:root:where(:not([data-theme=dark])) .rail{background:#fff}:root:where(:not([data-theme=dark])) ::selection{color:#fff}}:root:where([data-theme=light]){color-scheme:light;--bg:#fff;--fg:#111;--fg2:#333;--body:#444;--muted:#595959;--dim:#6b6b6b;--line:#e6e6e6;--line2:#d0d0d0;--a0:#007a1f;--win:#007a1f;--loss:#333;--g-fill:#e4e4e4;--g-line:#555;--g-dash:#666;--markbg:rgba(0,122,31,.1)}:root:where([data-theme=light]) body{background:#fff}:root:where([data-theme=light]) header.top{background:rgba(255,255,255,.86)}:root:where([data-theme=light]) .stage{display:none}:root:where([data-theme=light]) .layout::before{background:transparent;box-shadow:none}:root:where([data-theme=light]) pre.code{background:#f6f6f6;color:#222}:root:where([data-theme=light]) .home .pill:not(.ghost),:root:where([data-theme=light]) .home .step .sn{color:#fff}:root:where([data-theme=light]) .tblwrap,:root:where([data-theme=light]) .tblwrap td:first-child,:root:where([data-theme=light]) .tblwrap th:first-child,:root:where([data-theme=light]) .rail{background:#fff}:root:where([data-theme=light]) ::selection{color:#fff}
+@media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){color-scheme:light;--bg:#fff;--fg:#111;--fg2:#333;--body:#444;--muted:#595959;--dim:#6b6b6b;--line:#e6e6e6;--line2:#d0d0d0;--a0:#007a1f;--win:#007a1f;--loss:#333;--g-fill:#e4e4e4;--g-line:#555;--g-dash:#666;--markbg:rgba(0,122,31,.1)}:root:where(:not([data-theme=dark])) body{background:#fff}:root:where(:not([data-theme=dark])) header.top{background:rgba(255,255,255,.86)}:root:where(:not([data-theme=dark])) .stage{display:none}:root:where(:not([data-theme=dark])) .layout::before{background:transparent;box-shadow:none}:root:where(:not([data-theme=dark])) pre.code{background:#f6f6f6;color:#222}:root:where(:not([data-theme=dark])) .home{--hink:#fff;--hrain:.1;--hhead:#007a1f;--hcard:#fff;--hmute:#55635a;--hline:#e4e4e4;--hred:#c62828}:root:where(:not([data-theme=dark])) .tblwrap,:root:where(:not([data-theme=dark])) .tblwrap td:first-child,:root:where(:not([data-theme=dark])) .tblwrap th:first-child,:root:where(:not([data-theme=dark])) .rail{background:#fff}:root:where(:not([data-theme=dark])) ::selection{color:#fff}}:root:where([data-theme=light]){color-scheme:light;--bg:#fff;--fg:#111;--fg2:#333;--body:#444;--muted:#595959;--dim:#6b6b6b;--line:#e6e6e6;--line2:#d0d0d0;--a0:#007a1f;--win:#007a1f;--loss:#333;--g-fill:#e4e4e4;--g-line:#555;--g-dash:#666;--markbg:rgba(0,122,31,.1)}:root:where([data-theme=light]) body{background:#fff}:root:where([data-theme=light]) header.top{background:rgba(255,255,255,.86)}:root:where([data-theme=light]) .stage{display:none}:root:where([data-theme=light]) .layout::before{background:transparent;box-shadow:none}:root:where([data-theme=light]) pre.code{background:#f6f6f6;color:#222}:root:where([data-theme=light]) .home{--hink:#fff;--hrain:.1;--hhead:#007a1f;--hcard:#fff;--hmute:#55635a;--hline:#e4e4e4;--hred:#c62828}:root:where([data-theme=light]) .tblwrap,:root:where([data-theme=light]) .tblwrap td:first-child,:root:where([data-theme=light]) .tblwrap th:first-child,:root:where([data-theme=light]) .rail{background:#fff}:root:where([data-theme=light]) ::selection{color:#fff}
 /* Inner pages: one rule for code blocks (scroll sideways, never widen the page), long paths in prose may break, chart labels and values on one line */
 pre{max-width:100%;overflow-x:auto}
 .main p,.main li,.cap,.sub{overflow-wrap:break-word}

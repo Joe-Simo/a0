@@ -2088,6 +2088,19 @@ s11 fold vnum 1 s10 p2 418 k dx
 s12 fold vnum 1 s11 p2 419 k dl
 ret s12
 end
+# the kernel source tokens of the language whose lang-axes.json id is word p4 into variable word p5
+# (fold body; the axes table p3, ids at 192 + s, tokens at 896 + s; not set when the language is missing)
+fn tklv u32x128x128 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x128
+h call whash p2 p4
+n call rd64 p3 128
+i call lookup p3 192 n h
+f lt i n
+c select f 1 0
+vi add i 896
+v call rd64 p3 vi
+r fold vnum c p0 p2 p5 0 v
+ret r
+end
 fn caxes u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
 nax call rd64 p4 128
 nax1 add nax 1
@@ -2184,7 +2197,11 @@ s28 fold vnum 1 s27 p2 491 0 vpn
 s29 fold vnum 1 s28 p2 492 0 vsk
 tnl call rd64 p4 1355
 s30 fold vnum 1 s29 p2 495 0 tnl
-ret s30
+s31 fold tklv 1 s30 p2 p4 496 497
+s32 fold tklv 1 s31 p2 p4 49 498
+s33 fold tklv 1 s32 p2 p4 441 499
+s34 fold tklv 1 s33 p2 p4 9 500
+ret s34
 end
 # ---- tokens.json fixtures and hardware.json totals (the axes table p3)
 # the o200k tokens of the fixture whose name is word p4 into variable word p5 (fold body)
