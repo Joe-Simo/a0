@@ -1,0 +1,222 @@
+fn zpage -> u32x128
+z [0;128]
+
+fn z16 -> u32x128x16
+z zpage
+t [z z z z z z z z z z z z z z z z]
+
+fn z64 -> u32x128x64
+z zpage
+t [z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z]
+
+fn z128 -> u32x128x128
+z zpage
+t [z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z]
+
+fn z512 -> u32x128x512
+z zpage
+t [z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z]
+
+fn rd64 u32x128x64 u32 -> u32
+pi >> B 7
+wi and B 127
+pg get A pi
+r get pg wi
+
+fn rd128 u32x128x128 u32 -> u32
+pi >> B 7
+wi and B 127
+pg get A pi
+r get pg wi
+
+fn rd512 u32x128x512 u32 -> u32
+pi >> B 7
+wi and B 127
+pg get A pi
+r get pg wi
+
+fn wr64 u32x128x64 u32 u32 u32 -> u32x128x64
+pi >> C 7
+wi and C 127
+pg get A pi
+pg2 set pg wi D
+r set A pi pg2
+
+fn wr128 u32x128x128 u32 u32 u32 -> u32x128x128
+pi >> C 7
+wi and C 127
+pg get A pi
+pg2 set pg wi D
+r set A pi pg2
+
+fn wr512 u32x128x512 u32 u32 u32 -> u32x128x512
+pi >> C 7
+wi and C 127
+pg get A pi
+pg2 set pg wi D
+r set A pi pg2
+
+fn sb u32x128x512 u32 -> u32
+w0 >> B 2
+w rd512 A w0
+b0 and B 3
+sh << b0 3
+v >> w sh
+r and v 255
+
+fn vb u32x128x128 u32 -> u32
+w0 >> B 2
+w rd128 A w0
+b0 and B 3
+sh << b0 3
+v >> w sh
+r and v 255
+
+fn pb u32x128x64 u32 -> u32
+w0 >> B 2
+w rd64 A w0
+b0 and B 3
+sh << b0 3
+v >> w sh
+r and v 255
+
+fn wb128 u32x128x128 u32 u32 u32 -> u32x128x128
+w0 >> C 2
+pi >> w0 7
+wi and w0 127
+pg get A pi
+w get pg wi
+b0 and C 3
+sh << b0 3
+v << D sh
+w2 or w v
+pg2 set pg wi w2
+r set A pi pg2
+
+fn sbis u32x128x512 u32 u32 -> bool
+b sb A B
+r eq b C
+
+fn fnvb u32 u32 u32x128x512 u32 -> u32
+pos add D B
+b sb C pos
+x xor A b
+r mul x 16777619
+
+fn shash u32x128x512 u32 u32 -> u32
+r fold fnvb C 2166136261 A B
+
+fn fmore u32 u32 u32x128x512 u32 u32 -> bool
+lt0 lt A D
+b sb C A
+ne0 ne b E
+r and lt0 ne0
+
+fn fstep u32 u32 u32x128x512 u32 u32 -> u32
+r add A 1
+
+fn sfind u32x128x512 u32 u32 u32 -> u32
+n sub C B
+r loop fmore fstep n B A C D
+
+fn eqb bool u32 u32x128x512 u32 u32 -> bool
+a add D B
+b add E B
+x sb C a
+y sb C b
+e eq x y
+r and A e
+
+fn seq u32x128x512 u32 u32 u32 -> bool
+r fold eqb C true A B D
+
+fn wbyte io u32 u32 -> io
+r write A C
+
+fn putc io bool u32 -> io
+c select B 1 0
+r fold wbyte c A C
+
+fn putesc io bool u32 -> io
+nl eq C 10
+q eq C 34
+bs eq C 92
+e0 or nl q
+e1 or e0 bs
+e and B e1
+a putc A e 92
+ch select nl 110 C
+r putc a B ch
+
+fn putx io bool bool u32 -> io
+$ne select C false true
+raw and B $ne
+e and B C
+r putc putesc A e D raw D
+
+fn m10 u32 u32 -> u32
+r mul A 10
+
+fn tenp
+r fold m10 A 1
+
+fn ndmore -> bool
+lim lt A 10
+p tenp A
+$ge le p C
+r and lim $ge
+
+fn ndstep u32 u32 u32 -> u32
+r add A 1
+
+fn ndig
+r loop ndmore ndstep 10 1 A
+
+fn digit
+pos sub sub C 1 A
+t tenp pos
+q div B t
+d rem q 10
+r add d 48
+
+fn pdig io u32 u32 u32 bool -> io
+ch digit B C D
+r putc A E ch
+
+fn putd io bool u32 -> io
+nd ndig C
+r fold pdig nd A C nd B
+
+fn cpb io u32 u32x128x512 u32 bool bool -> io
+pos add D B
+b sb C pos
+r putx A E F b
+
+fn cpst io bool bool u32x128x512 u32 u32 -> io
+r fold cpb F A D E B C
+
+fn cpv io u32 u32x128x128 u32 bool bool -> io
+pos add D B
+b vb C pos
+r putx A E F b
+
+fn cpvt io bool bool u32x128x128 u32 u32 -> io
+r fold cpv F A D E B C
+
+fn rdw (u32x128,io) u32 -> (u32x128,io)
+pg at A 0
+t at A 1
+r read t
+v at r 0
+t2 at r 1
+pg2 set pg B v
+o (pg2 t2)
+
+fn rdpage io u32 -> (u32x128,io)
+z zpage
+s (z A)
+r fold rdw B s
+
+fn rdword io -> (u32,io)
+r read A
+

@@ -1,0 +1,44 @@
+use "fx.a0"
+
+fn fr_rdstep (u32x32,io) u32 -> (u32x32,io)
+a at A 0
+t at A 1
+r read t
+v at r 0
+t2 at r 1
+a2 set a B v
+o (a2 t2)
+
+fn fr_rdhdr io -> (u32x32,io)
+z [0;32]
+s (z A)
+f fold fr_rdstep 32 s
+
+fn fr_pack
+a << A 24
+b << B 16
+c << C 8
+or or or a b c D
+
+fn fr_clear io -> io write A 10
+
+fn fr_line io u32 u32 u32 u32 u32 u32 -> io write write write write write write write A 11 B C D E F G
+
+fn fr_disc io u32 u32 u32 u32 -> io write write write write write A 12 B C D E
+
+fn fr_ring io u32 u32 u32 u32 u32 -> io write write write write write write A 13 B C D E F
+
+fn fr_glow io u32 u32 u32 u32 -> io write write write write write A 14 B C D E
+
+fn fr_sphere io u32 u32 u32 u32 u32 -> io write write write write write write A 15 B C D E F
+
+fn fr_brackets io u32 u32 u32 u32 u32 u32 u32 -> io write write write write write write write write A 17 B C D E F G H
+
+fn fr_quality io u32 -> io write write A 3 B
+
+fn fr_watch io u32 -> io write write A 2 B
+
+fn fr_quad io u32 u32 u32 u32 u32 u32 u32 u32 u32 -> io write write write write write write write write write write A 18 B C D E F G H I J
+
+fn fr_cadence io u32 -> io write write A 4 B
+

@@ -1,0 +1,266 @@
+fn open io u32 -> io write write A 1 B
+
+fn close io -> io write A 3
+
+fn mulstep u32 u32 -> u32
+m mul A 10
+
+fn tenpow
+r fold mulstep A 1
+
+fn digitstep u32 u32 u32 -> u32
+s add A 1
+
+fn morecheck -> bool
+p tenpow A
+fits lt C p
+more select fits false true
+
+fn ndigits
+n loop morecheck digitstep 10 1 A
+
+fn putdigit io u32 u32 u32 -> io
+rest sub D B
+pos sub rest 1
+p tenpow pos
+q div C p
+d rem q 10
+ch add d 48
+t write A 2
+u write t 1
+v write u ch
+
+fn putnum io u32 -> io
+nd ndigits B
+t fold putdigit nd A B nd
+
+fn putfix io u32 -> io
+ip div B 100
+fp rem B 100
+b write putnum A ip 2
+dot "."
+c puts b dot
+tens div fp 10
+ones rem fp 10
+d0 add tens 48
+d1 add ones 48
+write write write write c 2 2 d0 d1
+
+fn fill io u32 u32 -> io
+c write write open A 5 4 2
+cls "fill"
+f write write puts c cls 12 1
+num mul B 100
+pct div num C
+close write f pct
+
+fn r_int io u32 u32 -> io
+q div C 100
+r putnum A q
+
+fn r_one io u32 u32 -> io
+q div C 100
+b write putnum A q 2
+dot "."
+c puts b dot
+tn div C 10
+td rem tn 10
+ch add td 48
+write write write c 2 1 ch
+
+fn r_two io u32 u32 -> io
+r putfix A C
+
+fn putratio io u32 -> io
+big ge B 10000
+mid ge B 1000
+nb select big 1 0
+nm0 select mid 1 0
+nm select big 0 nm0
+rest add nb nm
+ns sub 1 rest
+fold r_two ns fold r_one nm fold r_int nb A B B B
+
+fn max3
+ab lt A B
+m1 select ab B A
+mc lt m1 C
+m2 select mc C m1
+
+fn max2
+ab lt A B
+m select ab B A
+
+fn nav io -> io
+x73 open A 18
+x74 write x73 4
+x75 write x74 2
+x76 "top"
+x77 puts x75 x76
+sk1 open x77 9
+sk2 write sk1 4
+sk3 write sk2 2
+sk4 "skip"
+sk5 puts sk3 sk4
+sk6 write sk5 4
+sk7 write sk6 3
+sk8 "#content"
+sk9 puts sk7 sk8
+ska write sk9 2
+skb "Skip to content"
+skc puts ska skb
+skd close skc
+x78 open skd 14
+x79 write x78 4
+x80 write x79 2
+x81 "nav"
+x82 puts x80 x81
+na1 write x82 4
+na2 write na1 6
+na3 "Primary"
+na4 puts na2 na3
+x83 open na4 9
+x84 write x83 4
+x85 write x84 2
+x86 "brand pixel"
+x87 puts x85 x86
+x88 write x87 4
+x89 write x88 3
+x90 "/"
+x91 puts x89 x90
+x92 write x91 2
+x93 "A0"
+x94 puts x92 x93
+x95 close x94
+x96 open x95 5
+x97 write x96 4
+x98 write x97 2
+x99 "links"
+x100 puts x98 x99
+x101 open x100 9
+x102 write x101 4
+x103 write x102 3
+x104 "/docs/"
+x105 puts x103 x104
+x106 write x105 2
+x107 "Docs"
+x108 puts x106 x107
+x109 close x108
+x110 open x109 9
+x111 write x110 4
+x112 write x111 3
+x113 "/benchmarks"
+x114 puts x112 x113
+x115 write x114 2
+x116 "Benchmarks"
+x117 puts x115 x116
+x118 close x117
+x119 close x118
+r1 open x119 5
+r2 write r1 4
+r3 write r2 2
+r4 "hright"
+r5 puts r3 r4
+s1 open r5 9
+s2 write s1 4
+s3 write s2 3
+s4 "https://github.com/sponsors/Joe-Simo"
+s5 puts s3 s4
+s6 write s5 2
+s7 "Sponsor"
+s8 puts s6 s7
+s9 close s8
+ix1 open s9 9
+ix2 write ix1 4
+ix3 write ix2 2
+ix4 "ico ico-x"
+ix5 puts ix3 ix4
+ix6 write ix5 4
+ix7 write ix6 3
+ix8 "https://x.com/joesimo"
+ix9 puts ix7 ix8
+ixa write ix9 4
+ixb write ixa 6
+ixc "@JoeSimo on X"
+ixd puts ixb ixc
+ixe write ixd 4
+ixf write ixe 7
+ixg "@JoeSimo on X"
+ixh puts ixf ixg
+ixi close ixh
+ig1 open ixi 9
+ig2 write ig1 4
+ig3 write ig2 2
+ig4 "ico ico-gh"
+ig5 puts ig3 ig4
+ig6 write ig5 4
+ig7 write ig6 3
+ig8 "https://github.com/Joe-Simo/a0"
+ig9 puts ig7 ig8
+iga write ig9 4
+igb write iga 6
+igc "GitHub"
+igd puts igb igc
+ige write igd 4
+igf write ige 7
+igg "GitHub"
+igh puts igf igg
+igi close igh
+rz close igi
+x133 close rz
+x134 close x133
+
+fn foot io -> io
+x908 open A 17
+x909 write x908 4
+x910 write x909 2
+x911 "foot"
+x912 puts x910 x911
+x913 open x912 2
+x914 write x913 2
+x915 "Every number on this site is measured, reproducible from the repository, and published with its losses."
+x916 puts x914 x915
+x917 close x916
+x918 open x917 2
+x919 write x918 2
+x920 "Made by "
+x921 puts x919 x920
+x922 open x921 9
+x923 write x922 4
+x924 write x923 3
+x925 "https://x.com/joesimo"
+x926 puts x924 x925
+x927 write x926 2
+x928 "@joesimo"
+x929 puts x927 x928
+x930 close x929
+x931 write x930 2
+x932 " · "
+x933 puts x931 x932
+x934 open x933 9
+x935 write x934 4
+x936 write x935 3
+x937 "https://github.com/Joe-Simo/a0"
+x938 puts x936 x937
+x939 write x938 2
+x940 "GitHub"
+x941 puts x939 x940
+x942 close x941
+sp1 write x942 2
+sp2 " · "
+sp3 puts sp1 sp2
+sp4 open sp3 9
+sp5 write sp4 4
+sp6 write sp5 3
+sp7 "https://github.com/sponsors/Joe-Simo"
+sp8 puts sp6 sp7
+sp9 write sp8 2
+sp10 "Sponsor"
+sp11 puts sp9 sp10
+sp12 close sp11
+x943 write sp12 2
+x944 " · MIT · 2026"
+x945 puts x943 x944
+x946 close x945
+x947 close x946
+

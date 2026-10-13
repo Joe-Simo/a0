@@ -1,0 +1,2520 @@
+fn xazpg -> u32x128
+z [0;128]
+
+fn xaz128 -> u32x128x128
+z xazpg
+t [z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z]
+
+fn xaz80 -> u32x128x80
+z xazpg
+t [z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z]
+
+fn xaz40 -> u32x128x40
+z xazpg
+t [z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z]
+
+fn xaz32 -> u32x128x32
+z xazpg
+t [z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z]
+
+fn xaz16p -> u32x128x16
+z xazpg
+t [z z z z z z z z z z z z z z z z]
+
+fn xaz8 -> u32x128x8
+z xazpg
+t [z z z z z z z z]
+
+fn xag128 u32x128x128 u32 -> u32
+pg >> B 7
+wi and B 127
+pv get A pg
+v get pv wi
+
+fn xas128 u32x128x128 u32 u32 -> u32x128x128
+pg >> B 7
+wi and B 127
+pv get A pg
+pv2 set pv wi C
+t set A pg pv2
+
+fn xag80 u32x128x80 u32 -> u32
+pg >> B 7
+wi and B 127
+pv get A pg
+v get pv wi
+
+fn xas80 u32x128x80 u32 u32 -> u32x128x80
+pg >> B 7
+wi and B 127
+pv get A pg
+pv2 set pv wi C
+t set A pg pv2
+
+fn xag40 u32x128x40 u32 -> u32
+pg >> B 7
+wi and B 127
+pv get A pg
+v get pv wi
+
+fn xas40 u32x128x40 u32 u32 -> u32x128x40
+pg >> B 7
+wi and B 127
+pv get A pg
+pv2 set pv wi C
+t set A pg pv2
+
+fn xag32 u32x128x32 u32 -> u32
+pg >> B 7
+wi and B 127
+pv get A pg
+v get pv wi
+
+fn xas32 u32x128x32 u32 u32 -> u32x128x32
+pg >> B 7
+wi and B 127
+pv get A pg
+pv2 set pv wi C
+t set A pg pv2
+
+fn xag16 u32x128x16 u32 -> u32
+pg >> B 7
+wi and B 127
+pv get A pg
+v get pv wi
+
+fn xas16 u32x128x16 u32 u32 -> u32x128x16
+pg >> B 7
+wi and B 127
+pv get A pg
+pv2 set pv wi C
+t set A pg pv2
+
+fn xag8 u32x128x8 u32 -> u32
+pg >> B 7
+wi and B 127
+pv get A pg
+v get pv wi
+
+fn xas8 u32x128x8 u32 u32 -> u32x128x8
+pg >> B 7
+wi and B 127
+pv get A pg
+pv2 set pv wi C
+t set A pg pv2
+
+fn xazb -> u32x256
+z [0;256]
+
+fn xaz16 -> u32x16
+z [0;16]
+
+fn xaws -> bool
+a9 ge A 9
+a13 le A 13
+c1 and a9 a13
+sp eq A 32
+r or c1 sp
+
+fn xadig -> bool
+a1 ge A 48
+a2 le A 57
+r and a1 a2
+
+fn xaalp -> bool
+l1 ge A 97
+l2 le A 122
+lw and l1 l2
+u1 ge A 65
+u2 le A 90
+uw and u1 u2
+r or lw uw
+
+fn xasyc -> bool
+a xaalp A
+us eq A 95
+dt eq A 46
+dl eq A 36
+x1 or a us
+x2 or dt dl
+r or x1 x2
+
+fn xalch -> bool
+a xasyc A
+d xadig A
+r or a d
+
+fn xahexd -> bool
+d xadig A
+l1 ge A 97
+l2 le A 102
+lw and l1 l2
+u1 ge A 65
+u2 le A 70
+uw and u1 u2
+x or d lw
+r or x uw
+
+fn xahexv
+d xadig A
+dv sub A 48
+lc or A 32
+lv sub lc 87
+r select d dv lv
+
+fn xawsp u32 u32 u32x256 u32 -> bool
+inr lt A D
+c get C A
+w xaws c
+r and inr w
+
+fn xanwp u32 u32 u32x256 u32 -> bool
+inr lt A D
+c get C A
+w xaws c
+nw eq w false
+r and inr nw
+
+fn xalcp u32 u32 u32x256 u32 -> bool
+inr lt A D
+c get C A
+w xalch c
+r and inr w
+
+fn xainc u32 u32 u32x256 u32 -> u32
+r add A 1
+
+fn xaskip u32x256 u32 u32 -> u32
+r loop xawsp xainc 257 C A B
+
+fn xatows u32x256 u32 u32 -> u32
+r loop xanwp xainc 257 C A B
+
+fn xascl u32x256 u32 u32 -> u32
+r loop xalcp xainc 257 C A B
+
+fn xartp u32 u32 u32x256 u32 -> bool
+gtb gt A D
+pi sub A 1
+c get C pi
+w xaws c
+r and gtb w
+
+fn xadec1 u32 u32 u32x256 u32 -> u32
+r sub A 1
+
+fn xartrim u32x256 u32 u32 -> u32
+r loop xartp xadec1 257 C A B
+
+fn xafdp u32 u32 u32x256 u32 u32 -> bool
+inr lt A E
+c get C A
+ne1 ne c D
+r and inr ne1
+
+fn xafdi u32 u32 u32x256 u32 u32 -> u32
+r add A 1
+
+fn xafind u32x256 u32 u32 u32 -> u32
+r loop xafdp xafdi 257 B A D C
+
+fn xacutst (u32,bool,bool) u32 u32x256 u32 -> (u32,bool,bool)
+cut at A 0
+st at A 1
+sk at A 2
+c get C B
+found ne cut D
+bs eq c 92
+qt eq c 34
+hs eq c 35
+nst eq st false
+nsk eq sk false
+esc and st bs
+esc1 and esc nsk
+q1 and qt nsk
+nesc eq esc1 false
+q2 and q1 nesc
+st2 xor st q2
+hc and hs nst
+hc1 and hc nsk
+hc2 and hc1 nesc
+cut1 select hc2 B cut
+sk2 select sk false esc1
+nf eq found false
+cut2 select nf cut1 cut
+st3 select nf st2 st
+sk3 select nf sk2 sk
+r (cut2 st3 sk3)
+
+fn xacut u32x256 u32 -> u32
+big gt B 256
+lim select big 256 B
+s0 (lim false false)
+f fold xacutst lim s0 A lim
+r at f 0
+
+fn xaallst bool u32 u32x256 u32 u32 -> bool
+ix add D B
+c get C ix
+d xadig c
+l xalch c
+isd eq E 0
+v select isd d l
+r and A v
+
+fn xaall u32x256 u32 u32 u32 -> bool
+gtr gt C B
+d sub C B
+ln select gtr d 0
+r fold xaallst ln true A B D
+
+fn xasym u32x256 u32 u32 -> bool
+ne1 lt B C
+c get A B
+s xasyc c
+a xaall A B C 1
+x and ne1 s
+r and x a
+
+fn xapkst u32x8 u32 u32x256 u32 u32 -> u32x8
+inr lt B E
+ix add D B
+c get C ix
+cv select inr c 0
+wi >> B 2
+j3 and B 3
+sh mul j3 8
+sv << cv sh
+old get A wi
+nw or old sv
+s1 set A wi nw
+z eq c 0
+zb and inr z
+bd get s1 7
+bd1 select zb 1 bd
+s2 set s1 7 bd1
+
+fn xapack u32x256 u32 u32 -> u32x8
+gtr gt C B
+d sub C B
+ln select gtr d 0
+z [0;8]
+lg gt ln 24
+bd select lg 1 0
+z1 set z 7 bd
+z2 set z1 6 ln
+r fold xapkst 24 z2 A B ln
+
+fn xalkst u32 u32 u32x910 u32x8 -> u32
+k mul B 7
+t0 get C k
+k1 add k 1
+t1 get C k1
+k2 add k 2
+t2 get C k2
+k3 add k 3
+t3 get C k3
+k4 add k 4
+t4 get C k4
+k5 add k 5
+t5 get C k5
+k6 add k 6
+t6 get C k6
+w0 get D 0
+w1 get D 1
+w2 get D 2
+w3 get D 3
+w4 get D 4
+w5 get D 5
+w6 get D 6
+w7 get D 7
+e0 eq t0 w0
+e1 eq t1 w1
+e2 eq t2 w2
+e3 eq t3 w3
+e4 eq t4 w4
+e5 eq t5 w5
+e6 eq t6 w6
+e7 eq w7 0
+a01 and e0 e1
+a23 and e2 e3
+a45 and e4 e5
+a67 and e6 e7
+b1 and a01 a23
+b2 and a45 a67
+m and b1 b2
+nf eq A 4294967295
+take and m nf
+r select take B A
+
+fn xalook u32x910 u32 u32x8 -> u32
+r fold xalkst B 4294967295 A C
+
+fn xamnt -> u32x910
+t [1818518625 0 0 0 0 0 4 1902404705 0 0 0 0 0 4 7107183 0 0 0 0 0 3 7434863 0 0 0 0 0 3 1818521185 0 0 0 0 0 4 1902407265 0 0 0 0 0 4 1818391923 0 0 0 0 0 4 1902278003 0 0 0 0 0 4 1819438968 0 0 0 0 0 4 1903325048 0 0 0 0 0 4 1819307363 0 0 0 0 0 4 1903193443 0 0 0 0 0 4 1953719668 108 0 0 0 0 5 1953719668 113 0 0 0 0 5 1953719668 98 0 0 0 0 5 1819701101 0 0 0 0 0 4 1903587181 0 0 0 0 0 4 1651928941 0 0 0 0 0 4 1635151725 7435106 0 0 0 0 7 2054582125 27746 0 0 0 0 6 1818322284 0 0 0 0 0 4 1902208364 0 0 0 0 0 4 1819635049 108 0 0 0 0 5 1819635049 113 0 0 0 0 5 1818715502 0 0 0 0 0 4 1902601582 0 0 0 0 0 4 1819047277 0 0 0 0 0 4 1902933357 0 0 0 0 0 4 1819699556 0 0 0 0 0 4 1903585636 0 0 0 0 0 4 1818455657 0 0 0 0 0 4 1902341737 0 0 0 0 0 4 1818453348 0 0 0 0 0 4 1902339428 0 0 0 0 0 4 1819045746 0 0 0 0 0 4 1902931826 0 0 0 0 0 4 1819438962 0 0 0 0 0 4 1903325042 0 0 0 0 0 4 1819043955 0 0 0 0 0 4 1902930035 0 0 0 0 0 4 1819437171 0 0 0 0 0 4 1903323251 0 0 0 0 0 4 1819435379 0 0 0 0 0 4 1903321459 0 0 0 0 0 4 1752397168 113 0 0 0 0 5 1903193968 0 0 0 0 0 4 7628146 0 0 0 0 0 3 1668512115 7105633 0 0 0 0 7 7368042 0 0 0 0 0 3 1819042147 0 0 0 0 0 4 28522 0 0 0 0 0 2 7302762 0 0 0 0 0 3 25194 0 0 0 0 0 2 6644074 0 0 0 0 0 3 25962 0 0 0 0 0 2 6647402 0 0 0 0 0 3 6644330 0 0 0 0 0 3 24938 0 0 0 0 0 2 29546 0 0 0 0 0 2 7564906 0 0 0 0 0 3 28778 0 0 0 0 0 2 7368298 0 0 0 0 0 3 27754 0 0 0 0 0 2 6645610 0 0 0 0 0 3 6646890 0 0 0 0 0 3 26474 0 0 0 0 0 2 1869899123 0 0 0 0 0 4 1853121907 111 0 0 0 0 5 1651795315 0 0 0 0 0 4 1635018099 101 0 0 0 0 5 1702126963 0 0 0 0 0 4 1853121907 101 0 0 0 0 5 1651795315 101 0 0 0 0 5 1635018099 0 0 0 0 0 4 1937007987 0 0 0 0 0 4 1853121907 115 0 0 0 0 5 1886676339 0 0 0 0 0 4 1853121907 112 0 0 0 0 5 1819567475 0 0 0 0 0 4 1735681395 101 0 0 0 0 5 1819567475 101 0 0 0 0 5 1735681395 0 0 0 0 0 4 1987013987 27759 0 0 0 0 6 1987013987 29039 0 0 0 0 6 1987013987 7106414 0 0 0 0 7 1987013987 7434094 0 0 0 0 7 1987013987 27746 0 0 0 0 6 1987013987 29026 0 0 0 0 6 1987013987 7103841 0 0 0 0 7 1987013987 7431521 0 0 0 0 7 1987013987 27749 0 0 0 0 6 1987013987 29029 0 0 0 0 6 1987013987 7103854 0 0 0 0 7 1987013987 7431534 0 0 0 0 7 1987013987 7103842 0 0 0 0 7 1987013987 7431522 0 0 0 0 7 1987013987 27745 0 0 0 0 6 1987013987 29025 0 0 0 0 6 1987013987 27763 0 0 0 0 6 1987013987 29043 0 0 0 0 6 1987013987 7107438 0 0 0 0 7 1987013987 7435118 0 0 0 0 7 1987013987 27760 0 0 0 0 6 1987013987 29040 0 0 0 0 6 1987013987 7106670 0 0 0 0 7 1987013987 7434350 0 0 0 0 7 1987013987 27756 0 0 0 0 6 1987013987 29036 0 0 0 0 6 1987013987 7103847 0 0 0 0 7 1987013987 7431527 0 0 0 0 7 1987013987 7103852 0 0 0 0 7 1987013987 7431532 0 0 0 0 7 1987013987 27751 0 0 0 0 6 1987013987 29031 0 0 0 0 6 1886547832 115 0 0 0 0 5 1685483373 24945 0 0 0 0 6 1684300144 100 0 0 0 0 5 1651864432 100 0 0 0 0 5 1684955504 0 0 0 0 0 4 7499632 0 0 0 0 0 3 1919907952 0 0 0 0 0 4 1819635056 7431285 0 0 0 0 7 1886287216 1902930787 29028 0 0 0 10 1886287216 1684826979 113 0 0 0 9 1970696045 29552 0 0 0 0 6 1819046768 100 0 0 0 0 5 1819439984 100 0 0 0 0 5 1819439984 29028 0 0 0 0 6 1969779568 25702 0 0 0 0 6 1685483373 0 0 0 0 0 4]
+
+fn xamna -> u32x520
+t [1 0 32 0 1 0 64 0 1 1 32 0 1 1 64 0 1 4 32 0 1 4 64 0 1 5 32 0 1 5 64 0 1 6 32 0 1 6 64 0 1 7 32 0 1 7 64 0 2 0 32 0 2 0 64 0 2 0 8 0 3 0 32 0 3 0 64 0 3 0 8 0 4 0 64 0 5 0 32 0 6 0 32 0 6 0 64 0 7 0 32 0 7 0 64 0 8 3 32 0 8 3 64 0 8 4 32 0 8 4 64 0 8 6 32 0 8 6 64 0 9 0 32 0 9 0 64 0 9 1 32 0 9 1 64 0 10 0 32 0 10 0 64 0 10 1 32 0 10 1 64 0 10 4 32 0 10 4 64 0 10 5 32 0 10 5 64 0 10 7 32 0 10 7 64 0 11 80 64 0 11 88 64 0 12 195 0 0 12 1295 0 0 13 233 0 0 13 232 0 0 14 0 0 0 14 1 0 0 14 2 0 0 14 3 0 0 14 4 0 0 14 5 0 0 14 6 0 0 14 7 0 0 14 8 0 0 14 9 0 0 14 10 0 0 14 11 0 0 14 12 0 0 14 13 0 0 14 14 0 0 14 15 0 0 15 0 8 0 15 1 8 0 15 2 8 0 15 3 8 0 15 4 8 0 15 5 8 0 15 6 8 0 15 7 8 0 15 8 8 0 15 9 8 0 15 10 8 0 15 11 8 0 15 12 8 0 15 13 8 0 15 14 8 0 15 15 8 0 16 0 32 0 16 0 64 0 16 1 32 0 16 1 64 0 16 2 32 0 16 2 64 0 16 3 32 0 16 3 64 0 16 4 32 0 16 4 64 0 16 5 32 0 16 5 64 0 16 6 32 0 16 6 64 0 16 7 32 0 16 7 64 0 16 8 32 0 16 8 64 0 16 9 32 0 16 9 64 0 16 10 32 0 16 10 64 0 16 11 32 0 16 11 64 0 16 12 32 0 16 12 64 0 16 13 32 0 16 13 64 0 16 14 32 0 16 14 64 0 16 15 32 0 16 15 64 0 17 87 0 0 17 111 0 1 17 254 0 1 17 250 0 1 17 219 0 1 17 235 0 1 17 239 0 1 17 244 0 1 17 108 0 1 17 98 0 1 18 0 0 0 19 6 0 62066 19 2 0 53874 19 3 0 115 20 0 0 0 21 0 0 0]
+
+fn xargt -> u32x910
+t [7889266 0 0 0 0 0 3 7889778 0 0 0 0 0 3 7890034 0 0 0 0 0 3 7889522 0 0 0 0 0 3 7369586 0 0 0 0 0 3 7365234 0 0 0 0 0 3 6910834 0 0 0 0 0 3 6906994 0 0 0 0 0 3 14450 0 0 0 0 0 2 14706 0 0 0 0 0 2 3158386 0 0 0 0 0 3 3223922 0 0 0 0 0 3 3289458 0 0 0 0 0 3 3354994 0 0 0 0 0 3 3420530 0 0 0 0 0 3 3486066 0 0 0 0 0 3 7889253 0 0 0 0 0 3 7889765 0 0 0 0 0 3 7890021 0 0 0 0 0 3 7889509 0 0 0 0 0 3 7369573 0 0 0 0 0 3 7365221 0 0 0 0 0 3 6910821 0 0 0 0 0 3 6906981 0 0 0 0 0 3 6568050 0 0 0 0 0 3 6568306 0 0 0 0 0 3 1680879986 0 0 0 0 0 4 1680945522 0 0 0 0 0 4 1681011058 0 0 0 0 0 4 1681076594 0 0 0 0 0 4 1681142130 0 0 0 0 0 4 1681207666 0 0 0 0 0 4 27745 0 0 0 0 0 2 27747 0 0 0 0 0 2 27748 0 0 0 0 0 2 27746 0 0 0 0 0 2 7106675 0 0 0 0 0 3 7106658 0 0 0 0 0 3 7104883 0 0 0 0 0 3 7104868 0 0 0 0 0 3 6436978 0 0 0 0 0 3 6437234 0 0 0 0 0 3 1647325554 0 0 0 0 0 4 1647391090 0 0 0 0 0 4 1647456626 0 0 0 0 0 4 1647522162 0 0 0 0 0 4 1647587698 0 0 0 0 0 4 1647653234 0 0 0 0 0 4 812477816 0 0 0 0 0 4 829255032 0 0 0 0 0 4 846032248 0 0 0 0 0 4 862809464 0 0 0 0 0 4 879586680 0 0 0 0 0 4 896363896 0 0 0 0 0 4 913141112 0 0 0 0 0 4 929918328 0 0 0 0 0 4 946695544 0 0 0 0 0 4 963472760 0 0 0 0 0 4 829255032 48 0 0 0 0 5 829255032 49 0 0 0 0 5 829255032 50 0 0 0 0 5 829255032 51 0 0 0 0 5 829255032 52 0 0 0 0 5 829255032 53 0 0 0 0 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+
+fn xarga -> u32x128
+t [64 0 64 1 64 2 64 3 64 4 64 5 64 6 64 7 64 8 64 9 64 10 64 11 64 12 64 13 64 14 64 15 32 0 32 1 32 2 32 3 32 4 32 5 32 6 32 7 32 8 32 9 32 10 32 11 32 12 32 13 32 14 32 15 8 0 8 1 8 2 8 3 8 4 8 5 8 6 8 7 8 8 8 9 8 10 8 11 8 12 8 13 8 14 8 15 128 0 128 1 128 2 128 3 128 4 128 5 128 6 128 7 128 8 128 9 128 10 128 11 128 12 128 13 128 14 128 15]
+
+fn xadit -> u32x910
+t [2019914798 116 0 0 0 0 5 1936941614 0 0 0 0 0 4 1667593006 1852795252 0 0 0 0 8 1869375278 27746 0 0 0 0 6 1887007790 101 0 0 0 0 5 2053731118 101 0 0 0 0 5 1651864366 1952671091 1936617321 1634301535 1836675935 1936486242 24 1630695470 1852270956 0 0 0 0 8 1818321454 7235433 0 0 0 0 7 1919253038 111 0 0 0 0 5 1919253038 1818846831 108 0 0 0 9 1668505902 31337 0 0 0 0 6 1163157343 1596740696 2019914847 116 0 0 13 1953459758 1313287781 1953705301 7037793 0 0 15 1094999903 16724 0 0 0 0 6 1935826783 115 0 0 0 0 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+
+fn xanops -> u32x64
+t [144 102 144 15 31 0 15 31 64 0 15 31 68 0 0 102 15 31 68 0 0 15 31 128 0 0 0 0 15 31 132 0 0 0 0 0 102 15 31 132 0 0 0 0 0 102 46 15 31 132 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+
+fn xam10 -> (u32,u32,bool)
+l0 and A 65535
+l1 >> A 16
+t0 mul l0 10
+t0b add t0 C
+t0c >> t0b 16
+t1 mul l1 10
+t1b add t1 t0c
+lo16 and t0b 65535
+hi16 << t1b 16
+nlo or lo16 hi16
+cy >> t1b 16
+h0 and B 65535
+h1 >> B 16
+u0 mul h0 10
+u0b add u0 cy
+u0c >> u0b 16
+u1 mul h1 10
+u1b add u1 u0c
+hlo and u0b 65535
+hhi << u1b 16
+nhi or hlo hhi
+ov >> u1b 16
+ovf ne ov 0
+r (nlo nhi ovf)
+
+fn xadgst (u32,u32,bool,bool) u32 u32x256 u32 bool -> (u32,u32,bool,bool)
+ix add D B
+c get C ix
+lo at A 0
+hi at A 1
+ok at A 2
+ov at A 3
+isd xadig c
+ish xahexd c
+valid select E ish isd
+dv sub c 48
+hv xahexv c
+m xam10 lo hi dv
+mlo at m 0
+mhi at m 1
+mov0 at m 2
+hl1 << lo 4
+hlo or hl1 hv
+hh1 << hi 4
+hcar >> lo 28
+hhi or hh1 hcar
+hov1 >> hi 28
+hov ne hov1 0
+nlo select E hlo mlo
+nhi select E hhi mhi
+nov select E hov mov0
+ok2 and ok valid
+ov2 or ov nov
+r (nlo nhi ok2 ov2)
+
+fn xanum u32x256 u32 u32 -> (bool,bool,u32,u32,u32)
+c0 get A B
+ng eq c0 45
+nw select ng 1 0
+d0 add B nw
+gtr gt C d0
+dd sub C d0
+ln select gtr dd 0
+x0 get A d0
+d1 add d0 1
+x1 get A d1
+z0 eq x0 48
+xx eq x1 120
+l3 ge ln 3
+hx1 and z0 xx
+hx and hx1 l3
+st select hx 2 0
+ds add d0 st
+dn sub ln st
+nonempty gt dn 0
+init (0 0 true false)
+f fold xadgst dn init A ds hx
+ok0 at f 2
+ov at f 3
+lo at f 0
+hi at f 1
+ok and ok0 nonempty
+z or lo hi
+nz ne z 0
+negm and ng nz
+negv select negm 1 0
+r (ok ov negv lo hi)
+
+fn xaunum u32x256 u32 u32 u32 -> (bool,u32)
+n xanum A B C
+ok at n 0
+ov at n 1
+ng at n 2
+lo at n 3
+hi at n 4
+nov eq ov false
+ng0 eq ng 0
+h0 eq hi 0
+le1 le lo D
+a1 and ok nov
+a2 and ng0 h0
+a3 and a1 a2
+v and a3 le1
+r (v lo)
+
+fn xareg u32x256 u32 u32 u32 -> (bool,u32,u32)
+pk xapack A B C
+t xargt
+i xalook t D pk
+fd ne i 4294967295
+a xarga
+k mul i 2
+cl get a k
+k1 add k 1
+n get a k1
+r (fd cl n)
+
+fn xaobad -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+r (9 0 0 0 0 0 0 0 0 0 0 0 0 0)
+
+fn xaimm u32x256 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+n xanum A B C
+ok at n 0
+ov at n 1
+ng at n 2
+ml at n 3
+mh at n 4
+nov eq ov false
+good and ok nov
+neg eq ng 1
+pos eq ng 0
+nl xor ml 4294967295
+nl1 add nl 1
+nh xor mh 4294967295
+lz eq ml 0
+cy select lz 1 0
+nh1 add nh cy
+lo select neg nl1 ml
+hi select neg nh1 mh
+h0 eq mh 0
+l255 le ml 255
+l128 le ml 128
+a8p and pos l255
+a8n and neg l128
+a8 or a8p a8n
+r8 and h0 a8
+l31 le ml 2147483648
+l31m le ml 2147483647
+n31 or pos l31
+r32 and h0 n31
+s31 select neg l31 l31m
+rs32 and h0 s31
+hs lt mh 2147483648
+hm eq mh 2147483648
+hm0 and hm lz
+r64a or pos hs
+r64 or r64a hm0
+lb add lo 128
+f8 lt lb 256
+l1 eq ml 1
+one1 and pos h0
+one and one1 l1
+b0 select r8 1 0
+b1 select r32 2 0
+b2 select rs32 4 0
+b3 select r64 8 0
+b4 select f8 16 0
+b5 select one 32 0
+o1 or b0 b1
+o2 or o1 b2
+o3 or o2 b3
+o4 or o3 b4
+rng or o4 b5
+k select good 2 9
+r (k 0 0 lo hi 0 0 0 0 0 0 0 0 rng)
+
+fn xamreg u32x256 u32 u32 bool -> (bool,u32)
+c get A B
+pc eq c 37
+s1 add B 1
+pk xapack A s1 C
+w0 get pk 0
+w6 get pk 6
+w7 get pk 7
+r0 eq w0 7367026
+r6 eq w6 3
+r7 eq w7 0
+r06 and r0 r6
+isrip and r06 r7
+nr eq isrip false
+look and nr D
+cnt select look 64 0
+rg xareg A s1 C cnt
+fd at rg 0
+cl at rg 1
+n at rg 2
+c64 eq cl 64
+g1 and fd c64
+g2 or g1 isrip
+ok and pc g2
+r1 select isrip 16 n
+r (ok r1)
+
+fn xacmst (u32,u32,u32,u32,u32) u32 u32x256 u32 -> (u32,u32,u32,u32,u32)
+ix add D B
+c get C ix
+dp at A 0
+n at A 1
+q1 at A 2
+q2 at A 3
+q3 at A 4
+op eq c 40
+cp eq c 41
+cm eq c 44
+d1 add dp 1
+d2 sub dp 1
+dpa select op d1 dp
+dpb select cp d2 dpa
+z eq dp 0
+top and cm z
+n0 eq n 0
+n1 eq n 1
+n2 eq n 2
+s1 and top n0
+s2 and top n1
+s3 and top n2
+r1 select s1 ix q1
+r2 select s2 ix q2
+r3 select s3 ix q3
+na add n 1
+nn select top na n
+r (dpb nn r1 r2 r3)
+
+fn xacomma u32x256 u32 u32 -> (u32,u32,u32,u32,u32)
+gtr gt C B
+d sub C B
+ln select gtr d 0
+c0 (0 0 C C C)
+r fold xacmst ln c0 A B
+
+fn xamem u32x256 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+op xafind A B C 40
+e1 sub C 1
+cl get A e1
+cp eq cl 41
+in0 add op 1
+cs xacomma A in0 e1
+cnt at cs 1
+q1 at cs 2
+q2 at cs 3
+le2 le cnt 2
+br xamreg A in0 q1 true
+bok at br 0
+bn at br 1
+brip eq bn 16
+q1a add q1 1
+hasi ge cnt 1
+ir xamreg A q1a q2 hasi
+iok0 at ir 0
+inn at ir 1
+irip eq inn 16
+isp eq inn 4
+bad1 or irip isp
+bad2 or bad1 brip
+nb2 eq bad2 false
+iok1 and iok0 nb2
+nhasi eq hasi false
+iok or nhasi iok1
+idx select hasi inn 99
+q2a add q2 1
+hass eq cnt 2
+sc get A q2a
+sl1 sub e1 q2a
+one eq sl1 1
+c1 eq sc 49
+c2 eq sc 50
+c4 eq sc 52
+c8 eq sc 56
+o12 or c1 c2
+o48 or c4 c8
+dig or o12 o48
+sok1 and one dig
+nhass eq hass false
+sok or nhass sok1
+s2 select c2 1 0
+s4 select c4 2 s2
+s8 select c8 3 s4
+scl select hass s8 0
+emp eq op B
+dn xanum A B op
+dok at dn 0
+dov at dn 1
+dng at dn 2
+dlo at dn 3
+dhi at dn 4
+dnov eq dov false
+dh0 eq dhi 0
+dneg eq dng 1
+dl31 le dlo 2147483648
+dl31m le dlo 2147483647
+dlim select dneg dl31 dl31m
+dr1 and dok dnov
+dr2 and dh0 dlim
+dnum and dr1 dr2
+nl xor dlo 4294967295
+nl1 add nl 1
+dval select dneg nl1 dlo
+issym xasym A B op
+symok and issym brip
+nnum eq dok false
+usesym and nnum symok
+dsok or dnum usesym
+dok2 or emp dsok
+dsp select emp 0 dval
+dsp2 select usesym 0 dsp
+sy select usesym 1 0
+a1 and cp le2
+a2 and a1 bok
+a3 and a2 iok
+a4 and a3 sok
+ok and a4 dok2
+k select ok 3 9
+r (k 0 0 dsp2 0 bn idx scl sy B op 0 0 0)
+
+fn xamemf (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+r xamem C D E
+
+fn xaopnd u32x256 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+s xaskip A C B
+e xartrim A s C
+ne1 lt s e
+w xatows A e s
+nows eq w e
+fine and ne1 nows
+c0 get A s
+isr eq c0 37
+isi eq c0 36
+s1 add s 1
+rc select isr 64 0
+rg xareg A s1 e rc
+rfd at rg 0
+rcl at rg 1
+rn at rg 2
+rk select rfd 1 9
+ro (rk rcl rn 0 0 0 0 0 0 0 0 0 0 0)
+$io xaimm A s1 e
+op xafind A s e 40
+hasp lt op e
+nisr eq isr false
+nisi eq isi false
+nri and nisr nisi
+ism and nri hasp
+mc select ism 1 0
+bad xaobad
+mo fold xamemf mc bad A s e
+e1 sub e 1
+lc get A e1
+isf eq lc 102
+isb eq lc 98
+fb or isf isb
+ds xaall A s e1 0
+nd lt s e1
+nm1 and fb ds
+num and nm1 nd
+nn xanum A s e1
+nov at nn 1
+nhi at nn 4
+nlo at nn 3
+nh0 eq nhi 0
+nnov eq nov false
+small and nh0 nnov
+nkd select small 5 9
+db select isb 1 0
+no (nkd 0 0 0 0 0 0 0 0 s e nlo db 0)
+sy xasym A s e
+lk select sy 4 9
+lo (lk 0 0 0 0 0 0 0 0 s e 0 0 0)
+o1 select num no lo
+o2 select ism mo o1
+o3 select isi $io o2
+o4 select isr ro o3
+r select fine o4 bad
+
+fn xak (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32
+r at A 0
+
+fn xaisr (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+k at A 0
+c at A 1
+k1 eq k 1
+c1 eq c B
+r and k1 c1
+
+fn xaism (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> bool
+k at A 0
+r eq k 3
+
+fn xaisrm (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+r or xaisr A B xaism A
+
+fn xaisi (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> bool
+k at A 0
+r eq k 2
+
+fn xaiok (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+k at A 0
+ki eq k 2
+g at A 13
+s8 eq B 8
+s32 eq B 32
+m1 select s32 2 4
+m select s8 1 m1
+x and g m
+nz ne x 0
+r and ki nz
+
+fn xaflag (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+g at A 13
+x and g B
+r ne x 0
+
+fn xan (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32
+r at A 2
+
+fn xabad -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+r (false false false false 0 false 0 0 0 false)
+
+fn xapalu (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+ia xaisi A
+rmb xaisrm B F
+iok xaiok A F
+f8 xaflag A 16
+bk xak B
+bn xan B
+breg eq bk 1
+b0 eq bn 0
+eax and breg b0
+w eq F 64
+dg mul E 8
+oe add dg 5
+or1 add dg 1
+om add dg 3
+an xan A
+ra xaisr A F
+rr and ra rmb
+ma xaism A
+rbb xaisr B F
+mr and ma rbb
+fi1 and ia rmb
+fi and fi1 iok
+f8f and fi f8
+nf8 eq f8 false
+eaxf1 and fi nf8
+eaxf and eaxf1 eax
+opi select eaxf oe 129
+opc1 select f8f 131 opi
+nsz select f8f 1 4
+nm eq eaxf false
+rms select eaxf 0 2
+opc2 select rr or1 om
+rg2 select rr an bn
+rms2 select rr 2 1
+opc select fi opc1 opc2
+hm select fi nm true
+rg select fi E rg2
+rms3 select fi rms 1
+rms4 select rr rms2 rms3
+isz select fi nsz 0
+v1 or fi rr
+v2 or v1 mr
+ok and v2 two
+r (ok false w false opc hm rg rms4 isz false)
+
+fn xaptst (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+ia xaisi A
+rmb xaisrm B F
+iok xaiok A F
+bk xak B
+bn xan B
+breg eq bk 1
+b0 eq bn 0
+eax and breg b0
+w eq F 64
+s8 eq F 8
+fi1 and ia rmb
+fi and fi1 iok
+ra xaisr A F
+rr and ra rmb
+an xan A
+oea select s8 168 169
+ofx select s8 246 247
+orr select s8 132 133
+isz select s8 1 4
+oi select eax oea ofx
+ne1 eq eax false
+opc select fi oi orr
+hm select fi ne1 true
+rg select fi 0 an
+rms0 select eax 0 2
+rms select fi rms0 2
+iszr select fi isz 0
+v or fi rr
+ok and v two
+r (ok false w false opc hm rg rms iszr false)
+
+fn xapmov (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+s64 eq F 64
+s8 eq F 8
+w eq F 64
+a64 xaisr A 64
+bx xaisr B 128
+ax xaisr A 128
+b64 xaisr B 64
+q1a and a64 bx
+q1 and q1a s64
+q2a and ax b64
+q2 and q2a s64
+ia xaisi A
+rmb xaisrm B F
+iok xaiok A F
+fi1 and ia rmb
+fi and fi1 iok
+bk xak B
+breg eq bk 1
+n64 eq s64 false
+oreg and breg n64
+bn xan B
+b7 and bn 7
+ob select s8 176 184
+obr add ob b7
+oim select s8 198 199
+isz select s8 1 4
+oi select oreg obr oim
+hmi eq oreg false
+ra xaisr A F
+rr and ra rmb
+ma xaism A
+rbb xaisr B F
+mr and ma rbb
+an xan A
+orr select s8 136 137
+omr select s8 138 139
+opm select rr orr omr
+rgm select rr an bn
+rsm select rr 2 1
+opq select q1 110 126
+rgq select q1 bn an
+rsq select q1 1 2
+q or q1 q2
+op1 select fi oi opm
+rg1 select fi 0 rgm
+rs1 select fi 2 rsm
+hm1 select fi hmi true
+iz1 select fi isz 0
+opc select q opq op1
+rg select q rgq rg1
+rs select q rsq rs1
+hm select q true hm1
+iz select q 0 iz1
+wv and w hm
+v1 or q fi
+v2 or rr mr
+v or v1 v2
+ok and v two
+r (ok q wv q opc hm rg rs iz false)
+
+fn xapmab (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+ia xaisi A
+r64 xaflag A 8
+b64 xaisr B 64
+bn xan B
+b7 and bn 7
+opc add 184 b7
+a1 and two ia
+a2 and r64 b64
+ok and a1 a2
+r (ok false true false opc false 0 2 8 false)
+
+fn xapmzb (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+a8 xaisrm A 8
+b32 xaisr B 32
+bn xan B
+a1 and two a8
+ok and a1 b32
+r (ok false false true 182 true bn 1 0 false)
+
+fn xaplea (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+ma xaism A
+rb xaisr B F
+bn xan B
+w eq F 64
+a1 and two ma
+ok and a1 rb
+r (ok false w false 141 true bn 1 0 false)
+
+fn xapimul (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+three eq D 3
+w eq F 64
+ra xaisrm A F
+rb xaisr B F
+bn xan B
+f2a and two ra
+f2 and f2a rb
+ia xaiok A F
+rmb xaisrm B F
+rc xaisr C F
+cn xan C
+f8 xaflag A 16
+f3a and three ia
+f3b and rmb rc
+f3 and f3a f3b
+o3 select f8 107 105
+i3 select f8 1 4
+opc select f2 175 o3
+esc and f2 true
+rg select f2 bn cn
+rs select f2 1 2
+iz select f2 0 i3
+ok or f2 f3
+r (ok false w esc opc true rg rs iz false)
+
+fn xapgrp (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+one eq D 1
+ra xaisrm A F
+w eq F 64
+ok and one ra
+r (ok false w false G true E 1 0 false)
+
+fn xapsh (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+rmb xaisrm B F
+w eq F 64
+ia xaiok A 8
+on xaflag A 32
+cl xaisr A 8
+an xan A
+a1 eq an 1
+icl and cl a1
+oi select on 209 193
+iz select on 0 1
+opc select ia oi 211
+izr select ia iz 0
+v or ia icl
+v2 and v rmb
+ok and v2 two
+r (ok false w false opc true E 2 izr false)
+
+fn xappp (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+one eq D 1
+ra xaisr A 64
+an xan A
+a7 and an 7
+opc add E a7
+ok and one ra
+r (ok false false false opc false 0 1 0 false)
+
+fn xapfix (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+ok eq D 0
+two gt E 255
+hb >> E 8
+opc select two hb E
+r (ok false false two opc false 0 0 0 false)
+
+fn xapbr (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 bool -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+one eq D 1
+k xak A
+k4 eq k 4
+k5 eq k 5
+t or k4 k5
+ok and one t
+r (ok false false F E false 0 0 0 true)
+
+fn xapset (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+one eq D 1
+ra xaisrm A 8
+ok and one ra
+opc add 144 E
+r (ok false false true opc true 0 1 0 false)
+
+fn xapcmov (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+ra xaisrm A F
+rb xaisr B F
+bn xan B
+w eq F 64
+a1 and two ra
+ok and a1 rb
+opc add 64 E
+r (ok false w true opc true bn 1 0 false)
+
+fn xapsse (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+ra xaisrm A 128
+rb xaisr B 128
+bn xan B
+a1 and two ra
+ok and a1 rb
+pf eq G 1
+r (ok pf false true E true bn 1 0 false)
+
+fn xapmups (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+ra xaisrm A 128
+rb xaisr B 128
+ld and ra rb
+xa xaisr A 128
+mb xaism B
+st and xa mb
+an xan A
+bn xan B
+opc select ld 16 17
+rg select ld bn an
+rs select ld 1 2
+v or ld st
+ok and v two
+r (ok false false true opc true rg rs 0 false)
+
+fn xapssh (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+rb xaisr B 128
+bn xan B
+ia xaiok A 8
+oi and G 255
+orf >> G 8
+hr ne orf 0
+ra xaisrm A 128
+fr1 and hr ra
+ni eq ia false
+fr and fr1 ni
+opc select ia oi orf
+rg select ia E bn
+rs select ia 2 1
+iz select ia 1 0
+v or ia fr
+v2 and v rb
+ok and v2 two
+r (ok true false true opc true rg rs iz false)
+
+fn xappsh (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+three eq D 3
+ia xaiok A 8
+rb xaisrm B 128
+rc xaisr C 128
+cn xan C
+a1 and three ia
+a2 and rb rc
+ok and a1 a2
+r (ok true false true 112 true cn 2 1 false)
+
+fn xapmovd (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq D 2
+ra xaisrm A 32
+rb xaisr B 128
+ld and ra rb
+xa xaisr A 128
+mb xaisrm B 32
+st and xa mb
+an xan A
+bn xan B
+opc select ld 110 126
+rg select ld bn an
+rs select ld 1 2
+v or ld st
+ok and v two
+r (ok true false true opc true rg rs 0 false)
+
+fn xaplan (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+q1 xapalu A B C H E F
+q2 xaptst A B C H E F
+q3 xapmov A B C H E F
+q4 xapmab A B C H E F
+q5 xapmzb A B C H E F
+q6 xaplea A B C H E F
+q7 xapimul A B C H E F
+q8 xapgrp A B C H E F 247
+q9 xapgrp A B C H E F 255
+q10 xapsh A B C H E F
+q11 xappp A B C H E F
+q12 xapfix A B C H E F
+q13 xapbr A B C H E false
+jc add E 128
+q14 xapbr A B C H jc true
+q15 xapset A B C H E F
+q16 xapcmov A B C H E F
+q17 xapsse A B C H E F G
+q18 xapmups A B C H E F
+q19 xapssh A B C H E F G
+q20 xappsh A B C H E F
+q21 xapmovd A B C H E F
+bad xabad
+c1 eq D 1
+c2 eq D 2
+c3 eq D 3
+c4 eq D 4
+c5 eq D 5
+c6 eq D 6
+c7 eq D 7
+c8 eq D 8
+c9 eq D 9
+c10 eq D 10
+c11 eq D 11
+c12 eq D 12
+c13 eq D 13
+c14 eq D 14
+c15 eq D 15
+c16 eq D 16
+c17 eq D 17
+c18 eq D 18
+c19 eq D 19
+c20 eq D 20
+c21 eq D 21
+r21 select c21 q21 bad
+r20 select c20 q20 r21
+r19 select c19 q19 r20
+r18 select c18 q18 r19
+r17 select c17 q17 r18
+r16 select c16 q16 r17
+r15 select c15 q15 r16
+r14 select c14 q14 r15
+r13 select c13 q13 r14
+r12 select c12 q12 r13
+r11 select c11 q11 r12
+r10 select c10 q10 r11
+r9 select c9 q9 r10
+r8 select c8 q8 r9
+r7 select c7 q7 r8
+r6 select c6 q6 r7
+r5 select c5 q5 r6
+r4 select c4 q4 r5
+r3 select c3 q3 r4
+r2 select c2 q2 r3
+r select c1 q1 r2
+
+fn xaap (u32x16,u32) u32 bool -> (u32x16,u32)
+b at A 0
+n at A 1
+v and B 255
+b2 set b n v
+n1 add n 1
+b3 select C b2 b
+n2 select C n1 n
+r (b3 n2)
+
+fn xaap4 (u32x16,u32) u32 bool -> (u32x16,u32)
+s1 xaap A B C
+v1 >> B 8
+s2 xaap s1 v1 C
+v2 >> B 16
+s3 xaap s2 v2 C
+v3 >> B 24
+s4 xaap s3 v3 C
+
+fn xarexb (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> bool
+r8 xaisr A 8
+n at A 2
+g4 ge n 4
+l8 lt n 8
+r and r8 and g4 l8
+
+fn xaemit (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32x16,u32,u32,u32,bool)
+pf at A 1
+w at A 2
+esc at A 3
+opc at A 4
+hm at A 5
+rgv at A 6
+rs at A 7
+iz at A 8
+brn at A 9
+s1 eq rs 1
+s2 eq rs 2
+s3 eq rs 3
+m23 select s2 C D
+m select s1 B m23
+hrm ne rs 0
+mk at m 0
+mreg eq mk 1
+mmem eq mk 3
+isreg and hrm mreg
+ismem and hrm mmem
+mn at m 2
+bse at m 5
+idx at m 6
+scl at m 7
+sym at m 8
+dsp at m 3
+rip eq bse 16
+r3 >> rgv 3
+rr select hm r3 0
+nb >> mn 3
+bb0 >> bse 3
+bm select rip 0 bb0
+bb1 select ismem bm 0
+bb select isreg nb bb1
+hasi ne idx 99
+ix3 >> idx 3
+xx0 select hasi ix3 0
+xx select ismem xx0 0
+fa xarexb B
+fb xarexb C
+fc xarexb D
+f1 or fa fb
+force or f1 fc
+wb select w 8 0
+rb << rr 2
+xb << xx 1
+x1 or wb rb
+x2 or x1 xb
+x3 or x2 bb
+rex or x3 64
+hasx ne x3 0
+needrex or hasx force
+z xaz16
+e0 (z 0)
+e1 xaap e0 102 pf
+e2 xaap e1 rex needrex
+e3 xaap e2 15 esc
+e4 xaap e3 opc true
+rg7 and rgv 7
+rgb << rg7 3
+mn7 and mn 7
+mrr or 192 rgb
+mr1 or mrr mn7
+regm and hm isreg
+e5 xaap e4 mr1 regm
+memm and hm ismem
+ripm and memm rip
+nrip eq rip false
+plain and memm nrip
+mrip or rgb 5
+e6 xaap e5 mrip ripm
+fixr at e6 1
+dz eq sym 1
+dv select dz 0 dsp
+e7 xaap4 e6 dv ripm
+b7 and bse 7
+bisp eq b7 4
+bisbp eq b7 5
+sib or hasi bisp
+d0 eq dsp 0
+nbp eq bisbp false
+mod0 and d0 nbp
+dl add dsp 128
+f8 lt dl 256
+m1 select f8 1 2
+md select mod0 0 m1
+mdh << md 6
+rmf select sib 4 b7
+mo1 or mdh rgb
+mo2 or mo1 rmf
+e8 xaap e7 mo2 plain
+sib1 and plain sib
+sc6 << scl 6
+ixv select hasi idx 4
+ix7 and ixv 7
+ix3b << ix7 3
+sb1 or sc6 ix3b
+sb2 or sb1 b7
+e9 xaap e8 sb2 sib1
+md1 eq md 1
+md2 eq md 2
+dm1 and plain md1
+dm2 and plain md2
+e10 xaap e9 dsp dm1
+e11 xaap4 e10 dsp dm2
+ilo at B 3
+ihi at B 4
+i1 ge iz 1
+i4 ge iz 4
+i8 eq iz 8
+e12 xaap e11 ilo i1
+lo1 >> ilo 8
+e13 xaap e12 lo1 i4
+lo2 >> ilo 16
+e14 xaap e13 lo2 i4
+lo3 >> ilo 24
+e15 xaap e14 lo3 i4
+e16 xaap4 e15 ihi i8
+bfix at e16 1
+e17 xaap4 e16 0 brn
+buf at e17 0
+len at e17 1
+symr eq sym 1
+ripfix and ripm symr
+k1 select ripfix 2 0
+k select brn 1 k1
+fx select brn bfix fixr
+hasimm gt iz 0
+bad and ripfix hasimm
+r (buf len fx k bad)
+
+fn xafail (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 bool -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+old at A 17
+ol at A 18
+none eq old 0
+dofail and none D
+c select dofail B old
+l select dofail C ol
+g1 put A 17 c
+g2 put g1 18 l
+
+fn xaput (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 bool -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+t at A 1
+n at A 2
+full ge n 65536
+nf eq full false
+dw and C nf
+wi >> n 2
+j and n 3
+sh mul j 8
+v and B 255
+sv << v sh
+old xag128 t wi
+nw or old sv
+t2 xas128 t wi nw
+t3 select dw t2 t
+n1 add n 1
+n2 select dw n1 n
+g1 put A 1 t3
+g2 put g1 2 n2
+ln at A 19
+ef and full C
+g3 xafail g2 2 ln ef
+
+fn xainsst (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x16 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+b get C B
+r xaput A b true
+
+fn xatget u32x128x128 u32 -> u32
+wi >> B 2
+j and B 3
+sh mul j 8
+w xag128 A wi
+v >> w sh
+r and v 255
+
+fn xatset u32x128x128 u32 u32 -> u32x128x128
+wi >> B 2
+j and B 3
+sh mul j 8
+w xag128 A wi
+m << 255 sh
+nm xor m 4294967295
+cl and w nm
+v and C 255
+sv << v sh
+nw or cl sv
+r xas128 A wi nw
+
+fn xapget u32x128x32 u32 -> u32
+wi >> B 2
+j and B 3
+sh mul j 8
+w xag32 A wi
+v >> w sh
+r and v 255
+
+fn xacpst u32x128x32 u32 u32x256 u32 u32 -> u32x128x32
+ix add D B
+c get C ix
+k add E B
+wi >> k 2
+j and k 3
+sh mul j 8
+w xag32 A wi
+sv << c sh
+nw or w sv
+r xas32 A wi nw
+
+fn xahst u32 u32 u32x256 u32 -> u32
+ix add D B
+c get C ix
+x xor A c
+r mul x 16777619
+
+fn xanm (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32x256 u32 u32 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32,u32)
+pool at A 3
+pl at A 4
+gtr gt D C
+d sub D C
+ln select gtr d 0
+end1 add pl ln
+over gt end1 16384
+cp fold xacpst ln pool B C pl
+pool2 select over pool cp
+pl2 select over pl end1
+g1 put A 3 pool2
+g2 put g1 4 pl2
+g3 xafail g2 2 E over
+r (g3 pl ln)
+
+fn xaeqst bool u32 u32x128x32 u32 u32x256 u32 -> bool
+k add D B
+a xapget C k
+ix add F B
+e eq a get E ix
+r and A e
+
+fn xalfst (bool,u32) u32 u32x128x40 u32x128x32 u32x256 u32 u32 u32 -> (bool,u32)
+fd at A 0
+ix at A 1
+k mul B 5
+h xag40 C k
+k1 add k 1
+st xag40 C k1
+k2 add k 2
+ln xag40 C k2
+he eq h H
+lq eq ln G
+nf eq fd false
+c1 and he lq
+cand and c1 nf
+cnt select cand ln 0
+same fold xaeqst cnt true D st E F
+hit and cand same
+fd2 or fd hit
+ix2 select hit B ix
+r (fd2 ix2)
+
+fn xalfind u32x128x40 u32 u32x128x32 u32x256 u32 u32 u32 -> (bool,u32)
+gtr gt F E
+d sub F E
+ln select gtr d 0
+s0 (false 0)
+r fold xalfst B s0 A C D E ln G
+
+fn xabfst (bool,u32) u32 u32x128x8 u32x128x32 u32x256 u32 u32 u32 -> (bool,u32)
+fd at A 0
+ix at A 1
+k mul B 4
+h xag8 C k
+k1 add k 1
+st xag8 C k1
+k2 add k 2
+ln xag8 C k2
+he eq h H
+lq eq ln G
+nf eq fd false
+c1 and he lq
+cand and c1 nf
+cnt select cand ln 0
+same fold xaeqst cnt true D st E F
+hit and cand same
+fd2 or fd hit
+ix2 select hit B ix
+r (fd2 ix2)
+
+fn xabfind u32x128x8 u32 u32x128x32 u32x256 u32 u32 u32 -> (bool,u32)
+gtr gt F E
+d sub F E
+ln select gtr d 0
+s0 (false 0)
+r fold xabfst B s0 A C D E ln G
+
+fn xahash u32x256 u32 u32 -> u32
+gtr gt C B
+d sub C B
+ln select gtr d 0
+r fold xahst ln 2166136261 A B
+
+fn xalnew ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32) u32 u32x256 u32 u32 u32 u32 u32 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32)
+g at A 0
+ns xanm g C D E I
+g1 at ns 0
+st at ns 1
+ln at ns 2
+lab at g1 5
+nl at g1 6
+full ge nl 1024
+k mul nl 5
+l1 xas40 lab k F
+k1 add k 1
+l2 xas40 l1 k1 st
+k2 add k 2
+l3 xas40 l2 k2 ln
+k3 add k 3
+l4 xas40 l3 k3 H
+k4 add k 4
+l5 xas40 l4 k4 G
+lab2 select full lab l5
+nl1 add nl 1
+nl2 select full nl nl1
+g2 put g1 5 lab2
+g3 put g2 6 nl2
+g4 xafail g3 2 I full
+r (g4 nl)
+
+fn xaref (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32x256 u32 u32 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32)
+lab at A 5
+nl at A 6
+pool at A 3
+h xahash B C D
+f xalfind lab nl pool B C D h
+fd at f 0
+ix at f 1
+s0 (A ix)
+nfd eq fd false
+cn select nfd 1 0
+r fold xalnew cn s0 B C D h 0 0 E
+
+fn xarefst ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32) u32 u32x256 u32 u32 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32)
+g at A 0
+r xaref g C D E F
+
+fn xadefset (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+lab at A 5
+k mul C 5
+k3 add k 3
+l1 xas40 lab k3 D
+k4 add k 4
+l2 xas40 l1 k4 1
+g1 put A 5 l2
+
+fn xadefnam (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+lab at A 5
+nl at A 6
+pool at A 3
+bss at A 13
+nb at A 14
+h xahash C D E
+f xalfind lab nl pool C D E h
+fd at f 0
+ix at f 1
+k mul ix 5
+k4 add k 4
+dfv xag40 lab k4
+df eq dfv 1
+fb xabfind bss nb pool C D E h
+bfd at fb 0
+dup1 and fd df
+dup or dup1 bfd
+g1 xafail A 1 G dup
+ndup eq dup false
+nfd eq fd false
+mk and ndup nfd
+upd and ndup fd
+s0 (g1 ix)
+cn select mk 1 0
+ns fold xalnew cn s0 C D E h 1 F G
+g2 at ns 0
+ix2 at ns 1
+cu select upd 1 0
+g3 fold xadefset cu g2 ix2 F
+dor at g3 7
+nd at g3 8
+dor2 xas8 dor nd ix2
+nd1 add nd 1
+dor3 select ndup dor2 dor
+nd2 select ndup nd1 nd
+g4 put g3 7 dor3
+g5 put g4 8 nd2
+
+fn xabnew (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+ns xanm A C D E G
+g1 at ns 0
+st at ns 1
+ln at ns 2
+bss at g1 13
+nb at g1 14
+off at g1 15
+full ge nb 256
+k mul nb 4
+b1 xas8 bss k F
+k1 add k 1
+b2 xas8 b1 k1 st
+k2 add k 2
+b3 xas8 b2 k2 ln
+k3 add k 3
+b4 xas8 b3 k3 off
+bss2 select full bss b4
+nb1 add nb 1
+nb2 select full nb nb1
+g2 put g1 13 bss2
+g3 put g2 14 nb2
+g4 xafail g3 2 G full
+
+fn xadefbss (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+lab at A 5
+nl at A 6
+pool at A 3
+bss at A 13
+nb at A 14
+h xahash C D E
+f xalfind lab nl pool C D E h
+fd at f 0
+ix at f 1
+k mul ix 5
+k4 add k 4
+dfv xag40 lab k4
+df eq dfv 1
+fb xabfind bss nb pool C D E h
+bfd at fb 0
+dup1 and fd df
+dup or dup1 bfd
+g1 xafail A 1 F dup
+ndup eq dup false
+cn select ndup 1 0
+g2 fold xabnew cn g1 C D E h F
+
+fn xadefnum (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+loc at A 11
+nn at A 12
+full ge nn 1024
+k mul nn 2
+l1 xas16 loc k C
+k1 add k 1
+l2 xas16 l1 k1 D
+loc2 select full loc l2
+nn1 add nn 1
+nn2 select full nn nn1
+g1 put A 11 loc2
+g2 put g1 12 nn2
+g3 xafail g2 2 E full
+
+fn xalcst u32 u32 u32x128x16 u32 -> u32
+k mul B 2
+n xag16 C k
+e eq n D
+r select e add A 1 A
+
+fn xalkst2 (u32,bool,u32) u32 u32x128x16 u32 u32 -> (u32,bool,u32)
+seen at A 0
+fd at A 1
+of0 at A 2
+k mul B 2
+n xag16 C k
+k1 add k 1
+off xag16 C k1
+e eq n D
+ek eq seen E
+hit and e ek
+fd2 or fd hit
+of2 select hit off of0
+s1 add seen 1
+seen2 select e s1 seen
+r (seen2 fd2 of2)
+
+fn xadeflab (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+sec at A 21
+ln0 at A 19
+nw at A 2
+bsz at A 15
+alld xaall C D E 0
+nm xanum C D E
+nov at nm 1
+nlo at nm 3
+nhi at nm 4
+nh0 eq nhi 0
+nov0 eq nov false
+small and nh0 nov0
+innote eq sec 2
+intext eq sec 0
+inbss eq sec 1
+ntext eq intext false
+big eq small false
+e1 and alld ntext
+e2 and alld big
+e3 or e1 e2
+e4 or e3 innote
+g1 xafail A 1 ln0 e4
+ok eq e4 false
+dn and ok alld
+cl select dn 1 0
+g2 fold xadefnum cl g1 nlo nw ln0
+nal eq alld false
+dt1 and ok nal
+dt and dt1 intext
+db and dt1 inbss
+ct select dt 1 0
+g3 fold xadefnam ct g2 C D E nw ln0
+cb select db 1 0
+g4 fold xadefbss cb g3 C D E ln0
+
+fn xalabp ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32,bool) u32 u32x256 u32 -> bool
+d at A 2
+r eq d false
+
+fn xalabs ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32,bool) u32 u32x256 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32,bool)
+g at A 0
+pos at A 1
+s xaskip C D pos
+e xascl C D s
+ne1 gt e s
+inr lt e D
+c get C e
+col eq c 58
+ok1 and ne1 inr
+ok and ok1 col
+cnt select ok 1 0
+g2 fold xadeflab cnt g C s e
+e1 add e 1
+pos2 select ok e1 pos
+dn eq ok false
+r (g2 pos2 dn)
+
+fn xanopst (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+ch div B 10
+wi rem B 10
+c10 mul ch 10
+left sub C c10
+gt10 gt left 10
+l select gt10 10 left
+lm sub l 1
+lp mul l lm
+st div lp 2
+ix add st wi
+t xanops
+b get t ix
+r xaput A b true
+
+fn xaalign (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+sec at A 21
+nw at A 2
+bsz at A 15
+bal at A 16
+unit << 1 B
+um sub unit 1
+nn sub 0 nw
+pad and nn um
+isb eq sec 1
+pc select isb 0 pad
+g1 fold xanopst pc A pad
+x add bsz um
+nm xor um 4294967295
+nb and x nm
+bigger gt B bal
+bal2 select bigger B bal
+nb2 select isb nb bsz
+bal3 select isb bal2 bal
+g2 put g1 15 nb2
+g3 put g2 16 bal3
+
+fn xaalignf (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+r xaalign A C
+
+fn xalogst
+s >> C B
+b and s 1
+add A b
+
+fn xalog2
+m sub A 1
+r fold xalogst 15 0 m
+
+fn xazcst (u32,u32,u32,u32,u32) u32 u32x256 u32 -> (u32,u32,u32,u32,u32)
+ix add D B
+c get C ix
+cm eq c 44
+n at A 0
+q1 at A 1
+q2 at A 2
+q3 at A 3
+q4 at A 4
+n0 eq n 0
+n1 eq n 1
+n2 eq n 2
+n3 eq n 3
+s1 and cm n0
+s2 and cm n1
+s3 and cm n2
+s4 and cm n3
+r1 select s1 ix q1
+r2 select s2 ix q2
+r3 select s3 ix q3
+r4 select s4 ix q4
+na add n 1
+nn select cm na n
+r (nn r1 r2 r3 r4)
+
+fn xatrim u32x256 u32 u32 -> (u32,u32)
+s xaskip A C B
+e xartrim A s C
+r (s e)
+
+fn xaword u32x256 u32 u32 u32 -> bool
+pk xapack A B C
+t xadit
+i xalook t 16 pk
+r eq i D
+
+fn xaalignb (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+bsz at A 15
+bal at A 16
+unit << 1 B
+um sub unit 1
+x add bsz um
+nm xor um 4294967295
+nb and x nm
+bigger gt B bal
+bal2 select bigger B bal
+g2 put A 15 nb
+g3 put g2 16 bal2
+
+fn xazadd (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+g1 xaalignb A G
+nb0 at g1 14
+g2 xadefbss g1 0 C D E H
+nb1 at g2 14
+added gt nb1 nb0
+bsz at g2 15
+nsz add bsz F
+wrap lt nsz bsz
+nsz2 select added nsz bsz
+g3 put g2 15 nsz2
+ov and added wrap
+g4 xafail g3 1 H ov
+
+fn xazf (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+gtr gt E D
+d sub E D
+ln select gtr d 0
+c0 (0 0 0 0 0)
+cs fold xazcst ln c0 C D
+cnt at cs 0
+q1 at cs 1
+q2 at cs 2
+q3 at cs 3
+q4 at cs 4
+five eq cnt 4
+pt0 xatrim C D q1
+a1 add q1 1
+pt1 xatrim C a1 q2
+a2 add q2 1
+pt2 xatrim C a2 q3
+a3 add q3 1
+pt3 xatrim C a3 q4
+a4 add q4 1
+pt4 xatrim C a4 E
+s0 at pt0 0
+e0 at pt0 1
+s1 at pt1 0
+e1 at pt1 1
+s2 at pt2 0
+e2 at pt2 1
+s3 at pt3 0
+e3 at pt3 1
+s4 at pt4 0
+e4 at pt4 1
+d0 xaword C s0 e0 14
+b1 xaword C s1 e1 15
+nne lt s2 e2
+nlab xaall C s2 e2 1
+ndig xaall C s2 e2 0
+nd eq ndig false
+nok1 and nne nlab
+nok and nok1 nd
+sz xaunum C s3 e3 4294967295
+al xaunum C s4 e4 14
+szv at sz 1
+szok at sz 0
+alv at al 1
+alok at al 0
+o1 and five d0
+o2 and b1 szok
+o3 and o1 o2
+o4 and o3 alok
+ok and o4 nok
+bad eq ok false
+g1 xafail A 1 F bad
+cn select ok 1 0
+g2 fold xazadd cn g1 C s2 e2 szv alv F
+
+fn xastrst ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),bool,bool) u32 u32x256 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),bool,bool)
+g at A 0
+esc at A 1
+bad at A 2
+ix add D B
+c get C ix
+isbs eq c 92
+isq eq c 34
+isn eq c 110
+ist eq c 116
+v1 select ist 9 0
+v2 select isn 10 v1
+v3 select isq 34 v2
+v4 select isbs 92 v3
+known ne v4 0
+lo lt c 32
+hi gt c 126
+x1 or lo hi
+x2 or x1 isq
+nesc eq esc false
+plainbad and nesc x2
+nbs eq isbs false
+np1 eq x2 false
+plain1 and nesc nbs
+plain and plain1 np1
+nk eq known false
+escbad and esc nk
+b1 or bad plainbad
+b2 or b1 escbad
+escok and esc known
+pt or plain escok
+v select esc v4 c
+g2 xaput g v pt
+newesc and nesc isbs
+r (g2 newesc b2)
+
+fn xaasciz (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+gtr gt E D
+d sub E D
+ln select gtr d 0
+l2 ge ln 2
+c0 get C D
+e1 sub E 1
+c1 get C e1
+q0 eq c0 34
+q1 eq c1 34
+s1 add D 1
+gb gt e1 s1
+bl sub e1 s1
+blen select gb bl 0
+st0 (A false false)
+cn select l2 blen 0
+f fold xastrst cn st0 C s1
+g1 at f 0
+esc at f 1
+bad at f 2
+g2 xaput g1 0 true
+a1 and l2 q0
+a2 and a1 q1
+nesc eq esc false
+nbad eq bad false
+a3 and a2 nesc
+ok and a3 nbad
+ko eq ok false
+g3 xafail g2 1 F ko
+
+fn xadir (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+pk xapack C D E
+dt xadit
+di xalook dt 12 pk
+nf eq di 4294967295
+sec at A 21
+emp eq F G
+nemp eq emp false
+gtr gt G F
+rd sub G F
+rl select gtr rd 0
+d0 eq di 0
+d1 eq di 1
+d2 eq di 2
+d3 eq di 3
+d4 eq di 4
+d5 eq di 5
+d6 eq di 6
+d7 eq di 7
+d8 eq di 8
+d9 eq di 9
+d10 eq di 10
+d11 eq di 11
+innote eq sec 2
+le2 le di 2
+nle2 eq le2 false
+enote and innote nle2
+x0 or d0 d1
+x1 or x0 d6
+eemp and x1 nemp
+r13 ge rl 13
+e13 add F 13
+tx xaword C F e13 12
+istx and r13 tx
+r15 ge rl 15
+e15 add F 15
+nt xaword C F e15 13
+isnt and r15 nt
+sok or istx isnt
+nsok eq sok false
+esec and d2 nsok
+lab xaall C F G 1
+glok and nemp lab
+nglok eq glok false
+eglob and d3 nglok
+ts or d4 d5
+ets and ts emp
+pa xaunum C F G 14
+paok at pa 0
+pav at pa 1
+npa eq paok false
+ep2 and d7 npa
+ba xaunum C F G 16384
+baok at ba 0
+bav at ba 1
+bm sub bav 1
+bx and bav bm
+bp2 eq bx 0
+bnz ne bav 0
+bok1 and baok bp2
+bok and bok1 bnz
+nbok eq bok false
+ebal and d8 nbok
+blog xalog2 bav
+isbss eq sec 1
+za xaunum C F G 4294967295
+zok at za 0
+zv at za 1
+bsz at A 15
+nbsz add bsz zv
+zwrap lt nbsz bsz
+nzok eq zok false
+nbss eq isbss false
+ez1 or nzok nbss
+ez2 or ez1 zwrap
+ezero and d9 ez2
+istext eq sec 0
+ntext eq istext false
+easc and d11 ntext
+f1 or nf enote
+f2 or f1 eemp
+f3 or f2 esec
+f4 or f3 eglob
+f5 or f4 ets
+f6 or f5 ep2
+f7 or f6 ebal
+f8 or f7 ezero
+f9 or f8 easc
+g1 xafail A 1 H f9
+ok eq f9 false
+ns1 select isnt 2 0
+ns2 select d2 ns1 sec
+ns3 select d1 1 ns2
+ns4 select d0 0 ns3
+ns5 select ok ns4 sec
+g2 put g1 21 ns5
+pal and ok d7
+bal and ok d8
+lg select bal blog pav
+alc or pal bal
+cal select alc 1 0
+g3 fold xaalignf cal g2 lg
+zz and ok d9
+bsz3 at g3 15
+nz select zz nbsz bsz3
+g4 put g3 15 nz
+zf and ok d10
+czf select zf 1 0
+g5 fold xazf czf g4 C F G H
+as and ok d11
+cas select as 1 0
+g6 fold xaasciz cas g5 C F G H
+
+fn xaopt u32x256 u32 u32 bool -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+o xaopnd A B C
+z (0 0 0 0 0 0 0 0 0 0 0 0 0 0)
+r select D o z
+
+fn xafix (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+fx at A 9
+nf at A 10
+full ge nf 2048
+k mul nf 5
+f1 xas80 fx k C
+k1 add k 1
+f2 xas80 f1 k1 D
+k2 add k 2
+f3 xas80 f2 k2 E
+k3 add k 3
+f4 xas80 f3 k3 F
+k4 add k 4
+f5 xas80 f4 k4 G
+fx2 select full fx f5
+nf1 add nf 1
+nf2 select full nf nf1
+g1 put A 9 fx2
+g2 put g1 10 nf2
+g3 xafail g2 2 E full
+
+fn xapush (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 (u32x16,u32,u32,u32,bool) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+at0 at A 2
+buf at D 0
+len at D 1
+fpos at D 2
+fk at D 3
+g1 fold xainsst len A buf
+s1 eq H 1
+s2 eq H 2
+m23 select s2 F G
+m select s1 E m23
+k1 eq fk 1
+ak at E 0
+isnum eq ak 5
+nnum eq isnum false
+named1 and k1 nnum
+k2 eq fk 2
+named or named1 k2
+ns1 at E 9
+ne1 at E 10
+ns2 at m 9
+ne2 at m 10
+ns select k2 ns2 ns1
+nend select k2 ne2 ne1
+cn select named 1 0
+s0 (g1 0)
+rf fold xarefst cn s0 C ns nend I
+g2 at rf 0
+ix at rf 1
+num at E 11
+dir at E 12
+di sub J dir
+numf and k1 isnum
+kc1 select numf 5 fk
+a1 select numf num ix
+b1 select numf di 0
+off add at0 fpos
+hf ne fk 0
+cf select hf 1 0
+g3 fold xafix cf g2 off kc1 I a1 b1
+
+fn xainsn (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+sec at A 21
+pk xapack C D E
+mt xamnt
+mi xalook mt 130 pk
+fd ne mi 4294967295
+atb xamna
+k mul mi 4
+cl get atb k
+k1 add k 1
+pm get atb k1
+k2 add k 2
+sz get atb k2
+k3 add k 3
+ex get atb k3
+emp eq F G
+cs xacomma C F G
+cnt at cs 1
+q1 at cs 2
+q2 at cs 3
+c1 add cnt 1
+n select emp 0 c1
+many gt n 3
+h1 ge n 1
+h2 ge n 2
+h3 ge n 3
+oa xaopt C F q1 h1
+q1a add q1 1
+ob xaopt C q1a q2 h2
+q2a add q2 1
+oc xaopt C q2a G h3
+ka xak oa
+kb xak ob
+kc xak oc
+ba eq ka 9
+bb eq kb 9
+bc eq kc 9
+pl xaplan oa ob oc cl pm sz ex n
+pok at pl 0
+e xaemit pl oa ob oc
+eb at e 4
+brn at pl 9
+isnum eq ka 5
+num at oa 11
+dir at oa 12
+loc at A 11
+nl at A 12
+nb and brn isnum
+cn select nb nl 0
+seen fold xalcst cn 0 loc num
+s0 eq seen 0
+db eq dir 1
+nob1 and nb db
+nob and nob1 s0
+nfd eq fd false
+npok eq pok false
+nsec ne sec 0
+x1 or nfd many
+x2 or x1 ba
+x3 or x2 bb
+x4 or x3 bc
+x5 or x4 npok
+x6 or x5 eb
+x7 or x6 nob
+bad or x7 nsec
+g1 xafail A 1 H bad
+ok eq bad false
+rs at pl 7
+oc1 select ok 1 0
+g2 fold xapush oc1 g1 C e oa ob oc rs H seen
+
+fn xaproc (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32x256 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+cut xacut B C
+big gt C 256
+cl ge cut 256
+lim and big cl
+g1 xafail A 2 D lim
+st0 (g1 0 false)
+ls loop xalabp xalabs 257 st0 B cut
+g2 at ls 0
+pos at ls 1
+bs xaskip B cut pos
+be xartrim B bs cut
+nonempty lt bs be
+me xatows B be bs
+rs xaskip B be me
+c0 get B bs
+isdot eq c0 46
+dodir and nonempty isdot
+nd eq isdot false
+doins and nonempty nd
+cd select dodir 1 0
+ci select doins 1 0
+g3 fold xadir cd g2 B bs me rs be D
+g4 fold xainsn ci g3 B bs me rs be D
+
+fn xardp (io,u32x256,u32,u32,bool) u32 -> bool
+d at A 4
+rm0 at A 3
+nd eq d false
+more gt rm0 0
+r and nd more
+
+fn xards (io,u32x256,u32,u32,bool) u32 -> (io,u32x256,u32,u32,bool)
+t at A 0
+b at A 1
+ln at A 2
+rm0 at A 3
+rr read t
+c at rr 0
+t2 at rr 1
+rm1 sub rm0 1
+nl eq c 10
+nnl eq nl false
+room lt ln 256
+st and room nnl
+b2 set b ln c
+b3 select st b2 b
+ln1 add ln 1
+ln2 select nl ln ln1
+r (t2 b3 ln2 rm1 nl)
+
+fn xamorep (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+er at A 17
+rm0 at A 20
+e0 eq er 0
+m gt rm0 0
+r and e0 m
+
+fn xaline (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+rm0 at A 20
+lno at A 19
+t at A 0
+zb xazb
+s0 (t zb 0 rm0 false)
+cap add rm0 1
+s loop xardp xards cap s0
+t2 at s 0
+b at s 1
+ln at s 2
+rm1 at s 3
+g1 put A 0 t2
+g2 put g1 20 rm1
+lno1 add lno 1
+g3 put g2 19 lno1
+g4 xaproc g3 b ln lno1
+
+fn xarsst (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+fx at A 9
+k mul B 5
+fa xag80 fx k
+k1 add k 1
+kind xag80 fx k1
+k2 add k 2
+line xag80 fx k2
+k3 add k 3
+a xag80 fx k3
+k4 add k 4
+b xag80 fx k4
+nb and kind 4
+isnum ne nb 0
+loc at A 11
+nl at A 12
+lab at A 5
+nlx select isnum nl 0
+ls0 (0 false 0)
+lk fold xalkst2 nlx ls0 loc a b
+lfd at lk 1
+lof at lk 2
+ka mul a 5
+ka3 add ka 3
+eof xag40 lab ka3
+ka4 add ka 4
+edf xag40 lab ka4
+efd eq edf 1
+found select isnum lfd efd
+target select isnum lof eof
+und eq found false
+e1 and und isnum
+a4 add fa 4
+v sub target a4
+t at A 1
+t1 xatset t fa v
+at1 add fa 1
+v1 >> v 8
+t2 xatset t1 at1 v1
+at2 add fa 2
+v2 >> v 16
+t3 xatset t2 at2 v2
+at3 add fa 3
+v3 >> v 24
+t4 xatset t3 at3 v3
+t5 select found t4 t
+g1 put A 1 t5
+g2 xafail g1 1 line e1
+
+fn xares (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+er at A 17
+nf at A 10
+ok eq er 0
+cnt select ok nf 0
+g fold xarsst cnt A
+
+fn xawt io u32 u32x128x128 -> io
+v xatget C B
+w write A v
+
+fn xawb io u32 u32x128x32 u32 -> io
+i add D B
+v xapget C i
+w write A v
+
+fn xawname io u32x128x40 u32 u32x128x32 -> io
+k mul C 5
+k1 add k 1
+st xag40 B k1
+k2 add k 2
+ln xag40 B k2
+w1 write A ln
+w2 fold xawb ln w1 D st
+
+fn xawlab io u32 u32x128x8 u32x128x40 u32x128x32 -> io
+ix xag8 C B
+k mul ix 5
+k3 add k 3
+off xag40 D k3
+w1 write A off
+w2 xawname w1 D ix E
+
+fn xaisrel u32x128x80 u32 u32x128x40 -> bool
+k mul B 5
+k1 add k 1
+kind xag80 A k1
+k3 add k 3
+a xag80 A k3
+nb and kind 4
+named eq nb 0
+ka mul a 5
+ka4 add ka 4
+edf xag40 C ka4
+und eq edf 0
+r and named und
+
+fn xacrel u32 u32 u32x128x80 u32x128x40 -> u32
+r1 xaisrel C B D
+r select r1 add A 1 A
+
+fn xawrel1 io u32 u32 u32x128x80 u32x128x40 u32x128x32 -> io
+k mul C 5
+fa xag80 D k
+k1 add k 1
+kind xag80 D k1
+k3 add k 3
+a xag80 D k3
+kk sub kind 1
+w1 write A fa
+w2 write w1 kk
+w3 xawname w2 E a F
+
+fn xawrel io u32 u32x128x80 u32x128x40 u32x128x32 -> io
+r1 xaisrel C B D
+cn select r1 1 0
+w fold xawrel1 cn A B C D E
+
+fn xawbss io u32 u32x128x8 u32x128x32 -> io
+k mul B 4
+k1 add k 1
+st xag8 C k1
+k2 add k 2
+ln xag8 C k2
+k3 add k 3
+off xag8 C k3
+w1 write A off
+w2 write w1 ln
+w3 fold xawb ln w2 D st
+
+fn xawok io u32 u32x128x128 u32 u32x128x32 u32x128x40 u32x128x8 u32 u32x128x80 u32 u32x128x8 u32 u32 u32 -> io
+w0 write A 0
+w1 write w0 D
+w2 fold xawt D w1 C
+w3 write w2 H
+w4 fold xawlab H w3 G F E
+nr fold xacrel J 0 I F
+w5 write w4 nr
+w6 fold xawrel J w5 I F E
+w7 write w6 L
+w8 fold xawbss L w7 K E
+w9 write w8 M
+w10 write w9 N
+
+fn xawerr io u32 u32 u32 -> io
+w0 write A C
+w1 write w0 D
+
+fn xaout (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) -> io
+t at A 0
+tx at A 1
+nw at A 2
+pool at A 3
+lab at A 5
+dor at A 7
+nd at A 8
+fx at A 9
+nf at A 10
+bss at A 13
+nb at A 14
+bsz at A 15
+bal at A 16
+er at A 17
+el at A 18
+ok eq er 0
+okc select ok 1 0
+erc select ok 0 1
+w1 fold xawok okc t tx nw pool lab dor nd fx nf bss nb bsz bal
+w2 fold xawerr erc w1 er el
+
+fn xasmio io -> u32
+r read A
+n at r 0
+t at r 1
+z128 xaz128
+z32 xaz32
+z40 xaz40
+z8 xaz8
+z80 xaz80
+z16 xaz16p
+g0 (t z128 0 z32 0 z40 0 z8 0 z80 0 z16 0 z8 0 0 0 0 0 0 n 0)
+cap add n 1
+g1 loop xamorep xaline cap g0
+g2 xares g1
+code at g2 17
+w xaout g2
+code
+

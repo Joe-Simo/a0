@@ -1,0 +1,572 @@
+use "lex.a0"
+
+fn sg_umin
+c lt A B
+r select c A B
+
+fn sg_umax
+c gt A B
+r select c A B
+
+fn sg_lower
+up and ge A 65 le A 90
+l add A 32
+r select up l A
+
+fn sg_z64 -> u32x64
+z [0;64]
+
+fn sg_z65 -> u32x65
+z [0;65]
+
+fn sg_srcb u32x512x64 u32 -> u32
+h >> B 7
+l and B 127
+g srcpg A h
+v get g l
+
+fn sg_tokat u32x128x384 u32 -> (u32,u32,u32)
+w mul B 3
+h0 >> w 7
+l0 and w 127
+g0 get A h0
+k get g0 l0
+w1 add w 1
+h1 >> w1 7
+l1 and w1 127
+g1 get A h1
+s get g1 l1
+w2 add w 2
+h2 >> w2 7
+l2 and w2 127
+g2 get A h2
+n get g2 l2
+r (k s n)
+
+fn sg_cpstep u32x64 u32 u32x512x64 u32 u32 -> u32x64
+i0 add D B
+v sg_srcb C i0
+inr lt B E
+x select inr v 0
+r set A B x
+
+fn sg_copy64 u32x512x64 u32 u32 -> u32x64
+z sg_z64
+r fold sg_cpstep 64 z A B C
+
+fn sg_entstep (u32x64,u32,bool) u32 u32x328 u32 -> (u32x64,u32,bool)
+buf at A 0
+len at A 1
+stop at A 2
+i0 add D B
+v get C i0
+sp eq v 32
+stop2 or stop sp
+nstop select stop2 false true
+live and nstop true
+x select live v 0
+buf2 set buf B x
+len1 add len 1
+len2 select live len1 len
+r (buf2 len2 stop2)
+
+fn sg_entry u32x328 u32 -> (u32x64,u32)
+z sg_z64
+s0 (z 0 false)
+off mul B 8
+s fold sg_entstep 8 s0 A off
+buf at s 0
+len at s 1
+r (buf len)
+
+fn sg_names -> u32x328
+t "mov     add     sub     mul     and     or      xor     shl     shr     eq      ne      lt      le      gt      ge      select  call    fold    loop    arr     rec     get     set     at      put     read    write   div     rem     puts    udiv    urem    u32     bool    io      fn      ret     end     patch   true    false   "
+
+fn sg_eqstep bool u32 u32x64 u32x64 u32 -> bool
+a get C B
+b get D B
+inr lt B E
+e eq a b
+ok select inr e true
+r and A ok
+
+fn sg_eqbuf u32x64 u32 u32x64 u32 -> bool
+same eq B D
+f fold sg_eqstep 64 true A C B
+r and same f
+
+fn sg_cistep bool u32 u32x64 u32x64 u32 -> bool
+a get C B
+b get D B
+la sg_lower a
+lb sg_lower b
+inr lt B E
+e eq la lb
+ok select inr e true
+r and A ok
+
+fn sg_cieq u32x64 u32 u32x64 u32 -> bool
+same eq B D
+f fold sg_cistep 64 true A C B
+r and same f
+
+fn sg_initstep u32x65 u32 -> u32x65
+v mul B 10
+r set A B v
+
+fn sg_levcell (u32x65,u32) u32 u32x65 u32x64 u32 -> (u32x65,u32)
+row at A 0
+left at A 1
+j add B 1
+cb get D B
+pj get C j
+pd get C B
+$eq eq E cb
+la sg_lower E
+lb sg_lower cb
+leq eq la lb
+c1 select leq 1 20
+subc add pd c1
+del add pj 10
+ins add left 10
+m1 sg_umin del ins
+m2 sg_umin m1 subc
+d select $eq pd m2
+row2 set row j d
+r (row2 d)
+
+fn sg_levrow u32x65 u32 u32x64 u32x64 u32 -> u32x65
+i1 add B 1
+ca get C B
+v0 mul i1 10
+row0 set A 0 v0
+s0 (row0 v0)
+s fold sg_levcell E s0 A D ca
+r at s 0
+
+fn sg_lev u32x64 u32 u32x64 u32 -> u32
+z sg_z65
+init fold sg_initstep 65 z
+row fold sg_levrow B init A C D
+d get row D
+
+fn sg_consider (u32,u32x64,u32,bool,bool,bool) u32x64 u32 bool u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
+bestd at A 0
+bestb at A 1
+bestl at A 2
+exact at A 3
+later at A 4
+stop at A 5
+same sg_eqbuf B C E F
+hit and D same
+exact2 or exact hit
+big gt C F
+d1 sub C F
+d2 sub F C
+diff select big d1 d2
+n34 mul F 34
+n34d div n34 100
+maxd sg_umax 2 n34d
+ok1 le diff maxd
+nsame select same false true
+short lt C 3
+ci sg_cieq B C E F
+nsh select short false true
+ok3 or nsh ci
+cnt and D ok1
+cnt1 and cnt nsame
+cnt2 and cnt1 ok3
+rows select cnt2 F 0
+dist sg_lev E rows B C
+better lt dist bestd
+take and cnt2 better
+d3 select take dist bestd
+b3 select take B bestb
+l3 select take C bestl
+r (d3 b3 l3 exact2 later stop)
+
+fn sg_rowstep (u32,u32x64,u32,bool,bool,bool) u32 u32x328 u32 u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
+k add B D
+e sg_entry C k
+buf at e 0
+len at e 1
+r sg_consider A buf len true E F
+
+fn sg_rows (u32,u32x64,u32,bool,bool,bool) u32 u32 u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
+t sg_names
+r fold sg_rowstep C A t B D E
+
+fn sg_anystep bool u32 u32x328 u32 u32x64 u32 -> bool
+k add B D
+e sg_entry C k
+buf at e 0
+len at e 1
+q sg_eqbuf buf len E F
+r or A q
+
+fn sg_inrows u32 u32 u32x64 u32 -> bool
+t sg_names
+r fold sg_anystep B false t A C D
+
+fn sg_pfxbyte bool u32 u32x64 u32x64 u32 -> bool
+a get C B
+b get D B
+inr lt B E
+e eq a b
+ok select inr e true
+r and A ok
+
+fn sg_pfxeq u32x64 u32 u32x64 -> bool
+f fold sg_pfxbyte 64 true A C B
+pos gt B 0
+r and f pos
+
+fn sg_pfxstep bool u32 u32x328 u32 u32x64 -> bool
+k add B D
+e sg_entry C k
+buf at e 0
+len at e 1
+q sg_pfxeq buf len E
+r or A q
+
+fn sg_startsrow u32 u32 u32x64 -> bool
+t sg_names
+r fold sg_pfxstep B false t A C
+
+fn sg_isw2 u32x512x64 u32 u32 u32 u32 -> bool
+l eq C 2
+a sg_srcb A B
+s1 add B 1
+b sg_srcb A s1
+ea eq a D
+eb eq b E
+r0 and l ea
+r and r0 eb
+
+fn sg_isw3 u32x512x64 u32 u32 u32 u32 u32 -> bool
+l eq C 3
+a sg_srcb A B
+s1 add B 1
+b sg_srcb A s1
+s2 add B 2
+c sg_srcb A s2
+ea eq a D
+eb eq b E
+ec eq c F
+r0 and l ea
+r1 and r0 eb
+r and r1 ec
+
+fn sg_isprofile u32x512x64 u32 u32 -> bool
+l eq C 7
+a sg_srcb A B
+s1 add B 1
+b sg_srcb A s1
+s2 add B 2
+c sg_srcb A s2
+s3 add B 3
+d sg_srcb A s3
+s4 add B 4
+e sg_srcb A s4
+s5 add B 5
+f sg_srcb A s5
+s6 add B 6
+g sg_srcb A s6
+ea eq a 112
+eb eq b 114
+ec eq c 111
+ed eq d 102
+ee eq e 105
+ef eq f 108
+eg eq g 101
+r0 and l ea
+r1 and r0 eb
+r2 and r1 ec
+r3 and r2 ed
+r4 and r3 ee
+r5 and r4 ef
+r and r5 eg
+
+fn sg_isw4 u32x512x64 u32 u32 u32 u32 u32 u32 -> bool
+l eq C 4
+a sg_srcb A B
+s1 add B 1
+b sg_srcb A s1
+s2 add B 2
+c sg_srcb A s2
+s3 add B 3
+d sg_srcb A s3
+ea eq a D
+eb eq b E
+ec eq c F
+ed eq d G
+r0 and l ea
+r1 and r0 eb
+r2 and r1 ec
+r and r2 ed
+
+fn sg_dgstep bool u32 u32x512x64 u32 u32 -> bool
+i0 add D B
+c sg_srcb C i0
+ge0 ge c 48
+le9 le c 57
+dg and ge0 le9
+k0 eq B 0
+nk0 select k0 false true
+inr lt B E
+chk and inr nk0
+ok select chk dg true
+r and A ok
+
+fn sg_isparam u32x512x64 u32 u32 -> bool
+f sg_srcb A B
+isp eq f 112
+one gt C 1
+dg fold sg_dgstep 64 true A B C
+r0 and isp one
+r and r0 dg
+
+fn sg_ctxstep (u32,u32,u32) u32 u32x128x384 u32x512x64 -> (u32,u32,u32)
+ls at A 0
+fs at A 1
+ft at A 2
+tk sg_tokat C B
+kind at tk 0
+st at tk 1
+len at tk 2
+isnl eq kind 5
+ni add B 1
+ls2 select isnl ni ls
+bol eq B ls
+one eq kind 1
+isfn sg_isw2 D st len 102 110
+w0 and bol one
+w1 and w0 isfn
+fs2 select w1 B fs
+noft eq ft 4294967295
+notnl select isnl false true
+firstft and noft notnl
+ft2 select firstft B ft
+r (ls2 fs2 ft2)
+
+fn sg_tokstep (u32,u32x64,u32,bool,bool,bool) u32 u32x128x384 u32x512x64 u32 u32 u32 u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
+tk sg_tokat C B
+kind at tk 0
+st at tk 1
+len at tk 2
+im1 sub B 1
+pk sg_tokat C im1
+pkind at pk 0
+first eq B 0
+prevnl eq pkind 5
+bol or first prevnl
+one eq kind 1
+isfn sg_isw2 D st len 102 110
+isret sg_isw3 D st len 114 101 116
+isend sg_isw3 D st len 101 110 100
+ni add B 1
+nt sg_tokat C ni
+nkind at nt 0
+nst at nt 1
+nlen at nt 2
+nid eq nkind 1
+nfit le nlen 64
+nname0 and nid nfit
+fit le len 64
+isfun eq G 0
+isnode eq G 1
+above lt B E
+below gt B E
+afterl gt B F
+beforel lt B F
+fh0 and bol isfn
+fh1 and fh0 nname0
+fcand and fh1 above
+flater0 and fh1 below
+nr1 select isfn false true
+nr2 select isret false true
+nr3 select isend false true
+nl0 and bol one
+nl1 and nl0 fit
+nl2 and nl1 nr1
+nl3 and nl2 nr2
+nl4 and nl3 nr3
+nafter and nl4 afterl
+nbelow and nl4 below
+ncand and nbelow beforel
+cbf sg_copy64 D nst nlen
+cbn sg_copy64 D st len
+cb select isfun cbf cbn
+cl select isfun nlen len
+f0 and isfun fcand
+n0 and isnode ncand
+cand or f0 n0
+stop at A 5
+nstop select stop false true
+st1 sg_consider A cb cl cand H I
+same sg_eqbuf cb cl H I
+lf0 and isfun flater0
+lf and lf0 same
+ln0 and isnode nafter
+ln1 and ln0 nstop
+ln and ln1 same
+lh or lf ln
+later at st1 4
+later2 or later lh
+st2 put st1 4 later2
+ends0 or isret isend
+ends1 or ends0 isfn
+ends2 and bol ends1
+ends3 and ends2 afterl
+ends4 and ends3 isnode
+stop2 or stop ends4
+st3 put st2 5 stop2
+
+fn sg_rulefor u32x512x64 u32x128x384 u32 u32 u32 -> u32
+ls mov D
+pos sub C ls
+tk0 sg_tokat B ls
+st0 at tk0 1
+len0 at tk0 2
+l1 add ls 1
+tk1 sg_tokat B l1
+st1 at tk1 1
+len1 at tk1 2
+l2 add ls 2
+tk2 sg_tokat B l2
+k2 at tk2 0
+is0fn sg_isw2 A st0 len0 102 110
+is0ret sg_isw3 A st0 len0 114 101 116
+is0end sg_isw3 A st0 len0 101 110 100
+is0use sg_isw3 A st0 len0 117 115 101
+is1call sg_isw4 A st1 len1 99 97 108 108
+is1fold sg_isw4 A st1 len1 102 111 108 100
+is1loop sg_isw4 A st1 len1 108 111 111 112
+has3a ne k2 0
+has3b ne k2 5
+has3 and has3a has3b
+pos1 eq pos 1
+pos2 eq pos 2
+pos3 eq pos 3
+posge2 ge pos 2
+rh and is0fn posge2
+rr1 select has3 102 101
+rret select pos1 rr1 101
+rn2a select is1loop 104 101
+rn2b select is1fold 103 rn2a
+rn2 select is1call 102 rn2b
+rn3 select is1loop 103 101
+rn0 select pos1 102 101
+rn1 select pos2 rn2 rn0
+rn select pos3 rn3 rn1
+r0 select is0ret rret rn
+r1 select rh 1 r0
+skip0 or is0end is0use
+r2 select skip0 0 r1
+
+fn sg_sugg u32x512x64 u32 u32x128x384 u32 u32 -> (u32,u32,u32,u32x64,u32,u32)
+c0 (0 0 4294967295)
+c fold sg_ctxstep E c0 C A
+ls at c 0
+fs at c 1
+ft at c 2
+tkt sg_tokat C E
+kt at tkt 0
+st at tkt 1
+nl at tkt 2
+nm sg_copy64 A st nl
+nid eq kt 1
+nfit0 le nl 64
+nfit1 gt nl 0
+nfit and nfit0 nfit1
+rule0 sg_rulefor A C E ls fs
+c1 and nid nfit
+rulea0 select c1 rule0 0
+lst sg_tokat C ls
+lsst at lst 1
+lsln at lst 2
+pdir sg_isprofile A lsst lsln
+onft eq ls ft
+after gt E ls
+pl0 and pdir onft
+pline and pl0 after
+rulea select pline 0 rulea0
+tsec sg_names
+rsv sg_inrows 35 6 nm nl
+param sg_isparam A st nl
+r101 eq rulea 101
+pm and r101 param
+nrs select rsv false true
+npm select pm false true
+oknm and nrs npm
+rule1 select oknm rulea 0
+typed sg_startsrow 32 3 nm
+r1t eq rule1 1
+tyx and r1t typed
+ntyx select tyx false true
+rule select ntyx rule1 0
+r102 eq rule 102
+r103 eq rule 103
+r104 eq rule 104
+r101b eq rule 101
+r1b eq rule 1
+fnuse0 or r102 r103
+fnuse or fnuse0 r104
+ntk0 select fnuse D 0
+ntk1 select r101b D 0
+four0 mul nl 4
+four1 div four0 10
+four2 add four1 1
+bd mul four2 10
+z sg_z64
+s0 (bd z 0 false false false)
+sops0 sg_rows s0 0 32 nm nl
+sops select r102 sops0 s0
+sf fold sg_tokstep ntk0 sops C A fs ls 0 nm nl
+sn fold sg_tokstep ntk1 s0 C A fs ls 1 nm nl
+styp0 sg_rows s0 32 3 nm nl
+styp select r1b styp0 s0
+s1 select r1b styp sf
+s2 select r101b sn s1
+bestb at s2 1
+bestl at s2 2
+exact at s2 3
+later at s2 4
+known select exact 0 rule
+none eq bestl 0
+mode0 select none 0 1
+mode1 select later 2 mode0
+mode select r1b mode0 mode1
+r (known mode bestl bestb st nl)
+
+fn sg_wbyte io u32 u32x64 -> io
+v get C B
+w write A v
+
+fn suggestio io -> u32
+rs readsrc A
+src at rs 0
+n at rs 1
+t1 at rs 2
+r1 read t1
+tk at r1 0
+t2 at r1 1
+lx lexsrc src n
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+sg sg_sugg src n toks ntok tk
+rule at sg 0
+mode at sg 1
+len at sg 2
+buf at sg 3
+nst at sg 4
+nln at sg 5
+w1 write t2 rule
+w2 write w1 mode
+w3 write w2 len
+w4 write w3 nst
+w5 write w4 nln
+w6 fold sg_wbyte 64 w5 buf
+rule
+

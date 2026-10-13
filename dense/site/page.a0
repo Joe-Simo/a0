@@ -1,0 +1,1323 @@
+use "ui.a0"
+
+fn css_a io -> io
+x1 write A 9
+x2 "@font-face{font-family:\"Geist\";src:url(\"/fonts/Geist-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n@font-face{font-family:\"Geist Mono\";src:url(\"/fonts/GeistMono-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n:root{color-scheme:dark;--bg:#000;--fg:#fff;--fg2:#d8dbe0;--body:#c9ccd1;--muted:#8a8f98;--dim:#5c6169;--line:#1f2227;--line2:#33373d;--card:#0b0c0e;--pillbg:#fff;--pillfg:#000;--ghost:#17191d;--a0:#ffd166;--c:#7aa2ff;--rust:#f0885a;--gray:#9aa0a6;--win:#5ad19a;--loss:#ff7a7a;--glow1:rgba(120,140,255,.22);--glow2:rgba(255,209,102,.12)}\n*{box-sizing:border-box}\nhtml{scroll-behavior:smooth;scroll-padding-top:80px}\nbody{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 \"Geist\",-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}\na{color:inherit}\n.pixel{font-family:\"Geist Pixel\",\"Geist Mono\",monospace;font-weight:400}\n"
+x3 puts x1 x2
+x4 write x3 9
+x5 ".mono{font-family:\"Geist Mono\",ui-monospace,SFMono-Regular,Menlo,monospace}\n.top{position:fixed;inset:0 0 auto 0;z-index:20;height:64px;display:flex;align-items:center;padding:0 28px;background:linear-gradient(var(--bg),transparent)}\n.nav{display:flex;align-items:center;gap:28px;width:100%}\n.brand{font-size:1.25rem;letter-spacing:.02em;text-decoration:none;margin-right:12px}\n.links{display:flex;gap:22px;flex:1}\n.links a{color:var(--fg2);text-decoration:none;font-size:.9rem}\n.links a:hover{color:var(--fg)}\n.pill{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;background:var(--pillbg);color:var(--pillfg);text-decoration:none;font-size:.9rem;font-weight:500}\n.pill.ghost{background:var(--ghost);color:var(--fg)}\n.pill:hover{filter:brightness(.92)}\n@media (max-width:640px){.top{background:var(--bg);border-bottom:1px solid var(--line);height:56px;padding:0 20px}.links{gap:14px}.links a{font-size:.85rem}.pill{padding:6px 12px;font-size:.85rem}}\n"
+x6 puts x4 x5
+x7 write x6 9
+x8 ".hero{position:relative;min-height:100vh;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 96px;overflow:hidden}\n@keyframes drift{from{transform:translate3d(-3%,-2%,0) scale(1)}to{transform:translate3d(3%,4%,0) scale(1.1)}}\n.hero>*{position:relative;z-index:1}\n.stage{position:absolute!important;inset:0;z-index:0!important}\n.stage canvas.scene{position:absolute;inset:0;width:100%;height:100%;display:block}\n.hero .name,.hero .tag{font-size:clamp(3.4rem,11vw,9.5rem);line-height:.95;letter-spacing:-.01em;margin:0;animation:rise .6s cubic-bezier(.2,.7,.2,1) both}\n.hero .tag{color:var(--fg2);animation-delay:.08s;text-align:right}\n.hero .sub{position:absolute;left:28px;top:calc(50% - 10px);max-width:460px;color:var(--muted);font-size:1.05rem;animation:rise .6s .16s cubic-bezier(.2,.7,.2,1) both}\n@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}\n"
+x9 puts x7 x8
+x10 write x9 9
+x11 "@media (max-width:720px){.hero{flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:8px;padding:96px 20px 56px;min-height:100vh}.hero .tag{text-align:left}}\n.center{max-width:720px;margin:0 auto;padding:96px 24px 40px;text-align:center}\n.center h1,.center h2{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;letter-spacing:-.02em;margin:0 auto 20px;font-weight:500;text-wrap:balance;max-width:640px}\n.center p{color:var(--body);font-size:1.05rem;margin:0 auto;max-width:600px}\n.trio{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;max-width:1080px;margin:40px auto 0;padding:0 24px}\n.tcard{position:relative;border:1px solid var(--line);border-radius:18px;background:var(--card);padding:22px 22px 18px;min-height:260px;display:flex;flex-direction:column;overflow:hidden;transition:border-color .3s}\n.tcard:hover{border-color:var(--line2)}\n.tcard .k{font-size:.75rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}\n"
+x12 puts x10 x11
+x13 write x12 9
+x14 ".tcard .t{font-size:2rem;margin:2px 0 16px;letter-spacing:-.01em}\n.tcard .big{font-size:clamp(2.6rem,5vw,3.6rem);line-height:1;margin:8px 0 10px}\n.tcard .d{flex:1}\n.tcard .big.loss{color:var(--loss)}\n.tcard .d{color:var(--body);font-size:.95rem;margin:0 0 16px}\n.tcard .f{border-top:1px solid var(--line);padding-top:12px;font-size:.8rem;color:var(--muted);display:grid;gap:4px}\n.tcard .f span{font-variant-numeric:tabular-nums}\n.layout{display:grid;grid-template-columns:200px minmax(0,760px);gap:56px;justify-content:center;padding:80px 24px 0;max-width:1160px;margin:0 auto}\n.rail{position:sticky;top:96px;align-self:start;font-size:.8rem;display:flex;flex-direction:column;gap:10px}\n.rail .rh{color:var(--fg2);margin:14px 0 2px}\n.rail a{color:var(--muted);text-decoration:none;padding-left:12px}\n.rail a:hover{color:var(--fg)}\n.rail a.on{color:var(--fg);font-weight:500;border-left:2px solid var(--a0);padding-left:10px}\n"
+x15 puts x13 x14
+x16 write x15 9
+x17 "@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr);gap:24px;padding-top:56px}.rail{position:static;flex-direction:row;flex-wrap:wrap;gap:8px}.rail .rh{display:none}.rail a{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:.78rem}}\n.main h2{font-size:clamp(1.6rem,3vw,2.1rem);font-weight:500;letter-spacing:-.02em;margin:0 0 16px}\n.main h3{font-size:1.15rem;font-weight:500;margin:28px 0 8px}\n.main p{color:var(--body);margin:0 0 14px;font-size:1.02rem}\n.main p strong{color:var(--fg);font-weight:500}\n.main section{padding:32px 0 40px;border-top:1px solid var(--line)}\n.main section:last-child{padding-bottom:8px}\n.main section:first-child{border-top:0;padding-top:0}\n.main section.cont{border-top:0;padding-top:0}\n.chart{border:1px solid var(--line);border-radius:18px;background:var(--card);padding:22px 22px 18px;margin:22px 0 28px}\n.chart .ct{font-size:1.05rem;margin:0 0 4px;font-weight:500;color:var(--fg)}\n"
+x18 puts x16 x17
+x19 write x18 9
+x20 ".chart .sub{color:var(--muted);font-size:.85rem;margin:0 0 16px}\n.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.82rem;color:var(--fg2);margin:0 0 14px}\n.legend span::before{content:\"\";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:1px}\n.legend .la0::before{background:var(--a0)}\n.legend .lc::before{background:var(--c)}\n.legend .lrust::before{background:var(--rust)}\n.legend .lgray::before{background:var(--gray)}\n.row{display:grid;grid-template-columns:118px minmax(0,1fr) auto;gap:12px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}\n.row:first-of-type{border-top:0}\n.row .lbl{font-family:\"Geist Mono\",ui-monospace,monospace;font-size:.78rem;color:var(--muted)}\n.row .ratio{text-align:right;font-variant-numeric:tabular-nums;font-size:.85rem;color:var(--fg);white-space:nowrap}\n.row .ratio.loss{color:var(--loss)}\n.row .ratio.win{color:var(--win)}\n.bars{display:grid;gap:4px}\n"
+x21 puts x19 x20
+x22 write x21 9
+x23 ".track{display:grid;grid-template-columns:1fr 64px;gap:8px;align-items:center;height:9px}\n.track .fill{height:7px;border-radius:4px;background:var(--gray);min-width:2px;transition:width .7s cubic-bezier(.2,.7,.2,1)}\n.track.a0 .fill{background:var(--a0)}\n.track.c .fill{background:var(--c)}\n.track.rust .fill{background:var(--rust)}\n.fill:not(.grown){width:0!important}\n.track .val{transition:none;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;font-family:\"Geist Mono\",ui-monospace,monospace}\n.single .row{grid-template-columns:150px minmax(0,1fr) auto}\n.lrow{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;padding:3px 0}\n.rank td.first{color:var(--a0)}\n.rank td.behind{color:var(--fg2)}\n.lrow .lbl{font-size:.8rem;color:var(--fg2);white-space:nowrap}\n.lrow .track{height:10px;grid-template-columns:1fr 64px}\n.lrow .track .fill{height:8px}\n"
+x24 puts x22 x23
+x25 write x24 9
+x26 ".lrow.me{background:color-mix(in srgb,var(--fg) 7%,transparent);border-radius:6px;padding-left:6px;padding-right:6px;margin:0 -6px}\n.lrow.me .lbl{color:var(--fg);font-weight:600}\n.track.nat .fill{background:var(--c)}\n.track.jit .fill{background:var(--rust)}\n.track.int .fill{background:var(--gray)}\n.legend .lnat::before{background:var(--c)}\n.legend .ljit::before{background:var(--rust)}\n.legend .lint::before{background:var(--gray)}\n@media (max-width:600px){.lrow{grid-template-columns:104px 1fr}.rank td.first{color:var(--a0)}\n.rank td.behind{color:var(--fg2)}\n.lrow .lbl{overflow:hidden;text-overflow:ellipsis}}\n.row .lbl{white-space:nowrap}\n.row .ratio{padding-right:4px}\n@media (max-width:600px){.row,.single .row{grid-template-columns:1fr auto;row-gap:2px}.row .lbl{grid-column:1/-1}.track{grid-template-columns:1fr 58px}.track .val{font-size:.7rem}.row .ratio{font-size:.78rem;white-space:nowrap}}\n"
+x27 puts x25 x26
+x28 write x27 9
+x29 ".cap{color:var(--muted);font-size:.82rem;font-style:italic;margin:14px 0 0;border-top:1px solid var(--line);padding-top:12px}\n.plotwrap{display:grid;grid-template-columns:36px 1fr;gap:6px;margin-top:8px}\n.yl{position:relative;font-size:.7rem;color:var(--muted);font-family:\"Geist Mono\",ui-monospace,monospace}\n.yl span{position:absolute;right:0;transform:translateY(50%)}\n.plot{position:relative;height:280px;margin-top:28px;border-left:1px solid var(--line2);border-bottom:1px solid var(--line2);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:100% 18.4%,20% 100%;background-position:0 4%}\n.pt{position:absolute;width:11px;height:11px;transform:translate(-50%,50%) rotate(45deg);background:var(--gray);border-radius:2px}\n.pt.a0{background:var(--a0)}\n.pt.c{background:var(--c)}\n.pt.rust{background:var(--rust)}\n.pt.haiku{opacity:.5}\n"
+x30 puts x28 x29
+
+fn css_b io -> io
+x32 write A 9
+x33 ".pt .lbl{position:absolute;left:50%;bottom:16px;transform:translateX(-50%) rotate(-45deg);font-size:.66rem;color:var(--muted);white-space:nowrap;font-family:\"Geist Mono\",ui-monospace,monospace;letter-spacing:.02em}\n.pt .lbl.below{bottom:auto;top:16px;transform:translateX(-50%) rotate(-45deg)}\n.xl{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);font-family:\"Geist Mono\",ui-monospace,monospace;margin:6px 0 0 42px}\n.xt{text-align:center;color:var(--muted);font-size:.78rem;margin:10px 0 0}\n.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0}\n.tile{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:16px}\n.tile .n{font-size:1.9rem;line-height:1;margin-bottom:8px;font-variant-numeric:tabular-nums}\n.tile .n.loss{color:var(--loss)}\n.tile p{color:var(--muted);font-size:.8rem;margin:0}\n.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin:20px 0}\n"
+x34 puts x32 x33
+x35 write x34 9
+x36 ".grid.two{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}\n.grid.four{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}\n.card{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:18px}\n.card h3{margin:0 0 6px;font-size:1rem}\n.card p{color:var(--muted);font-size:.9rem;margin:0}\npre.code{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;overflow:auto;font:13px/1.65 \"Geist Mono\",ui-monospace,monospace;color:var(--fg2);margin:16px 0 0;white-space:pre}\npre.code .cm{color:var(--dim)}\npre.code+p{margin-top:16px}\npre.wrap{white-space:pre-wrap}\n@media (max-width:720px){pre.code{white-space:pre;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:12px}}\ntable.ops{width:100%;border-collapse:collapse;font-size:.9rem;margin:12px 0 20px}\n.ops th{text-align:left;color:var(--muted);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);font-size:.8rem}\n"
+x37 puts x35 x36
+x38 write x37 9
+x39 ".ops td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--fg2)}\n.ops td:first-child{white-space:nowrap;color:var(--fg)}\n@media (max-width:720px){.ops tr{display:block;padding:8px 0;border-bottom:1px solid var(--line)}.ops td,.ops th{display:block;border:0;padding:2px 0}.ops th:last-child{display:none}.ops td:first-child{white-space:normal}}\n.limits{border-left:2px solid var(--loss);padding-left:16px}\n.foot{max-width:1160px;margin:32px auto 0;padding:32px 24px 48px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}\n.foot a{color:var(--fg2);text-decoration:none}\n.card:hover{border-color:var(--line2)}\na:focus-visible,.pill:focus-visible{outline:2px solid var(--c);outline-offset:3px;border-radius:4px}\n.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}\n.reveal.in{opacity:1;transform:none}\n"
+x40 puts x38 x39
+x41 write x40 9
+x42 ".docs .hero{min-height:0;padding:120px 24px 0;align-items:flex-start;flex-direction:column;justify-content:flex-start}\n.docs .hero::after{display:none}\n.docs .hero .name{font-size:clamp(2.6rem,7vw,5rem)}\n.live{position:absolute;left:28px;right:28px;top:96px;height:calc(66vh - 96px);display:grid;grid-template-columns:29ch 25ch 22ch;gap:0 5ch;align-content:start;font-size:clamp(13px,1.2vw,16px);line-height:1.75;pointer-events:none}\n.col{opacity:0;will-change:opacity,transform}\n.col h6{margin:0 0 .6em;font:inherit;font-size:.8em;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:1em;white-space:nowrap}\n.col h6 b{font-weight:400;color:var(--muted)}\n.ln{position:relative;height:1.75em;white-space:nowrap;color:var(--fg2)}\n.ln .ty{display:inline-block;overflow:hidden;vertical-align:bottom;width:auto}\n"
+x43 puts x41 x42
+x44 write x43 9
+x45 ".ln::after{content:\"\";display:inline-block;width:.55ch;height:1.05em;margin-left:.1ch;background:var(--fg);vertical-align:-.15em;opacity:0}\n.ln.mark{margin:0 -.6ch;padding:0 .6ch;border-radius:4px}\n.ln .alt{position:absolute;left:.6ch;top:0}\n.stamp{margin-top:1.2em;display:flex;align-items:center;gap:.7ch;color:var(--win);white-space:nowrap}\n.stamp i{position:relative;width:.6em;height:.6em;border-radius:50%;background:var(--win);flex:none}\n.stamp i::after{content:\"\";position:absolute;inset:0;border-radius:50%;border:1px solid var(--win);opacity:0}\n.stamp b{font-weight:500}\n.stamp span{color:var(--muted)}\n.asm .ln{color:var(--fg2);opacity:0}\n.ns{margin-top:1.2em;color:var(--muted);white-space:nowrap}\n.ns b{font-weight:500;color:var(--fg)}\n.ns b::before{content:\"5.0\"}\n@media (max-width:960px){.live{grid-template-columns:29ch 25ch;gap:1.2em 3ch;top:84px}.col.asm{grid-column:1}.col.model{grid-column:2;grid-row:1}}\n"
+x46 puts x44 x45
+x47 write x46 9
+x48 "@media (max-width:720px){.hero{flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:8px;padding:0 20px 72px}.hero .tag{text-align:left}.live{left:20px;right:20px;grid-template-columns:29ch 1fr;gap:.6em 2ch;font-size:12px;top:78px}.col.model{grid-column:2;grid-row:1}.col.asm{grid-column:2;grid-row:2}.col.view{grid-row:1/3}}\n@media (max-width:400px){.live{grid-template-columns:1fr 1fr;gap:.8em 1ch}.col.view{grid-column:1/3;grid-row:1}.col.model{grid-column:1;grid-row:2}.col.asm{grid-column:2;grid-row:2}}\n/* the loop: every animation is the same 9.6s cycle; the runtime only adds \"in\" to .reveal */\n.reveal.in .col.view{animation:c1 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in .col.model{animation:c2 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in .col.asm{animation:c3 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #v0 .ty{animation:v0 9600ms linear infinite}.reveal.in #v0::after{animation:v0c 9600ms steps(1,end) infinite}\n"
+x49 puts x47 x48
+x50 write x49 9
+x51 ".reveal.in #v1 .ty{animation:v1 9600ms linear infinite}.reveal.in #v1::after{animation:v1c 9600ms steps(1,end) infinite}\n.reveal.in #v2 .ty{animation:v2 9600ms linear infinite}.reveal.in #v2::after{animation:v2c 9600ms steps(1,end) infinite}\n.reveal.in #v3 .ty{animation:v3 9600ms linear infinite}.reveal.in #v3::after{animation:v3c 9600ms steps(1,end) infinite}\n.reveal.in #v4 .ty{animation:v4 9600ms linear infinite}.reveal.in #v4::after{animation:v4c 9600ms steps(1,end) infinite}\n.reveal.in #v5 .ty{animation:v5 9600ms linear infinite}.reveal.in #v5::after{animation:v5c 9600ms steps(1,end) infinite}\n.reveal.in #v6 .ty{animation:v6 9600ms linear infinite}.reveal.in #v6::after{animation:v6c 9600ms steps(1,end) infinite}\n.reveal.in #v7 .ty{animation:v7 9600ms linear infinite}.reveal.in #v7::after{animation:v7c 9600ms steps(1,end) infinite}\n.reveal.in #r0 .ty{animation:r0 9600ms linear infinite}.reveal.in #r0::after{animation:r0c 9600ms steps(1,end) infinite}\n"
+x52 puts x50 x51
+x53 write x52 9
+x54 ".reveal.in #r1 .ty{animation:r1 9600ms linear infinite}.reveal.in #r1::after{animation:r1c 9600ms steps(1,end) infinite}\n.reveal.in .stamp{animation:stamp 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in .stamp i::after{animation:ring 9600ms cubic-bezier(.1,.6,.3,1) infinite}\n.reveal.in #v3 #v3t{animation:v3 9600ms linear infinite,oldl 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #v4 #v4t{animation:v4 9600ms linear infinite,oldl 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #v3n,.reveal.in #v4n{animation:newl 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #v3{animation:mark 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #v4{animation:mark2 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #a0{animation:a0 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #a1{animation:a1 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #a2{animation:a2 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n"
+x55 puts x53 x54
+x56 write x55 9
+x57 ".reveal.in #a3{animation:a3 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in #a4{animation:a4 9600ms cubic-bezier(.2,.7,.2,1) infinite}\n.reveal.in .ns b::before{animation:ns 9600ms steps(1,end) infinite}\n/* final state without motion */\n.reveal:not(.in) .col,.reveal:not(.in) .asm .ln{opacity:1}\n.reveal:not(.in) #v3t,.reveal:not(.in) #v4t{opacity:0}\n.reveal:not(.in) .ln .ty{width:auto}\n@media (prefers-reduced-motion:reduce){.reveal.in *,.reveal.in *::before,.reveal.in *::after{animation:none!important}.reveal .col,.reveal .asm .ln{opacity:1}.reveal #v3t,.reveal #v4t{opacity:0}.reveal #v4{background:var(--markbg)}}\n@keyframes v0{0%,5.208%{width:0;animation-timing-function:steps(2,end)}6.667%,100%{width:2ch}}\n@keyframes v0c{0%,5.198%{opacity:0}5.208%,8.750%{opacity:1}8.760%,100%{opacity:0}}\n@keyframes v1{0%,7.604%{width:0;animation-timing-function:steps(27,end)}13.792%,100%{width:27ch}}\n@keyframes v1c{0%,7.594%{opacity:0}7.604%,15.875%{opacity:1}15.885%,100%{opacity:0}}\n"
+x58 puts x56 x57
+x59 write x58 9
+x60 "@keyframes v2{0%,14.729%{width:0;animation-timing-function:steps(11,end)}17.250%,100%{width:11ch}}\n@keyframes v2c{0%,14.719%{opacity:0}14.729%,19.333%{opacity:1}19.344%,100%{opacity:0}}\n@keyframes v3{0%,18.188%{width:0;animation-timing-function:steps(11,end)}20.708%,100%{width:11ch}}\n@keyframes v3c{0%,18.177%{opacity:0}18.188%,22.792%{opacity:1}22.802%,100%{opacity:0}}\n@keyframes v4{0%,21.646%{width:0;animation-timing-function:steps(17,end)}25.542%,100%{width:17ch}}\n@keyframes v4c{0%,21.635%{opacity:0}21.646%,27.625%{opacity:1}27.635%,100%{opacity:0}}\n@keyframes v5{0%,26.479%{width:0;animation-timing-function:steps(16,end)}30.146%,100%{width:16ch}}\n@keyframes v5c{0%,26.469%{opacity:0}26.479%,32.229%{opacity:1}32.240%,100%{opacity:0}}\n@keyframes v6{0%,31.083%{width:0;animation-timing-function:steps(5,end)}32.542%,100%{width:5ch}}\n@keyframes v6c{0%,31.073%{opacity:0}31.083%,34.625%{opacity:1}34.635%,100%{opacity:0}}\n"
+x61 puts x59 x60
+
+fn css_c io -> io
+x63 write A 9
+x64 "@keyframes v7{0%,33.479%{width:0;animation-timing-function:steps(3,end)}34.938%,100%{width:3ch}}\n@keyframes v7c{0%,33.469%{opacity:0}33.479%,37.021%{opacity:1}37.031%,100%{opacity:0}}\n@keyframes r0{0%,40.625%{width:0;animation-timing-function:steps(2,end)}42.083%,100%{width:2ch}}\n@keyframes r0c{0%,40.615%{opacity:0}40.625%,44.167%{opacity:1}44.177%,100%{opacity:0}}\n@keyframes r1{0%,43.021%{width:0;animation-timing-function:steps(10,end)}45.313%,100%{width:10ch}}\n@keyframes r1c{0%,43.010%{opacity:0}43.021%,47.396%{opacity:1}47.406%,100%{opacity:0}}\n@keyframes c1{0%,2.083%{opacity:0;transform:translateY(6px)}7.292%,90.625%{opacity:1;transform:none}96.875%,100%{opacity:0;transform:translateY(-4px)}}\n@keyframes c2{0%,37.500%{opacity:0;transform:translateY(6px)}42.708%,90.625%{opacity:1;transform:none}96.875%,100%{opacity:0;transform:translateY(-4px)}}\n"
+x65 puts x63 x64
+x66 write x65 9
+x67 "@keyframes c3{0%,58.333%{opacity:0;transform:translateY(6px)}63.542%,90.625%{opacity:1;transform:none}96.875%,100%{opacity:0;transform:translateY(-4px)}}\n@keyframes stamp{0%,50.000%{opacity:0;transform:translateY(4px)}53.750%,100%{opacity:1;transform:none}}\n@keyframes ring{0%,50.000%{transform:scale(1);opacity:.9}59.375%,100%{transform:scale(3.2);opacity:0}}\n@keyframes oldl{0%,52.083%{opacity:1;transform:none}56.458%,100%{opacity:0;transform:translateY(-55%)}}\n@keyframes newl{0%,52.083%{opacity:0;transform:translateY(55%)}56.458%,100%{opacity:1;transform:none}}\n@keyframes mark{0%,51.042%{background:transparent}54.688%{background:var(--markbg)}68.750%,100%{background:transparent}}\n@keyframes mark2{0%,51.042%{background:transparent}54.688%{background:var(--markbg)}79.167%,100%{background:transparent}}\n@keyframes a0{0%,60.417%{opacity:0;transform:translateY(5px)}64.792%,100%{opacity:1;transform:none}}\n"
+x68 puts x66 x67
+x69 write x68 9
+x70 "@keyframes a1{0%,61.354%{opacity:0;transform:translateY(5px)}65.729%,100%{opacity:1;transform:none}}\n@keyframes a2{0%,62.292%{opacity:0;transform:translateY(5px)}66.667%,100%{opacity:1;transform:none}}\n@keyframes a3{0%,63.229%{opacity:0;transform:translateY(5px)}67.604%,100%{opacity:1;transform:none}}\n@keyframes a4{0%,64.167%{opacity:0;transform:translateY(5px)}68.542%,100%{opacity:1;transform:none}}\n@keyframes ns{0%,65.615%{opacity:0}65.625%{opacity:1;content:\"0.0\"}66.667%{opacity:1;content:\"1.2\"}67.708%{opacity:1;content:\"2.4\"}68.750%{opacity:1;content:\"3.4\"}69.792%{opacity:1;content:\"4.2\"}70.833%{opacity:1;content:\"4.7\"}71.875%{opacity:1;content:\"4.9\"}72.917%{opacity:1;content:\"5.0\"}100%{opacity:1;content:\"5.0\"}}\n/* Matrix theme: black screen, neutral type, green only as light */\n"
+x71 puts x69 x70
+x72 write x71 9
+x73 ":root{--bg:#000;--fg:#ededed;--fg2:#c9c9c9;--body:#a8a8a8;--muted:#6f6f6f;--dim:#4a4a4a;--line:#161616;--line2:#262626;--card:#060606;--pillbg:#000;--pillfg:#00ff41;--ghost:#0d0d0d;--a0:#00ff41;--c:#d9d9d9;--rust:#8c8c8c;--gray:#4d4d4d;--win:#00ff41;--loss:#ff4d4d;--glow1:rgba(0,255,65,.07);--glow2:rgba(0,255,65,.03);--markbg:rgba(0,255,65,.12)}\n.hero .name,.hero .tag,.brand,.tcard .big,.tile .n:not(.loss){color:var(--a0)}\n.chart,.tcard,.card,.tile,pre.code{border-radius:3px}\n.pill{border-radius:2px;border:1px solid var(--a0);text-transform:uppercase;letter-spacing:.1em;font-size:.75rem}\n.pill:hover{background:var(--a0);color:#000;filter:none}\n.track .fill{border-radius:1px}\n.stage{position:absolute!important;inset:0;z-index:0!important;opacity:.8}\n.stage canvas.scene{position:absolute;inset:0;width:100%;height:100%;display:block}\n.hero .live{z-index:1}\n.live .col{background:rgba(0,0,0,.72);padding:10px 12px;border:1px solid var(--line2);border-radius:3px}\n"
+x74 puts x72 x73
+x75 write x74 9
+x76 ".row .ratio.win{color:var(--a0)}\n.lrow.me .lbl{color:var(--a0)}\n::selection{background:var(--a0);color:#000}\n/* QA fixes */\nheader.top{background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}\n.col{min-width:0}\n.col .ln,.col .ty{font-size:13px}\n@media (max-width:640px){.live .col.model,.live .col.asm{display:none}.links{gap:10px}.links a{font-size:.78rem}.pill{padding:6px 9px;font-size:.68rem;letter-spacing:.05em}.nav{gap:12px}}\n.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}\n.tblwrap table.rank{min-width:540px}\n@media (max-width:720px){.tblwrap table.rank tr{display:table-row}.tblwrap table.rank td,.tblwrap table.rank th{display:table-cell;padding:7px 8px}.tblwrap table.rank th:last-child{display:table-cell}}\n.lrow{grid-template-columns:132px 1fr}\n.lrow .track{display:grid;grid-template-columns:1fr 78px;align-items:center;height:18px}\n"
+x77 puts x75 x76
+x78 write x77 9
+x79 ".track .val{text-align:right;font-variant-numeric:tabular-nums;line-height:1}\n.lrow .lbl,.row .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n@media (max-width:600px){.lrow{grid-template-columns:108px 1fr}}\n:root{--muted:#8f8f8f;--dim:#6f6f6f}\n.col h6{font-size:11px}\n@media (max-width:720px){pre.code.wrap{white-space:pre-wrap;overflow-wrap:anywhere}}\nbutton:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n@media (max-width:640px){textarea{font-size:16px!important}}\n.lrow.wide .track{grid-template-columns:1fr 104px}\n.row .track{grid-template-columns:1fr 88px}\n.track .val.loss,.rank td.loss{color:var(--loss)}\n.chart .kh{font-size:.78rem;color:var(--fg2);margin:16px 0 4px;padding-top:10px;border-top:1px solid var(--line)}\n.chart .kh:first-of-type{border-top:0;padding-top:0}\n/* Plain-language layer: a one-sentence takeaway above every chart, a defined vocabulary, the long lists behind a disclosure */\n"
+x80 puts x78 x79
+x81 write x80 9
+x82 ".main p.take{color:var(--fg);font-size:1.05rem;line-height:1.5;font-weight:500;margin:0 0 12px;padding-left:12px;border-left:2px solid var(--a0);letter-spacing:-.005em}\n.chart p.take{margin:6px 0 10px}\n.chart .sub{max-width:68ch}\n.chart details.more{margin:14px 0 0;border-top:1px solid var(--line)}\n.chart details.more>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;padding:12px 0 6px;color:var(--fg2);font-size:.88rem;user-select:none}\n.chart details.more>summary::-webkit-details-marker{display:none}\n.chart details.more>summary::before{content:\"+\";display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid var(--line2);border-radius:4px;color:var(--a0);font-size:1rem;line-height:1}\n.chart details.more[open]>summary::before{content:\"\\2212\"}\n.chart details.more>summary:hover{color:var(--fg)}\n.chart details.more>summary:focus-visible{outline:2px solid var(--a0);outline-offset:2px;border-radius:4px}\n"
+x83 puts x81 x82
+x84 write x83 9
+x85 ".chart details.more[open]>summary{padding-bottom:10px}\n.tblwrap table.rank th{white-space:normal;vertical-align:bottom;line-height:1.3;font-size:.74rem}\n.tblwrap table.rank th,.tblwrap table.rank td{padding:8px 7px}\n.tblwrap table.rank th:first-child{min-width:0}\n.tblwrap table.rank td.first{color:var(--a0)}\n.tblwrap table.rank td.loss{color:var(--fg);font-weight:600}\n.tblwrap table.rank.fit{min-width:0}\n@media (max-width:720px){.tblwrap table.rank.fit th,.tblwrap table.rank.fit td{white-space:normal;padding:7px 6px;font-size:.82rem;line-height:1.35}.tblwrap table.rank.fit th{min-width:0}}\n@media (max-width:600px){.main p.take{font-size:1rem}.rank td{padding:7px 8px}}\n.chart .tblwrap{margin-top:18px}\n@media (max-width:600px){.lrow.wide{grid-template-columns:118px 1fr}.lrow.wide .track{grid-template-columns:1fr 84px}}\n/* Layout QA: hero scene columns per breakpoint (the prototype's own rules place the columns) */\n"
+x86 puts x84 x85
+x87 write x86 9
+x88 "/* column widths fit the longest final line (27, 25 and 23 characters at 13px plus padding), so a line being typed never resizes or clips its column */\n.hero .live{grid-template-columns:calc(32ch + 26px) calc(29ch + 26px) calc(27ch + 26px)}\n.live .col .ln,.live .col .ty{font-size:13px}\n.hero .live{font-size:13px;letter-spacing:0}\n@media (max-width:960px){.hero .live{grid-template-columns:calc(32ch + 26px) calc(29ch + 26px)}}\n@media (max-width:640px){.hero .live{grid-template-columns:minmax(0,1fr);max-width:calc(100vw - 40px)}}\n.trio{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}\n.col h6,pre.code .cm{color:var(--muted)}\n.chart .cov{display:inline-block;margin:0 0 14px;padding:2px 8px;border:1px solid var(--line2);border-radius:2px;font-size:.72rem;color:var(--fg2);letter-spacing:.02em}\n.chart .cov.part{border-color:var(--muted)}\n"
+x89 puts x87 x88
+
+fn css_d io -> io
+x91 write A 9
+x92 ".tblwrap{background:linear-gradient(90deg,var(--card) 30%,transparent) left/40px 100% no-repeat local,linear-gradient(270deg,var(--card) 30%,transparent) right/40px 100% no-repeat local,linear-gradient(90deg,color-mix(in srgb,var(--fg) 14%,transparent),transparent) left/14px 100% no-repeat scroll,linear-gradient(270deg,color-mix(in srgb,var(--fg) 14%,transparent),transparent) right/14px 100% no-repeat scroll}\n.tblwrap th,.tblwrap td{white-space:nowrap}\n.tblwrap td:first-child,.tblwrap th:first-child{position:sticky;left:0;background:var(--card);z-index:1}\n@media (max-width:600px){.layout{padding-left:16px;padding-right:16px}.trio{padding:0 16px}.center{padding-left:16px;padding-right:16px}.chart{padding:16px 14px 14px}.legend{gap:6px 14px}.lrow,.lrow.wide{grid-template-columns:112px 1fr;align-items:start}.lrow .lbl,.lrow.wide .lbl{white-space:normal;overflow:visible;line-height:1.25;padding-top:2px}.foot{padding-left:16px;padding-right:16px}}\n"
+x93 puts x91 x92
+x94 write x93 9
+x95 "/* Minimal dark: black, neutral grays, green (#00ff41) only as an accent; Geist Sans for text, Geist Mono for code and the rain */\n:root{--bg:#000;--fg:#ededed;--fg2:#c4c4c4;--body:#a3a3a3;--muted:#7a7a7a;--dim:#555;--line:#1a1a1a;--line2:#2a2a2a;--card:transparent;--pillbg:transparent;--pillfg:#ededed;--ghost:transparent;--a0:#00ff41;--c:#bdbdbd;--rust:#6b6b6b;--gray:#3d3d3d;--win:#00ff41;--loss:#d4d4d4;--markbg:rgba(0,255,65,.1)}\nbody{font-family:\"Geist\",-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:16px;letter-spacing:0}\n.pixel,h1,h2,h3,.brand,.tcard .t{font-family:\"Geist\",-apple-system,sans-serif;font-weight:600;letter-spacing:-.03em}\n.row .lbl,.track .val,.yl,.xl,.pt .lbl{font-family:\"Geist\",-apple-system,sans-serif;font-variant-numeric:tabular-nums}\n.hero .name,.hero .tag,.brand,.tcard .big,.tile .n:not(.loss){color:var(--fg);text-shadow:none}\n.brand{color:var(--a0)}\n.stage{position:fixed!important;inset:0;z-index:-1!important;pointer-events:none}\n"
+x96 puts x94 x95
+x97 write x96 9
+x98 ".stage::after{content:\"\";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.35),rgba(0,0,0,.78) 18%,rgba(0,0,0,.78) 82%,rgba(0,0,0,.35))}\nheader.top{background:rgba(0,0,0,.72);border-bottom:0}\n.chart,.tcard,.card,.tile{background:transparent;border:0;border-top:1px solid var(--line2);border-radius:0;padding-left:0;padding-right:0}\n.tcard{min-height:0}\npre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6px}\n.live .col{background:rgba(0,0,0,.8);border:0;border-left:1px solid var(--line2);border-radius:0}\n.pill{border:1px solid var(--line2);border-radius:6px;background:transparent;color:var(--fg);text-transform:none;letter-spacing:0;font-size:.85rem}\n.pill:hover{border-color:var(--a0);color:var(--a0);background:transparent}\n.tblwrap,.tblwrap td:first-child,.tblwrap th:first-child{background:#000}\n.legend span::before{border-radius:1px}\n.chart .cov{border:0;padding:0;color:var(--muted)}\n"
+x99 puts x97 x98
+x100 write x99 9
+x101 ".rank td,.rank th{font-family:\"Geist\",-apple-system,sans-serif;font-variant-numeric:tabular-nums}\n.rail a.on{color:#fff;border-color:var(--a0)}\n@media (max-width:900px){.rail a.on{border:1px solid var(--a0);color:var(--a0);padding:6px 12px}}\n/* Header right group: Sponsor as text, X and GitHub as icon links (40px hit targets). The icons are\n   the simple-icons paths for X and GitHub (simple-icons 16.33.0, CC0-1.0; the marks stay the property\n   of their owners) as data: URIs used as a CSS mask, so they follow the text colour. No requests. */\n.ico-x{--ico:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M14.234%2010.162%2022.977%200h-2.072l-7.591%208.824L7.251%200H.258l9.168%2013.343L.258%2024H2.33l8.016-9.318L16.749%2024h6.993zm-2.837%203.299-.929-1.329L3.076%201.56h3.182l5.965%208.532.929%201.329%207.754%2011.09h-3.182z%22%2F%3E%3C%2Fsvg%3E\")}\n"
+x102 puts x100 x101
+x103 write x102 9
+x104 ".ico-gh{--ico:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M12%20.297c-6.63%200-12%205.373-12%2012%200%205.303%203.438%209.8%208.205%2011.385.6.113.82-.258.82-.577%200-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422%2018.07%203.633%2017.7%203.633%2017.7c-1.087-.744.084-.729.084-.729%201.205.084%201.838%201.236%201.838%201.236%201.07%201.835%202.809%201.305%203.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93%200-1.31.465-2.38%201.235-3.22-.135-.303-.54-1.523.105-3.176%200%200%201.005-.322%203.3%201.23.96-.267%201.98-.399%203-.405%201.02.006%202.04.138%203%20.405%202.28-1.552%203.285-1.23%203.285-1.23.645%201.653.24%202.873.12%203.176.765.84%201.23%201.91%201.23%203.22%200%204.61-2.805%205.625-5.475%205.92.42.36.81%201.096.81%202.22%200%201.606-.015%202.896-.015%203.286%200%20.315.21.69.825.57C20.565%2022.092%2024%2017.592%2024%2012.297c0-6.627-5.373-12-12-12%22%2F%3E%3C%2Fsvg%3E\")}\n"
+x105 puts x103 x104
+x106 write x105 9
+x107 ".hright{display:flex;align-items:center;gap:6px}\n.hright>a{color:var(--fg2);text-decoration:none;font-size:.9rem}\n.hright>a:hover{color:var(--a0)}\n.hright .ico{display:inline-block;width:40px;height:40px;background:currentColor;-webkit-mask:var(--ico) center/20px 20px no-repeat;mask:var(--ico) center/20px 20px no-repeat}\n.hright .ico:focus-visible{outline:2px solid var(--a0);outline-offset:-4px;border-radius:6px}\n.hright>a:first-child{margin-right:6px}\n@media (max-width:640px){.nav{gap:10px}.brand{margin-right:0}.links{gap:12px}.hright{gap:0}.hright>a:first-child{margin-right:2px;font-size:.85rem}}\n/* Accessibility and legibility: muted text at 7.5:1 on black, a 13px floor for labels, a skip link, 44px touch targets */\n:root{--muted:#9a9a9a;--dim:#808080}\n.skip{position:absolute;left:12px;top:-120px;z-index:100;padding:10px 16px;border-radius:6px;background:var(--a0);color:#000;font-weight:600;text-decoration:none}\n.skip:focus{top:10px}\n"
+x108 puts x106 x107
+x109 write x108 9
+x110 ".tcard .f,.row .lbl,.track .val,.lrow .lbl,.yl,.pt .lbl,.xl,.xt,.tile p,.ops th,.tblwrap table.rank th,.chart .kh,.chart .cov,.rail,.rail a{font-size:13px}\n.col h6{font-size:12px}\n.ops th,.tblwrap table.rank th,.chart .ct,.cap{font-size:max(13px,.8rem)}\n.tblwrap caption,.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}\n.tblwrap table.rank.fit th,.tblwrap table.rank.fit td{font-size:13px}\n.tblwrap{background:linear-gradient(90deg,#000 30%,transparent) left/40px 100% no-repeat local,linear-gradient(270deg,#000 30%,transparent) right/40px 100% no-repeat local,linear-gradient(90deg,rgba(255,255,255,.22),transparent) left/20px 100% no-repeat scroll,linear-gradient(270deg,rgba(255,255,255,.22),transparent) right/20px 100% no-repeat scroll,#000}\n.tblwrap td:first-child,.tblwrap th:first-child{background:#000}\n"
+x111 puts x109 x110
+x112 write x111 9
+x113 "@media (max-width:720px){pre.code{font-size:13px;background:linear-gradient(90deg,rgba(0,0,0,.9) 30%,transparent) left/40px 100% no-repeat local,linear-gradient(270deg,rgba(0,0,0,.9) 30%,transparent) right/40px 100% no-repeat local,linear-gradient(90deg,rgba(255,255,255,.22),transparent) left/20px 100% no-repeat scroll,linear-gradient(270deg,rgba(255,255,255,.22),transparent) right/20px 100% no-repeat scroll,rgba(0,0,0,.7)}pre.code.wrap{background:rgba(0,0,0,.7)}}\n@media (max-width:640px){.links a{font-size:.85rem}.pill{font-size:.8rem}}\n.skip:focus-visible,.rail a:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n@media (max-width:900px){\n.links a,.hright>a:not(.ico){display:inline-flex;align-items:center;min-height:44px}\n.layout{display:block;padding-top:56px}\n"
+x114 puts x112 x113
+x115 write x114 9
+x116 ".rail{position:sticky;top:64px;z-index:15;flex-direction:row;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;background:#000;margin:0 -16px 24px;padding:6px 16px;border-bottom:1px solid var(--line);-webkit-mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}\n.rail::-webkit-scrollbar{display:none}\n.rail a{flex:none;scroll-snap-align:start;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;white-space:nowrap;font-size:14px}\n.rail a.on{padding:0 16px}\n.rail .rh{display:none}\n}\n@media (max-width:640px){.rail{top:56px}}\n/* Benchmark charts, one visual language: bold outlined bars, A0 the only saturated solid (the accent), every other language graphite or hollow, a large value on every bar, monospace figures, generous space, one grow-in */\n:root{--g-fill:#262626;--g-line:#d4d4d4;--g-dash:#a3a3a3}\n"
+x117 puts x115 x116
+x118 write x117 9
+x119 ".chart{padding:32px 0 28px;margin:40px 0 48px}\n.chart .ct{font-size:clamp(1.25rem,2.4vw,1.6rem);font-weight:600;letter-spacing:-.02em;line-height:1.2;margin:0 0 10px;text-wrap:balance}\n.chart p.take{margin:0 0 14px;padding-left:0;border-left:0;color:var(--fg2);font-size:1.02rem;font-weight:400;line-height:1.5;max-width:68ch}\n.chart .sub{font-size:13px;line-height:1.5;color:var(--muted);margin:0 0 18px}\n.chart .cov{font-size:13px;margin:0 0 16px;font-family:\"Geist Mono\",ui-monospace,monospace}\n.chart .legend{gap:10px 22px;font-size:13px;color:var(--fg2);margin:0 0 22px}\n.chart .legend span::before{width:20px;height:14px;margin-right:9px;vertical-align:-2px;border:2px solid var(--g-line);border-radius:2px 6px 6px 2px;background:var(--g-fill)}\n.chart .legend .la0::before{background:var(--a0);border-color:var(--a0)}\n.chart .legend .lc::before,.chart .legend .lnat::before{background:var(--g-fill);border-color:var(--g-line)}\n"
+x120 puts x118 x119
+
+fn css_e io -> io
+x122 write A 9
+x123 ".chart .legend .lrust::before,.chart .legend .ljit::before{background:transparent;border-color:var(--g-line)}\n.chart .legend .lgray::before,.chart .legend .lint::before{background:transparent;border:2px dashed var(--g-dash)}\n.chart .lrow{grid-template-columns:140px minmax(0,1fr);gap:14px;padding:5px 0}\n.chart .lrow .lbl{font-size:14px;color:var(--fg2)}\n.chart .lrow .track,.chart .row .track{height:30px;grid-template-columns:minmax(0,1fr) 86px;gap:10px}\n.chart .row .track{grid-template-columns:minmax(0,1fr) 100px}\n.chart .lrow .track{background:linear-gradient(var(--line2),var(--line2)) 0 50%/calc(100% - 96px) 1px no-repeat}\n.chart .track .fill{height:24px;min-width:12px;box-sizing:border-box;border:2px solid var(--g-line);border-radius:2px 5px 5px 2px;background:var(--g-fill);transition:width .8s cubic-bezier(.2,.7,.2,1)}\n.chart .track.a0 .fill{background:var(--a0);border-color:var(--a0)}\n"
+x124 puts x122 x123
+x125 write x124 9
+x126 ".chart .track.c .fill,.chart .track.nat .fill{background:var(--g-fill);border-color:var(--g-line)}\n.chart .track.rust .fill,.chart .track.jit .fill{background:transparent;border-color:var(--g-line)}\n.chart .track.int .fill{background:transparent;border:2px dashed var(--g-dash)}\n.chart .track .val{font:600 15px \"Geist Mono\",ui-monospace,monospace;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums}\n.chart .track.a0 .val,.chart .lrow.me .val{color:var(--a0)}\n.chart .lrow.me{background:transparent;border-radius:0;margin:0;padding-left:0;padding-right:0}\n.chart .lrow.me .lbl{color:var(--a0);font-weight:600;font-size:15px}\n.chart .lrow.me .track{height:34px}\n.chart .lrow.me .fill{height:28px}\n.chart .row{grid-template-columns:140px minmax(0,1fr) auto;gap:14px;padding:12px 0}\n.chart .row .lbl{font-size:14px;color:var(--fg2)}\n.chart .bars{gap:6px}\n"
+x127 puts x125 x126
+x128 write x127 9
+x129 ".chart .row .ratio{font:600 15px \"Geist Mono\",ui-monospace,monospace;color:var(--fg);padding:3px 10px;border:2px solid transparent;border-radius:999px}\n.chart .row .ratio.win{color:var(--a0);border-color:var(--a0)}\n.chart .row .ratio.loss{color:var(--fg);border:2px dashed var(--g-line)}\n.chart details.more{margin-top:20px}\n.chart .cap{font-size:13px;font-style:normal;color:var(--muted)}\n@media (max-width:600px){\n.chart{padding:24px 0 20px;margin:28px 0 36px}\n.chart .lrow,.chart .lrow.wide{grid-template-columns:96px minmax(0,1fr);gap:8px}\n.chart .lrow .lbl{font-size:13px}\n.chart .lrow .track,.chart .row .track{grid-template-columns:minmax(0,1fr) 64px;gap:6px}\n.chart .row .track{grid-template-columns:minmax(0,1fr) 76px}\n.chart .track .val{font-size:13px}\n.chart .row,.chart .single .row{grid-template-columns:minmax(0,1fr) auto;row-gap:6px}\n.chart .row .lbl{grid-column:1/-1}\n}\n@media (prefers-reduced-motion:reduce){.chart .track .fill{transition:none}}\n"
+x130 puts x128 x129
+x131 write x130 9
+x132 "/* a page without the section rail (the landing page) is one centred column */\n.layout:not(:has(.rail)){grid-template-columns:minmax(0,820px)}\n/* the code rain belongs to the hero: behind the content it sits under a soft dark panel so text and charts stay legible */\n.layout{position:relative;z-index:1}\n.layout::before{content:\"\";position:absolute;inset:0 -32px;z-index:-1;background:rgba(0,0,0,.92);box-shadow:0 0 56px 40px rgba(0,0,0,.92);pointer-events:none}\n/* narrow phones: the header must fit the viewport (the text Sponsor link is hidden here; the icons stay) */\n@media (max-width:480px){.top{padding:0 12px}.hright>a:not(.ico){display:none}.links{gap:8px}.nav{gap:8px}}\n/* docs page only (scoped by the .docs ancestor): a readable column, a sticky contents on desktop, a collapsible one on mobile */\n.docs .layout{grid-template-columns:220px minmax(0,780px);gap:48px}\n.docs .main p{max-width:70ch;line-height:1.65}\n"
+x133 puts x131 x132
+x134 write x133 9
+x135 ".docs .main h3{font-size:1.05rem;font-weight:600;margin:28px 0 10px;color:var(--fg)}\n.docs .main section{scroll-margin-top:80px}\n.docs pre.code{font-size:14px;line-height:1.6}\n.docs .toc>summary{list-style:none;cursor:pointer}\n.docs .toc>summary::-webkit-details-marker{display:none}\n.docs .toc>summary:focus-visible{outline:2px solid var(--a0);outline-offset:2px;border-radius:6px}\n.docs .rail a{display:block;padding:6px 0 6px 12px}\n.docs .rail a.on{padding:6px 0 6px 10px}\n@media (min-width:901px){.docs .toc>summary{display:none}.docs .toc::details-content{content-visibility:visible;display:block}.docs .rail{max-height:calc(100vh - 120px);overflow-y:auto}}\n@media (max-width:900px){\n.docs .layout{display:block}\n.docs .rail{position:static;display:block;overflow:visible;margin:0 0 24px;padding:0;background:none;border:0;-webkit-mask:none;mask:none}\n"
+x136 puts x134 x135
+x137 write x136 9
+x138 ".docs .toc>summary{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:8px;color:var(--fg);font-size:15px}\n.docs .toc>summary::after{content:\"+\";color:var(--muted)}\n.docs .toc[open]>summary::after{content:\"\\2212\"}\n.docs .toc[open] .rh{display:block;margin:14px 0 2px 12px}\n.docs .rail a,.docs .rail a.on{display:flex;align-items:center;min-height:44px;padding:0 12px;white-space:normal;border:0}\n}\n/* Phones, motion, tap targets and focus. The page was wider than the screen because the panel behind the content reaches 32px past each side. */\nbody{overflow-x:clip}\n@media (max-width:900px){.layout::before{inset:0}}\n.foot a{text-decoration:underline;text-underline-offset:3px;display:inline-block;padding:13px 6px;margin:-13px -6px}\npre.code:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n@media (max-width:640px){\n.hero{min-height:46vh;min-height:46svh}\n.center{padding-top:48px}\n"
+x139 puts x137 x138
+x140 write x139 9
+x141 "#start{display:flex;flex-direction:column}\n#start>p:has(.pill){order:-1;margin:20px 0 0}\n.pill{min-height:44px;font-size:.8125rem}\n.brand{display:inline-flex;align-items:center;min-height:44px;min-width:44px}\n.links a{padding:0 7px}\n.hright .ico{width:44px;height:44px}\n.chart details.more>summary{min-height:44px}\np+a{display:inline-block;padding:12px 0}\n.rail{padding-left:20px;scroll-padding-left:20px;background:#000}\n}\n@media (max-width:400px){.hright .ico-x{display:none}}\n@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hero .name,.hero .tag,.hero .sub{animation:none}.reveal{transition:none}}\n\n@media (max-width:360px){.lrow,.lrow.wide{grid-template-columns:96px minmax(0,1fr)}.track,.lrow .track,.lrow.wide .track{grid-template-columns:minmax(0,1fr) auto}.track .val{min-width:0}}\n@media (max-width:360px){.layout{overflow-x:clip}.row,.single .row{grid-template-columns:minmax(0,1fr) auto}}\n@media (max-width:360px){.row .ratio{white-space:normal}.row .lbl{min-width:0}}\n"
+x142 puts x140 x141
+x143 write x142 9
+x144 "/* /benchmarks: purpose lines, chart rules (A0 filled and accented, the rest outlined, a loss is a word), page head */\n.bench.center{max-width:1016px;padding:56px 24px 0;text-align:left}\n.bench.center h1,.bench.center p{margin:0 0 12px;max-width:none}\n.bench.layout{padding-top:24px}\n.bench .pill:not(.ghost){background:var(--a0);color:#000}\n.bench .pill.ghost{background:none;border:1px solid var(--line2);color:var(--fg)}\n.bench .q{color:var(--fg);margin:0 0 14px}\n.bench .nx{font-size:.9rem;color:var(--muted);margin:16px 0 0}\n.bench .nx a,.bench td a{color:var(--fg);text-underline-offset:3px;display:inline-block;padding:12px 0}\n.bench .tblwrap table.rank td{white-space:normal}\n@media (min-width:1064px){.bench.center{padding-left:0}}\n.bench p.take{border-color:var(--line2)}\n.bench .rail a.on{border-color:var(--fg)}\n.bench .rank td.first,.bench .tile .n:not(.loss){color:var(--fg)}\n.bench .lrow .track,.bench .row .track{grid-template-columns:1fr 130px;height:auto;min-height:18px}\n"
+x145 puts x143 x144
+x146 write x145 9
+x147 ".bench .track .val{white-space:normal;line-height:1.2;color:var(--fg2)}\n.bench .ls .lrow:has(~.lrow.me) .val::after,.bench .track .val.loss::after{content:\" A0 slower\"}\n.bench .lm .lrow:has(~.lrow.me) .val::after,.bench .row .ratio.loss::after{content:\" A0 costlier\"}\n.bench .val::after,.bench .ratio::after{font-weight:700;color:var(--fg)}\n@media (max-width:600px){.bench .lrow,.bench .lrow.wide{grid-template-columns:1fr;gap:2px}.bench .lrow .track{grid-template-columns:1fr 100px}}\n/* Copy button (protocol word 14 COPY, site/app.ts): a small outlined button; the glyphs are drawn here, no images. data-copied is set by the runtime for 1.5 s. */\n.copy{position:relative;display:inline-flex;align-items:center;gap:8px;min-width:44px;min-height:44px;padding:0 14px 0 34px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--fg2);font:inherit;font-size:13px;line-height:1;cursor:pointer}\n.copy[hidden]{display:none}\n"
+x148 puts x146 x147
+x149 write x148 9
+x150 ".copy:hover{color:var(--fg);border-color:var(--muted)}\n.copy:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n.copy::before,.copy::after{content:\"\";position:absolute;left:13px;top:50%;box-sizing:border-box;width:10px;height:12px;border:1.5px solid currentColor;border-radius:2px}\n.copy::before{transform:translate(-3px,-50%);margin-top:-3px}\n.copy::after{transform:translate(0,-50%);background:var(--bg)}\n.copy[data-copied]{border-color:var(--a0);color:var(--fg)}\n.copy[data-copied=\"1\"]::before{width:6px;height:11px;border:0;border-right:2px solid var(--a0);border-bottom:2px solid var(--a0);border-radius:0;transform:translate(0,-60%) rotate(45deg);margin-top:0}\n.copy[data-copied=\"1\"]::after{display:none}\n.copy[data-copied=\"fail\"]{border-color:var(--loss)}\n@media (prefers-reduced-motion:no-preference){.copy{transition:border-color .15s,color .15s}}\n"
+x151 puts x149 x150
+
+fn css_f io -> io
+x153 write A 9
+x154 ".copy-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}\n/* Home page (site/gen/page.tpl; its root is div.home, which holds the hero and div.layout). The statement, the sample and the install action sit in the first viewport at 1280x800 and 390x844; the sections follow in one column, each ending with a hand-off line. */\n.home .layout{padding-top:96px}\n.home .hero{min-height:0;height:0;padding:0;display:block;overflow:visible}\n.home .main section{padding:28px 0 24px}\n.home .main .intro{padding:0}\n.home .intro h1{font-size:clamp(1.75rem,3.2vw,2.4rem);line-height:1.18;letter-spacing:-.025em;font-weight:600;margin:0 0 20px;max-width:none;text-align:left;text-wrap:pretty}\n.home .intro>p:not(.ctas){color:var(--fg2);font-size:1.1rem;line-height:1.55;margin:0;max-width:62ch}\n.home .intro pre.code{margin:28px 0 0}\n.home .ctas{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0 0}\n"
+x155 puts x153 x154
+x156 write x155 9
+x157 ".home .pill{min-height:44px;padding:0 20px;font-size:.9rem;justify-content:center}\n.home .pill:not(.ghost){background:var(--a0);border-color:var(--a0);color:#000}\n.home .pill:not(.ghost):hover{background:var(--a0);border-color:var(--a0);color:#000;filter:brightness(.92)}\n.home .pill.ghost:hover{border-color:var(--a0);color:var(--a0)}\n.home .cmdlabel{display:block;font-size:13px;color:var(--muted);margin:22px 0 6px}\n.home .cmd{display:flex;align-items:stretch;gap:8px;margin:0}\n.home .cmd pre.code{flex:1 1 auto;min-width:0;margin:0;padding:12px 14px;font-size:13px;line-height:1.5;white-space:pre;overflow-x:auto}\n.home .cmd .copy{flex:none;align-self:center}\n.home #connect+p{margin-top:20px}\n.home #connect{margin-top:32px}\n.home #connect h3{margin:0 0 8px}\n.home .main section>p:last-child:not(.ctas){margin:20px 0 0;color:var(--fg2)}\n.home .chart{margin:16px 0 32px;padding:20px 0 12px}\n"
+x158 puts x156 x157
+x159 write x158 9
+x160 ".home .main section>p:last-child a:not(.pill){display:inline-block;padding:10px 0;text-decoration:underline;text-underline-offset:3px}\n@media (max-width:900px){.home .layout{padding-top:88px}}\n@media (max-width:600px){.home .cmd{flex-direction:column;align-items:stretch}.home .cmd .copy{align-self:flex-start}.home .cmd pre.code{white-space:pre-wrap;overflow-wrap:anywhere}}\n\n"
+x161 puts x159 x160
+
+fn sec_hero io -> io
+x164 open A 5
+x165 write x164 4
+x166 write x165 2
+x167 "home"
+x168 puts x166 x167
+x169 open x168 13
+x170 write x169 4
+x171 write x170 1
+x172 "top"
+x173 puts x171 x172
+x174 write x173 4
+x175 write x174 2
+x176 "hero"
+x177 puts x175 x176
+x178 open x177 5
+x179 write x178 4
+x180 write x179 2
+x181 "stage"
+x182 puts x180 x181
+x183 write x182 13
+x184 "#version 300 es\nprecision mediump float;\nuniform vec2 u_res;uniform float u_time;uniform sampler2D u_font;\nout vec4 o;\nfloat h(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}\nvoid main(){\nfloat cell=clamp(u_res.x/84.,12.,18.);\nvec2 px=vec2(gl_FragCoord.x,u_res.y-gl_FragCoord.y);\nvec2 id=floor(px/cell);vec2 g=fract(px/cell);\nfloat col=id.x;\nif(h(vec2(col,5.))<.3){o=vec4(0.,0.,0.,1.);return;}\nfloat rows=ceil(u_res.y/cell);\nfloat speed=5.+9.*h(vec2(col,1.));\nfloat len=6.+22.*h(vec2(col,2.));\nfloat period=rows+len+rows*1.5*h(vec2(col,4.));\nfloat head=mod(u_time*speed+h(vec2(col,3.))*period,period);\nfloat d=head-id.y;\nif(d<0.||d>len){o=vec4(0.,0.,0.,1.);return;}\nfloat flick=step(.75,h(id+7.))*floor(u_time*(3.+6.*h(id)));\nfloat gi=floor(h(id+flick*.37)*64.);\nfloat ink=texture(u_font,(vec2(mod(gi,16.),floor(gi/16.))+g)/vec2(16.,4.)).r;\nfloat t=1.-d/len;\nvec3 c=d<1.?vec3(.82,1.,.86):vec3(0.,1.,.255)*(.12+.8*t*t);\no=vec4(c*ink,1.);\n}\n\n"
+x185 puts x183 x184
+x186 close x185
+x187 close x186
+x188 open x187 5
+x189 write x188 4
+x190 write x189 2
+x191 "layout"
+x192 puts x190 x191
+x193 write x192 4
+x194 write x193 1
+x195 "content"
+x196 puts x194 x195
+x197 open x196 5
+x198 write x197 4
+x199 write x198 2
+x200 "main"
+x201 puts x199 x200
+x202 open x201 13
+x203 write x202 4
+x204 write x203 1
+x205 "intro"
+x206 puts x204 x205
+x207 write x206 4
+x208 write x207 2
+x209 "intro"
+x210 puts x208 x209
+x211 open x210 1
+x212 write x211 2
+x213 "A0 is a small language for code an AI agent edits one function at a time, each edit checked before it lands; it has no floats, heap or recursion, so use C, Rust or TypeScript for those."
+x214 puts x212 x213
+x215 close x214
+x216 open x215 2
+x217 write x216 2
+x218 "Slower than the best of C, Rust and Zig on 8 of 19 test programs. On a one-function file it costs 2.42x TypeScript's tokens."
+x219 puts x217 x218
+x220 close x219
+x221 open x220 10
+x222 write x221 4
+x223 write x222 2
+x224 "code"
+x225 puts x223 x224
+x226 open x225 4
+x227 write x226 2
+x228 "fn affine u32 u32 u32 -> u32\n"
+x229 puts x227 x228
+x230 write x229 2
+x231 "a mul p0 p1\n"
+x232 puts x230 x231
+x233 write x232 2
+x234 "b add a p2\n"
+x235 puts x233 x234
+x236 write x235 2
+x237 "ret b\n"
+x238 puts x236 x237
+x239 write x238 2
+x240 "end\n"
+x241 puts x239 x240
+x242 open x241 6
+x243 write x242 4
+x244 write x243 2
+x245 "cm"
+x246 puts x244 x245
+x247 write x246 2
+x248 "$ a0 run examples/kernels.a0 affine 3 4 5\n"
+x249 puts x247 x248
+x250 close x249
+x251 write x250 2
+x252 "17"
+x253 puts x251 x252
+x254 close x253
+x255 close x254
+x256 open x255 2
+x257 write x256 4
+x258 write x257 2
+x259 "ctas"
+x260 puts x258 x259
+x261 open x260 9
+x262 write x261 4
+x263 write x262 2
+x264 "pill"
+x265 puts x263 x264
+x266 write x265 4
+x267 write x266 3
+x268 "#install"
+x269 puts x267 x268
+x270 write x269 14
+x271 "curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh"
+x272 puts x270 x271
+x273 write x272 2
+x274 "Install A0"
+x275 puts x273 x274
+x276 close x275
+x277 write x276 2
+x278 " "
+x279 puts x277 x278
+x280 open x279 9
+x281 write x280 4
+x282 write x281 2
+x283 "pill ghost"
+x284 puts x282 x283
+x285 write x284 4
+x286 write x285 3
+x287 "#connect"
+x288 puts x286 x287
+x289 write x288 2
+x290 "Connect your agent"
+x291 puts x289 x290
+x292 close x291
+x293 close x292
+x294 close x293
+
+fn sec_install io -> io
+x296 open A 13
+x297 write x296 4
+x298 write x297 1
+x299 "install"
+x300 puts x298 x299
+x301 open x300 11
+x302 write x301 2
+x303 "Install and connect"
+x304 puts x302 x303
+x305 close x304
+x306 open x305 2
+x307 write x306 2
+x308 "A0 is one binary with no package manager. Install it, then connect your agent."
+x309 puts x307 x308
+x310 close x309
+x311 open x310 23
+x312 write x311 4
+x313 write x312 2
+x314 "cmdlabel"
+x315 puts x313 x314
+x316 write x315 2
+x317 "macOS and Linux"
+x318 puts x316 x317
+x319 close x318
+x320 open x319 5
+x321 write x320 4
+x322 write x321 2
+x323 "cmd"
+x324 puts x322 x323
+x325 open x324 10
+x326 write x325 4
+x327 write x326 2
+x328 "code"
+x329 puts x327 x328
+x330 open x329 4
+x331 write x330 2
+x332 "curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh"
+x333 puts x331 x332
+x334 close x333
+x335 close x334
+x336 open x335 3
+x337 write x336 4
+x338 write x337 4
+x339 "button"
+x340 puts x338 x339
+x341 write x340 4
+x342 write x341 2
+x343 "copy"
+x344 puts x342 x343
+x345 write x344 4
+x346 write x345 6
+x347 "Copy the macOS and Linux install command"
+x348 puts x346 x347
+x349 write x348 14
+x350 "curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh"
+x351 puts x349 x350
+x352 write x351 2
+x353 "Copy"
+x354 puts x352 x353
+x355 close x354
+x356 close x355
+x357 open x356 23
+x358 write x357 4
+x359 write x358 2
+x360 "cmdlabel"
+x361 puts x359 x360
+x362 write x361 2
+x363 "Windows, PowerShell"
+x364 puts x362 x363
+x365 close x364
+x366 open x365 5
+x367 write x366 4
+x368 write x367 2
+x369 "cmd"
+x370 puts x368 x369
+x371 open x370 10
+x372 write x371 4
+x373 write x372 2
+x374 "code"
+x375 puts x373 x374
+x376 open x375 4
+x377 write x376 2
+x378 "irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex"
+x379 puts x377 x378
+x380 close x379
+x381 close x380
+x382 open x381 3
+x383 write x382 4
+x384 write x383 4
+x385 "button"
+x386 puts x384 x385
+x387 write x386 4
+x388 write x387 2
+x389 "copy"
+x390 puts x388 x389
+x391 write x390 4
+x392 write x391 6
+x393 "Copy the Windows install command"
+x394 puts x392 x393
+x395 write x394 14
+x396 "irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex"
+x397 puts x395 x396
+x398 write x397 2
+x399 "Copy"
+x400 puts x398 x399
+x401 close x400
+x402 close x401
+x403 open x402 5
+x404 write x403 4
+x405 write x404 1
+x406 "connect"
+x407 puts x405 x406
+x408 open x407 15
+x409 write x408 2
+x410 "Connect your agent"
+x411 puts x409 x410
+x412 close x411
+x413 open x412 2
+x414 write x413 2
+x415 "Claude Code: add the a0 MCP server with this one line. The a0 binary must be on PATH."
+x416 puts x414 x415
+x417 close x416
+x418 open x417 5
+x419 write x418 4
+x420 write x419 2
+x421 "cmd"
+x422 puts x420 x421
+x423 open x422 10
+x424 write x423 4
+x425 write x424 2
+x426 "code"
+x427 puts x425 x426
+x428 open x427 4
+x429 write x428 2
+x430 "claude mcp add a0 -- a0 mcp ."
+x431 puts x429 x430
+x432 close x431
+x433 close x432
+x434 open x433 3
+x435 write x434 4
+x436 write x435 4
+x437 "button"
+x438 puts x436 x437
+x439 write x438 4
+x440 write x439 2
+x441 "copy"
+x442 puts x440 x441
+x443 write x442 4
+x444 write x443 6
+x445 "Copy the Claude Code command"
+x446 puts x444 x445
+x447 write x446 14
+x448 "claude mcp add a0 -- a0 mcp ."
+x449 puts x447 x448
+x450 write x449 2
+x451 "Copy"
+x452 puts x450 x451
+x453 close x452
+x454 close x453
+x455 close x454
+x456 open x455 2
+x457 write x456 2
+x458 "Targets: machine code, C, wasm, JavaScript, JVM, .NET, Metal and SystemVerilog. 5262 test cases ran on 10 paths. The native assembly targets ran the 4297 that need no input or output, and SystemVerilog is simulated separately on 5262 (results/verification.json)."
+x459 puts x457 x458
+x460 close x459
+x461 open x460 2
+x462 write x461 2
+x463 "MIT license, free for any use. Copyright 2026 Joe Simo."
+x464 puts x462 x463
+x465 close x464
+x466 open x465 2
+x467 write x466 2
+x468 "Works? Then see where A0 loses: "
+x469 puts x467 x468
+x470 open x469 9
+x471 write x470 4
+x472 write x471 3
+x473 "#fast"
+x474 puts x472 x473
+x475 write x474 2
+x476 "Where A0 is slower than C"
+x477 puts x475 x476
+x478 close x477
+x479 close x478
+x480 close x479
+
+fn sec_fast io -> io
+x482 open A 13
+x483 write x482 4
+x484 write x483 1
+x485 "fast"
+x486 puts x484 x485
+x487 open x486 11
+x488 write x487 2
+x489 "Where A0 is slower than C"
+x490 puts x488 x489
+x491 close x490
+x492 open x491 2
+x493 write x492 4
+x494 write x493 2
+x495 "take"
+x496 puts x494 x495
+x497 write x496 2
+x498 "A0 is slower than the best of C, Rust and Zig on 8 of 19 test programs, by up to 4.31x on mat4. Over all of them its machine code takes 1.16x as long as hand-written C, a geometric mean (on an Apple M3; results/exec-benchmark-full.json)."
+x499 puts x497 x498
+x500 close x499
+x501 open x500 5
+x502 write x501 4
+x503 write x502 2
+x504 "chart langs reveal"
+x505 puts x503 x504
+x506 write x505 4
+x507 write x506 9
+x508 "group"
+x509 puts x507 x508
+x510 write x509 4
+x511 write x510 8
+x512 "chart-1"
+x513 puts x511 x512
+x514 open x513 2
+x515 write x514 4
+x516 write x515 2
+x517 "ct"
+x518 puts x516 x517
+x519 write x518 4
+x520 write x519 1
+x521 "chart-1"
+x522 puts x520 x521
+x523 write x522 2
+x524 "How long each language takes, as a multiple of A0's time"
+x525 puts x523 x524
+x526 close x525
+x527 open x526 5
+x528 write x527 4
+x529 write x528 2
+x530 "legend"
+x531 puts x529 x530
+x532 open x531 6
+x533 write x532 4
+x534 write x533 2
+x535 "la0"
+x536 puts x534 x535
+x537 write x536 2
+x538 "A0"
+x539 puts x537 x538
+x540 close x539
+x541 open x540 6
+x542 write x541 4
+x543 write x542 2
+x544 "lnat"
+x545 puts x543 x544
+x546 write x545 2
+x547 "compiled"
+x548 puts x546 x547
+x549 close x548
+x550 open x549 6
+x551 write x550 4
+x552 write x551 2
+x553 "ljit"
+x554 puts x552 x553
+x555 write x554 2
+x556 "JIT or VM"
+x557 puts x555 x556
+x558 close x557
+x559 open x558 6
+x560 write x559 4
+x561 write x560 2
+x562 "lint"
+x563 puts x561 x562
+x564 write x563 2
+x565 "interpreted"
+x566 puts x564 x565
+x567 close x566
+x568 close x567
+x569 open x568 5
+x570 write x569 4
+x571 write x570 2
+x572 "lrow"
+x573 puts x571 x572
+x574 open x573 6
+x575 write x574 4
+x576 write x575 2
+x577 "lbl"
+x578 puts x576 x577
+x579 write x578 2
+x580 "C"
+x581 puts x579 x580
+x582 close x581
+x583 open x582 5
+x584 write x583 4
+x585 write x584 2
+x586 "track nat"
+x587 puts x585 x586
+x588 open x587 5
+x589 write x588 4
+x590 write x589 2
+x591 "fill"
+x592 puts x590 x591
+x593 write x592 12
+x594 write x593 1
+x595 write x594 18
+x596 close x595
+x597 open x596 6
+x598 write x597 4
+x599 write x598 2
+x600 "val"
+x601 puts x599 x600
+x602 mov 86
+x603 putratio x601 x602
+x604 write x603 2
+x605 "x"
+x606 puts x604 x605
+x607 close x606
+x608 close x607
+x609 close x608
+x610 open x609 5
+x611 write x610 4
+x612 write x611 2
+x613 "lrow"
+x614 puts x612 x613
+x615 open x614 6
+x616 write x615 4
+x617 write x616 2
+x618 "lbl"
+x619 puts x617 x618
+x620 write x619 2
+x621 "Rust"
+x622 puts x620 x621
+x623 close x622
+x624 open x623 5
+x625 write x624 4
+x626 write x625 2
+x627 "track nat"
+x628 puts x626 x627
+x629 open x628 5
+x630 write x629 4
+x631 write x630 2
+x632 "fill"
+x633 puts x631 x632
+x634 write x633 12
+x635 write x634 1
+x636 write x635 19
+x637 close x636
+x638 open x637 6
+x639 write x638 4
+x640 write x639 2
+x641 "val"
+x642 puts x640 x641
+x643 mov 93
+x644 putratio x642 x643
+x645 write x644 2
+x646 "x"
+x647 puts x645 x646
+x648 close x647
+x649 close x648
+x650 close x649
+x651 open x650 5
+x652 write x651 4
+x653 write x652 2
+x654 "lrow me"
+x655 puts x653 x654
+x656 open x655 6
+x657 write x656 4
+x658 write x657 2
+x659 "lbl"
+x660 puts x658 x659
+x661 write x660 2
+x662 "A0"
+x663 puts x661 x662
+x664 close x663
+x665 open x664 5
+x666 write x665 4
+x667 write x666 2
+x668 "track a0"
+x669 puts x667 x668
+x670 open x669 5
+x671 write x670 4
+x672 write x671 2
+x673 "fill"
+x674 puts x672 x673
+x675 write x674 12
+x676 write x675 1
+x677 write x676 20
+x678 close x677
+x679 open x678 6
+x680 write x679 4
+x681 write x680 2
+x682 "val"
+x683 puts x681 x682
+x684 mov 100
+x685 putratio x683 x684
+x686 write x685 2
+x687 "x"
+x688 puts x686 x687
+x689 close x688
+x690 close x689
+x691 close x690
+x692 open x691 5
+x693 write x692 4
+x694 write x693 2
+x695 "lrow"
+x696 puts x694 x695
+x697 open x696 6
+x698 write x697 4
+x699 write x698 2
+x700 "lbl"
+x701 puts x699 x700
+x702 write x701 2
+x703 "TypeScript"
+x704 puts x702 x703
+x705 close x704
+x706 open x705 5
+x707 write x706 4
+x708 write x707 2
+x709 "track jit"
+x710 puts x708 x709
+x711 open x710 5
+x712 write x711 4
+x713 write x712 2
+x714 "fill"
+x715 puts x713 x714
+x716 write x715 12
+x717 write x716 1
+x718 write x717 23
+x719 close x718
+x720 open x719 6
+x721 write x720 4
+x722 write x721 2
+x723 "val"
+x724 puts x722 x723
+x725 mov 140
+x726 putratio x724 x725
+x727 write x726 2
+x728 "x"
+x729 puts x727 x728
+x730 close x729
+x731 close x730
+x732 close x731
+x733 open x732 5
+x734 write x733 4
+x735 write x734 2
+x736 "lrow"
+x737 puts x735 x736
+x738 open x737 6
+x739 write x738 4
+x740 write x739 2
+x741 "lbl"
+x742 puts x740 x741
+x743 write x742 2
+x744 "Go"
+x745 puts x743 x744
+x746 close x745
+x747 open x746 5
+x748 write x747 4
+x749 write x748 2
+x750 "track nat"
+x751 puts x749 x750
+x752 open x751 5
+x753 write x752 4
+x754 write x753 2
+x755 "fill"
+x756 puts x754 x755
+x757 write x756 12
+x758 write x757 1
+x759 write x758 24
+x760 close x759
+x761 open x760 6
+x762 write x761 4
+x763 write x762 2
+x764 "val"
+x765 puts x763 x764
+x766 mov 153
+x767 putratio x765 x766
+x768 write x767 2
+x769 "x"
+x770 puts x768 x769
+x771 close x770
+x772 close x771
+x773 close x772
+x774 close x773
+x775 open x774 2
+x776 write x775 2
+x777 "Speed is not the point; edits are. "
+x778 puts x776 x777
+x779 open x778 9
+x780 write x779 4
+x781 write x780 3
+x782 "#edit"
+x783 puts x781 x782
+x784 write x783 2
+x785 "What does an edit cost?"
+x786 puts x784 x785
+x787 close x786
+x788 close x787
+x789 close x788
+
+fn sec_edit io -> io
+x791 open A 13
+x792 write x791 4
+x793 write x792 1
+x794 "edit"
+x795 puts x793 x794
+x796 open x795 11
+x797 write x796 2
+x798 "How much does an edit cost?"
+x799 puts x797 x798
+x800 close x799
+x801 open x800 2
+x802 write x801 4
+x803 write x802 2
+x804 "take"
+x805 puts x803 x804
+x806 write x805 2
+x807 "On a one-function file A0 costs 2.42x TypeScript's tokens, because the instructions dominate. Over a session of 10 edits it costs 184 tokens per task in its canonical form and 117 in its dense form (place 12 and 1 of 49 languages, 1 = fewest); results/ai-edit-b48-dense.json and results/ai-edit-experiment.b.sonnet-min.json."
+x808 puts x806 x807
+x809 close x808
+x810 open x809 5
+x811 write x810 4
+x812 write x811 2
+x813 "chart langs reveal"
+x814 puts x812 x813
+x815 write x814 4
+x816 write x815 9
+x817 "group"
+x818 puts x816 x817
+x819 write x818 4
+x820 write x819 8
+x821 "chart-2"
+x822 puts x820 x821
+x823 open x822 2
+x824 write x823 4
+x825 write x824 2
+x826 "ct"
+x827 puts x825 x826
+x828 write x827 4
+x829 write x828 1
+x830 "chart-2"
+x831 puts x829 x830
+x832 write x831 2
+x833 "Tokens per task, session of 10 edits"
+x834 puts x832 x833
+x835 close x834
+x836 open x835 5
+x837 write x836 4
+x838 write x837 2
+x839 "legend"
+x840 puts x838 x839
+x841 open x840 6
+x842 write x841 4
+x843 write x842 2
+x844 "la0"
+x845 puts x843 x844
+x846 write x845 2
+x847 "A0 (canonical and dense)"
+x848 puts x846 x847
+x849 close x848
+x850 open x849 6
+x851 write x850 4
+x852 write x851 2
+x853 "lnat"
+x854 puts x852 x853
+x855 write x854 2
+x856 "compiled"
+x857 puts x855 x856
+x858 close x857
+x859 open x858 6
+x860 write x859 4
+x861 write x860 2
+x862 "ljit"
+x863 puts x861 x862
+x864 write x863 2
+x865 "JIT or VM"
+x866 puts x864 x865
+x867 close x866
+x868 open x867 6
+x869 write x868 4
+x870 write x869 2
+x871 "lint"
+x872 puts x870 x871
+x873 write x872 2
+x874 "interpreted"
+x875 puts x873 x874
+x876 close x875
+x877 close x876
+x878 open x877 5
+x879 write x878 4
+x880 write x879 2
+x881 "lrow me"
+x882 puts x880 x881
+x883 open x882 6
+x884 write x883 4
+x885 write x884 2
+x886 "lbl"
+x887 puts x885 x886
+x888 write x887 2
+x889 "A0 (dense)"
+x890 puts x888 x889
+x891 close x890
+x892 open x891 5
+x893 write x892 4
+x894 write x893 2
+x895 "track a0"
+x896 puts x894 x895
+x897 open x896 5
+x898 write x897 4
+x899 write x898 2
+x900 "fill"
+x901 puts x899 x900
+x902 write x901 12
+x903 write x902 1
+x904 write x903 26
+x905 close x904
+x906 open x905 6
+x907 write x906 4
+x908 write x907 2
+x909 "val"
+x910 puts x908 x909
+x911 mov 117
+x912 putnum x910 x911
+x913 write x912 2
+x914 " tok"
+x915 puts x913 x914
+x916 close x915
+x917 close x916
+x918 close x917
+x919 open x918 5
+x920 write x919 4
+x921 write x920 2
+x922 "lrow"
+x923 puts x921 x922
+x924 open x923 6
+x925 write x924 4
+x926 write x925 2
+x927 "lbl"
+x928 puts x926 x927
+x929 write x928 2
+x930 "TypeScript"
+x931 puts x929 x930
+x932 close x931
+x933 open x932 5
+x934 write x933 4
+x935 write x934 2
+x936 "track jit"
+x937 puts x935 x936
+x938 open x937 5
+x939 write x938 4
+x940 write x939 2
+x941 "fill"
+x942 puts x940 x941
+x943 write x942 12
+x944 write x943 1
+x945 write x944 35
+x946 close x945
+x947 open x946 6
+x948 write x947 4
+x949 write x948 2
+x950 "val"
+x951 puts x949 x950
+x952 mov 165
+x953 putnum x951 x952
+x954 write x953 2
+x955 " tok"
+x956 puts x954 x955
+x957 close x956
+x958 close x957
+x959 close x958
+x960 open x959 5
+x961 write x960 4
+x962 write x961 2
+x963 "lrow"
+x964 puts x962 x963
+x965 open x964 6
+x966 write x965 4
+x967 write x966 2
+x968 "lbl"
+x969 puts x967 x968
+x970 write x969 2
+x971 "Go"
+x972 puts x970 x971
+x973 close x972
+x974 open x973 5
+x975 write x974 4
+x976 write x975 2
+x977 "track nat"
+x978 puts x976 x977
+x979 open x978 5
+x980 write x979 4
+x981 write x980 2
+x982 "fill"
+x983 puts x981 x982
+x984 write x983 12
+x985 write x984 1
+x986 write x985 37
+x987 close x986
+x988 open x987 6
+x989 write x988 4
+x990 write x989 2
+x991 "val"
+x992 puts x990 x991
+x993 mov 177
+x994 putnum x992 x993
+x995 write x994 2
+x996 " tok"
+x997 puts x995 x996
+x998 close x997
+x999 close x998
+x1000 close x999
+x1001 open x1000 5
+x1002 write x1001 4
+x1003 write x1002 2
+x1004 "lrow me"
+x1005 puts x1003 x1004
+x1006 open x1005 6
+x1007 write x1006 4
+x1008 write x1007 2
+x1009 "lbl"
+x1010 puts x1008 x1009
+x1011 write x1010 2
+x1012 "A0 (canonical)"
+x1013 puts x1011 x1012
+x1014 close x1013
+x1015 open x1014 5
+x1016 write x1015 4
+x1017 write x1016 2
+x1018 "track a0"
+x1019 puts x1017 x1018
+x1020 open x1019 5
+x1021 write x1020 4
+x1022 write x1021 2
+x1023 "fill"
+x1024 puts x1022 x1023
+x1025 write x1024 12
+x1026 write x1025 1
+x1027 write x1026 39
+x1028 close x1027
+x1029 open x1028 6
+x1030 write x1029 4
+x1031 write x1030 2
+x1032 "val"
+x1033 puts x1031 x1032
+x1034 mov 184
+x1035 putnum x1033 x1034
+x1036 write x1035 2
+x1037 " tok"
+x1038 puts x1036 x1037
+x1039 close x1038
+x1040 close x1039
+x1041 close x1040
+x1042 open x1041 5
+x1043 write x1042 4
+x1044 write x1043 2
+x1045 "lrow"
+x1046 puts x1044 x1045
+x1047 open x1046 6
+x1048 write x1047 4
+x1049 write x1048 2
+x1050 "lbl"
+x1051 puts x1049 x1050
+x1052 write x1051 2
+x1053 "Rust"
+x1054 puts x1052 x1053
+x1055 close x1054
+x1056 open x1055 5
+x1057 write x1056 4
+x1058 write x1057 2
+x1059 "track nat"
+x1060 puts x1058 x1059
+x1061 open x1060 5
+x1062 write x1061 4
+x1063 write x1062 2
+x1064 "fill"
+x1065 puts x1063 x1064
+x1066 write x1065 12
+x1067 write x1066 1
+x1068 write x1067 42
+x1069 close x1068
+x1070 open x1069 6
+x1071 write x1070 4
+x1072 write x1071 2
+x1073 "val"
+x1074 puts x1072 x1073
+x1075 mov 199
+x1076 putnum x1074 x1075
+x1077 write x1076 2
+x1078 " tok"
+x1079 puts x1077 x1078
+x1080 close x1079
+x1081 close x1080
+x1082 close x1081
+x1083 open x1082 5
+x1084 write x1083 4
+x1085 write x1084 2
+x1086 "lrow"
+x1087 puts x1085 x1086
+x1088 open x1087 6
+x1089 write x1088 4
+x1090 write x1089 2
+x1091 "lbl"
+x1092 puts x1090 x1091
+x1093 write x1092 2
+x1094 "C"
+x1095 puts x1093 x1094
+x1096 close x1095
+x1097 open x1096 5
+x1098 write x1097 4
+x1099 write x1098 2
+x1100 "track nat"
+x1101 puts x1099 x1100
+x1102 open x1101 5
+x1103 write x1102 4
+x1104 write x1103 2
+x1105 "fill"
+x1106 puts x1104 x1105
+x1107 write x1106 12
+x1108 write x1107 1
+x1109 write x1108 47
+x1110 close x1109
+x1111 open x1110 6
+x1112 write x1111 4
+x1113 write x1112 2
+x1114 "val"
+x1115 puts x1113 x1114
+x1116 mov 225
+x1117 putnum x1115 x1116
+x1118 write x1117 2
+x1119 " tok"
+x1120 puts x1118 x1119
+x1121 close x1120
+x1122 close x1121
+x1123 close x1122
+x1124 close x1123
+x1125 open x1124 2
+x1126 write x1125 2
+x1127 "Cheap only if it is also caught: "
+x1128 puts x1126 x1127
+x1129 open x1128 9
+x1130 write x1129 4
+x1131 write x1130 3
+x1132 "#check"
+x1133 puts x1131 x1132
+x1134 write x1133 2
+x1135 "How quickly do I know an edit is wrong?"
+x1136 puts x1134 x1135
+x1137 close x1136
+x1138 close x1137
+x1139 close x1138
+
+fn sec_check io -> io
+x1141 open A 13
+x1142 write x1141 4
+x1143 write x1142 1
+x1144 "check"
+x1145 puts x1143 x1144
+x1146 open x1145 11
+x1147 write x1146 2
+x1148 "How quickly do I know an edit is wrong?"
+x1149 puts x1147 x1148
+x1150 close x1149
+x1151 open x1150 2
+x1152 write x1151 4
+x1153 write x1152 2
+x1154 "take"
+x1155 puts x1153 x1154
+x1156 write x1155 2
+x1157 "A0 applies a model's edit and type-checks the whole program in 0.51 ms at the median. TypeScript with a warm compiler takes 15.1 ms (results/edit-loop.json)."
+x1158 puts x1156 x1157
+x1159 close x1158
+x1160 open x1159 5
+x1161 write x1160 4
+x1162 write x1161 2
+x1163 "chart langs reveal"
+x1164 puts x1162 x1163
+x1165 write x1164 4
+x1166 write x1165 9
+x1167 "group"
+x1168 puts x1166 x1167
+x1169 write x1168 4
+x1170 write x1169 8
+x1171 "chart-3"
+x1172 puts x1170 x1171
+x1173 open x1172 2
+x1174 write x1173 4
+x1175 write x1174 2
+x1176 "ct"
+x1177 puts x1175 x1176
+x1178 write x1177 4
+x1179 write x1178 1
+x1180 "chart-3"
+x1181 puts x1179 x1180
+x1182 write x1181 2
+x1183 "Milliseconds from a model's reply to a type-checked program"
+x1184 puts x1182 x1183
+x1185 close x1184
+x1186 open x1185 5
+x1187 write x1186 4
+x1188 write x1187 2
+x1189 "lrow wide me"
+x1190 puts x1188 x1189
+x1191 open x1190 6
+x1192 write x1191 4
+x1193 write x1192 2
+x1194 "lbl"
+x1195 puts x1193 x1194
+x1196 write x1195 2
+x1197 "A0 structured"
+x1198 puts x1196 x1197
+x1199 close x1198
+x1200 open x1199 5
+x1201 write x1200 4
+x1202 write x1201 2
+x1203 "track a0"
+x1204 puts x1202 x1203
+x1205 open x1204 5
+x1206 write x1205 4
+x1207 write x1206 2
+x1208 "fill"
+x1209 puts x1207 x1208
+x1210 write x1209 12
+x1211 write x1210 1
+x1212 write x1211 19
+x1213 close x1212
+x1214 open x1213 6
+x1215 write x1214 4
+x1216 write x1215 2
+x1217 "val"
+x1218 puts x1216 x1217
+x1219 mov 51
+x1220 putfix x1218 x1219
+x1221 write x1220 2
+x1222 " ms"
+x1223 puts x1221 x1222
+x1224 close x1223
+x1225 close x1224
+x1226 close x1225
+x1227 open x1226 5
+x1228 write x1227 4
+x1229 write x1228 2
+x1230 "lrow wide me"
+x1231 puts x1229 x1230
+x1232 open x1231 6
+x1233 write x1232 4
+x1234 write x1233 2
+x1235 "lbl"
+x1236 puts x1234 x1235
+x1237 write x1236 2
+x1238 "A0 whole file"
+x1239 puts x1237 x1238
+x1240 close x1239
+x1241 open x1240 5
+x1242 write x1241 4
+x1243 write x1242 2
+x1244 "track a0"
+x1245 puts x1243 x1244
+x1246 open x1245 5
+x1247 write x1246 4
+x1248 write x1247 2
+x1249 "fill"
+x1250 puts x1248 x1249
+x1251 write x1250 12
+x1252 write x1251 1
+x1253 write x1252 20
+x1254 close x1253
+x1255 open x1254 6
+x1256 write x1255 4
+x1257 write x1256 2
+x1258 "val"
+x1259 puts x1257 x1258
+x1260 mov 53
+x1261 putfix x1259 x1260
+x1262 write x1261 2
+x1263 " ms"
+x1264 puts x1262 x1263
+x1265 close x1264
+x1266 close x1265
+x1267 close x1266
+x1268 close x1267
+x1269 open x1268 2
+x1270 write x1269 2
+x1271 "Every number here is read from a file in results/. "
+x1272 puts x1270 x1271
+x1273 open x1272 9
+x1274 write x1273 4
+x1275 write x1274 3
+x1276 "/benchmarks"
+x1277 puts x1275 x1276
+x1278 write x1277 2
+x1279 "The benchmarks page shows the method and the losses."
+x1280 puts x1278 x1279
+x1281 close x1280
+x1282 close x1281
+x1283 close x1282
+
+fn sec_close io -> io
+x1285 close A
+x1286 close x1285
+x1287 close x1286
+
+fn session io -> u32
+r0 read A
+event at r0 0
+tok at r0 1
+x31 css_a tok
+x62 css_b x31
+x90 css_c x62
+x121 css_d x90
+x152 css_e x121
+x162 css_f x152
+x163 nav x162
+x295 sec_hero x163
+x481 sec_install x295
+x790 sec_fast x481
+x1140 sec_edit x790
+x1284 sec_check x1140
+x1288 sec_close x1284
+x1289 foot x1288
+x1290 write x1289 6
+x1291 write x1290 0
+event
+

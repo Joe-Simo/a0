@@ -1,0 +1,1177 @@
+use "sgread.a0"
+
+fn g u32x128x64 u32 -> u32
+r rd64 A B
+
+fn key u32x128x64 u32 -> u32
+i add B 32
+r rd64 A i
+
+fn kis u32x128x64 u32 u32x128x512 u32 -> bool
+k key A B
+h whash C D
+r eq k h
+
+fn evis u32x128x64 u32 u32 -> bool
+t g A 15
+d g A 16
+r and eq t B eq d C
+
+fn hashis u32x128x64 u32x128x512 u32 -> bool
+h g A 4
+w whash B C
+r eq h w
+
+fn num u32x128x64 u32 -> u32
+ip g A 6
+fr g A 7
+a mul ip B
+d div 1000000000 B
+f div fr d
+r add a f
+
+fn cpcap u32x128x64 u32 u32 -> u32x128x64
+s add 80 B
+v rd64 A s
+d add C B
+r fold wr64 1 A d v
+
+fn savecap u32x128x64 bool u32 u32 -> u32x128x64
+c select B 1 0
+c8 select B 8 0
+n g A 5
+s1 fold cpcap c8 A C
+s2 fold wr64 c s1 D n
+
+fn lkmore u32 u32 u32x128x64 u32 u32 u32 -> bool
+lt0 lt A E
+h rd64 C add D A
+ne0 ne h F
+r and lt0 ne0
+
+fn lkstep u32 u32 u32x128x64 u32 u32 u32 -> u32
+r add A 1
+
+fn lookup u32x128x64 u32 u32 u32 -> u32
+r loop lkmore lkstep C 0 A B C D
+
+fn max
+r select lt A B B A
+
+fn addw u32x128x64 u32 u32 u32 -> u32x128x64
+v rd64 A C
+w add v D
+r fold wr64 1 A C w
+
+fn hexec u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+kk kis A 1 C 0
+kl kis A 1 C 1
+nk g A 2700
+nl g A 2701
+ck sub nk 1
+cl sub nl 1
+iskey eq t 1
+isnum eq t 3
+isstr eq t 2
+d2 eq d 2
+d3 eq d 3
+d4 eq d 4
+d5 eq d 5
+x0 and iskey d2
+nkx and x0 kk
+nlx and x0 kl
+kb << nk 3
+kn add kb 2704
+knl add nk 2864
+s1 savecap A nkx kn knl
+nk1 add nk 1
+c1 select nkx 1 0
+s2 fold wr64 c1 s1 2700 nk1
+lh g s2 4
+lslot add nl 3204
+c2 select nlx 1 0
+s3 fold wr64 c2 s2 lslot lh
+nl1 add nl 1
+s4 fold wr64 c2 s3 2701 nl1
+lid key s4 3
+li lookup s4 3204 nl lid
+found lt li nl
+m4 kis s4 4 C 5
+st4 kis s4 4 C 4
+y0 and kk d4
+y1 and y0 found
+ym0 and y1 isnum
+ym and ym0 m4
+lk mul li 20
+lk2 add lk ck
+mi add lk2 3972
+v4 num s4 10000
+v4p add v4 1
+c3 select ym 1 0
+s5 fold wr64 c3 s4 mi v4p
+rf3 add li 3332
+s5b fold wr64 c3 s5 rf3 1
+s6 fold wr64 0 s5b 0 0
+gi kis s6 3 C 17
+gc kis s6 3 C 18
+gs or gi gc
+g1 select gc 1 0
+z0 and kk d4
+z1 and z0 isnum
+zs and z1 gs
+cntw add g1 2702
+cnt g s6 cntw
+tb0 << g1 5
+tb add tb0 5252
+sh key s6 4
+ei lookup s6 tb cnt sh
+new eq ei cnt
+zn and zs new
+c5 select zn 1 0
+hs add tb ei
+s7 fold wr64 c5 s6 hs sh
+en add tb0 ei
+enl add en 5316
+en8 << en 3
+ens add en8 5380
+s8 savecap s7 zn ens enl
+cnt1 add cnt 1
+s9 fold wr64 c5 s8 cntw cnt1
+sv num s9 1000000
+sv1 add sv 1
+e16 mul en 20
+e16k add e16 ck
+evi add e16k 5892
+c6 select zs 1 0
+s10 fold wr64 c6 s9 evi sv1
+kc kis s10 3 C 6
+kj kis s10 3 C 11
+q0 and kk d5
+q1 and q0 isnum
+arm kis s10 4 C 7
+hw kis s10 4 C 8
+rs kis s10 4 C 9
+bm kis s10 4 C 12
+sm kis s10 4 C 15
+bb kis s10 4 C 16
+med kis s10 5 C 5
+a0n kis s10 5 C 13
+rsc kis s10 5 C 14
+emi kis s10 5 C 10
+hw5 kis s10 5 C 8
+qc and q1 kc
+qm and qc med
+kf0 << ck 4
+kf add kf0 2884
+ns num s10 10000
+ms3 num s10 1000
+ms6 num s10 1000000
+ints num s10 1
+fa and qm arm
+ca select fa 1 0
+f0 add kf 0
+f1 add kf 1
+s11 fold wr64 ca s10 f0 1
+s12 fold wr64 ca s11 f1 ns
+fh and qm hw
+ch select fh 1 0
+f2 add kf 2
+s13 fold wr64 ch s12 f2 ns
+fr0 and qm rs
+cr select fr0 1 0
+f3 add kf 3
+s14 fold wr64 cr s13 f3 ns
+qj0 and q1 kj
+qj1 and qj0 hw
+qj and qj1 med
+cj select qj 1 0
+f4 add kf 4
+s15 fold wr64 cj s14 f4 ns
+qb and qc bm
+fb5 and qb a0n
+c7 select fb5 1 0
+f5 add kf 5
+s16 fold wr64 c7 s15 f5 ms3
+fb6 and qb rsc
+c8 select fb6 1 0
+f6 add kf 6
+s17 fold wr64 c8 s16 f6 ms3
+qs and qc sm
+fs7 and qs emi
+c9 select fs7 1 0
+f7 add kf 7
+s18 fold wr64 c9 s17 f7 ms6
+fs8 and qs hw5
+c10 select fs8 1 0
+f8 add kf 8
+s19 fold wr64 c10 s18 f8 ms6
+qbb and qc bb
+fb9 and qbb emi
+c11 select fb9 1 0
+f9 add kf 9
+s20 fold wr64 c11 s19 f9 ints
+w0 and kl d3
+w1 and w0 isstr
+lab kis s20 3 C 2
+fam kis s20 3 C 3
+sta kis s20 3 C 4
+ran hashis s20 C 42
+wl and w1 lab
+l8 << cl 3
+ldst add l8 3460
+llen add cl 3396
+s21 savecap s20 wl ldst llen
+cn hashis s21 C 44
+it hashis s21 C 45
+fv0 select it 2 3
+fv select cn 1 fv0
+wf and w1 fam
+c12 select wf 1 0
+fslot add cl 3268
+s22 fold wr64 c12 s21 fslot fv
+ws0 and w1 sta
+wsr and ws0 ran
+c13 select wsr 1 0
+rslot add cl 3332
+s23 fold wr64 c13 s22 rslot 1
+bf kis s23 3 C 451
+bsk kis s23 4 C 454
+bnk kis s23 4 C 452
+spk kis s23 4 C 453
+vdk kis s23 4 C 455
+b0 and kk d4
+b1 and b0 bf
+bs0 and b1 isstr
+bsc and bs0 bsk
+vsc and bs0 vdk
+bsel select bsc 1 0
+bh g s23 4
+bhi add 7172 ck
+s24 fold wr64 bsel s23 bhi bh
+iw2 hashis s24 C 365
+it2 hashis s24 C 366
+vt0 select it2 2 3
+vv select iw2 1 vt0
+vsel select vsc 1 0
+vi2 add 7232 ck
+s25 fold wr64 vsel s24 vi2 vv
+bn0 and b1 isnum
+bnc and bn0 bnk
+spc and bn0 spk
+bnsel select bnc 1 0
+spsel select spc 1 0
+bni add 7212 ck
+spi add 7192 ck
+bnv num s25 100
+spv num s25 1000
+s26 fold wr64 bnsel s25 bni bnv
+s27 fold wr64 spsel s26 spi spv
+rb kis s27 1 C 451
+lg2 kis s27 1 C 456
+kw kis s27 2 C 365
+kt2 kis s27 2 C 366
+kl2 kis s27 2 C 367
+hl kis s27 2 C 457
+nr0 and isnum d2
+nr1 and nr0 rb
+cw2 and nr1 kw
+ct2 and nr1 kt2
+cl2 and nr1 kl2
+nl0 and nr0 lg2
+chl and nl0 hl
+wsel select cw2 1 0
+tsel select ct2 1 0
+lsel select cl2 1 0
+hsel select chl 1 0
+vsm num s27 1
+v100 num s27 100
+s28 fold wr64 wsel s27 7260 vsm
+s29 fold wr64 tsel s28 7261 vsm
+s30 fold wr64 lsel s29 7262 vsm
+s31 fold wr64 hsel s30 7263 v100
+
+fn celladd u32x128x64 u32 u32 -> u32x128x64
+a2 add add 7760 B 1
+v rd64 A a2
+f0 eq B 0
+vv select f0 1 v
+d add C B
+r fold addw 1 A d vv
+
+fn clr u32x128x64 u32 -> u32x128x64
+a add 7760 B
+z0 eq B 0
+v select z0 255 0
+r fold wr64 1 A a v
+
+fn hcost u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+tr kis A 1 C 19
+d3 eq d 3
+d4 eq d 4
+op0 eq t 7
+op1 and op0 d3
+op and op1 tr
+co select op 7 0
+s1 fold clr co A
+isstr eq t 2
+isnum eq t 3
+istrue eq t 4
+a0 and tr d3
+rep kis s1 3 C 20
+pro kis s1 3 C 21
+acc kis s1 3 C 22
+mc kis s1 3 C 23
+tbl kis s1 3 C 24
+h g s1 4
+nr g s1 8108
+ri lookup s1 8100 nr h
+b0 and a0 isstr
+br and b0 rep
+c1 select br 1 0
+s2 fold wr64 c1 s1 7760 ri
+st hashis s2 C 43
+bp0 and b0 pro
+bp and bp0 st
+c2 select bp 1 0
+s3 fold wr64 c2 s2 7761 1
+n0 and a0 isnum
+nm and n0 mc
+ints num s3 1
+c3 select nm 1 0
+s4 fold wr64 c3 s3 7762 ints
+ba0 and a0 istrue
+ba and ba0 acc
+c4 select ba 1 0
+s5 fold wr64 c4 s4 7766 1
+e0 and tr d4
+e1 and e0 isnum
+e2 kis s5 3 C 24
+e3 and e1 e2
+lp kis s5 4 C 25
+wp kis s5 4 C 26
+tc kis s5 4 C 27
+ou kis s5 4 C 28
+pp or lp wp
+x1 and e3 pp
+c5 select x1 1 0
+s6 fold addw c5 s5 7763 ints
+x2 and e3 tc
+c6 select x2 1 0
+s7 fold addw c6 s6 7764 ints
+x3 and e3 ou
+c7 select x3 1 0
+s8 fold addw c7 s7 7765 ints
+cl0 eq t 9
+cl1 and cl0 d3
+cl and cl1 tr
+r0 g s8 7760
+sr g s8 7761
+okr lt r0 nr
+oks eq sr 1
+ok0 and okr oks
+ok and ok0 cl
+cc select ok 6 0
+slot g s8 14
+sl8 << slot 3
+slr add sl8 r0
+sl6 mul slr 6
+base add sl6 6800
+s9 fold celladd cc s8 base
+
+fn hedit u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+d4 eq d 4
+isnum eq t 3
+isstr eq t 2
+ld kis A 1 C 29
+la kis A 3 C 30
+l0 and ld la
+l1 and l0 d4
+l2 and l1 isnum
+v num A 100
+m g A 7769
+mx max m v
+c1 select l2 1 0
+s1 fold wr64 c1 A 7769 mx
+so kis s1 1 C 31
+ro kis s1 2 C 32
+r0 and so ro
+r1 and r0 d4
+ki kis s1 4 C 33
+me kis s1 4 C 34
+i g s1 51
+i11 mul i 11
+rb add i11 7771
+kstr0 and r1 isstr
+kstr and kstr0 ki
+h g s1 4
+c2 select kstr 1 0
+s2 fold wr64 c2 s1 rb h
+rb2 add rb 2
+rb3 add rb 3
+s3 savecap s2 kstr rb3 rb2
+n g s3 7768
+i1 add i 1
+nn max n i1
+s4 fold wr64 c2 s3 7768 nn
+kn0 and r1 isnum
+kn and kn0 me
+ms num s4 1000
+rb1 add rb 1
+c3 select kn 1 0
+s5 fold wr64 c3 s4 rb1 ms
+
+fn hpar u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+isnum eq t 3
+iskey eq t 1
+istrue eq t 4
+d1 eq d 1
+d2 eq d 2
+d3 eq d 3
+d4 eq d 4
+ints num A 1
+cp kis A 1 C 35
+sa kis A 1 C 36
+a0 and d1 isnum
+a1 and a0 cp
+c1 select a1 1 0
+s1 fold wr64 c1 A 7948 ints
+a2 and a0 sa
+c2 select a2 1 0
+s2 fold wr64 c2 s1 7949 ints
+lo kis s2 1 C 29
+qu kis s2 2 C 37
+$at kis s2 2 C 38
+b0 and lo d2
+b1 and b0 istrue
+b2 and b1 qu
+c3 select b2 1 0
+s3 fold wr64 c3 s2 7950 1
+b3 and lo d3
+b4 and b3 isnum
+b5 and b4 $at
+v100 num s3 100
+m g s3 7951
+mx max m v100
+c4 select b5 1 0
+s4 fold wr64 c4 s3 7951 mx
+kk kis s4 1 C 0
+nk g s4 7952
+k0 and kk d2
+k1 and k0 iskey
+nb0 mul nk 20
+nb add nb0 7953
+nl add nb 8
+s5 savecap s4 k1 nb nl
+nk1 add nk 1
+c5 select k1 1 0
+s6 fold wr64 c5 s5 7952 nk1
+ck sub nk 1
+kb0 mul ck 20
+kb add kb0 7953
+tp kis s6 3 C 39
+t0 and kk d3
+t1 and t0 isnum
+t2 and t1 tp
+c6 select t2 1 0
+kb9 add kb 9
+s7 fold wr64 c6 s6 kb9 ints
+mn kis s7 3 C 5
+au kis s7 4 C 40
+bl kis s7 3 C 41
+u0 and kk d4
+u1 and u0 isnum
+u2 and u1 mn
+u3 and u2 au
+v10 num s7 10
+c7 select u3 1 0
+kb10 add kb 10
+s8 fold wr64 c7 s7 kb10 v10
+u4 and u1 bl
+lid key s8 4
+np g s8 8119
+j lookup s8 8110 np lid
+jf lt j np
+u5 and u4 jf
+r5 num s8 100000
+r51 add r5 1
+c8 select u5 1 0
+kb11 add kb 11
+kj add kb11 j
+s9 fold wr64 c8 s8 kj r51
+
+fn haxes u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+iskey eq t 1
+isnum eq t 3
+isstr eq t 2
+d1 eq d 1
+d2 eq d 2
+d3 eq d 3
+d5 eq d 5
+kt kis A 1 C 227
+kv kis A 1 C 228
+x0 and iskey d2
+nl g A 128
+lid key A 2
+sl0 lookup A 192 nl lid
+isnew ge sl0 nl
+nv and kv isnew
+tn or kt nv
+x1 and x0 tn
+c1 select x1 1 0
+iw add nl 192
+s1 fold wr64 c1 A iw lid
+nl1 add nl 1
+s2 fold wr64 c1 s1 128 nl1
+n2 g s2 128
+sl lookup s2 192 n2 lid
+found lt sl n2
+v3 and found d3
+ls0 and v3 isstr
+ls1 and ls0 kt
+lb kis s2 3 C 2
+fa kis s2 3 C 3
+lbc and ls1 lb
+fac and ls1 fa
+l8 << sl 3
+ld add l8 256
+ln add sl 768
+s3 savecap s2 lbc ld ln
+cn hashis s3 C 44
+it hashis s3 C 45
+a0 hashis s3 C 47
+fv0 select it 2 3
+fv1 select cn 1 fv0
+fv select a0 0 fv1
+cf select fac 1 0
+fi add sl 832
+s4 fold wr64 cf s3 fi fv
+nm0 and v3 isnum
+nm1 and nm0 kt
+sk kis s4 3 C 229
+nsk and nm1 sk
+csk select nsk 1 0
+ski add sl 896
+v1 num s4 1
+s5 fold wr64 csk s4 ski v1
+vm0 and v3 isnum
+vm1 and vm0 kv
+ck kis s5 3 C 230
+cr kis s5 3 C 231
+nck and vm1 ck
+ncr and vm1 cr
+cck select nck 1 0
+ccr select ncr 1 0
+v1000 num s5 1000
+vp add v1000 1
+cki add sl 1152
+cri add sl 1216
+s6 fold wr64 cck s5 cki vp
+s7 fold wr64 ccr s6 cri vp
+lk kis s7 1 C 29
+pk kis s7 2 C 233
+av kis s7 4 C 30
+ix g s7 53
+i0 eq ix 0
+q0 and isnum d5
+q1 and q0 lk
+q2 and q1 pk
+q3 and q2 av
+q4 and q3 i0
+v100 num s7 100
+m g s7 1344
+mx max m v100
+cq select q4 1 0
+s8 fold wr64 cq s7 1344 mx
+cp0 kis s8 1 C 35
+cp1 and isnum d1
+cp2 and cp1 cp0
+cpc select cp2 1 0
+$cpv num s8 1
+s9 fold wr64 cpc s8 1345 $cpv
+tkk kis s9 1 C 486
+tkd and isstr tkk
+tke and tkd d2
+tkn g s9 1346
+tkn1 add tkn 1
+tkc select tke 1 0
+s10 fold wr64 tkc s9 1346 tkn1
+
+fn hhw u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+iskey eq t 1
+isnum eq t 3
+d1 eq d 1
+d3 eq d 3
+d4 eq d 4
+ks kis A 1 C 295
+km kis A 2 C 296
+x0 and iskey d3
+x1 and x0 ks
+x2 and x1 km
+c1 select x2 1 0
+n g A 1400
+n1 add n 1
+s1 fold wr64 c1 A 1400 n1
+y0 and isnum d4
+y1 and y0 ks
+y2 and y1 km
+kc kis s1 4 C 297
+y and y2 kc
+cy select y 1 0
+v num s1 1
+sum g s1 1401
+sum2 add sum v
+s2 fold wr64 cy s1 1401 sum2
+mx g s2 1402
+m2 max mx v
+s3 fold wr64 cy s2 1402 m2
+kfn kis s3 1 C 298
+kin kis s3 1 C 299
+z0 and isnum d1
+zf and z0 kfn
+zi and z0 kin
+cf select zf 1 0
+ci select zi 1 0
+s4 fold wr64 cf s3 1403 v
+s5 fold wr64 ci s4 1404 v
+ksim kis s5 1 C 339
+kcy kis s5 2 C 340
+kmc kis s5 4 C 341
+q1 and iskey d3
+q2 and q1 ksim
+q3 and q2 kcy
+cq select q3 1 0
+nc g s5 1560
+nc1 add nc 1
+s6 fold wr64 cq s5 1560 nc1
+r0 and isnum d4
+r1 and r0 ksim
+r2 and r1 kcy
+r3 and r2 kmc
+cr select r3 1 0
+nn g s6 1560
+li sub nn 1
+wi add li 1600
+mv num s6 100
+s7 fold wr64 cr s6 wi mv
+
+fn htok u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+iskey eq t 1
+isnum eq t 3
+d2 eq d 2
+d4 eq d 4
+kf kis A 1 C 300
+kv kis A 1 C 301
+k1 or kf kv
+x0 and iskey d2
+x1 and x0 k1
+c1 select x1 1 0
+n g A 1450
+nh key A 2
+slot add n 1456
+s1 fold wr64 c1 A slot nh
+n1 add n 1
+s2 fold wr64 c1 s1 1450 n1
+kt kis s2 3 C 227
+ko kis s2 4 C 302
+y0 and isnum d4
+y1 and y0 k1
+y2 and y1 kt
+y and y2 ko
+cy select y 1 0
+n2 g s2 1450
+last sub n2 1
+vslot add last 1488
+v num s2 1
+s3 fold wr64 cy s2 vslot v
+
+fn kwstep u32 u32 u32x128x512 u32 u32 -> u32
+w add D B
+h whash C w
+e eq h E
+r select e B A
+
+fn kwidx u32x128x64 u32 u32x128x512 u32 u32 -> u32
+k key A B
+r fold kwstep E 99 C D k
+
+fn hb48 u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+iskey eq t 1
+isnum eq t 3
+isstr eq t 2
+d3 eq d 3
+d4 eq d 4
+d5 eq d 5
+pr kis A 1 C 349
+lk kis A 2 C 1
+ak kis A 2 C 362
+rk kis A 2 C 363
+tk kis A 2 C 364
+x0 and iskey d3
+x1 and x0 pr
+x2 and x1 lk
+c1 select x2 1 0
+n g A 1899
+id key A 3
+iw add n 1900
+s1 fold wr64 c1 A iw id
+n1 add n 1
+s2 fold wr64 c1 s1 1899 n1
+f kwidx s2 5 C 351 10
+fo ne f 99
+pk kis s2 4 C 350
+y0 and isnum d5
+y1 and y0 pr
+y2 and y1 lk
+y3 and y2 pk
+y4 and y3 fo
+cy select y4 1 0
+nn g s2 1899
+last sub nn 1
+fb mul f 60
+fb1 add fb 1960
+slot add fb1 last
+v100 num s2 100
+s3 fold wr64 cy s2 slot v100
+avk kis s3 4 C 361
+m5 kwidx s3 5 C 372 5
+iwn hashis s3 C 365
+itn hashis s3 C 366
+iln hashis s3 C 367
+jt select itn 1 99
+jl select iln 2 jt
+j select iwn 0 jl
+z0 and isstr d5
+z1 and z0 pr
+z2 and z1 lk
+z3 and z2 avk
+mo ne m5 99
+jo ne j 99
+z4 and z3 mo
+z5 and z4 jo
+cz select z5 1 0
+m3 mul m5 3
+zi0 add m3 1860
+zi add zi0 j
+s4 fold addw cz s3 zi 1
+ma kwidx s4 3 C 372 5
+kaa kwidx s4 4 C 368 3
+q0 and isnum d4
+q1 and q0 pr
+q2 and q1 ak
+mao ne ma 99
+kao ne kaa 99
+q3 and q2 mao
+q4 and q3 kao
+cq select q4 1 0
+m3a mul ma 3
+qi0 add m3a 1800
+qi add qi0 kaa
+vq num s4 1
+s5 fold wr64 cq s4 qi vq
+sk kis s5 3 C 371
+md kwidx s5 4 C 372 5
+kdd kwidx s5 5 C 368 3
+ktt kwidx s5 5 C 365 3
+mdo ne md 99
+u0 and isnum d5
+u1 and u0 pr
+u2 and u1 sk
+u3 and u2 mdo
+ur and u3 rk
+ut and u3 tk
+kdo ne kdd 99
+kto ne ktt 99
+ur2 and ur kdo
+ut2 and ut kto
+cur select ur2 1 0
+cut select ut2 1 0
+m3d mul md 3
+ri0 add m3d 1820
+ri add ri0 kdd
+ti0 add m3d 1840
+ti add ti0 ktt
+vd num s5 1
+s6 fold wr64 cur s5 ri vd
+s7 fold wr64 cut s6 ti vd
+
+fn hdt u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+isnum eq t 3
+d2 eq d 2
+kk kis A 1 C 377
+k kwidx A 2 C 378 3
+ko ne k 99
+a0 and isnum d2
+a1 and a0 kk
+a2 and a1 ko
+c select a2 1 0
+ix add k 2600
+v num A 1
+r fold wr64 c A ix v
+
+fn hver u32x128x64 u32 u32x128x512 -> u32x128x64
+t g A 15
+d g A 16
+isnum eq t 3
+d1 eq d 1
+d3 eq d 3
+ki kis A 1 C 299
+z0 and isnum d1
+zi and z0 ki
+ci select zi 1 0
+v num A 1
+s1 fold wr64 ci A 1350 v
+kt kis s1 1 C 484
+kc kis s1 3 C 485
+y0 and isnum d3
+y1 and y0 kt
+y and y1 kc
+full g s1 1350
+isf eq v full
+isz eq v 0
+nz select isz false true
+nf select isf false true
+pa0 and nz nf
+cf0 and y isf
+cp0 and y pa0
+cz0 and y isz
+cf select cf0 1 0
+cp select cp0 1 0
+cz select cz0 1 0
+nfv g s1 1351
+npv g s1 1352
+nzv g s1 1354
+nf1 add nfv 1
+np1 add npv 1
+nz1 add nzv 1
+s2 fold wr64 cf s1 1351 nf1
+s3 fold wr64 cp s2 1352 np1
+s4 fold wr64 cp s3 1353 v
+s5 fold wr64 cz s4 1354 nz1
+
+fn onev u32x128x64 u32 u32x128x512 -> u32x128x64
+role g A 13
+e eq role 1
+c eq role 2
+d eq role 3
+p eq role 4
+x eq role 6
+h eq role 7
+k eq role 8
+b eq role 9
+q eq role 10
+vv eq role 11
+ce select e 1 0
+cc select c 1 0
+cd select d 1 0
+cp select p 1 0
+cx select x 1 0
+ch select h 1 0
+ck select k 1 0
+cb select b 1 0
+cq select q 1 0
+cv select vv 1 0
+s1 fold hexec ce A C
+s2 fold hcost cc s1 C
+s3 fold hedit cd s2 C
+s4 fold hpar cp s3 C
+s5 fold haxes cx s4 C
+s6 fold hhw ch s5 C
+s7 fold htok ck s6 C
+s8 fold hb48 cb s7 C
+s9 fold hdt cq s8 C
+s10 fold hver cv s9 C
+
+fn event u32x128x64 u32 u32 u32 u32x128x512 -> u32x128x64
+s1 fold wr64 1 A 15 C
+s2 fold wr64 1 s1 16 D
+s3 fold onev 1 s2 E
+
+fn isdig -> bool
+r and ge A 48 le A 57
+
+fn islow -> bool
+r and ge A 97 le A 122
+
+fn sadd u32x128x64 u32 u32 -> u32x128x64
+h g A 4
+x xor h C
+h2 mul x 16777619
+s1 fold wr64 1 A 4 h2
+n g s1 5
+small lt n 32
+c select small 1 0
+w0 >> n 2
+wa add w0 80
+w g s1 wa
+b0 and n 3
+sh << b0 3
+v << C sh
+w2 or w v
+s2 fold wr64 c s1 wa w2
+n1 add n 1
+s3 fold wr64 c s2 5 n1
+
+fn tstr u32x128x64 u32 u32 u32x128x512 -> u32x128x64
+esc g A 2
+e1 eq esc 1
+bs eq C 92
+q eq C 34
+$ne select e1 false true
+isbs and $ne bs
+isq and $ne q
+nq select isq false true
+$add or e1 nq
+ca select $add 1 0
+s1 fold sadd ca A C
+ev select isbs 1 0
+s2 fold wr64 1 s1 2 ev
+k g s2 3
+d g s2 1
+kd add d 32
+cq select isq 1 0
+h g s2 4
+kq and isq true
+k1 eq k 1
+kk and isq k1
+ck select kk 1 0
+s3 fold wr64 ck s2 kd h
+typ select k1 1 2
+s4 fold event cq s3 typ d D
+s5 fold wr64 cq s4 0 0
+
+fn tend u32x128x64 u32 u32x128x512 -> u32x128x64
+m g A 0
+fd g A 8
+fr g A 7
+rest sub 9 fd
+t tenp rest
+fr9 mul fr t
+s1 fold wr64 1 A 7 fr9
+lit g s1 11
+lt0 eq lit 116
+lf eq lit 102
+e1 select lf 5 6
+e2 select lt0 4 e1
+$num eq m 2
+typ select $num 3 e2
+d g s1 1
+s2 fold event 1 s1 typ d C
+s3 fold wr64 1 s2 0 0
+
+fn tnum u32x128x64 u32 u32 -> u32x128x64
+dg isdig C
+inf g A 9
+inx g A 10
+fx eq inf 1
+xx eq inx 1
+dv sub C 48
+ip g A 6
+fr g A 7
+fd g A 8
+nx select xx false true
+nf select fx false true
+di0 and dg nx
+di and di0 nf
+df0 and dg nx
+df1 and df0 fx
+fsm lt fd 9
+df and df1 fsm
+ip10 mul ip 10
+ipn add ip10 dv
+cdi select di 1 0
+s1 fold wr64 cdi A 6 ipn
+fr10 mul fr 10
+frn add fr10 dv
+cdf select df 1 0
+s2 fold wr64 cdf s1 7 frn
+fd1 add fd 1
+s3 fold wr64 cdf s2 8 fd1
+dot eq C 46
+cdot select dot 1 0
+s4 fold wr64 cdot s3 9 1
+e0 eq C 101
+e1 eq C 69
+ex or e0 e1
+cex select ex 1 0
+s5 fold wr64 cex s4 10 1
+
+fn zcap u32x128x64 u32 -> u32x128x64
+r fold wr64 1 A add 80 B 0
+
+fn tsep u32x128x64 u32 u32 u32x128x512 -> u32x128x64
+b mov C
+d g A 1
+d1 add d 1
+kd add d 64
+kind g A kd
+ob eq b 123
+ab eq b 91
+cb0 eq b 125
+cb1 eq b 93
+cb or cb0 cb1
+op or ob ab
+cm eq b 44
+co eq b 58
+q eq b 34
+dg isdig b
+mi eq b 45
+nm or dg mi
+lw islow b
+co1 select op 1 0
+s1 fold wr64 co1 A 1 d1
+kd1 add d1 64
+kv select ob 1 2
+s2 fold wr64 co1 s1 kd1 kv
+kh add d1 32
+s3 fold wr64 co1 s2 kh 0
+ix add d1 48
+s4 fold wr64 co1 s3 ix 0
+ek select ob 1 0
+s5 fold wr64 co1 s4 12 ek
+s6 fold event co1 s5 7 d1 D
+cc1 select cb 1 0
+s7 fold event cc1 s6 9 d D
+dm sub d 1
+s8 fold wr64 cc1 s7 1 dm
+isarr eq kind 2
+ca0 and cm isarr
+cac select ca0 1 0
+ixd add d 48
+iv g s8 ixd
+iv1 add iv 1
+s9 fold wr64 cac s8 ixd iv1
+nar select isarr false true
+co0 and cm nar
+coc select co0 1 0
+s10 fold wr64 coc s9 12 1
+cco select co 1 0
+s11 fold wr64 cco s10 12 0
+cq select q 1 0
+s12 fold wr64 cq s11 0 1
+s13 fold wr64 cq s12 4 2166136261
+s14 fold wr64 cq s13 5 0
+s15 fold wr64 cq s14 2 0
+isobj eq kind 1
+ek0 g s15 12
+ek1 eq ek0 1
+isk0 and isobj ek1
+isk select isk0 1 0
+s16 fold wr64 cq s15 3 isk
+c8 select q 8 0
+s17 fold zcap c8 s16
+cn select nm 1 0
+s18 fold wr64 cn s17 0 2
+dv0 sub b 48
+dv select dg dv0 0
+s19 fold wr64 cn s18 6 dv
+s20 fold wr64 cn s19 7 0
+s21 fold wr64 cn s20 8 0
+s22 fold wr64 cn s21 9 0
+s23 fold wr64 cn s22 10 0
+cl select lw 1 0
+s24 fold wr64 cl s23 0 3
+s25 fold wr64 cl s24 11 b
+
+fn tbyte u32x128x64 u32 u32x128 u32x128x512 -> u32x128x64
+w0 >> B 2
+w get C w0
+b0 and B 3
+sh << b0 3
+v >> w sh
+b and v 255
+m g A 0
+ms eq m 1
+mn eq m 2
+ml eq m 3
+m0 eq m 0
+dg isdig b
+dot eq b 46
+e0 eq b 101
+e1 eq b 69
+pl eq b 43
+mi eq b 45
+x0 or dg dot
+x1 or e0 e1
+x2 or pl mi
+x3 or x0 x1
+nch or x3 x2
+lw islow b
+cont0 and mn nch
+cont1 and ml lw
+nend0 select nch false true
+nend and mn nend0
+lend0 select lw false true
+lend and ml lend0
+ended or nend lend
+sep or m0 ended
+cs select ms 1 0
+s1 fold tstr cs A b D
+cn select cont0 1 0
+s2 fold tnum cn s1 b
+ce select ended 1 0
+s3 fold tend ce s2 D
+cp select sep 1 0
+s4 fold tsep cp s3 b D
+
+fn jpage (u32x128x64,io,u32) u32 u32x128x512 -> (u32x128x64,io,u32)
+pa at A 0
+t at A 1
+n at A 2
+b << B 9
+rest sub n b
+big gt rest 512
+cnt select big 512 rest
+c3 add cnt 3
+nw >> c3 2
+r rdpage t nw
+pg at r 0
+t2 at r 1
+pa2 fold tbyte cnt pa pg C
+o (pa2 t2 n)
+
+fn jfile u32x128x64 io u32 u32 u32x128x512 -> (u32x128x64,io)
+r0 read B
+n at r0 0
+t at r0 1
+eq5 eq C 5
+has gt n 0
+qv select has 1 0
+c5 select eq5 1 0
+s0 fold wr64 c5 A 7770 qv
+q g s0 7770
+eq3 eq C 3
+q1 eq q 1
+skip and eq3 q1
+r1 select eq5 3 C
+role select skip 0 r1
+s1 fold wr64 1 s0 13 role
+s2 fold wr64 1 s1 14 D
+s3 fold wr64 1 s2 0 0
+s4 fold wr64 1 s3 1 0
+s5 fold wr64 1 s4 12 0
+n511 add n 511
+np >> n511 9
+st (s5 t n)
+r fold jpage np st E
+pa at r 0
+t2 at r 1
+o (pa t2)
+

@@ -1,0 +1,108 @@
+use "sgjson.a0"
+
+fn field3 u32x128x512 u32 -> u32
+e fieldend A add B 2
+b add e 1
+e2 fieldend A b
+n sub e2 b
+r shash A b n
+
+fn mkey u32x128x64 u32 u32x128 u32x128x512 u32 u32 u32 -> u32x128x64
+pos get C B
+nm field2 D pos
+w whash D G
+is eq nm w
+c select is 1 0
+k field3 D pos
+n g A F
+d add E n
+s1 fold wr64 c A d k
+n1 add n 1
+s2 fold wr64 c s1 F n1
+
+fn role u32x128x512 u32 -> u32
+ex whash A 61
+co whash A 62
+$eq whash A 63
+ed whash A 64
+pa whash A 65
+ax whash A 226
+hw whash A 293
+tk whash A 294
+bb whash A 347
+dt whash A 348
+vr whash A 483
+a eq B ex
+b eq B co
+c eq B $eq
+d eq B ed
+e eq B pa
+f eq B ax
+$g eq B hw
+h eq B tk
+ib eq B bb
+id eq B dt
+iv eq B vr
+r00000 select iv 11 0
+r0000 select id 10 r00000
+r0001 select ib 9 r0000
+r000 select h 8 r0001
+r001 select $g 7 r000
+r00 select f 6 r001
+r0 select e 4 r00
+r1 select d 3 r0
+r2 select c 5 r1
+r3 select b 2 r2
+r select a 1 r3
+
+fn jf1 (u32x128x64,io) u32 u32 u32 u32x128x512 -> (u32x128x64,io)
+pa at A 0
+t at A 1
+r jfile pa t C D E
+
+fn pbstep (u32x128x64,u32x128x64,io,u32) u32 u32x128 u32 u32x128x512 -> (u32x128x64,u32x128x64,io,u32)
+pa at A 0
+px at A 1
+t at A 2
+slot at A 3
+i add D B
+pos get C i
+h field2 E pos
+code role E h
+isx0 ge code 6
+ise eq code 1
+isx or isx0 ise
+cn select isx 0 1
+cx select isx 1 0
+sa (pa t)
+ra fold jf1 cn sa code slot E
+pa2 at ra 0
+t2 at ra 1
+sx (px t2)
+rx fold jf1 cx sx code slot E
+px2 at rx 0
+t3 at rx 1
+isc eq code 2
+s1 add slot 1
+sn select isc s1 slot
+o (pa2 px2 t3 sn)
+
+fn phaseb u32x128x512 io u32 -> (u32x128x64,u32x128x64,io)
+z z64
+zx z64
+ml lines A 109
+l at ml 0
+c at ml 1
+s1 fold mkey c z l A 8100 8108 62
+s2 fold mkey c s1 l A 8110 8119 65
+fl lines A 102
+f at fl 0
+fc at fl 1
+n sub fc C
+st (s2 zx B 0)
+r fold pbstep n st f C A
+pa at r 0
+px at r 1
+t at r 2
+o (pa px t)
+

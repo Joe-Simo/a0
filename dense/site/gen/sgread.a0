@@ -1,0 +1,153 @@
+use "sgcss.a0"
+
+fn tplend u32x128x512 -> u32
+n hd A 0
+r add n 1024
+
+fn fdmore u32 u32 u32x128x512 u32 -> bool
+lt0 lt A D
+b sb C A
+sp ne b 32
+nl ne b 10
+c and sp nl
+r and lt0 c
+
+fn fdstep u32 u32 u32x128x512 u32 -> u32
+r add A 1
+
+fn fieldend u32x128x512 u32 -> u32
+e add B 4096
+r loop fdmore fdstep 4096 B A e
+
+fn nextline u32x128x512 u32 -> u32
+e tplend A
+nl sfind A B e 10
+r add nl 1
+
+fn lsmore (u32x128,u32,u32) u32 u32x128x512 u32 u32 -> bool
+pos at A 2
+r lt pos D
+
+fn lsstep (u32x128,u32,u32) u32 u32x128x512 u32 u32 -> (u32x128,u32,u32)
+l at A 0
+n at A 1
+pos at A 2
+a sbis C pos E
+p1a add pos 1
+is and a sbis C p1a 32
+l2 set l n pos
+n1 add n 1
+nn select is n1 n
+np nextline C pos
+r (l2 nn np)
+
+fn lines u32x128x512 u32 -> (u32x128,u32)
+e tplend A
+n sub e 1024
+z zpage
+s0 (z 0 1024)
+s loop lsmore lsstep n s0 A e B
+l at s 0
+c at s 1
+r (l c)
+
+fn field2 u32x128x512 u32 -> u32
+a add B 2
+e fieldend A a
+n sub e a
+r shash A a n
+
+fn istext u32x128x512 u32 -> bool
+a whash A 57
+b whash A 58
+c whash A 59
+d whash A 60
+x eq B a
+y eq B b
+z eq B c
+w eq B d
+o1 or x y
+o2 or z w
+r or o1 o2
+
+fn scopecss u32x128x512 u32 u32 u32 u32 -> u32x128x512
+ob << E 9
+s1 fold cssscope 1 A C D ob
+n hd s1 5
+n511 add n 511
+np >> n511 9
+nxt add E np
+s2 fold whd 1 s1 7 nxt
+
+fn patext (u32x128x512,io,u32) u32 -> (u32x128x512,io,u32)
+st at A 0
+t at A 1
+h at A 2
+pg hd st 7
+r rdfile st t pg
+s1 at r 0
+t2 at r 1
+n at r 2
+np at r 3
+rc hd s1 6
+r4 << rc 2
+e0 add r4 8
+e1 add e0 1
+e2 add e0 2
+start << pg 9
+s2 fold whd 1 s1 e0 h
+s3 fold whd 1 s2 e1 start
+s4 fold whd 1 s3 e2 n
+rc1 add rc 1
+s5 fold whd 1 s4 6 rc1
+pg2 add pg np
+s6 fold whd 1 s5 7 pg2
+cw whash s6 58
+iscss eq h cw
+cc select iscss 1 0
+s7 fold scopecss cc s6 start n pg2
+o (s7 t2 h)
+
+fn pastep (u32x128x512,io,u32,bool) u32 u32x128 -> (u32x128x512,io,u32,bool)
+st at A 0
+t at A 1
+k at A 2
+stop at A 3
+pos get C B
+h field2 st pos
+tx istext st h
+ns select stop false true
+go and ns tx
+c select go 1 0
+s0 (st t h)
+s1 fold patext c s0
+st2 at s1 0
+t2 at s1 1
+k1 add k 1
+kn select go k1 k
+nt select tx false true
+stop1 and ns nt
+stop2 or stop stop1
+o (st2 t2 kn stop2)
+
+fn phasea io -> (u32x128x512,io,u32)
+z z512
+r rdfile z A 2
+st at r 0
+t at r 1
+n at r 2
+np at r 3
+s1 fold whd 1 st 0 n
+nxt add np 2
+s2 fold whd 1 s1 7 nxt
+s3 seedw s2 nxt
+ls lines s3 102
+l at ls 0
+c at ls 1
+a0 (s3 t 0 false)
+a fold pastep c a0 l
+st2 at a 0
+t2 at a 1
+k at a 2
+o (st2 t2 k)
+

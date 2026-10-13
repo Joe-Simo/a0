@@ -1,0 +1,194 @@
+use "locomotion.a0"
+
+fn core_kind_step u32 u32 u32x1024 -> u32
+stt tg C B 0
+k tg C B 25
+a eq stt 2
+b0 eq k 3
+b1 eq k 6
+n select and a or b0 b1 1 0
+r add A n
+
+fn core_step u32x1024 u32 -> u32x1024
+vx bg A 3
+vy bg A 4
+spd fx_hyp vx vy
+sf0 fx_div spd 58982400
+sf fx_min sf0 65536
+sfm fx_mul sf 22938
+busy fold busy_step 8 0 A
+bq mul busy 4588
+code fold core_kind_step 8 0 A
+cq mul code 29491
+t0 add 19661 sfm
+t1 add t0 bq
+t2 add t1 cq
+tgt fx_min t2 62259
+core bg A 20
+d sub tgt core
+k0 fx_mul B 163840
+k fx_min k0 65536
+step fx_mul d k
+nc add core step
+s1 bs A 20 nc
+s2 bs s1 21 tgt
+ck0 bg s2 90
+dm0 mul B 1000
+dm >> dm0 16
+ckok gt ck0 dm
+ck1 sub ck0 dm
+ck select ckok ck1 0
+s3 bs s2 90 ck
+
+fn gl_step u32x1024 u32 u32 -> u32x1024
+b mul B 6
+base add b 65
+life bg A base
+a1 add base 1
+ta bg A a1
+a2 add base 2
+ja bg A a2
+a3 add base 3
+tb bg A a3
+a4 add base 4
+jb bg A a4
+a5 add base 5
+age bg A a5
+xa jg A ta ja 0
+ya jg A ta ja 1
+xb jg A tb jb 0
+yb jg A tb jb 1
+dx sub xb xa
+dy sub yb ya
+d fx_hyp dx dy
+sc bg A 38
+lim fx_mul 12582912 sc
+far fx_gt d lim
+on gt life C
+l1 sub life C
+l2 select on l1 0
+l3 select far 0 l2
+age2 add age C
+s1 bs A base l3
+s2 bs s1 a5 age2
+
+fn gl_free u32x1024 u32 -> bool
+b mul B 6
+base add b 65
+life bg A base
+r eq life 0
+
+fn gl_spawn u32x1024 u32 -> u32x1024
+tm0 bg A 83
+tok gt tm0 B
+tm1 sub tm0 B
+tm select tok tm1 0
+f0 gl_free A 0
+f1 gl_free A 1
+f2 gl_free A 2
+f01 or f0 f1
+free or f01 f2
+slot1 select f1 1 2
+slot select f0 0 slot1
+q bg A 17
+qok fx_ge q 2
+rng0 bg A 19
+rng1 fx_rng rng0
+rng2 fx_rng rng1
+rng3 fx_rng rng2
+rng4 fx_rng rng3
+ta rem rng1 8
+r2 rem rng2 7
+tb0 add ta r2
+tb1 add tb0 1
+tb rem tb1 8
+nja tg A ta 1
+njb tg A tb 1
+j3a rem rng3 3
+j3b rem rng4 3
+ja0 sub nja 1
+jb0 sub njb 1
+ja sub ja0 j3a
+jb sub jb0 j3b
+xa jg A ta ja 0
+ya jg A ta ja 1
+xb jg A tb jb 0
+yb jg A tb jb 1
+dx sub xb xa
+dy sub yb ya
+d fx_hyp dx dy
+sc bg A 38
+lo fx_mul 1572864 sc
+hi fx_mul 9175040 sc
+okd1 fx_ge d lo
+okd2 fx_le d hi
+okd and okd1 okd2
+due eq tm 0
+w1 and due free
+w2 and w1 qok
+make and w2 okd
+life0 >> rng4 21
+life add 1100 life0
+tn0 >> rng3 20
+tnx add 600 tn0
+tnn select make tnx 150
+tmset select due tnn tm
+b mul slot 6
+base add b 65
+s1 bs A 83 tmset
+s2 bs s1 19 rng4
+sa bs s2 base life
+a1 add base 1
+sb bs sa a1 ta
+a2 add base 2
+sc2 bs sb a2 ja
+a3 add base 3
+sd bs sc2 a3 tb
+a4 add base 4
+se bs sd a4 jb
+a5 add base 5
+sf bs se a5 0
+r select make sf s2
+
+fn graph_step u32x1024 u32 -> u32x1024
+s1 fold gl_step 3 A B
+s2 gl_spawn s1 B
+
+fn perf_step u32x1024 u32x32 -> u32x1024
+cost get B 18
+lp0 bg A 85
+isnew eq lp0 0
+d sub cost lp0
+dd fx_mul d 3277
+lp1 add lp0 dd
+lp select isnew cost lp1
+q bg A 17
+bad0 gt lp 3000
+bad1 gt lp 2800
+bad select false bad0 bad0
+nb0 bg A 18
+nb1 add nb0 1
+nb select bad0 nb1 0
+good lt lp 1100
+ng0 bg A 94
+ng1 add ng0 1
+ng select good ng1 0
+down ge nb 20
+up ge ng 500
+qd0 gt q 0
+qu0 lt q 3
+godown and down qd0
+goup and up qu0
+q1 sub q 1
+q2 add q 1
+qa select godown q1 q
+qb select goup q2 qa
+nbc select godown 0 nb
+ngc select goup 0 ng
+ngd select godown 0 ngc
+nbd select goup 0 nbc
+s1 bs A 85 lp
+s2 bs s1 17 qb
+s3 bs s2 18 nbd
+s4 bs s3 94 ngd
+

@@ -1,0 +1,271 @@
+use "render.a0"
+use "zeros.a0"
+
+fn rd_rects_step (u32x672,io) u32 -> (u32x672,io)
+a at A 0
+t at A 1
+r read t
+v at r 0
+t2 at r 1
+a2 set a B v
+o (a2 t2)
+
+fn rd_state_step (u32x1024,io) u32 -> (u32x1024,io)
+a at A 0
+t at A 1
+r read t
+v at r 0
+t2 at r 1
+a2 set a B v
+o (a2 t2)
+
+fn init_step u32x1024 u32 u32x32 -> u32x1024
+vw get C 3
+vh get C 4
+sc scale_of vw
+vwq << vw 16
+vhq << vh 16
+bx fx_mul vwq 48497
+by fx_mul vhq 27525
+s1 bs A 0 41120
+s2 bs s1 1 bx
+s3 bs s2 2 by
+s4 bs s3 19 2463534242
+s5 bs s4 20 26214
+s6 bs s5 17 3
+s7 bs s6 38 sc
+s8 bs s7 93 65536
+s9 fold tent_init 8 s8
+
+fn tent_frame u32x1024 u32 u32x32 u32x672 u32 u32 u32 -> u32x1024
+s1 tent_logic A B C D E
+r tent_run s1 B F G
+
+fn tap_f u32x1024 u32 u32x32 u32x672 -> u32x1024
+r tap_step A C D
+
+fn graph_f u32x1024 u32 u32 -> u32x1024
+r graph_step A C
+
+fn sim u32x1024 u32x32 u32x672 u32 -> u32x1024
+vw get B 3
+vh get B 4
+sx get B 5
+sy get B 6
+dtq dt_q D
+inv fx_div 65536 dtq
+sc scale_of vw
+clk0 bg A 13
+clk add clk0 D
+fr0 bg A 84
+fr add fr0 1
+rr0 bg A 30
+rr1 add rr0 1
+rr and rr1 7
+oy bg A 14
+ds sub sy oy
+dq << ds 16
+dsl fx_limit dq 13107200
+vs fx_div dsl dtq
+svo bg A 16
+sv fx_lerp svo vs 19661
+a1 bs A 88 inv
+a2 bs a1 38 sc
+a3 bs a2 13 clk
+a4 bs a3 84 fr
+a5 bs a4 30 rr
+a6 bs a5 864 sx
+a7 bs a6 865 sy
+a8 bs a7 866 vw
+a9 bs a8 867 vh
+a10 bs a9 14 sy
+a11 bs a10 16 sv
+b1 body_pointer a11 B D dtq
+mf bg b1 93
+flg get B 2
+calmv and flg 1
+calm ne calmv 0
+mode bg b1 11
+mode2 select calm 0 mode
+b2 bs b1 11 mode2
+b3 body_home b2 B C D dtq
+b4 body_step b3 B C dtq
+b5 body_heading b4 dtq
+nact not_b calm
+ntap one_if nact
+c1 fold tap_f ntap b5 B C
+q bg c1 17
+qh fx_ge q 2
+iters select qh 3 2
+c2 fold tent_frame 8 c1 B C D dtq iters
+c3 body_react c2 dtq
+c4 fold graph_f 0 c3 D
+c5 core_step c4 dtq
+c6 perf_step c5 B
+
+fn park_step u32x1024 u32 u32x32 -> u32x1024
+vw get C 3
+vh get C 4
+vwq << vw 16
+vhq << vh 16
+hx fx_mul vwq 55050
+hy fx_mul vhq 43253
+s1 bs A 1 hx
+s2 bs s1 2 hy
+s3 bs s2 3 0
+s4 bs s3 4 0
+s5 bs s4 33 hx
+s6 bs s5 34 hy
+
+fn ff_sim u32x1024 u32 u32x32 u32x672 -> u32x1024
+r sim A C D 16
+
+fn sim_f u32x1024 u32 u32x32 u32x672 u32 -> u32x1024
+r sim A C D E
+
+fn update u32x1024 u32x32 u32x672 -> u32x1024
+flags get B 2
+reduced flag flags 1
+mfv0 select reduced 1 65536
+mg bg A 0
+fresh0 ne mg 41120
+nf one_if fresh0
+s0 fold init_step nf A B
+s1 bs s0 93 mfv0
+vw get B 3
+vh get B 4
+ovw bg s1 91
+ovh bg s1 92
+ch1 ne ovw vw
+ch2 ne ovh vh
+chg or ch1 ch2
+dn bg s1 86
+done ne dn 0
+ndone not_b done
+need0 or ndone chg
+ffneed and reduced need0
+nff one_if ffneed
+nti select ffneed 8 0
+nsim select ffneed 160 0
+s2 fold park_step nff s1 B
+s3 fold tent_init nti s2
+s4 fold ff_sim nsim s3 B C
+dn2 select reduced 1 0
+s5 bs s4 86 dn2
+s6 bs s5 91 vw
+s7 bs s6 92 vh
+d0 get B 1
+d1 min_u32 d0 50
+dz eq d1 0
+dtms select dz 16 d1
+nr not_b reduced
+nrun one_if nr
+s8 fold sim_f nrun s7 B C dtms
+
+fn wr_step io u32 u32x1024 -> io
+v get C B
+r write A v
+
+fn write_state io u32x1024 -> io fold wr_step 1024 write write A 1 1024 B
+
+fn watch_head io u32 u32 -> io
+r fr_watch A C
+
+fn w_heading io u32 -> io
+a fr_watch A 1
+s "h1,h2,h3"
+puts a s
+
+fn w_code io u32 -> io
+a fr_watch A 3
+s "pre,.ln"
+puts a s
+
+fn w_control io u32 -> io
+a fr_watch A 4
+s "a[href],button,summary,input,textarea"
+puts a s
+
+fn w_text io u32 -> io
+a fr_watch A 2
+s "p,li,.sub,.cap,.take,.lbl,.kh"
+puts a s
+
+fn w_block io u32 -> io
+a fr_watch A 5
+s ".card,.tcard,.tile,.chart,.tblwrap,.legend,.stamp"
+puts a s
+
+fn w_data io u32 -> io
+a fr_watch A 6
+s ".track,.ratio"
+puts a s
+
+fn watches io u32 -> io fold w_data B fold w_block B fold w_text B fold w_control B fold w_code B fold w_heading B A
+
+fn cad_cmd io u32 u32 -> io fr_cadence A C
+
+fn qpct io u32 u32 -> io fr_quality A C
+
+fn qscale
+a eq A 0
+s1 select eq A 1 80 100
+s2 select a 60 s1
+
+fn emit_all io u32x1024 u32x32 u32x672 -> io
+q bg B 17
+lastq bg B 95
+chg ne q lastq
+nq one_if chg
+pct qscale q
+st2 bs B 95 q
+flags get C 2
+first flag flags 32
+nw one_if first
+t5 watches A nw
+t6 fold qpct nq t5 pct
+mode bg B 11
+idl bg B 12
+vx bg B 3
+vy bg B 4
+spd fx_hyp vx vy
+q0 eq q 0
+q1 eq q 1
+cq1 select q1 2 1
+cq select q0 3 cq1
+m0 eq mode 0
+iq gt idl 5000
+sq lt spd 2621440
+quiet0 and m0 iq
+quiet and quiet0 sq
+cadq select quiet 3 1
+cgt gt cq cadq
+cad select cgt cq cadq
+lastc bg st2 886
+cchg ne cad lastc
+ncd one_if cchg
+st3 bs st2 886 cad
+t6b fold cad_cmd ncd t6 cad
+t7 write_state t6b st3
+t8 render_all t7 st3 C D
+
+fn frame io -> u32
+h fr_rdhdr A
+hdr at h 0
+t1 at h 1
+zr zrects
+rs0 (zr t1)
+rr fold rd_rects_step 672 rs0
+rects at rr 0
+t2 at rr 1
+r1 read t2
+t3 at r1 1
+zs zstate
+ss0 (zs t3)
+sr fold rd_state_step 1024 ss0
+st at sr 0
+t4 at sr 1
+st1 update st hdr rects
+t8 emit_all t4 st1 hdr rects
+0
+

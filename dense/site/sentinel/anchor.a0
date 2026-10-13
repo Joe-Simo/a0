@@ -1,0 +1,284 @@
+use "tentacle.a0"
+
+fn cand_point -> (u32,u32)
+c0 eq G 0
+c1 eq G 1
+c2 eq G 2
+c3 eq G 3
+xl or c0 c2
+x1 select xl A C
+e edge_pt A B C D E F
+ex at e 0
+ey at e 1
+c4 eq G 4
+cx select c4 ex x1
+yt or c0 c1
+y1 select yt B D
+cy select c4 ey y1
+r (cx cy)
+
+fn occ_step u32 u32 u32x1024 u32 u32 u32 u32 -> u32
+other ne B G
+stt tg C B 0
+busy0 eq stt 1
+busy1 eq stt 2
+busy or busy0 busy1
+act and other busy
+ax tg C B 23
+ay tg C B 24
+dx sub D ax
+dy sub E ay
+d fx_hyp dx dy
+near fx_mul 1835008 F
+mid fx_mul 4194304 F
+isn fx_lt d near
+ism fx_lt d mid
+pen0 select ism 1310720 0
+pen select isn 3932160 pen0
+pen2 select act pen 0
+r sub A pen2
+
+fn rec_step u32 u32 u32x1024 u32 u32 u32 -> u32
+b mul B 3
+i add b 40
+id get C i
+i1 add i 1
+rx get C i1
+i2 add i 2
+ry get C i2
+same eq id D
+dx sub E rx
+dy sub F ry
+adx fx_abs dx
+ady fx_abs dy
+sm add adx ady
+close lt sm 40
+hit and same close
+r1 sub A 2621440
+r select hit r1 A
+
+fn cand_score u32x1024 u32 u32 u32 u32 u32 -> u32
+k bg A 871
+sx bg A 864
+sy bg A 865
+vw bg A 866
+vh bg A 867
+ux bg A 868
+uy bg A 869
+spdf bg A 870
+bx bg A 1
+by bg A 2
+sc bg A 38
+reach tg A k 14
+dbx sub B bx
+dby sub C by
+db fx_hyp dbx dby
+rmax fx_mul reach 72090
+toofar fx_gt db rmax
+sweet fx_mul reach 55705
+dd0 sub db sweet
+dd fx_abs dd0
+half fx_mul dd 32768
+s0 sub 3932160 half
+rmin fx_mul reach 13107
+tooclose fx_lt db rmin
+s1a sub s0 2621440
+s1 select tooclose s1a s0
+u fx_unit dbx dby
+unx at u 0
+uny at u 1
+al fx_dot unx uny ux uy
+dirb0 fx_mul al 7864320
+dirb fx_mul dirb0 spdf
+s2 add s1 dirb
+nj tg A k 1
+tipi sub nj 1
+tx jg A k tipi 0
+ty jg A k tipi 1
+dtx sub B tx
+dty sub C ty
+dt fx_hyp dtx dty
+tipp fx_mul dt 6554
+s3 sub s2 tipp
+kw [0 917504 393216 1572864 786432 655360 524288 131072]
+kwv get kw E
+s4 add s3 kwv
+pref tg A k 16
+pm eq pref E
+pmb select pm 1048576 0
+s5 add s4 pmb
+corner lt F 4
+cb select corner 917504 393216
+t0c eq F 0
+t1c eq F 1
+topc or t0c t1c
+tb select topc 589824 0
+s5b add s5 cb
+s6 add s5b tb
+pxp bg A 7
+pyp bg A 8
+mdp bg A 11
+pm1 eq mdp 1
+pm2 eq mdp 2
+ppur or pm1 pm2
+cdx sub B pxp
+cdy sub C pyp
+cdd fx_hyp cdx cdy
+cnear fx_mul 4194304 sc
+nearp fx_lt cdd cnear
+onp and ppur nearp
+curs select onp 2949120 0
+s6b sub s6 curs
+s7 fold occ_step 8 s6b A B C sc k
+pgx vp2pg B sx
+pgy vp2pg C sy
+s8 fold rec_step 8 s7 A D pgx pgy
+last tg A k 18
+lastm eq last D
+lp sub s8 655360
+s9 select lastm lp s8
+vhq << vh 16
+vwq << vw 16
+edge1 fx_lt C 2621440
+ey2 sub vhq 2621440
+edge2 fx_gt C ey2
+edge or edge1 edge2
+sx1 fx_lt B 1310720
+sx2a sub vwq 1310720
+sx2 fx_gt B sx2a
+edgex or sx1 sx2
+edgea select edge 1966080 0
+edgeb select edgex 1310720 0
+s10 sub s9 edgea
+s11 sub s10 edgeb
+txt0 eq E 1
+txt1 eq E 2
+txtk or txt0 txt1
+ised eq F 4
+rd and txtk ised
+rpen select rd 1179648 0
+s12 sub s11 rpen
+clk bg A 13
+tk >> clk 11
+kh mul k 977
+kh2 mul D 13
+kh3 add kh kh2
+kh4 add kh3 F
+h fx_hash kh4 tk
+jit >> h 22
+jq << jit 10
+s13 add s12 jq
+bad select toofar 2147483649 s13
+
+fn cand_step (u32,u32,u32,u32,u32) u32 u32x1024 u32 u32 u32 u32 u32 u32 u32 -> (u32,u32,u32,u32,u32)
+q0 at A 0
+prx bg C 872
+pry bg C 873
+pt cand_point D E F G prx pry B
+cx at pt 0
+cy at pt 1
+sc cand_score C cx cy I J B
+better fx_gt sc q0
+nq select better sc q0
+bx at A 1
+by at A 2
+br at A 3
+bc at A 4
+nx select better cx bx
+ny select better cy by
+nr select better H br
+nc select better B bc
+o (nq nx ny nr nc)
+
+fn row_step (u32,u32,u32,u32,u32) u32 u32x1024 u32x672 -> (u32,u32,u32,u32,u32)
+id rg D B 0
+x0 rg D B 1
+y0 rg D B 2
+x1 rg D B 3
+y1 rg D B 4
+kind r_kind D B
+vis r_vis D B
+sx bg C 864
+sy bg C 865
+k bg C 871
+x0q pg2vp x0 sx
+y0q pg2vp y0 sy
+x1q pg2vp x1 sx
+y1q pg2vp y1 sy
+bx bg C 1
+by bg C 2
+e edge_pt x0q y0q x1q y1q bx by
+ex at e 0
+ey at e 1
+dx sub ex bx
+dy sub ey by
+d fx_hyp dx dy
+reach tg C k 14
+near fx_le d reach
+w sub x1 x0
+h sub y1 y0
+bw ge w 6
+bh ge h 6
+bigk and bw bh
+kn ne kind 0
+e1 and vis near
+e2 and e1 bigk
+elig and e2 kn
+inner fold cand_step 5 A C x0q y0q x1q y1q B id kind
+r0 at inner 0
+r1 at inner 1
+r2 at inner 2
+r3 at inner 3
+r4 at inner 4
+q0 at A 0
+q1 at A 1
+q2 at A 2
+q3 at A 3
+q4 at A 4
+o0 select elig r0 q0
+o1 select elig r1 q1
+o2 select elig r2 q2
+o3 select elig r3 q3
+o4 select elig r4 q4
+o (o0 o1 o2 o3 o4)
+
+fn search_prepare u32x1024 u32x32 u32x672 u32 -> u32x1024
+sx get B 5
+sy get B 6
+vw get B 3
+vh get B 4
+bx bg A 1
+by bg A 2
+vx bg A 3
+vy bg A 4
+ang bg A 5
+hx fx_cos ang
+hy fx_sin ang
+tr travel_dir A
+tux at tr 0
+tuy at tr 1
+far at tr 2
+ux select far tux hx
+uy select far tuy hy
+spd fx_hyp vx vy
+sf0 fx_div spd 39321600
+sf1 fx_min sf0 65536
+sf2 fx_mul sf1 45875
+sf add 19661 sf2
+prx tg A D 20
+pry tg A D 21
+s1 bs A 864 sx
+s2 bs s1 865 sy
+s3 bs s2 866 vw
+s4 bs s3 867 vh
+s5 bs s4 868 ux
+s6 bs s5 869 uy
+s7 bs s6 870 sf
+s8 bs s7 871 D
+s9 bs s8 872 prx
+s10 bs s9 873 pry
+
+fn anchor_search u32x1024 u32x672 u32 -> (u32,u32,u32,u32,u32)
+s0 (2147483649 0 0 0 0)
+r fold row_step C s0 A B
+
