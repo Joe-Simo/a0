@@ -43,7 +43,7 @@ import {
   validate,
   validateFunction,
 } from './core.js';
-import { formatDenseFunction, formatDenseSignature } from './dense.js';
+import { formatDenseFunction, formatDenseSignature, parseDenseHeader } from './dense.js';
 import { COMPACT_EDIT_STYLE, denseEditBody } from './dense-edit.js';
 import { diag } from './diagnostics.js';
 import { fixAll } from './fix.js';
@@ -680,6 +680,31 @@ export function scopedViewDense(
     scope === 'bodies' ? formatDenseFunction(shown(c), program, opts) : denseSignatureLine(c),
   );
   return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
+}
+
+/**
+ * A dense function view (no handle line) whose first line is `target`'s header, rewritten so the
+ * header always carries the full typed signature (`fn fits u32 u32 -> bool ...` where the plain
+ * view prints `fn fits -> bool ...`), followed by the signature lines of the target's program
+ * neighbourhood (`programNeighbourhood`) that the view does not already show as a function.
+ * Experimental (the edit-protocol run, docs/history/2026-10-10-edit-protocol-preregistration.md);
+ * no default view uses it.
+ */
+export function typedTargetView(view: string, program: TypedProgram, target: string): string {
+  const fn = program.byName.get(target);
+  if (fn === undefined) return view;
+  const lines = view.split('\n');
+  const first = lines[0] ?? '';
+  if (!first.startsWith(`fn ${target}`)) return view;
+  const { rest } = parseDenseHeader(first.slice(3), 0);
+  lines[0] = `${formatDenseSignature(fn)}${rest === '' ? '' : ` ${rest}`}`;
+  const shown = new Set(
+    lines.flatMap((l) => (/^fn \S/.test(l) ? [l.slice(3).split(/\s/)[0] ?? ''] : [])),
+  );
+  const extra = programNeighbourhood(program, target)
+    .filter((f) => !shown.has(f.name))
+    .map(denseSignatureLine);
+  return [...lines, ...extra].join('\n');
 }
 
 /**

@@ -222,3 +222,23 @@ The checker now rewrites operator symbols in op position, `add mul and or xor` w
 ## V4 tiebreak on set BB (2026-10-07)
 
 A third blind sealed set (BB, 30 tasks) settles the disagreement between sets Z (V4 fails on Haiku) and AA (V4 passes): pooled over Z, AA and BB, V4 accepts 69 against 73 (Haiku) and 88 against 91 (Sonnet) of 92, and costs 355.5 against 353.3 and 208.3 against 203.0 tokens per accepted edit at the 10-task horizon, so the registered rule is not met (`results/primer-v4-tiebreak.json`, `docs/history/2026-10-07-primer-v4-tiebreak-preregistration.md`). V4 is cheaper only on the cold task. The shipped canonical primer V3 stays; nothing else changes.
+
+## Combined edit protocol, pre-registered run (2026-10-10)
+
+The combined A0 edit protocol (bodies view, DR2 primer, typed header, compact three-tool MCP surface) FAILS its
+pre-registered rule for Haiku and Sonnet (`results/edit-protocol-2026-10-10.json`,
+[record](docs/history/2026-10-10-edit-protocol-preregistration.md)). Against the shipped dense control it costs
+0.30x / 1.57x / 2.95x tokens per accepted edit (Haiku; Sonnet 0.28x / 1.53x / 3.04x) at the cold / 10-task / unbounded
+horizons, with equal after-repair acceptance: its system text is too short to cache, the control's is cached. Against
+TypeScript it costs 1.35x (Haiku) and 1.26x (Sonnet) and accepts one task fewer after repair. Recorded as losses in the
+ledger; the shipped default stays. Rust was not scored (no Rust toolchain on the scoring machine).
+
+Correction (2026-10-10): the ratios above priced every cache read at 0.05x (the Opus rate) and the unbounded horizon
+never charged the 1.25x cache write. Re-priced from the per-trial reports at the Haiku/Sonnet rule (write 1.25x once per
+session, read 0.1x, 512-token minimum; costs modelled from local o200k counts, not billed), the combined arm against
+the dense control costs 0.30x / 1.31x / 1.86x / 2.08x (Haiku; Sonnet 0.28x / 1.27x / 1.86x / 2.10x) at cold / 10 / 50 /
+unbounded edits (control 1825.4 / 419.4 / 294.4 / 263.2 tokens per accepted edit for Haiku, 1750.3 / 384.4 / 263.0 / 232.6
+for Sonnet; `results/edit-protocol-2026-10-10.json`). Against TypeScript the figures do not change (1.35x, 1.26x; neither
+system text is cached). The verdicts do not change: FAIL for both models. Fairness caveat: any A0 advantage over
+TypeScript at long horizons (the dense control at unbounded: 263.2 against 405.8 for Haiku, 232.6 against 388.6 for Sonnet)
+comes from A0's system text crossing the cache minimum while TypeScript's does not, not from shorter edits.

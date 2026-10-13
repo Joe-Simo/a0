@@ -39,6 +39,8 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import Anthropic from '@anthropic-ai/sdk';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { getEncoding } from 'js-tiktoken';
 import {
   formatDiagnostic,
@@ -54,7 +56,8 @@ import {
   type Value,
 } from '../src/core.js';
 import { A0Error } from '../src/diagnostics.js';
-import { EditSession, formatRejection } from '../src/edit.js';
+import { EditSession, formatRejection, typedTargetView } from '../src/edit.js';
+import { createServer } from '../src/mcp.js';
 import { withoutSpec } from '../src/spec.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
 import {
@@ -180,6 +183,55 @@ const A0_LEAN_VIEW =
 const A0_BODIES_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_VIEW === 'bodies';
 // 'bare' also drops the callee signature lines (scope function instead of deps).
 const A0_BARE_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_VIEW === 'bare';
+// A0_EXPERIMENT_TYPED_HEADER=1 (with a lean dense view): the target's header always carries its
+// full typed signature, and the signature lines of its program neighbourhood that the view does
+// not already show follow the view (typedTargetView, src/edit.ts). Off by default; the
+// edit-protocol run decides (docs/history/2026-10-10-edit-protocol-preregistration.md).
+const A0_TYPED_HEADER = A0_LEAN_VIEW && process.env.A0_EXPERIMENT_TYPED_HEADER === '1';
+// A0_EXPERIMENT_TOOL_SCHEMAS=1: every model call is also charged its tool surface, counted as the
+// o200k tokens of the JSON tool list ({name, description, inputSchema} per tool): the A0 cells
+// the three-tool MCP surface (createServer surface 'compact', src/mcp.ts), every other cell the
+// one edit tool TS_EDIT_TOOL. The schemas are counted, not sent: the reply format stays the text
+// protocol of the system text. Off by default. A0_EXPERIMENT_TOOL_SURFACE=full charges the A0
+// cells the shipped seven-tool surface instead (the control arm).
+const TOOL_SCHEMAS = process.env.A0_EXPERIMENT_TOOL_SCHEMAS === '1';
+const TOOL_SURFACE = process.env.A0_EXPERIMENT_TOOL_SURFACE === 'full' ? 'full' : 'compact';
+/** The edit tool a non-A0 cell pays for (numbered line edits on one file). */
+const TS_EDIT_TOOL = {
+  name: 'edit_file',
+  description: 'Apply numbered line edits to a file; returns the new numbered file or an error.',
+  inputSchema: {
+    type: 'object',
+    properties: { path: { type: 'string' }, edits: { type: 'string' } },
+    required: ['path', 'edits'],
+  },
+} as const;
+/** The JSON tool list of the A0 MCP surface (TOOL_SURFACE), as an MCP client lists it. */
+async function compactA0Tools(): Promise<string> {
+  const { mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const dir = await mkdtemp(join(tmpdir(), 'a0-tools-'));
+  try {
+    const file = join(dir, 'p.a0');
+    await writeFile(file, 'fn f u32 -> u32\nret p0\nend\n', 'utf8');
+    const server = await createServer(file, { surface: TOOL_SURFACE });
+    const [c, s] = InMemoryTransport.createLinkedPair();
+    await server.connect(s);
+    const client = new Client({ name: 'count', version: '0' });
+    await client.connect(c);
+    const { tools } = await client.listTools();
+    await client.close();
+    return JSON.stringify(
+      tools.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+/** The view text of a lean dense cell, with the typed-header option applied. */
+function leanView(text: string, source: string, target: string): string {
+  return A0_TYPED_HEADER ? typedTargetView(text, parseAndValidate(source), target) : text;
+}
 // A0_EXPERIMENT_SCOPED=signatures|bodies: the TypeScript, Rust, Python, Go, Java, C and Ruby
 // structured cells are shown the dependency-scoped view of the target function (tools/scoped-view.ts:
 // its body plus its direct callees as signatures, or as bodies) instead of the whole numbered
@@ -550,7 +602,13 @@ async function buildCell(
       }).text; // e0
       if (A0_LEAN_VIEW)
         return {
-          cell: { representation, protocol, ...primers, system, view: withoutHandle(fnView) },
+          cell: {
+            representation,
+            protocol,
+            ...primers,
+            system,
+            view: leanView(withoutHandle(fnView), task.a0Source, fnName),
+          },
           session,
           handle,
           ...(shadowFactory === undefined ? {} : { shadowFactory }),
@@ -679,6 +737,8 @@ interface Trial {
     readonly workflowPrimer: number;
     readonly toolContext: number;
     readonly output: number;
+    /** A0_EXPERIMENT_TOOL_SCHEMAS=1 only: the tool surface's tokens, charged once per model call. */
+    readonly toolSchema?: number;
     readonly total: number;
   } | null;
   readonly outputTokensLocal: Record<string, number> | null;
@@ -719,6 +779,7 @@ async function runTrial(
   ask: (messages: Anthropic.MessageParam[]) => Promise<ReplyResult | undefined>,
   lazyPrimer?: string,
   shadowFactory?: (source: string) => EditSession,
+  toolSchemaTokens?: number,
 ): Promise<
   Omit<
     Trial,
@@ -834,14 +895,18 @@ async function runTrial(
       // replaces the function and closes its handle: the target is then opened again, which names the new handles.
       try {
         nextView = A0_LEAN_VIEW
-          ? withoutHandle(session.view('e0'))
+          ? leanView(
+              withoutHandle(session.view('e0')),
+              applied.source,
+              task.target ?? parseAndValidate(applied.source).functions[0]?.name ?? '',
+            )
           : `${session.view('e0')}\n${session.view('g0')}`;
       } catch {
         try {
           const fnName = task.target ?? '';
           const fnText = session.open(fnName, { scope: 'deps' }).text;
           nextView = A0_LEAN_VIEW
-            ? withoutHandle(fnText)
+            ? leanView(withoutHandle(fnText), applied.source, fnName)
             : `${fnText}\n${session.openProgram({ scope: 'all', target: fnName }).text}`;
         } catch {
           // The target is gone (the reply renamed it): the repair message carries no view.
@@ -865,13 +930,15 @@ async function runTrial(
   const languagePrimer = (count(cell.languagePrimer).o200k_base ?? 0) * calls + lazyPrimerTokens;
   const workflowPrimer = (count(cell.workflowPrimer).o200k_base ?? 0) * calls;
   const output = count(outputText).o200k_base ?? 0;
+  const toolSchema = toolSchemaTokens === undefined ? undefined : toolSchemaTokens * calls;
   return {
     tokenBucketsLocal: {
       languagePrimer,
       workflowPrimer,
       toolContext,
       output,
-      total: languagePrimer + workflowPrimer + toolContext + output,
+      ...(toolSchema === undefined ? {} : { toolSchema }),
+      total: languagePrimer + workflowPrimer + toolContext + output + (toolSchema ?? 0),
     },
     outputTokensLocal: count(outputText),
     providerUsage: sawUsage ? usage : null,
@@ -1220,6 +1287,13 @@ async function main(): Promise<void> {
   } as const;
   const count = (text: string): Record<string, number> =>
     Object.fromEntries(Object.entries(encoders).map(([k, e]) => [k, e.encode(text).length]));
+  const toolSchemaText = TOOL_SCHEMAS
+    ? { a0: await compactA0Tools(), other: JSON.stringify([TS_EDIT_TOOL]) }
+    : undefined;
+  const toolSchemaOf = (r: Representation): number | undefined =>
+    toolSchemaText === undefined
+      ? undefined
+      : (count(r === 'a0' ? toolSchemaText.a0 : toolSchemaText.other).o200k_base ?? 0);
 
   // Harness self-check: reference solutions must pass acceptance in every cell.
   const selfCheck: Record<string, string[]> = {};
@@ -1309,6 +1383,7 @@ async function main(): Promise<void> {
               },
               representation === 'a0' ? lazyPrimer : undefined,
               shadowFactory,
+              toolSchemaOf(representation),
             );
             trials.push({ ...base, ...result });
             continue;
@@ -1361,6 +1436,7 @@ async function main(): Promise<void> {
             },
             representation === 'a0' ? lazyPrimer : undefined,
             shadowFactory,
+            toolSchemaOf(representation),
           );
           trials.push({ ...base, ...result });
         }
@@ -1417,6 +1493,18 @@ async function main(): Promise<void> {
     programView: programScope,
     systemLayout,
     a0View: A0_NUMBERED_VIEW ? 'numbered' : 'plain',
+    ...(A0_TYPED_HEADER ? { typedHeader: true } : {}),
+    ...(toolSchemaText === undefined
+      ? {}
+      : {
+          toolSchemaTokensLocal: {
+            a0Surface: TOOL_SURFACE,
+            a0: toolSchemaOf('a0'),
+            other: toolSchemaOf('ts'),
+            a0Tools: toolSchemaText.a0,
+            otherTools: toolSchemaText.other,
+          },
+        }),
     a0Syntax: A0_DENSE_VIEW ? (A0_COMPACT_VIEW ? 'dense-compact' : 'dense') : 'canonical',
     method,
     tokenizerNote:

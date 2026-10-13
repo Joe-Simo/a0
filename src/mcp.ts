@@ -29,7 +29,7 @@ import {
 } from './core.js';
 import { formatDense } from './dense.js';
 import { diag } from './diagnostics.js';
-import { EditSession, revision } from './edit.js';
+import { EditSession, revision, typedTargetView } from './edit.js';
 import { DENSE_EXTENSION, isDensePath, link } from './link.js';
 import { A0_VERSION } from './version.js';
 
@@ -107,8 +107,19 @@ const jsonValue: z.ZodType<Value> = z.lazy(() =>
   z.union([z.number().int().nonnegative(), z.boolean(), z.array(jsonValue)]),
 );
 
+/**
+ * Tool surface. 'full' (the default): the seven tools above. 'compact' (experimental, off by
+ * default until the edit-protocol run decides, docs/history/2026-10-10-edit-protocol-preregistration.md):
+ * three tools with one-line descriptions, a0_open (dense, callee bodies, no handle line, the
+ * target's full typed signature), a0_apply and a0_save.
+ */
+export type McpSurface = 'full' | 'compact';
+
 /** Build the server for `launch` (a file or directory). The caller connects a transport. */
-export async function createServer(launch: string): Promise<McpServer> {
+export async function createServer(
+  launch: string,
+  options: { readonly surface?: McpSurface } = {},
+): Promise<McpServer> {
   const launched = await realpath(resolve(launch));
   const isDir = (await stat(launched)).isDirectory();
   const root = isDir ? launched : dirname(launched);
@@ -159,6 +170,61 @@ export async function createServer(launch: string): Promise<McpServer> {
     );
 
   const server = new McpServer({ name: 'a0', version: A0_VERSION });
+
+  if (options.surface === 'compact') {
+    const file = z.string().optional().describe('.a0 or .a0d file (default: the launched file)');
+    server.registerTool(
+      'a0_open',
+      {
+        description: 'Show one function (dense, callee bodies); reply to a0_apply with edit lines.',
+        inputSchema: { file, function: z.string() },
+      },
+      tool(async ({ file: f, function: name }) => {
+        const { session } = await sessionFor(f);
+        const shown = session.open(name, { scope: 'bodies', dense: true }).text;
+        return typedTargetView(shown.slice(shown.indexOf('\n') + 1), session.program, name);
+      }),
+    );
+    server.registerTool(
+      'a0_apply',
+      {
+        description: 'Apply edit lines to the open function; returns the new view or a diagnostic.',
+        inputSchema: { file, edit: z.string().max(LIMITS.maxSourceBytes) },
+      },
+      tool(async ({ file: f, edit }) => {
+        const entry = await sessionFor(f);
+        entry.session.apply(edit);
+        entry.dirty = true;
+        const implied = entry.session.impliedHandle;
+        return implied !== undefined
+          ? entry.session.view(implied)
+          : formatProgram(entry.session.program);
+      }),
+    );
+    server.registerTool(
+      'a0_save',
+      {
+        description: 'Write the edited program to its file.',
+        inputSchema: { file },
+      },
+      tool(async ({ file: f }) => {
+        const entry = await sessionFor(f);
+        if (!entry.dirty) throw diag('A0806');
+        const out = await fileOf(f);
+        if (entry.sources.length > 1) throw diag('A0807');
+        await writeFile(
+          out,
+          isDensePath(out)
+            ? formatDense(entry.session.program, { comments: true })
+            : formatSource(entry.session.program),
+          'utf8',
+        );
+        entry.dirty = false;
+        return relative(root, out);
+      }),
+    );
+    return server;
+  }
 
   server.registerTool(
     'a0_open',
@@ -313,6 +379,10 @@ export async function createServer(launch: string): Promise<McpServer> {
 
 /** `a0 mcp <file-or-dir>`: serve over stdio until the client disconnects. */
 export async function serveStdio(launch: string): Promise<void> {
-  const server = await createServer(launch);
+  // A0_MCP_SURFACE=compact: the experimental three-tool surface (see McpSurface); off by default.
+  const server = await createServer(
+    launch,
+    process.env.A0_MCP_SURFACE === 'compact' ? { surface: 'compact' } : {},
+  );
   await server.connect(new StdioServerTransport());
 }
