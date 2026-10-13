@@ -1790,7 +1790,7 @@ macOS & Linux Windows
 
 View install script Then follow the quick start
 
-Edit cost Tokens Speed
+Edit cost Tokens Speed Check latency WebAssembly
 One AI edit, start to accepted
 Tokens per task · Haiku and Sonnet pooled · 24 tasks a language · lower is better
 A0
@@ -1959,6 +1959,76 @@ Python
 3 of 48 languages within 5% of A0; 8 faster
 − Slower than the best of C, Rust and Zig on 8 of 19 programs, worst 4.31x (mat4)
 Source: results/exec-benchmark-full.json · method →
+
+Whole-program check, fresh process
+A0's front end against TypeScript's checkers · median ms · lower is better
+macOS arm64 · load average at most 10.0, limit 10.0 · check-latency-darwin-arm64.json
+A0
+
+72.6
+tsc
+
+530.5
+tsgo
+
+56.7
+tsc-rs
+
+53.7
+
+Linux x64 · load average at most 1.4, limit 10.0 · check-latency-linux-x64.json
+A0
+
+91.4
+tsc
+
+778.5
+tsgo
+
+88.3
+tsc-rs
+
+55.7
+
+Windows x64 · CPU use at most 8.0, limit 10.0 · check-latency-win32-x64.json
+A0
+
+847.1
+tsc
+
+3918.1
+tsgo
+
+25651.8
+
+A0 against 8 checker runs: 4 faster, 1 tied, 3 slower
+− macOS arm64: tsgo 56.7 ms, A0 72.6 ms
+− macOS arm64: tsc-rs 53.7 ms, A0 72.6 ms
+− Linux x64: tsc-rs 55.7 ms, A0 91.4 ms
+Source: results/check-latency-*.json · method →
+
+WebAssembly, against clang -O3
+19 programs · Windows x64 · CPU use at most 8.0, limit 10.0
+Module bytes, summed · lower is better
+A0
+
+9336
+clang
+
+11394
+
+Time per trip as a multiple of A0's · geometric mean
+A0
+
+1.00x
+clang
+
+1.08x
+
+Per program: 7 faster, 7 tied, 5 slower
+− Slower than clang on 5 of 19 programs, slowest at 0.78x
+− Larger module on 1 of 19 programs
+Source: results/wasm-benchmark.json · method →
 
 01 / What A0 is
 A typed language built for model edits.

@@ -28,6 +28,10 @@ f tokfx results/tokens.json
 f b48 results/ai-edit-b48-dense.json
 f densetok results/dense-tokens.json
 f ver results/verification.json
+f cl results/check-latency-darwin-arm64.json
+f cl results/check-latency-linux-x64.json
+f cl results/check-latency-win32-x64.json
+f wasm results/wasm-benchmark.json
 # Cost rows, in order: representation -> results file kind and label.
 m cost a0 min A0
 m cost ts min TypeScript
@@ -206,6 +210,14 @@ c nav
 +type button
 "Speed
 >
+<button
++type button
+"Check latency
+>
+<button
++type button
+"WebAssembly
+>
 >
 }
 {sec_edit
@@ -369,6 +381,145 @@ c putratio %a
 +href /benchmarks#native
 "method →
 >
+>
+>
+}
+{sec_hero4
+.div pane chart
+.h3 ct
+"Whole-program check, fresh process
+>
+.p sub
+"A0's front end against TypeScript's checkers · median ms · lower is better
+>
+[cl_np cl_ok
+.p alt
+"$cl_os$ $cl_arch$ · {cl_cpu|CPU use|load average} at most $cl_load$, limit $cl_lim$ ·\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/results/check-latency-$cl_pf$-$cl_arch$.json
+"check-latency-$cl_pf$-$cl_arch$.json
+>
+>
+.div bars
+[cl_nb
+.div brow{cl_me| me}
+.span lbl
+"$cl_lab$
+>
+.div track{cl_win| win}
+.div fill
+w 12
+w 1
+w $cl_pct$
+>
+>
+.span val
+"$cl_ms$
+>
+>
+]
+>
+]
+.p verdict
+"A0 against $cl_nc$ checker runs: $cl_nw$ faster, $cl_nt$ tied, $cl_nl$ slower
+>
+<ul
++class losses
+[cl_nl
+<li
+"− $cl_lose$
+>
+]
+>
+.p src
+"Source: results/check-latency-*.json\s·\s
+<a
++href /benchmarks#method
+"method →
+>
+>
+>
+}
+{sec_hero5
+.div pane chart
+.h3 ct
+"WebAssembly, against clang -O3
+>
+[wa_one wa_ok
+.p sub
+"$wa_n$ programs · $wa_os$ $wa_arch$ · {wa_cpu|CPU use|load average} at most $wa_load$, limit $wa_lim$
+>
+.p alt
+"Module bytes, summed · lower is better
+>
+.div bars
+[wa_nr
+.div brow{wa_me| me}
+.span lbl
+"$wa_lab$
+>
+.div track{wa_win| win}
+.div fill
+w 12
+w 1
+w $wa_pct$
+>
+>
+.span val
+"$wa_val$
+>
+>
+]
+>
+.p alt
+"Time per trip as a multiple of A0's · geometric mean
+>
+.div bars
+[wa_nr
+.div brow{wa_me| me}
+.span lbl
+"$wa_lab$
+>
+.div track{wt_win| win}
+.div fill
+w 12
+w 1
+w $wt_pct$
+>
+>
+.span val
+"$wt_val$x
+>
+>
+]
+>
+.p verdict
+"Per program: $wa_nw$ faster, $wa_nt$ tied, $wa_nl$ slower
+>
+<ul
++class losses
+[wa_one wa_lose
+<li
+"− Slower than clang on $wa_nl$ of $wa_n$ programs, slowest at $wa_slow$x
+>
+]
+[wa_one wa_big
+<li
+"− Larger module on $wa_nbig$ of $wa_n$ programs
+>
+]
+>
+]
+.p src
+"Source:\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/results/wasm-benchmark.json
+"results/wasm-benchmark.json
+>
+"\s·\s
+<a
++href /benchmarks#wasm
+"method →
 >
 >
 >

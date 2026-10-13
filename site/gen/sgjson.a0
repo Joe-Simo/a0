@@ -5,7 +5,7 @@
 # Tokenizer words: 0 mode (0 between tokens, 1 string, 2 number, 3 literal) 1 depth 2 escape
 # 3 string is a key 4 string hash 5 captured bytes 6 integer part 7 fraction digits (9 of them
 # after the event) 8 fraction digit count 9 in fraction 10 in exponent 11 literal's first byte
-# 12 a key is expected 13 role (1 exec 2 cost 3 edit 4 par 6 axes 7 hw 8 tokfx, 9 b48, 10 densetok, 11 verification, 0 ignore) 14 cost file slot
+# 12 a key is expected 13 role (1 exec 2 cost 3 edit 4 par 6 axes 7 hw 8 tokfx, 9 b48, 10 densetok, 11 verification, 12 cl, 13 wasm, 0 ignore) 14 cost file slot
 # 15 event (1 key 2 string 3 number 4 true 5 false 6 null 7 open 9 close) 16 event depth
 # 32 + d key hash at depth d, 48 + d array index, 64 + d container (1 object 2 array)
 # 80..87 the first 32 bytes of the last string. Data from 128 (the extractors below).
@@ -998,6 +998,230 @@ s5 fold wr64 cz s4 1354 nz1
 ret s5
 end
 
+# ---- cl: results/check-latency-*.json, into the axes table. 7290 the platform being read (0 darwin,
+# 1 linux, 2 win32), 7291 the comparison being read is A0's whole front end in a fresh process, 7292
+# its competitor (0 tsc, 1 tsgo, 2 tsc-rs, 9 other). Platform p at 7300 + 16p: 0 read, 1 load.max x 100,
+# 2 load.limit x 100, 3 a0.coldOpenProcess.median ms x 1000, 4..6 wholeProject.(tsc|tsgo|tsc-rs).median
+# ms x 1000, 7..9 the verdict of that comparison against each (1 win 2 tie 3 loss), 10 arch (1 arm64,
+# 2 other), 11 load.source is cpu-utilisation.
+fn hcl u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iss eq t 2
+isn eq t 3
+d1 eq d 1
+d2 eq d 2
+d3 eq d 3
+sd1 and iss d1
+sd2 and iss d2
+sd3 and iss d3
+nd2 and isn d2
+nd3 and isn d3
+kp call kis p0 1 p2 522
+h1 call hashis p0 p2 524
+h2 call hashis p0 p2 525
+pi0 select h1 1 0
+pi select h2 2 pi0
+xp and sd1 kp
+cp select xp 1 0
+s1 fold wr64 cp p0 7290 pi
+cur call g s1 7290
+b0 mul cur 16
+b add b0 7300
+s2 fold wr64 cp s1 b 1
+ka call kis s2 1 p2 526
+ha call hashis s2 p2 7
+av select ha 1 2
+xa and sd1 ka
+ca select xa 1 0
+ba add b 10
+s3 fold wr64 ca s2 ba av
+kl call kis s3 1 p2 29
+km call kis s3 2 p2 527
+kli call kis s3 2 p2 528
+ksr call kis s3 2 p2 529
+v100 call num s3 100
+y1 and nd2 kl
+ym and y1 km
+yl and y1 kli
+cm select ym 1 0
+cli select yl 1 0
+b1 add b 1
+b2 add b 2
+s4 fold wr64 cm s3 b1 v100
+s5 fold wr64 cli s4 b2 v100
+hc call hashis s5 p2 530
+z1 and sd2 kl
+z2 and z1 ksr
+z3 and z2 hc
+cz select z3 1 0
+b11 add b 11
+s6 fold wr64 cz s5 b11 1
+k1a call kis s6 1 p2 47
+k2c call kis s6 2 p2 531
+k3m call kis s6 3 p2 532
+m1 and nd3 k3m
+m2 and m1 k1a
+m3 and m2 k2c
+ca0 select m3 1 0
+vms call num s6 1000
+b3 add b 3
+s7 fold wr64 ca0 s6 b3 vms
+kw call kis s7 1 p2 533
+ix call kwidx s7 2 p2 534 3
+ko ne ix 99
+w1 and m1 kw
+w2 and w1 ko
+cw select w2 1 0
+bi0 add b 4
+bi add bi0 ix
+s8 fold wr64 cw s7 bi vms
+kc call kis s8 1 p2 537
+ks call kis s8 3 p2 538
+kq call kis s8 3 p2 539
+kv call kis s8 3 p2 557
+q0 and sd3 kc
+qs and q0 ks
+qq and q0 kq
+qv and q0 kv
+hs call hashis s8 p2 540
+fs select hs 1 0
+cqs select qs 1 0
+s9 fold wr64 cqs s8 7291 fs
+hq0 call hashis s9 p2 534
+hq1 call hashis s9 p2 535
+hq2 call hashis s9 p2 536
+e0 select hq2 2 9
+e1 select hq1 1 e0
+e2 select hq0 0 e1
+cqq select qq 1 0
+s10 fold wr64 cqq s9 7292 e2
+fsub call g s10 7291
+cmp call g s10 7292
+isf eq fsub 1
+okc lt cmp 3
+hw call hashis s10 p2 541
+ht call hashis s10 p2 542
+hl call hashis s10 p2 543
+vd0 select hl 3 0
+vd1 select ht 2 vd0
+vd select hw 1 vd1
+r0 and qv isf
+r1 and r0 okc
+cr select r1 1 0
+bv0 add b 7
+bv add bv0 cmp
+s11 fold wr64 cr s10 bv vd
+ret s11
+end
+
+# ---- wasm: results/wasm-benchmark.json, into the axes table at 7400: 0 rows, 1 A0's module bytes
+# summed over the rows, 2 clang's, 3 rows where A0's module is the larger, 4..6 rows with the verdict
+# win, tie, loss, 7 the smallest speedup x 1000 plus one (0 before the first), 8 geomeanSpeedup x 1000,
+# 9 loadGate.maxLoad x 100, 10 loadGate.highestLoadAtSampleStart x 100, 11 platform (1 win32-x64,
+# 2 linux-x64, 3 darwin-arm64, 0 other), 12 the A0 bytes of the row being read, 13 loadGate.loadSource
+# is cpu-utilisation.
+fn hwa u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iss eq t 2
+isn eq t 3
+d1 eq d 1
+d2 eq d 2
+d3 eq d 3
+d4 eq d 4
+kr call kis p0 1 p2 32
+kk call kis p0 3 p2 544
+kb call kis p0 3 p2 545
+ksp call kis p0 3 p2 547
+kv call kis p0 3 p2 557
+ka call kis p0 4 p2 47
+kc call kis p0 4 p2 546
+r3s0 and iss d3
+r3s and r3s0 kr
+r3n0 and isn d3
+r3n and r3n0 kr
+r4n0 and isn d4
+r4n1 and r4n0 kr
+r4n and r4n1 kb
+xk and r3s kk
+ck select xk 1 0
+s1 fold addw ck p0 7400 1
+v call num s1 1
+xa and r4n ka
+ca select xa 1 0
+s2 fold addw ca s1 7401 v
+s3 fold wr64 ca s2 7412 v
+xc and r4n kc
+cc select xc 1 0
+s4 fold addw cc s3 7402 v
+ab call g s4 7412
+big gt ab v
+xb and xc big
+cb select xb 1 0
+s5 fold addw cb s4 7403 1
+hw call hashis s5 p2 541
+ht call hashis s5 p2 542
+hl call hashis s5 p2 543
+xv and r3s kv
+yw and xv hw
+yt and xv ht
+yl and xv hl
+cw select yw 1 0
+ct select yt 1 0
+cl select yl 1 0
+s6 fold addw cw s5 7404 1
+s7 fold addw ct s6 7405 1
+s8 fold addw cl s7 7406 1
+v1k call num s8 1000
+v1 add v1k 1
+mn call g s8 7407
+mz eq mn 0
+mlt lt v1 mn
+mb or mz mlt
+xs0 and r3n ksp
+xs and xs0 mb
+cs select xs 1 0
+s9 fold wr64 cs s8 7407 v1
+kg call kis s9 1 p2 548
+n1 and isn d1
+xg and n1 kg
+cg select xg 1 0
+s10 fold wr64 cg s9 7408 v1k
+kl call kis s10 1 p2 558
+km call kis s10 2 p2 549
+kh call kis s10 2 p2 559
+ks call kis s10 2 p2 589
+v100 call num s10 100
+n2 and isn d2
+xl and n2 kl
+xm and xl km
+xh and xl kh
+cm select xm 1 0
+ch select xh 1 0
+s11 fold wr64 cm s10 7409 v100
+s12 fold wr64 ch s11 7410 v100
+hcpu call hashis s12 p2 530
+sl0 and iss d2
+sl1 and sl0 kl
+sl2 and sl1 ks
+sl and sl2 hcpu
+csl select sl 1 0
+s13 fold wr64 csl s12 7413 1
+kp call kis s13 1 p2 522
+p1h call hashis s13 p2 550
+p2h call hashis s13 p2 551
+p3h call hashis s13 p2 552
+pv0 select p3h 3 0
+pv1 select p2h 2 pv0
+pv select p1h 1 pv1
+sp0 and iss d1
+sp and sp0 kp
+cp select sp 1 0
+s14 fold wr64 cp s13 7411 pv
+ret s14
+end
+
 fn onev u32x128x64 u32 u32x128x512 -> u32x128x64
 role call g p0 13
 e eq role 1
@@ -1010,6 +1234,8 @@ k eq role 8
 b eq role 9
 q eq role 10
 vv eq role 11
+lc eq role 12
+lw eq role 13
 ce select e 1 0
 cc select c 1 0
 cd select d 1 0
@@ -1020,6 +1246,8 @@ ck select k 1 0
 cb select b 1 0
 cq select q 1 0
 cv select vv 1 0
+clc select lc 1 0
+clw select lw 1 0
 s1 fold hexec ce p0 p2
 s2 fold hcost cc s1 p2
 s3 fold hedit cd s2 p2
@@ -1030,7 +1258,9 @@ s7 fold htok ck s6 p2
 s8 fold hb48 cb s7 p2
 s9 fold hdt cq s8 p2
 s10 fold hver cv s9 p2
-ret s10
+s11 fold hcl clc s10 p2
+s12 fold hwa clw s11 p2
+ret s12
 end
 # event p2 at depth p3, handled (fold body)
 fn event u32x128x64 u32 u32 u32 u32x128x512 -> u32x128x64
