@@ -42,6 +42,8 @@ function files(dir: string, out: string[] = []): string[] {
     const p = join(dir, f);
     // corpus/reject holds files the checker must reject; they have no dense form to round-trip
     if (p.endsWith(join('corpus', 'reject'))) continue;
+    // dense/ holds the migrated dense-format copies (data for tools/dense-migrate.ts), not canonical sources
+    if (p === join(ROOT, 'dense')) continue;
     if (statSync(p).isDirectory()) files(p, out);
     else if (p.endsWith('.a0')) out.push(p);
   }

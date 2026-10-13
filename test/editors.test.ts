@@ -44,6 +44,8 @@ test('tree-sitter grammar parses every .a0 file in the repository without errors
   })
     .split('\n')
     .filter((f) => f.endsWith('.a0'))
+    // dense/ holds the migrated dense-format copies (data for tools/dense-migrate.ts), not canonical A0.
+    .filter((f) => !f.startsWith('dense/'))
     // The reject corpus holds programs that are invalid on purpose: its rejected cases are not
     // grammar input (its fixed programs and bases are).
     .filter(
