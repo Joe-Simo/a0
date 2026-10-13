@@ -20,6 +20,7 @@ import {
   parse,
   profileOf,
   stripComment,
+  type Type,
   type TypedProgram,
   utf8Length,
   validate,
@@ -75,6 +76,15 @@ export interface LinkOptions {
   /** Read every file as dense text (a file ending in `.a0d` is always dense). */
   readonly dense?: boolean;
   /**
+   * Read dense files with this reader instead of the reference (`--dense=a0`): the file's text, the
+   * signatures of every function its uses reach, and its path in; canonical text out.
+   */
+  readonly denseReader?: (
+    text: string,
+    used: ReadonlyMap<string, { readonly params: readonly Type[]; readonly result: Type }>,
+    path: string,
+  ) => string;
+  /**
    * The profile of the whole linked program, overriding what the files declare (`--profile`).
    * The files must still agree with each other (A0624).
    */
@@ -122,6 +132,9 @@ export async function link(
   const done = new Set<string>();
   /** Parameter counts of every function a file defines or reaches through its uses. */
   const closureOf = new Map<string, Map<string, number>>();
+  /** Signatures of the same functions (the stubs of the A0 dense reader). */
+  type Sig = { readonly params: readonly Type[]; readonly result: Type };
+  const sigsOf = new Map<string, Map<string, Sig>>();
   const visit = async (path: string, from: string | undefined): Promise<void> => {
     const abs = resolve(path);
     if (done.has(abs)) return;
@@ -136,17 +149,24 @@ export async function link(
     const parsedCanonical = isDense ? undefined : parse(shown);
     const uses = isDense ? denseUses(shown) : (parsedCanonical?.uses ?? []);
     const known = new Map<string, number>();
+    const usedSigs = new Map<string, Sig>();
     for (const use of uses) {
       const target = await canonical(resolve(dirname(abs), use));
       if (!(target.endsWith('.a0') || isDensePath(target)) || !inside(target))
         throw diag('A0622', [use, abs, target, root]);
       await visit(target, abs);
       for (const [name, n] of closureOf.get(target) ?? []) known.set(name, n);
+      for (const [name, g] of sigsOf.get(target) ?? []) usedSigs.set(name, g);
     }
     let text = shown;
-    let functions: readonly { name: string; params: readonly unknown[] }[];
+    let functions: readonly { name: string; params: readonly Type[]; result: Type }[];
     let declared: Profile = 'canonical';
-    if (isDense) {
+    if (isDense && options.denseReader !== undefined) {
+      text = options.denseReader(shown, usedSigs, abs);
+      const parsed = parse(text);
+      functions = parsed.functions;
+      declared = profileOf(parsed);
+    } else if (isDense) {
       let parsed: ReturnType<typeof parseDense>;
       try {
         parsed = parseDense(shown, { known });
@@ -164,6 +184,7 @@ export async function link(
     const own = new Map<string, number>();
     for (const f of functions) own.set(f.name, f.params.length);
     closureOf.set(abs, new Map([...known, ...own]));
+    sigsOf.set(abs, new Map([...usedSigs, ...functions.map((f) => [f.name, f] as const)]));
     visiting.delete(abs);
     done.add(abs);
     order.push({ path: abs, text, shown, fns: functions.map((f) => f.name), profile: declared });
