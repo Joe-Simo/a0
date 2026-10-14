@@ -75,6 +75,7 @@ import {
   STAGE_OUTPUT,
 } from './bootstrap.js';
 import { generateCorpus } from './corpus.js';
+import { KERNELS } from './exec-bench-kernels.js';
 import { frontEndFits, IR_OPS, irOp } from './ref-parse.js';
 import { writeReport } from './scrub-results.js';
 
@@ -1309,6 +1310,57 @@ const describe = (r: PathReport): string => {
 };
 
 const FILL_ZEROS = Array.from({ length: 16 }, () => '0').join(' ');
+
+/**
+ * Folds whose carried previous-element read is `select (eq p1 0) K get` (src/wasm.ts
+ * `firstTripSelect`): the carry starts as K; `twice` reads the carried value outside the select,
+ * so it keeps the load.
+ */
+const CARRY_SELECT_SOURCE = `fn pfx u32x8 u32 -> u32x8
+c eq p1 0
+j sub p1 1
+t get p0 j
+u select c 7 t
+s get p0 p1
+v mul u 3
+w add v s
+n set p0 p1 w
+ret n
+end
+fn psum u32x64 u32 -> u32x64
+c eq p1 0
+j sub p1 1
+t get p0 j
+u select c 0 t
+s get p0 p1
+v add u s
+n set p0 p1 v
+ret n
+end
+fn twice u32x8 u32 -> u32x8
+c eq p1 0
+j sub p1 1
+t get p0 j
+u select c 5 t
+s get p0 p1
+v add u s
+w xor v t
+n set p0 p1 w
+ret n
+end
+fn main u32 u32 -> u32
+a arr p0 p1 3 4 5 6 7 8
+b fold pfx 8 a
+c fold twice 8 b
+z arr ${Array.from({ length: 64 }, () => 'p1').join(' ')}
+d fold psum 64 z
+e get c 7
+f get d 63
+g add e f
+ret g
+end
+`;
+
 const FILL_READ_SOURCE = `fn fadd u32x16 u32 u32 -> u32x16
 v add p1 p2
 n set p0 p1 v
@@ -1388,6 +1440,11 @@ async function main(): Promise<void> {
   // reads of fill-run folds (src/optimize.ts `readThroughFills`): the wrapped whole-length form,
   // a masked index below a shorter count, and reads that keep the fold
   programs.push(['fillread', parseAndValidate(FILL_READ_SOURCE), small]);
+  // a carried previous element that starts at the first-trip value (src/wasm.ts `firstTripSelect`)
+  programs.push(['carrysel', parseAndValidate(CARRY_SELECT_SOURCE), small]);
+  const prefix1k = KERNELS.find((k) => k.name === 'prefix1k');
+  if (prefix1k === undefined) throw new Error('exec-bench kernel prefix1k is missing');
+  programs.push(['bench/prefix1k', parseAndValidate(prefix1k.a0), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,

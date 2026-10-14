@@ -441,7 +441,8 @@ end
 #   128-639 frames: frame d at 128 + 128 d (d 0..3, INLINE_DEPTH 3): 0 function, 1 variant (0
 #     value, 1 owned), 2 first node, 3 node count, 4 parameter count, 5 6 the ret operand (kind,
 #     value), 7 has a host (d > 0), 9 width of scalar-replaced state (0 none), 10-17 its locals,
-#     18 carry flag, 19 20 21 carry get node, set node, local, 22 23 index bound flag and value,
+#     18 carry flag, 19 20 21 carry get node, set node, local, 22 23 index bound flag and value, 24
+#     the carry's first-trip select node + 1 (0 none, see `wxfts`),
 #     32-95 the host's parameter sources (kind 0 local / 1 literal value, value) for 32 parameters
 #   640-1279 loop contexts: context d at 640 + 160 d (see `wxiter`)
 #   1280-3327 work stack: item i at 1280 + 4 i (kind, a, b, c), 512 items
@@ -4969,7 +4970,8 @@ end
 # previous element (flag, get node, set node, local), 17 extras, 18 19 the count operand, 20
 # unroll, 21 phase, 22 copy, 23 phases, 24-28 and 29-33 the two phases (limit kind: 0 the count
 # operand, 1 a constant, 2 the bound local; literal flag, literal or constant, first trip,
-# copies per back edge), 34 the bound local, 35 fold, 37 body node count, 40-71 the induction
+# copies per back edge), 34 the bound local, 35 fold, 36 the carry's first-trip select node + 1
+# (0 none), 37 body node count, 40-71 the induction
 # locals + 1 by body node, 72-103 their steps, 104-167 the extras as (known constant, value or
 # local), 168-175 the state words' locals.
 
@@ -5123,7 +5125,16 @@ bz fold wxfs 1 by a 20 bq
 b0 fold wxfs 1 bz a 21 br
 b1 fold wxfs 1 b0 a 22 ac
 b2 fold wxfs 1 b1 a 23 aj
-b3 fold wxhx v b2 p2
+hs_a mul p2 176
+hs_b add hs_a 640
+hs_c add hs_b 36
+hs_d shr hs_c 7
+hs_e and hs_c 127
+hs_f get p0 hs_d
+hs_g get hs_f hs_e
+hs_h select bk hs_g 0
+hs_i fold wxfs 1 b2 a 24 hs_h
+b3 fold wxhx v hs_i p2
 b4 fold wxhf bn b3 p2
 ret b4
 end
@@ -6451,6 +6462,93 @@ di get c9 de
 dj select dd dh di
 dk set c9 de dj
 ret dk
+end
+# the carried read's only use as `select (eq p1 0) K get` (src/wasm.ts `firstTripSelect`):
+# operand p1 of a node (operands from p2, table p4) is body node p3: count it into p0
+fn wxfu0 u32 u32 u32 u32 u32x128x512 -> u32
+a add p2 p1
+b call wxok p4 a
+c call wxov p4 a
+d eq b 1
+e eq c p3
+f and d e
+g select f 1 p0
+ret g
+end
+# (uses, first user) of body node p3 over body node p1 (body from p2, nodes p4, operands p5)
+fn wxfu1 (u32,u32) u32 u32 u32 u32x128x132 u32x128x512 -> (u32,u32)
+a add p2 p1
+b call wxnw p4 a 2
+c call wxnw p4 a 3
+d fold wxfu0 b 0 c p3 p5
+e at p0 0
+f at p0 1
+g add e d
+h eq d 1
+i eq e 0
+j and h i
+k select j p1 f
+l rec g k
+ret l
+end
+# (applies, K, select node) for the carried read p2 of the body from p0 (p1 nodes, ret operand
+# kind p3 value p4, nodes p5, operands p6)
+fn wxfts u32 u32 u32 u32 u32 u32x128x132 u32x128x512 -> (u32,u32,u32)
+a rec 0 0
+b fold wxfu1 p1 a p0 p2 p5 p6
+c at b 0
+d at b 1
+e add p0 d
+f call wxnw p5 e 1
+g call wxnw p5 e 3
+h eq c 1
+i eq f 18
+j and h i
+k select j g 0
+l add k 1
+m add k 2
+n call wxok p6 k
+o call wxov p6 k
+q call wxok p6 l
+r call wxov p6 l
+s call wxok p6 m
+t call wxov p6 m
+u eq p3 1
+v eq p4 p2
+w and u v
+x select w false true
+y eq q 3
+z eq s 1
+aa eq t p2
+ab eq n 1
+ac and j x
+ad and ac y
+ae and ad z
+af and ae aa
+ag and af ab
+ah select ag o 0
+ai add p0 ah
+aj call wxnw p5 ai 1
+ak call wxnw p5 ai 3
+al select ag ak 0
+am add al 1
+an call wxok p6 al
+ao call wxov p6 al
+ap call wxok p6 am
+aq call wxov p6 am
+ar eq aj 12
+as eq an 2
+au eq ao 1
+av eq ap 3
+aw eq aq 0
+ax and ag ar
+ay and ax as
+az and ay au
+a0 and az av
+a1 and a0 aw
+a2 select a1 1 0
+a3 rec a2 r d
+ret a3
 end
 # carried previous element (src/wasm.ts `carriedRead`): register 31 counts the set/put nodes of
 # the body (first node p2), 28 := 1 when the body is `set p0 p1 v` (its ret) with exactly one update
@@ -8087,14 +8185,35 @@ dv get du dt
 dw add an 4294967295
 dx rem dw bh
 dy mul dx 4
-dz select dp 1 0
+ft_a call wxfw p3 av 4
+ft_b call wxfw p3 av 5
+ft_c call wxfw p3 av 6
+ft_d call waretop p5 ft_c
+ft_e at ft_d 0
+ft_f at ft_d 1
+ft_g call wxfts ft_a ft_b c4 ft_e ft_f p4 p5
+ft_h at ft_g 0
+ft_i at ft_g 1
+ft_j at ft_g 2
+ft_k eq ft_h 1
+ft_u eq an 0
+ft_l and dp ft_u
+ft_m and ft_l ft_k
+ft_n select ft_m false true
+ft_o and dp ft_n
+dz select ft_o 1 0
 d0 fold wxlg dz dr l
-d1 select dp 1 0
+d1 select ft_o 1 0
 d2 fold wxld d1 d0 dy
+ft_p select ft_m 1 0
+ft_q fold wxkc ft_p d2 ft_i
 d3 select dp 1 0
-d4 fold wxls d3 d2 dv
+d4 fold wxls d3 ft_q dv
+ft_r add ft_j 1
+ft_s select ft_m ft_r 0
+ft_t fold wxcs 1 d4 a 36 ft_s
 d5 select dp 1 0
-d6 fold wxcs 1 d4 a 13 d5
+d6 fold wxcs 1 ft_t a 13 d5
 d7 fold wxcs 1 d6 a 14 c4
 d8 fold wxcs 1 d7 a 15 c8
 d9 fold wxcs 1 d8 a 16 dv
@@ -8450,7 +8569,17 @@ cm get a9 ck
 cn get cm cl
 co ne cg 0
 cp eq cn p3
-cq and co cp
+cs_a mul p2 128
+cs_b add cs_a 128
+cs_c add cs_b 24
+cs_d shr cs_c 7
+cs_e and cs_c 127
+cs_f get a9 cs_d
+cs_g get cs_f cs_e
+cs_h add p3 1
+cs_i eq cs_g cs_h
+cs_j or cp cs_i
+cq and co cs_j
 cr mul p2 128
 cs add cr 128
 ct add cs 9
