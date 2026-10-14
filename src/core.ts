@@ -59,7 +59,8 @@ export function containsIo(t: Type): boolean {
   if (t === 'io') return true;
   if (typeof t === 'string') return false;
   if (t.kind === 'arr') return containsIo(t.elem);
-  return t.fields.some(containsIo);
+  for (const f of t.fields) if (containsIo(f)) return true;
+  return false;
 }
 export interface ArrayType {
   readonly kind: 'arr';
@@ -81,14 +82,15 @@ export function isPrimitive(t: Type): t is 'u32' | 'bool' | 'io' {
 }
 
 export function typeEquals(a: Type, b: Type): boolean {
-  if (isScalar(a) || isScalar(b) || a === 'io' || b === 'io') return a === b;
+  // Types are immutable: one object (a type passed along from a signature) equals itself.
+  if (a === b) return true;
+  if (typeof a === 'string' || typeof b === 'string') return false;
   if (a.kind === 'arr')
     return b.kind === 'arr' && a.length === b.length && typeEquals(a.elem, b.elem);
-  return (
-    b.kind === 'rec' &&
-    a.fields.length === b.fields.length &&
-    a.fields.every((f, i) => typeEquals(f, b.fields[i] as Type))
-  );
+  if (b.kind !== 'rec' || a.fields.length !== b.fields.length) return false;
+  for (let i = 0; i < a.fields.length; i += 1)
+    if (!typeEquals(a.fields[i] as Type, b.fields[i] as Type)) return false;
+  return true;
 }
 
 export function formatType(t: Type): string {
@@ -548,10 +550,81 @@ export const LIMITS = {
   maxIoOutput: 1 << 20,
 } as const;
 
-const IDENT = /^[a-z][a-z0-9_]{0,63}$/;
-const PARAM = /^p(0|[1-9][0-9]*)$/;
-const U32_LITERAL = /^(0|[1-9][0-9]*)$/;
-const FIRST_WORD = /^\S*/;
+// The word shapes below are tested over char codes, not with regular expressions: a regular expression
+// starts in V8's regexp interpreter, and a cold `a0 check` runs these once per word of the program.
+
+/** `/^[a-z][a-z0-9_]{0,63}$/.test(s)`. */
+function isIdentShape(s: string): boolean {
+  const n = s.length;
+  if (n === 0 || n > 64) return false;
+  let c = s.charCodeAt(0);
+  if (c < 97 || c > 122) return false;
+  for (let i = 1; i < n; i += 1) {
+    c = s.charCodeAt(i);
+    if (!((c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95)) return false;
+  }
+  return true;
+}
+
+/** `/^(0|[1-9][0-9]*)$/.test(s.slice(from))`. */
+function isDecimalFrom(s: string, from: number): boolean {
+  const n = s.length;
+  if (from >= n) return false;
+  const c0 = s.charCodeAt(from);
+  if (c0 === 48) return n === from + 1;
+  if (c0 < 49 || c0 > 57) return false;
+  for (let i = from + 1; i < n; i += 1) {
+    const c = s.charCodeAt(i);
+    if (c < 48 || c > 57) return false;
+  }
+  return true;
+}
+
+/** `/^p(0|[1-9][0-9]*)$/.test(s)`: a parameter reference. */
+function isParamWord(s: string): boolean {
+  return s.charCodeAt(0) === 112 && isDecimalFrom(s, 1);
+}
+
+/** Whether `c` is a char code `\s` matches. */
+function isSpaceCode(c: number): boolean {
+  return (
+    c === 32 ||
+    (c >= 9 && c <= 13) ||
+    c === 0xa0 ||
+    c === 0x1680 ||
+    (c >= 0x2000 && c <= 0x200a) ||
+    c === 0x2028 ||
+    c === 0x2029 ||
+    c === 0x202f ||
+    c === 0x205f ||
+    c === 0x3000 ||
+    c === 0xfeff
+  );
+}
+
+// The first word of `text`: what `/^\S*/` matches at its start.
+function firstWord(text: string): string {
+  const n = text.length;
+  let i = 0;
+  while (i < n && !isSpaceCode(text.charCodeAt(i))) i += 1;
+  return i === n ? text : text.slice(0, i);
+}
+
+/** `text.trim().split(/\s+/)`, in one pass over the char codes. */
+function splitWords(text: string): string[] {
+  const out: string[] = [];
+  const n = text.length;
+  let i = 0;
+  for (;;) {
+    while (i < n && isSpaceCode(text.charCodeAt(i))) i += 1;
+    if (i === n) break;
+    const start = i;
+    while (i < n && !isSpaceCode(text.charCodeAt(i))) i += 1;
+    out.push(start === 0 && i === n ? text : text.slice(start, i));
+  }
+  if (out.length === 0) out.push('');
+  return out;
+}
 const RESERVED = new Set(['fn', 'ret', 'end', 'patch', 'true', 'false']);
 const U32_MAX = 0xffff_ffff;
 
@@ -561,11 +634,11 @@ export function utf8Length(text: string): number {
 }
 
 export function isValidIdentifier(id: string): boolean {
-  return IDENT.test(id) && !RESERVED.has(id) && !PARAM.test(id);
+  return isIdentShape(id) && !RESERVED.has(id) && !isParamWord(id);
 }
 
 export function isValidFunctionName(name: string): boolean {
-  return IDENT.test(name) && !RESERVED.has(name);
+  return isIdentShape(name) && !RESERVED.has(name);
 }
 
 /** A line of source as the checker compares it: comment removed, whitespace normalised. */
@@ -680,8 +753,8 @@ export function parseType(text: string, line?: number, header?: string): Type {
 export function parseOperand(text: string, line?: number, lineText?: string): Operand {
   if (text === 'true') return { kind: 'bool', value: true };
   if (text === 'false') return { kind: 'bool', value: false };
-  if (PARAM.test(text)) return { kind: 'param', index: Number(text.slice(1)) };
-  if (U32_LITERAL.test(text)) {
+  if (isParamWord(text)) return { kind: 'param', index: Number(text.slice(1)) };
+  if (isDecimalFrom(text, 0)) {
     const value = Number(text);
     if (value > U32_MAX) throw diag('A0004', [text], line === undefined ? {} : { line });
     return { kind: 'u32', value };
@@ -712,7 +785,7 @@ export function parseOperand(text: string, line?: number, lineText?: string): Op
     }
     if (
       lower !== text &&
-      (lower === 'true' || lower === 'false' || PARAM.test(lower) || isValidIdentifier(lower))
+      (lower === 'true' || lower === 'false' || isParamWord(lower) || isValidIdentifier(lower))
     ) {
       throw diag('A0003', [text], {
         ...at,
@@ -879,10 +952,23 @@ function nestedError(
   return cls === e.code ? e : new A0Error(e.detail, e.line, { ...e.detailOf(), code: cls });
 }
 
+/** `words.map((w) => parseOperand(w, line, lineText))`, without a closure per line. */
+function operandsOf(
+  words: readonly string[],
+  line: number | undefined,
+  lineText: string,
+): Operand[] {
+  const out: Operand[] = [];
+  for (let k = 0; k < words.length; k += 1)
+    out.push(parseOperand(words[k] as string, line, lineText));
+  return out;
+}
+
 /** Parse one instruction line `id op operand...` (no validation of references). */
 export function parseNode(lineText: string, line?: number): Node {
   const at = line === undefined ? {} : { line };
-  const textMatch = TEXT_LINE.exec(lineText.trim());
+  // TEXT_LINE needs a quote: a line without one skips the regular expression.
+  const textMatch = lineText.includes('"') ? TEXT_LINE.exec(lineText.trim()) : null;
   if (textMatch !== null) {
     // `id text "..."` desugars to `arr` of UTF-8 byte words; the source form is retained.
     const [, id, raw] = textMatch;
@@ -897,10 +983,11 @@ export function parseNode(lineText: string, line?: number): Node {
     }
     return { id, op: 'arr', args: [...bytes].map((value) => ({ kind: 'u32', value })), text };
   }
-  const parts = lineText.trim().split(/\s+/);
-  const [id, word, ...rest] = parts;
+  const parts = splitWords(lineText);
+  const id = parts[0];
+  const word = parts[1];
+  const rest = parts.slice(2);
   if (id === undefined || word === undefined) throw diag('A0009', [], at);
-  const operand = (r: string): Operand => parseOperand(r, line, lineText);
   if (!isValidIdentifier(id)) {
     const colon = id.endsWith(':') && isValidIdentifier(id.slice(0, -1));
     const snake = lowerName(id);
@@ -919,10 +1006,18 @@ export function parseNode(lineText: string, line?: number): Node {
           : {}),
     });
   }
-  if (rest.some((r) => r.startsWith('(') || r.endsWith(')')))
-    throw nestedError(id, [id, word], rest, lineText, line, 'parse');
+  let nested = false;
+  for (let k = 0; k < rest.length; k += 1) {
+    const r = rest[k] as string;
+    if (r.charCodeAt(0) === 40 || r.charCodeAt(r.length - 1) === 41) {
+      nested = true;
+      break;
+    }
+  }
+  if (nested) throw nestedError(id, [id, word], rest, lineText, line, 'parse');
   // `id F args…` with F a function name (not an op) is the direct form of `id call F args…`.
-  if (isDirectCallee(word)) return { id, op: 'call', callee: word, args: rest.map(operand) };
+  if (isDirectCallee(word))
+    return { id, op: 'call', callee: word, args: operandsOf(rest, line, lineText) };
   const op = opOf(word);
   if (op === undefined) {
     const lower = word.toLowerCase();
@@ -965,7 +1060,7 @@ export function parseNode(lineText: string, line?: number): Node {
     ) {
       throw diag('A0012', [], at);
     }
-    return { id, op, pred, callee, args: args.map(operand) };
+    return { id, op, pred, callee, args: operandsOf(args, line, lineText) };
   }
   if (op === 'call' || op === 'fold') {
     const [callee, ...args] = rest;
@@ -983,7 +1078,7 @@ export function parseNode(lineText: string, line?: number): Node {
           : {}),
       });
     }
-    return { id, op, callee, args: args.map(operand) };
+    return { id, op, callee, args: operandsOf(args, line, lineText) };
   }
   if (OP_ARITY[op] >= 0 && rest.length !== OP_ARITY[op]) {
     // an associative binary op written with more operands: show the chain that says it
@@ -1021,7 +1116,7 @@ export function parseNode(lineText: string, line?: number): Node {
     });
   }
   if (OP_ARITY[op] < 0 && rest.length === 0) throw diag('A0015', [op], at);
-  return { id, op, args: rest.map(operand) };
+  return { id, op, args: operandsOf(rest, line, lineText) };
 }
 
 // ---------------------------------------------------------------------------
@@ -1062,7 +1157,8 @@ export function retOperandError(
 }
 
 export function parse(source: string): Program {
-  if (utf8Length(source) > LIMITS.maxSourceBytes) {
+  // A UTF-16 unit is at most 3 UTF-8 bytes: a source that short cannot be over, and is not encoded to measure it.
+  if (source.length * 3 > LIMITS.maxSourceBytes && utf8Length(source) > LIMITS.maxSourceBytes) {
     throw diag('A0016', [LIMITS.maxSourceBytes]);
   }
   const lines = source.split(/\r?\n/);
@@ -1074,8 +1170,9 @@ export function parse(source: string): Program {
     while (i < lines.length) {
       const raw = lines[i] ?? '';
       i += 1;
-      const text = stripComment(raw).trim();
-      const comment = lineComment(raw);
+      const at = commentStart(raw);
+      const text = (at < 0 ? raw : raw.slice(0, at)).trim();
+      const comment = at < 0 ? undefined : raw.slice(at).trimEnd();
       if (text.length === 0) {
         if (comment !== undefined) pending.push(comment);
         continue;
@@ -1142,7 +1239,7 @@ export function parse(source: string): Program {
     const specs = new SpecBuilder(name);
     for (let body = next(); body !== undefined; body = next()) {
       // The first word, as `split(/\s+/)[0]` gives it (the text is trimmed), without splitting the whole line.
-      const first = (FIRST_WORD.exec(body.text) as RegExpExecArray)[0];
+      const first = firstWord(body.text);
       // Spec lines stand between the header and the first node (or `ret`).
       if (nodes.length === 0 && ret === undefined) {
         const word = specWordOf(body.text);
@@ -1566,7 +1663,8 @@ function checkLinearity(
   consumed: Set<string>,
   taken: Map<string, number>,
 ): void {
-  for (const [k, arg] of node.args.entries()) {
+  for (let k = 0; k < node.args.length; k += 1) {
+    const arg = node.args[k] as Operand;
     const t = argTypes[k] as Type;
     if (!containsIo(t)) continue;
     const key = arg.kind === 'param' ? `p${arg.index}` : arg.kind === 'node' ? arg.id : '';
@@ -1751,8 +1849,12 @@ function callType(
   if (argTypes.length !== callee.params.length) {
     throw diag('A0219', [where, callee.name, callee.params.length, argTypes.length]);
   }
-  for (const [i, t] of callee.params.entries()) {
-    expect(argTypes[i] as Type, t, `${where} argument ${i}`);
+  const params = callee.params;
+  for (let i = 0; i < params.length; i += 1) {
+    const t = params[i] as Type;
+    // The label is built only for the diagnostic.
+    if (!typeEquals(argTypes[i] as Type, t))
+      expect(argTypes[i] as Type, t, `${where} argument ${i}`);
   }
   calls.set(callee.name, callee);
   iter.static = Math.max(iter.static, callee.staticIterations);
@@ -1784,24 +1886,29 @@ function foldType(
   }
   expect(count, 'u32', `${where} trip count`);
   // Every body mismatch names the step's expected header and the call shape it implies.
-  const bodyFix = foldBodyFix(node.op === 'loop' ? 'loop' : 'fold', callee, init, extra);
+  // (Built only when a diagnostic needs it: it is a pure function of these operands.)
+  const fixOf = (): string =>
+    foldBodyFix(node.op === 'loop' ? 'loop' : 'fold', callee, init, extra);
   const expectBody = (actual: Type, wanted: Type, what: string): void => {
     if (!typeEquals(actual, wanted))
       throw diag('A0213', [where, what, formatType(wanted), formatType(actual)], {
         expected: formatType(wanted),
         actual: formatType(actual),
-        fix: bodyFix,
+        fix: fixOf(),
       });
   };
   const [stateT, indexT, ...extraT] = callee.params;
   if (stateT === undefined || indexT === undefined)
-    throw diag('A0214', [where, callee.name], { fix: bodyFix });
+    throw diag('A0214', [where, callee.name], { fix: fixOf() });
   expectBody(indexT, 'u32', 'body index parameter');
   expectBody(init, stateT, 'initial state');
   expectBody(callee.result, stateT, 'body result');
   if (extra.length !== extraT.length)
-    throw diag('A0215', [where, callee.name, extraT.length, extra.length], { fix: bodyFix });
-  for (const [i, t] of extraT.entries()) expectBody(extra[i] as Type, t, `extra argument ${i}`);
+    throw diag('A0215', [where, callee.name, extraT.length, extra.length], { fix: fixOf() });
+  for (let i = 0; i < extraT.length; i += 1) {
+    const t = extraT[i] as Type;
+    if (!typeEquals(extra[i] as Type, t)) expectBody(extra[i] as Type, t, `extra argument ${i}`);
+  }
   calls.set(callee.name, callee);
   if (node.op === 'loop') {
     const pred = scope.get(node.pred ?? '');
@@ -1878,8 +1985,12 @@ export function validateFunction(
     if (OP_ARITY[node.op] < 0 && !hasCallee && node.args.length === 0) {
       throw diag('A0307', [where, node.op]);
     }
-    const argTypes = node.args.map((arg) => operandType(arg, fn, types, defined, where));
-    for (const arg of node.args) {
+    const args = node.args;
+    const argTypes: Type[] = [];
+    for (let k = 0; k < args.length; k += 1)
+      argTypes.push(operandType(args[k] as Operand, fn, types, defined, where));
+    for (let k = 0; k < args.length; k += 1) {
+      const arg = args[k] as Operand;
       if (
         arg.kind === 'u32' &&
         (!Number.isInteger(arg.value) || arg.value < 0 || arg.value > U32_MAX)
@@ -2046,8 +2157,9 @@ export function formatNode(node: Node): string {
     return `${node.id} text ${formatTextLiteral(node.text)}`;
   const pred = node.op === 'loop' ? ` ${node.pred ?? ''}` : '';
   const callee = node.callee !== undefined ? ` ${node.callee}` : '';
-  const args = node.args.length > 0 ? ` ${node.args.map(formatOperand).join(' ')}` : '';
-  return `${node.id} ${node.op}${pred}${callee}${args}`;
+  let out = `${node.id} ${node.op}${pred}${callee}`;
+  for (const arg of node.args) out += ` ${formatOperand(arg)}`;
+  return out;
 }
 
 const canonicalText = new WeakMap<Func, string>();

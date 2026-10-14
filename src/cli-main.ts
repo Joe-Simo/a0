@@ -170,6 +170,19 @@ function formatContract(c: ContractResult, file: string | undefined, deny: boole
   return `${at}${level}: ${formatDiagnostic(c.error, false)}`;
 }
 
+/**
+ * End a one-shot command once what it wrote has reached stdout and stderr. A natural exit frees the
+ * whole heap page by page before the process goes (about 10 ms after a check of a large program);
+ * `process.exit` skips that teardown. The exit code is `process.exitCode`, as on a natural exit.
+ */
+function exitWhenFlushed(): Promise<void> {
+  const flush = (s: NodeJS.WriteStream): Promise<void> =>
+    new Promise((done) => {
+      s.write('', () => done());
+    });
+  return Promise.all([flush(process.stdout), flush(process.stderr)]).then(() => process.exit());
+}
+
 async function main(args: readonly string[]): Promise<void> {
   if (args.length === 1 && (args[0] === '--version' || args[0] === '-V' || args[0] === 'version')) {
     process.stdout.write(`a0 ${A0_VERSION} (compiler ${COMPILER_VERSION})\n`);
@@ -256,6 +269,7 @@ async function main(args: readonly string[]): Promise<void> {
         );
       }
       if (failed > 0) process.exitCode = 1;
+      await exitWhenFlushed();
       return;
     }
     case 'explain': {
