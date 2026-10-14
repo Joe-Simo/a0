@@ -2789,7 +2789,13 @@ cur_c and lb 127
 cur get cur_b cur_c
 cz ne cur 0
 np select pure false true
-lv or cz np
+lv0 or cz np
+sv1 call wxfg p0 p2 25
+sv2 call wxfg p0 p2 27
+sv3 ne sv1 0
+sv4 eq sv2 j
+sv5 and sv3 sv4
+lv or lv0 sv5
 lvw select lv 1 0
 m0_a shr lb 7
 m0_b get p0 m0_a
@@ -3194,6 +3200,15 @@ h get p0 f
 i get h g
 j fold wxrs 1 p0 a b 0 i
 ret j
+end
+# (the current read of a sliding pair) its local is the host's cur local: frame word 25 - 1
+fn wxhsld u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+a at p2 0
+b at p2 1
+c call wxfg p0 a 25
+d sub c 1
+e fold wxrs 1 p0 a b 0 d
+ret e
 end
 # (scalar state in locals) a read of p0 at a literal index is that word's local: field
 # (index mod width) of the host
@@ -4506,7 +4521,16 @@ u select q 1 0
 v fold wxld u l p
 w select t 1 0
 x fold wxadd w v p
-y fold wxset 1 x a b
+sn0 call wxfg x a 25
+sn1 call wxfg x a 27
+sn2 ne sn0 0
+sn3 eq sn1 b
+sn4 and sn2 sn3
+sn5 select sn4 0 1
+y0 fold wxset sn5 x a b
+sn6 select sn4 1 0
+sn7 fold wxbind sn6 y0 a b sn0
+y fold wxls sn6 sn7 sn0
 ret y
 end
 # at (27): field (literal operand 1, else 0) of a record, loaded or its address
@@ -4975,7 +4999,13 @@ s set p0 m r
 t select h c 0
 u fold wxsrc t s a d p5
 v select h 1 0
-zqw fold wxcan v u a e 0 8 0 p3 p4 p5 p6 p7 p8 p9 p10 0
+zsl0 add a 1
+zsl2 fold wxfs 1 u zsl0 9 0
+zsl3 fold wxfs 1 zsl2 zsl0 18 0
+zsl4 fold wxfs 1 zsl3 zsl0 22 0
+zsl5 fold wxfs 1 zsl4 zsl0 24 0
+zsl1 fold wxfs 1 zsl5 zsl0 25 0
+zqw fold wxcan v zsl1 a e 0 8 0 p3 p4 p5 p6 p7 p8 p9 p10 0
 zqx shr 16 7
 zqy and 16 127
 zqz get zqw zqx
@@ -5269,7 +5299,17 @@ hs_f get p0 hs_d
 hs_g get hs_f hs_e
 hs_h select bk hs_g 0
 hs_i fold wxfs 1 b2 a 24 hs_h
-b3 fold wxhx v hs_i p2
+sl1 call wxcg hs_i p2 39
+sl0 call wxcg hs_i p2 38
+sl2 shr sl0 16
+sl3 and sl0 65535
+sl4 select bk sl1 0
+sl5 select bk sl2 0
+sl6 select bk sl3 0
+sl7 fold wxfs 1 hs_i a 25 sl4
+sl8 fold wxfs 1 sl7 a 26 sl5
+sl9 fold wxfs 1 sl8 a 27 sl6
+b3 fold wxhx v sl9 p2
 b4 fold wxhf bn b3 p2
 ret b4
 end
@@ -5988,7 +6028,13 @@ b9 get b8 b7
 ca ne g 0
 cb select ca false true
 cc select cb 1 0
-cd fold wxls cc p0 n
+st0 call wxcg p0 p2 39
+st1 ne st0 0
+st2 select st1 1 0
+st3 sub st0 1
+st4 fold wxlg st2 p0 st0
+st5 fold wxls st2 st4 st3
+cd fold wxls cc st5 n
 ce fold wxupd a4 cd p2
 cf fold wxlg 1 ce u
 cg fold wxkc 1 cf 1
@@ -6668,6 +6714,103 @@ a7 get a4 a5
 a8 set a7 a6 h
 a9 set a4 a5 a8
 ret a9
+end
+# sliding read (src/wasm.ts `slidingRead`): (found, cur node, next node, parameter) of the body
+# (first node p2); node p1 as the next read for cur node p3 of parameter p4: a get of p4 at a node
+# `add p1 1` (either order) of the body, not owned by a lazy select arm (shape table OWN column)
+fn wxsln (u32,u32,u32,u32) u32 u32 u32 u32 u32x128x132 u32x128x512 u32x128x310 -> (u32,u32,u32,u32)
+a at p0 0
+b add p2 p1
+c call wxnw p5 b 1
+d call wxnw p5 b 3
+e add d 1
+f call wxok p6 d
+g call wxov p6 d
+h call wxok p6 e
+i call wxov p6 e
+j eq c 25
+k eq f 2
+l eq g p4
+m eq h 1
+n add p2 i
+o call wxnw p5 n 1
+q call wxnw p5 n 3
+r add q 1
+s call wxok p6 q
+t call wxov p6 q
+u call wxok p6 r
+v call wxov p6 r
+w eq o 2
+x eq s 2
+y eq t 1
+z eq u 3
+aa eq v 1
+ab and x y
+ac and z aa
+ad and ab ac
+ae eq s 3
+af eq u 2
+ag and ae y
+ah eq v 1
+ai and af ah
+aj and ag ai
+ak or ad aj
+al add 2816 b
+am call wxsh p7 al
+an eq am 0
+ao eq a 0
+ap and j k
+aq and ap l
+ar and aq m
+as and ar w
+au and as ak
+av and au an
+aw and av ao
+ax select aw 1 a
+ay at p0 1
+az select aw p3 ay
+a0 at p0 2
+a1 select aw p1 a0
+a2 at p0 3
+a3 select aw p4 a2
+a4 rec ax az a1 a3
+ret a4
+end
+# node p1 of the body (first node p2, p3 nodes) as the cur read: a get of an extra parameter
+# (index 2 or more, an array of scalars: first parameter type p7 in tlist p8, types p9) at p1
+fn wxslc (u32,u32,u32,u32) u32 u32 u32 u32x128x132 u32x128x512 u32x128x310 u32 u32x128x65 u32x384x65 -> (u32,u32,u32,u32)
+a at p0 0
+b add p2 p1
+c call wxnw p4 b 1
+d call wxnw p4 b 3
+e add d 1
+f call wxok p5 d
+g call wxov p5 d
+h call wxok p5 e
+i call wxov p5 e
+j eq c 25
+k eq f 2
+l ge g 2
+m eq h 2
+n eq i 1
+o add p7 g
+q call wa65 p8 o
+r call wxtag p9 q
+s eq r 4
+t call wxty p9 q 2
+u call wxtag p9 t
+v lt u 4
+w eq a 0
+x and j k
+y and x l
+z and y m
+aa and z n
+ab and aa s
+ac and ab v
+ad and ac w
+ae select ad p3 0
+af fold wxsln ae p0 p2 p1 g p4 p5 p6
+ret af
 end
 # ---------------------------------------------------------------------------------------------
 # simd128 fill runs (src/wasm.ts `#vectorFill`). Scratch words of M: 19008 + j the v128 local of
@@ -8195,9 +8338,50 @@ d6 fold wxcs 1 ft_t a 13 d5
 d7 fold wxcs 1 d6 a 14 c4
 d8 fold wxcs 1 d7 a 15 c8
 d9 fold wxcs 1 d8 a 16 dv
+sl1 call wxfw p3 av 2
+sl2 call wxfw p3 av 4
+sl3 call wxfw p3 av 5
+sl4 rec 0 0 0 0
+sl5 and bo ci
+sl6 select sl5 sl3 0
+sl7 fold wxslc sl6 sl4 sl2 sl3 p4 p5 p10 sl1 p8 p7
+sl8 at sl7 0
+sl9 at sl7 1
+sm1 at sl7 2
+sm2 at sl7 3
+sm3 sub sm2 2
+sm4 mul sm3 2
+sm5 add sm4 104
+sm6 add sm4 105
+sm7 call wxcg d9 a sm5
+sm8 call wxcg d9 a sm6
+sm9 eq sl8 1
+sn1 eq sm7 0
+sn2 and sm9 sn1
+sn3 add sl1 sm2
+sn4 call wa65 p8 sn3
+sn5 call wxty p7 sn4 1
+sn6 select sn2 sn5 1
+sn7 rem an sn6
+sn8 mul sn7 4
+sn9 select sn2 1 0
+so1 fold wxnl sn9 d9
+so2 call wxg so1 16
+so3 fold wxnl sn9 so1
+so4 fold wxlg sn9 so3 sm8
+so5 fold wxld sn9 so4 sn8
+so6 fold wxls sn9 so5 so2
+so7 select sn2 sl9 0
+so8 select sn2 sm1 0
+so9 add so2 1
+sp1 select sn2 so9 0
+sp5 mul so7 65536
+sp6 add sp5 so8
+sp3 fold wxcs 1 so6 a 38 sp6
+sp4 fold wxcs 1 sp3 a 39 sp1
 ea shr 14 7
 eb and 14 127
-ec get d9 ea
+ec get sp4 ea
 ed get ec eb
 ee le bg 12
 ef and bo ci
@@ -8229,7 +8413,7 @@ e5 select en z e4
 e6 select ep ev 0
 e7 select en ag e6
 e8 select en 1 eh
-e9 fold wxphs 1 d9 a 0 e3 e5 e7 an e8
+e9 fold wxphs 1 sp4 a 0 e3 e5 e7 an e8
 fa select ex 1 0
 fb select es 1 0
 fc or fa fb
@@ -8595,7 +8779,15 @@ do and cy dn
 dp select b9 false true
 dq and dp cq
 dr select dq false true
-ds and dp dr
+ds0 and dp dr
+sx0 call wxfg a9 p2 25
+sx1 call wxfg a9 p2 26
+sx2 ne sx0 0
+sx3 eq sx1 p3
+sx4 and sx2 sx3
+sx5 and ds0 sx4
+sx6 select sx5 false true
+ds and ds0 sx6
 dt and ds c8
 du select dt false true
 dv and ds du
@@ -8661,7 +8853,9 @@ ff fold wxhind fe a9 b1
 fg select dq 1 0
 fh fold wxhcar fg ff b1
 fi select dt 1 0
-fj fold wxhfld fi fh b1
+sx7 select sx5 1 0
+sx8 fold wxhsld sx7 fh b1
+fj fold wxhfld fi sx8 b1
 fk select dw 1 0
 fl fold wxhwrd fk fj b1 p6
 fm select d6 1 0

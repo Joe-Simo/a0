@@ -1310,6 +1310,62 @@ const describe = (r: PathReport): string => {
 };
 
 const FILL_ZEROS = Array.from({ length: 16 }, () => '0').join(' ');
+/**
+ * Sliding reads of an extra argument (src/wasm.ts `slidingRead`): at p1 and p1 + 1 in an array
+ * fold body and a scalar one (either operand order, more trips than elements), a next read in a
+ * select arm, and a scalar callee with gets inlined after such a loop (no stale loop-host words).
+ */
+const SLIDE_SOURCE = `fn sfill u32x16 u32 u32 -> u32x16
+v mul p1 p2
+w xor v 77
+n set p0 p1 w
+ret n
+end
+fn ssmooth u32x16 u32 u32x16 -> u32x16
+j add p1 1
+u get p2 p1
+v get p2 j
+w add u v
+s shr w 1
+n set p0 p1 s
+ret n
+end
+fn sdiff u32 u32 u32x16 -> u32
+j add 1 p1
+u get p2 p1
+v get p2 j
+d xor u v
+r add p0 d
+ret r
+end
+fn slazy u32 u32 u32x16 -> u32
+j add p1 1
+u get p2 p1
+v get p2 j
+m mul v 3
+c lt u 40
+s select c m u
+r add p0 s
+ret r
+end
+fn spick u32x16 u32 -> u32
+a get p0 p1
+j add p1 1
+b get p0 j
+s sub a b
+ret s
+end
+fn slide u32 u32 -> u32
+z arr ${FILL_ZEROS}
+a fold sfill 16 z p0
+z2 arr ${FILL_ZEROS}
+b fold ssmooth 16 z2 a
+c fold sdiff 21 p1 b
+d fold slazy 16 c a
+e call spick b p1
+r add d e
+ret r
+end`;
 
 /**
  * Folds whose carried previous-element read is `select (eq p1 0) K get` (src/wasm.ts
@@ -1542,6 +1598,8 @@ async function main(): Promise<void> {
   // reads of fill-run folds (src/optimize.ts `readThroughFills`): the wrapped whole-length form,
   // a masked index below a shorter count, and reads that keep the fold
   programs.push(['fillread', parseAndValidate(FILL_READ_SOURCE), small]);
+  // sliding reads of an extra argument carried in a local (src/wasm.ts `slidingRead`)
+  programs.push(['slide', parseAndValidate(SLIDE_SOURCE), small]);
   // a carried previous element that starts at the first-trip value (src/wasm.ts `guardedCarry`)
   programs.push(['carrysel', parseAndValidate(CARRY_SELECT_SOURCE), small]);
   const prefix1k = KERNELS.find((k) => k.name === 'prefix1k');

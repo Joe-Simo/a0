@@ -811,6 +811,17 @@ interface InlineHost {
     /** A `select` that is the carried element on every trip (see `guardedCarry`). */
     readonly select?: string;
   };
+  /**
+   * A sliding read of an extra argument (see `slidingRead`): `cur` (reading pK at p1) is the
+   * local `curLocal`, and `next` (reading pK at p1 + 1) is bound to `nextLocal`, which the host
+   * moves to `curLocal` after each trip.
+   */
+  readonly slide?: {
+    readonly cur: string;
+    readonly next: string;
+    readonly curLocal: number;
+    readonly nextLocal: number;
+  };
   /** p1 is the host's trip index, below this literal bound (so p1 needs no masking below it). */
   readonly indexBound?: number;
 }
@@ -865,6 +876,37 @@ function guardedCarry(
   if (eq?.op !== 'eq' || !((isIndex(x) && isFirst(y)) || (isIndex(y) && isFirst(x))))
     return undefined;
   return { select: sel.id, first: k.value };
+}
+
+/**
+ * A fold body reading an extra aggregate argument pK (K >= 2, never updated by the loop) of
+ * scalar elements both at p1 and at `add p1 1`: trip i + 1's read at p1 is trip i's read at
+ * p1 + 1 (both indices wrap mod the length), so a backend may carry that value in a local
+ * instead of reloading it. The read at p1 + 1 must run on every trip (not in a lazy select arm).
+ */
+function slidingRead(body: TypedFunc): { cur: string; next: string; param: number } | undefined {
+  const defs = new Map(body.nodes.map((n) => [n.id, n]));
+  const lazy = lazyArms(body).owner;
+  const isParam = (o: Operand | undefined, i: number): boolean =>
+    o?.kind === 'param' && o.index === i;
+  const isOne = (o: Operand | undefined): boolean => o?.kind === 'u32' && o.value === 1;
+  for (const cur of body.nodes) {
+    const p = cur.args[0];
+    if (cur.op !== 'get' || p?.kind !== 'param' || p.index < 2 || !isParam(cur.args[1], 1))
+      continue;
+    const t = body.params[p.index];
+    if (t === undefined || isPrimitive(t) || t.kind !== 'arr' || !isPrimitive(t.elem)) continue;
+    for (const next of body.nodes) {
+      const j = next.args[1];
+      if (next.op !== 'get' || !isParam(next.args[0], p.index) || j?.kind !== 'node') continue;
+      const d = defs.get(j.id);
+      const [x, y] = d?.args ?? [];
+      const plusOne =
+        d?.op === 'add' && ((isParam(x, 1) && isOne(y)) || (isOne(x) && isParam(y, 1)));
+      if (plusOne && !lazy.has(next.id)) return { cur: cur.id, next: next.id, param: p.index };
+    }
+  }
+  return undefined;
 }
 
 /** Operations with no effect and no trap in an inlined body (one that can trap is never inlined). */
@@ -1236,7 +1278,7 @@ class FunctionEmitter {
     variant: Variant,
     params: readonly ParamSource[],
     limit: number,
-    loop: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'indexBound'> = {},
+    loop: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'slide' | 'indexBound'> = {},
     frameOk = false,
   ): boolean {
     if (!this.#canInline(callee, variant, params, limit, loop.fields, frameOk)) return false;
@@ -1373,7 +1415,8 @@ class FunctionEmitter {
     mark(fn.ret);
     for (let k = fn.nodes.length - 1; k >= 0; k -= 1) {
       const n = fn.nodes[k] as Node;
-      if (!PURE_OPS.has(n.op)) live.add(n.id);
+      // The next read of a sliding pair runs every trip: the host moves it to the cur local.
+      if (!PURE_OPS.has(n.op) || host?.slide?.next === n.id) live.add(n.id);
       if (live.has(n.id) && !byHost(n.id)) for (const a of n.args) mark(a);
     }
     return live;
@@ -1489,6 +1532,10 @@ class FunctionEmitter {
       this.locals.set(node.id, this.host.carry.local);
       return;
     }
+    if (this.host?.slide?.cur === node.id) {
+      this.locals.set(node.id, this.host.slide.curLocal);
+      return;
+    }
     const fields = this.host?.fields;
     if (this.#chain !== undefined && fields !== undefined) {
       const [base, k] = node.args;
@@ -1535,7 +1582,13 @@ class FunctionEmitter {
       return;
     }
     const [a, b] = node.args;
-    const set = (): void => c.local(OP.localSet, this.#bindScalar(node.id));
+    const slide = this.host?.slide;
+    const set = (): void => {
+      if (slide?.next === node.id) {
+        this.locals.set(node.id, slide.nextLocal);
+        c.local(OP.localSet, slide.nextLocal);
+      } else c.local(OP.localSet, this.#bindScalar(node.id));
+    };
     const rotate = this.rot.at.get(node.id);
     if (rotate !== undefined) {
       this.#emitRotate(node.id, rotate);
@@ -2027,10 +2080,25 @@ class FunctionEmitter {
       c.local(OP.localSet, local);
       carry = { ...carried, local, ...(guard === undefined ? {} : { select: guard.select }) };
     }
-    const loopHost: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'indexBound'> = {
+    // A sliding read of an extra argument: the element at the start index before the loop.
+    const sliding = node.op === 'fold' && inlineBody ? slidingRead(body) : undefined;
+    let slide: InlineHost['slide'];
+    const slideFrom =
+      sliding === undefined ? undefined : this.#source(extra[sliding.param - 2] as Operand);
+    if (sliding !== undefined && slideFrom !== undefined && 'local' in slideFrom) {
+      const { length } = body.params[sliding.param] as { length: number };
+      const curLocal = this.newLocal();
+      const nextLocal = this.newLocal();
+      c.local(OP.localGet, slideFrom.local);
+      c.mem(OP.load, (start % length) * 4);
+      c.local(OP.localSet, curLocal);
+      slide = { cur: sliding.cur, next: sliding.next, curLocal, nextLocal };
+    }
+    const loopHost: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'slide' | 'indexBound'> = {
       induction: inductionLocals,
       ...(fields === undefined ? {} : { fields }),
       ...(carry === undefined ? {} : { carry }),
+      ...(slide === undefined ? {} : { slide }),
       ...(lit === undefined ? {} : { indexBound: lit }),
     };
     const args = (): void => {
@@ -2056,6 +2124,9 @@ class FunctionEmitter {
       if (!inlineBody || !this.#tryInline(body, variant, sources(), INLINE_BODY_NODES, loopHost)) {
         args();
         c.call(aggregate ? `a0o_${body.name}` : `a0_${body.name}`);
+      } else if (slide !== undefined) {
+        c.local(OP.localGet, slide.nextLocal);
+        c.local(OP.localSet, slide.curLocal);
       }
       if (!aggregate) c.local(OP.localSet, state);
       for (const { local, step } of induction.values()) {
