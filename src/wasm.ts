@@ -804,7 +804,13 @@ interface InlineHost {
    * The previous element carried in a local: `get` (reading p0 at p1 - 1) is that local, and
    * after the in-place `set` (p0 at p1) the stored value becomes it (see `carriedRead`).
    */
-  readonly carry?: { readonly get: string; readonly set: string; readonly local: number };
+  readonly carry?: {
+    readonly get: string;
+    readonly set: string;
+    readonly local: number;
+    /** A `select (eq p1 0) K get` that is the carried value on every trip (see `firstTripSelect`). */
+    readonly select?: string;
+  };
   /** p1 is the host's trip index, below this literal bound (so p1 needs no masking below it). */
   readonly indexBound?: number;
 }
@@ -832,6 +838,30 @@ function carriedRead(body: TypedFunc): { get: string; set: string } | undefined 
       return { get: n.id, set: set.id };
   }
   return undefined;
+}
+
+/**
+ * The carried read's only use, `select (eq p1 0) K get` with a literal K: trip 0 picks K and every
+ * later trip picks the carried value, so when the loop starts at trip 0 the carry can start as K
+ * and the select is the carry itself (no select on the loop-carried chain).
+ */
+function firstTripSelect(body: TypedFunc, get: string): { id: string; value: number } | undefined {
+  const uses = body.nodes.filter((n) => n.args.some((a) => a?.kind === 'node' && a.id === get));
+  const sel = uses[0];
+  if (
+    uses.length !== 1 ||
+    sel?.op !== 'select' ||
+    (body.ret.kind === 'node' && body.ret.id === get)
+  )
+    return undefined;
+  const [cond, k, t] = sel.args;
+  if (k?.kind !== 'u32' || t?.kind !== 'node' || t.id !== get || cond?.kind !== 'node')
+    return undefined;
+  const eq = body.nodes.find((n) => n.id === cond.id);
+  const [x, zero] = eq?.args ?? [];
+  if (eq?.op !== 'eq' || x?.kind !== 'param' || x.index !== 1) return undefined;
+  if (zero?.kind !== 'u32' || zero.value !== 0) return undefined;
+  return { id: sel.id, value: k.value };
 }
 
 /** Fold state of at most this many one-word fields or elements is kept in locals. */
@@ -1404,7 +1434,7 @@ class FunctionEmitter {
       this.locals.set(node.id, induced);
       return;
     }
-    if (this.host?.carry?.get === node.id) {
+    if (this.host?.carry?.get === node.id || this.host?.carry?.select === node.id) {
       this.locals.set(node.id, this.host.carry.local);
       return;
     }
@@ -1923,10 +1953,15 @@ class FunctionEmitter {
     if (carried !== undefined && this.#inPlace(body, carried.set, sources())) {
       const local = this.newLocal();
       const { length } = t as { length: number };
-      c.local(OP.localGet, state);
-      c.mem(OP.load, (((start - 1) >>> 0) % length) * 4);
+      const first = start === 0 ? firstTripSelect(body, carried.get) : undefined;
+      if (first === undefined) {
+        c.local(OP.localGet, state);
+        c.mem(OP.load, (((start - 1) >>> 0) % length) * 4);
+      } else {
+        c.i32(first.value);
+      }
       c.local(OP.localSet, local);
-      carry = { ...carried, local };
+      carry = { ...carried, local, ...(first === undefined ? {} : { select: first.id }) };
     }
     const loopHost: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'indexBound'> = {
       induction: inductionLocals,
