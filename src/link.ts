@@ -8,8 +8,6 @@
  * Diagnostics raised on the combined text are mapped back to `file:line`.
  */
 
-import { existsSync } from 'node:fs';
-import { realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import {
   A0Error,
@@ -25,8 +23,9 @@ import {
   utf8Length,
   validate,
 } from './core.js';
-import { type Arities, parseDense } from './dense.js';
+import type { Arities, parseDense } from './dense.js';
 import { diag } from './diagnostics.js';
+import { existsSync, realpath } from './node-fs.js';
 import { specLineOf } from './spec.js';
 
 /** Dense files use this extension; any other file is read as canonical unless `dense` is set. */
@@ -127,6 +126,8 @@ export async function link(
     shown: string;
     fns: string[];
     profile: Profile;
+    /** The parse of `text`, when the file was canonical (reused when it is the whole program). */
+    parsed: Program | undefined;
   }[] = [];
   const visiting = new Set<string>();
   const done = new Set<string>();
@@ -167,6 +168,8 @@ export async function link(
       functions = parsed.functions;
       declared = profileOf(parsed);
     } else if (isDense) {
+      // dense.ts is loaded only for a dense file: a canonical `a0 check` never pays its start-up
+      const { parseDense } = await import('./dense.js');
       let parsed: ReturnType<typeof parseDense>;
       try {
         parsed = parseDense(shown, { known });
@@ -187,7 +190,14 @@ export async function link(
     sigsOf.set(abs, new Map([...usedSigs, ...functions.map((f) => [f.name, f] as const)]));
     visiting.delete(abs);
     done.add(abs);
-    order.push({ path: abs, text, shown, fns: functions.map((f) => f.name), profile: declared });
+    order.push({
+      path: abs,
+      text,
+      shown,
+      fns: functions.map((f) => f.name),
+      profile: declared,
+      parsed: parsedCanonical,
+    });
   };
   await visit(entry, undefined);
 
@@ -227,8 +237,13 @@ export async function link(
   }
   const combined = parts.join('\n');
   if (utf8Length(combined) > LIMITS.maxSourceBytes) throw diag('A0623', [LIMITS.maxSourceBytes]);
+  // A single canonical file with no `use` or `profile` line to drop is its own combined text: its
+  // parse above is the parse of `combined` (parse is a pure function of the text), so it is not
+  // parsed a second time.
+  const only = order.length === 1 ? order[0] : undefined;
+  const reuse = only?.parsed !== undefined && combined === only.text ? only.parsed : undefined;
   try {
-    const parsed = parse(combined);
+    const parsed = reuse ?? parse(combined);
     return {
       program: validate(profile === 'strict' ? { ...parsed, profile } : parsed),
       text: combined,
@@ -285,7 +300,9 @@ export async function parseFile(
       if (!seen.has(target)) await load(target, false);
       for (const [name, n] of seen.get(target) ?? []) known.set(name, n);
     }
-    const program = isDense ? parseDense(text, { known }) : parse(text);
+    const program = isDense
+      ? (await import('./dense.js')).parseDense(text, { known })
+      : parse(text);
     const own = new Map(program.functions.map((f) => [f.name, f.params.length] as const));
     seen.set(abs, new Map([...known, ...own]));
     return program;
