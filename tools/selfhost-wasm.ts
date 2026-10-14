@@ -1410,6 +1410,64 @@ ret x
 end
 `;
 
+// Recurrences fused with their consumer (src/optimize.ts `fuseRecurrence`): the carried previous
+// element seeded with the trip-0 arm (a parameter, a literal), and unseeded when the arms differ.
+const REC_SEED_SOURCE = `fn rpar u32x16 u32 u32 -> u32x16
+c eq p1 0
+j sub p1 1
+t get p0 j
+s select c p2 t
+a shl s 13
+b xor s a
+n set p0 p1 b
+ret n
+end
+fn rlit u32x16 u32 u32 -> u32x16
+c ne p1 0
+j sub p1 1
+t get p0 j
+s select c t 7
+a mul s 3
+b add a p2
+n set p0 p1 b
+ret n
+end
+fn rmix u32x16 u32 u32 -> u32x16
+c eq p1 0
+j sub p1 1
+t get p0 j
+s select c p2 t
+u select c 9 t
+b xor s u
+n set p0 p1 b
+ret n
+end
+fn rstep u32 u32 u32x16 -> u32
+v get p2 p1
+w xor p0 v
+m mul w 5
+ret m
+end
+fn spar u32 u32 -> u32
+z arr ${FILL_ZEROS}
+a fold rpar 16 z p0
+r fold rstep 16 p1 a
+ret r
+end
+fn slit u32 u32 -> u32
+z arr ${FILL_ZEROS}
+a fold rlit 16 z p0
+r fold rstep 16 p1 a
+ret r
+end
+fn smix u32 u32 -> u32
+z arr ${FILL_ZEROS}
+a fold rmix 16 z p0
+r fold rstep 16 p1 a
+ret r
+end
+`;
+
 async function main(): Promise<void> {
   const clang = findClang();
   if (clang.path === undefined) throw new Error('clang not found');
@@ -1445,6 +1503,7 @@ async function main(): Promise<void> {
   const prefix1k = KERNELS.find((k) => k.name === 'prefix1k');
   if (prefix1k === undefined) throw new Error('exec-bench kernel prefix1k is missing');
   programs.push(['bench/prefix1k', parseAndValidate(prefix1k.a0), small]);
+  programs.push(['recseed', parseAndValidate(REC_SEED_SOURCE), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,

@@ -1906,6 +1906,33 @@ function fuseIntoState(site: FuseSite): TypedFunc | undefined {
   return rewriteTop(site, [{ ...consumer, callee: fused.name, args }], fused);
 }
 
+/**
+ * The selects that guard a recurrence's previous-element reads, and their common trip-0 arm.
+ * Every user of every read in `prev` is a select picking the read on p1 != 0 (guardedPrevReads);
+ * when each picks the same loop-invariant K on p1 == 0, K being a u32 literal or an extra
+ * parameter (index >= 2), the fused fold can seed the carried element with K and use it in place
+ * of the select: trip 0 picks K, the carried init, and trip i >= 1 picks element i-1, the carried
+ * value. Undefined when there is no read or the arms differ.
+ */
+function seededPrevSelects(
+  body: TypedFunc,
+  prev: ReadonlySet<string>,
+): { selects: ReadonlySet<string>; seed: Operand } | undefined {
+  let seed: Operand | undefined;
+  const selects = new Set<string>();
+  for (const n of body.nodes)
+    for (const [j, a] of n.args.entries()) {
+      if (a.kind !== 'node' || !prev.has(a.id)) continue;
+      if (n.op !== 'select' || (j !== 1 && j !== 2)) return undefined;
+      const other = n.args[3 - j] as Operand;
+      if (!(other.kind === 'u32' || (other.kind === 'param' && other.index >= 2))) return undefined;
+      if (seed !== undefined && !sameOperand(seed, other)) return undefined;
+      seed = other;
+      selects.add(n.id);
+    }
+  return seed === undefined ? undefined : { selects, seed };
+}
+
 function fuseRecurrence(site: FuseSite): TypedFunc | undefined {
   const { fn, consumer, body2, k, producer, body1, shape, n1, n2 } = site;
   const s2 = body2.params[0];
@@ -1923,10 +1950,11 @@ function fuseRecurrence(site: FuseSite): TypedFunc | undefined {
     { kind: 'u32', value: 1 },
   ]);
   const extraBase = body2.params.length - 1;
+  const seeded = seededPrevSelects(body1, shape.prev);
   const map1 = b.copy(
     body1,
     (i) => (i === 1 ? { kind: 'param', index: 1 } : { kind: 'param', index: extraBase + i - 2 }),
-    (n) => (shape.prev.has(n.id) ? carried : undefined),
+    (n) => (shape.prev.has(n.id) || seeded?.selects.has(n.id) === true ? carried : undefined),
     shape.set,
   );
   const element = map1(shape.set.args[2] as Operand);
@@ -1951,6 +1979,13 @@ function fuseRecurrence(site: FuseSite): TypedFunc | undefined {
     taken.add(`${base}${i}`);
     return `${base}${i}`;
   };
+  const seed = seeded?.seed;
+  const seedTop: Operand =
+    seed === undefined
+      ? { kind: 'u32', value: 0 }
+      : seed.kind === 'param'
+        ? (producer.args[seed.index] as Operand)
+        : seed;
   const initId = freshTop('zfi');
   const foldId = freshTop('zff');
   const args: Operand[] = [
@@ -1962,7 +1997,7 @@ function fuseRecurrence(site: FuseSite): TypedFunc | undefined {
   return rewriteTop(
     site,
     [
-      { id: initId, op: 'rec', args: [consumer.args[1] as Operand, { kind: 'u32', value: 0 }] },
+      { id: initId, op: 'rec', args: [consumer.args[1] as Operand, seedTop] },
       { id: foldId, op: 'fold', callee: fused.name, args },
       {
         id: consumer.id,

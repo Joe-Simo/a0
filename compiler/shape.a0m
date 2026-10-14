@@ -1672,7 +1672,8 @@ end
 # 1 kind (1 extra, 2 state, 3 recurrence), 2 parameter count of the fused body, 3 its result
 # type, 4 operand count of the replacement fold, 5 consumer node, 6 producer node, 7 k, 8 the
 # consumer's type, 9 1 when the type of the (state, previous) record is to be interned (the
-# placeholder 4294967280 is used for it), 10 the state type; 16.. its parameter types; 128..
+# placeholder 4294967280 is used for it), 10 the state type, 12 13 the seed of the carried
+# element (seededPrevSelects; u32 0 when there is none); 16.. its parameter types; 128..
 # the replacement fold's operand pairs (kind 9: a replacement node of the recurrence, value its
 # index).
 
@@ -1978,6 +1979,64 @@ r rec b4 pg
 ret r
 end
 
+# seededPrevSelects (src/optimize.ts): operand k of node j (first node p4) of a recurrence's
+# producer body, p6 its guarded previous-element reads. A use of a read must be a select arm
+# whose other arm K is a u32 literal or an extra parameter, the same K for every use. State
+# (K kind, K value, 1 when K is set, failed, column): the column (the reads to start with) gets
+# word j set to 1 for each such select, which the copy then replaces by the carried element.
+fn shsd1 (u32,u32,u32,u32,u32x128x24) u32 u32x128x132 u32x128x512 u32 u32 u32x128x24 -> (u32,u32,u32,u32,u32x128x24)
+sk at p0 0
+sv at p0 1
+hv at p0 2
+fl at p0 3
+col at p0 4
+g add p4 p5
+@nrow n p2 g
+@opk a p3 n_af p1
+isnode eq a_k 1
+widx select isnode a_v 3071
+@rd pv p6 widx
+hit_b eq pv 1
+hit and isnode hit_b
+isel eq n_op 18
+k1 eq p1 1
+k2 eq p1 2
+k12 or k1 k2
+arm and isel k12
+oj sub 3 p1
+oja select k12 oj 0
+@opk o p3 n_af oja
+ou eq o_k 3
+op_a eq o_k 2
+op_b ge o_v 2
+op and op_a op_b
+form or ou op
+nh eq hv 0
+sm_a eq sk o_k
+sm_b eq sv o_v
+sm and sm_a sm_b
+same or nh sm
+g1 and hit arm
+g2 and g1 form
+good and g2 same
+ngood select good false true
+bad and hit ngood
+badu select bad 1 0
+fl2 or fl badu
+sk2 select good o_k sk
+sv2 select good o_v sv
+hv2 select good 1 hv
+@wrs col2 col p5 1 good
+r rec sk2 sv2 hv2 fl2 col2
+ret r
+end
+fn shsd2 (u32,u32,u32,u32,u32x128x24) u32 u32x128x132 u32x128x512 u32 u32x128x24 -> (u32,u32,u32,u32,u32x128x24)
+g add p4 p1
+@nwd na p2 g 2
+r fold shsd1 na p0 p2 p3 p4 p1 p5
+ret r
+end
+
 # fuseRecurrence (k >= 2, recordState): the record type is interned by the caller
 fn shatr u32x128x132 u32x128x512 u32x128x45 u32x128x65 u32x128x24 u32x128 bool -> (u32x128x132,u32x128x2)
 @pg ff p5 0
@@ -2045,7 +2104,25 @@ y12 set y11 12 1
 np3 sub d2_np 3
 cx1 set y12 9 np3
 t1 select ok0 d1_n 0
-rs1 fold shcp1 t1 rs0 p0 p1 p4 cx1 prev1
+sd0 rec 3 0 0 0 prev1
+sd fold shsd2 t1 sd0 p0 p1 d1_f prev1
+sd_k at sd 0
+sd_v at sd 1
+sd_h at sd 2
+sd_f at sd 3
+sd_c at sd 4
+sd_h1 eq sd_h 1
+sd_f0 eq sd_f 0
+seeded and sd_h1 sd_f0
+prevc select seeded sd_c prev1
+sd_p eq sd_k 2
+sd_pi add paf sd_v
+@opr sdp p1 sd_pi
+sd_pk select sd_p sdp_k sd_k
+sd_pv select sd_p sdp_v sd_v
+seedk select seeded sd_pk 3
+seedv select seeded sd_pv 0
+rs1 fold shcp1 t1 rs0 p0 p1 p4 cx1 prevc
 mp1 at rs1 2
 gsn add d1_f setj1
 @nwd ssf p0 gsn 3
@@ -2109,7 +2186,9 @@ nra sub nra0 1
 @wr i8 i7 8 cty
 @wr i9 i8 9 1
 @wr i10 i9 10 s2
-@wr i16 i10 16 4294967280
+@wr i12 i10 12 seedk
+@wr i13 i12 13 seedv
+@wr i16 i13 16 4294967280
 pa fold shpa d2_np i16 p3 d2_pf k true
 pb fold shpb np1g pa p3 d1_pf npm1
 @opr q0 p1 caf
@@ -2564,7 +2643,7 @@ r select lt a b
 ret r
 end
 # operand j of replacement node r (kind p2; consumer first operand p5): (kind, value), kind 9 a
-# replacement node
+# replacement node; operand 1 of the record init is the seed in words 12 13 of INF
 fn shrwo u32x128x2 u32x128x512 u32 u32 u32 u32 -> (u32,u32)
 a mul p4 2
 ix add 128 a
@@ -2577,8 +2656,10 @@ r1 eq p3 1
 j0 eq p4 0
 c1s add p5 1
 @opr c1 p1 c1s
-q0k select j0 c1_k 3
-q0v select j0 c1_v 0
+@rd sdk p0 12
+@rd sdv p0 13
+q0k select j0 c1_k sdk
+q0v select j0 c1_v sdv
 q2k select j0 9 3
 q2v select j0 1 0
 k02 select r0 q0k q2k

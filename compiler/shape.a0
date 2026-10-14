@@ -3461,7 +3461,8 @@ end
 # 1 kind (1 extra, 2 state, 3 recurrence), 2 parameter count of the fused body, 3 its result
 # type, 4 operand count of the replacement fold, 5 consumer node, 6 producer node, 7 k, 8 the
 # consumer's type, 9 1 when the type of the (state, previous) record is to be interned (the
-# placeholder 4294967280 is used for it), 10 the state type; 16.. its parameter types; 128..
+# placeholder 4294967280 is used for it), 10 the state type, 12 13 the seed of the carried
+# element (seededPrevSelects; u32 0 when there is none); 16.. its parameter types; 128..
 # the replacement fold's operand pairs (kind 9: a replacement node of the recurrence, value its
 # index).
 
@@ -4166,6 +4167,134 @@ r rec b4 pg
 ret r
 end
 
+# seededPrevSelects (src/optimize.ts): operand k of node j (first node p4) of a recurrence's
+# producer body, p6 its guarded previous-element reads. A use of a read must be a select arm
+# whose other arm K is a u32 literal or an extra parameter, the same K for every use. State
+# (K kind, K value, 1 when K is set, failed, column): the column (the reads to start with) gets
+# word j set to 1 for each such select, which the copy then replaces by the carried element.
+fn shsd1 (u32,u32,u32,u32,u32x128x24) u32 u32x128x132 u32x128x512 u32 u32 u32x128x24 -> (u32,u32,u32,u32,u32x128x24)
+sk at p0 0
+sv at p0 1
+hv at p0 2
+fl at p0 3
+col at p0 4
+g add p4 p5
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+a_s add n_af p1
+a_k_m mul a_s 2
+a_k_i add a_k_m 0
+a_k_a shr a_k_i 7
+a_k_b get p3 a_k_a
+a_k_c and a_k_i 127
+a_k get a_k_b a_k_c
+a_v_m mul a_s 2
+a_v_i add a_v_m 1
+a_v_a shr a_v_i 7
+a_v_b get p3 a_v_a
+a_v_c and a_v_i 127
+a_v get a_v_b a_v_c
+isnode eq a_k 1
+widx select isnode a_v 3071
+pv_a shr widx 7
+pv_b get p6 pv_a
+pv_c and widx 127
+pv get pv_b pv_c
+hit_b eq pv 1
+hit and isnode hit_b
+isel eq n_op 18
+k1 eq p1 1
+k2 eq p1 2
+k12 or k1 k2
+arm and isel k12
+oj sub 3 p1
+oja select k12 oj 0
+o_s add n_af oja
+o_k_m mul o_s 2
+o_k_i add o_k_m 0
+o_k_a shr o_k_i 7
+o_k_b get p3 o_k_a
+o_k_c and o_k_i 127
+o_k get o_k_b o_k_c
+o_v_m mul o_s 2
+o_v_i add o_v_m 1
+o_v_a shr o_v_i 7
+o_v_b get p3 o_v_a
+o_v_c and o_v_i 127
+o_v get o_v_b o_v_c
+ou eq o_k 3
+op_a eq o_k 2
+op_b ge o_v 2
+op and op_a op_b
+form or ou op
+nh eq hv 0
+sm_a eq sk o_k
+sm_b eq sv o_v
+sm and sm_a sm_b
+same or nh sm
+g1 and hit arm
+g2 and g1 form
+good and g2 same
+ngood select good false true
+bad and hit ngood
+badu select bad 1 0
+fl2 or fl badu
+sk2 select good o_k sk
+sv2 select good o_v sv
+hv2 select good 1 hv
+col2_o_a shr p5 7
+col2_o_b get col col2_o_a
+col2_o_c and p5 127
+col2_o get col2_o_b col2_o_c
+col2_v select good 1 col2_o
+col2_a shr p5 7
+col2_b get col col2_a
+col2_c and p5 127
+col2_d set col2_b col2_c col2_v
+col2 set col col2_a col2_d
+r rec sk2 sv2 hv2 fl2 col2
+ret r
+end
+fn shsd2 (u32,u32,u32,u32,u32x128x24) u32 u32x128x132 u32x128x512 u32 u32x128x24 -> (u32,u32,u32,u32,u32x128x24)
+g add p4 p1
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+r fold shsd1 na p0 p2 p3 p4 p1 p5
+ret r
+end
+
 # fuseRecurrence (k >= 2, recordState): the record type is interned by the caller
 fn shatr u32x128x132 u32x128x512 u32x128x45 u32x128x65 u32x128x24 u32x128 bool -> (u32x128x132,u32x128x2)
 ff get p5 0
@@ -4306,7 +4435,36 @@ y12 set y11 12 1
 np3 sub d2_np 3
 cx1 set y12 9 np3
 t1 select ok0 d1_n 0
-rs1 fold shcp1 t1 rs0 p0 p1 p4 cx1 prev1
+sd0 rec 3 0 0 0 prev1
+sd fold shsd2 t1 sd0 p0 p1 d1_f prev1
+sd_k at sd 0
+sd_v at sd 1
+sd_h at sd 2
+sd_f at sd 3
+sd_c at sd 4
+sd_h1 eq sd_h 1
+sd_f0 eq sd_f 0
+seeded and sd_h1 sd_f0
+prevc select seeded sd_c prev1
+sd_p eq sd_k 2
+sd_pi add paf sd_v
+sdp_k_m mul sd_pi 2
+sdp_k_i add sdp_k_m 0
+sdp_k_a shr sdp_k_i 7
+sdp_k_b get p1 sdp_k_a
+sdp_k_c and sdp_k_i 127
+sdp_k get sdp_k_b sdp_k_c
+sdp_v_m mul sd_pi 2
+sdp_v_i add sdp_v_m 1
+sdp_v_a shr sdp_v_i 7
+sdp_v_b get p1 sdp_v_a
+sdp_v_c and sdp_v_i 127
+sdp_v get sdp_v_b sdp_v_c
+sd_pk select sd_p sdp_k sd_k
+sd_pv select sd_p sdp_v sd_v
+seedk select seeded sd_pk 3
+seedv select seeded sd_pv 0
+rs1 fold shcp1 t1 rs0 p0 p1 p4 cx1 prevc
 mp1 at rs1 2
 gsn add d1_f setj1
 ssf_m mul gsn 6
@@ -4461,11 +4619,21 @@ i10_b get i9 i10_a
 i10_c and 10 127
 i10_d set i10_b i10_c s2
 i10 set i9 i10_a i10_d
+i12_a shr 12 7
+i12_b get i10 i12_a
+i12_c and 12 127
+i12_d set i12_b i12_c seedk
+i12 set i10 i12_a i12_d
+i13_a shr 13 7
+i13_b get i12 i13_a
+i13_c and 13 127
+i13_d set i13_b i13_c seedv
+i13 set i12 i13_a i13_d
 i16_a shr 16 7
-i16_b get i10 i16_a
+i16_b get i13 i16_a
 i16_c and 16 127
 i16_d set i16_b i16_c 4294967280
-i16 set i10 i16_a i16_d
+i16 set i13 i16_a i16_d
 pa fold shpa d2_np i16 p3 d2_pf k true
 pb fold shpb np1g pa p3 d1_pf npm1
 q0_k_m mul caf 2
@@ -5505,7 +5673,7 @@ r select lt a b
 ret r
 end
 # operand j of replacement node r (kind p2; consumer first operand p5): (kind, value), kind 9 a
-# replacement node
+# replacement node; operand 1 of the record init is the seed in words 12 13 of INF
 fn shrwo u32x128x2 u32x128x512 u32 u32 u32 u32 -> (u32,u32)
 a mul p4 2
 ix add 128 a
@@ -5535,8 +5703,16 @@ c1_v_a shr c1_v_i 7
 c1_v_b get p1 c1_v_a
 c1_v_c and c1_v_i 127
 c1_v get c1_v_b c1_v_c
-q0k select j0 c1_k 3
-q0v select j0 c1_v 0
+sdk_a shr 12 7
+sdk_b get p0 sdk_a
+sdk_c and 12 127
+sdk get sdk_b sdk_c
+sdv_a shr 13 7
+sdv_b get p0 sdv_a
+sdv_c and 13 127
+sdv get sdv_b sdv_c
+q0k select j0 c1_k sdk
+q0v select j0 c1_v sdv
 q2k select j0 9 3
 q2v select j0 1 0
 k02 select r0 q0k q2k

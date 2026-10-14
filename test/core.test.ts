@@ -3748,6 +3748,23 @@ test('loop fusion and fill runs: IR shapes, and arm64, x86_64, wasm equal the in
       'rec',
       1,
     ],
+    // recurrences whose carried element starts at the trip-0 arm: a literal (ne form), a
+    // parameter of the caller, and two guards with different arms (seeded with 0 instead)
+    [
+      `fn yl u32x10 u32 u32 -> u32x10\nc ne p1 0\nj sub p1 1\nt get p0 j\ns select c t 7\na mul s 3\nb add a p2\nn set p0 p1 b\nret n\nend\nfn yr u32 u32 u32x10 -> u32\nv get p2 p1\nw xor p0 v\nm mul w 5\nret m\nend\nfn recl u32 u32 -> u32\nz arr ${zeros(10)}\na fold yl 10 z p0\nr fold yr 10 p1 a\nret r\nend`,
+      'recl',
+      1,
+    ],
+    [
+      `fn yp u32x10 u32 u32 -> u32x10\nc eq p1 0\nj sub p1 1\nt get p0 j\ns select c p2 t\na shl s 13\nb xor s a\nn set p0 p1 b\nret n\nend\nfn recp u32 u32 -> u32\nz arr ${zeros(10)}\nq add p1 3\na fold yp 10 z q\nr fold yr 10 p0 a\nret r\nend`,
+      'recp',
+      1,
+    ],
+    [
+      `fn ym u32x10 u32 u32 -> u32x10\nc eq p1 0\nj sub p1 1\nt get p0 j\ns select c p2 t\nu select c 9 t\nb xor s u\nd add b p1\nn set p0 p1 d\nret n\nend\nfn recm u32 u32 -> u32\nz arr ${zeros(10)}\na fold ym 10 z p0\nr fold yr 10 p1 a\nret r\nend`,
+      'recm',
+      1,
+    ],
     // not fused: the array is also read after the consumer
     [
       `${fill('fe', 8, 'v add p1 p2')}\nfn sm u32 u32 u32x8 -> u32\nv get p2 p1\nw add p0 v\nret w\nend\nfn keep u32 u32 -> u32\nz arr ${zeros(8)}\na fold fe 8 z p0 p1\nr fold sm 8 p1 a\nq and p1 7\nx get a q\ns add r x\nret s\nend`,
