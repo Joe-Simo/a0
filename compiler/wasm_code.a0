@@ -771,10 +771,24 @@ n and j m
 o select n p0 0
 ret o
 end
+# the first of the taken gets right before the get q = p3 (state F = p2): trip t looks at q - 1 - t
+# and moves the accumulator there while the run of end flags from q down is unbroken
+fn wfzfirst u32 u32 u32x128x512 u32 -> u32
+a sub p3 p1
+b eq p0 a
+c sub a 1
+d add c 22528
+e call wfzg p2 d
+f ne e 0
+g and b f
+h select g c p0
+ret h
+end
 # Verification, one trip per position p1 in order (state F: word p is 1 when the instruction at p is
 # removed, word 22528 + p is 1 when a taken pair's get ends at p; extras: the forward state W = p2,
-# the list L = p3). The pair of p (word 22528 + p of W, minus 1) is taken when the depth at its get
-# is the depth after the set (the set's depth minus 1) and every instruction between passes wfzspan.
+# the list L = p3). The pair of p (word 22528 + p of W, minus 1) is taken when the depth at the first
+# of the taken gets right before its get (wfzfirst; its own get when there are none) is the depth
+# after the set (the set's depth minus 1) and every instruction up to there passes wfzspan.
 fn wfzver u32x128x512 u32 u32x128x512 u32x128x352 -> u32x128x512
 a add p1 22528
 b call wfzg p2 a
@@ -783,12 +797,16 @@ d sub b 1
 e call wfzg p2 p1
 f add e 4294967295
 g select c d p1
-h call wfzg p2 g
-i eq h f
 j sub d p1
 k sub j 1
 l select c k 0
-m fold wfzspan l 1 p2 p3 p0 p1 f
+y fold wfzfirst l g p0 g
+h call wfzg p2 y
+i eq h f
+z sub y p1
+z1 sub z 1
+z2 select c z1 0
+m fold wfzspan z2 1 p2 p3 p0 p1 f
 n eq m 1
 o and c i
 q and o n

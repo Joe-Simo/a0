@@ -562,8 +562,12 @@ function stackify(input: readonly Ins[], params: number): Ins[] {
     const q = pairTo[p] as number;
     if (q < 0) continue;
     const after = (depth[p] as number) + (effects[p] as Effect).net;
-    let ok = depth[q] === after;
-    for (let k = p + 1; ok && k < q; k += 1) {
+    // Taken gets right before this one (`get a; get b; add` with both sets taken): their values
+    // are already piled on the stack in set order, so this value only has to land on top of them.
+    let first = q;
+    while (ends.has(first - 1)) first -= 1;
+    let ok = first > p && depth[first] === after;
+    for (let k = p + 1; ok && k < first; k += 1) {
       if ((depth[k] as number) + (effects[k] as Effect).low < after || ends.has(k)) ok = false;
     }
     if (!ok) continue;
