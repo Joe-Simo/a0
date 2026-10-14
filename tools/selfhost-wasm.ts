@@ -1313,7 +1313,7 @@ const FILL_ZEROS = Array.from({ length: 16 }, () => '0').join(' ');
 
 /**
  * Folds whose carried previous-element read is `select (eq p1 0) K get` (src/wasm.ts
- * `firstTripSelect`): the carry starts as K; `twice` reads the carried value outside the select,
+ * `guardedCarry`): the carry starts as K; `twice` reads the carried value outside the select,
  * so it keeps the load.
  */
 const CARRY_SELECT_SOURCE = `fn pfx u32x8 u32 -> u32x8
@@ -1358,6 +1358,50 @@ e get c 7
 f get d 63
 g add e f
 ret g
+end
+`;
+
+/**
+ * A fill fused into an in-place prefix fold (the exec-bench prefix1k shape): an induction
+ * variable stepping by a parameter, the carried previous element guarded on the first trip, and
+ * the dead index arithmetic of the carried read; `pfx2` reads the carried element twice (no guard).
+ */
+const PREFIX_SOURCE = `fn fill u32x64 u32 u32 u32 -> u32x64
+m mul p1 p2
+v add m p3
+n set p0 p1 v
+ret n
+end
+fn pfx u32x64 u32 -> u32x64
+c eq p1 0
+j sub p1 1
+t get p0 j
+u select c 0 t
+s get p0 p1
+v add u s
+n set p0 p1 v
+ret n
+end
+fn pfx2 u32x64 u32 -> u32x64
+j sub p1 1
+t get p0 j
+w xor t 3
+s get p0 p1
+v add t s
+x add v w
+n set p0 p1 x
+ret n
+end
+fn main u32 u32 -> u32
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+a fold fill 64 z p0 p1
+b fold pfx 64 a
+c fold pfx2 64 b
+q and p1 63
+r get c q
+w get c 63
+s add r w
+ret s
 end
 `;
 
@@ -1498,12 +1542,13 @@ async function main(): Promise<void> {
   // reads of fill-run folds (src/optimize.ts `readThroughFills`): the wrapped whole-length form,
   // a masked index below a shorter count, and reads that keep the fold
   programs.push(['fillread', parseAndValidate(FILL_READ_SOURCE), small]);
-  // a carried previous element that starts at the first-trip value (src/wasm.ts `firstTripSelect`)
+  // a carried previous element that starts at the first-trip value (src/wasm.ts `guardedCarry`)
   programs.push(['carrysel', parseAndValidate(CARRY_SELECT_SOURCE), small]);
   const prefix1k = KERNELS.find((k) => k.name === 'prefix1k');
   if (prefix1k === undefined) throw new Error('exec-bench kernel prefix1k is missing');
   programs.push(['bench/prefix1k', parseAndValidate(prefix1k.a0), small]);
   programs.push(['recseed', parseAndValidate(REC_SEED_SOURCE), small]);
+  programs.push(['prefix', parseAndValidate(PREFIX_SOURCE), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,

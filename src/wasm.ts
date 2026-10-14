@@ -808,7 +808,7 @@ interface InlineHost {
     readonly get: string;
     readonly set: string;
     readonly local: number;
-    /** A `select (eq p1 0) K get` that is the carried value on every trip (see `firstTripSelect`). */
+    /** A `select` that is the carried element on every trip (see `guardedCarry`). */
     readonly select?: string;
   };
   /** p1 is the host's trip index, below this literal bound (so p1 needs no masking below it). */
@@ -841,28 +841,53 @@ function carriedRead(body: TypedFunc): { get: string; set: string } | undefined 
 }
 
 /**
- * The carried read's only use, `select (eq p1 0) K get` with a literal K: trip 0 picks K and every
- * later trip picks the carried value, so when the loop starts at trip 0 the carry can start as K
- * and the select is the carry itself (no select on the loop-carried chain).
+ * The carried read `get` (see `carriedRead`) guarded on the first trip: its only use is
+ * `select (eq p1 first) K get`, the literal K standing in on the trip `first` the loop starts at.
+ * With the carried local starting at K instead of the element before `first`, that select is
+ * the carried local on every trip, so the compare and the select vanish from the loop.
  */
-function firstTripSelect(body: TypedFunc, get: string): { id: string; value: number } | undefined {
-  const uses = body.nodes.filter((n) => n.args.some((a) => a?.kind === 'node' && a.id === get));
-  const sel = uses[0];
-  if (
-    uses.length !== 1 ||
-    sel?.op !== 'select' ||
-    (body.ret.kind === 'node' && body.ret.id === get)
-  )
-    return undefined;
-  const [cond, k, t] = sel.args;
-  if (k?.kind !== 'u32' || t?.kind !== 'node' || t.id !== get || cond?.kind !== 'node')
-    return undefined;
+function guardedCarry(
+  body: TypedFunc,
+  get: string,
+  first: number,
+): { select: string; first: number } | undefined {
+  const isGet = (o: Operand | undefined): boolean => o?.kind === 'node' && o.id === get;
+  const users = body.nodes.filter((n) => n.args.some(isGet));
+  const sel = users[0];
+  if (users.length !== 1 || sel?.op !== 'select') return undefined;
+  const [cond, k, other] = sel.args;
+  if (k?.kind !== 'u32' || !isGet(other) || sel.args.filter(isGet).length !== 1) return undefined;
+  if (cond?.kind !== 'node') return undefined;
   const eq = body.nodes.find((n) => n.id === cond.id);
-  const [x, zero] = eq?.args ?? [];
-  if (eq?.op !== 'eq' || x?.kind !== 'param' || x.index !== 1) return undefined;
-  if (zero?.kind !== 'u32' || zero.value !== 0) return undefined;
-  return { id: sel.id, value: k.value };
+  const [x, y] = eq?.args ?? [];
+  const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
+  const isFirst = (o: Operand | undefined): boolean => o?.kind === 'u32' && o.value === first;
+  if (eq?.op !== 'eq' || !((isIndex(x) && isFirst(y)) || (isIndex(y) && isFirst(x))))
+    return undefined;
+  return { select: sel.id, first: k.value };
 }
+
+/** Operations with no effect and no trap in an inlined body (one that can trap is never inlined). */
+const PURE_OPS: ReadonlySet<string> = new Set([
+  'mov',
+  'add',
+  'sub',
+  'mul',
+  'and',
+  'or',
+  'xor',
+  'shl',
+  'shr',
+  'eq',
+  'ne',
+  'lt',
+  'le',
+  'gt',
+  'ge',
+  'select',
+  'get',
+  'at',
+]);
 
 /** Fold state of at most this many one-word fields or elements is kept in locals. */
 const STATE_WORDS = 8;
@@ -1324,8 +1349,34 @@ class FunctionEmitter {
 
   /** Every node in order, except those a lazy select arm emits on its own path. */
   #emitNodes(): void {
+    const live = this.host === undefined ? undefined : this.#liveInline();
     for (const n of this.fn.nodes)
-      if (!this.lazy.owner.has(n.id) && !this.rot.owned.has(n.id)) this.emitNode(n);
+      if (!this.lazy.owner.has(n.id) && !this.rot.owned.has(n.id) && (live?.has(n.id) ?? true))
+        this.emitNode(n);
+  }
+
+  /**
+   * The nodes an inlined body still needs: its result and every node with an effect, and what
+   * they read. A node the host computes (an induction variable, the carried element) reads
+   * nothing, so a pure node only it used (the `sub p1 1` of a carried read, the compare of a
+   * guarded carry) is dead and emitted not at all, rather than computed and dropped.
+   */
+  #liveInline(): Set<string> {
+    const host = this.host;
+    const fn = this.fn;
+    const byHost = (id: string): boolean =>
+      host?.induction?.has(id) === true || host?.carry?.get === id || host?.carry?.select === id;
+    const live = new Set<string>();
+    const mark = (o: Operand): void => {
+      if (o.kind === 'node') live.add(o.id);
+    };
+    mark(fn.ret);
+    for (let k = fn.nodes.length - 1; k >= 0; k -= 1) {
+      const n = fn.nodes[k] as Node;
+      if (!PURE_OPS.has(n.op)) live.add(n.id);
+      if (live.has(n.id) && !byHost(n.id)) for (const a of n.args) mark(a);
+    }
+    return live;
   }
 
   /** Is the aggregate literal `id` only the initial state of a fold that overwrites it all? */
@@ -1930,20 +1981,33 @@ class FunctionEmitter {
         fields.push(local);
       }
     }
-    // Strength reduction: `p1 * K` in an inlined body is an induction variable stepping by K.
-    const induction = new Map<string, { local: number; step: number }>();
+    // Strength reduction: `p1 * K` in an inlined body is an induction variable stepping by K,
+    // where K is a literal or a loop-invariant extra (a constant, or a host local the loop never
+    // writes).
+    const induction = new Map<string, { local: number; step: ParamSource }>();
     if (inlineBody) {
+      const params = sources();
+      const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
+      const stepOf = (o: Operand | undefined): ParamSource | undefined => {
+        if (o?.kind === 'u32') return { value: o.value };
+        if (o?.kind === 'param' && o.index >= 2) return params[o.index];
+        return undefined;
+      };
       for (const n of body.nodes) {
         if (n.op !== 'mul') continue;
         const [x, y] = n.args;
-        const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
-        const k =
-          isIndex(x) && y?.kind === 'u32' ? y : isIndex(y) && x?.kind === 'u32' ? x : undefined;
-        if (k === undefined || k.kind !== 'u32') continue;
+        const k = isIndex(x) ? stepOf(y) : isIndex(y) ? stepOf(x) : undefined;
+        if (k === undefined) continue;
         const local = this.newLocal();
-        c.i32(Math.imul(start, k.value));
+        if ('value' in k) c.i32(Math.imul(start, k.value));
+        else if (start === 0) c.i32(0);
+        else {
+          c.local(OP.localGet, k.local);
+          c.i32(start);
+          c.op(OP.mul);
+        }
         c.local(OP.localSet, local);
-        induction.set(n.id, { local, step: k.value });
+        induction.set(n.id, { local, step: k });
       }
     }
     const inductionLocals = new Map([...induction].map(([id, v]) => [id, v.local]));
@@ -1953,15 +2017,15 @@ class FunctionEmitter {
     if (carried !== undefined && this.#inPlace(body, carried.set, sources())) {
       const local = this.newLocal();
       const { length } = t as { length: number };
-      const first = start === 0 ? firstTripSelect(body, carried.get) : undefined;
-      if (first === undefined) {
+      const guard = guardedCarry(body, carried.get, start);
+      if (guard !== undefined) {
+        c.i32(guard.first);
+      } else {
         c.local(OP.localGet, state);
         c.mem(OP.load, (((start - 1) >>> 0) % length) * 4);
-      } else {
-        c.i32(first.value);
       }
       c.local(OP.localSet, local);
-      carry = { ...carried, local, ...(first === undefined ? {} : { select: first.id }) };
+      carry = { ...carried, local, ...(guard === undefined ? {} : { select: guard.select }) };
     }
     const loopHost: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'indexBound'> = {
       induction: inductionLocals,
@@ -1996,7 +2060,8 @@ class FunctionEmitter {
       if (!aggregate) c.local(OP.localSet, state);
       for (const { local, step } of induction.values()) {
         c.local(OP.localGet, local);
-        c.i32(step);
+        if ('value' in step) c.i32(step.value);
+        else c.local(OP.localGet, step.local);
         c.op(OP.add);
         c.local(OP.localSet, local);
       }

@@ -2094,7 +2094,13 @@ ag and ae 127
 ah get ad af
 ai set ah ag 0
 aj set ad af ai
-ret aj
+ak call wxbk p2 p1 2
+al shr ak 7
+am and ak 127
+an get aj al
+ao set an am 0
+ap set aj al ao
+ret ap
 end
 # register 18 := 1 when node p1 (first node p3) of frame p2 needs frame storage: an aggregate
 # that is not an alias, not in the scalar state chain, and not a get at select mov
@@ -2738,8 +2744,133 @@ cl set ck cj ch
 cm set bw ci cl
 ret cm
 end
+# operand p1 (first operand p3) of a needed node of frame p2: a node operand is needed
+fn wxlv2 u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
+s add p3 p1
+k call wxok p4 s
+v call wxov p4 s
+isn eq k 1
+b call wxbk p2 v 2
+m_o_a shr b 7
+m_o_b get p0 m_o_a
+m_o_c and b 127
+m_o get m_o_b m_o_c
+m_v select isn 1 m_o
+m_a shr b 7
+m_b get p0 m_a
+m_c and b 127
+m_d set m_b m_c m_v
+m set p0 m_a m_d
+ret m
+end
+# trip p1: node n - 1 - p1 of frame p2 (first node p3, n p4)
+fn wxlv1 u32x128x512 u32 u32 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+jm sub p4 1
+j sub jm p1
+g add p3 j
+op call wxnw p5 g 1
+na call wxnw p5 g 2
+af call wxnw p5 g 3
+lo ge op 1
+hi le op 9
+ar0 and lo hi
+cl ge op 12
+ch le op 18
+cm0 and cl ch
+gt0 eq op 25
+at0 eq op 27
+pu1 or ar0 cm0
+pu2 or pu1 gt0
+pure or pu2 at0
+lb call wxbk p2 j 2
+cur_a shr lb 7
+cur_b get p0 cur_a
+cur_c and lb 127
+cur get cur_b cur_c
+cz ne cur 0
+np select pure false true
+lv or cz np
+lvw select lv 1 0
+m0_a shr lb 7
+m0_b get p0 m0_a
+m0_c and lb 127
+m0_d set m0_b m0_c lvw
+m0 set p0 m0_a m0_d
+ib call wxbk p2 j 0
+ind_a shr ib 7
+ind_b get m0 ind_a
+ind_c and ib 127
+ind get ind_b ind_c
+hi0 ne ind 0
+fb mul p2 128
+fc add fb 128
+f18 add fc 18
+f19 add fc 19
+f24 add fc 24
+cf_a shr f18 7
+cf_b get m0 cf_a
+cf_c and f18 127
+cf get cf_b cf_c
+cg_a shr f19 7
+cg_b get m0 cg_a
+cg_c and f19 127
+cg get cg_b cg_c
+cs_a shr f24 7
+cs_b get m0 cs_a
+cs_c and f24 127
+cs get cs_b cs_c
+cfo ne cf 0
+cge eq cg j
+j1 add j 1
+cse eq cs j1
+cor or cge cse
+car and cfo cor
+byh or hi0 car
+nbh select byh false true
+prop and lv nbh
+cnt select prop na 0
+m1 fold wxlv2 cnt m0 p2 af p6
+ret m1
+end
+# the nodes inlined frame p2 still needs (src/wasm.ts `#liveInline`): block word 2 := 1 for the
+# ret node, every node that is not pure, and every node such a node reads, except through a node
+# the host computes (an induction variable, the carried element, the guarded carry's select)
+fn wxlive u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+fb mul p2 128
+fc add fb 128
+f2 add fc 2
+f3 add fc 3
+f5 add fc 5
+f6 add fc 6
+first_a shr f2 7
+first_b get p0 first_a
+first_c and f2 127
+first get first_b first_c
+n_a shr f3 7
+n_b get p0 n_a
+n_c and f3 127
+n get n_b n_c
+rk_a shr f5 7
+rk_b get p0 rk_a
+rk_c and f5 127
+rk get rk_b rk_c
+rv_a shr f6 7
+rv_b get p0 rv_a
+rv_c and f6 127
+rv get rv_b rv_c
+isn eq rk 1
+rb call wxbk p2 rv 2
+ro shr rb 7
+rp and rb 127
+rq get p0 ro
+rr set rq rp 1
+rs set p0 ro rr
+ru select isn rs p0
+m1 fold wxlv1 n ru p2 first n p3 p4
+ret m1
+end
 # enter frame p2 (set up by `wxcan`): its nodes, then its end, are run next
-fn wxenter u32x128x512 u32 u32 -> u32x128x512
+fn wxenter u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
 a mul p2 128
 b add a 128
 c add b 3
@@ -2748,7 +2879,11 @@ e and c 127
 f get p0 d
 g get f e
 h gt g 0
-i fold wxpu 1 p0 5 p2 0 0
+lv0 gt p2 0
+lv1 and h lv0
+lv2 select lv1 1 0
+lv fold wxlive lv2 p0 p2 p3 p4
+i fold wxpu 1 lv 5 p2 0 0
 j select h 1 0
 k fold wxpu j i 1 p2 0 0
 l shr 6 7
@@ -4862,7 +4997,7 @@ af add a 1
 ag select ac 1 0
 ah fold wxpu ag w 7 a b 0
 ai select ac 1 0
-aj fold wxenter ai ah af
+aj fold wxenter ai ah af p4 p5
 ak select ae c 0
 al fold wxpa ak aj a d p5
 am mul e 2
@@ -5335,7 +5470,8 @@ e add d b
 f shr e 7
 g and e 127
 h get p0 f
-i get h g
+i0 get h g
+i and i0 1073741823
 j call wxbk a p1 0
 k shr j 7
 l and j 127
@@ -5422,7 +5558,7 @@ ab and o aa
 ac add p2 1
 ad fold wxpu 1 t 10 p2 0 0
 ae select z 1 0
-af fold wxenter ae ad ac
+af fold wxenter ae ad ac p4 p5
 ag select ab 1 0
 ah fold wxiarg ag af p2 p4 p5
 ai mul n 2
@@ -5576,7 +5712,7 @@ b9 fold wxindw b8 b5 p2
 ca select bl 1 0
 cb fold wxpu ca b9 11 p2 0 0
 cc select bl 1 0
-cd fold wxenter cc cb b6
+cd fold wxenter cc cb b6 p4 p5
 ce select bm 1 0
 cf fold wxpu ce cd 11 p2 0 0
 cg select bm 1 0
@@ -5632,139 +5768,38 @@ dt select dn dr ds
 du set dl do dt
 ret du
 end
-# induction variable p1 of the body of loop p2 steps: local += step (when the body node has one)
+# induction variable p1 of the body of loop p2 steps: local += step (when the body node has one;
+# the step is a constant, or a local when slot word 40 + p1 has 2^30)
 fn wxupd u32x128x512 u32 u32 -> u32x128x512
 a add 40 p1
-b mul p2 176
-c add b 640
-d add c a
-e shr d 7
-f and d 127
-g get p0 e
-h get g f
-i add 72 p1
-j mul p2 176
-k add j 640
-l add k i
-m shr l 7
-n and l 127
-o get p0 m
-p get o n
+ai call wxcx p2 a
+h_a shr ai 7
+h_b get p0 h_a
+h_c and ai 127
+h get h_b h_c
+b add 72 p1
+bi call wxcx p2 b
+p_a shr bi 7
+p_b get p0 p_a
+p_c and bi 127
+p get p_b p_c
 q ne h 0
-r sub h 1
-s select q 1 0
-t ne s 0
-u ne s 0
-v get p0 0
-w get v 0
-x get v 8
-y ge w 22528
-z select y 0 1
-aa add w z
-ab select y 1 x
-ac set v 0 aa
-ad set ac 8 ab
-ae get p0 0
-af select u ad ae
-ag set p0 0 af
-ah mul w 2
-ai add ah 20480
-aj shr ai 7
-ak and ai 127
-al get ag aj
-am add ak 1
-an set al ak 3
-ao set an am r
-ap eq y false
-aq select ap ao al
-ar get ag aj
-as select u aq ar
-au set ag aj as
-av select q 1 0
-aw ne av 0
-ax ne av 0
-ay get au 0
-az get ay 0
-a0 get ay 8
-a1 ge az 22528
-a2 select a1 0 1
-a3 add az a2
-a4 select a1 1 a0
-a5 set ay 0 a3
-a6 set a5 8 a4
-a7 get au 0
-a8 select ax a6 a7
-a9 set au 0 a8
-ba mul az 2
-bb add ba 20480
-bc shr bb 7
-bd and bb 127
-be get a9 bc
-bf add bd 1
-bg set be bd 2
-bh set bg bf p
-bi eq a1 false
-bj select bi bh be
-bk get a9 bc
-bl select ax bj bk
-bm set a9 bc bl
-bn select q 1 0
-bo ne bn 0
-bp ne bn 0
-bq get bm 0
-br get bq 0
-bs get bq 8
-bt ge br 22528
-bu select bt 0 1
-bv add br bu
-bw select bt 1 bs
-bx set bq 0 bv
-by set bx 8 bw
-bz get bm 0
-b0 select bp by bz
-b1 set bm 0 b0
-b2 mul br 2
-b3 add b2 20480
-b4 shr b3 7
-b5 and b3 127
-b6 get b1 b4
-b7 add b5 1
-b8 set b6 b5 1
-b9 set b8 b7 106
-ca eq bt false
-cb select ca b9 b6
-cc get b1 b4
-cd select bp cb cc
-ce set b1 b4 cd
-cf select q 1 0
-cg ne cf 0
-ch ne cf 0
-ci get ce 0
-cj get ci 0
-ck get ci 8
-cl ge cj 22528
-cm select cl 0 1
-cn add cj cm
-co select cl 1 ck
-cp set ci 0 cn
-cq set cp 8 co
-cr get ce 0
-cs select ch cq cr
-ct set ce 0 cs
-cu mul cj 2
-cv add cu 20480
-cw shr cv 7
-cx and cv 127
-cy get ct cw
-cz add cx 1
-c0 set cy cx 4
-c1 set c0 cz r
-c2 eq cl false
-c3 select c2 c1 cy
-c4 get ct cw
-c5 select ch c3 c4
-c6 set ct cw c5
-ret c6
+hl and h 1073741823
+r sub hl 1
+fl and h 1073741824
+isl ne fl 0
+nisl select isl false true
+go select q 1 0
+m1 fold wxlg go p0 r
+kq and q nisl
+kg select kq 1 0
+m2 fold wxkc kg m1 p
+lq and q isl
+lgo select lq 1 0
+m3 fold wxlg lgo m2 p
+m4 fold wxop go m3 106
+m5 fold wxls go m4 r
+ret m5
 end
 # state word p1 of loop p2 goes back to the state's storage after the loop
 fn wxfst u32x128x512 u32 u32 -> u32x128x512
@@ -6315,155 +6350,91 @@ cc set b5 b8 cb
 ret cc
 end
 # strength reduction: body node p1 (first node p3) of loop p2 that is `p1 * K` (or `K * p1`)
-# with K a literal gets an induction local starting at start * K (start p6)
+# with K a literal or an extra (a body parameter >= 2: a known constant or a host local the loop
+# never writes) gets an induction local starting at start * K (start p6); slot word 40 + p1 is
+# the local + 1, plus 2^30 when the step is the local in word 72 + p1 (else the constant)
 fn wxind1 u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 u32 -> u32x128x512
-a add p3 p1
-b call wxnw p4 a 1
-c call wxnw p4 a 3
-d add c 1
-e call wxok p5 c
-f call wxov p5 c
-g call wxok p5 d
-h call wxov p5 d
-i eq b 4
-j eq e 2
-k eq f 1
-l and j k
-m eq g 2
-n eq h 1
-o and m n
-p eq g 3
-q eq e 3
-r and l p
-s and o q
-t select r false true
-u and s t
-v or r u
-w and i v
-x select r h f
-y select w 1 0
-z ne y 0
-aa shr 1 7
-ab and 1 127
-ac get p0 aa
-ad get ac ab
-ae ge ad 8192
-af ne y 0
-ag shr 16 7
-ah and 16 127
-ai get p0 ag
-aj set ai ah ad
-ak get p0 ag
-al select af aj ak
-am set p0 ag al
-an add ad 1
-ao ne y 0
-ap shr 1 7
-aq and 1 127
-ar get am ap
-as set ar aq an
-au get am ap
-av select ao as au
-aw set am ap av
-ax select ae 1 0
-ay and y ax
-az ne ay 0
-a0 shr 8 7
-a1 and 8 127
-a2 get aw a0
-a3 set a2 a1 1
-a4 get aw a0
-a5 select az a3 a4
-a6 set aw a0 a5
-a7 shr 16 7
-a8 and 16 127
-a9 get a6 a7
-ba get a9 a8
-bb mul p6 x
-bc select w 1 0
-bd ne bc 0
-be ne bc 0
-bf get a6 0
-bg get bf 0
-bh get bf 8
-bi ge bg 22528
-bj select bi 0 1
-bk add bg bj
-bl select bi 1 bh
-bm set bf 0 bk
-bn set bm 8 bl
-bo get a6 0
-bp select be bn bo
-bq set a6 0 bp
-br mul bg 2
-bs add br 20480
-bt shr bs 7
-bu and bs 127
-bv get bq bt
-bw add bu 1
-bx set bv bu 2
-by set bx bw bb
-bz eq bi false
-b0 select bz by bv
-b1 get bq bt
-b2 select be b0 b1
-b3 set bq bt b2
-b4 select w 1 0
-b5 ne b4 0
-b6 ne b4 0
-b7 get b3 0
-b8 get b7 0
-b9 get b7 8
-ca ge b8 22528
-cb select ca 0 1
-cc add b8 cb
-cd select ca 1 b9
-ce set b7 0 cc
-cf set ce 8 cd
-cg get b3 0
-ch select b6 cf cg
-ci set b3 0 ch
-cj mul b8 2
-ck add cj 20480
-cl shr ck 7
-cm and ck 127
-cn get ci cl
-co add cm 1
-cp set cn cm 4
-cq set cp co ba
-cr eq ca false
-cs select cr cq cn
-ct get ci cl
-cu select b6 cs ct
-cv set ci cl cu
-cw add ba 1
-cx add 40 p1
-cy add 72 p1
-cz select w 1 0
-c0 ne cz 0
-c1 call wxcx p2 cx
-c2 ne cz 0
-c3 shr c1 7
-c4 and c1 127
-c5 get cv c3
-c6 set c5 c4 cw
-c7 get cv c3
-c8 select c2 c6 c7
-c9 set cv c3 c8
-da select w 1 0
-db ne da 0
-dc call wxcx p2 cy
-dd ne da 0
-de shr dc 7
-df and dc 127
-dg get c9 de
-dh set dg df x
-di get c9 de
-dj select dd dh di
-dk set c9 de dj
-ret dk
+g add p3 p1
+op call wxnw p4 g 1
+af call wxnw p4 g 3
+af1 add af 1
+k0 call wxok p5 af
+v0 call wxov p5 af
+k1 call wxok p5 af1
+v1 call wxov p5 af1
+mul eq op 4
+p0a eq k0 2
+p0b eq v0 1
+i0 and p0a p0b
+p1b eq v1 1
+i1x eq k1 2
+i1y and i1x p1b
+l0 eq k0 3
+x0 ge v0 2
+e0 and p0a x0
+s0 or l0 e0
+l1 eq k1 3
+x1 ge v1 2
+e1 and i1x x1
+s1 or l1 e1
+r and i0 s1
+nr select r false true
+u0 and i1y s0
+u and u0 nr
+ru or r u
+hit and mul ru
+sk select r k1 k0
+sv select r v1 v0
+lit eq sk 3
+em mul sv 2
+eb add em 100
+ei call wxcx p2 eb
+ej add ei 1
+ek_a shr ei 7
+ek_b get p0 ek_a
+ek_c and ei 127
+ek get ek_b ek_c
+ev_a shr ej 7
+ev_b get p0 ev_a
+ev_c and ej 127
+ev get ev_b ev_c
+ekl eq ek 1
+isl or lit ekl
+stv select lit sv ev
+go select hit 1 0
+m1 fold wxnl go p0
+loc_a shr 16 7
+loc_b get m1 loc_a
+loc_c and 16 127
+loc get loc_b loc_c
+nisl select isl false true
+c1 and hit isl
+c1g select c1 1 0
+kv mul p6 stv
+m2 fold wxkc c1g m1 kv
+hz eq p6 0
+nl and hit nisl
+z0 and nl hz
+z0g select z0 1 0
+m3 fold wxkc z0g m2 0
+nhz select hz false true
+nz and nl nhz
+nzg select nz 1 0
+m4 fold wxlg nzg m3 ev
+m5 fold wxkc nzg m4 p6
+m6 fold wxop nzg m5 108
+m7 fold wxls go m6 loc
+fl select isl 0 1073741824
+l1p add loc 1
+w40 add l1p fl
+s40 add 40 p1
+s72 add 72 p1
+m8 fold wxcs go m7 p2 s40 w40
+m9 fold wxcs go m8 p2 s72 stv
+ret m9
 end
-# the carried read's only use as `select (eq p1 0) K get` (src/wasm.ts `firstTripSelect`):
+# the carried read's only use as `select (eq p1 first) K get`, either operand order, first the
+# loop's first trip p7 (src/wasm.ts `guardedCarry`):
 # operand p1 of a node (operands from p2, table p4) is body node p3: count it into p0
 fn wxfu0 u32 u32 u32 u32 u32x128x512 -> u32
 a add p2 p1
@@ -6492,8 +6463,8 @@ l rec g k
 ret l
 end
 # (applies, K, select node) for the carried read p2 of the body from p0 (p1 nodes, ret operand
-# kind p3 value p4, nodes p5, operands p6)
-fn wxfts u32 u32 u32 u32 u32 u32x128x132 u32x128x512 -> (u32,u32,u32)
+# kind p3 value p4, nodes p5, operands p6, first trip p7)
+fn wxfts u32 u32 u32 u32 u32 u32x128x132 u32x128x512 u32 -> (u32,u32,u32)
 a rec 0 0
 b fold wxfu1 p1 a p0 p2 p5 p6
 c at b 0
@@ -6540,12 +6511,20 @@ ar eq aj 12
 as eq an 2
 au eq ao 1
 av eq ap 3
-aw eq aq 0
+aw eq aq p7
 ax and ag ar
-ay and ax as
-az and ay au
-a0 and az av
-a1 and a0 aw
+gx0 and as au
+gx1 and av aw
+gxa and gx0 gx1
+gy0 eq ap 2
+gy1 eq aq 1
+gy2 eq an 3
+gy3 eq ao p7
+gy4 and gy0 gy1
+gy5 and gy2 gy3
+gya and gy4 gy5
+gor or gxa gya
+a1 and ax gor
 a2 select a1 1 0
 a3 rec a2 r d
 ret a3
@@ -8191,13 +8170,12 @@ ft_c call wxfw p3 av 6
 ft_d call waretop p5 ft_c
 ft_e at ft_d 0
 ft_f at ft_d 1
-ft_g call wxfts ft_a ft_b c4 ft_e ft_f p4 p5
+ft_g call wxfts ft_a ft_b c4 ft_e ft_f p4 p5 an
 ft_h at ft_g 0
 ft_i at ft_g 1
 ft_j at ft_g 2
 ft_k eq ft_h 1
-ft_u eq an 0
-ft_l and dp ft_u
+ft_l and dp dp
 ft_m and ft_l ft_k
 ft_n select ft_m false true
 ft_o and dp ft_n
@@ -8806,7 +8784,16 @@ bp and aq bo
 rot_w add 25600 bl
 rot_wv call wxsh p9 rot_w
 rot_wn ne rot_wv 3
-bpr and bp rot_wn
+bpr0 and bp rot_wn
+lv0 gt s 0
+lv1 call wxbk s w 2
+lv2 shr lv1 7
+lv3 and lv1 127
+lv4 get bk lv2
+lv5 get lv4 lv3
+lv6 ne lv5 0
+lv7 select lv0 lv6 true
+bpr and bpr0 lv7
 bq or bpr ar
 br select bq 1 0
 bs fold wxnode br bk s w p2 p3 p4 p5 p6 p7 p8 p9 p10
