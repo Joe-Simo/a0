@@ -43,7 +43,8 @@
  * - Aggregates live in stack slots and are updated in place when provably unshared (the
  *   same `mutableHere` analysis as the JavaScript and AArch64 backends); `at` and a
  *   literal-index `get` of an aggregate borrow that part of the slot (`borrowLive`). Copies and
- *   literal fills move 16 bytes at a time through xmm0 (a loop above 32 words; an `arr` of one
+ *   literal fills move 16 bytes at a time through xmm0 (above 32 words a copy calls the module's
+ *   shared copy helper, a fill loops; an `arr` of one
  *   aggregate repeated copies it once, then replicates it forward); a variable index uses SIB
  *   scaling and skips its mask when a range fact (a fold counter below a literal count, `and`,
  *   `rem`, `shr` by a literal) proves it below the length.
@@ -68,6 +69,8 @@
  *       (callee-saved register save area, sret pointer, aggregates, spilled scalars)
  *     outgoing stack arguments      rsp ... rsp + O - 1
  *
+ * Value slots whose live ranges are disjoint share bytes (`#pack`). A store of a register to a
+ * slot followed by a reload of that slot reads the register instead (`forwardStores`).
  * S and O are rounded to 16, so rsp is 16-byte aligned at every call. Frames above 4 KiB
  * are probed one page at a time in the prologue; an empty frame skips the rsp restore.
  * Scratch: eax (data, copy offset), r10/r11 (addresses and operands), xmm0 (copies), ecx
@@ -491,6 +494,8 @@ class FunctionEmitter {
   readonly #aliasOff = new Map<string, number>();
   readonly #regs = new Map<string, string>();
   readonly #slots = new Map<string, number>();
+  /** Every slot request of the dry pass, in order, for `#pack`. */
+  readonly #requests: { key: string; bytes: number; alignment: number }[] = [];
   #slotBytes = 0;
   #outgoing = 0;
   #leaf = true;
@@ -600,7 +605,51 @@ class FunctionEmitter {
     const off = this.#slotBytes;
     this.#slotBytes = align(this.#slotBytes + bytes, 4);
     this.#slots.set(key, off);
+    this.#requests.push({ key, bytes, alignment });
     return off;
+  }
+
+  /**
+   * Stack slot reuse: after the dry pass every slot's live range is known (its key's definition
+   * to the last use of the key or of any alias of it, loop-carried uses already extended to the
+   * loop's end by the dry pass), so slots whose ranges are disjoint share bytes. Ranges are
+   * closed: a node reads its operands and writes its result at the same position, so a slot is
+   * reused only from the position after its last use. The save area and the sret pointer live
+   * for the whole function. Placement is first fit by start position at the lowest offset that
+   * overlaps no live slot.
+   */
+  #pack(): void {
+    const end = new Map<string, number>();
+    const touch = (k: string, p: number): void => {
+      const c = this.#canon(k);
+      end.set(c, Math.max(end.get(c) ?? 0, p));
+    };
+    for (const [k, d] of this.#defs) touch(k, this.#last.get(k) ?? d.pos);
+    const live = (k: string): [number, number] =>
+      k === 'save' || k === 'sret'
+        ? [0, Number.MAX_SAFE_INTEGER]
+        : [this.#defs.get(k)?.pos ?? 0, end.get(k) ?? 0];
+    const reqs = this.#requests
+      .map((r, i) => ({ ...r, i, range: live(r.key) }))
+      .sort((x, y) => x.range[0] - y.range[0] || x.i - y.i);
+    // Sorted by start, a slot that ended before this start is free for every later one too.
+    let placed: { off: number; top: number; end: number }[] = [];
+    let total = 0;
+    for (const r of reqs) {
+      const [start, stop] = r.range;
+      placed = placed.filter((b) => b.end >= start);
+      const busy = [...placed].sort((x, y) => x.off - y.off);
+      let off = 0;
+      for (const b of busy) {
+        if (align(off, r.alignment) + r.bytes <= b.off) break;
+        off = Math.max(off, b.top);
+      }
+      off = align(off, r.alignment);
+      placed.push({ off, top: off + r.bytes, end: stop });
+      this.#slots.set(r.key, off);
+      total = Math.max(total, off + r.bytes);
+    }
+    this.#slotBytes = total;
   }
 
   #canon(key: string): string {
@@ -688,13 +737,12 @@ class FunctionEmitter {
       this.#straightCopy(dst, d, src, so, n);
       return;
     }
+    // The 16-byte loop is the module's shared copy helper (`copyRuntime`): r10 and r11 point
+    // past the bulk, rax counts up from minus its length to zero.
     const bytes = 16 * Math.floor(n / 4);
-    const top = this.#label();
-    this.#emit(`leaq ${this.#m(src, so)}, %r10`, `leaq ${this.#m(dst, d)}, %r11`);
-    this.#emit('xorl %eax, %eax', `${top}:`);
-    this.#emit('movups (%r10,%rax), %xmm0', 'movups %xmm0, (%r11,%rax)', 'addq $16, %rax');
-    this.#emit(`cmpq ${imm(bytes)}, %rax`, `jne ${top}`);
-    this.#straightCopy('%r11', bytes, '%r10', bytes, n % 4);
+    this.#emit(`leaq ${this.#m(src, so + bytes)}, %r10`, `leaq ${this.#m(dst, d + bytes)}, %r11`);
+    this.#emit(`movq ${imm(-bytes)}, %rax`, `call ${copyHelper(this.platform)}`);
+    this.#straightCopy('%r11', 0, '%r10', 0, n % 4);
   }
 
   #straightCopy(dst: string, d: number, src: string, so: number, n: number): void {
@@ -816,7 +864,8 @@ class FunctionEmitter {
       this.#emit('xorl %edx, %edx', `movl ${imm(n)}, %r10d`, 'divl %r10d', 'movl %edx, %r10d');
     }
     if (sib || elemBytes === 1) return `%r10${scale}`;
-    this.#emit(`imulq ${imm(elemBytes)}, %r10, %r10`);
+    if ((elemBytes & (elemBytes - 1)) === 0) this.#emit(`shlq ${imm(Math.log2(elemBytes))}, %r10`);
+    else this.#emit(`imulq ${imm(elemBytes)}, %r10, %r10`);
     return '%r10';
   }
 
@@ -1793,6 +1842,7 @@ class FunctionEmitter {
       if (isScalar(d.type) && !this.#regs.has(k) && !this.#alias.has(k)) this.#alloc(k, 4);
     if (this.#saved.length > 0) this.#alloc('save', 8 * this.#saved.length, 8);
     if (sret) this.#alloc('sret', 8, 8);
+    this.#pack();
     this.#outgoing = align(this.#outgoing, 16);
     const frame = this.#outgoing + align(this.#slotBytes, 16);
     // Pass 2: emission.
@@ -1885,10 +1935,71 @@ class FunctionEmitter {
     // rsp is unchanged when the frame is empty.
     if (frame > 0) this.#emit('movq %rbp, %rsp');
     this.#emit('popq %rbp', 'ret');
+    this.out = forwardStores(this.out);
     if (this.platform === 'linux') this.out.push(`\t.size ${sym}, .-${sym}`);
     this.#coldPaths(framed);
     return this.out.join('\n');
   }
+}
+
+const STORE = /^\t(mov[lq]) (%\w+), (-?\d*\(%rsp\))$/;
+
+/**
+ * Store-to-load forwarding: a reload of the stack slot the previous instruction stored a
+ * register into, at the same width, reads the register instead (dropped when it is the same
+ * register). Adjacent lines have no label between them, and a move changes no flags.
+ */
+function forwardStores(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const line of lines) {
+    const st = STORE.exec(out.at(-1) ?? '');
+    if (st !== null) {
+      const [, op, reg, mem] = st;
+      const load = `\t${op} ${mem}, `;
+      if (line.startsWith(load)) {
+        const dst = line.slice(load.length);
+        if (/^%\w+$/.test(dst)) {
+          if (dst !== reg) out.push(`\t${op} ${reg}, ${dst}`);
+          continue;
+        }
+      }
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+/** The module-local label of the shared copy helper (a local label, like the io helpers). */
+function copyHelper(platform: X86Platform): string {
+  return `${platform === 'darwin' ? 'L' : '.L'}a0copy`;
+}
+
+/**
+ * The copy helper, when `bodies` call it: copies -rax bytes (a positive multiple of 16) from
+ * r10 - (-rax) to r11 - (-rax) in 16-byte moves, rax counting up to zero. Only rax, xmm0 and
+ * the flags change; r10 and r11 are kept (they point past the copied bytes).
+ */
+function copyRuntime(bodies: readonly string[], platform: X86Platform): string {
+  const label = copyHelper(platform);
+  if (!bodies.some((b) => b.includes(label))) return '';
+  return [
+    '\t.p2align 4',
+    `${label}:`,
+    // An odd number of 16-byte blocks moves one first; then two per trip.
+    '\ttestb $16, %al',
+    '\tje 1f',
+    '\tmovups (%r10,%rax), %xmm0',
+    '\tmovups %xmm0, (%r11,%rax)',
+    '\taddq $16, %rax',
+    '\tje 2f',
+    '1:\tmovups (%r10,%rax), %xmm0',
+    '\tmovups %xmm0, (%r11,%rax)',
+    '\tmovups 16(%r10,%rax), %xmm0',
+    '\tmovups %xmm0, 16(%r11,%rax)',
+    '\taddq $32, %rax',
+    '\tjne 1b',
+    '2:\tret',
+  ].join('\n');
 }
 
 type IoHelper = 'read' | 'sread' | 'write' | 'puts';
@@ -2000,7 +2111,9 @@ export function assembleX86_64(
   const tail =
     platform === 'darwin' ? '.subsections_via_symbols' : '\t.section .note.GNU-stack,"",@progbits';
   const runtime = trap === undefined ? '' : `${x86TrapRuntime(trap, platform)}\n\n`;
-  const ioText = ioRuntime(bodies, platform, io);
-  const helpers = ioText === '' ? '' : `${ioText}\n\n`;
+  const helpers = [copyRuntime(bodies, platform), ioRuntime(bodies, platform, io)]
+    .filter((t) => t !== '')
+    .map((t) => `${t}\n\n`)
+    .join('');
   return `# Generated by A0 ${compilerVersion}. x86-64 (${platform}) assembly, System V AMD64 ABI, AT&T syntax; exact u32/bool semantics.\n${head}\n\n${bodies.join('\n\n')}\n\n${helpers}${runtime}${tail}\n`;
 }
