@@ -53,6 +53,7 @@ function cDriver(k: Kernel): string {
     return `uint32_t a${n} = (a${n - 1} ^ (a${n - 1} >> 15)) * ${MULS[n]}u;`;
   }).join(' ');
   return `typedef unsigned int uint32_t;
+typedef unsigned char uint8_t;
 ${k.c}
 __attribute__((export_name("wb_run"))) uint32_t wb_run(uint32_t n, uint32_t h) {
   for (uint32_t i = 0; i < n; i++) {
