@@ -29,11 +29,15 @@
  * pointer, so a fold over an array touches one element per trip instead of copying the state.
  *
  * In-place updates follow the other backends' `mutableHere` analysis: a `set`/`put` on a value
- * that is provably unshared (a fresh allocation or the owned state, read only by `get`/`at`
- * before this node and no aggregate one of them read after it, never returned) stores one element and the node aliases the container; a
- * fold or loop whose initial value is unshared runs in that value's storage. An aggregate
- * `get`/`at` result aliases into its container (no copy), which is why such reads count as
- * sharing for the analysis; `mov` aliases; `select` chooses an address at run time.
+ * that is provably unshared (a fresh allocation, a fold or loop result, or the owned state, read
+ * only by `get`/`at` before this node and no aggregate one of them read after it, never returned)
+ * stores one element and the node aliases the container; a fold or loop whose initial value is
+ * unshared runs in that value's storage. An aggregate `get`/`at` result aliases into its
+ * container (no copy), which is why such reads count as sharing for the analysis; a `set`/`put`
+ * of such a borrow writes into the container when the container is unshared until then, and a
+ * `rec` whose one aggregate field is that updated borrow is built in the container's storage
+ * (`#recContainer`). A read that a lazy select arm emits later than its place counts as a read
+ * after the update (`liveAfter`). `mov` aliases; `select` chooses an address at run time.
  *
  * Code shape: fold/loop bodies and predicates of up to INLINE_BODY_NODES nodes, and scalar
  * calls of functions of up to INLINE_CALL_NODES nodes, are emitted in place when they need no
@@ -63,6 +67,7 @@
 import {
   A0Error,
   borrowLive,
+  borrowsOf,
   containsIo,
   evalOp,
   formatType,
@@ -778,10 +783,103 @@ function rotatesOf(fn: TypedFunc): Rotates {
 }
 
 /**
+ * Is the aggregate operand `o` storage no other value shares, read by nothing at or after the
+ * node at `index`: a fresh value (FRESH_OPS, or a fold or loop result, which runs in its own slot
+ * or in its unshared initial value's storage) or the owned state, not the result, and named
+ * before `index` only as the container of `get`/`at` reads?
+ */
+function unsharedUntil(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  ownedParam: (paramIndex: number) => boolean,
+): boolean {
+  if (o.kind === 'node') {
+    const def = fn.nodes.find((n) => n.id === o.id);
+    if (def === undefined || !(FRESH_OPS.has(def.op) || def.op === 'fold' || def.op === 'loop'))
+      return false;
+  } else if (!(o.kind === 'param' && ownedParam(o.index))) {
+    return false;
+  }
+  if (sameOp(fn.ret, o)) return false;
+  for (const [j, n] of fn.nodes.entries())
+    for (const [k, arg] of n.args.entries())
+      if (sameOp(arg, o) && (j >= index || !((n.op === 'get' || n.op === 'at') && k === 0)))
+        return false;
+  return true;
+}
+
+/**
+ * The field a `rec` may find already in place: the record's only aggregate field k, when its
+ * operand is `at Y k` itself or reaches it through the targets (operand 0) of `set`/`put` nodes.
+ * Returns that `at` node and its container Y (compiler/shape.a0 finds the same, `shrecb`).
+ */
+function recInPlaceField(
+  fn: TypedFunc,
+  node: Node,
+): { readonly field: number; readonly at: Node; readonly container: Operand } | undefined {
+  const fields = recordType(fn, { kind: 'node', id: node.id });
+  const aggregates = fields.flatMap((f, k) => (isPrimitive(f) ? [] : [k]));
+  const field = aggregates[0];
+  if (aggregates.length !== 1 || field === undefined) return undefined;
+  let x = node.args[field];
+  for (let steps = 0; steps < fn.nodes.length && x?.kind === 'node'; steps += 1) {
+    const id = x.id;
+    const def = fn.nodes.find((n) => n.id === id);
+    if (def?.op === 'set' || def?.op === 'put') {
+      x = def.args[0];
+      continue;
+    }
+    if (def?.op === 'at' && literalIndex(def.args[1]) === field)
+      return { field, at: def, container: def.args[0] as Operand };
+    return undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Where node j is emitted: a node a lazy select arm owns (optimize.ts `lazyArms`) runs with its
+ * select, and a select inside an outer arm with that select, so at the outermost owner.
+ */
+function emittedAtOf(fn: TypedFunc, owner: ReadonlyMap<string, string>): (j: number) => number {
+  const position = new Map(fn.nodes.map((n, i) => [n.id, i]));
+  return (j) => {
+    let id = fn.nodes[j]?.id ?? '';
+    for (let steps = 0; steps < fn.nodes.length; steps += 1) {
+      const up = owner.get(id);
+      if (up === undefined) break;
+      id = up;
+    }
+    return position.get(id) ?? j;
+  };
+}
+
+/**
+ * `borrowLive`, or a read that runs late: a node before `index` that names `o` or a borrow of it
+ * and is emitted at or after `index` (in a lazy select arm, `emittedAt`) reads the storage after
+ * an update there.
+ */
+function liveAfter(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  selfRead: boolean,
+  emittedAt: (j: number) => number,
+): boolean {
+  if (borrowLive(fn, o, index, selfRead)) return true;
+  const borrows = borrowsOf(fn, o);
+  const reads = (x: Operand): boolean => sameOp(x, o) || (x.kind === 'node' && borrows.has(x.id));
+  return fn.nodes.some((n, j) => j < index && emittedAt(j) >= index && n.args.some(reads));
+}
+
+/**
  * May the aggregate operand `o` be updated in place by the node at `index`? The same analysis
  * as the C and native backends: an aggregate-typed `get`/`at` result aliases into its
  * container here (a borrowed read), so the container is updated in place only when no such
- * borrow is read after this node (`borrowLive`).
+ * borrow is read after this node (`borrowLive`). A fold or loop result is fresh too. A `set`/`put`
+ * may also update such a borrow, writing into its container, when the container is unshared until
+ * here (`unsharedUntil`) and no borrow of it (the target among them) is read after. Reads emitted
+ * late by lazy select arms count as reads after (`liveAfter`).
  */
 function mutableHere(
   fn: TypedFunc,
@@ -789,10 +887,15 @@ function mutableHere(
   index: number,
   position: number,
   ownedParam: (paramIndex: number) => boolean,
+  emittedAt: (j: number) => number,
 ): boolean {
+  const writes = fn.nodes[index]?.op === 'set' || fn.nodes[index]?.op === 'put';
+  let container: Operand | undefined;
   if (o.kind === 'node') {
     const def = fn.nodes.find((n) => n.id === o.id);
-    if (def === undefined || !FRESH_OPS.has(def.op)) return false;
+    if (def === undefined) return false;
+    if (writes && (def.op === 'get' || def.op === 'at')) container = def.args[0] as Operand;
+    else if (!(FRESH_OPS.has(def.op) || def.op === 'fold' || def.op === 'loop')) return false;
   } else if (!(o.kind === 'param' && ownedParam(o.index))) {
     return false;
   }
@@ -810,8 +913,13 @@ function mutableHere(
       if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
     }
   }
-  const writes = fn.nodes[index]?.op === 'set' || fn.nodes[index]?.op === 'put';
-  return !borrowLive(fn, o, index, writes);
+  // The target is one of the container's borrows: no borrow of the container read after.
+  if (container !== undefined)
+    return (
+      unsharedUntil(fn, container, index, ownedParam) &&
+      !liveAfter(fn, container, index, true, emittedAt)
+    );
+  return !liveAfter(fn, o, index, writes, emittedAt);
 }
 
 // ---------------------------------------------------------------------------
@@ -1510,6 +1618,8 @@ class FunctionEmitter {
   readonly consts = new Map<string, number>();
   /** Select arms evaluated on their own path (see optimize.ts `lazyArms`). */
   readonly lazy: ReturnType<typeof lazyArms>;
+  /** Where each node is emitted (its outermost lazy owner's position, else its own). */
+  readonly #emittedAt: (j: number) => number;
   /** Rotates among the `or` nodes, and the shift nodes they absorb (see `rotatesOf`). */
   readonly rot: Rotates;
   readonly byId: ReadonlyMap<string, Node>;
@@ -1532,6 +1642,7 @@ class FunctionEmitter {
     this.fn = fn;
     this.options = options;
     this.lazy = lazyArms(fn);
+    this.#emittedAt = emittedAtOf(fn, this.lazy.owner);
     this.rot = rotatesOf(fn);
     this.byId = new Map(fn.nodes.map((n) => [n.id, n]));
     this.#chain = host?.fields === undefined ? undefined : scalarState(fn);
@@ -1588,11 +1699,34 @@ class FunctionEmitter {
         this.#mutable(n.args[1] as Operand, index, 1)
       )
         this.aliases.set(n.id, this.root(n.args[1] as Operand));
+      else if (n.op === 'rec') {
+        const container = this.#recContainer(n, index);
+        if (container !== undefined) this.aliases.set(n.id, this.root(container));
+      }
     }
   }
 
+  /**
+   * A record built where its one aggregate field already is: the `rec` at `index` whose field k
+   * operand is `at Y k` updated in place (its root is that `at`), Y of the record's own type and
+   * unshared until here, with no borrow of Y read after. The record is Y's storage with its scalar
+   * fields stored; returns Y.
+   */
+  #recContainer(n: Node, index: number): Operand | undefined {
+    const fn = this.fn;
+    const found = recInPlaceField(fn, n);
+    if (found === undefined) return undefined;
+    const root = this.root(n.args[found.field] as Operand);
+    const y = found.container;
+    const recType = fn.types.get(n.id) ?? 'u32';
+    if (!(root.kind === 'node' && root.id === found.at.id)) return undefined;
+    if (formatType(operandType(fn, y)) !== formatType(recType)) return undefined;
+    if (!unsharedUntil(fn, y, index, (i) => this.#owned(i))) return undefined;
+    return liveAfter(fn, y, index, true, this.#emittedAt) ? undefined : y;
+  }
+
   #mutable(o: Operand, index: number, position: number): boolean {
-    return mutableHere(this.fn, o, index, position, (i) => this.#owned(i));
+    return mutableHere(this.fn, o, index, position, (i) => this.#owned(i), this.#emittedAt);
   }
 
   /** A node that owns a frame slot (not an alias, not a run-time address). */
@@ -2033,6 +2167,19 @@ class FunctionEmitter {
           c.local(OP.localSet, carry.local);
         }
       } else if (node.op === 'fold' || node.op === 'loop') this.#iteration(node);
+      else if (node.op === 'rec') {
+        // Built in its container's storage: the aggregate field is there, the scalars are stored.
+        const fields = recordType(fn, { kind: 'node', id: node.id });
+        let offset = 0;
+        for (const [i, arg] of node.args.entries()) {
+          const ft = fields[i] as Type;
+          if (isPrimitive(ft)) {
+            this.push({ kind: 'node', id: node.id });
+            this.storeAt(ft, arg, offset);
+          }
+          offset += bytesOf(ft);
+        }
+      }
       return;
     }
     if (node.op === 'fold' || node.op === 'loop') {

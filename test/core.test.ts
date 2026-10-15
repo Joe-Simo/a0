@@ -18,6 +18,7 @@ import {
   run,
   type Type,
   type TypedFunc,
+  type TypedProgram,
   typeEquals,
   validate,
 } from '../src/core.js';
@@ -3624,6 +3625,259 @@ end`);
           run(p.byName.get(name) as TypedFunc, [x]),
           `${name}(${x})`,
         );
+    }
+  }
+});
+
+test('direct wasm backend: sets through borrows, records built in place, late lazy reads', async () => {
+  const { wasmModuleBytes, emitWasmFunction } = await import('../src/wasm.js');
+  const { KERNELS } = await import('../tools/exec-bench-kernels.js');
+  const frames = (p: TypedProgram, name: string): number[] =>
+    (
+      JSON.parse(emitWasmFunction(p.byName.get(name) as TypedFunc)) as {
+        variants: { frame: number }[];
+      }
+    ).variants.map((v) => v.frame);
+  // heap256: the sift-down step sets through the `at` borrow of its owned record state and
+  // rebuilds the record from it, so the owned variants of the step and of the pop around its
+  // loop update the state where it is (no frame; each used to copy the 2 KiB heap).
+  const heap = KERNELS.find((k) => k.name === 'heap256');
+  assert.ok(heap !== undefined);
+  const hp = parseAndValidate(heap.a0);
+  assert.deepEqual(frames(hp, 'dnstep'), [2048, 0]);
+  assert.deepEqual(frames(hp, 'hpop'), [2048, 0]);
+  // The same on an 8-element heap, with the cases that keep copies: a nested row written back
+  // into its container (rowstep), an old borrow read after the set (keepold), a record of two
+  // aggregate fields (twin) and a value variant (valuevar, its record read again after the call).
+  const p = parseAndValidate(`fn sdok (u32x8,u32) u32 u32 -> bool
+h at p0 0
+j at p0 1
+l shl j 1
+r add l 1
+inl le l p2
+inr le r p2
+lv get h l
+rv get h r
+rl lt rv lv
+pr and inr rl
+c select pr r l
+cv get h c
+jv get h j
+g lt cv jv
+ok and inl g
+ret ok
+end
+fn sdstep (u32x8,u32) u32 u32 -> (u32x8,u32)
+h at p0 0
+j at p0 1
+l shl j 1
+r add l 1
+inr le r p2
+lv get h l
+rv get h r
+rl lt rv lv
+pr and inr rl
+c select pr r l
+cv get h c
+jv get h j
+a set h j cv
+b set a c jv
+s rec b c
+ret s
+end
+fn pop (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+acc at p0 1
+n sub 7 p1
+top get h 1
+last get h n
+a set h 1 last
+m sub n 1
+st rec a 1
+r loop sdok sdstep 3 st m
+b at r 0
+x xor acc top
+y mul x 33
+o rec b y
+ret o
+end
+fn rowstep u32x4x4 u32 u32 -> u32x4x4
+i shr p1 2
+j and p1 3
+row get p0 i
+v get row j
+w mul v p2
+x add w p1
+nrow set row j x
+g set p0 i nrow
+ret g
+end
+fn keepold (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+h2 at p0 0
+a set h 1 p1
+x get h2 1
+o rec a x
+ret o
+end
+fn twin (u32x4,u32x4,u32) u32 -> (u32x4,u32x4,u32)
+f at p0 0
+g at p0 1
+k at p0 2
+a set f 1 p1
+b set g 2 k
+o rec a b p1
+ret o
+end
+fn bump u32x8 u32 u32 -> u32x8
+v get p0 p1
+w add v p2
+n set p0 p1 w
+ret n
+end
+fn valuevar (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+a set h 2 p1
+o rec a p1
+ret o
+end
+fn inplace u32 u32 -> u32
+z arr 0 p0 p1 5 9 2 7 4
+q fold bump 8 z p1
+r fold bump 8 q p0
+c set r 3 77
+st rec c 5
+s fold pop 7 st
+k at s 1
+hz at s 0
+e get hz 2
+g arr 1 2 3 4
+gz arr g g g g
+m fold rowstep 16 gz p0
+m2 get m 2
+m3 get m2 1
+t1 rec r 9
+t2 fold keepold 3 t1
+t3 at t2 1
+w arr p0 1 2 3
+w2 arr 4 p1 6 7
+tw rec w w2 p1
+tw2 fold twin 2 tw
+tw3 at tw2 1
+tw4 get tw3 2
+vv call valuevar t1 p1
+vv1 at vv 0
+vv2 get vv1 2
+hz2 at t1 0
+vv3 get hz2 2
+o1 add k e
+o2 add o1 m3
+o3 add o2 t3
+o4 add o3 tw4
+o5 add o4 vv2
+o6 add o5 vv3
+ret o6
+end
+`);
+  assert.deepEqual(frames(p, 'sdstep'), [32, 0]);
+  assert.deepEqual(frames(p, 'pop'), [32, 0]);
+  assert.deepEqual(frames(p, 'rowstep'), [16, 16]);
+  assert.deepEqual(frames(p, 'keepold'), [32, 80]);
+  // A read that a lazy select arm emits after the update keeps the update a copy: an element of
+  // a literal array (lzr) or of a fold result (lzf) read before a set, and a read of the record
+  // state's borrow before a set through it (lzb).
+  const lazy = parseAndValidate(`fn fl u32x8 u32 u32 -> u32x8
+a mul p1 p2
+b xor a p1
+n set p0 p1 b
+ret n
+end
+fn lzr u32 u32 -> u32
+a arr p0 p1 3 4 5 6 7 8
+v get a 2
+w0 mul v 7
+w1 div w0 3
+w2 rem w1 5
+w3 mul w2 w1
+w4 div w3 p1
+b set a 2 99
+c lt p0 p1
+s select c w4 p0
+x get b 2
+r add s x
+ret r
+end
+fn lzf u32 u32 -> u32
+z arr 0 0 0 0 0 0 0 0
+a fold fl 8 z p0
+v get a p1
+w0 mul v 7
+w1 div w0 3
+w2 rem w1 5
+w3 mul w2 w1
+w4 div w3 p1
+b set a p1 99
+c lt p0 p1
+s select c w4 p0
+x get b 2
+r add s x
+ret r
+end
+fn lzb (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+k at p0 1
+v get h p1
+w0 mul v 7
+w1 div w0 3
+w2 rem w1 5
+w3 mul w2 w1
+w4 div w3 k
+a set h p1 k
+c lt p1 k
+s select c w4 p1
+o rec a s
+ret o
+end
+fn lzd u32 u32 -> u32
+z arr p0 p1 3 4 5 6 7 8
+st rec z p1
+r fold lzb 5 st
+q at r 0
+q1 get q 3
+q2 at r 1
+o add q1 q2
+ret o
+end
+fn lazy u32 u32 -> u32
+a call lzr p0 p1
+b call lzf p1 p0
+c call lzd p0 p1
+d add a b
+e add d c
+ret e
+end
+`);
+  for (const [q, name] of [
+    [p, 'inplace'],
+    [lazy, 'lazy'],
+  ] as const) {
+    for (const optimize of [true, false]) {
+      const text = compile(q, 'wasm', { optimize, wasmExports: [name] }).text;
+      const { instance } = await WebAssembly.instantiate(wasmModuleBytes(text) as BufferSource, {});
+      const g = (instance.exports as Record<string, (a: number, b: number) => number>)[
+        `a0_${name}`
+      ];
+      for (const x of [0, 1, 7, 1029, 0x9e37_79b9, 0xffff_ffff]) {
+        const args = [(x * 3) >>> 0, (x * 4 + 1) >>> 0];
+        assert.equal(
+          (g as (a: number, b: number) => number)(
+            (args[0] as number) | 0,
+            (args[1] as number) | 0,
+          ) >>> 0,
+          run(q.byName.get(name) as TypedFunc, args),
+          `${name}(${args}) optimize=${optimize}`,
+        );
+      }
     }
   }
 });

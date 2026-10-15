@@ -1,8 +1,9 @@
 # Shape analyses and loop fusion, written in A0 (DESIGN.md 7a): the port of src/optimize.ts
-# lines 716-1343 (storeOnly, overwritesState, fillRun, lazyArms, producerShape, fuseLoops) and of
-# `borrowLive` of src/core.ts. The wasm emitter (compiler/emit_wasm.a0) does not `use` this file:
-# compiler/boot.a0 runs it between the optimizer and the emitter, and the emitter reads the
-# results from the SHAPE TABLE, one table `sh` (u32x128x310) that is an extra input of its chunk.
+# lines 716-1343 (storeOnly, overwritesState, fillRun, lazyArms, producerShape, fuseLoops), of
+# `borrowLive` of src/core.ts and of `liveAfter` of src/wasm.ts. The wasm emitter
+# (compiler/emit_wasm.a0) does not `use` this file: compiler/boot.a0 runs it between the
+# optimizer and the emitter, and the emitter reads the results from the SHAPE TABLE, one table
+# `sh` (u32x128x310) that is an extra input of its chunk.
 #
 # Inputs: the OPTIMIZED chunk tables of compiler/emit_wasm.a0: types u32x384x65, tlist u32x128x65,
 # fns u32x128x45 (7 words: 0 body flag, 1 parameter count, 2 first tlist word, 3 result type, 4
@@ -25,9 +26,13 @@
 #   OVER  8448   fold node: overwritesState 0 / 1
 #   BORR  11264  set / put node (target operand 0) and fold / loop node (state operand 1) of an
 #                aggregate type whose target operand is a parameter or a node defined by
-#                arr rec set put: borrowLive(fn, that operand, j, selfRead) with selfRead set for
-#                set / put, else 0. Every other node is 0: only these are queried (the rest of
-#                mutableHere is the emitter's).
+#                arr rec set put fold loop: liveAfter(fn, that operand, j, selfRead) (src/wasm.ts:
+#                borrowLive, or a read that a lazy select arm emits at or after j) with selfRead
+#                set for set / put; a set / put whose target is a get / at node: liveAfter of
+#                that node's container (operand 0), selfRead set; a rec node: 2 (n + 1) + its
+#                container's liveAfter (selfRead set) when its only aggregate field k reaches
+#                node n, `at Y k`, through set / put targets (`shrecb`), else 0. Every other node
+#                is 0: only these are queried (the rest of mutableHere is the emitter's).
 #   FUSED 14080  function column: 1 + the function that is the fused form of this function, else 0
 #   SYN   15104  function column: 1 a synthetic fused body (never emitted by itself, only
 #                inlined), 2 a fused function
@@ -515,9 +520,11 @@ r rec count miss
 ret r
 end
 # ---------------------------------------------------------------------------------------------
-# borrowLive (src/core.ts) of the aggregate operand (p6 p7) of the node jq = p8 of the function
+# liveAfter (src/wasm.ts) of the aggregate operand (p6 p7) of the node jq = p8 of the function
 # with first node p4, ret (p5 = kind, p9 = value): 1 when some borrow of it is read at or after
-# the node (at the node itself only when p10 is 0), or returned.
+# the node (at the node itself only when p10 is 0), or returned (borrowLive, src/core.ts), or
+# when a node before jq that a lazy select arm emits at or after jq (OWN of the shape table p11)
+# names the operand or a borrow of it.
 
 # node j: a borrow of the operand? State (borrows column, any)
 fn shbp1 (u32x128x24,u32) u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 -> (u32x128x24,u32)
@@ -598,8 +605,51 @@ n select act na 0
 r fold shbp2a n p0 p3 af p5
 ret r
 end
-fn shborr u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32 u32 u32 u32 u32 -> u32
-# nodes args nt nfn fst retk ok ov jq retv selfRead
+# late reads (src/wasm.ts `emittedAtOf`): the outermost lazy owner of a position (loop predicate
+# and step share (position, trip, sh, fst)): OWN is the owner's position + 1, else 0
+fn shemok u32 u32 u32x128x310 u32 -> bool
+g add p3 p0
+@col ow p2 2816 g
+r ne ow 0
+ret r
+end
+fn shemst u32 u32 u32x128x310 u32 -> u32
+g add p3 p0
+@col ow p2 2816 g
+r sub ow 1
+ret r
+end
+# operand k (p1) of the node whose first operand is p3: the operand (p5 p6) or a borrow (p4)
+fn shlta u32 u32 u32x128x512 u32 u32x128x24 u32 u32 -> u32
+s add p3 p1
+@aw ak p2 s 0
+@aw av p2 s 1
+@isop so ak av p5 p6
+isn eq ak 1
+@rd bv p4 av
+b eq bv 1
+u and isn b
+w or so u
+x select w 1 0
+r or p0 x
+ret r
+end
+# node j (p1) before jq (p9) and emitted at or after it: does it name the operand or a borrow?
+fn shltj u32 u32 u32x128x310 u32x128x132 u32x128x512 u32 u32x128x24 u32 u32 u32 u32 -> u32
+# p0 found, p1 j, sh, nodes, args, fst, bor, ok, ov, jq, nfn
+e loop shemok shemst p10 p1 p2 p5
+before lt p1 p9
+late ge e p9
+act and before late
+g add p5 p1
+@nwd na p3 g 2
+@nwd af p3 g 3
+n select act na 0
+r fold shlta n p0 p4 af p6 p7 p8
+ret r
+end
+fn shborr u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x310 -> u32
+# nodes args nt nfn fst retk ok ov jq retv selfRead sh
 z call zcol
 s0 rec z 0
 s1 fold shbp1 p3 s0 p0 p1 p2 p4 p6 p7
@@ -615,7 +665,10 @@ f fold shbp2 n 0 p0 p1 p4 bor p8 p10
 nf ne f 0
 u or rr nf
 r2 and anyb u
-r select r2 1 0
+lt fold shltj p3 0 p11 p0 p1 p4 bor p6 p7 p8 p3
+late ne lt 0
+r3 or r2 late
+r select r3 1 0
 ret r
 end
 
@@ -1113,7 +1166,90 @@ nn select add1 nl1 n
 @wr b a 16128 nn
 ret b
 end
-# node j of a function: fillRun, overwritesState, borrowLive
+# The BORR of a rec node (src/wasm.ts `recInPlaceField`): the record's only aggregate field k,
+# when its operand is `at Y k` or reaches it through the targets (operand 0) of set / put nodes:
+# 2 (that at node + 1) + borrowLive(Y, j, selfRead), else 0.
+# field step: (aggregate fields, the last one's position), field p1 of the tlist p2 from p3
+fn shrcf (u32,u32) u32 u32x128x65 u32 -> (u32,u32)
+cnt at p0 0
+pos at p0 1
+ti add p3 p1
+@rd ft p2 ti
+isagg ge ft 3
+inc select isagg 1 0
+cnt2 add cnt inc
+pos2 select isagg p1 pos
+r rec cnt2 pos2
+ret r
+end
+# chain walk (loop predicate and step share (x, trip, nodes, args, fst)): x is a set / put node;
+# x becomes its operand 0 when that is a node, else 4294967295
+fn shrcok u32 u32 u32x128x132 u32x128x512 u32 -> bool
+isx ne p0 4294967295
+xi select isx p0 0
+g add p4 xi
+@nwd op p2 g 1
+iss eq op 26
+isp eq op 28
+sp or iss isp
+ok and isx sp
+ret ok
+end
+fn shrcst u32 u32 u32x128x132 u32x128x512 u32 -> u32
+g add p4 p0
+@nwd af p2 g 3
+@aw k p3 af 0
+@aw v p3 af 1
+isn eq k 1
+r select isn v 4294967295
+ret r
+end
+# rec node j (p9; isrec p10) of the function with first node p6 (p5 nodes), ret (p7, p8), the
+# shape table p11 (its OWN column)
+fn shrecb u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32 u32 u32 u32 u32 bool u32x128x310 -> u32
+g add p6 p9
+@nwd af p0 g 3
+@rd nty p2 g
+@ty ta p3 nty 1
+@ty tb p3 nty 2
+nf select p10 tb 0
+st rec 0 0
+fr fold shrcf nf st p4 ta
+cnt at fr 0
+pos at fr 1
+one eq cnt 1
+fs add af pos
+@aw fk p1 fs 0
+@aw fv p1 fs 1
+fnode eq fk 1
+go and one fnode
+x0 select go fv 4294967295
+x loop shrcok shrcst p5 x0 p0 p1 p6
+isx ne x 4294967295
+xi select isx x 0
+gx add p6 xi
+@nwd xop p0 gx 1
+@nwd xaf p0 gx 3
+xaf1 add xaf 1
+@aw ik p1 xaf1 0
+@aw iv p1 xaf1 1
+@aw yk p1 xaf 0
+@aw yv p1 xaf 1
+isat eq xop 27
+ilit eq ik 3
+ipos eq iv pos
+c1 and isx isat
+c2 and c1 ilit
+cand and c2 ipos
+nn select cand p5 0
+b call shborr p0 p1 p2 nn p6 p7 yk yv p9 p8 1 p11
+x1 add x 1
+x2 mul x1 2
+v add x2 b
+r select cand v 0
+ret r
+end
+# node j of a function: fillRun, overwritesState, liveAfter (OWN of the table p0 is filled)
 fn shpn u32x128x310 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32 -> u32x128x310
 g add p8 p1
 fr call shfill p5 p6 p4 p2 p3 p7 g
@@ -1151,14 +1287,32 @@ d26 eq dop 26
 d28 eq dop 28
 da or d22 d23
 db or d26 d28
-dc or da db
+dc0 or da db
+d20 eq dop 20
+d21 eq dop 21
+dfl or d20 d21
+dc or dc0 dfl
 fn1 and isn dc
-fresh or isp fn1
+d25 eq dop 25
+d27 eq dop 27
+dga or d25 d27
+ga0 and isn dga
+ga and ga0 sp
+@nwd caf p5 gd 3
+@aw ck p6 caf 0
+@aw cv p6 caf 1
+qk select ga ck ok
+qv select ga cv ov
+fr0 or isp fn1
+fresh or fr0 ga
 c2 and c1 fresh
 nn select c2 p11 0
 self select sp 1 0
-bq call shborr p5 p6 p7 nn p8 p9 ok ov p1 p10 self
-@colw s3 s2 11264 g bq
+bq call shborr p5 p6 p7 nn p8 p9 qk qv p1 p10 self p0
+isrec eq op 23
+rb call shrecb p5 p6 p7 p2 p3 p11 p8 p9 p10 p1 isrec p0
+bf select isrec rb bq
+@colw s3 s2 11264 g bf
 s4 call shmiss s3 fm
 s5 call shmiss s4 om
 ret s5
@@ -1395,12 +1549,12 @@ z call zcol
 z2 call zcol
 uc fold shucj nfn z p4 p5 fst
 eff fold shefj nfn z2 p4 p5 p6 fst p2 pf p0
-s1 fold shpn nfn p0 p1 p2 p3 p4 p5 p6 fst retk retv nfn
 z3 call zcol
 gc fold shgcj nfn z3 p4 p5 p6 fst nfn
-s1g fold shgz nfn s1 p4 p5 p6 fst retk retv uc eff gc
+s1g fold shgz nfn p0 p4 p5 p6 fst retk retv uc eff gc
 s2 fold shlz nfn s1g p4 p5 p6 fst retk retv uc eff
-s3 fold shrot nfn s2 p4 p5 uc fst
+s1 fold shpn nfn s2 p1 p2 p3 p4 p5 p6 fst retk retv nfn
+s3 fold shrot nfn s1 p4 p5 uc fst
 ret s3
 end
 # ---------------------------------------------------------------------------------------------

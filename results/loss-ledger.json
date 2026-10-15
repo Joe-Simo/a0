@@ -184,6 +184,13 @@
       "added": 19,
       "worsened": 3,
       "removed": 5
+    },
+    {
+      "at": "2026-10-15T17:15:29.956Z",
+      "reason": "wasm-bench Linux rerun after in-place record updates (load 2.04, highest 2.19 at sample start): heap256 ns/trip 0.07x -> 0.57x of clang; only the heap256 and isort256 modules changed, every other kernel module is byte-identical to the previous run, so the new and worse rows (wasm-load-ms medians near 0.1 ms; hash1k, utf8dec4k and tok4k ns/trip) are run-to-run differences of unchanged code, recorded as measured",
+      "added": 6,
+      "worsened": 10,
+      "removed": 4
     }
   ],
   "entries": [
@@ -397,23 +404,47 @@
       "kernel": "affine",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.066267,
-      "other": 0.035435,
-      "gap": 0.8701,
+      "a0": 0.079014,
+      "other": 0.057922,
+      "gap": 0.364145,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
-      "id": "wasm-benchmark-linux-x64|rotl|wasm-load-ms|clang",
+      "id": "wasm-benchmark-linux-x64|noop|wasm-load-ms|clang",
       "source": "wasm-benchmark-linux-x64",
-      "kernel": "rotl",
+      "kernel": "noop",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.02416,
-      "other": 0.022182,
-      "gap": 0.0891714,
+      "a0": 0.073592,
+      "other": 0.05656,
+      "gap": 0.301132,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
+    },
+    {
+      "id": "wasm-benchmark-linux-x64|arrfill|wasm-load-ms|clang",
+      "source": "wasm-benchmark-linux-x64",
+      "kernel": "arrfill",
+      "axis": "wasm-load-ms",
+      "competitor": "clang",
+      "a0": 0.075113,
+      "other": 0.069665,
+      "gap": 0.0782028,
+      "noise": 0.05,
+      "load": 2.04
+    },
+    {
+      "id": "wasm-benchmark-linux-x64|arrfill4k|wasm-load-ms|clang",
+      "source": "wasm-benchmark-linux-x64",
+      "kernel": "arrfill4k",
+      "axis": "wasm-load-ms",
+      "competitor": "clang",
+      "a0": 0.103511,
+      "other": 0.097186,
+      "gap": 0.0650814,
+      "noise": 0.05,
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|loop64|wasm-load-ms|clang",
@@ -421,11 +452,11 @@
       "kernel": "loop64",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.030873,
-      "other": 0.027485,
-      "gap": 0.123267,
+      "a0": 0.106899,
+      "other": 0.073922,
+      "gap": 0.446105,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|dot1k|wasm-load-ms|clang",
@@ -433,23 +464,11 @@
       "kernel": "dot1k",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.089447,
-      "other": 0.081183,
-      "gap": 0.101795,
+      "a0": 0.084994,
+      "other": 0.060034,
+      "gap": 0.415764,
       "noise": 0.05,
-      "load": 5.9
-    },
-    {
-      "id": "wasm-benchmark-linux-x64|prefix1k|wasm-load-ms|clang",
-      "source": "wasm-benchmark-linux-x64",
-      "kernel": "prefix1k",
-      "axis": "wasm-load-ms",
-      "competitor": "clang",
-      "a0": 0.069135,
-      "other": 0.065663,
-      "gap": 0.052876,
-      "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|hist256|wasm-load-ms|clang",
@@ -457,11 +476,11 @@
       "kernel": "hist256",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.049835,
-      "other": 0.036991,
-      "gap": 0.34722,
+      "a0": 0.122561,
+      "other": 0.099808,
+      "gap": 0.227968,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|mat4|wasm-bytes|clang",
@@ -481,11 +500,23 @@
       "kernel": "mat4",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.071972,
-      "other": 0.062,
-      "gap": 0.160839,
+      "a0": 0.084213,
+      "other": 0.071945,
+      "gap": 0.170519,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
+    },
+    {
+      "id": "wasm-benchmark-linux-x64|fnv4k|wasm-load-ms|clang",
+      "source": "wasm-benchmark-linux-x64",
+      "kernel": "fnv4k",
+      "axis": "wasm-load-ms",
+      "competitor": "clang",
+      "a0": 0.079104,
+      "other": 0.066566,
+      "gap": 0.188354,
+      "noise": 0.05,
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|xs4k|wasm-load-ms|clang",
@@ -493,23 +524,23 @@
       "kernel": "xs4k",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.081559,
-      "other": 0.06673,
-      "gap": 0.222224,
+      "a0": 0.077937,
+      "other": 0.065732,
+      "gap": 0.185678,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
-      "id": "wasm-benchmark-linux-x64|filter2|ns-per-trip|clang",
+      "id": "wasm-benchmark-linux-x64|minmax1k|wasm-load-ms|clang",
       "source": "wasm-benchmark-linux-x64",
-      "kernel": "filter2",
-      "axis": "ns-per-trip",
+      "kernel": "minmax1k",
+      "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 1869.33,
-      "other": 1774.19,
-      "gap": 0.0536207,
+      "a0": 0.108617,
+      "other": 0.082609,
+      "gap": 0.314833,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|filter2|wasm-load-ms|clang",
@@ -517,11 +548,11 @@
       "kernel": "filter2",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.031827,
-      "other": 0.025927,
-      "gap": 0.227562,
+      "a0": 0.081217,
+      "other": 0.075047,
+      "gap": 0.0822151,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|sieve4k|ns-per-trip|clang",
@@ -529,11 +560,11 @@
       "kernel": "sieve4k",
       "axis": "ns-per-trip",
       "competitor": "clang",
-      "a0": 4621.14,
-      "other": 3850.78,
-      "gap": 0.200052,
+      "a0": 4439.92,
+      "other": 3824.94,
+      "gap": 0.160781,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|sieve4k|wasm-bytes|clang",
@@ -553,11 +584,11 @@
       "kernel": "sieve4k",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.031673,
-      "other": 0.028388,
-      "gap": 0.115718,
+      "a0": 0.078305,
+      "other": 0.068208,
+      "gap": 0.148032,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|isort256|ns-per-trip|clang",
@@ -565,11 +596,11 @@
       "kernel": "isort256",
       "axis": "ns-per-trip",
       "competitor": "clang",
-      "a0": 19963.3,
-      "other": 11015.5,
-      "gap": 0.8123,
+      "a0": 19398,
+      "other": 10777.8,
+      "gap": 0.799813,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|isort256|wasm-bytes|clang",
@@ -577,9 +608,9 @@
       "kernel": "isort256",
       "axis": "wasm-bytes",
       "competitor": "clang",
-      "a0": 619,
+      "a0": 602,
       "other": 577,
-      "gap": 0.0727903,
+      "gap": 0.0433276,
       "noise": 0.02,
       "load": null
     },
@@ -589,11 +620,23 @@
       "kernel": "isort256",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.030395,
-      "other": 0.027407,
-      "gap": 0.109023,
+      "a0": 0.074064,
+      "other": 0.062507,
+      "gap": 0.184891,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
+    },
+    {
+      "id": "wasm-benchmark-linux-x64|crc4k|wasm-load-ms|clang",
+      "source": "wasm-benchmark-linux-x64",
+      "kernel": "crc4k",
+      "axis": "wasm-load-ms",
+      "competitor": "clang",
+      "a0": 0.079252,
+      "other": 0.062299,
+      "gap": 0.272123,
+      "noise": 0.05,
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|bsearch1k|ns-per-trip|clang",
@@ -601,11 +644,11 @@
       "kernel": "bsearch1k",
       "axis": "ns-per-trip",
       "competitor": "clang",
-      "a0": 23717.6,
-      "other": 15693.1,
-      "gap": 0.511335,
+      "a0": 21533.6,
+      "other": 14375.9,
+      "gap": 0.497894,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|bsearch1k|wasm-bytes|clang",
@@ -625,11 +668,11 @@
       "kernel": "bsearch1k",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.127604,
-      "other": 0.104464,
-      "gap": 0.221512,
+      "a0": 0.104074,
+      "other": 0.07575,
+      "gap": 0.373914,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|rle4k|ns-per-trip|clang",
@@ -637,11 +680,11 @@
       "kernel": "rle4k",
       "axis": "ns-per-trip",
       "competitor": "clang",
-      "a0": 8710.26,
-      "other": 6958.42,
-      "gap": 0.251758,
+      "a0": 5887.44,
+      "other": 4618.07,
+      "gap": 0.274869,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|rle4k|wasm-bytes|clang",
@@ -661,11 +704,11 @@
       "kernel": "rle4k",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.031442,
-      "other": 0.025841,
-      "gap": 0.216749,
+      "a0": 0.11121,
+      "other": 0.103563,
+      "gap": 0.0738391,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|hash1k|ns-per-trip|clang",
@@ -673,11 +716,11 @@
       "kernel": "hash1k",
       "axis": "ns-per-trip",
       "competitor": "clang",
-      "a0": 52261,
-      "other": 12188.8,
-      "gap": 3.28761,
+      "a0": 53460.9,
+      "other": 12267.6,
+      "gap": 3.3579,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|hash1k|wasm-load-ms|clang",
@@ -685,11 +728,11 @@
       "kernel": "hash1k",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.071604,
-      "other": 0.067143,
-      "gap": 0.0664403,
+      "a0": 0.095428,
+      "other": 0.061537,
+      "gap": 0.550742,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|utf8dec4k|ns-per-trip|clang",
@@ -697,11 +740,11 @@
       "kernel": "utf8dec4k",
       "axis": "ns-per-trip",
       "competitor": "clang",
-      "a0": 42256.9,
-      "other": 15214,
-      "gap": 1.77749,
+      "a0": 48916.2,
+      "other": 15117.8,
+      "gap": 2.23567,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|utf8dec4k|wasm-bytes|clang",
@@ -721,11 +764,11 @@
       "kernel": "utf8dec4k",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.10309,
-      "other": 0.082603,
-      "gap": 0.248018,
+      "a0": 0.132228,
+      "other": 0.089641,
+      "gap": 0.475084,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|tok4k|ns-per-trip|clang",
@@ -733,11 +776,11 @@
       "kernel": "tok4k",
       "axis": "ns-per-trip",
       "competitor": "clang",
-      "a0": 35093.8,
-      "other": 27678.3,
-      "gap": 0.267916,
+      "a0": 34137.8,
+      "other": 23890,
+      "gap": 0.428959,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|tok4k|wasm-bytes|clang",
@@ -757,11 +800,11 @@
       "kernel": "tok4k",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.085456,
-      "other": 0.074199,
-      "gap": 0.151714,
+      "a0": 0.115064,
+      "other": 0.084777,
+      "gap": 0.357255,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|heap256|ns-per-trip|clang",
@@ -769,11 +812,11 @@
       "kernel": "heap256",
       "axis": "ns-per-trip",
       "competitor": "clang",
-      "a0": 158640,
-      "other": 10978.1,
-      "gap": 13.4507,
+      "a0": 18951.7,
+      "other": 10771.6,
+      "gap": 0.75941,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "wasm-benchmark-linux-x64|heap256|wasm-bytes|clang",
@@ -781,23 +824,11 @@
       "kernel": "heap256",
       "axis": "wasm-bytes",
       "competitor": "clang",
-      "a0": 1067,
+      "a0": 894,
       "other": 766,
-      "gap": 0.39295,
+      "gap": 0.167102,
       "noise": 0.02,
       "load": null
-    },
-    {
-      "id": "wasm-benchmark-linux-x64|heap256|wasm-load-ms|clang",
-      "source": "wasm-benchmark-linux-x64",
-      "kernel": "heap256",
-      "axis": "wasm-load-ms",
-      "competitor": "clang",
-      "a0": 0.106609,
-      "other": 0.084822,
-      "gap": 0.256856,
-      "noise": 0.05,
-      "load": 5.9
     },
     {
       "id": "wasm-benchmark-linux-x64|stencil64|wasm-load-ms|clang",
@@ -805,11 +836,11 @@
       "kernel": "stencil64",
       "axis": "wasm-load-ms",
       "competitor": "clang",
-      "a0": 0.089106,
-      "other": 0.082343,
-      "gap": 0.0821321,
+      "a0": 0.078657,
+      "other": 0.070701,
+      "gap": 0.11253,
       "noise": 0.05,
-      "load": 5.9
+      "load": 2.04
     },
     {
       "id": "lang-axes|chain3|tokens-kernel|c",

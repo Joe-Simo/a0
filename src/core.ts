@@ -472,16 +472,8 @@ export interface TypedProgram {
   readonly byName: ReadonlyMap<string, TypedFunc>;
 }
 
-/**
- * Borrowed reads (backends with flat aggregate storage: C, the native targets, wasm). A `get`
- * or `at` whose result is an aggregate names a part of its container's storage instead of
- * copying it; `mov` and `select` of a borrow alias it too. Value semantics then require that
- * the container is not updated in place while a borrow of it is still read. Is some borrow of
- * `o` read after the node at `index` (or by that node itself, unless `selfRead`: a `set`/`put`
- * reads its value operand before writing its target, whereas a fold's body keeps reading its
- * extras while the state changes), or returned?
- */
-export function borrowLive(fn: TypedFunc, o: Operand, index: number, selfRead: boolean): boolean {
+/** The borrows of `o` (`borrowLive`): aggregate reads of it, or of an earlier borrow of it. */
+export function borrowsOf(fn: TypedFunc, o: Operand): Set<string> {
   const same = (x: Operand): boolean =>
     (x.kind === 'node' && o.kind === 'node' && x.id === o.id) ||
     (x.kind === 'param' && o.kind === 'param' && x.index === o.index);
@@ -498,6 +490,20 @@ export function borrowLive(fn: TypedFunc, o: Operand, index: number, selfRead: b
     // From `o` itself or from an earlier borrow of it (nodes are in definition order).
     if (borrowed) borrows.add(n.id);
   }
+  return borrows;
+}
+
+/**
+ * Borrowed reads (backends with flat aggregate storage: C, the native targets, wasm). A `get`
+ * or `at` whose result is an aggregate names a part of its container's storage instead of
+ * copying it; `mov` and `select` of a borrow alias it too. Value semantics then require that
+ * the container is not updated in place while a borrow of it is still read. Is some borrow of
+ * `o` read after the node at `index` (or by that node itself, unless `selfRead`: a `set`/`put`
+ * reads its value operand before writing its target, whereas a fold's body keeps reading its
+ * extras while the state changes), or returned?
+ */
+export function borrowLive(fn: TypedFunc, o: Operand, index: number, selfRead: boolean): boolean {
+  const borrows = borrowsOf(fn, o);
   if (borrows.size === 0) return false;
   const isBorrow = (x: Operand): boolean => x.kind === 'node' && borrows.has(x.id);
   if (isBorrow(fn.ret)) return true;
