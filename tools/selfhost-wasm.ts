@@ -1451,6 +1451,71 @@ end
 `;
 
 /**
+ * Stores forwarded to the next trip's read (src/wasm.ts `carriedRead`): an insertion sort sinking
+ * by swaps in a `loop` (read at p2 - p1, last store at p2 - p1 - 1; length 10, so the first-trip
+ * index wraps by rem), a fold storing at p1 + 3 that the next trip reads at p1 + 2, and one reading
+ * at p1 - p2 (a coefficient of -1 on the extra) with that extra a local and a literal.
+ */
+const CARRY_FWD_SOURCE = `fn swp u32x10 u32 u32 -> u32x10
+j sub p2 p1
+i1 sub j 1
+u get p0 i1
+v get p0 j
+b set p0 j u
+c set b i1 v
+ret c
+end
+fn swpok u32x10 u32 u32 -> bool
+j sub p2 p1
+i1 sub j 1
+u get p0 i1
+v get p0 j
+g gt u v
+ret g
+end
+fn ins u32x10 u32 -> u32x10
+r loop swpok swp p1 p0 p1
+ret r
+end
+fn ahd u32x12 u32 u32 -> u32x12
+j add p1 2
+v get p0 j
+w mul v 3
+x add w p2
+k add p1 3
+n set p0 k x
+ret n
+end
+fn back u32x16 u32 u32 -> u32x16
+r sub p1 p2
+v get p0 r
+x mul v 5
+w add r 1
+n set p0 w x
+ret n
+end
+fn main u32 u32 -> u32
+a arr p0 p1 7 3 p1 9 0 p0 3000000000 5
+s fold ins 10 a
+b arr p0 1 2 3 4 5 6 7 8 9 10 p1
+t fold ahd 9 b p1
+c arr ${Array.from({ length: 16 }, (_, i) => (i % 2 === 0 ? 'p1' : String(i))).join(' ')}
+k and p0 7
+u fold back k c p1
+w fold back 5 u 3
+q rem p1 10
+e get s q
+f get t 11
+g get w 6
+h get s 0
+r add e f
+r2 add r g
+r3 xor r2 h
+ret r3
+end
+`;
+
+/**
  * A fill fused into an in-place prefix fold (the exec-bench prefix1k shape): an induction
  * variable stepping by a parameter, the carried previous element guarded on the first trip, and
  * the dead index arithmetic of the carried read; `pfx2` reads the carried element twice (no guard).
@@ -1844,6 +1909,11 @@ async function main(): Promise<void> {
   programs.push(['prefix', parseAndValidate(PREFIX_SOURCE), small]);
   // carried-element folds unrolled by 4 (src/wasm.ts `CARRY_UNROLL`)
   programs.push(['carryunroll', parseAndValidate(CARRY_UNROLL_SOURCE), small]);
+  // stores forwarded to the next trip's read, and the exec-bench kernel isort256 (src/wasm.ts `carriedRead`)
+  programs.push(['carryfwd', parseAndValidate(CARRY_FWD_SOURCE), small]);
+  const isort256 = KERNELS.find((k) => k.name === 'isort256');
+  if (isort256 === undefined) throw new Error('exec-bench kernel isort256 is missing');
+  programs.push(['bench/isort256', parseAndValidate(isort256.a0), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,

@@ -101,6 +101,218 @@ const JS_HASH_FILL = (n: number): string =>
 const RUST_HASH_FILL = (n: number): string =>
   `for i in 0..${n}u32 { let w = i.wrapping_mul(x).wrapping_add(y); a[i as usize] = (w ^ (w >> 15)).wrapping_mul(2654435761); }`;
 
+/** The reflected CRC-32 (IEEE 802.3, polynomial 0xEDB88320) byte table. */
+const CRC_TABLE: readonly number[] = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k += 1) c = c & 1 ? (0xedb88320 ^ (c >>> 1)) >>> 0 : c >>> 1;
+  return c >>> 0;
+});
+const CRC_LIST = CRC_TABLE.join(', ');
+
+/** One CRC-32 table step per byte of the word `v` (A0 lines; the state enters as p0). */
+function crcWordLines(): string[] {
+  const lines = ['v get p2 p1'];
+  let s = 'p0';
+  for (let b = 0; b < 4; b += 1) {
+    const byte = b === 0 ? 'v' : `w${b}`;
+    if (b > 0) lines.push(`w${b} shr v ${b * 8}`);
+    lines.push(
+      `x${b} xor ${s} ${byte}`,
+      `i${b} and x${b} 255`,
+      `t${b} get p3 i${b}`,
+      `h${b} shr ${s} 8`,
+      `c${b} xor t${b} h${b}`,
+    );
+    s = `c${b}`;
+  }
+  lines.push(`ret ${s}`);
+  return lines;
+}
+
+/** sieve4k: sieve of Eratosthenes below n = 2048 + (x & 2047), then a count of the primes. */
+const SIEVE_A0 = [
+  'fn mark u32x4096 u32 u32 u32 -> u32x4096',
+  'm mul p1 p3',
+  'j add p2 m',
+  'n set p0 j 1',
+  'ret n',
+  'end',
+  'fn sstep u32x4096 u32 u32 -> u32x4096',
+  'c get p0 p1',
+  'q mul p1 p1',
+  'prime eq c 0',
+  'big ge p1 2',
+  'fits lt q p2',
+  'r1 and prime big',
+  'r2 and r1 fits',
+  'd sub p2 q',
+  'e add d p1',
+  'f sub e 1',
+  'g div f p1',
+  'cnt select r2 g 0',
+  'r fold mark cnt p0 q p1',
+  'ret r',
+  'end',
+  'fn cstep u32 u32 u32x4096 -> u32',
+  'v get p2 p1',
+  'z eq v 0',
+  'big ge p1 2',
+  'b and z big',
+  'one select b 1 0',
+  'k add p0 one',
+  'ret k',
+  'end',
+  'fn sieve4k u32 u32 -> u32',
+  'n0 and p0 2047',
+  'n add n0 2048',
+  `z arr ${zeros(4096)}`,
+  's fold sstep 64 z n',
+  'k fold cstep n 0 s',
+  'm mul k 65599',
+  'w and p1 255',
+  't add m w',
+  'q and p1 4095',
+  'c get s q',
+  'r add t c',
+  'ret r',
+  'end',
+].join('\n');
+
+/** isort256: insertion sort of 256 hashed words (A0 sinks each new element by adjacent swaps). */
+const ISORT_A0 = `${hashFill('fillh256', 256)}
+fn swp u32x256 u32 u32 -> u32x256
+j sub p2 p1
+i1 sub j 1
+u get p0 i1
+v get p0 j
+b set p0 j u
+c set b i1 v
+ret c
+end
+fn swpok u32x256 u32 u32 -> bool
+j sub p2 p1
+i1 sub j 1
+u get p0 i1
+v get p0 j
+g gt u v
+ret g
+end
+fn ins u32x256 u32 -> u32x256
+r loop swpok swp p1 p0 p1
+ret r
+end
+fn isort256 u32 u32 -> u32
+z arr ${zeros(256)}
+a fold fillh256 256 z p0 p1
+s fold ins 256 a
+q and p1 255
+r get s q
+w and p0 255
+t get s w
+m mul t 3
+o add r m
+ret o
+end`;
+
+/** bsearch1k: 512 lower-bound searches of hashed keys in a sorted 1024-word table. */
+const BSEARCH_A0 = `fn fillsorted u32x1024 u32 u32 -> u32x1024
+m mul p1 p2
+h shr m 26
+b shl p1 6
+v add b h
+n set p0 p1 v
+ret n
+end
+fn bsok (u32,u32) u32 u32x1024 u32 -> bool
+lo at p0 0
+hi at p0 1
+c lt lo hi
+ret c
+end
+fn bsstep (u32,u32) u32 u32x1024 u32 -> (u32,u32)
+lo at p0 0
+hi at p0 1
+s add lo hi
+m shr s 1
+v get p2 m
+c lt v p3
+m1 add m 1
+nlo select c m1 lo
+nhi select c hi m
+r put p0 0 nlo
+r2 put r 1 nhi
+ret r2
+end
+fn qstep u32 u32 u32x1024 u32 -> u32
+m mul p1 2654435761
+x xor m p3
+k shr x 16
+st rec 0 1024
+r loop bsok bsstep 11 st p2 k
+lo at r 0
+s add p0 lo
+ret s
+end
+fn bsearch1k u32 u32 -> u32
+z arr ${zeros(1024)}
+a fold fillsorted 1024 z p0
+s fold qstep 512 0 a p1
+ret s
+end`;
+const C_SORTED_FILL = 'for (uint32_t i = 0; i < 1024; i++) a[i] = (i << 6) + ((i * x) >> 26);';
+
+/** rle4k: run-length encode 4096 symbols (runs capped at 255), FNV-hashing each (symbol, length) pair. */
+const RLE_A0 = `fn rlefill u32x4096 u32 u32 u32 -> u32x4096
+s shr p1 2
+m mul s p2
+x xor m p3
+v shr x 30
+n set p0 p1 v
+ret n
+end
+fn rlestep (u32,u32,u32,u32) u32 u32x4096 -> (u32,u32,u32,u32)
+v get p2 p1
+pr at p0 0
+ln at p0 1
+h at p0 2
+rn at p0 3
+e eq v pr
+s lt ln 255
+c and e s
+l1 add ln 1
+sh shl pr 8
+o or sh ln
+hx xor h o
+hm mul hx 16777619
+r1 add rn 1
+npr select c pr v
+nln select c l1 1
+nh select c h hm
+nrn select c rn r1
+q0 put p0 0 npr
+q1 put q0 1 nln
+q2 put q1 2 nh
+q3 put q2 3 nrn
+ret q3
+end
+fn rle4k u32 u32 -> u32
+z arr ${zeros(4096)}
+a fold rlefill 4096 z p0 p1
+f get a 0
+st rec f 0 2166136261 0
+r fold rlestep 4096 st a
+pr at r 0
+ln at r 1
+h at r 2
+rn at r 3
+sh shl pr 8
+o or sh ln
+hx xor h o
+hm mul hx 16777619
+t add hm rn
+ret t
+end`;
+
 export const KERNELS: readonly Kernel[] = [
   {
     name: 'affine',
@@ -264,6 +476,51 @@ export const KERNELS: readonly Kernel[] = [
     c: `static inline uint32_t hw_filter2(uint32_t x, uint32_t y) { uint32_t a[1024], b[1024], c[1024]; ${C_HASH_FILL(1024)} for (uint32_t i = 0; i < 1024; i++) b[i] = (a[i] + a[(i + 1) & 1023u]) >> 1; for (uint32_t i = 0; i < 1024; i++) c[i] = (b[i] + b[(i + 1) & 1023u]) >> 1; return c[y & 1023u] + c[1023]; }`,
     js: `export function filter2(x, y) { const a = new Uint32Array(1024), b = new Uint32Array(1024), c = new Uint32Array(1024); ${JS_HASH_FILL(1024)} for (let i = 0; i < 1024; i++) b[i] = (a[i] + a[(i + 1) & 1023]) >>> 1; for (let i = 0; i < 1024; i++) c[i] = (b[i] + b[(i + 1) & 1023]) >>> 1; return (c[y & 1023] + c[1023]) >>> 0; }`,
     rust: `#[inline] fn hw_filter2(x: u32, y: u32) -> u32 { let mut a = [0u32; 1024]; let mut b = [0u32; 1024]; let mut c = [0u32; 1024]; ${RUST_HASH_FILL(1024)} for i in 0..1024 { b[i] = a[i].wrapping_add(a[(i + 1) & 1023]) >> 1; } for i in 0..1024 { c[i] = b[i].wrapping_add(b[(i + 1) & 1023]) >> 1; } c[(y & 1023) as usize].wrapping_add(c[1023]) }`,
+  },
+  {
+    name: 'sieve4k', // sieve of Eratosthenes below 2048..4095: strided stores with a data-dependent trip count
+    arity: 2,
+    iterScale: 512,
+    a0: SIEVE_A0,
+    c: 'static inline uint32_t hw_sieve4k(uint32_t x, uint32_t y) { uint32_t c[4096] = {0}; uint32_t n = 2048u + (x & 2047u); for (uint32_t p = 2; p < 64; p++) { if (c[p]) continue; for (uint32_t j = p * p; j < n; j += p) c[j] = 1; } uint32_t k = 0; for (uint32_t i = 2; i < n; i++) k += c[i] == 0; return k * 65599u + (y & 255u) + c[y & 4095u]; }',
+    js: 'export function sieve4k(x, y) { const c = new Uint32Array(4096); const n = 2048 + (x & 2047); for (let p = 2; p < 64; p++) { if (c[p]) continue; for (let j = p * p; j < n; j += p) c[j] = 1; } let k = 0; for (let i = 2; i < n; i++) k += c[i] === 0 ? 1 : 0; return (Math.imul(k, 65599) + (y & 255) + c[y & 4095]) >>> 0; }',
+    rust: '#[inline] fn hw_sieve4k(x: u32, y: u32) -> u32 { let mut c = [0u32; 4096]; let n = 2048 + (x & 2047); for p in 2..64u32 { if c[p as usize] != 0 { continue; } let mut j = p * p; while j < n { c[j as usize] = 1; j += p; } } let mut k = 0u32; for i in 2..n { if c[i as usize] == 0 { k += 1; } } k.wrapping_mul(65599).wrapping_add(y & 255).wrapping_add(c[(y & 4095) as usize]) }',
+  },
+  {
+    name: 'isort256', // insertion sort of 256 hashed words: data-dependent inner loop with early exit
+    arity: 2,
+    iterScale: 2048,
+    a0: ISORT_A0,
+    c: `static inline uint32_t hw_isort256(uint32_t x, uint32_t y) { uint32_t a[256]; ${C_HASH_FILL(256)} for (uint32_t i = 1; i < 256; i++) { uint32_t v = a[i]; uint32_t j = i; while (j > 0 && a[j - 1] > v) { a[j] = a[j - 1]; j--; } a[j] = v; } return a[y & 255u] + a[x & 255u] * 3u; }`,
+    js: `export function isort256(x, y) { const a = new Uint32Array(256); ${JS_HASH_FILL(256)} for (let i = 1; i < 256; i++) { const v = a[i]; let j = i; while (j > 0 && a[j - 1] > v) { a[j] = a[j - 1]; j--; } a[j] = v; } return (a[y & 255] + Math.imul(a[x & 255], 3)) >>> 0; }`,
+    rust: `#[inline] fn hw_isort256(x: u32, y: u32) -> u32 { let mut a = [0u32; 256]; ${RUST_HASH_FILL(256)} for i in 1..256 { let v = a[i]; let mut j = i; while j > 0 && a[j - 1] > v { a[j] = a[j - 1]; j -= 1; } a[j] = v; } a[(y & 255) as usize].wrapping_add(a[(x & 255) as usize].wrapping_mul(3)) }`,
+  },
+  {
+    name: 'crc4k', // table-driven CRC-32 over the 4096 bytes of 1024 hashed words: a 256-entry lookup per byte
+    arity: 2,
+    iterScale: 1024,
+    a0: `${hashFill('fillh1k', 1024)}\nfn crcstep u32 u32 u32x1024 u32x256 -> u32\n${crcWordLines().join('\n')}\nend\nfn crc4k u32 u32 -> u32\nz arr ${zeros(1024)}\na fold fillh1k 1024 z p0 p1\nt arr ${CRC_TABLE.join(' ')}\nc fold crcstep 1024 4294967295 a t\nr xor c 4294967295\nret r\nend`,
+    c: `static const uint32_t crc_t[256] = {${CRC_LIST}};\nstatic inline uint32_t hw_crc4k(uint32_t x, uint32_t y) { uint32_t a[1024]; ${C_HASH_FILL(1024)} uint32_t c = 0xffffffffu; for (uint32_t i = 0; i < 1024; i++) { uint32_t v = a[i]; for (uint32_t b = 0; b < 32; b += 8) c = crc_t[(c ^ (v >> b)) & 255u] ^ (c >> 8); } return c ^ 0xffffffffu; }`,
+    js: `const crcT = new Uint32Array([${CRC_LIST}]);\nexport function crc4k(x, y) { const a = new Uint32Array(1024); ${JS_HASH_FILL(1024)} let c = 0xffffffff; for (let i = 0; i < 1024; i++) { const v = a[i]; for (let b = 0; b < 32; b += 8) c = (crcT[(c ^ (v >>> b)) & 255] ^ (c >>> 8)) >>> 0; } return (c ^ 0xffffffff) >>> 0; }`,
+    rust: `static CRC_T: [u32; 256] = [${CRC_LIST}];\n#[inline] fn hw_crc4k(x: u32, y: u32) -> u32 { let mut a = [0u32; 1024]; ${RUST_HASH_FILL(1024)} let mut c = 0xffffffffu32; for i in 0..1024 { let v = a[i]; for b in [0u32, 8, 16, 24] { c = CRC_T[((c ^ (v >> b)) & 255) as usize] ^ (c >> 8); } } c ^ 0xffffffff }`,
+  },
+  {
+    name: 'bsearch1k', // 512 lower-bound binary searches in a sorted 1024-word table
+    arity: 2,
+    iterScale: 256,
+    a0: BSEARCH_A0,
+    c: `static inline uint32_t hw_bsearch1k(uint32_t x, uint32_t y) { uint32_t a[1024]; ${C_SORTED_FILL} uint32_t s = 0; for (uint32_t q = 0; q < 512; q++) { uint32_t k = ((q * 2654435761u) ^ y) >> 16; uint32_t lo = 0, hi = 1024; while (lo < hi) { uint32_t m = (lo + hi) >> 1; if (a[m] < k) lo = m + 1; else hi = m; } s += lo; } return s; }`,
+    js: 'export function bsearch1k(x, y) { const a = new Uint32Array(1024); for (let i = 0; i < 1024; i++) a[i] = ((i << 6) + (Math.imul(i, x) >>> 26)) >>> 0; let s = 0; for (let q = 0; q < 512; q++) { const k = ((Math.imul(q, 2654435761) ^ y) >>> 16); let lo = 0, hi = 1024; while (lo < hi) { const m = (lo + hi) >>> 1; if (a[m] < k) lo = m + 1; else hi = m; } s = (s + lo) >>> 0; } return s; }',
+    rust: '#[inline] fn hw_bsearch1k(x: u32, y: u32) -> u32 { let mut a = [0u32; 1024]; for i in 0..1024u32 { a[i as usize] = (i << 6).wrapping_add(i.wrapping_mul(x) >> 26); } let mut s = 0u32; for q in 0..512u32 { let k = (q.wrapping_mul(2654435761) ^ y) >> 16; let (mut lo, mut hi) = (0u32, 1024u32); while lo < hi { let m = (lo + hi) >> 1; if a[m as usize] < k { lo = m + 1; } else { hi = m; } } s = s.wrapping_add(lo); } s }',
+  },
+  {
+    name: 'rle4k', // run-length codec state machine over 4096 two-bit symbols, hashing each emitted run
+    arity: 2,
+    iterScale: 1024,
+    a0: RLE_A0,
+    c: 'static inline uint32_t hw_rle4k(uint32_t x, uint32_t y) { uint32_t a[4096]; for (uint32_t i = 0; i < 4096; i++) a[i] = (((i >> 2) * x) ^ y) >> 30; uint32_t prev = a[0], len = 1, h = 2166136261u, runs = 0; for (uint32_t i = 1; i < 4096; i++) { uint32_t v = a[i]; if (v == prev && len < 255u) len++; else { h = (h ^ ((prev << 8) | len)) * 16777619u; runs++; prev = v; len = 1; } } h = (h ^ ((prev << 8) | len)) * 16777619u; return h + runs; }',
+    js: 'export function rle4k(x, y) { const a = new Uint32Array(4096); for (let i = 0; i < 4096; i++) a[i] = ((Math.imul(i >>> 2, x) ^ y) >>> 30); let prev = a[0], len = 1, h = 2166136261, runs = 0; for (let i = 1; i < 4096; i++) { const v = a[i]; if (v === prev && len < 255) len++; else { h = Math.imul(h ^ ((prev << 8) | len), 16777619) >>> 0; runs++; prev = v; len = 1; } } h = Math.imul(h ^ ((prev << 8) | len), 16777619) >>> 0; return (h + runs) >>> 0; }',
+    rust: '#[inline] fn hw_rle4k(x: u32, y: u32) -> u32 { let mut a = [0u32; 4096]; for i in 0..4096u32 { a[i as usize] = ((i >> 2).wrapping_mul(x) ^ y) >> 30; } let (mut prev, mut len, mut h, mut runs) = (a[0], 1u32, 2166136261u32, 0u32); for i in 1..4096 { let v = a[i]; if v == prev && len < 255 { len += 1; } else { h = (h ^ ((prev << 8) | len)).wrapping_mul(16777619); runs += 1; prev = v; len = 1; } } h = (h ^ ((prev << 8) | len)).wrapping_mul(16777619); h.wrapping_add(runs) }',
   },
 ];
 

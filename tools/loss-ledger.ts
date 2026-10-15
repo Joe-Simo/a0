@@ -9,6 +9,8 @@
  *   exec-benchmark.json   ns per call, A0 emitted C against hand-written C, Rust, and every language
  *                         that ran; emitted JS against hand-written JS; binary size against C.
  *   wasm-benchmark.json   ns per trip, module bytes and load time, A0 direct wasm against clang.
+ *   wasm-benchmark-linux-x64.json  the same on Linux x64 (source `wasm-benchmark-linux-x64`; the
+ *                         canonical file above is the Windows x64 run the site shows).
  *   lang-axes.json        tokens per kernel and per program for canonical A0 and, as a separate
  *                         subject `a0-dense`, for the dense view (src/dense.ts); validation time.
  *   ai-edit-experiment.{haiku,sonnet}-min.json and .{a..f,c400,c4000}.{haiku,sonnet}-min.json
@@ -250,8 +252,8 @@ function execObservations(root: string): Observation[] {
   return out;
 }
 
-function wasmObservations(root: string): Observation[] {
-  const doc = readJson(root, 'wasm-benchmark.json');
+function wasmObservations(root: string, file: string, source: string): Observation[] {
+  const doc = readJson(root, file);
   const rows = doc?.rows;
   if (doc === undefined || !Array.isArray(rows)) return [];
   // The file records no load average: its timings are flagged unverified until it does.
@@ -267,7 +269,7 @@ function wasmObservations(root: string): Observation[] {
       timing: boolean,
     ): void => {
       const o = lower(
-        'wasm-benchmark',
+        source,
         r.kernel as string,
         axis,
         'clang',
@@ -784,7 +786,8 @@ function editProtocolObservations(root: string): Observation[] {
 export function observations(root = '.'): Observation[] {
   return [
     ...execObservations(root),
-    ...wasmObservations(root),
+    ...wasmObservations(root, 'wasm-benchmark.json', 'wasm-benchmark'),
+    ...wasmObservations(root, 'wasm-benchmark-linux-x64.json', 'wasm-benchmark-linux-x64'),
     ...langAxesObservations(root),
     ...aiObservations(root),
     ...specObservations(root),

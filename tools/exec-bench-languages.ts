@@ -34,6 +34,11 @@ export const KERNEL_NAMES = [
   'xs4k',
   'minmax1k',
   'filter2',
+  'sieve4k',
+  'isort256',
+  'crc4k',
+  'bsearch1k',
+  'rle4k',
 ] as const;
 export type KernelName = (typeof KERNEL_NAMES)[number];
 

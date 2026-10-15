@@ -12190,32 +12190,42 @@ a2 select a1 1 0
 a3 rec a2 r d
 ret a3
 end
-# carried previous element (src/wasm.ts `carriedRead`): register 31 counts the set/put nodes of
-# the body (first node p2), 28 := 1 when the body is `set p0 p1 v` (its ret) with exactly one update
-# and some `get p0 (p1 - 1)` whose node is in 29 (the first), the set node in 30
-fn wxcr0 u32x128x512 u32 u32 u32x128x132 -> u32x128x512
-a add p2 p1
-b call wxnw p3 a 1
-c eq b 26
-d eq b 28
-e or c d
-f shr 31 7
-g and 31 127
-h get p0 f
-i get h g
-j add i 1
-k select e 1 0
-l ne k 0
-m shr 31 7
-n and 31 127
-o get p0 m
-p set o n j
-q get p0 m
-r select l p q
-s set p0 m r
-ret s
+# carried read (src/wasm.ts `carriedRead`, `affineNodes`, `affineOf`): an index as (s, c, k, t),
+# s * p1 + c + t * pk (pk an extra parameter, k >= 2; t 0, 1 or 4294967295), mod 2^32; t 2 when it
+# is not of that form. The affine table holds 4 words a body node (s c k t).
+# operand (kind p1, value p2) as an affine index, given the table p0 of the earlier nodes
+fn wxafo u32x128 u32 u32 -> (u32,u32,u32,u32)
+a mul p2 4
+b get p0 a
+c add a 1
+d get p0 c
+e add a 2
+f get p0 e
+g add a 3
+h get p0 g
+i eq p1 1
+j eq p1 2
+k eq p1 3
+l eq p2 1
+m ge p2 2
+n and j l
+o and j m
+s0 select n 1 0
+s1 select i b s0
+c0 select k p2 0
+c1 select i d c0
+k0 select o p2 0
+k1 select i f k0
+t0 select o 1 2
+t1 select n 0 t0
+t2 select k 0 t1
+t3 select i h t2
+r rec s1 c1 k1 t3
+ret r
 end
-fn wxcr1 u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+# node p1 of the body (first node p2, nodes p3, operands p4) into the affine table p0: an add or
+# sub of two affine operands with at most one extra parameter, of coefficient 0, 1 or -1
+fn wxafn u32x128 u32 u32 u32x128x132 u32x128x512 -> u32x128
 a add p2 p1
 b call wxnw p3 a 1
 c call wxnw p3 a 3
@@ -12224,49 +12234,116 @@ e call wxok p4 c
 f call wxov p4 c
 g call wxok p4 d
 h call wxov p4 d
-i eq b 25
-j eq e 2
-k eq f 0
-l and j k
-m eq g 1
-n add p2 h
-o call wxnw p3 n 1
-p call wxnw p3 n 3
-q add p 1
-r call wxok p4 p
-s call wxov p4 p
-t call wxok p4 q
-u call wxov p4 q
-v eq o 3
-w eq r 2
-x eq s 1
-y and w x
-z eq t 3
-aa eq u 1
-ab and z aa
-ac shr 29 7
-ad and 29 127
-ae get p0 ac
-af get ae ad
-ag eq af 4294967295
-ah and i l
-ai and ah m
-aj and ai v
-ak and aj y
-al and ak ab
-am and al ag
-an select am 1 0
-ao ne an 0
-ap shr 29 7
-aq and 29 127
-ar get p0 ap
-as set ar aq p1
-au get p0 ap
-av select ao as au
-aw set p0 ap av
-ret aw
+i call wxafo p0 e f
+j call wxafo p0 g h
+as at i 0
+ac at i 1
+ak at i 2
+au at i 3
+bs at j 0
+bc at j 1
+bk at j 2
+bu at j 3
+o2 eq b 2
+o3 eq b 3
+ar or o2 o3
+ns sub 0 bs
+nc sub 0 bc
+nu sub 0 bu
+ss select o3 ns bs
+sc select o3 nc bc
+su select o3 nu bu
+s add as ss
+cc add ac sc
+t add au su
+an ne au 0
+bn ne bu 0
+kk select an ak bk
+ab and an bn
+kd ne ak bk
+cf and ab kd
+ai eq au 2
+bi eq bu 2
+t0 eq t 0
+t1 eq t 1
+tm eq t 4294967295
+tv or t0 t1
+tw or tv tm
+iv or ai bi
+iw or iv cf
+ix select iw false true
+ok and ar ix
+ol and ok tw
+k2 select t0 0 kk
+rs select ol s 0
+rc select ol cc 0
+rk select ol k2 0
+rt select ol t 2
+x mul p1 4
+y add x 1
+z add x 2
+w add x 3
+q0 set p0 x rs
+q1 set q0 y rc
+q2 set q1 z rk
+q3 set q2 w rt
+ret q3
 end
-fn wxcarry u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 -> u32x128x512
+# node p1 (first node p2, nodes p3, operands p4) as the carried read: the first `get p0 r` with r
+# at trip p1 + 1 equal to the stored index (p6 p7 p8 p9: s c k t), r from the affine table p5;
+# the state (found, node, s, c, k, t of r)
+fn wxafg (u32,u32,u32,u32,u32,u32) u32 u32 u32x128x132 u32x128x512 u32x128 u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32)
+a at p0 0
+b add p2 p1
+c call wxnw p3 b 1
+d call wxnw p3 b 3
+e add d 1
+f call wxok p4 d
+g call wxov p4 d
+h call wxok p4 e
+i call wxov p4 e
+j call wxafo p5 h i
+rs at j 0
+rc at j 1
+rk at j 2
+rt at j 3
+k eq c 25
+l eq f 2
+m eq g 0
+n ne rt 2
+o eq rs p6
+q eq rk p8
+r eq rt p9
+s add rc rs
+t eq s p7
+u eq a 0
+v and k l
+w and v m
+x and w n
+y and x o
+z and y q
+aa and z r
+ab and aa t
+ac and ab u
+ad select ac 1 a
+n1 at p0 1
+n2 at p0 2
+n3 at p0 3
+n4 at p0 4
+n5 at p0 5
+ae select ac p1 n1
+af select ac rs n2
+ag select ac rc n3
+ah select ac rk n4
+ai select ac rt n5
+aj rec ad ae af ag ah ai
+ret aj
+end
+# the carried read of the body p2 (fns p3, nodes p4, operands p5; p6: its state is an array of
+# scalars): register 28 := 1 when the body's result is `set X w v` and some `get p0 r` reads at trip
+# p1 + 1 the index w of trip p1; 29 the read node, 30 the set node, 24 25 26 27 the read's index (s
+# c k t)
+fn wxcarry u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 bool -> u32x128x512
 a call wxfw p3 p2 4
 b call wxfw p3 p2 5
 c call wxfw p3 p2 6
@@ -12279,56 +12356,41 @@ i add a h
 j call wxnw p4 i 1
 k call wxnw p4 i 3
 l add k 1
-m call wxok p5 k
-n call wxov p5 k
 o call wxok p5 l
 p call wxov p5 l
 q eq j 26
-r eq m 2
-s eq n 0
-t eq o 2
-u eq p 1
 v and g q
-w and v r
-x and w s
-y and x t
-z and y u
-aa shr 31 7
-ab and 31 127
-ac get p0 aa
-ad set ac ab 0
-ae set p0 aa ad
-af shr 29 7
-ag and 29 127
-ah get ae af
-ai set ah ag 4294967295
-aj set ae af ai
-ak fold wxcr0 b aj a p4
-al fold wxcr1 b ak a p4 p5
-am shr 31 7
-an and 31 127
-ao get al am
-ap get ao an
-aq shr 29 7
-ar and 29 127
-as get al aq
-au get as ar
-av eq ap 1
-aw ne au 4294967295
-ax and z av
-ay and ax aw
+z and v p6
+tb call zpage
+tt fold wxafn b tb a p4 p5
+w call wxafo tt o p
+ws at w 0
+wc at w 1
+wk at w 2
+wt at w 3
+wv ne wt 2
+st rec 0 0 0 0 0 0
+sr fold wxafg b st a p4 p5 tt ws wc wk wt
+fd at sr 0
+nd at sr 1
+rs at sr 2
+rc at sr 3
+rk at sr 4
+rt at sr 5
+fz eq fd 1
+ax and z wv
+ay and ax fz
 az select ay 1 0
-a0 shr 28 7
-a1 and 28 127
-a2 get al a0
-a3 set a2 a1 az
-a4 set al a0 a3
-a5 shr 30 7
-a6 and 30 127
-a7 get a4 a5
-a8 set a7 a6 h
-a9 set a4 a5 a8
-ret a9
+r0 get p0 0
+r1 set r0 28 az
+r2 set r1 29 nd
+r3 set r2 30 h
+r4 set r3 24 rs
+r5 set r4 25 rc
+r6 set r5 26 rk
+r7 set r6 27 rt
+r8 set p0 0 r7
+ret r8
 end
 # sliding read (src/wasm.ts `slidingRead`): (found, cur node, next node, parameter) of the body
 # (first node p2); node p1 as the next read for cur node p3 of parameter p4: a get of p4 at a node
@@ -13884,7 +13946,11 @@ cs select cj false true
 ct and bn ci
 cu and ct cs
 cv select cu 1 0
-cw fold wxcarry cv cr av p3 p4 p5
+ce0 call wxty p7 b 2
+ce1 call wxtag p7 ce0
+ce2 lt ce1 4
+ce3 and bj ce2
+cw fold wxcarry cv cr av p3 p4 p5 ce3
 cx shr 28 7
 cy and 28 127
 cz get cw cx
@@ -13920,7 +13986,13 @@ ds shr 16 7
 dt and 16 127
 du get dr ds
 dv get du dt
-dw add an 4294967295
+rg0 get cw 0
+rg4 get rg0 24
+rg5 get rg0 25
+rg6 get rg0 26
+rg7 get rg0 27
+dw0 mul rg4 an
+dw add dw0 rg5
 dx rem dw bh
 dy mul dx 4
 ft_a call wxfw p3 av 4
@@ -13938,12 +14010,47 @@ ft_l and dp dp
 ft_m and ft_l ft_k
 ft_n select ft_m false true
 ft_o and dp ft_n
-dz select ft_o 1 0
+fs0 eq rg7 0
+fs1 and ft_o fs0
+fs2 select fs0 false true
+fs3 and ft_o fs2
+dz select fs1 1 0
 d0 fold wxlg dz dr l
-d1 select ft_o 1 0
+d1 select fs1 1 0
 d2 fold wxld d1 d0 dy
+fx0 sub rg6 2
+fx1 mul fx0 2
+fx2 add fx1 104
+fx3 add fx1 105
+fx4 call wxcg d2 a fx2
+fx5 call wxcg d2 a fx3
+fx6 eq fx4 1
+fx7 and fs3 fx6
+fx8 select fx6 false true
+fx9 and fs3 fx8
+fy0 eq rg7 1
+fy1 select fy0 106 107
+fy2 sub bh 1
+fy3 and bh fy2
+fy4 eq fy3 0
+fy5 select fy4 fy2 bh
+fy6 select fy4 113 112
+fz0 select fs3 1 0
+fz1 fold wxlg fz0 d2 l
+fz2 fold wxkc fz0 fz1 dw
+fz3 select fx7 1 0
+fz4 fold wxkc fz3 fz2 fx5
+fz5 select fx9 1 0
+fz6 fold wxlg fz5 fz4 fx5
+fz7 fold wxop fz0 fz6 fy1
+fz8 fold wxkc fz0 fz7 fy5
+fz9 fold wxop fz0 fz8 fy6
+fw0 fold wxkc fz0 fz9 2
+fw1 fold wxop fz0 fw0 116
+fw2 fold wxop fz0 fw1 106
+fw3 fold wxld fz0 fw2 0
 ft_p select ft_m 1 0
-ft_q fold wxkc ft_p d2 ft_i
+ft_q fold wxkc ft_p fw3 ft_i
 d3 select dp 1 0
 d4 fold wxls d3 ft_q dv
 ft_r add ft_j 1
