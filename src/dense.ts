@@ -1508,12 +1508,23 @@ export class FunctionParser {
       if (t.kind === 'semi') {
         if (op !== 'arr') return fail("unexpected ';'", this.line);
         this.pos += 1;
-        // `[x;N]` repeats x N times only when N is a decimal literal right after the one element;
-        // otherwise `;` separates elements like a blank (`[x0;x1;x2]`, input only).
+        // `[x;N]` repeats x N times (N a decimal literal). A `;` followed by an element that is no
+        // number separates elements like a blank (`[x0;x1;x2]`, input only).
         const next = this.peek();
-        if (args.length !== 1 || next?.kind !== 'word' || !NUMBER.test(next.text)) continue;
+        const element =
+          next !== undefined &&
+          (next.kind === 'word' || next.kind === 'open' || next.kind === 'str') &&
+          !/^[0-9]/.test(next.text) &&
+          // `[x;A]` stays a repeat by a non-number (an error), not the two elements x and A
+          !(
+            args.length === 1 &&
+            (/^[A-Z]$/.test(next.text) || PARAM_WORD.test(next.text)) &&
+            this.toks[this.pos + 1]?.kind === 'close'
+          );
+        if (element) continue;
+        if (args.length !== 1) return fail("unexpected ';'", this.line);
         const count = this.eat('a repeat count');
-        if (Number(count.text) < 1)
+        if (count.kind !== 'word' || !NUMBER.test(count.text) || Number(count.text) < 1)
           return fail(`repeat count '${count.text}' is not a positive number`, this.line);
         const n = Number(count.text);
         if (n > LIMITS.maxArrayLength)

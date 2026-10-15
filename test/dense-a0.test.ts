@@ -1372,7 +1372,16 @@ function mutate(
  * A text the reference reads but the reader leaves to the error flag uses a form outside the reader:
  * a comma used as a blank, a `$` escape, the `rec` word, or a record type in a signature.
  */
+/**
+ * Input-only spellings of the reference that no reader stage reads (the error flag is set): a `;` between two
+ * array elements that is no repeat (`[x0;x1]`), and a line-start name spelled like a parameter word (`p0 sub B A`).
+ */
+function denseOnlySpelling(text: string): boolean {
+  return /;\s*[^\s\d\];]/.test(text) || /^(\$?p\d+)\s+\S/m.test(text);
+}
+
 function outsideTheReader(text: string, canonical: string): boolean {
+  if (denseOnlySpelling(text)) return true;
   return /[,$]|\brec\b/.test(text) || /\((u32|bool)/.test(canonical);
 }
 
@@ -1870,6 +1879,7 @@ function mutateArrays(
  * word, an inline body, a type written with spaces, or an unwritten result that is not u32 or bool.
  */
 function outsideTheArrayReader(text: string, program: Program): boolean {
+  if (denseOnlySpelling(text)) return true;
   if (/[,$;"={]|\brec\b|\barr\b|\btext\b|\bio\b|#/.test(text)) return true;
   const lines = text.split('\n');
   for (const l of lines) if (/^fn /.test(l) && /\([^)]*\s[^)]*\)/.test(l)) return true;
@@ -2178,6 +2188,7 @@ test('the B3.2 reader: generated programs with repeats and escapes read to their
  * type written with spaces, or an unwritten result that is not u32 or bool.
  */
 function outsideTheReaderB32(text: string, program: Program): boolean {
+  if (denseOnlySpelling(text)) return true;
   if (/[,"{]|\brec\b|\barr\b|\btext\b|\bio\b|#/.test(text)) return true;
   const lines = text.split('\n');
   for (const l of lines) if (/^fn /.test(l) && /\([^)]*\s[^)]*\)/.test(l)) return true;
@@ -2314,7 +2325,8 @@ const ESCAPE_CURATED: Curated[] = [
   ['= after an escaped name', 'fn f u32 -> u32\n$x = add A 1\nmul $x $x\n'],
   ['= after a reserved word', 'fn f u32 -> u32\ntrue = add A 1\ntrue\n'],
   ['= after ret', 'fn f u32 -> u32\nret = add A 1\nret\n'],
-  ['= after a parameter word', 'fn f u32 -> u32\np3 = add A 1\np3\n'],
+  // the reference reads a line-start parameter word as a name (input only); the reader leaves it to the flag
+  ['= after a parameter word', 'fn f u32 -> u32\np3 = add A 1\np3\n', true],
   ['= after a letter', 'fn f u32 -> u32\nA = add A 1\nA\n'],
   ['= after a number', 'fn f u32 -> u32\n5 = add A 1\n5\n'],
   ['= alone after a name', 'fn f u32 -> u32\nx =\nmul x x\n'],
@@ -2523,6 +2535,7 @@ test('the B3.3 reader: generated programs with io read to their canonical text',
  * bool.
  */
 function outsideTheReaderB33(text: string, program: Program): boolean {
+  if (denseOnlySpelling(text)) return true;
   if (/[,"{]|\brec\b|\barr\b|\btext\b|#|\b(cadd|csub|cmul|cdiv|crem|cget)\b/.test(text))
     return true;
   const lines = text.split('\n');
@@ -2777,6 +2790,7 @@ test('the B3.4 reader: generated programs with text literals read to their canon
  * checked op, a type written with spaces, or an unwritten result that is not u32 or bool.
  */
 function outsideTheReaderB34(text: string, program: Program): boolean {
+  if (denseOnlySpelling(text)) return true;
   const lines = text.split('\n').map((l) => l.replace(/"(?:[^"\\]|\\.)*"/g, '""'));
   const flat = lines.join('\n');
   if (/[,{]|\brec\b|\barr\b|#|\b(cadd|csub|cmul|cdiv|crem|cget)\b/.test(flat)) return true;

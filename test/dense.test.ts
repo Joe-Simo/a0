@@ -909,6 +909,7 @@ test('dense: natural spellings parse as meant (bound p-words, `;` separators, sp
   assert.deepEqual(arr(run1(rot, [1, 2, 3, 4])), [2, 3, 4, 1]);
   assert.deepEqual(arr(run1('fn f _ -> u32x3\n[A;3]', 9)), [9, 9, 9]);
   assert.throws(() => parseDense('fn f _ -> u32x3\n[A;0]'), /repeat count/);
+  assert.throws(() => parseDense('fn f -> u32x3\n[7 8;2]'), /unexpected ';'/);
   // A record type may separate its fields with blanks.
   assert.equal(
     formatProgram(parseDense('fn f (u32 u32) -> (u32 u32)\nr (at A 1 at A 0)')),
