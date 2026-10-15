@@ -40,3 +40,25 @@ export function realpath(path: string): Promise<string> {
     fs.realpath.native(path, (e, resolved) => (e === null ? ok(resolved) : fail(e)));
   });
 }
+
+const pause = new Int32Array(new SharedArrayBuffer(4));
+
+/**
+ * Write text or bytes to stdout (fd 1) or stderr (fd 2) at once and in full. The one-shot commands of the CLI
+ * write through here rather than through process.stdout and process.stderr: the first touch of
+ * either builds a stream (a net.Socket on a pipe, a tty.WriteStream on a terminal), which loads
+ * node's stream and net modules, about 10 ms of each start of `a0 check`. A pipe left non-blocking
+ * by the reader answers EAGAIN while it is full; the write then waits a millisecond and goes on.
+ */
+export function writeFd(fd: 1 | 2, data: string | Uint8Array): void {
+  const bytes = typeof data === 'string' ? Buffer.from(data, 'utf8') : data;
+  let off = 0;
+  while (off < bytes.length) {
+    try {
+      off += fs.writeSync(fd, bytes, off);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EAGAIN') throw e;
+      Atomics.wait(pause, 0, 0, 1);
+    }
+  }
+}

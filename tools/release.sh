@@ -28,7 +28,11 @@ binaries="a0-darwin-arm64 a0-darwin-x64 a0-linux-arm64 a0-linux-x64 a0-windows-x
 for name in $binaries; do
   target=${name#a0-}
   target=${target%.exe}
-  bun build --compile --target="bun-$target" --minify dist/src/a0.js --outfile "release/$name"
+  # --bytecode: the bundle is stored as JSC bytecode, so a start of `a0` does not parse the whole
+  # bundle again (about 65 ms of every command on Linux x64; results/check-latency-linux-x64.json).
+  # It needs --format=esm because src/cli.ts awaits at its top level. tools/check-latency.ts builds
+  # its binaries with the same flags (BINARY_FLAGS).
+  bun build --compile --target="bun-$target" --minify --bytecode --format=esm dist/src/a0.js --outfile "release/$name"
 done
 
 if [ "$(uname -s)" = Darwin ]; then

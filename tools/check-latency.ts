@@ -12,8 +12,9 @@
  *                before the clock starts (that is the "warm" part); only apply is timed.
  *   a0 cold open parseAndValidate of the whole linked front end in process: what opening a program costs once per session,
  *                and the apples-to-apples case where A0 checks the whole project like the others.
- *   a0 cold proc the same, in a fresh `node` process that loads the compiler and reads the file: a whole-project check
- *                priced like the competitors, which are all fresh processes.
+ *   a0 cold proc the same, as the shipped command `a0 check front.a0` in a fresh process: the release executable
+ *                (tools/release.sh flags, BINARY_FLAGS) alone, as install.sh installs it; `node dist/src/cli.js` where
+ *                bun is missing. A whole-project check priced like the competitors, which are all fresh processes.
  *   tsc          `node tsc.js --noEmit --incremental false -p tsconfig.json` on front.ts, TypeScript from node_modules.
  *   tsgo         TypeScript 7 native preview (npm @typescript/native-preview), same flags, installed in a scratch directory.
  *   tsc-rs       npm tsc-rs, same flags, only where it runs (Linux x64, macOS arm64); absent otherwise, with the reason.
@@ -54,6 +55,9 @@ import { loadSource, systemLoad } from './system-load.js';
 export const LOAD_LIMIT = 10;
 export const MIN_RUNS = 15;
 export const WARMUPS = 3;
+
+/** The `bun build` flags of the release binaries (tools/release.sh), for the host target. */
+export const BINARY_FLAGS = ['--compile', '--minify', '--bytecode', '--format=esm'] as const;
 
 // --- statistics and verdicts (pure; test/check-latency.test.ts) ------------------------------------
 
@@ -195,7 +199,8 @@ export interface CheckLatencyReport {
     /**
      * `a0 check front.a0` in a fresh process, the shipped command (optional: older reports lack them).
      * cliCheckProcess runs dist/src/cli.js on node; binaryCheckProcess runs the `bun build --compile`
-     * binary the release ships (tools/release.sh), when bun is available.
+     * binary the release ships (tools/release.sh), when bun is available, and is then the same
+     * samples as coldOpenProcess.
      */
     readonly cliCheckProcess?: Stats;
     readonly binaryCheckProcess?: Stats;
@@ -538,16 +543,39 @@ export async function measure(opts: {
           reason: `bun ${bunVersion}: \`bun check\` is not a command (bun treats it as a package script name and fails: ${(bunCheck.stderr ?? '').trim().split('\n')[0]})`,
         };
 
-  // A0 cold process: a fresh node process loads the compiler and validates the whole front end.
-  const coreUrl = new URL('../src/core.js', import.meta.url).href;
-  const coldScript = `import { readFileSync } from 'node:fs'; import { parseAndValidate } from ${JSON.stringify(coreUrl)}; const p = parseAndValidate(readFileSync(${JSON.stringify(coldFile)}, 'utf8')); if (p.byName.size < 1) process.exit(2);`;
   const a0Version = (JSON.parse(await readFile('package.json', 'utf8')) as { version: string })
     .version;
   tools.a0 = {
     available: true,
     version: `A0 ${a0Version} (src/core.ts parseAndValidate, src/edit.ts EditSession on node ${process.version})`,
-    command:
-      'EditSession.apply(reference edit) on a warm session; parseAndValidate(whole linked front end)',
+    command: 'EditSession.apply(reference edit) on a warm session; a0 check front.a0 (shipped)',
+  };
+  // The shipped command, `a0 check front.a0`, in a fresh process: the standalone executable the
+  // release ships (tools/release.sh: src/a0.js, BINARY_FLAGS, host target) alone in a directory, as
+  // install.sh installs it (no `a0-check` beside it); and dist/src/cli.js on node. The executable
+  // is the whole-front-end fresh-process subject; where bun is missing, the node command is.
+  const cliJs = fileURLToPath(new URL('../src/cli.js', import.meta.url));
+  const a0Js = fileURLToPath(new URL('../src/a0.js', import.meta.url));
+  const binPath = join(dir, plat === 'win32' ? 'a0.exe' : 'a0');
+  const built = spawnSync('bun', ['build', ...BINARY_FLAGS, a0Js, '--outfile', binPath], {
+    encoding: 'utf8',
+  });
+  const haveBin = built.status === 0 && existsSync(binPath);
+  if (!haveBin)
+    tools['a0 binary'] = {
+      available: false,
+      reason: `bun build --compile failed or bun is missing: ${`${built.stderr ?? ''}${built.error?.message ?? ''}`.trim().split('\n')[0]}`,
+    };
+  else
+    tools['a0 binary'] = {
+      available: true,
+      version: `A0 ${a0Version} (bun ${bunVersion}, ${BINARY_FLAGS.join(' ')}, ${plat}-${arch})`,
+      command: 'a0 check front.a0',
+    };
+  tools['a0 cli'] = {
+    available: true,
+    version: `A0 ${a0Version} on node ${process.version}`,
+    command: 'node dist/src/cli.js check front.a0',
   };
 
   // Subjects: A0 whole front end in process and fresh process, then each edit.
@@ -570,47 +598,20 @@ export async function measure(opts: {
     },
     sink: coldIn,
   });
+  const cliSamples: number[] = [];
   subjectOrder.push({
     name: 'a0 cold open (fresh process)',
-    sample: () => runCheck(process.execPath, ['--input-type=module', '-e', coldScript], dir),
+    sample: haveBin
+      ? () => runCheck(binPath, ['check', coldFile], dir)
+      : () => runCheck(process.execPath, [cliJs, 'check', coldFile], dir),
     sink: coldProc,
   });
-  // The shipped command, `a0 check front.a0`, in a fresh process: on node (dist/src/cli.js) and as the
-  // `bun build --compile` binary tools/release.sh ships (same flags, host target).
-  const cliJs = fileURLToPath(new URL('../src/cli.js', import.meta.url));
-  const cliSamples: number[] = [];
-  tools['a0 cli'] = {
-    available: true,
-    version: `A0 ${a0Version} on node ${process.version}`,
-    command: 'node dist/src/cli.js check front.a0',
-  };
-  subjectOrder.push({
-    name: 'a0 cli check (node, fresh process)',
-    sample: () => runCheck(process.execPath, [cliJs, 'check', coldFile], dir),
-    sink: cliSamples,
-  });
-  const binSamples: number[] = [];
-  const binPath = join(dir, plat === 'win32' ? 'a0.exe' : 'a0');
-  const built = spawnSync('bun', ['build', '--compile', '--minify', cliJs, '--outfile', binPath], {
-    encoding: 'utf8',
-  });
-  if (built.status !== 0 || !existsSync(binPath))
-    tools['a0 binary'] = {
-      available: false,
-      reason: `bun build --compile failed or bun is missing: ${`${built.stderr ?? ''}${built.error?.message ?? ''}`.trim().split('\n')[0]}`,
-    };
-  else {
-    tools['a0 binary'] = {
-      available: true,
-      version: `A0 ${a0Version} (bun ${bunVersion}, --compile --minify, ${plat}-${arch})`,
-      command: 'a0 check front.a0',
-    };
+  if (haveBin)
     subjectOrder.push({
-      name: 'a0 binary check (fresh process)',
-      sample: () => runCheck(binPath, ['check', coldFile], dir),
-      sink: binSamples,
+      name: 'a0 cli check (node, fresh process)',
+      sample: () => runCheck(process.execPath, [cliJs, 'check', coldFile], dir),
+      sink: cliSamples,
     });
-  }
   // The native checker alone, and the standalone executable (src/a0.ts: the fast path of
   // src/native-fast.ts) with `a0-check` beside it, on front.a0; the same pair on the 207 KB linked
   // checker (compiler/check.a0), the second without the native checker beside it, for the contrast.
@@ -627,14 +628,9 @@ export async function measure(opts: {
     const nativePath = join(fastDir, `a0-check${exeSuffix}`);
     await copyFile(nativeBuilt, nativePath);
     const fastBin = join(fastDir, `a0${exeSuffix}`);
-    const a0Js = fileURLToPath(new URL('../src/a0.js', import.meta.url));
-    const fastBuilt = spawnSync(
-      'bun',
-      ['build', '--compile', '--minify', a0Js, '--outfile', fastBin],
-      {
-        encoding: 'utf8',
-      },
-    );
+    const fastBuilt = spawnSync('bun', ['build', ...BINARY_FLAGS, a0Js, '--outfile', fastBin], {
+      encoding: 'utf8',
+    });
     if (fastBuilt.status !== 0 || !existsSync(fastBin))
       throw new Error(
         `bun build --compile of src/a0.js failed: ${(fastBuilt.stderr ?? '').trim().split('\n')[0]}`,
@@ -663,7 +659,7 @@ export async function measure(opts: {
       ['a0 native launcher check (fresh process)', launchBin, ['check', coldFile], true],
       [
         'a0 binary check, compiler/check.a0 (fresh process)',
-        existsSync(binPath) ? binPath : fastBin,
+        haveBin ? binPath : fastBin,
         ['check', checkerFile],
         false,
       ],
@@ -761,9 +757,10 @@ export async function measure(opts: {
   });
   const coldInStats = stats(coldIn);
   const coldProcStats = stats(coldProc);
+  // the whole-front-end fresh-process row is the shipped binary (or, without bun, the node command):
+  // no second row of the same samples
   const extraStats: Record<string, Stats> = {
-    'a0 cli check (node, fresh process)': stats(cliSamples),
-    ...(binSamples.length > 0 ? { 'a0 binary check (fresh process)': stats(binSamples) } : {}),
+    ...(cliSamples.length > 0 ? { 'a0 cli check (node, fresh process)': stats(cliSamples) } : {}),
     ...Object.fromEntries(
       [...nativeVsCompetitors].map((name) => [name, stats(nativeSamples[name] as number[])]),
     ),
@@ -800,8 +797,8 @@ export async function measure(opts: {
       notes: [
         'A0 edit rows time EditSession.apply in process on a warm session (session and views built before the clock); the competitors are whole-project checks in fresh processes started by spawnSync, wall time',
         'A0 checks one function incrementally (the edited function and what depends on it) and the whole program is held; tsc, tsgo and tsc-rs re-check the whole project every time',
-        'the A0 whole-front-end rows validate all of compiler/lex.a0 + compiler/parse.a0 from scratch: in process (no process start) and in a fresh node process that loads only src/core.js (priced like the competitors)',
-        'the shipped-command rows run `a0 check front.a0` in a fresh process: dist/src/cli.js on node, and the bun --compile binary (tools/release.sh flags); the CLI loads the backends, servers and prover only when their command runs',
+        'the A0 whole-front-end rows validate all of compiler/lex.a0 + compiler/parse.a0 from scratch: in process (no process start), and in a fresh process as the shipped command `a0 check front.a0` (the release executable of tools/release.sh, alone as install.sh installs it; node dist/src/cli.js where bun is missing), priced like the competitors',
+        'the a0 cli row runs `node dist/src/cli.js check front.a0`; earlier reports timed a node process that imported src/core.js only, not the shipped command',
         'EditSession.apply validates incrementally (src/core.ts validate reuses unchanged typed functions by identity): the edited functions and their transitive callers are typed again; before/after in results/edit-incremental.json',
         'every sample asserts success: apply accepted the edit, the competitors exited 0 with no diagnostics',
         'the TypeScript side is checked on the start program; the check cost does not depend on which function was edited',
@@ -818,10 +815,10 @@ export async function measure(opts: {
       editSlowestMs: Math.max(...medians),
       coldOpenInProcess: coldInStats,
       coldOpenProcess: coldProcStats,
-      cliCheckProcess: extraStats['a0 cli check (node, fresh process)'] as Stats,
-      ...(binSamples.length > 0
-        ? { binaryCheckProcess: extraStats['a0 binary check (fresh process)'] as Stats }
-        : {}),
+      cliCheckProcess: haveBin
+        ? (extraStats['a0 cli check (node, fresh process)'] as Stats)
+        : coldProcStats,
+      ...(haveBin ? { binaryCheckProcess: coldProcStats } : {}),
       ...(Object.keys(nativeExtra).length > 0 ? { extra: nativeExtra } : {}),
     },
     wholeProject: whole,

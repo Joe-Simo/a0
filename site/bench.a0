@@ -435,12 +435,12 @@ x415 call close x414
 x416 call close x415 
 x417 call open x416 21
 x418 write x417 2
-x419 text "5 to 23 ms per edit in a warm session, against 531 to 3918 ms for a whole-project tsc check"
+x419 text "2 to 23 ms per edit in a warm session, against 531 to 3918 ms for a whole-project tsc check"
 x420 puts x418 x419
 x421 call close x420 
 x422 call open x421 21
 x423 write x422 2
-x424 text "Checking from scratch in a fresh process is slower than tsc-rs on Linux and macOS, and than tsgo on macOS"
+x424 text "Checking from scratch in a fresh process is slower than tsc-rs and tsgo on macOS, and level with tsc-rs on Linux"
 x425 puts x423 x424
 x426 call close x425 
 x427 call close x426 
@@ -784,7 +784,7 @@ x758 puts x756 x757
 x759 call close x758 
 x760 call open x759 21
 x761 write x760 2
-x762 text "A whole-front-end check in a fresh process is slower than tsc-rs on Linux and macOS and than tsgo on macOS; the A0 numbers in that table were recorded before edits were checked incrementally."
+x762 text "A whole-front-end check in a fresh process is slower than tsc-rs and tsgo on macOS; the macOS and Windows A0 numbers in that table were recorded before edits were checked incrementally."
 x763 puts x761 x762
 x764 call close x763 
 x765 call open x764 21
@@ -18823,7 +18823,7 @@ x18966 write x18965 2
 x18967 text "take"
 x18968 puts x18966 x18967
 x18969 write x18968 2
-x18970 text "A0 validates one edit in 5 to 23 ms in a warm session. In a fresh process, checking the whole front end from scratch takes 73 ms on macOS and 91 ms on Linux, slower than tsc-rs on both and than tsgo on macOS."
+x18970 text "A0 validates one edit in 2 to 23 ms in a warm session. In a fresh process, checking the whole front end from scratch takes 73 ms on macOS and 69 ms on Linux, slower than tsc-rs and tsgo on macOS and level with tsc-rs on Linux."
 x18971 puts x18969 x18970
 x18972 call close x18971 
 x18973 call open x18972 2
@@ -18832,7 +18832,7 @@ x18975 write x18974 2
 x18976 text "sub"
 x18977 puts x18975 x18976
 x18978 write x18977 2
-x18979 text "Two different jobs, stated in each row. One edit, warm session: A0 applies the edit in process on a session that is already open, and the others are whole-project checks that start a fresh process every time, wall time. Whole front end, fresh process: both sides start cold and check everything, the like-for-like row, and the one that A0 loses. The same front end is 4,103 lines in A0 and 637 lines in TypeScript. The A0 edit times were recorded before edits were validated incrementally (results/edit-incremental.json: 7.24 ms before and 1.82 ms after, median of the same 14 edits). Windows was measured on a saturated machine, so tsc and tsgo moved by several times between runs there: read the Windows rows as contended and do not compare them as ratios."
+x18979 text "Two different jobs, stated in each row. One edit, warm session: A0 applies the edit in process on a session that is already open, and the others are whole-project checks that start a fresh process every time, wall time. Whole front end, fresh process: both sides start cold and check everything, the like-for-like row, which A0 loses on macOS. On Linux that row is the shipped command, `a0 check` of the release executable; the macOS row predates it and times a node process that imports the checker. The same front end is 4,103 lines in A0 and 637 lines in TypeScript. The macOS and Windows edit times were recorded before edits were validated incrementally (results/edit-incremental.json: 7.24 ms before and 1.82 ms after, median of the same 14 edits). Windows was measured on a saturated machine, so tsc and tsgo moved by several times between runs there: read the Windows rows as contended and do not compare them as ratios."
 x18980 puts x18978 x18979
 x18981 call close x18980 
 x18982 call open x18981 5
@@ -19001,7 +19001,7 @@ x19144 call close x19143
 x19145 call open x19144 20
 x19146 call open x19145 21
 x19147 write x19146 2
-x19148 text "Linux x64, 4 CPUs, load average 1.4"
+x19148 text "Linux x64, 4 CPUs, load average 1.19"
 x19149 puts x19147 x19148
 x19150 call close x19149 
 x19151 call open x19150 21
@@ -19019,7 +19019,7 @@ x19162 write x19161 2
 x19163 text "mono"
 x19164 puts x19162 x19163
 x19165 write x19164 2
-x19166 text "5.8 ms"
+x19166 text "1.7 ms"
 x19167 puts x19165 x19166
 x19168 call close x19167 
 x19169 call open x19168 21
@@ -19028,7 +19028,7 @@ x19171 write x19170 2
 x19172 text "mono"
 x19173 puts x19171 x19172
 x19174 write x19173 2
-x19175 text "779 ms"
+x19175 text "872 ms"
 x19176 puts x19174 x19175
 x19177 call close x19176 
 x19178 call open x19177 21
@@ -19037,7 +19037,7 @@ x19180 write x19179 2
 x19181 text "mono"
 x19182 puts x19180 x19181
 x19183 write x19182 2
-x19184 text "88.3 ms"
+x19184 text "120 ms"
 x19185 puts x19183 x19184
 x19186 call close x19185 
 x19187 call open x19186 21
@@ -19046,7 +19046,7 @@ x19189 write x19188 2
 x19190 text "mono"
 x19191 puts x19189 x19190
 x19192 write x19191 2
-x19193 text "55.7 ms"
+x19193 text "86.0 ms"
 x19194 puts x19192 x19193
 x19195 call close x19194 
 x19196 call close x19195 
@@ -19071,7 +19071,7 @@ x19214 write x19213 2
 x19215 text "mono"
 x19216 puts x19214 x19215
 x19217 write x19216 2
-x19218 text "91.4 ms"
+x19218 text "69.2 ms"
 x19219 puts x19217 x19218
 x19220 call close x19219 
 x19221 call open x19220 21
@@ -19080,7 +19080,7 @@ x19223 write x19222 2
 x19224 text "mono"
 x19225 puts x19223 x19224
 x19226 write x19225 2
-x19227 text "779 ms"
+x19227 text "872 ms"
 x19228 puts x19226 x19227
 x19229 call close x19228 
 x19230 call open x19229 21
@@ -19089,16 +19089,16 @@ x19232 write x19231 2
 x19233 text "mono"
 x19234 puts x19232 x19233
 x19235 write x19234 2
-x19236 text "88.3 ms tie"
+x19236 text "120 ms"
 x19237 puts x19235 x19236
 x19238 call close x19237 
 x19239 call open x19238 21
 x19240 write x19239 4
 x19241 write x19240 2
-x19242 text "mono loss"
+x19242 text "mono"
 x19243 puts x19241 x19242
 x19244 write x19243 2
-x19245 text "55.7 ms A0 slower"
+x19245 text "86.0 ms tie"
 x19246 puts x19244 x19245
 x19247 call close x19246 
 x19248 call close x19247 

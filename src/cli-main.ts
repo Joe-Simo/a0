@@ -36,14 +36,14 @@ import {
 } from './core.js';
 import { diag } from './diagnostics.js';
 import { link, parseFile } from './link.js';
-import { readFile, writeFile } from './node-fs.js';
+import { readFile, writeFd, writeFile } from './node-fs.js';
 import type { ContractResult } from './prove.js';
 import { revision } from './revision.js';
 import { COMPILER_VERSION, isTarget, TARGETS } from './targets.js';
 import { A0_VERSION } from './version.js';
 
 function usage(): never {
-  process.stderr.write(
+  stderr(
     [
       'usage:',
       '  a0 --version                           # release and compiler version',
@@ -137,9 +137,9 @@ async function fixFile(path: string): Promise<void> {
   if (out.applied.length === 0) return;
   if (out.error === undefined) {
     await writeFile(path, out.text, 'utf8');
-    process.stderr.write(`fixed ${out.applied.length} exact edit(s) in ${path}\n`);
+    stderr(`fixed ${out.applied.length} exact edit(s) in ${path}\n`);
   } else {
-    process.stderr.write(
+    stderr(
       `not written: ${out.applied.length} exact edit(s) apply, then ${formatDiagnostic(out.error, false)}\n`,
     );
   }
@@ -170,22 +170,23 @@ function formatContract(c: ContractResult, file: string | undefined, deny: boole
   return `${at}${level}: ${formatDiagnostic(c.error, false)}`;
 }
 
+/** The CLI's own output: whole, synchronous writes to fd 1 and fd 2 (src/node-fs.ts writeFd). */
+const stdout = (data: string | Uint8Array): void => writeFd(1, data);
+const stderr = (text: string): void => writeFd(2, text);
+
 /**
- * End a one-shot command once what it wrote has reached stdout and stderr. A natural exit frees the
- * whole heap page by page before the process goes (about 10 ms after a check of a large program);
- * `process.exit` skips that teardown. The exit code is `process.exitCode`, as on a natural exit.
+ * End a one-shot command. A natural exit frees the whole heap page by page before the process goes
+ * (about 10 ms after a check of a large program); `process.exit` skips that teardown. Everything the
+ * command printed has already been written (stdout and stderr above are synchronous). The exit code
+ * is `process.exitCode`, as on a natural exit.
  */
-function exitWhenFlushed(): Promise<void> {
-  const flush = (s: NodeJS.WriteStream): Promise<void> =>
-    new Promise((done) => {
-      s.write('', () => done());
-    });
-  return Promise.all([flush(process.stdout), flush(process.stderr)]).then(() => process.exit());
+function exitNow(): void {
+  process.exit();
 }
 
 async function main(args: readonly string[]): Promise<void> {
   if (args.length === 1 && (args[0] === '--version' || args[0] === '-V' || args[0] === 'version')) {
-    process.stdout.write(`a0 ${A0_VERSION} (compiler ${COMPILER_VERSION})\n`);
+    stdout(`a0 ${A0_VERSION} (compiler ${COMPILER_VERSION})\n`);
     return;
   }
   denseA0 = args.includes('--dense=a0');
@@ -228,11 +229,11 @@ async function main(args: readonly string[]): Promise<void> {
             const source = await readFile(file, 'utf8').catch(() => '');
             const { diagnosticLine } = await import('./fix.js');
             const line = diagnosticLine(source, e) ?? e.line ?? null;
-            process.stdout.write(
+            stdout(
               `${JSON.stringify({ ok: false, file, diagnostics: [{ ...e.toJSON(), line }] })}\n`,
             );
           } else {
-            process.stderr.write(`${file}: error: ${formatDiagnostic(e, hints)}\n`);
+            stderr(`${file}: error: ${formatDiagnostic(e, hints)}\n`);
           }
           continue;
         }
@@ -247,7 +248,7 @@ async function main(args: readonly string[]): Promise<void> {
             )
           : [];
         if (deny && contracts.some((c) => c.status === 'disproved')) failed++;
-        process.stdout.write(
+        stdout(
           json
             ? `${JSON.stringify({
                 ok: true,
@@ -269,32 +270,30 @@ async function main(args: readonly string[]): Promise<void> {
         );
       }
       if (failed > 0) process.exitCode = 1;
-      await exitWhenFlushed();
+      exitNow();
       return;
     }
     case 'explain': {
       const [what] = rest;
       if (what === undefined) {
-        process.stdout.write((await import('./explain.js')).explainIndex());
+        stdout((await import('./explain.js')).explainIndex());
         return;
       }
       if (what === '--verify') {
         const problems = (await import('./explain.js')).verifyExamples();
-        process.stdout.write(
-          problems.length === 0 ? 'every example holds\n' : `${problems.join('\n')}\n`,
-        );
+        stdout(problems.length === 0 ? 'every example holds\n' : `${problems.join('\n')}\n`);
         if (problems.length > 0) process.exitCode = 1;
         return;
       }
       const text = (await import('./explain.js')).explain(what);
       if (text === undefined) throw diag('A0813', [what]);
-      process.stdout.write(text);
+      stdout(text);
       return;
     }
     case 'init': {
       const report = await (await import('./agents.js')).init(rest[0] ?? '.');
-      for (const p of report.written) process.stdout.write(`wrote ${p}\n`);
-      for (const p of report.skipped) process.stdout.write(`kept ${p} (exists)\n`);
+      for (const p of report.written) stdout(`wrote ${p}\n`);
+      for (const p of report.skipped) stdout(`kept ${p} (exists)\n`);
       return;
     }
     case 'hook': {
@@ -304,7 +303,7 @@ async function main(args: readonly string[]): Promise<void> {
         Buffer.concat(chunks).toString('utf8'),
         (p) => loadProgram(p),
       );
-      if (out !== undefined) process.stdout.write(`${out}\n`);
+      if (out !== undefined) stdout(`${out}\n`);
       return;
     }
     case 'run': {
@@ -318,7 +317,7 @@ async function main(args: readonly string[]): Promise<void> {
       for (const [i, t] of fn.params.entries()) checkArgument(t, values[i] as Value, `p${i}`);
       const fuel = flagNumber(flags, '--fuel');
       const maxTrips = flagNumber(flags, '--max-trips');
-      process.stdout.write(
+      stdout(
         `${String(
           run(fn, values, {
             fuel: fuel ?? LIMITS.defaultFuel,
@@ -340,14 +339,14 @@ async function main(args: readonly string[]): Promise<void> {
         if (target !== 'c' || (mode !== 'auto' && mode !== 'gpu' && mode !== 'off')) usage();
         const cParallel = (await import('./parallel.js')).parallelC({ mode });
         const text = compile(program, 'c', cParallel === undefined ? {} : { cParallel }).text;
-        if (out === undefined) process.stdout.write(text);
+        if (out === undefined) stdout(text);
         else await writeFile(out, text, 'utf8');
         return;
       }
       if (trips !== undefined) {
         if (target !== 'c') usage();
         const text = compile(program, 'c', { cTrap: { maxTrips: trips } }).text;
-        if (out === undefined) process.stdout.write(text);
+        if (out === undefined) stdout(text);
         else await writeFile(out, text, 'utf8');
         return;
       }
@@ -359,10 +358,9 @@ async function main(args: readonly string[]): Promise<void> {
           : await compileCached(program, target, cache);
       // The wasm target's text is the binary module in base64; the output gets the bytes.
       const data = target === 'wasm' ? (await import('./wasm.js')).wasmModuleBytes(text) : text;
-      if (out === undefined) process.stdout.write(data);
+      if (out === undefined) stdout(data);
       else await writeFile(out, data);
-      if (process.env.A0_CACHE_STATS === '1')
-        process.stderr.write(`cache: ${hits} hits, ${misses} misses\n`);
+      if (process.env.A0_CACHE_STATS === '1') stderr(`cache: ${hits} hits, ${misses} misses\n`);
       return;
     }
     case 'wasm': {
@@ -379,7 +377,7 @@ async function main(args: readonly string[]): Promise<void> {
           : (await compileCached(program, 'c', cache)).text;
       const build = await compileWasm(cText, cache);
       await writeFile(out, build.bytes);
-      process.stdout.write(
+      stdout(
         `${build.bytes.length} bytes via ${build.compiler} + ${build.linker}${build.cached ? ' (cached artifact)' : ''}\n`,
       );
       return;
@@ -392,7 +390,7 @@ async function main(args: readonly string[]): Promise<void> {
       const patch = parsePatch(await readSource(patchFile));
       const next = applyPatch(program, patch);
       const text = formatSource(next);
-      if (out === undefined) process.stdout.write(text);
+      if (out === undefined) stdout(text);
       else await writeFile(out, text, 'utf8');
       return;
     }
@@ -403,7 +401,7 @@ async function main(args: readonly string[]): Promise<void> {
       const fn = program.byName.get(name);
       if (fn === undefined) throw diag('A0812', [name]);
       const { scopedView, scopedViewDense } = await import('./edit.js');
-      process.stdout.write(`${dense ? scopedViewDense(fn, program, 'deps') : scopedView(fn)}\n`);
+      stdout(`${dense ? scopedViewDense(fn, program, 'deps') : scopedView(fn)}\n`);
       return;
     }
     case 'revision': {
@@ -412,7 +410,7 @@ async function main(args: readonly string[]): Promise<void> {
       const program = await loadProgram(file, dense);
       const fn = program.byName.get(name);
       if (fn === undefined) throw diag('A0812', [name]);
-      process.stdout.write(`${revision(fn)}\n`);
+      stdout(`${revision(fn)}\n`);
       return;
     }
     case 'dense': {
@@ -423,7 +421,7 @@ async function main(args: readonly string[]): Promise<void> {
       const { formatDense, normalizeProgram } = await import('./dense.js');
       const shown = flags.includes('--normalize') ? normalizeProgram(program) : program;
       const text = formatDense(shown, { known, comments: flags.includes('--comments') });
-      if (out === undefined) process.stdout.write(text);
+      if (out === undefined) stdout(text);
       else await writeFile(out, text, 'utf8');
       return;
     }
@@ -432,7 +430,7 @@ async function main(args: readonly string[]): Promise<void> {
       if (file === undefined) usage();
       const { program } = await parseFile(file, (p) => readFile(p, 'utf8'), true);
       const text = formatSource(program);
-      if (out === undefined) process.stdout.write(text);
+      if (out === undefined) stdout(text);
       else await writeFile(out, text, 'utf8');
       return;
     }
@@ -454,7 +452,7 @@ async function main(args: readonly string[]): Promise<void> {
 }
 
 main(process.argv.slice(2)).catch((err: unknown) => {
-  process.stderr.write(
+  stderr(
     `error: ${formatDiagnostic(err, process.argv[2] === 'check' && process.argv.includes('--hints') ? '`a0 check --fix`' : false)}\n`,
   );
   process.exit(1);

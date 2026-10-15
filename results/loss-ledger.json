@@ -121,6 +121,13 @@
       "added": 12,
       "worsened": 0,
       "removed": 0
+    },
+    {
+      "at": "2026-10-15T09:07:33.722Z",
+      "reason": "check-latency-linux-x64 remeasured (load max 1.19 of 4 CPUs, 15 interleaved runs, tsgo 7.0.0-dev.20260707.2 and tsc-rs 0.1.0 as before): the whole-front-end fresh-process row now times the shipped command, a0 check front.a0 of the release executable (tools/release.sh, now built with --bytecode --format=esm, alone as install.sh installs it) instead of a node process importing src/core.js; 69.2 ms vs tsc-rs 86.0 ms is a tie inside the 25% band, so its loss is removed. Added: the node command line row (node dist/src/cli.js check, 112.5 ms), new to this platform's report, trails tsc-rs by 30.8%",
+      "added": 1,
+      "worsened": 0,
+      "removed": 1
     }
   ],
   "entries": [
@@ -6617,16 +6624,16 @@
       "load": 10
     },
     {
-      "id": "check-latency-linux-x64|a0 whole front end, fresh process|check-latency-ms|tsc-rs",
+      "id": "check-latency-linux-x64|a0 cli check (node, fresh process)|check-latency-ms|tsc-rs",
       "source": "check-latency-linux-x64",
-      "kernel": "a0 whole front end, fresh process",
+      "kernel": "a0 cli check (node, fresh process)",
       "axis": "check-latency-ms",
       "competitor": "tsc-rs",
-      "a0": 91.4016,
-      "other": 55.6609,
-      "gap": 0.642115,
-      "noise": 0.174809,
-      "load": 1.4
+      "a0": 112.498,
+      "other": 86.0075,
+      "gap": 0.308003,
+      "noise": 0.25,
+      "load": 1.19
     },
     {
       "id": "edit-protocol|haiku/a0-combined/session10|primer-tokens-per-accepted|a0-control",

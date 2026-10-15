@@ -170,7 +170,7 @@ test('bench.tpl: the check-latency table and sentences are the medians of result
       .verdict;
   assert.equal(v(mac, 'tsgo'), 'loss');
   assert.equal(v(mac, 'tsc-rs'), 'loss');
-  assert.equal(v(lin, 'tsc-rs'), 'loss');
+  assert.notEqual(v(lin, 'tsc-rs'), 'loss');
   assert.notEqual(v(lin, 'tsgo'), 'loss');
   const inc = (await results('edit-incremental.json')).summary;
   assert.ok(
