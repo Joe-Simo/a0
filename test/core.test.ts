@@ -1885,14 +1885,10 @@ test('arm64 backend: assembled, linked with a C driver, and executed equal to th
   }
 });
 
-test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the interpreter', {
-  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
-}, async () => {
+test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the interpreter', async (t) => {
   const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
   const { writeFile } = await import('node:fs/promises');
   const { join } = await import('node:path');
-  const clang = findClang().path;
-  assert.ok(clang, 'clang is required as the assembler/linker driver');
   const zeros = (n: number): string => Array.from({ length: n }, () => '0').join(' ');
   const src = [
     // element-wise fills (vectorized) feeding a multiply-accumulate (fused, no arrays stored)
@@ -1900,6 +1896,8 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
     'fn fb u32x64 u32 u32 u32 -> u32x64\nv xor p1 p3\nw mul v p2\nn set p0 p1 w\nret n\nend',
     'fn dot u32 u32 u32x64 u32x64 -> u32\ne get p2 p1\nf get p3 p1\ng mul e f\nh add p0 g\nret h\nend',
     `fn fused u32 u32 -> u32\nz arr ${zeros(64)}\na fold fa 64 z p0 p1\nz2 arr ${zeros(64)}\nb fold fb 64 z2 p0 p1\nd fold dot 64 p1 a b\nx get a p0\nr add d x\nret r\nend`,
+    'fn costly u32x64 u32 u32 u32 -> u32x64\nv mul p1 p2\nw xor v p3\nx mul w p2\ny xor x p3\nz mul y p2\nn set p0 p1 z\nret n\nend',
+    `fn stored u32 u32 -> u32\nz arr ${zeros(64)}\na fold costly 64 z p0 p1\nz2 arr ${zeros(64)}\nb fold fb 64 z2 p0 p1\nd fold dot 64 p1 a b\nx get a p0\nr add d x\nret r\nend`,
     // record state: running (min, max) as NEON umin/umax, plus a scalar min and a mul reduce
     'fn mm (u32,u32) u32 u32x64 -> (u32,u32)\nv get p2 p1\nlo at p0 0\nhi at p0 1\nc lt v lo\nnlo select c v lo\nd gt v hi\nnhi select d v hi\nr put p0 0 nlo\nr2 put r 1 nhi\nret r2\nend',
     'fn smin u32 u32 u32x64 -> u32\nv get p2 p1\nc le p0 v\nm select c p0 v\nret m\nend',
@@ -1920,7 +1918,7 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
     'fn wide u32 u32 -> u32\na mul p0 3\nb mul p1 5\nc mul a b\nd add a b\ne xor c d\nf mul e 7\ng sub f a\nh shr g 3\nr arr a b c d e f g h a b c d e f g h\nk and p0 15\nx get r k\ny get r 7\nz add x y\nret z\nend',
   ].join('\n\n');
   const p = parseAndValidate(src);
-  const names = ['fused', 'minmax', 'carried', 'shifted', 'wide'];
+  const names = ['stored', 'fused', 'minmax', 'carried', 'shifted', 'wide'];
   const inputs: [number, number][] = [
     [0, 0],
     [1, 2],
@@ -1944,26 +1942,38 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
   assert.match(asm, /addv s\d+/);
   assert.match(asm, /ext v\d+\.16b, v30\.16b, v31\.16b, #12/);
   const fusedBody = /_a0_fused:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
-  // `a` is also read after the loop, so it is stored; `b` has one use and is fused away.
-  // Two loops: the fill of `a`, and the dot product with `b` computed in its lanes.
-  assert.equal(fusedBody.match(/\nLa0_fused_\d+:/g)?.length, 2);
-  assert.equal(fusedBody.match(/\n\tst[rp] q/g)?.length, 2);
-  for (const optimize of [true, false]) {
-    const text = compile(p, 'arm64', { optimize }).text;
-    await withTempDir(async (dir) => {
-      await writeFile(join(dir, 'module.s'), text, 'utf8');
-      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
-      const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
-        cwd: dir,
-      });
-      assert.ok(as.ok, as.stderr);
-      const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
-      assert.ok(ld.ok, ld.stderr);
-      const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
-      assert.ok(exec.ok, exec.stderr);
-      assert.equal(exec.stdout.trim(), expected);
-    });
-  }
+  // The extra get reads through the cheap fill; both arrays fuse into the dot product.
+  assert.equal(fusedBody.match(/\nLa0_fused_\d+:/g)?.length, 1);
+  assert.doesNotMatch(fusedBody, /\n\tst[rp] q/);
+  const storedBody = /_a0_stored:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  assert.equal(storedBody.match(/\nLa0_stored_\d+:/g)?.length, 2);
+  assert.equal(storedBody.match(/\n\tst[rp] q/g)?.length, 1);
+  await t.test(
+    'native execution equals the interpreter',
+    {
+      skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+    },
+    async () => {
+      const clang = findClang().path;
+      assert.ok(clang, 'clang is required as the assembler/linker driver');
+      for (const optimize of [true, false]) {
+        const text = compile(p, 'arm64', { optimize }).text;
+        await withTempDir(async (dir) => {
+          await writeFile(join(dir, 'module.s'), text, 'utf8');
+          await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+          const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+            cwd: dir,
+          });
+          assert.ok(as.ok, as.stderr);
+          const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
+          assert.ok(ld.ok, ld.stderr);
+          const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
+          assert.ok(exec.ok, exec.stderr);
+          assert.equal(exec.stdout.trim(), expected);
+        });
+      }
+    },
+  );
 });
 
 test('arm64 instruction selection, unrolled and vectorized folds equal the interpreter', {

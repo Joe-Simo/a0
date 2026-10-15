@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
@@ -75,6 +76,30 @@ function roundTrip(
     assert.equal(formatSource(back), formatSource(program), `comments differ for:\n${dense}`);
   return dense;
 }
+
+test('dense: deep prefix expressions round-trip with a small host stack', () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--stack-size=512',
+      '--input-type=module',
+      '-e',
+      `
+    import assert from 'node:assert/strict';
+    import { parseDense, formatDense } from ${JSON.stringify(new URL('../src/dense.js', import.meta.url).href)};
+    import { formatProgram } from ${JSON.stringify(new URL('../src/core.js', import.meta.url).href)};
+    const source = 'fn deep ' + 'add '.repeat(4000) + 'A' + ' 1'.repeat(4000);
+    const program = parseDense(source);
+    assert.equal(program.functions[0].nodes.length, 4000);
+    const dense = formatDense(program);
+    assert.equal(formatProgram(parseDense(dense)), formatProgram(program));
+    assert.equal(formatDense(parseDense(dense)), dense);
+  `,
+    ],
+    { encoding: 'utf8', timeout: 30_000 },
+  );
+  assert.equal(result.status, 0, result.stderr || String(result.error));
+});
 
 test('dense: the kernels print as short as designed and convert back exactly', () => {
   assert.equal(

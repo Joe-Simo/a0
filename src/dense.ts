@@ -543,16 +543,22 @@ function planFunction(fn: Func, ctx: PrintCtx): Plan {
       !(ctx.comments && fn.nodes[c]?.comments !== undefined) &&
       !claimed[c];
     const build = (j: number): void => {
-      const args = (fn.nodes[j] as Node).args;
-      for (let i = args.length - 1; i >= 0; i -= 1) {
-        const a = args[i] as Operand;
+      const stack = [{ j, i: (fn.nodes[j] as Node).args.length - 1 }];
+      while (stack.length > 0) {
+        const frame = stack[stack.length - 1] as { j: number; i: number };
+        if (frame.i < 0) {
+          stack.pop();
+          continue;
+        }
+        const i = frame.i--;
+        const a = (fn.nodes[frame.j] as Node).args[i] as Operand;
         if (a.kind !== 'node') continue;
         const c = index.get(a.id) as number;
         if (c === cursor && canNest(c)) {
           claimed[c] = true;
-          (nest[j] as (number | undefined)[])[i] = c;
+          (nest[frame.j] as (number | undefined)[])[i] = c;
           cursor = c - 1;
-          build(c);
+          stack.push({ j: c, i: (fn.nodes[c] as Node).args.length - 1 });
         }
       }
     };
@@ -626,29 +632,41 @@ function minMax(fn: Func, k: number, plan: Plan, ctx: PrintCtx): string | undefi
   return undefined;
 }
 
-function printNodeTokens(
+/** Traverse nested operands with heap frames rather than the host call stack. */
+function printNodeTokens(fn: Func, k: number, plan: Plan, ctx: PrintCtx, atEnd = false): string {
+  const stack = [nodeTokens(fn, k, plan, ctx, atEnd)];
+  let value = '';
+  while (stack.length > 0) {
+    const next = (stack[stack.length - 1] as ReturnType<typeof nodeTokens>).next(value);
+    if (next.done) {
+      value = next.value;
+      stack.pop();
+    } else {
+      stack.push(nodeTokens(fn, next.value.k, plan, ctx, next.value.atEnd));
+    }
+  }
+  return value;
+}
+
+function* nodeTokens(
   fn: Func,
   k: number,
   plan: Plan,
   ctx: PrintCtx,
   /** The node's text ends its statement (nothing is printed after it). */
   atEnd = false,
-): string {
+): Generator<{ k: number; atEnd: boolean }, string, string> {
   const node = fn.nodes[k] as Node;
   const last = node.args.length - 1;
-  const arg = (i: number): string => {
+  const args: string[] = [];
+  for (let i = 0; i < node.args.length; i += 1) {
     const child = plan.nest[k]?.[i];
-    return child === undefined
-      ? operandWord(node.args[i] as Operand, ctx)
-      : printNodeTokens(
-          fn,
-          child,
-          plan,
-          ctx,
-          atEnd && i === last && node.op !== 'arr' && node.op !== 'rec',
-        );
-  };
-  const args = node.args.map((_, i) => arg(i));
+    args.push(
+      child === undefined
+        ? operandWord(node.args[i] as Operand, ctx)
+        : yield { k: child, atEnd: atEnd && i === last && node.op !== 'arr' && node.op !== 'rec' },
+    );
+  }
   if (ctx.style.minmax && node.op === 'select') {
     const mm = minMax(fn, k, plan, ctx);
     if (mm !== undefined) return mm;
@@ -1166,6 +1184,8 @@ interface Inline {
   readonly ret: Operand;
 }
 
+type Expression<T = Operand> = Generator<undefined, T, Operand>;
+
 /** Statement parser for one function body; the edit protocol drives it line by line too. */
 export class FunctionParser {
   readonly nodes: Pending[] = [];
@@ -1324,21 +1344,21 @@ export class FunctionParser {
    * A word of the combined compact spellings, read only in compact text, where the printer escapes
    * an id spelled like one (`$bit`) and leaves a spelling out when a function has its word.
    */
-  compactWord(w: string): (() => Operand) | undefined {
+  compactWord(w: string): (() => Expression) | undefined {
     if (this.lam?.compact !== true || this.fnNames.has(w) || this.arities.has(w)) return undefined;
     const symbol = COMPACT_SYMBOL_OPS[w];
     if (symbol !== undefined) return () => this.operation(symbol);
     if (BIT_WORDS.has(w))
-      return () => {
-        const c = this.expr();
+      return function* (this: FunctionParser): Expression {
+        const c = yield;
         const [x, y] = w === 'bit' ? [1, 0] : [0, 1];
         return this.make({
           op: 'select',
           args: [c, { kind: 'u32', value: x }, { kind: 'u32', value: y }],
         });
-      };
+      }.bind(this);
     if (FOLD_N.test(w))
-      return () => {
+      return function* (this: FunctionParser): Expression {
         // `foldN BODY REST` is `fold BODY N REST`: the tokens are rewritten.
         const at = this.pos - 1;
         let end = this.pos + 1;
@@ -1355,13 +1375,16 @@ export class FunctionParser {
           ...this.toks.slice(end),
         ];
         this.pos = at;
-        return this.expr();
-      };
+        return yield;
+      }.bind(this);
     const neg = NEGATIVE.exec(w);
     if (neg !== null) {
       const n = Number(neg[1]);
       if (n > U32_MAX) fail(`literal ${w} exceeds u32`, this.line);
-      return () => ({ kind: 'u32', value: 2 ** 32 - n });
+      // biome-ignore lint/correctness/useYield: a literal completes without requesting a child expression.
+      return function* (): Expression {
+        return { kind: 'u32', value: 2 ** 32 - n };
+      };
     }
     const dot = DOT_ACCESS.exec(w);
     if (
@@ -1369,19 +1392,20 @@ export class FunctionParser {
       denseOp(dot[1] as string) === undefined &&
       !this.fnNames.has(dot[1] as string)
     )
-      return () =>
-        this.make({
+      return function* (this: FunctionParser): Expression {
+        return this.make({
           op: 'at',
-          args: [this.word(dot[1] as string), { kind: 'u32', value: Number(dot[2]) }],
+          args: [yield* this.word(dot[1] as string), { kind: 'u32', value: Number(dot[2]) }],
         });
+      }.bind(this);
     return undefined;
   }
 
   /** `min X Y` is `select lt X Y X Y`, `max X Y` is `select lt X Y Y X` (X, Y plain operands). */
-  private minMax(w: 'min' | 'max'): Operand {
-    const plain = (): Operand => {
+  private *minMax(w: 'min' | 'max'): Expression {
+    const plain = function* (this: FunctionParser): Expression {
       const before = this.nodes.length;
-      const o = this.expr();
+      const o = yield;
       if (this.nodes.length !== before)
         fail(
           `${w} takes two plain operands (a parameter, a number or a named value)`,
@@ -1389,15 +1413,15 @@ export class FunctionParser {
           'name the value on its own line above first',
         );
       return o;
-    };
-    const x = plain();
-    const y = plain();
+    }.bind(this);
+    const x = yield* plain();
+    const y = yield* plain();
     const cmp = this.make({ op: 'lt', args: [x, y] });
     return this.make({ op: 'select', args: w === 'min' ? [cmp, x, y] : [cmp, y, x] });
   }
 
   /** `tab N {S;...;E} REST` is `fold {S;...;set A B E} N [0;N] REST`: the tokens are rewritten. */
-  private tab(): Operand {
+  private *tab(): Expression {
     const at = this.pos - 1;
     const n = this.eat('an array length after tab');
     if (n.kind !== 'word' || !NUMBER.test(n.text))
@@ -1441,7 +1465,7 @@ export class FunctionParser {
     ];
     this.toks = [...this.toks.slice(0, at), ...rewritten, ...this.toks.slice(this.pos)];
     this.pos = at;
-    return this.expr();
+    return yield;
   }
 
   private eat(what: string): Tok {
@@ -1474,7 +1498,24 @@ export class FunctionParser {
     return t.text;
   }
 
+  /** Child expressions use heap frames, so valid nesting does not depend on the host stack. */
   expr(): Operand {
+    const stack = [this.expression()];
+    // The first next() argument is ignored; every resumed parent receives its child's result.
+    let value!: Operand;
+    while (stack.length > 0) {
+      const next = (stack[stack.length - 1] as Expression).next(value);
+      if (next.done) {
+        value = next.value;
+        stack.pop();
+      } else {
+        stack.push(this.expression());
+      }
+    }
+    return value;
+  }
+
+  private *expression(): Expression {
     const t = this.eat('an operand');
     if (t.kind === 'str') {
       const text = decodeText(t.text, this.line);
@@ -1488,12 +1529,12 @@ export class FunctionParser {
         text,
       });
     }
-    if (t.kind === 'open') return this.aggregate(t.text === '[' ? 'arr' : 'rec');
+    if (t.kind === 'open') return yield* this.aggregate(t.text === '[' ? 'arr' : 'rec');
     if (t.kind !== 'word') return fail(`unexpected '${t.text}'`, this.line);
-    return this.word(t.text);
+    return yield* this.word(t.text);
   }
 
-  private aggregate(op: 'arr' | 'rec'): Operand {
+  private *aggregate(op: 'arr' | 'rec'): Expression {
     const close = op === 'arr' ? ']' : ')';
     const args: Operand[] = [];
     let comma = false;
@@ -1533,7 +1574,7 @@ export class FunctionParser {
         for (let i = 1; i < n; i += 1) args.push(only);
         continue;
       }
-      args.push(this.expr());
+      args.push(yield);
       if (this.toks[this.pos]?.kind === 'comma') comma = true;
     }
     if (args.length === 0)
@@ -1544,17 +1585,17 @@ export class FunctionParser {
   }
 
   /** Elements of `arr e...`/`rec e...` up to the end of the line or the closing delimiter. */
-  private rest(): Operand[] {
+  private *rest(): Expression<Operand[]> {
     const args: Operand[] = [];
     for (;;) {
       const t = this.peek();
       if (t === undefined || t.kind === 'close' || t.kind === 'semi') break;
-      args.push(this.expr());
+      args.push(yield);
     }
     return args;
   }
 
-  private operands(count: number, label: string, note = ''): Operand[] {
+  private *operands(count: number, label: string, note = ''): Expression<Operand[]> {
     const args: Operand[] = [];
     for (let i = 0; i < count; i += 1) {
       if (this.peek() === undefined)
@@ -1563,15 +1604,15 @@ export class FunctionParser {
           this.line,
           `an operation takes its operands right after it, each a parameter, a number, a named value or another operation; write \`${label}\` followed by exactly ${count}`,
         );
-      args.push(this.expr());
+      args.push(yield);
     }
     return args;
   }
 
-  private word(w: string): Operand {
+  private *word(w: string): Expression {
     if (w === 'true' || w === 'false') return { kind: 'bool', value: w === 'true' };
     const compact = this.compactWord(w);
-    if (compact !== undefined) return compact();
+    if (compact !== undefined) return yield* compact();
     if (NUMBER.test(w)) {
       const value = Number(w);
       if (value > U32_MAX) fail(`literal ${w} exceeds u32`, this.line);
@@ -1595,27 +1636,27 @@ export class FunctionParser {
       return this.ref(k);
     }
     const op = denseOp(w);
-    if (op !== undefined) return this.operation(op);
+    if (op !== undefined) return yield* this.operation(op);
     if (w === 'text') {
       const s = this.eat('a text literal');
       if (s.kind !== 'str') return fail('text expects a quoted string', this.line);
       this.pos -= 1;
-      return this.expr();
+      return yield;
     }
     if (this.fnNames.has(w) || this.arities.has(w)) {
       const n = this.callArity(w);
       return this.make({
         op: 'call',
         callee: w,
-        args: this.operands(n, w, ` (${w} has ${n} parameter${n === 1 ? '' : 's'})`),
+        args: yield* this.operands(n, w, ` (${w} has ${n} parameter${n === 1 ? '' : 's'})`),
       });
     }
     const local = this.names.get(w);
     if (local !== undefined) return this.ref(local);
     if (this.external.has(w)) return { kind: 'node', id: w };
-    if (w === 'min' || w === 'max') return this.minMax(w);
-    if (w === 'tab') return this.tab();
-    const lenient = this.lenientWord(w);
+    if (w === 'min' || w === 'max') return yield* this.minMax(w);
+    if (w === 'tab') return yield* this.tab();
+    const lenient = yield* this.lenientWord(w);
     if (lenient !== undefined) return lenient;
     return fail(
       `'${w}' is not an operation, a function, or a named value defined above`,
@@ -1633,7 +1674,7 @@ export class FunctionParser {
    *   - `io`: the one parameter of type io, when the function's parameter types are known and exactly one is io;
    *   - `mod`: `rem`.
    */
-  private lenientWord(w: string): Operand | undefined {
+  private *lenientWord(w: string): Expression<Operand | undefined> {
     if (w === 's') return { kind: 'param', index: 0 };
     if (w === 'i') return { kind: 'param', index: 1 };
     if (w === 'io') {
@@ -1642,13 +1683,13 @@ export class FunctionParser {
       if (at.length === 1) return { kind: 'param', index: at[0] as number };
       return undefined;
     }
-    if (w === 'mod') return this.operation('rem');
+    if (w === 'mod') return yield* this.operation('rem');
     return undefined;
   }
 
-  private operation(op: Op): Operand {
+  private *operation(op: Op): Expression {
     if (op === 'arr' || op === 'rec') {
-      const args = this.rest();
+      const args = yield* this.rest();
       if (args.length === 0) fail(`${op} expects at least one operand`, this.line);
       return this.make({ op, args });
     }
@@ -1658,7 +1699,7 @@ export class FunctionParser {
       return this.make({
         op,
         callee,
-        args: this.operands(n, `${op} ${callee}`, ` (${callee} has ${n} parameters)`),
+        args: yield* this.operands(n, `${op} ${callee}`, ` (${callee} has ${n} parameters)`),
       });
     }
     if (op === 'fold') {
@@ -1670,11 +1711,11 @@ export class FunctionParser {
       // in order (style `trailingParams`); elsewhere a missing operand stays an error.
       const args: Operand[] = [];
       if (this.lam?.fill === true && !this.lam.nested) {
-        while (args.length < n && !this.atStatementEnd()) args.push(this.expr());
+        while (args.length < n && !this.atStatementEnd()) args.push(yield);
         if (args.length >= 1)
           for (let i = 0; args.length < n; i += 1) args.push({ kind: 'param', index: i });
       }
-      args.push(...this.operands(n - args.length, label, note));
+      args.push(...(yield* this.operands(n - args.length, label, note)));
       const callee = spec.name ?? this.lift(spec.inline as Inline, args, 'state');
       return this.make({ op, callee, args });
     }
@@ -1691,7 +1732,7 @@ export class FunctionParser {
             `an inline body uses parameter ${paramWord(sp.inline.arity - 1)} but the loop takes ${n}`,
             this.line,
           );
-      const args = this.operands(
+      const args = yield* this.operands(
         n,
         `loop ${pred.name ?? '{...}'} ${body.name ?? '{...}'}`,
         named === undefined ? '' : ` (${named} has ${n} parameters)`,
@@ -1700,7 +1741,7 @@ export class FunctionParser {
       const callee = body.name ?? this.lift(body.inline as Inline, args, 'state');
       return this.make({ op, pred: predName, callee, args });
     }
-    return this.make({ op, args: this.operands(OP_ARITY[op], opWordFor(op)) });
+    return this.make({ op, args: yield* this.operands(OP_ARITY[op], opWordFor(op)) });
   }
 
   private bodySpec(what: string): { name?: string; inline?: Inline } {
