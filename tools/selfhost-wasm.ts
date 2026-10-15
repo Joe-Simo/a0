@@ -1368,6 +1368,83 @@ ret r
 end`;
 
 /**
+ * Reductions run four trips a vector trip (src/wasm.ts `reduceRun`): add, and, xor and or folds
+ * over array reads, the index, compares, bool and u32 selects (a zero second arm is a mask), shifts
+ * by a literal and by an extra, literal counts below, at and above the array length and a
+ * variable count (which wraps past the length), and `te`, a reduction with no array.
+ */
+const REDUCE_SOURCE = `fn fill u32x16 u32 u32 -> u32x16
+m mul p1 p2
+x xor m 2654435761
+s shr x 3
+n set p0 p1 s
+ret n
+end
+fn r1 u32 u32 u32x16 u32 -> u32
+v get p2 p1
+w xor v p3
+c lt w p1
+s select c v w
+r add p0 s
+ret r
+end
+fn r2 u32 u32 u32x16 -> u32
+v get p2 p1
+o or v p1
+r and p0 o
+ret r
+end
+fn r3 u32 u32 u32x16 u32 -> u32
+v get p2 p1
+s shl v 3
+t shr v p3
+x xor s t
+r xor x p0
+ret r
+end
+fn r4 u32 u32 u32x16 -> u32
+v get p2 p1
+c eq v 0
+d ne p1 5
+e or c d
+f select e true false
+g select f 7 9
+r or p0 g
+ret r
+end
+fn r5 u32 u32 u32 -> u32
+a add p1 p2
+m mul a 3
+r add p0 m
+ret r
+end
+fn r6 u32 u32 u32x16 u32x16 -> u32
+v get p2 p1
+w get p3 p1
+c ge v w
+d and c true
+s select d 1 0
+r add p0 s
+ret r
+end
+fn t1 u32 u32 -> u32
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+a fold fill 16 z p0
+n and p0 31
+k1 fold r1 n p1 a p1
+k2 fold r2 13 k1 a
+k3 fold r3 n k2 a p1
+k4 fold r4 3 k3 a
+k5 fold r5 20 k4 p0
+q and p1 7
+k6 fold r6 q k5 a a
+k7 fold r1 16 k6 a p0
+k8 fold r4 n k7 a
+ret k8
+end
+`;
+
+/**
  * Select groups (src/optimize.ts `lazyArms`): selects sharing a condition emitted as one branch,
  * at top level (`g1`), in an inlined fold body whose condition is a known constant on one fold
  * and not on the other (`gb`), in an owned body with a carried read (`gc`), and as the leader of a
@@ -2054,6 +2131,11 @@ async function main(): Promise<void> {
   const rle4k = KERNELS.find((k) => k.name === 'rle4k');
   if (rle4k === undefined) throw new Error('exec-bench kernel rle4k is missing');
   programs.push(['bench/rle4k', parseAndValidate(rle4k.a0), small]);
+  // reductions four trips a vector trip, and the exec-bench kernel sieve4k (src/wasm.ts `reduceRun`)
+  programs.push(['reduce', parseAndValidate(REDUCE_SOURCE), small]);
+  const sieve4k = KERNELS.find((k) => k.name === 'sieve4k');
+  if (sieve4k === undefined) throw new Error('exec-bench kernel sieve4k is missing');
+  programs.push(['bench/sieve4k', parseAndValidate(sieve4k.a0), small]);
   const prefix1k = KERNELS.find((k) => k.name === 'prefix1k');
   if (prefix1k === undefined) throw new Error('exec-bench kernel prefix1k is missing');
   programs.push(['bench/prefix1k', parseAndValidate(prefix1k.a0), small]);
