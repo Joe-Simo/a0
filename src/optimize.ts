@@ -25,6 +25,7 @@ import {
   formatOperand,
   isPrimitive,
   isScalar,
+  isValidIdentifier,
   LIMITS,
   type Node,
   type Operand,
@@ -1591,8 +1592,14 @@ function producerShape(
 class BodyBuilder {
   readonly nodes: Node[] = [];
   #next = 0;
+  /** The next unused id, skipping reserved words (the 24th id would otherwise be `fn`). */
+  fresh(): string {
+    let id = `f${(this.#next++).toString(36)}`;
+    while (!isValidIdentifier(id)) id = `f${(this.#next++).toString(36)}`;
+    return id;
+  }
   add(op: Node['op'], args: readonly Operand[]): Operand {
-    const id = `f${(this.#next++).toString(36)}`;
+    const id = this.fresh();
     this.nodes.push({ id, op, args });
     return { kind: 'node', id };
   }
@@ -1623,7 +1630,7 @@ class BodyBuilder {
         ids.set(n.id, replaced);
         continue;
       }
-      const id = `f${(this.#next++).toString(36)}`;
+      const id = this.fresh();
       const { callee, pred } = n;
       this.nodes.push({
         id,
