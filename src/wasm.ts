@@ -849,27 +849,86 @@ interface InlineHost {
   readonly indexBound?: number;
 }
 
+/** A carried read: the read, the store that feeds it, and the read's index on trip p1. */
+interface CarriedRead {
+  readonly get: string;
+  readonly set: string;
+  readonly first: Affine;
+}
+
+/** An index s * p1 + c + t * pK (pK a scalar extra parameter, K >= 2; t is 0, 1 or -1), mod 2^32. */
+interface Affine {
+  readonly s: number;
+  readonly c: number;
+  readonly k: number;
+  readonly t: number;
+}
+
+/** An operand as an affine index, given the affine forms of the nodes before it. */
+function affineOf(
+  o: Operand | undefined,
+  nodes: ReadonlyMap<string, Affine | undefined>,
+): Affine | undefined {
+  if (o === undefined) return undefined;
+  if (o.kind === 'u32') return { s: 0, c: o.value, k: 0, t: 0 };
+  if (o.kind === 'param') {
+    if (o.index === 1) return { s: 1, c: 0, k: 0, t: 0 };
+    // An extra parameter used as an index or an add/sub operand is a u32 in a valid program.
+    if (o.index >= 2) return { s: 0, c: 0, k: o.index, t: 1 };
+    return undefined;
+  }
+  return o.kind === 'node' ? nodes.get(o.id) : undefined;
+}
+
+/** The affine form (in p1 and at most one extra parameter) of every add/sub node of `body`. */
+function affineNodes(body: TypedFunc): Map<string, Affine | undefined> {
+  const out = new Map<string, Affine | undefined>();
+  for (const n of body.nodes) {
+    const a = affineOf(n.args[0], out);
+    const b = affineOf(n.args[1], out);
+    if ((n.op !== 'add' && n.op !== 'sub') || a === undefined || b === undefined) {
+      out.set(n.id, undefined);
+      continue;
+    }
+    const sign = n.op === 'add' ? 1 : -1;
+    const t = a.t + sign * b.t;
+    const k = a.t !== 0 ? a.k : b.k;
+    if ((a.t !== 0 && b.t !== 0 && a.k !== b.k) || (t !== 0 && Math.abs(t) !== 1)) {
+      out.set(n.id, undefined);
+      continue;
+    }
+    out.set(n.id, {
+      s: (a.s + sign * b.s) >>> 0,
+      c: (a.c + sign * b.c) >>> 0,
+      k: t === 0 ? 0 : k,
+      t,
+    });
+  }
+  return out;
+}
+
 /**
- * A fold body `set p0 p1 v` (its only update) that also reads the element before p1,
- * `get p0 (sub p1 1)`: trip i reads what trip i-1 stored, so a backend may carry that value
- * in a register instead of reloading it (trip 0 reads element (2^32 - 1) mod length).
+ * A fold or loop body over array state whose result is `set X w v` (its last store) and which
+ * reads `get p0 r` where r at trip p1 + 1 is w at trip p1 (both affine in p1, see `affineNodes`):
+ * trip i + 1 reads the value trip i stored last, so a backend may carry v in a local instead of
+ * reloading it. The elements are scalars.
  */
-function carriedRead(body: TypedFunc): { get: string; set: string } | undefined {
+function carriedRead(body: TypedFunc): CarriedRead | undefined {
   const ret = body.ret;
   if (ret.kind !== 'node') return undefined;
   const set = body.nodes.find((n) => n.id === ret.id);
-  const isParam = (o: Operand | undefined, i: number): boolean =>
-    o?.kind === 'param' && o.index === i;
-  if (set?.op !== 'set' || !isParam(set.args[0], 0) || !isParam(set.args[1], 1)) return undefined;
-  if (body.nodes.filter((n) => n.op === 'set' || n.op === 'put').length !== 1) return undefined;
-  const defs = new Map(body.nodes.map((n) => [n.id, n]));
+  const st = body.params[0];
+  if (set?.op !== 'set' || st === undefined || isPrimitive(st) || st.kind !== 'arr')
+    return undefined;
+  if (!isPrimitive(st.elem)) return undefined;
+  const forms = affineNodes(body);
+  const w = affineOf(set.args[1], forms);
+  if (w === undefined) return undefined;
   for (const n of body.nodes) {
-    const j = n.args[1];
-    if (n.op !== 'get' || !isParam(n.args[0], 0) || j?.kind !== 'node') continue;
-    const d = defs.get(j.id);
-    const one = d?.args[1];
-    if (d?.op === 'sub' && isParam(d.args[0], 1) && one?.kind === 'u32' && one.value === 1)
-      return { get: n.id, set: set.id };
+    if (n.op !== 'get' || n.args[0]?.kind !== 'param' || n.args[0].index !== 0) continue;
+    const r = affineOf(n.args[1], forms);
+    if (r === undefined || r.s !== w.s || r.k !== w.k || r.t !== w.t) continue;
+    if ((r.c + r.s) >>> 0 === w.c) return { get: n.id, set: set.id, first: r };
   }
   return undefined;
 }
@@ -2566,14 +2625,40 @@ class FunctionEmitter {
       const local = this.newLocal();
       const { length } = t as { length: number };
       const guard = guardedCarry(body, carried.get, start);
+      // The read's index on the first trip: s * start + c (+/- the extra parameter).
+      const { s, c: k0, k, t: sign } = carried.first;
+      const index = (Math.imul(s, start) + k0) >>> 0;
       if (guard !== undefined) {
         c.i32(guard.first);
+      } else if (sign === 0) {
+        c.local(OP.localGet, state);
+        c.mem(OP.load, (index % length) * 4);
       } else {
         c.local(OP.localGet, state);
-        c.mem(OP.load, (((start - 1) >>> 0) % length) * 4);
+        c.i32(index);
+        const src = sources()[k] as ParamSource;
+        if ('value' in src) c.i32(src.value);
+        else c.local(OP.localGet, src.local);
+        c.op(sign > 0 ? OP.add : OP.sub);
+        if ((length & (length - 1)) === 0) {
+          c.i32(length - 1);
+          c.op(OP.and);
+        } else {
+          c.i32(length);
+          c.op(OP.rem_u);
+        }
+        c.i32(2);
+        c.op(OP.shl);
+        c.op(OP.add);
+        c.mem(OP.load, 0);
       }
       c.local(OP.localSet, local);
-      carry = { ...carried, local, ...(guard === undefined ? {} : { select: guard.select }) };
+      carry = {
+        get: carried.get,
+        set: carried.set,
+        local,
+        ...(guard === undefined ? {} : { select: guard.select }),
+      };
     }
     // A sliding read of an extra argument: the element at the start index before the loop.
     const sliding = node.op === 'fold' && inlineBody ? slidingRead(body) : undefined;

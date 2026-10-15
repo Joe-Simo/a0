@@ -3641,10 +3641,65 @@ s add x y
 t add s w
 ret t
 end`;
+  // Stores forwarded to the next trip's read (src/wasm.ts `carriedRead`): an insertion sort
+  // sinking by swaps over a length that is not a power of two (the read index p2 - p1 is the
+  // index p2 - p1 - 1 written last on the trip before), and a fold writing p1 + 3 that the next
+  // trip reads at p1 + 2.
+  const isort10 = `fn swp u32x10 u32 u32 -> u32x10
+j sub p2 p1
+i1 sub j 1
+u get p0 i1
+v get p0 j
+b set p0 j u
+c set b i1 v
+ret c
+end
+fn swpok u32x10 u32 u32 -> bool
+j sub p2 p1
+i1 sub j 1
+u get p0 i1
+v get p0 j
+g gt u v
+ret g
+end
+fn ins u32x10 u32 -> u32x10
+r loop swpok swp p1 p0 p1
+ret r
+end
+fn srt u32 u32 -> u32
+a arr p0 p1 7 3 p1 9 0 p0 4000000000 5
+s fold ins 10 a
+q rem p1 10
+r get s q
+w get s 0
+m mul w 3
+o add r m
+ret o
+end`;
+  const ahead = `fn stp u32x12 u32 u32 -> u32x12
+j add p1 2
+v get p0 j
+w mul v 3
+x add w p2
+k add p1 3
+n set p0 k x
+ret n
+end
+fn ahd u32 u32 -> u32
+a arr p0 1 2 3 4 5 6 7 8 9 10 p1
+s fold stp 9 a p1
+q rem p0 12
+r get s q
+w get s 11
+o add r w
+ret o
+end`;
   const cases: [string, string, number][] = [
     ...KERNELS.map((k): [string, string, number] => [k.a0, k.name, k.arity]),
     [lazy, 'lz', 2],
     [fill, 'part', 2],
+    [isort10, 'srt', 2],
+    [ahead, 'ahd', 2],
   ];
   const inputs = [0, 1, 7, 1029, 0x9e3779b9, 0xffff_ffff];
   for (const [src, name, arity] of cases) {
