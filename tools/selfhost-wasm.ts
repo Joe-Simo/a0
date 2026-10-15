@@ -1749,6 +1749,208 @@ end
 `;
 
 /**
+ * Element pointers (src/wasm.ts `#pointers`, `affineInRange`) and rotated loops: two reads of one
+ * extra one apart (one pointer), a stride of -1 beside a lone read at the bare trip index (that
+ * one keeps its indexed address), five arrays (two read at p1 + 1 through pointers, two at the
+ * bare trip index, the fifth past the group cap), reads at n - p1 and p1 - n + 12 (coefficients
+ * of the extra 1 and -1) under a count that is that extra (the outer trip index below 12, a
+ * local; a parameter with a literal source), accesses that stay indexed (a stride of 2, p1 + 1 on
+ * the last trip, a count with no bound), prefix sums in place, a search whose predicate alone
+ * reads through a pointer, and rotated loops whose predicate is called (too large) or whose body
+ * is called.
+ */
+const POINTER_SOURCE = `fn sum2 u32 u32 u32x16 -> u32
+v get p2 p1
+j add p1 1
+w get p2 j
+x add v w
+r add p0 x
+ret r
+end
+fn rev u32 u32 u32x16 -> u32
+j sub 15 p1
+v get p2 j
+u get p2 p1
+m mul p0 3
+x add m v
+r xor x u
+ret r
+end
+fn five u32 u32 u32x8 u32x8 u32x8 u32x8 u32x8 -> u32
+j add p1 1
+a get p2 j
+b get p3 j
+c get p4 p1
+d get p5 p1
+e get p6 p1
+s1 add a b
+s2 add c d
+s3 add s1 s2
+s4 xor s3 e
+m mul p0 5
+r add m s4
+ret r
+end
+fn tail u32 u32 u32x16 u32 -> u32
+k sub p3 p1
+v get p2 k
+k1 sub k 1
+w get p2 k1
+x mul v w
+r add p0 x
+ret r
+end
+fn head u32 u32 u32x16 u32 -> u32
+k sub p1 p3
+k2 add k 12
+v get p2 k2
+r add p0 v
+ret r
+end
+fn outer u32 u32 u32x16 -> u32
+a fold tail p1 p0 p2 p1
+b fold head p1 a p2 p1
+ret b
+end
+fn mid u32 u32 u32x16 u32 -> u32
+s fold tail p3 p0 p2 p3
+ret s
+end
+fn bad u32 u32 u32x16 -> u32
+j add p1 p1
+v get p2 j
+k add p1 1
+w get p2 k
+x add v w
+r add p0 x
+ret r
+end
+fn scan u32x16 u32 -> u32x16
+j add p1 1
+a get p0 p1
+b get p0 j
+c add a b
+r set p0 j c
+ret r
+end
+fn neq u32 u32 u32x16 u32 -> bool
+j sub 15 p1
+v get p2 j
+g ne v p3
+ret g
+end
+fn cnt u32 u32 u32x16 u32 -> u32
+r add p0 1
+ret r
+end
+fn big u32x16 u32 u32 -> bool
+k and p1 15
+v get p0 k
+m0 mul v 3
+x0 xor m0 p2
+m1 mul x0 5
+x1 xor m1 p2
+m2 mul x1 7
+x2 xor m2 p2
+m3 mul x2 9
+x3 xor m3 p2
+m4 mul x3 11
+x4 xor m4 p2
+m5 mul x4 13
+x5 xor m5 p2
+m6 mul x5 15
+x6 xor m6 p2
+m7 mul x6 17
+x7 xor m7 p2
+m8 mul x7 19
+x8 xor m8 p2
+m9 mul x8 21
+x9 xor m9 p2
+m10 mul x9 23
+x10 xor m10 p2
+m11 mul x10 25
+x11 xor m11 p2
+g lt x11 2000000000
+ret g
+end
+fn bstep u32x16 u32 u32 -> u32x16
+v get p0 p1
+w add v p2
+r set p0 p1 w
+ret r
+end
+fn small u32x16 u32 u32 -> bool
+v get p0 p1
+g lt v p2
+ret g
+end
+fn heavy u32x16 u32 u32 -> u32x16
+k and p1 15
+v get p0 k
+h0 mul v 5
+h1 mul h0 6
+h2 mul h1 7
+h3 mul h2 8
+h4 mul h3 9
+h5 mul h4 10
+h6 mul h5 11
+h7 mul h6 12
+h8 mul h7 13
+h9 mul h8 14
+h10 mul h9 15
+h11 mul h10 16
+h12 mul h11 17
+h13 mul h12 18
+h14 mul h13 19
+h15 mul h14 20
+h16 mul h15 21
+h17 mul h16 22
+h18 mul h17 23
+h19 mul h18 24
+h20 mul h19 25
+h21 mul h20 26
+h22 mul h21 27
+h23 mul h22 28
+h24 mul h23 29
+h25 mul h24 30
+r set p0 k h25
+ret r
+end
+fn main u32 u32 -> u32
+a arr p0 p1 3 4 5 6 7 8 9 10 11 12 13 14 15 p1
+s1 fold sum2 15 p0 a
+s2 fold rev 16 s1 a
+b arr p0 1 2 3 4 5 6 7
+c arr p1 2 3 4 5 6 7 8
+d arr 3 p0 4 5 6 7 8 9
+e arr 4 5 p1 6 7 8 9 10
+f arr 5 6 7 p0 8 9 10 11
+s3 fold five 7 s2 b c d e f
+s4 fold outer 12 s3 a
+s5 fold bad 16 s4 a
+s6 fold mid 3 s5 a 7
+k and p0 15
+s7 fold sum2 k s6 a
+t fold scan 15 a
+q and p1 15
+z get t q
+f1 loop neq cnt 16 0 a p1
+g loop big bstep 16 a p1
+h loop small heavy 16 a p1
+i loop small bstep k a p1
+g1 get g 3
+h1 get h 5
+i1 get i 7
+y1 add s7 z
+y2 xor y1 f1
+y3 add y2 g1
+y4 xor y3 h1
+y5 add y4 i1
+ret y5
+end
+`;
+
+/**
  * A fill fused into an in-place prefix fold (the exec-bench prefix1k shape): an induction
  * variable stepping by a parameter, the carried previous element guarded on the first trip, and
  * the dead index arithmetic of the carried read; `pfx2` reads the carried element twice (no guard).
@@ -2156,6 +2358,8 @@ async function main(): Promise<void> {
   programs.push(['carryfwd', parseAndValidate(CARRY_FWD_SOURCE), small]);
   // small loop state in locals, read by the predicate too, and the exec-bench kernel bsearch1k
   programs.push(['loopstate', parseAndValidate(LOOP_STATE_SOURCE), small]);
+  // element pointers and rotated loops (src/wasm.ts `#pointers`, `counted`)
+  programs.push(['pointers', parseAndValidate(POINTER_SOURCE), small]);
   const bsearch1k = KERNELS.find((k) => k.name === 'bsearch1k');
   if (bsearch1k === undefined) throw new Error('exec-bench kernel bsearch1k is missing');
   programs.push(['bench/bsearch1k', parseAndValidate(bsearch1k.a0), small]);
