@@ -451,7 +451,7 @@ end
 #     of the scalar state chain, root: 0 itself, 2^28 + node, 2^29 + parameter): frame 0 from 5376 (2816 nodes), frame d from 16640 + 128 (d - 1)
 #   17024-18943 inline-frame node blocks (20 words per node: 0 induction local + 1, 4-19 the
 #     words of a chain node: 8 fields of (kind, value)), frame d from 17024 + 640 (d - 1)
-#   19120-20031 superword packs of frame 0 (see `wyplan`)
+#   19120-20322 superword packs of frame 0 (see `wyplan`)
 #   20480-65535 instructions: 22528 of 2 words (kind, value; the kinds of compiler/wasm_code.a0)
 # A step that mutates M is a fold body (M, trip, ...) -> M run with one trip (or 0: not run);
 # what it computes for its caller is left in registers 16.. (no function takes M but the tiny
@@ -3983,7 +3983,9 @@ end
 # (pack-only or inline), 19212 + k/32 inline, 19300 + k/32 pack-only (holder), 19392 + 4i
 # pack i (post order): lane0 | lane1 << 16, lane2 | lane3 << 16, op | swap << 4 | kid kinds
 # << 8, 10 | kid packs << 12, 20, ready + 1 | demand << 12 | v128 local << 16; 19904 + j the
-# emission order (post order indices).
+# emission order (post order indices); 20032 the kids kept in a v128 local (src/wasm.ts `#kept`),
+# 20033 + e kept kid e: pack (post order) | side << 8 | v128 local << 16; 20296 + 8 s form slot s
+# (see `wyfm`), 20320 20321 20322 registers of `wyfk`.
 fn wyfnd u32 u32 u32x128x512 u32 u32 u32 u32 -> u32
 q0 mul p1 16
 b add 16896 q0
@@ -7838,13 +7840,16 @@ q1 get q0 2
 m_g get p0 149
 m_h set m_g 48 q1
 m set p0 149 m_h
-m_1 fold wyputp q1 m p2
+m_g_1 get m 156
+m_h_1 set m_g_1 64 0
+m_1 set m 156 m_h_1
+m_2 fold wyputp q1 m_1 p2
 q2 eq q1 0
 q3 get p2 151
 q4 get q3 0
 q5 select q2 0 q4
-m_2 fold wyputn q5 m_1 p2
-ret m_2
+m_3 fold wyputn q5 m_2 p2
+ret m_3
 end
 fn wyplan u32x128x512 u32 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x310 u32x128x45 -> u32x128x512
 q0 get p0 1
@@ -8117,7 +8122,1129 @@ q41 select q40 17 p1
 m_1 fold wxe 1 m q39 q41
 ret m_1
 end
-fn wykid u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+fn wyfm u32x128x512 u32 u32 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+q0 mul p2 4
+q1 add 19392 q0
+q2 add q1 2
+q3 shr q2 7
+q4 and q2 127
+q5 get p0 q3
+q6 get q5 q4
+q7 mul p3 2
+q8 add 8 q7
+q9 shr q6 q8
+kk and q9 3
+q10 mul p2 4
+m1_b add 19392 q10
+q11 add m1_b 0
+q12 shr q11 7
+q13 and q11 127
+q14 get p0 q12
+q15 get q14 q13
+q16 shr q15 0
+m1_id and q16 65535
+q17 add m1_b 2
+q18 shr q17 7
+q19 and q17 127
+q20 get p0 q18
+q21 get q20 q19
+q22 shr q21 4
+m1_sw and q22 1
+q23 get p0 1
+q24 get q23 2
+q25 add q24 m1_id
+q26 mul q25 6
+q27 add q26 3
+q28 shr q27 7
+q29 and q27 127
+q30 get p5 q28
+q31 get q30 q29
+q32 xor m1_sw p3
+m1_slot add q31 q32
+q33 mul m1_slot 2
+q34 shr q33 7
+q35 and q33 127
+q36 get p6 q34
+q37 get q36 q35
+q38 mul m1_slot 2
+q39 add q38 1
+q40 shr q39 7
+q41 and q39 127
+q42 get p6 q40
+q43 get q42 q41
+m0_isn eq q37 1
+q44 get p0 1
+q45 get q44 2
+q46 add q45 q43
+m0_g select m0_isn q46 0
+q47 mul m0_g 6
+q48 add q47 3
+q49 shr q48 7
+q50 and q48 127
+q51 get p5 q49
+q52 get q51 q50
+q53 mul m0_g 6
+q54 add q53 1
+q55 shr q54 7
+q56 and q54 127
+q57 get p5 q55
+q58 get q57 q56
+q59 eq q58 2
+q60 eq q58 3
+q61 or q59 q60
+q62 eq q58 8
+q63 or q61 q62
+q64 eq q58 9
+m0_fo or q63 q64
+q65 select m0_isn q43 0
+q66 shr q65 5
+q67 add 19212 q66
+q68 shr q67 7
+q69 and q67 127
+q70 get p0 q68
+q71 get q70 q69
+q72 and q65 31
+q73 shr q71 q72
+q74 and q73 1
+q75 ne q74 0
+q76 and m0_isn q75
+q77 and q76 m0_fo
+q78 mul q52 2
+q79 shr q78 7
+q80 and q78 127
+q81 get p6 q79
+q82 get q81 q80
+q83 eq q82 2
+q84 and q77 q83
+q85 add q52 1
+q86 mul q85 2
+q87 shr q86 7
+q88 and q86 127
+q89 get p6 q87
+q90 get q89 q88
+q91 eq q90 3
+m0_ok and q84 q91
+q92 eq q37 2
+q93 eq q37 3
+q94 select m0_ok q58 255
+q95 select q93 1 q94
+m0_lop select q92 0 q95
+q96 eq q37 2
+q97 mul q52 2
+q98 add q97 1
+q99 shr q98 7
+q100 and q98 127
+q101 get p6 q99
+q102 get q101 q100
+m0_lx select q96 q43 q102
+q103 eq q37 3
+q104 add q52 1
+q105 mul q104 2
+q106 add q105 1
+q107 shr q106 7
+q108 and q106 127
+q109 get p6 q107
+q110 get q109 q108
+m0_lc select q103 q43 q110
+q111 mul p2 4
+m8_b add 19392 q111
+q112 add m8_b 0
+q113 shr q112 7
+q114 and q112 127
+q115 get p0 q113
+q116 get q115 q114
+q117 shr q116 16
+m8_id and q117 65535
+q118 add m8_b 2
+q119 shr q118 7
+q120 and q118 127
+q121 get p0 q119
+q122 get q121 q120
+q123 shr q122 5
+m8_sw and q123 1
+q124 get p0 1
+q125 get q124 2
+q126 add q125 m8_id
+q127 mul q126 6
+q128 add q127 3
+q129 shr q128 7
+q130 and q128 127
+q131 get p5 q129
+q132 get q131 q130
+q133 xor m8_sw p3
+m8_slot add q132 q133
+q134 mul m8_slot 2
+q135 shr q134 7
+q136 and q134 127
+q137 get p6 q135
+q138 get q137 q136
+q139 mul m8_slot 2
+q140 add q139 1
+q141 shr q140 7
+q142 and q140 127
+q143 get p6 q141
+q144 get q143 q142
+m7_isn eq q138 1
+q145 get p0 1
+q146 get q145 2
+q147 add q146 q144
+m7_g select m7_isn q147 0
+q148 mul m7_g 6
+q149 add q148 3
+q150 shr q149 7
+q151 and q149 127
+q152 get p5 q150
+q153 get q152 q151
+q154 mul m7_g 6
+q155 add q154 1
+q156 shr q155 7
+q157 and q155 127
+q158 get p5 q156
+q159 get q158 q157
+q160 eq q159 2
+q161 eq q159 3
+q162 or q160 q161
+q163 eq q159 8
+q164 or q162 q163
+q165 eq q159 9
+m7_fo or q164 q165
+q166 select m7_isn q144 0
+q167 shr q166 5
+q168 add 19212 q167
+q169 shr q168 7
+q170 and q168 127
+q171 get p0 q169
+q172 get q171 q170
+q173 and q166 31
+q174 shr q172 q173
+q175 and q174 1
+q176 ne q175 0
+q177 and m7_isn q176
+q178 and q177 m7_fo
+q179 mul q153 2
+q180 shr q179 7
+q181 and q179 127
+q182 get p6 q180
+q183 get q182 q181
+q184 eq q183 2
+q185 and q178 q184
+q186 add q153 1
+q187 mul q186 2
+q188 shr q187 7
+q189 and q187 127
+q190 get p6 q188
+q191 get q190 q189
+q192 eq q191 3
+m7_ok and q185 q192
+q193 eq q138 2
+q194 eq q138 3
+q195 select m7_ok q159 255
+q196 select q194 1 q195
+m7_lop select q193 0 q196
+q197 eq q138 2
+q198 mul q153 2
+q199 add q198 1
+q200 shr q199 7
+q201 and q199 127
+q202 get p6 q200
+q203 get q202 q201
+m7_lx select q197 q144 q203
+q204 eq q138 3
+q205 add q153 1
+q206 mul q205 2
+q207 add q206 1
+q208 shr q207 7
+q209 and q207 127
+q210 get p6 q208
+q211 get q210 q209
+m7_lc select q204 q144 q211
+q212 mul p2 4
+m15_b add 19392 q212
+q213 add m15_b 1
+q214 shr q213 7
+q215 and q213 127
+q216 get p0 q214
+q217 get q216 q215
+q218 shr q217 0
+m15_id and q218 65535
+q219 add m15_b 2
+q220 shr q219 7
+q221 and q219 127
+q222 get p0 q220
+q223 get q222 q221
+q224 shr q223 6
+m15_sw and q224 1
+q225 get p0 1
+q226 get q225 2
+q227 add q226 m15_id
+q228 mul q227 6
+q229 add q228 3
+q230 shr q229 7
+q231 and q229 127
+q232 get p5 q230
+q233 get q232 q231
+q234 xor m15_sw p3
+m15_slot add q233 q234
+q235 mul m15_slot 2
+q236 shr q235 7
+q237 and q235 127
+q238 get p6 q236
+q239 get q238 q237
+q240 mul m15_slot 2
+q241 add q240 1
+q242 shr q241 7
+q243 and q241 127
+q244 get p6 q242
+q245 get q244 q243
+m14_isn eq q239 1
+q246 get p0 1
+q247 get q246 2
+q248 add q247 q245
+m14_g select m14_isn q248 0
+q249 mul m14_g 6
+q250 add q249 3
+q251 shr q250 7
+q252 and q250 127
+q253 get p5 q251
+q254 get q253 q252
+q255 mul m14_g 6
+q256 add q255 1
+q257 shr q256 7
+q258 and q256 127
+q259 get p5 q257
+q260 get q259 q258
+q261 eq q260 2
+q262 eq q260 3
+q263 or q261 q262
+q264 eq q260 8
+q265 or q263 q264
+q266 eq q260 9
+m14_fo or q265 q266
+q267 select m14_isn q245 0
+q268 shr q267 5
+q269 add 19212 q268
+q270 shr q269 7
+q271 and q269 127
+q272 get p0 q270
+q273 get q272 q271
+q274 and q267 31
+q275 shr q273 q274
+q276 and q275 1
+q277 ne q276 0
+q278 and m14_isn q277
+q279 and q278 m14_fo
+q280 mul q254 2
+q281 shr q280 7
+q282 and q280 127
+q283 get p6 q281
+q284 get q283 q282
+q285 eq q284 2
+q286 and q279 q285
+q287 add q254 1
+q288 mul q287 2
+q289 shr q288 7
+q290 and q288 127
+q291 get p6 q289
+q292 get q291 q290
+q293 eq q292 3
+m14_ok and q286 q293
+q294 eq q239 2
+q295 eq q239 3
+q296 select m14_ok q260 255
+q297 select q295 1 q296
+m14_lop select q294 0 q297
+q298 eq q239 2
+q299 mul q254 2
+q300 add q299 1
+q301 shr q300 7
+q302 and q300 127
+q303 get p6 q301
+q304 get q303 q302
+m14_lx select q298 q245 q304
+q305 eq q239 3
+q306 add q254 1
+q307 mul q306 2
+q308 add q307 1
+q309 shr q308 7
+q310 and q308 127
+q311 get p6 q309
+q312 get q311 q310
+m14_lc select q305 q245 q312
+q313 mul p2 4
+m22_b add 19392 q313
+q314 add m22_b 1
+q315 shr q314 7
+q316 and q314 127
+q317 get p0 q315
+q318 get q317 q316
+q319 shr q318 16
+m22_id and q319 65535
+q320 add m22_b 2
+q321 shr q320 7
+q322 and q320 127
+q323 get p0 q321
+q324 get q323 q322
+q325 shr q324 7
+m22_sw and q325 1
+q326 get p0 1
+q327 get q326 2
+q328 add q327 m22_id
+q329 mul q328 6
+q330 add q329 3
+q331 shr q330 7
+q332 and q330 127
+q333 get p5 q331
+q334 get q333 q332
+q335 xor m22_sw p3
+m22_slot add q334 q335
+q336 mul m22_slot 2
+q337 shr q336 7
+q338 and q336 127
+q339 get p6 q337
+q340 get q339 q338
+q341 mul m22_slot 2
+q342 add q341 1
+q343 shr q342 7
+q344 and q342 127
+q345 get p6 q343
+q346 get q345 q344
+m21_isn eq q340 1
+q347 get p0 1
+q348 get q347 2
+q349 add q348 q346
+m21_g select m21_isn q349 0
+q350 mul m21_g 6
+q351 add q350 3
+q352 shr q351 7
+q353 and q351 127
+q354 get p5 q352
+q355 get q354 q353
+q356 mul m21_g 6
+q357 add q356 1
+q358 shr q357 7
+q359 and q357 127
+q360 get p5 q358
+q361 get q360 q359
+q362 eq q361 2
+q363 eq q361 3
+q364 or q362 q363
+q365 eq q361 8
+q366 or q364 q365
+q367 eq q361 9
+m21_fo or q366 q367
+q368 select m21_isn q346 0
+q369 shr q368 5
+q370 add 19212 q369
+q371 shr q370 7
+q372 and q370 127
+q373 get p0 q371
+q374 get q373 q372
+q375 and q368 31
+q376 shr q374 q375
+q377 and q376 1
+q378 ne q377 0
+q379 and m21_isn q378
+q380 and q379 m21_fo
+q381 mul q355 2
+q382 shr q381 7
+q383 and q381 127
+q384 get p6 q382
+q385 get q384 q383
+q386 eq q385 2
+q387 and q380 q386
+q388 add q355 1
+q389 mul q388 2
+q390 shr q389 7
+q391 and q389 127
+q392 get p6 q390
+q393 get q392 q391
+q394 eq q393 3
+m21_ok and q387 q394
+q395 eq q340 2
+q396 eq q340 3
+q397 select m21_ok q361 255
+q398 select q396 1 q397
+m21_lop select q395 0 q398
+q399 eq q340 2
+q400 mul q355 2
+q401 add q400 1
+q402 shr q401 7
+q403 and q401 127
+q404 get p6 q402
+q405 get q404 q403
+m21_lx select q399 q346 q405
+q406 eq q340 3
+q407 add q355 1
+q408 mul q407 2
+q409 add q408 1
+q410 shr q409 7
+q411 and q409 127
+q412 get p6 q410
+q413 get q412 q411
+m21_lc select q406 q346 q413
+q414 eq m0_lop 1
+q415 eq m7_lop 1
+q416 and q414 q415
+q417 eq m14_lop 1
+q418 and q416 q417
+q419 eq m21_lop 1
+lit and q418 q419
+q420 gt m0_lop 1
+q421 gt m7_lop 1
+q422 gt m14_lop 1
+q423 select q422 m14_lop m21_lop
+q424 select q421 m7_lop q423
+op select q420 m0_lop q424
+q425 gt m0_lop 1
+q426 gt m7_lop 1
+q427 gt m14_lop 1
+q428 select q427 m14_lx m21_lx
+q429 select q426 m7_lx q428
+x select q425 m0_lx q429
+q430 eq m0_lop op
+q431 eq m0_lop 0
+q432 or q430 q431
+q433 eq m0_lx x
+l0 and q432 q433
+q434 eq m7_lop op
+q435 eq m7_lop 0
+q436 or q434 q435
+q437 eq m7_lx x
+l1 and q436 q437
+q438 eq m14_lop op
+q439 eq m14_lop 0
+q440 or q438 q439
+q441 eq m14_lx x
+l2 and q440 q441
+q442 eq m21_lop op
+q443 eq m21_lop 0
+q444 or q442 q443
+q445 eq m21_lx x
+l3 and q444 q445
+q446 ge op 2
+q447 ne op 255
+q448 and q446 q447
+q449 and q448 l0
+q450 and q449 l1
+q451 and q450 l2
+fine and q451 l3
+q452 mul p4 8
+b add 20296 q452
+q453 eq kk 2
+q454 select fine op 0
+q455 select lit 1 q454
+q456 select q453 q455 0
+q457 shr b 7
+q458 and b 127
+m_g get p0 q457
+m_h set m_g q458 q456
+m set p0 q457 m_h
+q459 add b 1
+q460 select lit 0 x
+q461 shr q459 7
+q462 and q459 127
+m_g_1 get m q461
+m_h_1 set m_g_1 q462 q460
+m_1 set m q461 m_h_1
+q463 add b 2
+q464 eq m0_lop 0
+q465 select q464 0 m0_lc
+q466 shr q463 7
+q467 and q463 127
+m_g_2 get m_1 q466
+m_h_2 set m_g_2 q467 q465
+m_2 set m_1 q466 m_h_2
+q468 add b 3
+q469 eq m7_lop 0
+q470 select q469 0 m7_lc
+q471 shr q468 7
+q472 and q468 127
+m_g_3 get m_2 q471
+m_h_3 set m_g_3 q472 q470
+m_3 set m_2 q471 m_h_3
+q473 add b 4
+q474 eq m14_lop 0
+q475 select q474 0 m14_lc
+q476 shr q473 7
+q477 and q473 127
+m_g_4 get m_3 q476
+m_h_4 set m_g_4 q477 q475
+m_4 set m_3 q476 m_h_4
+q478 add b 5
+q479 eq m21_lop 0
+q480 select q479 0 m21_lc
+q481 shr q478 7
+q482 and q478 127
+m_g_5 get m_4 q481
+m_h_5 set m_g_5 q482 q480
+m_5 set m_4 q481 m_h_5
+ret m_5
+end
+fn wykf u32x128x512 u32 u32x128x132 u32x128x512 -> u32x128x512
+q0 get p0 158
+q1 get q0 96
+open eq q1 0
+q2 add 20033 p1
+q3 shr q2 7
+q4 and q2 127
+q5 get p0 q3
+q6 get q5 q4
+q7 select open 1 0
+q8 and q6 255
+q9 shr q6 8
+q10 and q9 1
+m fold wyfm q7 p0 q8 q10 1 p2 p3
+q11 get m 158
+q12 get q11 80
+q13 get m 158
+q14 get q13 82
+q15 get m 158
+q16 get q15 83
+q17 get m 158
+q18 get q17 84
+q19 get m 158
+q20 get q19 85
+q21 get m 158
+q22 get q21 74
+q23 get m 158
+q24 get q23 75
+q25 get m 158
+q26 get q25 76
+q27 get m 158
+q28 get q27 77
+m0_s sub q22 q14
+q29 eq q12 8
+q30 eq q12 9
+m0_sh or q29 q30
+q31 get m 158
+q32 get q31 72
+q33 eq q12 q32
+q34 get m 158
+q35 get q34 81
+q36 get m 158
+q37 get q36 73
+q38 eq q35 q37
+q39 and q33 q38
+q40 ne q12 0
+q41 and q39 q40
+q42 sub q24 q16
+q43 eq q42 m0_s
+q44 and q41 q43
+q45 sub q26 q18
+q46 eq q45 m0_s
+q47 and q44 q46
+q48 sub q28 q20
+q49 eq q48 m0_s
+m0_same and q47 q49
+q50 lt q14 32
+q51 lt q16 32
+q52 and q50 q51
+q53 lt q18 32
+q54 and q52 q53
+q55 lt q20 32
+q56 and q54 q55
+q57 lt q22 32
+q58 and q56 q57
+q59 lt q24 32
+q60 and q58 q59
+q61 lt q26 32
+q62 and q60 q61
+q63 lt q28 32
+q64 and q62 q63
+q65 lt m0_s 32
+m0_small and q64 q65
+q66 xor m0_sh true
+q67 or q66 m0_small
+q68 and m0_same q67
+q69 add p1 1
+q70 and open q68
+q71 get m 158
+q72 get q71 96
+q73 select q70 q69 q72
+m_g get m 158
+m_h set m_g 96 q73
+m_1 set m 158 m_h
+ret m_1
+end
+fn wylk u32x128x512 u32 u32 bool u32x128x132 u32x128x512 -> u32x128x512
+later gt p1 p2
+q0 select later 1 0
+q1 shr p1 1
+q2 add 19904 q1
+q3 shr q2 7
+q4 and q2 127
+q5 get p0 q3
+q6 get q5 q4
+q7 and p1 1
+m fold wyfm q0 p0 q6 q7 1 p4 p5
+q8 get m 158
+q9 get q8 80
+q10 get m 158
+q11 get q10 82
+q12 get m 158
+q13 get q12 83
+q14 get m 158
+q15 get q14 84
+q16 get m 158
+q17 get q16 85
+q18 get m 158
+q19 get q18 74
+q20 get m 158
+q21 get q20 75
+q22 get m 158
+q23 get q22 76
+q24 get m 158
+q25 get q24 77
+m0_s sub q19 q11
+q26 eq q9 8
+q27 eq q9 9
+m0_sh or q26 q27
+q28 get m 158
+q29 get q28 72
+q30 eq q9 q29
+q31 get m 158
+q32 get q31 81
+q33 get m 158
+q34 get q33 73
+q35 eq q32 q34
+q36 and q30 q35
+q37 ne q9 0
+q38 and q36 q37
+q39 sub q21 q13
+q40 eq q39 m0_s
+q41 and q38 q40
+q42 sub q23 q15
+q43 eq q42 m0_s
+q44 and q41 q43
+q45 sub q25 q17
+q46 eq q45 m0_s
+m0_same and q44 q46
+q47 lt q11 32
+q48 lt q13 32
+q49 and q47 q48
+q50 lt q15 32
+q51 and q49 q50
+q52 lt q17 32
+q53 and q51 q52
+q54 lt q19 32
+q55 and q53 q54
+q56 lt q21 32
+q57 and q55 q56
+q58 lt q23 32
+q59 and q57 q58
+q60 lt q25 32
+q61 and q59 q60
+q62 lt m0_s 32
+m0_small and q61 q62
+q63 xor m0_sh true
+q64 or q63 m0_small
+q65 and m0_same q64
+q66 get m 158
+q67 get q66 72
+q68 get m 158
+q69 get q68 74
+q70 get m 158
+q71 get q70 75
+q72 get m 158
+q73 get q72 76
+q74 get m 158
+q75 get q74 77
+q76 get m 158
+q77 get q76 82
+q78 get m 158
+q79 get q78 83
+q80 get m 158
+q81 get q80 84
+q82 get m 158
+q83 get q82 85
+m1_s sub q77 q69
+q84 eq q67 8
+q85 eq q67 9
+m1_sh or q84 q85
+q86 get m 158
+q87 get q86 80
+q88 eq q67 q87
+q89 get m 158
+q90 get q89 73
+q91 get m 158
+q92 get q91 81
+q93 eq q90 q92
+q94 and q88 q93
+q95 ne q67 0
+q96 and q94 q95
+q97 sub q79 q71
+q98 eq q97 m1_s
+q99 and q96 q98
+q100 sub q81 q73
+q101 eq q100 m1_s
+q102 and q99 q101
+q103 sub q83 q75
+q104 eq q103 m1_s
+m1_same and q102 q104
+q105 lt q69 32
+q106 lt q71 32
+q107 and q105 q106
+q108 lt q73 32
+q109 and q107 q108
+q110 lt q75 32
+q111 and q109 q110
+q112 lt q77 32
+q113 and q111 q112
+q114 lt q79 32
+q115 and q113 q114
+q116 lt q81 32
+q117 and q115 q116
+q118 lt q83 32
+q119 and q117 q118
+q120 lt m1_s 32
+m1_small and q119 q120
+q121 xor m1_sh true
+q122 or q121 m1_small
+q123 and m1_same q122
+q124 get m 158
+q125 get q124 97
+q126 get m 158
+q127 get q126 82
+q128 eq q125 0
+q129 get m 158
+q130 get q129 74
+q131 shr q125 16
+bc select q128 q130 q131
+q132 shl q127 16
+q133 add p1 1
+q134 or q132 q133
+q135 and later p3
+q136 and q135 q65
+q137 lt q127 bc
+q138 and q136 q137
+q139 get m 158
+q140 get q139 97
+q141 select q138 q134 q140
+m_g get m 158
+m_h set m_g 97 q141
+m_1 set m 158 m_h
+q142 and later q123
+q143 get m_1 158
+q144 get q143 98
+q145 select q142 1 q144
+m_g_1 get m_1 158
+m_h_1 set m_g_1 98 q145
+m_2 set m_1 158 m_h_1
+ret m_2
+end
+fn wyder u32x128x512 u32 u32 u32 u32 -> u32x128x512
+q0 eq p3 8
+q1 eq p3 9
+sh or q0 q1
+on ne p4 0
+m fold wxlg 1 p0 p2
+q2 select on 1 0
+m_1 fold wxe q2 m 2 p4
+q3 and on sh
+q4 select q3 1 0
+q5 eq p3 8
+q6 select q5 171 173
+m_2 fold wxe q4 m_1 18 q6
+q7 xor sh true
+q8 and on q7
+q9 select q8 1 0
+m_3 fold wxe q9 m_2 18 17
+q10 xor sh true
+q11 and on q10
+q12 select q11 1 0
+q13 eq p3 3
+q14 select q13 177 174
+m_4 fold wxe q12 m_3 18 q14
+ret m_4
+end
+fn wyfk u32x128x512 u32 u32 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+m fold wyfm 1 p0 p3 p2 0 p5 p6
+q0 get m 158
+q1 get q0 72
+isf ne q1 0
+m_g get m 158
+m_h set m_g 96 0
+m_1 set m 158 m_h
+q2 get m_1 156
+q3 get q2 64
+q4 select isf q3 0
+m_2 fold wykf q4 m_1 p5 p6
+q5 get m_2 158
+q6 get q5 96
+der ne q6 0
+q7 sub q6 1
+q8 select der q7 0
+q9 add 20033 q8
+q10 shr q9 7
+q11 and q9 127
+q12 get m_2 q10
+q13 get q12 q11
+q14 select der 1 0
+q15 and q13 255
+q16 shr q13 8
+q17 and q16 1
+m_3 fold wyfm q14 m_2 q15 q17 1 p5 p6
+q18 get m_3 158
+q19 get q18 80
+q20 get m_3 158
+q21 get q20 82
+q22 get m_3 158
+q23 get q22 83
+q24 get m_3 158
+q25 get q24 84
+q26 get m_3 158
+q27 get q26 85
+q28 get m_3 158
+q29 get q28 74
+q30 get m_3 158
+q31 get q30 75
+q32 get m_3 158
+q33 get q32 76
+q34 get m_3 158
+q35 get q34 77
+m0_s sub q29 q21
+q36 eq q19 8
+q37 eq q19 9
+m0_sh or q36 q37
+q38 get m_3 158
+q39 get q38 72
+q40 eq q19 q39
+q41 get m_3 158
+q42 get q41 81
+q43 get m_3 158
+q44 get q43 73
+q45 eq q42 q44
+q46 and q40 q45
+q47 ne q19 0
+q48 and q46 q47
+q49 sub q31 q23
+q50 eq q49 m0_s
+q51 and q48 q50
+q52 sub q33 q25
+q53 eq q52 m0_s
+q54 and q51 q53
+q55 sub q35 q27
+q56 eq q55 m0_s
+m0_same and q54 q56
+q57 lt q21 32
+q58 lt q23 32
+q59 and q57 q58
+q60 lt q25 32
+q61 and q59 q60
+q62 lt q27 32
+q63 and q61 q62
+q64 lt q29 32
+q65 and q63 q64
+q66 lt q31 32
+q67 and q65 q66
+q68 lt q33 32
+q69 and q67 q68
+q70 lt q35 32
+q71 and q69 q70
+q72 lt m0_s 32
+m0_small and q71 q72
+q73 xor m0_sh true
+q74 or q73 m0_small
+q75 and m0_same q74
+q76 select der 1 0
+q77 shr q13 16
+q78 add q77 1048576
+m_4 fold wyder q76 m_3 q78 q1 m0_s
+q79 xor der true
+look and isf q79
+m_g_1 get m_4 158
+m_h_1 set m_g_1 97 0
+m_5 set m_4 158 m_h_1
+m_g_2 get m_5 158
+m_h_2 set m_g_2 98 0
+m_6 set m_5 158 m_h_2
+q80 get m_6 149
+q81 get q80 48
+q82 mul q81 2
+q83 select look q82 0
+q84 mul p4 2
+q85 add q84 p2
+q86 eq q1 8
+q87 eq q1 9
+q88 or q86 q87
+m_7 fold wylk q83 m_6 q85 q88 p5 p6
+q89 get m_7 158
+q90 get q89 97
+ahead ne q90 0
+q91 get m_7 158
+q92 get q91 98
+q93 ne q92 0
+q94 or ahead q93
+used and look q94
+q95 and q90 65535
+q96 sub q95 1
+bt select ahead q96 0
+q97 shr bt 1
+q98 add 19904 q97
+q99 shr q98 7
+q100 and q98 127
+q101 get m_7 q99
+q102 get q101 q100
+bi select ahead q102 p3
+q103 and bt 1
+bs select ahead q103 p2
+m_8 fold wyfm 1 m_7 bi bs 2 p5 p6
+q104 get m_8 158
+q105 get q104 88
+q106 eq q105 1
+bc and used q106
+q107 select bc 1 0
+q108 get m_8 158
+q109 get q108 90
+m_9 fold wxe q107 m_8 26 q109
+q110 select bc 1 0
+q111 get m_9 158
+q112 get q111 91
+m_10 fold wxe q110 m_9 27 q112
+q113 select bc 1 0
+q114 get m_10 158
+q115 get q114 92
+m_11 fold wxe q113 m_10 27 q115
+q116 select bc 1 0
+q117 get m_11 158
+q118 get q117 93
+m_12 fold wxe q116 m_11 27 q118
+q119 xor bc true
+q120 and used q119
+q121 select q120 4 0
+m_13 fold wyln q121 m_12 bi bs p5 p6
+q122 select used 1 0
+m_14 fold wxnv q122 m_13
+q123 get m_14 0
+q124 get q123 16
+q125 xor ahead true
+q126 and used q125
+q127 select q126 1 0
+m_15 fold wxe q127 m_14 5 q124
+q128 and used ahead
+q129 select q128 1 0
+m_16 fold wxls q129 m_15 q124
+q130 get m_16 158
+q131 get q130 88
+q132 get m_16 158
+q133 get q132 90
+q134 get m_16 158
+q135 get q134 91
+q136 get m_16 158
+q137 get q136 92
+q138 get m_16 158
+q139 get q138 93
+q140 get m_16 158
+q141 get q140 74
+q142 get m_16 158
+q143 get q142 75
+q144 get m_16 158
+q145 get q144 76
+q146 get m_16 158
+q147 get q146 77
+m1_s sub q141 q133
+q148 eq q131 8
+q149 eq q131 9
+m1_sh or q148 q149
+q150 get m_16 158
+q151 get q150 72
+q152 eq q131 q151
+q153 get m_16 158
+q154 get q153 89
+q155 get m_16 158
+q156 get q155 73
+q157 eq q154 q156
+q158 and q152 q157
+q159 ne q131 0
+q160 and q158 q159
+q161 sub q143 q135
+q162 eq q161 m1_s
+q163 and q160 q162
+q164 sub q145 q137
+q165 eq q164 m1_s
+q166 and q163 q165
+q167 sub q147 q139
+q168 eq q167 m1_s
+m1_same and q166 q168
+q169 lt q133 32
+q170 lt q135 32
+q171 and q169 q170
+q172 lt q137 32
+q173 and q171 q172
+q174 lt q139 32
+q175 and q173 q174
+q176 lt q141 32
+q177 and q175 q176
+q178 lt q143 32
+q179 and q177 q178
+q180 lt q145 32
+q181 and q179 q180
+q182 lt q147 32
+q183 and q181 q182
+q184 lt m1_s 32
+m1_small and q183 q184
+q185 xor m1_sh true
+q186 or q185 m1_small
+q187 and m1_same q186
+q188 and used ahead
+q189 select q188 1 0
+m_17 fold wyder q189 m_16 q124 q1 m1_s
+q190 get m_17 156
+q191 get q190 64
+q192 add 20033 q191
+q193 shl bs 8
+q194 or bi q193
+q195 sub q124 1048576
+q196 shl q195 16
+q197 or q194 q196
+q198 shr q192 7
+q199 and q192 127
+q200 get m_17 q198
+q201 get q200 q199
+q202 select used q197 q201
+q203 shr q192 7
+q204 and q192 127
+m_g_3 get m_17 q203
+m_h_3 set m_g_3 q204 q202
+m_18 set m_17 q203 m_h_3
+q205 add q191 1
+q206 get m_18 156
+q207 get q206 64
+q208 select used q205 q207
+m_g_4 get m_18 156
+m_h_4 set m_g_4 64 q208
+m_19 set m_18 156 m_h_4
+q209 xor der true
+q210 xor used true
+plain and q209 q210
+lit eq q1 1
+q211 and plain lit
+q212 select q211 1 0
+q213 get m_19 158
+q214 get q213 74
+m_20 fold wxe q212 m_19 26 q214
+q215 and plain lit
+q216 select q215 1 0
+q217 get m_20 158
+q218 get q217 75
+m_21 fold wxe q216 m_20 27 q218
+q219 and plain lit
+q220 select q219 1 0
+q221 get m_21 158
+q222 get q221 76
+m_22 fold wxe q220 m_21 27 q222
+q223 and plain lit
+q224 select q223 1 0
+q225 get m_22 158
+q226 get q225 77
+m_23 fold wxe q224 m_22 27 q226
+q227 xor lit true
+q228 and plain q227
+q229 select q228 4 0
+m_24 fold wyln q229 m_23 p3 p2 p5 p6
+ret m_24
+end
+fn wykid u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
 q0 mul p2 4
 q1 add 19392 q0
 q2 add q1 2
@@ -8160,181 +9287,48 @@ q31 mul q30 6
 q32 add q31 3
 q33 shr q32 7
 q34 and q32 127
-q35 get p3 q33
+q35 get p4 q33
 q36 get q35 q34
 q37 xor m0_sw p1
 m0_slot add q36 q37
 q38 mul m0_slot 2
 q39 shr q38 7
 q40 and q38 127
-q41 get p4 q39
+q41 get p5 q39
 q42 get q41 q40
 q43 mul m0_slot 2
 q44 add q43 1
 q45 shr q44 7
 q46 and q44 127
-q47 get p4 q45
+q47 get p5 q45
 q48 get q47 q46
-q49 mul p2 4
-m1_b add 19392 q49
-q50 add m1_b 0
-q51 shr q50 7
-q52 and q50 127
-q53 get p0 q51
-q54 get q53 q52
-q55 shr q54 16
-m1_id and q55 65535
-q56 add m1_b 2
-q57 shr q56 7
-q58 and q56 127
-q59 get p0 q57
-q60 get q59 q58
-q61 shr q60 5
-m1_sw and q61 1
-q62 get p0 1
-q63 get q62 2
-q64 add q63 m1_id
-q65 mul q64 6
-q66 add q65 3
-q67 shr q66 7
-q68 and q66 127
-q69 get p3 q67
-q70 get q69 q68
-q71 xor m1_sw p1
-m1_slot add q70 q71
-q72 mul m1_slot 2
-q73 shr q72 7
-q74 and q72 127
-q75 get p4 q73
-q76 get q75 q74
-q77 mul m1_slot 2
-q78 add q77 1
-q79 shr q78 7
-q80 and q78 127
-q81 get p4 q79
-q82 get q81 q80
-q83 mul p2 4
-m2_b add 19392 q83
-q84 add m2_b 1
-q85 shr q84 7
-q86 and q84 127
-q87 get p0 q85
-q88 get q87 q86
-q89 shr q88 0
-m2_id and q89 65535
-q90 add m2_b 2
-q91 shr q90 7
-q92 and q90 127
-q93 get p0 q91
-q94 get q93 q92
-q95 shr q94 6
-m2_sw and q95 1
-q96 get p0 1
-q97 get q96 2
-q98 add q97 m2_id
-q99 mul q98 6
-q100 add q99 3
-q101 shr q100 7
-q102 and q100 127
-q103 get p3 q101
-q104 get q103 q102
-q105 xor m2_sw p1
-m2_slot add q104 q105
-q106 mul m2_slot 2
-q107 shr q106 7
-q108 and q106 127
-q109 get p4 q107
-q110 get q109 q108
-q111 mul m2_slot 2
-q112 add q111 1
-q113 shr q112 7
-q114 and q112 127
-q115 get p4 q113
-q116 get q115 q114
-q117 mul p2 4
-m3_b add 19392 q117
-q118 add m3_b 1
-q119 shr q118 7
-q120 and q118 127
-q121 get p0 q119
-q122 get q121 q120
-q123 shr q122 16
-m3_id and q123 65535
-q124 add m3_b 2
-q125 shr q124 7
-q126 and q124 127
-q127 get p0 q125
-q128 get q127 q126
-q129 shr q128 7
-m3_sw and q129 1
-q130 get p0 1
-q131 get q130 2
-q132 add q131 m3_id
-q133 mul q132 6
-q134 add q133 3
-q135 shr q134 7
-q136 and q134 127
-q137 get p3 q135
-q138 get q137 q136
-q139 xor m3_sw p1
-m3_slot add q138 q139
-q140 mul m3_slot 2
-q141 shr q140 7
-q142 and q140 127
-q143 get p4 q141
-q144 get q143 q142
-q145 mul m3_slot 2
-q146 add q145 1
-q147 shr q146 7
-q148 and q146 127
-q149 get p4 q147
-q150 get q149 q148
-q151 eq q42 3
-q152 eq q76 3
-q153 and q151 q152
-q154 eq q110 3
-q155 and q153 q154
-q156 eq q144 3
-lit and q155 q156
-q157 eq kk 0
-q158 select q157 1 0
-q159 mul kp 4
-q160 add 19392 q159
-q161 add q160 3
-q162 shr q161 7
-q163 and q161 127
-q164 get p0 q162
-q165 get q164 q163
-q166 shr q165 16
-q167 and q166 255
-q168 add q167 1048576
-m fold wxlg q158 p0 q168
-q169 eq kk 1
-q170 select q169 1 0
-m_1 fold wysc q170 m q42 q48 p3 p4
-q171 eq kk 1
-q172 eq p1 1
-q173 and q172 shift
-q174 xor q173 true
-q175 and q171 q174
-q176 select q175 1 0
-m_2 fold wxe q176 m_1 18 17
-q177 eq kk 2
-vc and q177 lit
-q178 select vc 1 0
-m_3 fold wxe q178 m_2 26 q48
-q179 select vc 1 0
-m_4 fold wxe q179 m_3 27 q82
-q180 select vc 1 0
-m_5 fold wxe q180 m_4 27 q116
-q181 select vc 1 0
-m_6 fold wxe q181 m_5 27 q150
-q182 eq kk 2
-q183 xor lit true
-q184 and q182 q183
-q185 select q184 4 0
-m_7 fold wyln q185 m_6 p2 p1 p3 p4
-ret m_7
+q49 eq kk 0
+q50 select q49 1 0
+q51 mul kp 4
+q52 add 19392 q51
+q53 add q52 3
+q54 shr q53 7
+q55 and q53 127
+q56 get p0 q54
+q57 get q56 q55
+q58 shr q57 16
+q59 and q58 255
+q60 add q59 1048576
+m fold wxlg q50 p0 q60
+q61 eq kk 1
+q62 select q61 1 0
+m_1 fold wysc q62 m q42 q48 p4 p5
+q63 eq kk 1
+q64 eq p1 1
+q65 and q64 shift
+q66 xor q65 true
+q67 and q63 q66
+q68 select q67 1 0
+m_2 fold wxe q68 m_1 18 17
+q69 eq kk 2
+q70 select q69 1 0
+m_3 fold wyfk q70 m_2 p1 p2 p3 p4 p5
+ret m_3
 end
 fn wydl u32x128x512 u32 u32 u32 -> u32x128x512
 q0 mul p2 4
@@ -8372,7 +9366,7 @@ q24 select on 1 0
 m_4 fold wxbind q24 m_3 0 id q22
 ret m_4
 end
-fn wyemit u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+fn wyemit u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
 q0 mul p2 4
 q1 add 19392 q0
 q2 add q1 2
@@ -8395,7 +9389,7 @@ q17 select q10 78 q16
 q18 select q9 181 q17
 q19 select q8 177 q18
 code select q7 174 q19
-m fold wykid 2 p0 p2 p3 p4
+m fold wykid 2 p0 p2 p3 p4 p5
 m_1 fold wxe 1 m 18 code
 m_2 fold wxnv 1 m_1
 q20 get m_2 0
@@ -8435,7 +9429,7 @@ q11 get q10 q9
 q12 and q11 4095
 on eq q12 p2
 q13 select on 1 0
-m fold wyemit q13 p0 q4 p3 p4
+m fold wyemit q13 p0 q4 p1 p3 p4
 ret m
 end
 fn wyat u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
