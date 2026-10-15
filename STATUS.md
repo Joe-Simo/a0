@@ -23,6 +23,11 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## Current results
 
+Latest JavaScript work (`a0c-0.1.54`, 2026-10-15): hash lookup improved 93.75× against
+the previous compiler in a quiet, interleaved Linux run; it still trails handwritten JavaScript.
+Evidence: `results/js-readonly-hash-linux.json`. See
+[the scalar-read ownership change](docs/history/2026-10-15-js-readonly-ownership.md).
+
 Latest compiler work (`a0c-0.1.53`, 2026-10-15): WebAssembly hash lookup improved 5.55× against
 the previous compiler in a quiet, interleaved Linux run; it still trails clang. Evidence:
 `results/wasm-readonly-hash-linux.json`, with the broader run in `results/wasm-readonly-ab-linux.json`.
