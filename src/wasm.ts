@@ -1051,7 +1051,8 @@ function scalarState(body: TypedFunc): ReadonlySet<string> | undefined {
     if (node.args.some((x) => isP0(x) || inChain(x))) return undefined;
   }
   const ret = body.ret;
-  if (!(isP0(ret) || inChain(ret))) return undefined;
+  // A loop predicate (scalar result) only reads the state; a body returns the new state.
+  if (!isPrimitive(body.result) && !(isP0(ret) || inChain(ret))) return undefined;
   // A chain node may be the base of the next update or the result, nothing else.
   for (const node of body.nodes)
     for (const [i, x] of node.args.entries())
@@ -1686,7 +1687,7 @@ class FunctionEmitter {
   emitInline(): void {
     this.#emitNodes();
     const fields = this.host?.fields;
-    if (this.#chain !== undefined && fields !== undefined) {
+    if (this.#chain !== undefined && fields !== undefined && !isPrimitive(this.fn.result)) {
       // New state words: all read before any field local is written (a swap stays exact).
       const ret = this.fn.ret;
       const words = ret.kind === 'node' ? this.#words.get(ret.id) : undefined;
@@ -2574,9 +2575,21 @@ class FunctionEmitter {
     // Scalar replacement: a small aggregate state lives in locals for the whole loop.
     const width =
       aggregate && !isPrimitive(t) ? (t.kind === 'arr' ? t.length : t.fields.length) : 0;
-    const small = node.op === 'fold' && aggregate && scalarState(body) !== undefined;
-    const probe = small ? Array.from({ length: width }, () => state) : undefined;
-    const inlineBody = this.#canInline(body, variant, sources(), INLINE_BODY_NODES, probe);
+    // A loop's predicate reads the same state: it must take its words from the locals too.
+    const smallBody = aggregate && scalarState(body) !== undefined;
+    const probe = smallBody ? Array.from({ length: width }, () => state) : undefined;
+    const small =
+      smallBody &&
+      (pred === undefined ||
+        (scalarState(pred) !== undefined &&
+          this.#canInline(pred, 'value', sources(), INLINE_BODY_NODES, probe)));
+    const inlineBody = this.#canInline(
+      body,
+      variant,
+      sources(),
+      INLINE_BODY_NODES,
+      small ? probe : undefined,
+    );
     let fields: number[] | undefined;
     if (small && inlineBody) {
       fields = [];
@@ -2693,7 +2706,10 @@ class FunctionEmitter {
         c.call(RT_IDX);
       }
       if (pred !== undefined) {
-        const bound = lit === undefined ? {} : { indexBound: lit };
+        const bound = {
+          ...(lit === undefined ? {} : { indexBound: lit }),
+          ...(fields === undefined ? {} : { fields }),
+        };
         if (!this.#tryInline(pred, 'value', sources(), INLINE_BODY_NODES, bound)) {
           args();
           c.call(`a0_${pred.name}`);
