@@ -1516,6 +1516,79 @@ end
 `;
 
 /**
+ * Small `loop` state in locals (src/wasm.ts `scalarState`, the predicate reading the words too): a
+ * lower-bound search with (lo, hi) record state over an array extra and a variable count (an
+ * update chain whose second `put` has a chain node for its base: every word carries over), a
+ * three-word array state rebuilt by `arr` (a swap) with a predicate on an extra, and a predicate
+ * reading the state at a variable index (no scalar replacement: the state stays in storage).
+ */
+const LOOP_STATE_SOURCE = `fn lbok (u32,u32) u32 u32x16 u32 -> bool
+lo at p0 0
+hi at p0 1
+c lt lo hi
+ret c
+end
+fn lbst (u32,u32) u32 u32x16 u32 -> (u32,u32)
+lo at p0 0
+hi at p0 1
+s add lo hi
+m shr s 1
+v get p2 m
+c lt v p3
+m1 add m 1
+nlo select c m1 lo
+nhi select c hi m
+r put p0 0 nlo
+r2 put r 1 nhi
+ret r2
+end
+fn rot u32x3 u32 u32 -> u32x3
+a get p0 0
+b get p0 1
+c get p0 2
+d add a p2
+r arr b c d
+ret r
+end
+fn rotok u32x3 u32 u32 -> bool
+a get p0 0
+g lt a p2
+ret g
+end
+fn vok u32x4 u32 u32 -> bool
+k and p1 3
+v get p0 k
+g lt v p2
+ret g
+end
+fn vst u32x4 u32 u32 -> u32x4
+a get p0 0
+b add a p1
+n set p0 0 b
+ret n
+end
+fn main u32 u32 -> u32
+t arr 1 3 5 7 9 11 13 15 17 19 21 23 25 27 29 31
+st rec 0 16
+k and p0 7
+n add k 4
+r loop lbok lbst n st t p1
+lo at r 0
+w arr p0 1 2
+q loop rotok rot 9 w p1
+q0 get q 0
+q2 get q 2
+x arr p1 0 4 9
+y loop vok vst 6 x 5
+y0 get y 0
+a add lo q0
+b xor a q2
+c add b y0
+ret c
+end
+`;
+
+/**
  * A fill fused into an in-place prefix fold (the exec-bench prefix1k shape): an induction
  * variable stepping by a parameter, the carried previous element guarded on the first trip, and
  * the dead index arithmetic of the carried read; `pfx2` reads the carried element twice (no guard).
@@ -1911,6 +1984,11 @@ async function main(): Promise<void> {
   programs.push(['carryunroll', parseAndValidate(CARRY_UNROLL_SOURCE), small]);
   // stores forwarded to the next trip's read, and the exec-bench kernel isort256 (src/wasm.ts `carriedRead`)
   programs.push(['carryfwd', parseAndValidate(CARRY_FWD_SOURCE), small]);
+  // small loop state in locals, read by the predicate too, and the exec-bench kernel bsearch1k
+  programs.push(['loopstate', parseAndValidate(LOOP_STATE_SOURCE), small]);
+  const bsearch1k = KERNELS.find((k) => k.name === 'bsearch1k');
+  if (bsearch1k === undefined) throw new Error('exec-bench kernel bsearch1k is missing');
+  programs.push(['bench/bsearch1k', parseAndValidate(bsearch1k.a0), small]);
   const isort256 = KERNELS.find((k) => k.name === 'isort256');
   if (isort256 === undefined) throw new Error('exec-bench kernel isort256 is missing');
   programs.push(['bench/isort256', parseAndValidate(isort256.a0), small]);

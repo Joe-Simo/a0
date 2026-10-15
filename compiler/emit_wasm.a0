@@ -2197,10 +2197,10 @@ m set p0 g l
 ret m
 end
 # ---------------------------------------------------------------------------------------------
-# Scalar replacement of small fold state (src/wasm.ts `scalarState`): can the state p0 of a body
-# live in locals? Register 22 := 0 when not; the chain nodes (updates and rebuilds of the state)
-# get bit 1 of their row flags in frame p2. Steps: the state type, then every node, the ret, the
-# uses of the chain nodes.
+# Scalar replacement of small fold and loop state (src/wasm.ts `scalarState`): can the state p0 of
+# a body live in locals? (A loop predicate, scalar result, only reads it: no ret check.) Register
+# 22 := 0 when not; the chain nodes (updates and rebuilds of the state) get bit 1 of their row
+# flags in frame p2. Steps: the state type, then every node, the ret, the uses of the chain nodes.
 
 # the state type of the function with first parameter type p2 (tlist p3, types p4): an aggregate of
 # at most 8 scalar words; register 24 := its width, 25 := the record's first field and 26 the
@@ -2562,7 +2562,11 @@ al get ak aj
 am and al 2
 an ne am 0
 ao and x an
-ap or w ao
+ap0 or w ao
+rp0 call wxfw p4 p3 3
+rp1 call wxtag p8 rp0
+rp2 lt rp1 4
+ap or ap0 rp2
 aq select ap false true
 ar select aq 1 0
 as ne ar 0
@@ -3426,7 +3430,8 @@ al set ak aj aa
 am set ah ai al
 ret am
 end
-# (scalar state in locals) the chain node's words (args table p3)
+# (scalar state in locals) the chain node's words (args table p3): an update copies every word of
+# its base (the state width), one of them replaced
 fn wxhwrd u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 -> u32x128x512
 a at p2 0
 b at p2 1
@@ -3444,7 +3449,6 @@ m eq c 24
 n or k l
 o or n m
 p select o 1 0
-q select o 0 1
 r mul a 128
 s add r 128
 t add s 9
@@ -3452,6 +3456,7 @@ u shr t 7
 v and t 127
 w get p0 u
 x get w v
+q select o 0 x
 pq9 select o d 0
 y fold wxwk pq9 p0 a b 0 e p3
 z eq f 2
@@ -10812,8 +10817,8 @@ p set p0 l o
 ret p
 end
 # the host words of frame p2 + 1 for the loop of frame p2: parameter sources (state, counter,
-# extras), the literal bound, and for p3 = 1 (the body) the state words in locals and the carried
-# element; p3 = 2: only the width (the probe of the body)
+# extras), the literal bound, the state words in locals (any p3: the predicate p3 = 0 reads them
+# too), and for p3 = 1 (the body) the carried element; p3 = 2: the probe of the body
 fn wxhost u32x128x512 u32 u32 u32 -> u32x128x512
 a add p2 1
 b mul p2 176
@@ -10887,9 +10892,7 @@ bh and bf 127
 bi get p0 bg
 bj get bi bh
 bk eq p3 1
-bl eq p3 2
-bm or bk bl
-bn select bm aq 0
+bn add aq 0
 bo select bk ay 0
 bp select bk a5 0
 bq select bk bc 0
@@ -11201,7 +11204,13 @@ p select o false true
 q select o 1 0
 r fold wxhost q p0 p2 0
 s select o 1 0
-t fold wxcan s r p2 n 0 24 0 p3 p4 p5 p6 p7 p8 p9 p10 0
+tw0 mul p2 176
+tw1 add tw0 652
+tw2 shr tw1 7
+tw3 and tw1 127
+tw4 get r tw2
+tw5 get tw4 tw3
+t fold wxcan s r p2 n 0 24 tw5 p3 p4 p5 p6 p7 p8 p9 p10 0
 u shr 16 7
 v and 16 127
 w get t u
@@ -13903,14 +13912,39 @@ bl select bk bi 0
 bm select bj bh bl
 bn ne s 0
 bo ne a9 0
-bp and bn bo
 bq le bg 24
 br gt bg 0
-bs and bp bq
-bt and bs br
+bs and bn bq
+bt0 and bs br
+a6l call wxcx a 6
+a7l call wxcx a 7
+pq0 call wxg p0 a6l
+pq1 call wxg p0 a7l
+pl0 ne pq0 0
+pl and pl0 bt0
+pc call wxfw p3 pq1 5
+pcn select pl pc 0
+pw0 fold wxclr pcn p0 e
+pw1 fold wxs 1 pw0 22 1
+pl1 select pl 1 0
+pw2 fold wxsmall pl1 pw1 e pq1 p3 p4 p5 p6 p7 p8
+ps0 call wxg pw2 22
+ps eq ps0 1
+pv and pl ps
+pv1 select pv bm 0
+pw3 fold wxcs 1 pw2 a 12 pv1
+pv2 select pv 1 0
+pw4 fold wxhost pv2 pw3 a 2
+pw5 fold wxcan pv2 pw4 a pq1 0 24 pv1 p3 p4 p5 p6 p7 p8 p9 p10 0
+pk0 call wxg pw5 16
+pk1 eq pk0 1
+pk and pv pk1
+pn select pl0 false true
+po or pn pk
+bt and bt0 po
 bu select bt bg 0
 bv call wxfw p3 av 4
-bw fold wxclr bu p0 e
+bw fold wxclr bu pw5 e
 bx shr 22 7
 by and 22 127
 bz get bw bx
