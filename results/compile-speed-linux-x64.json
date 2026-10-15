@@ -1,0 +1,586 @@
+{
+  "version": 1,
+  "platform": "linux",
+  "arch": "x64",
+  "bun": "1.4.2",
+  "cpus": 4,
+  "load": {
+    "source": "loadavg",
+    "limit": 10,
+    "max": 2.24,
+    "start": 1.34,
+    "end": 2.24,
+    "waits": 0
+  },
+  "method": {
+    "runs": 7,
+    "warmups": 1,
+    "interleaved": true,
+    "notes": [
+      "Every subject is a fresh process; wall time from spawn to exit, peak RSS from os.wait4 of exactly that child (a python3 wrapper; RUSAGE_CHILDREN of a long-lived parent is a running maximum, not the child peak).",
+      "The equivalent C and JS are the A0 compiler output for the same program, written before the clock starts; clang and tsc compile exactly what A0 would hand them.",
+      "clang wasm32 uses src/toolchain.ts WASM_FLAGS (-O2, freestanding, wasm-ld, --export-all); a0 emit wasm is the direct wasm backend. Both export every function.",
+      "tsc transpiles the JS with --allowJs --target es2022 (it also parses and binds it); it is the only JS compiler installed here.",
+      "a0 emit c has no competitor; clang native object (-O2 -c of that C) is beside it for scale and is not judged.",
+      "Output bytes are deterministic and judged with a 2 % band; times and RSS with the tie band of tools/check-latency.ts judge."
+    ]
+  },
+  "tools": {
+    "a0": {
+      "available": true,
+      "version": "A0 0.8.16 (bun 1.4.2, --compile --minify --bytecode --format=esm, linux-x64)"
+    },
+    "clang": {
+      "available": true,
+      "version": "Ubuntu clang version 18.1.3 (1ubuntu1)"
+    },
+    "tsc": {
+      "available": true,
+      "version": "TypeScript 5.9.3"
+    },
+    "esbuild": {
+      "available": false,
+      "reason": "esbuild is not installed (not a dependency of this repository)"
+    }
+  },
+  "programs": {
+    "compiler": {
+      "source": "compiler/boot.a0 (linked)",
+      "lines": 54125,
+      "bytes": 1054608,
+      "functions": 1037,
+      "cBytes": 4116581,
+      "jsBytes": 3396934,
+      "subjects": {
+        "a0 emit wasm": {
+          "ms": {
+            "n": 7,
+            "median": 841.588,
+            "min": 817.612,
+            "max": 1156.496,
+            "samples": [
+              820.345,
+              817.612,
+              932.791,
+              841.588,
+              840.288,
+              915.496,
+              1156.496
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 259604480,
+            "min": 241156096,
+            "max": 290926592,
+            "samples": [
+              289583104,
+              241156096,
+              259604480,
+              290926592,
+              266997760,
+              242774016,
+              257581056
+            ]
+          },
+          "outputBytes": 985729
+        },
+        "a0 emit js": {
+          "ms": {
+            "n": 7,
+            "median": 741.921,
+            "min": 650.195,
+            "max": 919.73,
+            "samples": [
+              650.195,
+              747.789,
+              919.73,
+              741.921,
+              688.088,
+              667.554,
+              749.123
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 170176512,
+            "min": 162897920,
+            "max": 186552320,
+            "samples": [
+              162897920,
+              169750528,
+              168820736,
+              173891584,
+              170176512,
+              186552320,
+              181936128
+            ]
+          },
+          "outputBytes": 3396934
+        },
+        "a0 emit c": {
+          "ms": {
+            "n": 7,
+            "median": 694.183,
+            "min": 641.687,
+            "max": 906.689,
+            "samples": [
+              694.183,
+              685.982,
+              714.006,
+              664.601,
+              697.499,
+              641.687,
+              906.689
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 175837184,
+            "min": 170409984,
+            "max": 191913984,
+            "samples": [
+              175837184,
+              170409984,
+              174100480,
+              191913984,
+              171462656,
+              176431104,
+              178302976
+            ]
+          },
+          "outputBytes": 4116581
+        },
+        "clang wasm32": {
+          "ms": {
+            "n": 7,
+            "median": 23177.513,
+            "min": 22570.235,
+            "max": 24324.171,
+            "samples": [
+              23857.699,
+              23127.562,
+              22570.235,
+              23790.507,
+              22748.136,
+              23177.513,
+              24324.171
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 511643648,
+            "min": 511438848,
+            "max": 511684608,
+            "samples": [
+              511647744,
+              511655936,
+              511643648,
+              511520768,
+              511684608,
+              511627264,
+              511438848
+            ]
+          },
+          "outputBytes": 1108820
+        },
+        "clang native object": {
+          "ms": {
+            "n": 7,
+            "median": 28771.735,
+            "min": 27979.645,
+            "max": 29330.212,
+            "samples": [
+              28623.089,
+              28856.603,
+              28759.411,
+              29330.212,
+              29058.045,
+              27979.645,
+              28771.735
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 300507136,
+            "min": 300421120,
+            "max": 300638208,
+            "samples": [
+              300421120,
+              300474368,
+              300515328,
+              300457984,
+              300511232,
+              300507136,
+              300638208
+            ]
+          },
+          "outputBytes": 1806328
+        },
+        "tsc": {
+          "ms": {
+            "n": 7,
+            "median": 7427.957,
+            "min": 7132.775,
+            "max": 8405.255,
+            "samples": [
+              7398.395,
+              7427.957,
+              7289.198,
+              8036.776,
+              7132.775,
+              7475.954,
+              8405.255
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 517693440,
+            "min": 516182016,
+            "max": 522780672,
+            "samples": [
+              522780672,
+              517353472,
+              518348800,
+              516182016,
+              517693440,
+              518324224,
+              517144576
+            ]
+          },
+          "outputBytes": 3621670
+        }
+      }
+    },
+    "gen100": {
+      "source": "tools/corpus.ts generateCorpus(CORPUS_SEED, 100)",
+      "lines": 5596,
+      "bytes": 89185,
+      "functions": 100,
+      "cBytes": 59872,
+      "jsBytes": 87532,
+      "subjects": {
+        "a0 emit wasm": {
+          "ms": {
+            "n": 7,
+            "median": 97.414,
+            "min": 87.864,
+            "max": 147.221,
+            "samples": [
+              97.414,
+              91.721,
+              87.864,
+              101.914,
+              92.959,
+              107.217,
+              147.221
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 72257536,
+            "min": 71991296,
+            "max": 73007104,
+            "samples": [
+              71991296,
+              72323072,
+              72257536,
+              73007104,
+              71995392,
+              72302592,
+              72044544
+            ]
+          },
+          "outputBytes": 10441
+        },
+        "a0 emit js": {
+          "ms": {
+            "n": 7,
+            "median": 76.068,
+            "min": 71.587,
+            "max": 91.851,
+            "samples": [
+              71.587,
+              73.75,
+              89.832,
+              91.851,
+              73.252,
+              86.342,
+              76.068
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 69013504,
+            "min": 67772416,
+            "max": 69799936,
+            "samples": [
+              69013504,
+              69799936,
+              68591616,
+              67772416,
+              68694016,
+              69345280,
+              69414912
+            ]
+          },
+          "outputBytes": 87532
+        },
+        "a0 emit c": {
+          "ms": {
+            "n": 7,
+            "median": 86.038,
+            "min": 73.068,
+            "max": 105.226,
+            "samples": [
+              105.226,
+              73.609,
+              88.747,
+              98.308,
+              73.068,
+              82.662,
+              86.038
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 69320704,
+            "min": 67956736,
+            "max": 69914624,
+            "samples": [
+              68182016,
+              69783552,
+              69320704,
+              69668864,
+              67956736,
+              69021696,
+              69914624
+            ]
+          },
+          "outputBytes": 59872
+        },
+        "clang wasm32": {
+          "ms": {
+            "n": 7,
+            "median": 292.401,
+            "min": 270.394,
+            "max": 329.785,
+            "samples": [
+              280.712,
+              282.546,
+              305.02,
+              329.785,
+              270.394,
+              312.246,
+              292.401
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 96559104,
+            "min": 96468992,
+            "max": 96661504,
+            "samples": [
+              96559104,
+              96571392,
+              96661504,
+              96628736,
+              96526336,
+              96468992,
+              96550912
+            ]
+          },
+          "outputBytes": 14890
+        },
+        "clang native object": {
+          "ms": {
+            "n": 7,
+            "median": 320.077,
+            "min": 285.614,
+            "max": 369.442,
+            "samples": [
+              320.077,
+              325.418,
+              358.587,
+              369.442,
+              290.264,
+              285.614,
+              292.492
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 96854016,
+            "min": 96612352,
+            "max": 97001472,
+            "samples": [
+              96661504,
+              96935936,
+              96931840,
+              96833536,
+              96612352,
+              97001472,
+              96854016
+            ]
+          },
+          "outputBytes": 20848
+        },
+        "tsc": {
+          "ms": {
+            "n": 7,
+            "median": 1589.373,
+            "min": 1535.695,
+            "max": 1731.988,
+            "samples": [
+              1560.85,
+              1700.283,
+              1730.521,
+              1589.373,
+              1535.695,
+              1555.898,
+              1731.988
+            ]
+          },
+          "rssBytes": {
+            "n": 7,
+            "median": 196587520,
+            "min": 195346432,
+            "max": 197992448,
+            "samples": [
+              197992448,
+              196485120,
+              197304320,
+              195862528,
+              195346432,
+              197447680,
+              196587520
+            ]
+          },
+          "outputBytes": 94287
+        }
+      }
+    }
+  },
+  "comparisons": [
+    {
+      "program": "compiler",
+      "target": "wasm",
+      "competitor": "clang wasm32",
+      "metric": "compile-ms",
+      "a0": 841.588,
+      "other": 23177.513,
+      "gap": -0.963689,
+      "band": 0.25,
+      "ratio": 27.540213,
+      "verdict": "win"
+    },
+    {
+      "program": "compiler",
+      "target": "wasm",
+      "competitor": "clang wasm32",
+      "metric": "compile-rss-bytes",
+      "a0": 259604480,
+      "other": 511643648,
+      "gap": -0.492607,
+      "band": 0.206383,
+      "ratio": 1.970858,
+      "verdict": "win"
+    },
+    {
+      "program": "compiler",
+      "target": "wasm",
+      "competitor": "clang wasm32",
+      "metric": "compile-output-bytes",
+      "a0": 985729,
+      "other": 1108820,
+      "gap": -0.111011,
+      "band": 0.02,
+      "ratio": 1.124873,
+      "verdict": "win"
+    },
+    {
+      "program": "compiler",
+      "target": "js",
+      "competitor": "tsc",
+      "metric": "compile-ms",
+      "a0": 741.921,
+      "other": 7427.957,
+      "gap": -0.900118,
+      "band": 0.25,
+      "ratio": 10.01179,
+      "verdict": "win"
+    },
+    {
+      "program": "compiler",
+      "target": "js",
+      "competitor": "tsc",
+      "metric": "compile-rss-bytes",
+      "a0": 170176512,
+      "other": 517693440,
+      "gap": -0.671279,
+      "band": 0.14521,
+      "ratio": 3.042097,
+      "verdict": "win"
+    },
+    {
+      "program": "gen100",
+      "target": "wasm",
+      "competitor": "clang wasm32",
+      "metric": "compile-ms",
+      "a0": 97.414,
+      "other": 292.401,
+      "gap": -0.666848,
+      "band": 0.25,
+      "ratio": 3.001632,
+      "verdict": "win"
+    },
+    {
+      "program": "gen100",
+      "target": "wasm",
+      "competitor": "clang wasm32",
+      "metric": "compile-rss-bytes",
+      "a0": 72257536,
+      "other": 96559104,
+      "gap": -0.251676,
+      "band": 0.08,
+      "ratio": 1.336319,
+      "verdict": "win"
+    },
+    {
+      "program": "gen100",
+      "target": "wasm",
+      "competitor": "clang wasm32",
+      "metric": "compile-output-bytes",
+      "a0": 10441,
+      "other": 14890,
+      "gap": -0.298791,
+      "band": 0.02,
+      "ratio": 1.426109,
+      "verdict": "win"
+    },
+    {
+      "program": "gen100",
+      "target": "js",
+      "competitor": "tsc",
+      "metric": "compile-ms",
+      "a0": 76.068,
+      "other": 1589.373,
+      "gap": -0.95214,
+      "band": 0.25,
+      "ratio": 20.894108,
+      "verdict": "win"
+    },
+    {
+      "program": "gen100",
+      "target": "js",
+      "competitor": "tsc",
+      "metric": "compile-rss-bytes",
+      "a0": 69013504,
+      "other": 196587520,
+      "gap": -0.648943,
+      "band": 0.08,
+      "ratio": 2.848537,
+      "verdict": "win"
+    }
+  ]
+}

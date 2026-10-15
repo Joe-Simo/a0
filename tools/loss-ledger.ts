@@ -66,7 +66,10 @@ export type Axis =
   | 'primer-tokens-per-accepted'
   | 'app-edit-accepted'
   | 'app-edit-tokens-per-accepted'
-  | 'check-latency-ms';
+  | 'check-latency-ms'
+  | 'compile-ms'
+  | 'compile-rss-bytes'
+  | 'compile-output-bytes';
 
 export interface Observation {
   readonly id: string;
@@ -597,6 +600,49 @@ function checkLatencyObservations(root: string): Observation[] {
   return out;
 }
 
+/**
+ * The compile-speed reports (results/compile-speed-<platform>.json, tools/compile-speed.ts): per program
+ * and target, the shipped `a0 emit` against clang (wasm) and tsc/esbuild (js) on the equivalent input:
+ * median wall time, median peak RSS and output bytes. Times and RSS carry the report's tie band and its
+ * highest load; output bytes are deterministic.
+ */
+function compileSpeedObservations(root: string): Observation[] {
+  const out: Observation[] = [];
+  let files: string[] = [];
+  try {
+    files = readdirSync(join(root, 'results')).filter((f) => /^compile-speed-.*\.json$/.test(f));
+  } catch {
+    return out;
+  }
+  for (const file of files.sort()) {
+    const rep = readJson(root, file);
+    const comps = rep?.comparisons;
+    if (!Array.isArray(comps)) continue;
+    const load = num(obj(rep?.load)?.max) ?? null;
+    const source = file.replace(/\.json$/, '');
+    for (const c of comps) {
+      const r = obj(c);
+      if (r === undefined) continue;
+      const axis = String(r.metric) as Axis;
+      if (axis !== 'compile-ms' && axis !== 'compile-rss-bytes' && axis !== 'compile-output-bytes')
+        continue;
+      const o = lower(
+        source,
+        `${String(r.program)}/${String(r.target)}`,
+        axis,
+        String(r.competitor),
+        num(r.a0) ?? 0,
+        num(r.other) ?? 0,
+        num(r.band) ?? 0.08,
+        load,
+        axis !== 'compile-output-bytes',
+      );
+      if (o !== undefined) out.push(o);
+    }
+  }
+  return out;
+}
+
 interface PrimerCell {
   readonly n: number;
   readonly oneShot: { readonly rate: number };
@@ -745,6 +791,7 @@ export function observations(root = '.'): Observation[] {
     ...primerObservations(root),
     ...appEditObservations(root),
     ...checkLatencyObservations(root),
+    ...compileSpeedObservations(root),
     ...editProtocolObservations(root),
   ];
 }
