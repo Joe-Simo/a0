@@ -1115,7 +1115,12 @@ function typeTokenEnd(text: string, pos: number): { end: number; type: Type } | 
   } else {
     while (end < text.length && !/[\s]/.test(text[end] as string)) end += 1;
   }
-  const word = text.slice(pos, end).replace(/\s+/g, '');
+  // Inside `( )` a blank separates fields like a comma: `(u32 u32)` is `(u32,u32)` (input only).
+  const word = text
+    .slice(pos, end)
+    .replace(/\s*([(),])\s*/g, '$1')
+    .trim()
+    .replace(/\s+/g, ',');
   if (!/^(\(|u32|bool|io)/.test(word)) return undefined;
   try {
     return { end, type: parseType(word) };
@@ -1501,10 +1506,14 @@ export class FunctionParser {
         break;
       }
       if (t.kind === 'semi') {
-        if (op !== 'arr' || args.length !== 1) return fail("unexpected ';'", this.line);
+        if (op !== 'arr') return fail("unexpected ';'", this.line);
         this.pos += 1;
+        // `[x;N]` repeats x N times only when N is a decimal literal right after the one element;
+        // otherwise `;` separates elements like a blank (`[x0;x1;x2]`, input only).
+        const next = this.peek();
+        if (args.length !== 1 || next?.kind !== 'word' || !NUMBER.test(next.text)) continue;
         const count = this.eat('a repeat count');
-        if (count.kind !== 'word' || !NUMBER.test(count.text) || Number(count.text) < 1)
+        if (Number(count.text) < 1)
           return fail(`repeat count '${count.text}' is not a positive number`, this.line);
         const n = Number(count.text);
         if (n > LIMITS.maxArrayLength)
@@ -1558,6 +1567,9 @@ export class FunctionParser {
       return { kind: 'u32', value };
     }
     if (/^[A-Z]$/.test(w)) return { kind: 'param', index: w.charCodeAt(0) - 65 };
+    // A name bound at the start of a line (`p0 sub B A`) is that value, not parameter 0.
+    const bound = PARAM_WORD.test(w) ? this.names.get(w) : undefined;
+    if (bound !== undefined) return this.ref(bound);
     if (PARAM_WORD.test(w)) return { kind: 'param', index: Number(w.slice(1)) };
     // Hexadecimal and binary literals (`0x5F`, `0b101`): input only, the printer writes decimal.
     if (/^0[xX][0-9a-fA-F]+$/.test(w) || /^0[bB][01]+$/.test(w)) {
@@ -1713,7 +1725,7 @@ export class FunctionParser {
         name = t0.text.slice(1);
         this.pos += 1;
       } else if (
-        isValidIdentifier(t0.text) &&
+        (isValidIdentifier(t0.text) || PARAM_WORD.test(t0.text)) &&
         t1 !== undefined &&
         ((this.lam?.compact !== true && t1.kind === 'word' && t1.text === '=') ||
           (!KEYWORDS.has(t0.text) &&
@@ -1767,7 +1779,8 @@ export class FunctionParser {
       // read the old one): the new node gets a fresh id, the earlier node keeps its own. Input only.
       let id = name;
       if (this.names.has(name) && !this.shadowing) fail(`duplicate id '${name}'`, line);
-      if (this.names.has(name)) {
+      // `p0`, `p1`, ... are parameter words in the canonical form: the value gets the id `p0_2` there.
+      if (this.names.has(name) || PARAM_WORD.test(name)) {
         const used = new Set(this.explicit.filter((e): e is string => e !== undefined));
         let n = 2;
         while (used.has(`${name}_${n}`) || this.names.has(`${name}_${n}`)) n += 1;
