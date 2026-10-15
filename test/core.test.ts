@@ -2080,12 +2080,31 @@ test('arm64 instruction selection, unrolled and vectorized folds equal the inter
   }
 });
 
-test('x86_64 backend refuses io functions with a diagnostic', () => {
-  const p = parseAndValidate('fn w io u32 -> io\nt write p0 p1\nret t\nend');
-  assert.throws(
-    () => compile(p, 'x86_64'),
-    (e: unknown) => e instanceof A0Error && /io functions are out of scope/.test(e.message),
+test('x86_64 backend: io goes through module helpers sized by the io capacities', () => {
+  const p = parseAndValidate(
+    'fn w io u32 -> io\nt write p0 p1\nret t\nend\nfn r io -> (u32,io)\nx read p0\nret x\nend',
   );
+  const text = compile(p, 'x86_64', {
+    x86Platform: 'linux',
+    ioInputCapacity: 8,
+    ioOutputCapacity: 16,
+  }).text;
+  // A token result returns its address in rax; the helpers are local labels, emitted once.
+  assert.match(text, /call \.La0io_write\n\tmovq %r11, /);
+  assert.match(text, /call \.La0io_read\n/);
+  assert.equal(text.split('\n.La0io_write:').length, 2);
+  // ninput at 4 * 8, position at 36, output at 40, noutput at 40 + 4 * 16.
+  assert.match(text, /\.La0io_read:\n\tmovl 36\(%r11\), %eax\n\tcmpl 32\(%r11\), %eax/);
+  assert.match(text, /\.La0io_write:\n\tmovl 104\(%r11\), %r10d\n\tcmpl \$16, %r10d/);
+  assert.doesNotMatch(text, /La0io_sread|La0io_puts|a0_trap/);
+  // The strict read traps `input` through the trap runtime.
+  const strict = compile(
+    parseAndValidate('profile strict\nfn r io -> u32\nx read p0\nv at x 0\nret v\nend'),
+    'x86_64',
+    { x86Platform: 'linux' },
+  ).text;
+  assert.match(strict, /call \.La0io_sread\n/);
+  assert.match(strict, /\.asciz "input"/);
 });
 
 test('x86_64 backend: emitted sequences carry the exact semantics', async () => {

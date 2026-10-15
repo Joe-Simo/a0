@@ -11,8 +11,12 @@
  *                  against clang -O2 wasm32 + wasm-ld (src/toolchain.ts WASM_FLAGS) on the equivalent C.
  *   a0 emit js     against tsc (node_modules TypeScript) transpiling the equivalent JS (--allowJs, emit),
  *                  and esbuild where it is installed (absent otherwise, with the reason).
- *   a0 emit c      no competitor does this translation; recorded alone, with clang -O2 compiling that C to
- *                  a native object beside it for scale (not a comparison: different work).
+ *   a0 emit c      no competitor does this translation; recorded alone.
+ *   a0 x86_64 object  on an x86-64 host: the direct x86-64 backend (`a0 emit x86_64`, assembly text) and the
+ *                  system assembler (`clang -c -x assembler`) as one pipeline, `sh -c` running both (wall
+ *                  time of the pair; peak RSS the larger of the two, which os.wait4 of the shell reports),
+ *                  against clang -O2 compiling the equivalent C to a native object. `a0 emit x86_64` alone
+ *                  is recorded beside it (assembly bytes, not judged).
  * The equivalent C and JS are A0's own C and JS output for the program, written once before the clock
  * starts: the same functions, the same types, the same bodies. A hand-written C or TS program would be
  * shorter; this is the only equivalent input that exists for both programs, and the report says so.
@@ -36,7 +40,7 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { formatProgram } from '../src/core.js';
 import { link } from '../src/link.js';
-import { findWasmClang, WASM_FLAGS } from '../src/toolchain.js';
+import { findClang, findWasmClang, WASM_FLAGS } from '../src/toolchain.js';
 import { BINARY_FLAGS, judge, LOAD_LIMIT, type Stats, stats } from './check-latency.js';
 import { CORPUS_SEED, generateCorpus } from './corpus.js';
 import { loadGate, waitQuiet } from './quiet.js';
@@ -94,7 +98,7 @@ export type Metric = 'compile-ms' | 'compile-rss-bytes' | 'compile-output-bytes'
 
 export interface CompileComparison {
   readonly program: string;
-  readonly target: 'wasm' | 'js';
+  readonly target: 'wasm' | 'js' | 'native';
   readonly competitor: string;
   readonly metric: Metric;
   readonly a0: number;
@@ -158,7 +162,7 @@ function version(cmd: string[]): string {
 
 export function compareRow(
   program: string,
-  target: 'wasm' | 'js',
+  target: 'wasm' | 'js' | 'native',
   competitor: string,
   metric: Metric,
   a0: Stats | number,
@@ -214,6 +218,16 @@ export async function measure(opts: { runs: number }): Promise<CompileSpeedRepor
   tools.clang = haveClang
     ? { available: true, version: version([clang.path as string, '--version']) }
     : { available: false, reason: 'no clang with the wasm32 target and a wasm-ld' };
+  // The native pipeline needs an x86-64 host (the backend's output runs there) and a clang to assemble.
+  const nativeClang = findClang().path;
+  const native =
+    arch === 'x64' && (plat === 'linux' || plat === 'darwin') && nativeClang !== undefined;
+  tools.native = native
+    ? { available: true, version: version([nativeClang as string, '--version']) }
+    : {
+        available: false,
+        reason: `the a0 x86_64 object row needs an x86-64 Linux or macOS host with clang; found ${plat}-${arch}`,
+      };
   const req = createRequire(import.meta.url);
   const tscJs = req.resolve('typescript/lib/tsc.js');
   tools.tsc = {
@@ -280,6 +294,26 @@ export async function measure(opts: { runs: number }): Promise<CompileSpeedRepor
     add('a0 emit wasm', [a0Bin, 'emit', 'wasm', 'p.a0', 'out/a0.wasm'], 'out/a0.wasm');
     add('a0 emit js', [a0Bin, 'emit', 'js', 'p.a0', 'out/a0.js'], 'out/a0.js');
     add('a0 emit c', [a0Bin, 'emit', 'c', 'p.a0', 'out/a0.c'], 'out/a0.c');
+    if (native) {
+      add('a0 emit x86_64', [a0Bin, 'emit', 'x86_64', 'p.a0', 'out/a0.s'], 'out/a0.s');
+      add(
+        'a0 x86_64 object',
+        [
+          'sh',
+          '-c',
+          '"$0" emit x86_64 p.a0 out/a0x.s && "$1" -c -x assembler out/a0x.s -o out/a0.o',
+          a0Bin,
+          nativeClang as string,
+        ],
+        'out/a0.o',
+      );
+    }
+    if (native || haveClang)
+      add(
+        'clang native object',
+        [(native ? nativeClang : clang.path) as string, '-O2', '-c', 'eq.c', '-o', 'out/clang.o'],
+        'out/clang.o',
+      );
     if (haveClang) {
       add(
         'clang wasm32',
@@ -292,11 +326,6 @@ export async function measure(opts: { runs: number }): Promise<CompileSpeedRepor
           'out/clang.wasm',
         ],
         'out/clang.wasm',
-      );
-      add(
-        'clang native object',
-        [clang.path as string, '-O2', '-c', 'eq.c', '-o', 'out/clang.o'],
-        'out/clang.o',
       );
     }
     add(
@@ -321,6 +350,7 @@ export async function measure(opts: { runs: number }): Promise<CompileSpeedRepor
       waitQuiet();
       maxLoad = Math.max(maxLoad, systemLoad());
       await rm(s.out, { force: true });
+      if (s.name === 'a0 x86_64 object') await rm(join(s.cwd, 'out', 'a0x.s'), { force: true });
       const r = sample(s.cmd, s.cwd);
       if (r.code !== 0) throw new Error(`${s.program} ${s.name} failed: ${r.stderr.slice(0, 500)}`);
       if (round < WARMUPS) continue;
@@ -343,8 +373,9 @@ export async function measure(opts: { runs: number }): Promise<CompileSpeedRepor
   }
   const comparisons: CompileComparison[] = [];
   for (const [name, p] of Object.entries(out)) {
-    const pairs: ['wasm' | 'js', string, string, boolean][] = [
+    const pairs: ['wasm' | 'js' | 'native', string, string, boolean][] = [
       ['wasm', 'a0 emit wasm', 'clang wasm32', true],
+      ['native', 'a0 x86_64 object', 'clang native object', true],
       ['js', 'a0 emit js', 'tsc', false],
       ['js', 'a0 emit js', 'esbuild', false],
     ];
@@ -387,7 +418,8 @@ export async function measure(opts: { runs: number }): Promise<CompileSpeedRepor
         'The equivalent C and JS are the A0 compiler output for the same program, written before the clock starts; clang and tsc compile exactly what A0 would hand them.',
         'clang wasm32 uses src/toolchain.ts WASM_FLAGS (-O2, freestanding, wasm-ld, --export-all); a0 emit wasm is the direct wasm backend. Both export every function.',
         'tsc transpiles the JS with --allowJs --target es2022 (it also parses and binds it); it is the only JS compiler installed here.',
-        'a0 emit c has no competitor; clang native object (-O2 -c of that C) is beside it for scale and is not judged.',
+        'a0 emit c has no competitor and is not judged.',
+        'a0 x86_64 object is a0 emit x86_64 (the direct backend) then clang -c -x assembler, run by one sh -c: the time is the pair, the RSS the larger peak. It is judged against clang -O2 -c of the equivalent C (clang native object): both end at a native object file. a0 emit x86_64 alone (assembly text) is recorded and not judged.',
         'Output bytes are deterministic and judged with a 2 % band; times and RSS with the tie band of tools/check-latency.ts judge.',
       ],
     },

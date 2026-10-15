@@ -119,7 +119,6 @@ export const SKIPS: readonly Skip[] = [
       'SystemVerilog is validated by `bun run hw` (results/hardware.json) with its own testbench harness; the behavior table is not fanned out to it yet',
   },
   NO_IO('arm64', 'the direct AArch64 backend'),
-  NO_IO('x86_64', 'the direct x86-64 backend'),
   NO_IO('riscv64', 'the direct RISC-V backend'),
   NO_IO('avr', 'the AVR backend'),
   NO_IO('arm32', 'the 32-bit ARM backend'),
