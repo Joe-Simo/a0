@@ -38,6 +38,7 @@ import { createRequire } from 'node:module';
 import { cpus, platform as osPlatform, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { DEFAULT_CACHE_DIR } from '../src/cache.js';
 import { formatProgram } from '../src/core.js';
 import { link } from '../src/link.js';
 import { findClang, findWasmClang, WASM_FLAGS } from '../src/toolchain.js';
@@ -79,7 +80,10 @@ interface Sample {
 }
 
 function sample(cmd: readonly string[], cwd: string): Sample {
-  const r = spawnSync('python3', ['-c', WAIT4, ...cmd], { cwd, encoding: 'utf8' });
+  // The cache lives in cwd (deleted before every run); an inherited A0_CACHE_DIR or A0_NO_CACHE
+  // would move or disable it, so neither reaches the child.
+  const { A0_CACHE_DIR: _d, A0_NO_CACHE: _n, ...env } = process.env;
+  const r = spawnSync('python3', ['-c', WAIT4, ...cmd], { cwd, env, encoding: 'utf8' });
   const [code, ms, rss] = (r.stdout ?? '').trim().split(' ').map(Number);
   if (r.status !== 0 || code === undefined || ms === undefined || rss === undefined)
     throw new Error(`python3 wait4 wrapper failed: ${r.stderr ?? r.error?.message ?? ''}`);
@@ -351,6 +355,10 @@ export async function measure(opts: { runs: number }): Promise<CompileSpeedRepor
       maxLoad = Math.max(maxLoad, systemLoad());
       await rm(s.out, { force: true });
       if (s.name === 'a0 x86_64 object') await rm(join(s.cwd, 'out', 'a0x.s'), { force: true });
+      // Every run is cold: the CLI's per-function emission cache (src/cache.ts, .a0-cache in the
+      // working directory) starts empty, as for a user compiling once. Reusing it across the warmup
+      // and timed rounds measured a warm cache, not a compile.
+      await rm(join(s.cwd, DEFAULT_CACHE_DIR), { recursive: true, force: true });
       const r = sample(s.cmd, s.cwd);
       if (r.code !== 0) throw new Error(`${s.program} ${s.name} failed: ${r.stderr.slice(0, 500)}`);
       if (round < WARMUPS) continue;
@@ -414,6 +422,7 @@ export async function measure(opts: { runs: number }): Promise<CompileSpeedRepor
       warmups: WARMUPS,
       interleaved: true,
       notes: [
+        'Every a0 run is cold: the per-function emission cache (.a0-cache) is deleted before each run, warmup and timed alike, so the CLI emits and writes every function as a user compiling once does.',
         'Every subject is a fresh process; wall time from spawn to exit, peak RSS from os.wait4 of exactly that child (a python3 wrapper; RUSAGE_CHILDREN of a long-lived parent is a running maximum, not the child peak).',
         'The equivalent C and JS are the A0 compiler output for the same program, written before the clock starts; clang and tsc compile exactly what A0 would hand them.',
         'clang wasm32 uses src/toolchain.ts WASM_FLAGS (-O2, freestanding, wasm-ld, --export-all); a0 emit wasm is the direct wasm backend. Both export every function.',
