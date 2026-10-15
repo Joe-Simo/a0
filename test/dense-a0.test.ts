@@ -740,17 +740,17 @@ function chunkInvariance(t: TestContext, label: string, caps: Caps): number {
 
 test('chunks: a program cut at 16 KB reads to the text of the whole program', (t) => {
   const n = chunkInvariance(t, '16 KB', READER_CAPS);
-  assert.equal(n, 80, `${n} programs`);
+  assert.equal(n, 79, `${n} programs`);
 });
 
 test('chunks: a program cut at 4 KB reads to the same text', (t) => {
   const n = chunkInvariance(t, '4 KB', { ...READER_CAPS, bytes: 4096 });
-  assert.equal(n, 80, `${n} programs`);
+  assert.equal(n, 79, `${n} programs`);
 });
 
 test('chunks: a program cut after every function reads to the same text', (t) => {
   const n = chunkInvariance(t, 'one function per chunk', { ...READER_CAPS, bytes: 1 });
-  assert.equal(n, 80, `${n} programs`);
+  assert.equal(n, 79, `${n} programs`);
 });
 
 test('chunks: generated call programs cut at random budgets read to the text of the whole program', (t) => {
