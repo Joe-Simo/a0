@@ -1917,7 +1917,90 @@ f select e 1 0
 g add p0 f
 ret g
 end
-fn wxhsel u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 -> u32x128x512
+# a select group (the shape table's ARM 4 on its leader, `lazyArms` groups): one branch on the
+# condition; each side's nodes (ARM 1 / 2, owned by the leader) on its own path, then every select
+# of the group (ARM 3, owned by the leader, and the leader) sets its local to its operand of that
+# side; a known condition emits its side only. The selects' locals are bound first, in node order.
+# member test of node p1 of the frame (first node p2) for the leader p3
+fn wxgmem u32 u32 u32 u32x128x310 -> bool
+a add p1 p0
+b add 2816 a
+c call wxsh p3 b
+d add 5632 a
+e call wxsh p3 d
+f add p2 1
+g eq c f
+h eq e 3
+i and g h
+j eq p0 p2
+k or i j
+ret k
+end
+# trip i: node i of frame p2 (first node p4) gets a fresh local when it is a select of the group
+# led by node p3
+fn wxgbind u32x128x512 u32 u32 u32 u32 u32x128x310 -> u32x128x512
+a call wxgmem p1 p4 p3 p5
+b select a 1 0
+c fold wxnl b p0
+d shr 16 7
+e and 16 127
+f get c d
+g get f e
+h fold wxbind b c p2 p1 g
+ret h
+end
+# trip t: select i = p3 - t of the group led by node p3 (frame p2, first node p4): push the items
+# that push its operand p8 (1 or 2) and set its local (run before the items pushed earlier)
+fn wxgpu u32x128x512 u32 u32 u32 u32 u32x128x310 u32x128x132 u32x128x512 u32 -> u32x128x512
+i sub p3 p1
+a call wxgmem i p4 p3 p5
+b select a 1 0
+l call wxrg p0 p2 i 0
+g add p4 i
+fa call wxnw p6 g 3
+sl add fa p8
+k call wxok p7 sl
+v call wxov p7 sl
+m1 fold wxpu b p0 4 4 l 0
+m2 fold wxpu b m1 3 p2 k v
+ret m2
+end
+fn wxhgrp u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 u32x128x132 u32x128x512 -> u32x128x512
+a at p2 0
+b at p2 1
+g at p2 17
+h at p2 18
+v mul a 128
+w add v 128
+x add w 2
+y shr x 7
+z and x 127
+aa get p0 y
+fst get aa z
+b1 add b 1
+s1 fold wxgbind b1 p0 a b fst p3
+isk eq g 1
+nk select isk false true
+pk select nk 1 0
+s2 fold wxpr pk s1 g h
+s3 fold wxe pk s2 15 64
+s4 fold wxpu pk s3 4 1 11 0
+nb select nk b1 0
+s5 fold wxgpu nb s4 a b fst p3 p4 p5 2
+s6 fold wxpu pk s5 6 a b 1
+s7 fold wxpu pk s6 4 1 5 0
+s8 fold wxgpu nb s7 a b fst p3 p4 p5 1
+s9 fold wxpu pk s8 6 a b 0
+kk select isk 1 0
+kb select isk b1 0
+o ne h 0
+sd select o 1 2
+sc select o 0 1
+t1 fold wxgpu kb s9 a b fst p3 p4 p5 sd
+t2 fold wxpu kk t1 6 a b sc
+ret t2
+end
+fn wxhsel0 u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 -> u32x128x512
 a at p2 0
 b at p2 1
 c at p2 13
@@ -2012,6 +2095,26 @@ b3 fold wxpu b2 b1 3 a c d
 b4 select al 1 0
 b5 fold wxpu b4 b3 6 a b 0
 ret b5
+end
+fn wxhsel u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 u32x128x132 u32x128x512 -> u32x128x512
+a at p2 0
+b at p2 1
+v mul a 128
+w add v 128
+x add w 2
+y shr x 7
+z and x 127
+aa get p0 y
+fst get aa z
+gl add fst b
+gx add 5632 gl
+gv call wxsh p3 gx
+grp eq gv 4
+ng select grp 0 1
+gg select grp 1 0
+r0 fold wxhsel0 ng p0 p2 p3
+r1 fold wxhgrp gg r0 p2 p3 p4 p5
+ret r1
 end
 # the first node at or after node p5 of the frame (first node p2) owned by select p3 in ARM column
 # value p4 (1 or 2); p0 is the node found so far (4294967295: none): node p1 + p5
@@ -12133,8 +12236,9 @@ l rec g k
 ret l
 end
 # (applies, K, select node) for the carried read p2 of the body from p0 (p1 nodes, ret operand
-# kind p3 value p4, nodes p5, operands p6, first trip p7)
-fn wxfts u32 u32 u32 u32 u32 u32x128x132 u32x128x512 u32 -> (u32,u32,u32)
+# kind p3 value p4, nodes p5, operands p6, first trip p7, shape table p8: a select that leads a
+# select group does not apply)
+fn wxfts u32 u32 u32 u32 u32 u32x128x132 u32x128x512 u32 u32x128x310 -> (u32,u32,u32)
 a rec 0 0
 b fold wxfu1 p1 a p0 p2 p5 p6
 c at b 0
@@ -12194,7 +12298,11 @@ gy4 and gy0 gy1
 gy5 and gy2 gy3
 gya and gy4 gy5
 gor or gxa gya
-a1 and ax gor
+a1g and ax gor
+gl_x add e 5632
+gl_v call wxsh p8 gl_x
+gl_n ne gl_v 4
+a1 and a1g gl_n
 a2 select a1 1 0
 a3 rec a2 r d
 ret a3
@@ -14035,7 +14143,7 @@ ft_c call wxfw p3 av 6
 ft_d call waretop p5 ft_c
 ft_e at ft_d 0
 ft_f at ft_d 1
-ft_g call wxfts ft_a ft_b c4 ft_e ft_f p4 p5 an
+ft_g call wxfts ft_a ft_b c4 ft_e ft_f p4 p5 an p10
 ft_h at ft_g 0
 ft_i at ft_g 1
 ft_j at ft_g 2
@@ -14628,7 +14736,7 @@ fu fold wxhbin ft fs b1
 fv select e3 1 0
 fw fold wxhdiv fv fu b1
 fx select e4 1 0
-fy fold wxhsel fx fw b1 p11
+fy fold wxhsel fx fw b1 p11 p5 p6
 fz select e5 1 0
 f0 fold wxhcall fz fy b1 p4 p5 p6 p7 p8 p9 p10 p11 p12
 f1 select e6 1 0

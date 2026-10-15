@@ -1368,6 +1368,89 @@ ret r
 end`;
 
 /**
+ * Select groups (src/optimize.ts `lazyArms`): selects sharing a condition emitted as one branch,
+ * at top level (`g1`), in an inlined fold body whose condition is a known constant on one fold
+ * and not on the other (`gb`), in an owned body with a carried read (`gc`), and as the leader of a
+ * group that is also the carried read's guarded select (`gk`: the group wins).
+ */
+const SELECT_GROUP_SOURCE = `fn g1 u32 u32 -> u32
+c lt p0 p1
+a mul p0 p1
+b add a 7
+x select c b p0
+d xor p0 p1
+e mul d 5
+f shl e 3
+y select c p1 f
+z select c 3 d
+s add x y
+t add s z
+ret t
+end
+fn gb u32 u32 u32 -> u32
+c eq p2 0
+a mul p0 p1
+b add a 7
+x select c b p0
+d xor p0 p1
+e mul d 5
+f shl e 3
+g add f p1
+y select c p1 g
+s add x y
+ret s
+end
+fn t2 u32 u32 -> u32
+r fold gb 9 p0 0
+q and p1 255
+s fold gb q r 1
+ret s
+end
+fn gc u32x8 u32 -> u32x8
+c eq p1 0
+j sub p1 1
+t get p0 j
+m mul t 7
+n xor m 99
+o shl n 2
+s select c 5 o
+u select c 9 n
+w add s u
+q set p0 p1 w
+ret q
+end
+fn t3 u32 u32 -> u32
+z arr 1 2 3 4 5 6 7 8
+a fold gc 8 z
+b and p0 7
+v get a b
+ret v
+end
+fn gk u32x8 u32 -> u32x8
+c eq p1 0
+j sub p1 1
+t get p0 j
+m mul p1 7
+n1 xor m 99
+n2 mul n1 3
+n3 shl n2 2
+n4 add n3 p1
+s select c n4 m
+w select c 3 t
+x add s w
+r set p0 p1 x
+ret r
+end
+fn t4 u32 u32 -> u32
+z arr 1 2 3 4 5 6 7 8
+a fold gk 8 z
+b and p0 7
+v get a b
+ret v
+end
+`;
+
+/**
  * Folds whose carried previous-element read is `select (eq p1 0) K get` (src/wasm.ts
  * `guardedCarry`): the carry starts as K; `twice` reads the carried value outside the select,
  * so it keeps the load.
@@ -1966,6 +2049,11 @@ async function main(): Promise<void> {
   programs.push(['slide', parseAndValidate(SLIDE_SOURCE), small]);
   // a carried previous element that starts at the first-trip value (src/wasm.ts `guardedCarry`)
   programs.push(['carrysel', parseAndValidate(CARRY_SELECT_SOURCE), small]);
+  // selects sharing a condition as one branch, and the exec-bench kernel rle4k (src/optimize.ts `lazyArms`)
+  programs.push(['selgroup', parseAndValidate(SELECT_GROUP_SOURCE), small]);
+  const rle4k = KERNELS.find((k) => k.name === 'rle4k');
+  if (rle4k === undefined) throw new Error('exec-bench kernel rle4k is missing');
+  programs.push(['bench/rle4k', parseAndValidate(rle4k.a0), small]);
   const prefix1k = KERNELS.find((k) => k.name === 'prefix1k');
   if (prefix1k === undefined) throw new Error('exec-bench kernel prefix1k is missing');
   programs.push(['bench/prefix1k', parseAndValidate(prefix1k.a0), small]);

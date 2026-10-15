@@ -948,6 +948,8 @@ function guardedCarry(
   const users = body.nodes.filter((n) => n.args.some(isGet));
   const sel = users[0];
   if (users.length !== 1 || sel?.op !== 'select') return undefined;
+  // A select that leads a select group is emitted with its group (see optimize.ts `lazyArms`).
+  if (lazyArms(body).groups.has(sel.id)) return undefined;
   const [cond, k, other] = sel.args;
   if (k?.kind !== 'u32' || !isGet(other) || sel.args.filter(isGet).length !== 1) return undefined;
   if (cond?.kind !== 'node') return undefined;
@@ -2019,6 +2021,32 @@ class FunctionEmitter {
       }
       case 'select': {
         const k = this.#constOf(a as Operand);
+        const group = this.lazy.groups.get(node.id);
+        if (group !== undefined) {
+          // The group's selects (see optimize.ts `lazyArms`): one branch, each side's nodes on
+          // its own path, every select's local written on both.
+          const members = group.members.map((id) => this.byId.get(id) as Node);
+          const locals = members.map((m) => this.#bindScalar(m.id));
+          const side = (k: 0 | 1): void => {
+            for (const id of group.arms[k]) this.emitNode(this.byId.get(id) as Node);
+            for (const [j, m] of members.entries()) {
+              this.push(m.args[k + 1] as Operand);
+              c.local(OP.localSet, locals[j] as number);
+            }
+          };
+          if (k !== undefined) {
+            // A known condition: its side only.
+            side(k !== 0 ? 0 : 1);
+            return;
+          }
+          this.push(a as Operand);
+          c.op(OP.if, VOID);
+          side(0);
+          c.op(OP.else);
+          side(1);
+          c.op(OP.end);
+          return;
+        }
         if (k !== undefined) {
           this.push((k !== 0 ? b : node.args[2]) as Operand);
           set();
