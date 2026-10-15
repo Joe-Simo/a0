@@ -2200,7 +2200,7 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
     pair,
     /movq %rdi, (\d*\(%rsp\))[\s\S]*movq \1, %r11[\s\S]*movq \1, %rax\n\tmovq %rbp, %rsp/,
   );
-  // Aggregates are copied 16 bytes at a time through xmm0 (a loop above 32 words), so a
+  // Aggregates are copied 16 bytes at a time through xmm0 (one shared helper above 32 words), so a
   // parameter arriving in rcx stays there in a leaf.
   const big = emitDarwin(
     fn('fn b u32x32 u32 u32 u32 -> u32\nv get p0 p3\nw add v p2\nret w\nend', 'b'),
@@ -2209,7 +2209,7 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
   const huge = emitDarwin(fn('fn h u32x40 -> u32\nv get p0 39\nret v\nend', 'h'));
   assert.match(
     huge,
-    /movups \(%r10,%rax\), %xmm0\n\tmovups %xmm0, \(%r11,%rax\)\n\taddq \$16, %rax\n\tcmpq \$160, %rax/,
+    /leaq 160\(%rdi\), %r10\n\tleaq 160\(%rsp\), %r11\n\tmovq \$-160, %rax\n\tcall La0copy/,
   );
   // Frames above a page are probed page by page.
   const zeros = Array.from({ length: 2048 }, () => '0').join(' ');
