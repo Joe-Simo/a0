@@ -141,6 +141,7 @@ export const LEAF_OVERRIDES: Readonly<Record<string, readonly StepId[]>> = {
   'src/cache.ts': ['test'],
   'src/mcp.ts': ['test'],
   'src/cli.ts': ['test'],
+  'src/cli-main.ts': ['test'],
 };
 
 /** Shared emitter, checker, optimizer, toolchain: everything runs. */

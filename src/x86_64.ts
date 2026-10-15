@@ -5,15 +5,28 @@
  *
  * Scope: the same as the AArch64 backend (src/arm64.ts). Functions over u32 and bool,
  * fixed-size arrays and records of them (value semantics), every scalar op with A0's exact
- * meaning, `call`, `fold`, and `loop` as real loops with literal or variable trip counts.
- * io functions are refused (the C path covers them).
+ * meaning, `call`, `fold`, and `loop` as real loops with literal or variable trip counts,
+ * and io (`read`, `write`, `puts`).
  *
  * Representation: every value is a sequence of 32-bit words. u32 is one word, bool is one
  * word holding 0 or 1, an array is its elements back to back, a record its fields in order.
+ * An io token is two words: the address of the caller's io struct, laid out as the C
+ * runtime's (src/backends.ts `cIoRuntime`): `{ u32 input[IN]; u32 ninput; u32 position;
+ * u32 output[OUT]; u32 noutput; }`. A token lives in a stack slot like an aggregate (never in a
+ * register home) but crosses calls by value, as the C ABI passes `a0_io *`: a pointer in the
+ * next argument register or eightbyte, and a token result in rax. `read`, `write` and `puts`
+ * call small module-local helpers that `assembleX86_64` emits once per module with IN and OUT
+ * (so function bodies do not depend on the capacities and the emission cache stays keyed as
+ * before): the token in r11 (kept), the value or length in eax, the element address in r10;
+ * they clobber only rax and r10, so a leaf stays a leaf. Exhausted input reads 0; under the
+ * strict profile it traps `input` through the shared trap runtime. A full output buffer drops
+ * the word, as the C runtime does.
  *
  * Code shape (the AArch64 backend's second version, on x86-64):
  * - Small callees (at most INLINE_MAX_NODES nodes, nested to INLINE_MAX_DEPTH) are inlined
- *   at `call`, `fold`, and `loop` sites; larger callees are called out of line.
+ *   at `call`, `fold`, and `loop` sites when what they expand to (their own inlined callees
+ *   counted) fits a budget: INLINE_MAX_CALL at a plain `call`, INLINE_MAX_LOOP_BODY for a
+ *   fold or loop body; larger callees are called out of line.
  * - Scalars live in registers. A linear scan over definition order gives each u32/bool
  *   value a home among the callee-saved ebx, r12d-r15d (spilled to a stack slot when they
  *   run out); a function with no residual call is a leaf and also uses edi, esi, r8d, r9d,
@@ -30,8 +43,10 @@
  * - Aggregates live in stack slots and are updated in place when provably unshared (the
  *   same `mutableHere` analysis as the JavaScript and AArch64 backends); `at` and a
  *   literal-index `get` of an aggregate borrow that part of the slot (`borrowLive`). Copies and
- *   literal fills move 16 bytes at a time through xmm0; a variable index uses SIB scaling
- *   and skips its mask when a range fact (a fold counter below a literal count, `and`,
+ *   literal fills move 16 bytes at a time through xmm0 (above 32 words a copy calls the module's
+ *   shared copy helper, a fill loops; an `arr` of one
+ *   aggregate repeated copies it once, then replicates it forward); a variable index uses SIB
+ *   scaling and skips its mask when a range fact (a fold counter below a literal count, `and`,
  *   `rem`, `shr` by a literal) proves it below the length.
  *
  * Calling convention (System V AMD64 for scalar signatures, so C can call `a0_<name>`
@@ -54,6 +69,8 @@
  *       (callee-saved register save area, sret pointer, aggregates, spilled scalars)
  *     outgoing stack arguments      rsp ... rsp + O - 1
  *
+ * Value slots whose live ranges are disjoint share bytes (`#pack`). A store of a register to a
+ * slot followed by a reload of that slot reads the register instead (`forwardStores`).
  * S and O are rounded to 16, so rsp is 16-byte aligned at every call. Frames above 4 KiB
  * are probed one page at a time in the prologue; an empty frame skips the rsp restore.
  * Scratch: eax (data, copy offset), r10/r11 (addresses and operands), xmm0 (copies), ecx
@@ -63,7 +80,6 @@
 import {
   A0Error,
   borrowLive,
-  containsIo,
   isPrimitive,
   type Node,
   type Op,
@@ -97,22 +113,36 @@ export const HOST_X86_PLATFORM: X86Platform = process.platform === 'linux' ? 'li
 function refuse(message: string): never {
   throw new A0Error(`x86_64: ${message}`, undefined, {
     code: 'structure',
-    fix: 'compile io functions with the c target; the x86_64 backend covers io-free functions',
+    fix: 'compile this function with the c target',
   });
 }
 
 /** Size of a value in 32-bit words. */
 function words(t: Type): number {
   if (t === 'u32' || t === 'bool') return 1;
-  if (t === 'io') return refuse('io values are not supported by this backend');
+  if (t === 'io') return 2;
   if (t.kind === 'arr') return t.length * words(t.elem);
   return t.fields.reduce((n, f) => n + words(f), 0);
 }
+
+/** A value held in a 32-bit register home: u32 and bool (an io token is a 64-bit address in a slot). */
+const isScalar = (t: Type): t is 'u32' | 'bool' => t === 'u32' || t === 'bool';
 
 const align = (n: number, a: number): number => Math.ceil(n / a) * a;
 
 const INLINE_MAX_NODES = 48;
 const INLINE_MAX_DEPTH = 6;
+/**
+ * Budgets for the nodes an inlined callee expands to, counting its own inlined callees (a
+ * nest of small callees inlined into each other grows multiplicatively, so the per-callee
+ * limit alone duplicated whole call trees at every site). A fold or loop body runs once per
+ * trip from one site, so it gets the larger budget; a plain `call` site only inlines what is
+ * about as cheap as the call sequence it replaces.
+ */
+const INLINE_MAX_LOOP_BODY = 96;
+const INLINE_MAX_CALL = 8;
+
+type Site = 'call' | 'loop';
 const CALLEE_SAVED = ['%ebx', '%r12d', '%r13d', '%r14d', '%r15d'];
 /** Integer argument registers in order; a home only in a leaf, and never edx/ecx. */
 const ARG_REGS = ['%edi', '%esi', '%edx', '%ecx', '%r8d', '%r9d'];
@@ -139,6 +169,161 @@ function deadLiteral(fn: TypedFunc, index: number): boolean {
     me(user.args[1]) &&
     overwritesState(fn, user)
   );
+}
+
+/** An index s * p1 + c + t * pK (pK a scalar extra parameter, K >= 2; t is 0, 1 or -1), mod 2^32. */
+interface Affine {
+  readonly s: number;
+  readonly c: number;
+  readonly k: number;
+  readonly t: number;
+}
+
+/** An operand as an affine index, given the affine forms of the nodes before it. */
+function affineOf(
+  o: Operand | undefined,
+  nodes: ReadonlyMap<string, Affine | undefined>,
+): Affine | undefined {
+  if (o === undefined) return undefined;
+  if (o.kind === 'u32') return { s: 0, c: o.value >>> 0, k: 0, t: 0 };
+  if (o.kind === 'param') {
+    if (o.index === 1) return { s: 1, c: 0, k: 0, t: 0 };
+    // An extra parameter used as an index or an add/sub operand is a u32 in a valid program.
+    if (o.index >= 2) return { s: 0, c: 0, k: o.index, t: 1 };
+    return undefined;
+  }
+  return o.kind === 'node' ? nodes.get(o.id) : undefined;
+}
+
+/** The affine form (in p1 and at most one extra parameter) of every add/sub node of `body`. */
+function affineNodes(body: TypedFunc): Map<string, Affine | undefined> {
+  const out = new Map<string, Affine | undefined>();
+  for (const n of body.nodes) {
+    const a = affineOf(n.args[0], out);
+    const b = affineOf(n.args[1], out);
+    if ((n.op !== 'add' && n.op !== 'sub') || a === undefined || b === undefined) {
+      out.set(n.id, undefined);
+      continue;
+    }
+    const sign = n.op === 'add' ? 1 : -1;
+    const t = a.t + sign * b.t;
+    const k = a.t !== 0 ? a.k : b.k;
+    if ((a.t !== 0 && b.t !== 0 && a.k !== b.k) || (t !== 0 && Math.abs(t) !== 1)) {
+      out.set(n.id, undefined);
+      continue;
+    }
+    out.set(n.id, {
+      s: (a.s + sign * b.s) >>> 0,
+      c: (a.c + sign * b.c) >>> 0,
+      k: t === 0 ? 0 : k,
+      t,
+    });
+  }
+  return out;
+}
+
+/**
+ * A carried read of a fold or loop body over array state of scalars (the shape of src/wasm.ts
+ * `carriedRead`): the body's result is `set X w v`, which is also its last node, and it reads
+ * `get p0 r` where r at trip p1 + 1 is w at trip p1 (both affine in p1, see `affineNodes`). Trip
+ * i + 1 reads the value trip i stored last, so that value can stay in a register across the back
+ * edge instead of making a round trip through memory. `first` is the read's index on trip 0.
+ * `guard` is set when the read's only use is `select (eq p1 0) K get` with K loop-invariant (a
+ * literal or an extra parameter): K stands in on trip 0, so with the register starting at K the
+ * select is the register on every trip.
+ */
+interface CarriedRead {
+  readonly get: string;
+  readonly set: string;
+  readonly first: Affine;
+  readonly guard?: { readonly select: string; readonly k: Operand };
+}
+
+function carriedRead(body: TypedFunc): CarriedRead | undefined {
+  const ret = body.ret;
+  const set = body.nodes.at(-1);
+  const st = body.params[0];
+  if (ret.kind !== 'node' || set?.id !== ret.id || set.op !== 'set') return undefined;
+  if (st === undefined || isPrimitive(st) || st.kind !== 'arr' || !isScalar(st.elem))
+    return undefined;
+  const forms = affineNodes(body);
+  const w = affineOf(set.args[1], forms);
+  if (w === undefined) return undefined;
+  for (const n of body.nodes) {
+    if (n.op !== 'get' || n.args[0]?.kind !== 'param' || n.args[0].index !== 0) continue;
+    const r = affineOf(n.args[1], forms);
+    if (r === undefined || r.s !== w.s || r.k !== w.k || r.t !== w.t) continue;
+    if ((r.c + r.s) >>> 0 !== w.c) continue;
+    const guard = guardedCarry(body, n.id);
+    return { get: n.id, set: set.id, first: r, ...(guard === undefined ? {} : { guard }) };
+  }
+  return undefined;
+}
+
+/** The `select (eq p1 0) K get` that is the read `get`'s only use, K loop-invariant (see `CarriedRead`). */
+function guardedCarry(body: TypedFunc, get: string): CarriedRead['guard'] {
+  const isGet = (o: Operand | undefined): boolean => o?.kind === 'node' && o.id === get;
+  const users = body.nodes.filter((n) => n.args.some(isGet));
+  const sel = users[0];
+  if (users.length !== 1 || sel?.op !== 'select' || sel.args.filter(isGet).length !== 1)
+    return undefined;
+  const [cond, k, other] = sel.args;
+  const invariant =
+    k?.kind === 'u32' || k?.kind === 'bool' || (k?.kind === 'param' && k.index >= 2);
+  if (!invariant || !isGet(other) || cond?.kind !== 'node') return undefined;
+  const eq = body.nodes.find((n) => n.id === cond.id);
+  const [x, y] = eq?.args ?? [];
+  const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
+  const isZero = (o: Operand | undefined): boolean => o?.kind === 'u32' && o.value === 0;
+  if (eq?.op !== 'eq' || !((isIndex(x) && isZero(y)) || (isIndex(y) && isZero(x))))
+    return undefined;
+  return { select: sel.id, k };
+}
+
+/** Ops a carried read never drops even when nothing reads their value. */
+const KEEP_OPS = new Set<Op>(['read', 'write', 'puts', 'call', 'fold', 'loop']);
+
+/**
+ * The body nodes that emit nothing under a carried read besides the read itself: the guarded
+ * read (its select is the register), and every pure node whose readers all emit nothing (the
+ * read's index, the guard's comparison). Only an inlined body gets a carried read, and a body
+ * that can trap is never inlined (`inlinableAt`), so dropping these nodes drops no trap.
+ */
+function carryDead(body: TypedFunc, found: CarriedRead): Set<string> {
+  const read = found.guard?.select ?? found.get;
+  const quiet = new Set([found.get, read]);
+  const dead = new Set(found.guard === undefined ? [] : [found.get]);
+  const ret = body.ret.kind === 'node' ? body.ret.id : undefined;
+  for (let i = body.nodes.length - 1; i >= 0; i -= 1) {
+    const n = body.nodes[i] as Node;
+    if (quiet.has(n.id) || n.id === ret || KEEP_OPS.has(n.op)) continue;
+    const readers = body.nodes.filter((m) =>
+      m.args.some((o) => o.kind === 'node' && o.id === n.id),
+    );
+    if (readers.every((m) => quiet.has(m.id) || dead.has(m.id))) dead.add(n.id);
+  }
+  return dead;
+}
+
+/**
+ * The last position in `fn` at which the value of a node in `ids` is read: a node absorbed by
+ * its consumer (a rotate half, a tested bit mask, a comparison fused into selects) reads at that
+ * consumer's position.
+ */
+function lastRead(fn: TypedFunc, ids: ReadonlySet<string>): number {
+  const plan = planFor(fn);
+  let last = -1;
+  const visit = (of: ReadonlySet<string>): void => {
+    const absorbed = new Set<string>();
+    for (const [j, m] of fn.nodes.entries()) {
+      if (!m.args.some((o) => o.kind === 'node' && of.has(o.id))) continue;
+      if (plan.skip.has(m.id) || plan.fused.has(m.id)) absorbed.add(m.id);
+      else last = Math.max(last, j);
+    }
+    if (absorbed.size > 0) visit(absorbed);
+  };
+  visit(ids);
+  return last;
 }
 
 /** SSE2 registers for a fill run: xmm1 lane indices, xmm2 step, xmm3.. values, xmm14/15 temps. */
@@ -400,6 +585,41 @@ function argLayout(params: readonly Type[], sret: boolean): { places: ArgPlace[]
   return { places, bytes: offset };
 }
 
+/** Whether `callee` is inlined at a `site` `depth` inlinings deep (see INLINE_MAX_CALL). */
+function inlinableAt(callee: TypedFunc, depth: number, site: Site): boolean {
+  return (
+    callee.nodes.length <= INLINE_MAX_NODES &&
+    depth < INLINE_MAX_DEPTH &&
+    !mayTrapFn(callee) &&
+    expandedNodes(callee, depth + 1) <= (site === 'call' ? INLINE_MAX_CALL : INLINE_MAX_LOOP_BODY)
+  );
+}
+
+const EXPANDED = new WeakMap<TypedFunc, Map<number, number>>();
+
+/** Nodes `fn` emits when its body is emitted `depth` inlinings deep, inlined callees included. */
+function expandedNodes(fn: TypedFunc, depth: number): number {
+  let memo = EXPANDED.get(fn);
+  if (memo === undefined) {
+    memo = new Map();
+    EXPANDED.set(fn, memo);
+  }
+  const known = memo.get(depth);
+  if (known !== undefined) return known;
+  let total = 0;
+  for (const n of fn.nodes) {
+    total += 1;
+    for (const name of [n.callee, n.pred]) {
+      if (name === undefined) continue;
+      const g = fn.calls.get(name);
+      if (g !== undefined && inlinableAt(g, depth, n.op === 'call' ? 'call' : 'loop'))
+        total += expandedNodes(g, depth + 1);
+    }
+  }
+  memo.set(depth, total);
+  return total;
+}
+
 /** A value in the emitter: a literal, or a named key whose home is a register or a slot. */
 type Val =
   | { readonly kind: 'lit'; readonly value: number; readonly type: 'u32' | 'bool' }
@@ -412,6 +632,30 @@ interface Env {
   readonly params: readonly Val[];
   readonly ownedP0: boolean;
   readonly depth: number;
+  /** An inlined fold or loop body: what its host keeps in registers across trips. */
+  readonly loop?: LoopHost;
+}
+
+interface LoopHost {
+  /**
+   * The carried read (see `CarriedRead`): the read (or, guarded, its select) is the scalar key
+   * `key`, and after the store `set` the stored value is written to `key`.
+   */
+  readonly carry?: CarryHost;
+  /**
+   * Induction variables: each `mul p1 K` node of the body (K loop-invariant) -> the key that
+   * holds p1 * K, which the host steps by K after every trip instead of multiplying.
+   */
+  readonly steps: ReadonlyMap<string, string>;
+}
+
+interface CarryHost {
+  readonly read: string;
+  /** Nodes left without a reader once the carried read no longer loads (see `carryDead`). */
+  readonly dead: ReadonlySet<string>;
+  readonly set: string;
+  readonly key: string;
+  readonly type: 'u32' | 'bool';
 }
 
 type Home = { readonly reg: string } | { readonly slot: number };
@@ -429,6 +673,8 @@ class FunctionEmitter {
   readonly #aliasOff = new Map<string, number>();
   readonly #regs = new Map<string, string>();
   readonly #slots = new Map<string, number>();
+  /** Every slot request of the dry pass, in order, for `#pack`. */
+  readonly #requests: { key: string; bytes: number; alignment: number }[] = [];
   #slotBytes = 0;
   #outgoing = 0;
   #leaf = true;
@@ -538,7 +784,51 @@ class FunctionEmitter {
     const off = this.#slotBytes;
     this.#slotBytes = align(this.#slotBytes + bytes, 4);
     this.#slots.set(key, off);
+    this.#requests.push({ key, bytes, alignment });
     return off;
+  }
+
+  /**
+   * Stack slot reuse: after the dry pass every slot's live range is known (its key's definition
+   * to the last use of the key or of any alias of it, loop-carried uses already extended to the
+   * loop's end by the dry pass), so slots whose ranges are disjoint share bytes. Ranges are
+   * closed: a node reads its operands and writes its result at the same position, so a slot is
+   * reused only from the position after its last use. The save area and the sret pointer live
+   * for the whole function. Placement is first fit by start position at the lowest offset that
+   * overlaps no live slot.
+   */
+  #pack(): void {
+    const end = new Map<string, number>();
+    const touch = (k: string, p: number): void => {
+      const c = this.#canon(k);
+      end.set(c, Math.max(end.get(c) ?? 0, p));
+    };
+    for (const [k, d] of this.#defs) touch(k, this.#last.get(k) ?? d.pos);
+    const live = (k: string): [number, number] =>
+      k === 'save' || k === 'sret'
+        ? [0, Number.MAX_SAFE_INTEGER]
+        : [this.#defs.get(k)?.pos ?? 0, end.get(k) ?? 0];
+    const reqs = this.#requests
+      .map((r, i) => ({ ...r, i, range: live(r.key) }))
+      .sort((x, y) => x.range[0] - y.range[0] || x.i - y.i);
+    // Sorted by start, a slot that ended before this start is free for every later one too.
+    let placed: { off: number; top: number; end: number }[] = [];
+    let total = 0;
+    for (const r of reqs) {
+      const [start, stop] = r.range;
+      placed = placed.filter((b) => b.end >= start);
+      const busy = [...placed].sort((x, y) => x.off - y.off);
+      let off = 0;
+      for (const b of busy) {
+        if (align(off, r.alignment) + r.bytes <= b.off) break;
+        off = Math.max(off, b.top);
+      }
+      off = align(off, r.alignment);
+      placed.push({ off, top: off + r.bytes, end: stop });
+      this.#slots.set(r.key, off);
+      total = Math.max(total, off + r.bytes);
+    }
+    this.#slotBytes = total;
   }
 
   #canon(key: string): string {
@@ -568,7 +858,7 @@ class FunctionEmitter {
   #def(key: string, type: Type): void {
     if (!this.#dry) return;
     this.#defs.set(key, { pos: this.#pos, type });
-    if (!isPrimitive(type)) this.#alloc(key, 4 * words(type));
+    if (!isScalar(type)) this.#alloc(key, 4 * words(type));
   }
 
   #defAlias(key: string, target: string, type: Type, offset = 0): void {
@@ -599,6 +889,12 @@ class FunctionEmitter {
       case 'param':
         return env.params[o.index] ?? refuse(`unknown parameter p${o.index}`);
       case 'node':
+        if (env.loop !== undefined) {
+          const { carry, steps } = env.loop;
+          if (carry?.read === o.id) return { kind: 'key', key: carry.key, type: carry.type };
+          const step = steps.get(o.id);
+          if (step !== undefined) return { kind: 'key', key: step, type: 'u32' };
+        }
         return {
           kind: 'key',
           key: `${env.prefix}n_${o.id}`,
@@ -626,13 +922,12 @@ class FunctionEmitter {
       this.#straightCopy(dst, d, src, so, n);
       return;
     }
+    // The 16-byte loop is the module's shared copy helper (`copyRuntime`): r10 and r11 point
+    // past the bulk, rax counts up from minus its length to zero.
     const bytes = 16 * Math.floor(n / 4);
-    const top = this.#label();
-    this.#emit(`leaq ${this.#m(src, so)}, %r10`, `leaq ${this.#m(dst, d)}, %r11`);
-    this.#emit('xorl %eax, %eax', `${top}:`);
-    this.#emit('movups (%r10,%rax), %xmm0', 'movups %xmm0, (%r11,%rax)', 'addq $16, %rax');
-    this.#emit(`cmpq ${imm(bytes)}, %rax`, `jne ${top}`);
-    this.#straightCopy('%r11', bytes, '%r10', bytes, n % 4);
+    this.#emit(`leaq ${this.#m(src, so + bytes)}, %r10`, `leaq ${this.#m(dst, d + bytes)}, %r11`);
+    this.#emit(`movq ${imm(-bytes)}, %rax`, `call ${copyHelper(this.platform)}`);
+    this.#straightCopy('%r11', 0, '%r10', 0, n % 4);
   }
 
   #straightCopy(dst: string, d: number, src: string, so: number, n: number): void {
@@ -722,7 +1017,7 @@ class FunctionEmitter {
       this.#emit(`movl ${imm(v.value)}, ${this.#m(base, off)}`);
       return;
     }
-    if (isPrimitive(v.type)) {
+    if (isScalar(v.type)) {
       this.#emit(`movl ${this.#read(v, '%eax')}, ${this.#m(base, off)}`);
       return;
     }
@@ -754,7 +1049,8 @@ class FunctionEmitter {
       this.#emit('xorl %edx, %edx', `movl ${imm(n)}, %r10d`, 'divl %r10d', 'movl %edx, %r10d');
     }
     if (sib || elemBytes === 1) return `%r10${scale}`;
-    this.#emit(`imulq ${imm(elemBytes)}, %r10, %r10`);
+    if ((elemBytes & (elemBytes - 1)) === 0) this.#emit(`shlq ${imm(Math.log2(elemBytes))}, %r10`);
+    else this.#emit(`imulq ${imm(elemBytes)}, %r10, %r10`);
     return '%r10';
   }
 
@@ -786,10 +1082,8 @@ class FunctionEmitter {
   // --- calls and inlining ------------------------------------------------------------------
 
   /** A callee that can trap (strict) keeps its own shadow-stack frame: it is always a real call. */
-  #inlinable(callee: TypedFunc, env: Env): boolean {
-    return (
-      callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH && !mayTrapFn(callee)
-    );
+  #inlinable(callee: TypedFunc, env: Env, site: Site): boolean {
+    return inlinableAt(callee, env.depth, site);
   }
 
   /** Residual out-of-line call: arguments per the convention, result into `dst`. */
@@ -805,18 +1099,25 @@ class FunctionEmitter {
       const place = places[k] as ArgPlace;
       if (place.reg !== undefined) {
         const r = ARG_REGS[place.reg] as string;
-        if (a.kind === 'lit' || isPrimitive(a.type)) this.#into(r, a);
-        else this.#emit(`leaq ${this.#m('%rsp', this.#slot(a.key))}, ${q(r)}`);
+        if (a.kind === 'lit' || isScalar(a.type)) this.#into(r, a);
+        else
+          this.#emit(
+            `${a.type === 'io' ? 'movq' : 'leaq'} ${this.#m('%rsp', this.#slot(a.key))}, ${q(r)}`,
+          );
         return;
       }
       const at = this.#m('%rsp', place.stack as number);
-      if (a.kind === 'lit' || isPrimitive(a.type)) this.#into('%eax', a);
-      else this.#emit(`leaq ${this.#m('%rsp', this.#slot(a.key))}, %rax`);
+      if (a.kind === 'lit' || isScalar(a.type)) this.#into('%eax', a);
+      else
+        this.#emit(
+          `${a.type === 'io' ? 'movq' : 'leaq'} ${this.#m('%rsp', this.#slot(a.key))}, %rax`,
+        );
       this.#emit(`movq %rax, ${at}`);
     });
     if (sret) this.#emit(`leaq ${this.#m('%rsp', this.#slot(dst))}, %rdi`);
     this.#emit(`call ${this.#sym(name)}`);
-    if (!sret) this.#set(dst, (d) => this.#mov('%eax', d));
+    if (callee.result === 'io') this.#emit(`movq %rax, ${this.#m('%rsp', this.#slot(dst))}`);
+    else if (!sret) this.#set(dst, (d) => this.#mov('%eax', d));
   }
 
   #inline(
@@ -828,19 +1129,37 @@ class FunctionEmitter {
     type: Type,
     tag: string,
     sink: 'bind' | 'store',
+    loop?: LoopHost,
   ): void {
+    const carry = loop?.carry;
     const sub: Env = {
       fn: callee,
       prefix: `${env.prefix}${tag}.`,
       params: args,
       ownedP0,
       depth: env.depth + 1,
+      ...(loop === undefined ? {} : { loop }),
     };
+    if (this.#dry && carry !== undefined) {
+      // The stored value takes the carried register when nothing reads the carried value after
+      // it is defined (then writing the register at the store is no move at all).
+      const v = (callee.nodes.find((m) => m.id === carry.set) as Node).args[2];
+      const at = v?.kind === 'node' ? callee.nodes.findIndex((m) => m.id === v.id) : -1;
+      const def = callee.nodes[at];
+      if (
+        v?.kind === 'node' &&
+        def !== undefined &&
+        def.op !== 'fold' &&
+        def.op !== 'loop' &&
+        lastRead(callee, new Set([carry.read])) <= at
+      )
+        this.#shares.set(`${sub.prefix}n_${v.id}`, carry.key);
+    }
     this.#body(sub);
     this.#pos += 1;
     const ret = this.#resolve(sub, callee.ret);
     this.#use(ret);
-    if (isPrimitive(type)) {
+    if (isScalar(type)) {
       const r = callee.ret;
       const at = r.kind === 'node' ? callee.nodes.findIndex((m) => m.id === r.id) : -1;
       const plan = planFor(callee);
@@ -868,6 +1187,96 @@ class FunctionEmitter {
     this.#copy('%rsp', this.#slot(result), '%rsp', this.#slot(ret.key), words(type));
   }
 
+  /**
+   * The register of the carried read of a fold or loop over the array state `key` (see
+   * `CarriedRead`), set to what the read gives on trip 0: K when guarded, else the initial state's
+   * element at the read's first index. Uses r10 (and eax, edx to reduce an index by a length that
+   * is not a power of two).
+   */
+  #carry(
+    env: Env,
+    n: Node,
+    callee: TypedFunc,
+    key: string,
+    t: Type,
+    extras: readonly Val[],
+  ): CarryHost | undefined {
+    if (isPrimitive(t) || t.kind !== 'arr' || !isScalar(t.elem)) return undefined;
+    const found = carriedRead(callee);
+    if (found === undefined) return undefined;
+    const ck = `${env.prefix}k_${n.id}`;
+    const type = t.elem;
+    const len = t.length;
+    const extra = (k: number): Val => extras[k - 2] ?? refuse(`carried read of missing p${k}`);
+    this.#def(ck, type);
+    const g = found.guard;
+    if (g !== undefined) {
+      const k = g.k.kind === 'param' ? extra(g.k.index) : this.#resolve(env, g.k);
+      this.#use(k);
+      this.#set(ck, (d) => this.#into(d, k));
+    } else {
+      // Trip 0 of s * p1 + c + t * pK is c + t * pK.
+      const { c, k, t: sign } = found.first;
+      const base = this.#slot(key);
+      if (sign === 0)
+        this.#set(ck, (d) => this.#emit(`movl ${this.#m('%rsp', base + (c % len) * 4)}, ${d}`));
+      else {
+        const pk = extra(k);
+        this.#use(pk);
+        this.#into('%r10d', pk);
+        if (sign < 0) this.#emit('negl %r10d');
+        if (c !== 0) this.#emit(`addl ${imm(c)}, %r10d`);
+        if ((len & (len - 1)) === 0) this.#emit(`andl ${imm(len - 1)}, %r10d`);
+        else {
+          this.#needDx = true;
+          this.#emit('movl %r10d, %eax', 'xorl %edx, %edx', `movl ${imm(len)}, %r10d`);
+          this.#emit('divl %r10d', 'movl %edx, %r10d');
+        }
+        this.#set(ck, (d) => this.#emit(`movl ${base}(%rsp,%r10,4), ${d}`));
+      }
+    }
+    return {
+      read: g?.select ?? found.get,
+      dead: carryDead(callee, found),
+      set: found.set,
+      key: ck,
+      type,
+    };
+  }
+
+  /**
+   * Induction variables of an inlined fold or loop body: every `mul p1 K` node with K
+   * loop-invariant (a literal or an extra parameter) gets a key holding p1 * K, zero before trip
+   * 0, which the loop advances by K after each trip; the body reads it in place of the product.
+   * Nodes the carried read leaves dead are not stepped.
+   */
+  #steps(
+    env: Env,
+    n: Node,
+    callee: TypedFunc,
+    extras: readonly Val[],
+    carry: CarryHost | undefined,
+  ): { keys: Map<string, string>; by: { key: string; by: Val }[] } {
+    const keys = new Map<string, string>();
+    const by: { key: string; by: Val }[] = [];
+    const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
+    for (const m of callee.nodes) {
+      if (m.op !== 'mul' || carry?.dead.has(m.id) === true || carry?.read === m.id) continue;
+      const [x, y] = m.args as [Operand, Operand];
+      const k = isIndex(x) ? y : isIndex(y) ? x : undefined;
+      let step: Val | undefined;
+      if (k?.kind === 'u32') step = { kind: 'lit', value: k.value >>> 0, type: 'u32' };
+      else if (k?.kind === 'param' && k.index >= 2) step = extras[k.index - 2];
+      if (step === undefined) continue;
+      const key = `${env.prefix}s_${n.id}_${m.id}`;
+      this.#def(key, 'u32');
+      this.#set(key, (d) => this.#emit(`xorl ${d}, ${d}`));
+      keys.set(m.id, key);
+      by.push({ key, by: step });
+    }
+    return { keys, by };
+  }
+
   // --- nodes -------------------------------------------------------------------------------
 
   #body(env: Env): void {
@@ -875,6 +1284,28 @@ class FunctionEmitter {
   }
 
   #node(env: Env, n: Node, index: number): void {
+    if (env.loop === undefined) {
+      this.#op(env, n, index);
+      return;
+    }
+    const { carry, steps } = env.loop;
+    // A carried read or an induction variable is the host's register (`#resolve`), and what only
+    // the carried read read is dead.
+    if (n.id === carry?.read || carry?.dead.has(n.id) === true || steps.has(n.id)) {
+      this.#pos += 1;
+      return;
+    }
+    this.#op(env, n, index);
+    if (carry === undefined || n.id !== carry.set) return;
+    // After the store, the stored value is what the next trip reads.
+    const v = this.#resolve(env, n.args[2] as Operand);
+    const reg: Val = { kind: 'key', key: carry.key, type: carry.type };
+    this.#use(v);
+    this.#use(reg);
+    this.#set(carry.key, (d) => this.#into(d, v));
+  }
+
+  #op(env: Env, n: Node, index: number): void {
     const t = env.fn.types.get(n.id) ?? refuse(`untyped node ${n.id}`);
     const key = `${env.prefix}n_${n.id}`;
     const plan = planFor(env.fn);
@@ -987,7 +1418,7 @@ class FunctionEmitter {
     switch (n.op) {
       case 'mov': {
         const v = a as Val;
-        if (v.kind === 'key' && !isPrimitive(v.type)) this.#defAlias(key, v.key, t);
+        if (v.kind === 'key' && !isScalar(v.type)) this.#defAlias(key, v.key, t);
         else {
           bound(this.#bound(v));
           scalar((d) => this.#into(d, v));
@@ -1083,7 +1514,7 @@ class FunctionEmitter {
           this.#emit(`testl ${rc}, ${rc}`);
           return 'ne';
         };
-        if (isPrimitive(t)) {
+        if (isScalar(t)) {
           // cmov takes a register or memory source; literals are materialized before the
           // flags are set (a later movl leaves the flags alone).
           const rb = b?.kind === 'lit' ? this.#operand(b, '%r11d') : this.#operand(b as Val, '');
@@ -1121,9 +1552,22 @@ class FunctionEmitter {
           this.#fill('%rsp', off, first.value, vals.length);
           return;
         }
-        for (const v of vals) {
+        for (let i = 0; i < vals.length; ) {
+          const v = vals[i] as Val;
+          const w = words(v.type);
+          let run = 1;
+          if (v.kind === 'key' && w >= 4)
+            while (
+              vals[i + run]?.kind === 'key' &&
+              (vals[i + run] as Val & { key: string }).key === v.key
+            )
+              run += 1;
           this.#place(v, '%rsp', off);
-          off += 4 * words(v.type);
+          // A run of one aggregate repeated: the later copies replicate the first with one
+          // forward copy (each 16-byte read is at least one element behind the writes).
+          if (run > 1) this.#copy('%rsp', off + 4 * w, '%rsp', off, (run - 1) * w);
+          off += 4 * w * run;
+          i += run;
         }
         return;
       }
@@ -1138,7 +1582,7 @@ class FunctionEmitter {
         if (checked) this.#checkBounds(b as Val, at.length);
         if (b?.kind === 'lit') {
           const off = base + (b.value % at.length) * ew * 4;
-          if (isPrimitive(t)) scalar((d) => this.#emit(`movl ${this.#m('%rsp', off)}, ${d}`));
+          if (isScalar(t)) scalar((d) => this.#emit(`movl ${this.#m('%rsp', off)}, ${d}`));
           else {
             // A borrowed read of a literal element: named in place, not copied.
             this.#defAlias(key, src.key, t, (b.value % at.length) * ew * 4);
@@ -1146,7 +1590,7 @@ class FunctionEmitter {
           return;
         }
         const scale = this.#scaledIndex(b as Val, at.length, ew * 4, checked);
-        if (isPrimitive(t)) scalar((d) => this.#emit(`movl ${base}(%rsp,${scale}), ${d}`));
+        if (isScalar(t)) scalar((d) => this.#emit(`movl ${base}(%rsp,${scale}), ${d}`));
         else {
           this.#def(key, t);
           this.#emit(`leaq ${base}(%rsp,${scale}), %r11`);
@@ -1175,7 +1619,7 @@ class FunctionEmitter {
         }
         const scale = this.#scaledIndex(b as Val, at.length, ew * 4, checked);
         const v = c as Val;
-        if (v.kind === 'lit' || isPrimitive(v.type)) {
+        if (v.kind === 'lit' || isScalar(v.type)) {
           const src = v.kind === 'lit' ? imm(v.value) : this.#read(v, '%eax');
           this.#emit(`movl ${src}, ${dst}(%rsp,${scale})`);
           return;
@@ -1194,7 +1638,7 @@ class FunctionEmitter {
         const off = 4 * rt.fields.slice(0, b.value).reduce((s, f) => s + words(f), 0);
         if (n.op === 'at') {
           const from = this.#slot(src.key) + off;
-          if (isPrimitive(t)) scalar((d) => this.#emit(`movl ${this.#m('%rsp', from)}, ${d}`));
+          if (isScalar(t)) scalar((d) => this.#emit(`movl ${this.#m('%rsp', from)}, ${d}`));
           else {
             // A borrowed read: the field is named in place, not copied.
             this.#defAlias(key, src.key, t, off);
@@ -1213,7 +1657,7 @@ class FunctionEmitter {
       case 'call': {
         const name = n.callee as string;
         const callee = env.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
-        if (this.#inlinable(callee, env)) {
+        if (this.#inlinable(callee, env, 'call')) {
           const owned =
             a !== undefined &&
             a.kind === 'key' &&
@@ -1233,6 +1677,8 @@ class FunctionEmitter {
         const callee = env.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
         const pred = n.pred === undefined ? undefined : env.fn.calls.get(n.pred);
         const counter = `${env.prefix}i_${n.id}`;
+        /** Induction keys and the loop-invariant step each one advances by after a trip. */
+        let stepping: readonly { key: string; by: Val }[] = [];
         const state: Val = { kind: 'key', key, type: t };
         const cval: Val = { kind: 'key', key: counter, type: 'u32' };
         this.#use(init);
@@ -1241,7 +1687,7 @@ class FunctionEmitter {
           n.op === 'fold' &&
           count.kind === 'lit' &&
           count.value >= 4 &&
-          this.#inlinable(callee, env)
+          this.#inlinable(callee, env, 'loop')
             ? fillRun(env.fn, n)
             : undefined;
         // The initial value is dead when every element is written before any trip reads it.
@@ -1261,7 +1707,7 @@ class FunctionEmitter {
           this.#use(state);
           return;
         }
-        if (isPrimitive(t)) scalar((d) => this.#into(d, init));
+        if (isScalar(t)) scalar((d) => this.#into(d, init));
         else if (
           init.kind === 'key' &&
           mutableHere(env.fn, n.args[1] as Operand, index, 1, env.ownedP0)
@@ -1270,6 +1716,14 @@ class FunctionEmitter {
         else {
           this.#def(key, t);
           if (!deadInit) this.#place(init, '%rsp', this.#slot(key));
+        }
+        // An inlined body keeps its carried read and its induction variables in registers.
+        let host: LoopHost | undefined;
+        if (this.#inlinable(callee, env, 'loop')) {
+          const carry = this.#carry(env, n, callee, key, t, extras);
+          const steps = this.#steps(env, n, callee, extras, carry);
+          host = { ...(carry === undefined ? {} : { carry }), steps: steps.keys };
+          stepping = steps.by;
         }
         this.#def(counter, 'u32');
         if (count.kind === 'lit') this.#bounds.set(counter, count.value);
@@ -1297,7 +1751,7 @@ class FunctionEmitter {
         const args: Val[] = [state, cval, ...extras];
         if (pred !== undefined) {
           const pkey = `${env.prefix}c_${n.id}`;
-          if (this.#inlinable(pred, env))
+          if (this.#inlinable(pred, env, 'loop'))
             this.#inline(env, pred, args, false, pkey, 'bool', `${n.id}.p`, 'bind');
           else {
             this.#def(pkey, 'bool');
@@ -1308,9 +1762,20 @@ class FunctionEmitter {
           const rp = this.#read(pv, '%eax');
           this.#emit(`testl ${rp}, ${rp}`, `je ${done}`);
         }
-        if (this.#inlinable(callee, env))
-          this.#inline(env, callee, args, true, key, t, n.id, 'store');
+        if (this.#inlinable(callee, env, 'loop'))
+          this.#inline(env, callee, args, true, key, t, n.id, 'store', host);
         else this.#call(name, callee, args, key);
+        for (const { key: k, by } of stepping) {
+          const v: Val = { kind: 'key', key: k, type: 'u32' };
+          this.#use(v);
+          this.#use(by);
+          const cur = this.#read(v, '%eax');
+          const step = by.kind === 'lit' ? imm(by.value) : this.#operand(by, '%r11d');
+          this.#set(k, (d) => {
+            this.#mov(cur, d);
+            this.#emit(`addl ${step}, ${d}`);
+          });
+        }
         this.#use(cval);
         this.#use(count);
         const cr = this.#read(cval, '%eax');
@@ -1347,9 +1812,40 @@ class FunctionEmitter {
       case 'read':
       case 'write':
       case 'puts':
-        refuse(`${n.op} is an io operation`);
+        this.#io(env, n, key, t, vals);
         return;
     }
+  }
+
+  /**
+   * `read`, `write` and `puts` through the module's io helpers (see the file comment): the
+   * token's address goes in r11 and comes back unchanged, so the result token is that address.
+   */
+  #io(env: Env, n: Node, key: string, t: Type, vals: readonly Val[]): void {
+    const [a, b] = vals as [Val, Val | undefined];
+    if (a.kind !== 'key' || a.type !== 'io') refuse(`${n.op} needs an io token`);
+    this.#def(key, t);
+    if (n.op === 'read') {
+      const helper = siteOf(env.fn, n) === 'input' ? 'sread' : 'read';
+      this.#emit(`movq ${this.#m('%rsp', this.#slot(a.key))}, %r11`);
+      this.#emit(`call ${ioHelper(this.platform, helper)}`);
+      const at = this.#slot(key);
+      this.#emit(`movl %eax, ${this.#m('%rsp', at)}`, `movq %r11, ${this.#m('%rsp', at + 4)}`);
+      return;
+    }
+    if (n.op === 'write') {
+      this.#into('%eax', b as Val);
+      this.#emit(`movq ${this.#m('%rsp', this.#slot(a.key))}, %r11`);
+      this.#emit(`call ${ioHelper(this.platform, 'write')}`);
+    } else {
+      const arr = b?.kind === 'key' ? b : refuse('puts needs an array');
+      if (isPrimitive(arr.type) || arr.type.kind !== 'arr') refuse('puts needs an array');
+      this.#emit(`leaq ${this.#m('%rsp', this.#slot(arr.key))}, %r10`);
+      this.#emit(`movl ${imm(arr.type.length)}, %eax`);
+      this.#emit(`movq ${this.#m('%rsp', this.#slot(a.key))}, %r11`);
+      this.#emit(`call ${ioHelper(this.platform, 'puts')}`);
+    }
+    this.#emit(`movq %r11, ${this.#m('%rsp', this.#slot(key))}`);
   }
 
   /** `value` in eax and `ok` in r11d are stored as the two words of the record `key`. */
@@ -1575,7 +2071,7 @@ class FunctionEmitter {
     ];
     const pool = this.#leaf ? [...leafHomes, ...CALLEE_SAVED] : CALLEE_SAVED;
     const keys = [...this.#defs.entries()]
-      .filter(([k, d]) => isPrimitive(d.type) && !this.#alias.has(k))
+      .filter(([k, d]) => isScalar(d.type) && !this.#alias.has(k))
       .sort((x, y) => x[1].pos - y[1].pos);
     const busy = new Map<string, number>();
     for (const [key, d] of keys) {
@@ -1647,12 +2143,6 @@ class FunctionEmitter {
 
   emit(): string {
     const fn = this.fn;
-    if (
-      containsIo(fn.result) ||
-      fn.params.some(containsIo) ||
-      [...fn.types.values()].some(containsIo)
-    )
-      refuse(`function ${fn.name} uses io; io functions are out of scope for this backend`);
     const env: Env = {
       fn,
       prefix: '',
@@ -1674,7 +2164,7 @@ class FunctionEmitter {
     // between that node and the return; a loop keeps eax as scratch, so it is excluded).
     const last = fn.nodes.at(-1);
     const retKey =
-      !sret &&
+      isScalar(fn.result) &&
       last !== undefined &&
       fn.ret.kind === 'node' &&
       fn.ret.id === last.id &&
@@ -1685,9 +2175,10 @@ class FunctionEmitter {
         : undefined;
     this.#allocate(places, retKey);
     for (const [k, d] of this.#defs)
-      if (isPrimitive(d.type) && !this.#regs.has(k) && !this.#alias.has(k)) this.#alloc(k, 4);
+      if (isScalar(d.type) && !this.#regs.has(k) && !this.#alias.has(k)) this.#alloc(k, 4);
     if (this.#saved.length > 0) this.#alloc('save', 8 * this.#saved.length, 8);
     if (sret) this.#alloc('sret', 8, 8);
+    this.#pack();
     this.#outgoing = align(this.#outgoing, 16);
     const frame = this.#outgoing + align(this.#slotBytes, 16);
     // Pass 2: emission.
@@ -1720,7 +2211,18 @@ class FunctionEmitter {
     // argument registers survive), then scalars move to their homes.
     fn.params.forEach((t, i) => {
       const place = places[i] as ArgPlace;
-      if (isPrimitive(t)) return;
+      if (isScalar(t)) return;
+      if (t === 'io') {
+        // A token arrives as the address itself.
+        let src: string;
+        if (place.reg !== undefined) src = q(ARG_REGS[place.reg] as string);
+        else {
+          this.#emit(`movq ${this.#m('%rsp', incoming(i))}, %r11`);
+          src = '%r11';
+        }
+        this.#emit(`movq ${src}, ${this.#m('%rsp', this.#slot(`p${i}`))}`);
+        return;
+      }
       let base: string;
       if (place.reg !== undefined) base = q(ARG_REGS[place.reg] as string);
       else {
@@ -1733,7 +2235,7 @@ class FunctionEmitter {
     fn.params.forEach((t, i) => {
       const place = places[i] as ArgPlace;
       // A scalar nobody reads is left where it arrived: moving it could clobber a live one.
-      if (!isPrimitive(t) || !this.#last.has(`p${i}`)) return;
+      if (!isScalar(t) || !this.#last.has(`p${i}`)) return;
       const home = this.#home(`p${i}`);
       if (place.reg === undefined) {
         // Stack scalars: one eightbyte each; bools carry their value in the low byte.
@@ -1754,7 +2256,10 @@ class FunctionEmitter {
     this.#parallelMove(moves);
     this.#body(env);
     this.#pos += 1;
-    if (!sret) this.#into('%eax', ret);
+    if (fn.result === 'io') {
+      if (ret.kind !== 'key') refuse('an io result must be a token');
+      this.#emit(`movq ${this.#m('%rsp', this.#slot(ret.key))}, %rax`);
+    } else if (!sret) this.#into('%eax', ret);
     else {
       this.#emit(`movq ${this.#m('%rsp', this.#slot('sret'))}, %r11`);
       this.#place(ret, '%r11', 0);
@@ -1766,10 +2271,158 @@ class FunctionEmitter {
     // rsp is unchanged when the frame is empty.
     if (frame > 0) this.#emit('movq %rbp, %rsp');
     this.#emit('popq %rbp', 'ret');
+    this.out = forwardStores(this.out);
     if (this.platform === 'linux') this.out.push(`\t.size ${sym}, .-${sym}`);
     this.#coldPaths(framed);
     return this.out.join('\n');
   }
+}
+
+const STORE = /^\t(mov[lq]) (%\w+), (-?\d*\(%rsp\))$/;
+
+/**
+ * Store-to-load forwarding: a reload of the stack slot the previous instruction stored a
+ * register into, at the same width, reads the register instead (dropped when it is the same
+ * register). Adjacent lines have no label between them, and a move changes no flags.
+ */
+function forwardStores(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const line of lines) {
+    const st = STORE.exec(out.at(-1) ?? '');
+    if (st !== null) {
+      const [, op, reg, mem] = st;
+      const load = `\t${op} ${mem}, `;
+      if (line.startsWith(load)) {
+        const dst = line.slice(load.length);
+        if (/^%\w+$/.test(dst)) {
+          if (dst !== reg) out.push(`\t${op} ${reg}, ${dst}`);
+          continue;
+        }
+      }
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+/** The module-local label of the shared copy helper (a local label, like the io helpers). */
+function copyHelper(platform: X86Platform): string {
+  return `${platform === 'darwin' ? 'L' : '.L'}a0copy`;
+}
+
+/**
+ * The copy helper, when `bodies` call it: copies -rax bytes (a positive multiple of 16) from
+ * r10 - (-rax) to r11 - (-rax) in 16-byte moves, rax counting up to zero. Only rax, xmm0 and
+ * the flags change; r10 and r11 are kept (they point past the copied bytes).
+ */
+function copyRuntime(bodies: readonly string[], platform: X86Platform): string {
+  const label = copyHelper(platform);
+  if (!bodies.some((b) => b.includes(label))) return '';
+  return [
+    '\t.p2align 4',
+    `${label}:`,
+    // An odd number of 16-byte blocks moves one first; then two per trip.
+    '\ttestb $16, %al',
+    '\tje 1f',
+    '\tmovups (%r10,%rax), %xmm0',
+    '\tmovups %xmm0, (%r11,%rax)',
+    '\taddq $16, %rax',
+    '\tje 2f',
+    '1:\tmovups (%r10,%rax), %xmm0',
+    '\tmovups %xmm0, (%r11,%rax)',
+    '\tmovups 16(%r10,%rax), %xmm0',
+    '\tmovups %xmm0, 16(%r11,%rax)',
+    '\taddq $32, %rax',
+    '\tjne 1b',
+    '2:\tret',
+  ].join('\n');
+}
+
+type IoHelper = 'read' | 'sread' | 'write' | 'puts';
+const IO_HELPERS: readonly IoHelper[] = ['read', 'sread', 'write', 'puts'];
+
+/** The module-local label of an io helper (a local label: no A0 function can take its name). */
+function ioHelper(platform: X86Platform, which: IoHelper): string {
+  return `${platform === 'darwin' ? 'L' : '.L'}a0io_${which}`;
+}
+
+/**
+ * The io helpers `bodies` call, for io structs of `io.input` input and `io.output` output words (the
+ * C runtime's semantics, src/backends.ts `cIoRuntime`). Calling convention: token address in
+ * r11 (preserved), value or length in eax (read returns the word in eax), element address in
+ * r10 (puts); only rax, r10 and the flags change. `sread` (strict) traps `input` instead of
+ * reading 0 past the input.
+ */
+function ioRuntime(
+  bodies: readonly string[],
+  platform: X86Platform,
+  io: { readonly input: number; readonly output: number } | undefined,
+): string {
+  const text = bodies.join('\n');
+  const used = new Set(IO_HELPERS.filter((h) => text.includes(ioHelper(platform, h))));
+  if (used.size === 0) return '';
+  if (io === undefined) refuse('a module that uses io needs its io capacities');
+  const inCap = io.input;
+  const outCap = io.output;
+  if (used.has('puts')) used.add('write');
+  const nin = 4 * inCap;
+  const pos = nin + 4;
+  const out = pos + 4;
+  const nout = out + 4 * outCap;
+  const trap = platform === 'darwin' ? '_a0_trap' : 'a0_trap';
+  const lines: string[] = [];
+  for (const h of ['read', 'sread'] as const) {
+    if (!used.has(h)) continue;
+    lines.push(
+      '\t.p2align 4',
+      `${ioHelper(platform, h)}:`,
+      `\tmovl ${pos}(%r11), %eax`,
+      `\tcmpl ${nin}(%r11), %eax`,
+      '\tjae 1f',
+      `\tcmpl $${inCap}, %eax`,
+      '\tjae 1f',
+      '\tleal 1(%rax), %r10d',
+      `\tmovl %r10d, ${pos}(%r11)`,
+      '\tmovl (%r11,%rax,4), %eax',
+      '\tret',
+      ...(h === 'read'
+        ? ['1:\txorl %eax, %eax', '\tret']
+        : [`1:\tmovl $${trapIndex('input')}, %eax`, `\tjmp ${trap}`]),
+    );
+  }
+  if (used.has('write'))
+    lines.push(
+      '\t.p2align 4',
+      `${ioHelper(platform, 'write')}:`,
+      `\tmovl ${nout}(%r11), %r10d`,
+      `\tcmpl $${outCap}, %r10d`,
+      '\tjae 1f',
+      `\tmovl %eax, ${out}(%r11,%r10,4)`,
+      '\tincl %r10d',
+      `\tmovl %r10d, ${nout}(%r11)`,
+      '1:\tret',
+    );
+  if (used.has('puts'))
+    lines.push(
+      '\t.p2align 4',
+      `${ioHelper(platform, 'puts')}:`,
+      '\tpushq %rcx',
+      '\tpushq %rdx',
+      '\tmovq %r10, %rdx',
+      '\tmovl %eax, %ecx',
+      `\tcall ${ioHelper(platform, 'write')}`,
+      '\ttestl %ecx, %ecx',
+      '\tje 2f',
+      '1:\tmovl (%rdx), %eax',
+      `\tcall ${ioHelper(platform, 'write')}`,
+      '\taddq $4, %rdx',
+      '\tdecl %ecx',
+      '\tjne 1b',
+      '2:\tpopq %rdx',
+      '\tpopq %rcx',
+      '\tret',
+    );
+  return lines.join('\n');
 }
 
 /** Emit one function as x86-64 assembly (a `.globl a0_<name>` block, `_a0_` on macOS). */
@@ -1786,11 +2439,17 @@ export function assembleX86_64(
   compilerVersion: string,
   platform: X86Platform = HOST_X86_PLATFORM,
   trap?: TrapModule,
+  /** io struct capacities in words (src/backends.ts C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY). */
+  io?: { readonly input: number; readonly output: number },
 ): string {
   const head =
     platform === 'darwin' ? '\t.section __TEXT,__text,regular,pure_instructions' : '\t.text';
   const tail =
     platform === 'darwin' ? '.subsections_via_symbols' : '\t.section .note.GNU-stack,"",@progbits';
   const runtime = trap === undefined ? '' : `${x86TrapRuntime(trap, platform)}\n\n`;
-  return `# Generated by A0 ${compilerVersion}. x86-64 (${platform}) assembly, System V AMD64 ABI, AT&T syntax; exact u32/bool semantics.\n${head}\n\n${bodies.join('\n\n')}\n\n${runtime}${tail}\n`;
+  const helpers = [copyRuntime(bodies, platform), ioRuntime(bodies, platform, io)]
+    .filter((t) => t !== '')
+    .map((t) => `${t}\n\n`)
+    .join('');
+  return `# Generated by A0 ${compilerVersion}. x86-64 (${platform}) assembly, System V AMD64 ABI, AT&T syntax; exact u32/bool semantics.\n${head}\n\n${bodies.join('\n\n')}\n\n${helpers}${runtime}${tail}\n`;
 }

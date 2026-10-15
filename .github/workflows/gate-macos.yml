@@ -4,6 +4,11 @@ name: gate-macos
 # targets). It only reports: the log and results are uploaded as an artifact, nothing is committed or merged.
 on:
   workflow_dispatch:
+    inputs:
+      diagnose_macos_tests:
+        description: Run tests except the slow dense reader before the full gate
+        type: boolean
+        default: false
   push:
     branches: ['gate/**']
 permissions:
@@ -29,10 +34,32 @@ jobs:
       - run: softwareupdate --install-rosetta --agree-to-license || true
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - name: Full gate
+      - name: Diagnose macOS tests
+        if: ${{ inputs.diagnose_macos_tests }}
         shell: bash
         run: |
+          tests=()
+          for file in dist/test/*.test.js; do
+            if [[ "$file" != dist/test/dense-a0.test.js ]]; then
+              tests+=("$file")
+            fi
+          done
+          node --test --test-concurrency=2 "${tests[@]}"
+      - name: Full gate
+        shell: bash
+        env:
+          A0_GATE_SCRATCH: ${{ runner.temp }}/a0-gate
+        run: |
           set -o pipefail
+          mkdir -p "$A0_GATE_SCRATCH"
+          dump_gate_logs() {
+            gate_status=$?
+            if [ "$gate_status" -ne 0 ]; then
+              find "$A0_GATE_SCRATCH" -type f -name '*.log' -print -exec cat {} \; || true
+            fi
+            exit "$gate_status"
+          }
+          trap dump_gate_logs EXIT
           node dist/tools/dev/a0-dev.js gate 2>&1 | tee gate.log
           grep -q "GATE RESULT: pass" gate.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -42,3 +69,4 @@ jobs:
           path: |
             gate.log
             results/
+            ${{ runner.temp }}/a0-gate/

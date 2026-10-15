@@ -1,8 +1,9 @@
 # Shape analyses and loop fusion, written in A0 (DESIGN.md 7a): the port of src/optimize.ts
-# lines 716-1343 (storeOnly, overwritesState, fillRun, lazyArms, producerShape, fuseLoops) and of
-# `borrowLive` of src/core.ts. The wasm emitter (compiler/emit_wasm.a0) does not `use` this file:
-# compiler/boot.a0 runs it between the optimizer and the emitter, and the emitter reads the
-# results from the SHAPE TABLE, one table `sh` (u32x128x310) that is an extra input of its chunk.
+# lines 716-1343 (storeOnly, overwritesState, fillRun, lazyArms, producerShape, fuseLoops), of
+# `borrowLive` of src/core.ts and of `liveAfter` of src/wasm.ts. The wasm emitter
+# (compiler/emit_wasm.a0) does not `use` this file: compiler/boot.a0 runs it between the
+# optimizer and the emitter, and the emitter reads the results from the SHAPE TABLE, one table
+# `sh` (u32x128x310) that is an extra input of its chunk.
 #
 # Inputs: the OPTIMIZED chunk tables of compiler/emit_wasm.a0: types u32x384x65, tlist u32x128x65,
 # fns u32x128x45 (7 words: 0 body flag, 1 parameter count, 2 first tlist word, 3 result type, 4
@@ -19,13 +20,19 @@
 #   OWN   2816   lazyArms: the position (in its function) + 1 of the select a node is private to,
 #                else 0
 #   ARM   5632   1 / 2: the node belongs to the select's first / second arm (arm lists: the nodes
-#                with OWN = that select, in node order)
+#                with OWN = that select, in node order); of a select group (`shgz`): 1 / 2 the
+#                sides' nodes, 3 the group's selects but the leader (OWN = the leader), 4 the
+#                leader (OWN 0)
 #   OVER  8448   fold node: overwritesState 0 / 1
 #   BORR  11264  set / put node (target operand 0) and fold / loop node (state operand 1) of an
 #                aggregate type whose target operand is a parameter or a node defined by
-#                arr rec set put: borrowLive(fn, that operand, j, selfRead) with selfRead set for
-#                set / put, else 0. Every other node is 0: only these are queried (the rest of
-#                mutableHere is the emitter's).
+#                arr rec set put fold loop: liveAfter(fn, that operand, j, selfRead) (src/wasm.ts:
+#                borrowLive, or a read that a lazy select arm emits at or after j) with selfRead
+#                set for set / put; a set / put whose target is a get / at node: liveAfter of
+#                that node's container (operand 0), selfRead set; a rec node: 2 (n + 1) + its
+#                container's liveAfter (selfRead set) when its only aggregate field k reaches
+#                node n, `at Y k`, through set / put targets (`shrecb`), else 0. Every other node
+#                is 0: only these are queried (the rest of mutableHere is the emitter's).
 #   FUSED 14080  function column: 1 + the function that is the fused form of this function, else 0
 #   SYN   15104  function column: 1 a synthetic fused body (never emitted by itself, only
 #                inlined), 2 a fused function
@@ -513,9 +520,11 @@ r rec count miss
 ret r
 end
 # ---------------------------------------------------------------------------------------------
-# borrowLive (src/core.ts) of the aggregate operand (p6 p7) of the node jq = p8 of the function
+# liveAfter (src/wasm.ts) of the aggregate operand (p6 p7) of the node jq = p8 of the function
 # with first node p4, ret (p5 = kind, p9 = value): 1 when some borrow of it is read at or after
-# the node (at the node itself only when p10 is 0), or returned.
+# the node (at the node itself only when p10 is 0), or returned (borrowLive, src/core.ts), or
+# when a node before jq that a lazy select arm emits at or after jq (OWN of the shape table p11)
+# names the operand or a borrow of it.
 
 # node j: a borrow of the operand? State (borrows column, any)
 fn shbp1 (u32x128x24,u32) u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 -> (u32x128x24,u32)
@@ -596,8 +605,51 @@ n select act na 0
 r fold shbp2a n p0 p3 af p5
 ret r
 end
-fn shborr u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32 u32 u32 u32 u32 -> u32
-# nodes args nt nfn fst retk ok ov jq retv selfRead
+# late reads (src/wasm.ts `emittedAtOf`): the outermost lazy owner of a position (loop predicate
+# and step share (position, trip, sh, fst)): OWN is the owner's position + 1, else 0
+fn shemok u32 u32 u32x128x310 u32 -> bool
+g add p3 p0
+@col ow p2 2816 g
+r ne ow 0
+ret r
+end
+fn shemst u32 u32 u32x128x310 u32 -> u32
+g add p3 p0
+@col ow p2 2816 g
+r sub ow 1
+ret r
+end
+# operand k (p1) of the node whose first operand is p3: the operand (p5 p6) or a borrow (p4)
+fn shlta u32 u32 u32x128x512 u32 u32x128x24 u32 u32 -> u32
+s add p3 p1
+@aw ak p2 s 0
+@aw av p2 s 1
+@isop so ak av p5 p6
+isn eq ak 1
+@rd bv p4 av
+b eq bv 1
+u and isn b
+w or so u
+x select w 1 0
+r or p0 x
+ret r
+end
+# node j (p1) before jq (p9) and emitted at or after it: does it name the operand or a borrow?
+fn shltj u32 u32 u32x128x310 u32x128x132 u32x128x512 u32 u32x128x24 u32 u32 u32 u32 -> u32
+# p0 found, p1 j, sh, nodes, args, fst, bor, ok, ov, jq, nfn
+e loop shemok shemst p10 p1 p2 p5
+before lt p1 p9
+late ge e p9
+act and before late
+g add p5 p1
+@nwd na p3 g 2
+@nwd af p3 g 3
+n select act na 0
+r fold shlta n p0 p4 af p6 p7 p8
+ret r
+end
+fn shborr u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x310 -> u32
+# nodes args nt nfn fst retk ok ov jq retv selfRead sh
 z call zcol
 s0 rec z 0
 s1 fold shbp1 p3 s0 p0 p1 p2 p4 p6 p7
@@ -613,7 +665,10 @@ f fold shbp2 n 0 p0 p1 p4 bor p8 p10
 nf ne f 0
 u or rr nf
 r2 and anyb u
-r select r2 1 0
+lt fold shltj p3 0 p11 p0 p1 p4 bor p6 p7 p8 p3
+late ne lt 0
+r3 or r2 late
+r select r3 1 0
 ret r
 end
 
@@ -746,11 +801,14 @@ nown eq ow 0
 hasu gt uc 0
 @rd cn cnt i
 same eq cn uc
+@col am p10 5632 g
+n4 ne am 4
 a1 and sc nef
 a2 and a1 nret
 a3 and a2 nown
 a4 and a3 hasu
-join and a4 same
+a5 and a4 n4
+join and a5 same
 step call shadd p0 i p2 p3 p5
 r select join step p0
 ret r
@@ -782,13 +840,16 @@ nret select retn false true
 nown eq ow 0
 @rd uc p7 rv
 one eq uc 1
+@col ram p0 5632 gr
+r4 ne ram 4
 a1 and isn nso
 a2 and a1 nsc
 a3 and a2 isc
 a4 and a3 nef
 a5 and a4 nret
 a6 and a5 nown
-valid and a6 one
+a7 and a6 r4
+valid and a7 one
 z call zcol
 z2 call zcol
 s0 rec z z2 0
@@ -835,7 +896,10 @@ af2 add af 2
 @aw yv p3 af2 1
 issel eq op 18
 sc lt nty 2
-isl and issel sc
+@col sam p0 5632 g
+nog lt sam 3
+isl0 and issel sc
+isl and isl0 nog
 ra call shcone p0 p2 p3 p4 p5 p6 p7 p8 p9 xk xv yk yv ck cv
 rb call shcone p0 p2 p3 p4 p5 p6 p7 p8 p9 yk yv xk xv ck cv
 mema at ra 0
@@ -849,6 +913,234 @@ go and isl big
 n select go p1 0
 r fold shlw n p0 mema memb p5 p1
 ret r
+end
+# ---------------------------------------------------------------------------------------------
+# Select groups (src/optimize.ts `lazyArms`), before the selects' own arms. Per-function column
+# GC: a scalar select whose condition (a node or a parameter) another scalar select shares holds
+# 1 + the number of those before it, plus 2^20 when none comes after it (the leader); else 0.
+# An accepted group writes OWN = leader + 1 with ARM 1 / 2 for the nodes of its two sides, ARM 3
+# for its selects but the leader, and ARM 4 (OWN 0) for the leader.
+
+# trip i: node i (first node p5) a scalar select on the operand (p6 kind, p7 value) counts into
+# the selects before (word 0) or after (word 1) node p8
+fn shgcc (u32,u32) u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32 -> (u32,u32)
+bf at p0 0
+af at p0 1
+g add p5 p1
+@nwd op p2 g 1
+@nwd fa p2 g 3
+@rd nty p4 g
+@aw ck p3 fa 0
+@aw cv p3 fa 1
+issel eq op 18
+sc lt nty 2
+k1 eq ck p6
+k2 eq cv p7
+a1 and issel sc
+a2 and a1 k1
+same and a2 k2
+lt1 lt p1 p8
+gt1 gt p1 p8
+b1 and same lt1
+b2 and same gt1
+i1 select b1 1 0
+i2 select b2 1 0
+nb add bf i1
+na add af i2
+r rec nb na
+ret r
+end
+# trip j: GC of node j (first node p5, p6 nodes)
+fn shgcj u32x128x24 u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 -> u32x128x24
+g add p5 p1
+@nwd op p2 g 1
+@nwd fa p2 g 3
+@rd nty p4 g
+@aw ck p3 fa 0
+@aw cv p3 fa 1
+issel eq op 18
+sc lt nty 2
+isn eq ck 1
+isp eq ck 2
+np or isn isp
+a1 and issel sc
+cand and a1 np
+n select cand p6 0
+s0 rec 0 0
+s fold shgcc n s0 p2 p3 p4 p5 ck cv p1
+bf at s 0
+af at s 1
+tot add bf af
+has gt tot 0
+grp and cand has
+ld eq af 0
+lf select ld 1048576 0
+v1 add bf 1
+v2 add v1 lf
+v select grp v2 0
+@wr r p0 p1 v
+ret r
+end
+# operand k = p1 of a node (first operand p4) is a select of the group of condition (p7 p8):
+# or-ed into p0 (first node p5, GC column p6)
+fn shglo u32 u32 u32x128x132 u32x128x512 u32 u32 u32x128x24 u32 u32 -> u32
+s add p4 p1
+@aw ok p3 s 0
+@aw ov p3 s 1
+isn eq ok 1
+oi select isn ov 0
+@rd gv p6 oi
+go add p5 oi
+@nwd ofa p2 go 3
+@aw ock p3 ofa 0
+@aw ocv p3 ofa 1
+k1 eq ock p7
+k2 eq ocv p8
+gnz ne gv 0
+a1 and isn gnz
+a2 and a1 k1
+m and a2 k2
+x select m 1 0
+r or p0 x
+ret r
+end
+# trip u: node u reads a select of the group (or-ed into p0)
+fn shglu u32 u32 u32x128x132 u32x128x512 u32 u32x128x24 u32 u32 -> u32
+g add p4 p1
+@nwd na p2 g 2
+@nwd af p2 g 3
+r fold shglo na p0 p2 p3 af p4 p5 p6 p7
+ret r
+end
+# trip i: a select of the group (condition p6 p7) whose operand p8 is a node counts one use of it
+# from inside the side (use counts p0, first node p4, GC column p5)
+fn shgsd u32x128x24 u32 u32x128x132 u32x128x512 u32 u32x128x24 u32 u32 u32 -> u32x128x24
+g add p4 p1
+@nwd fa p2 g 3
+@aw ck p3 fa 0
+@aw cv p3 fa 1
+@rd gv p5 p1
+gnz ne gv 0
+k1 eq ck p6
+k2 eq cv p7
+a1 and gnz k1
+mem and a1 k2
+s add fa p8
+@aw ak p3 s 0
+@aw av p3 s 1
+isn eq ak 1
+go and mem isn
+widx select go av 3071
+@rd old p0 widx
+inc select go 1 0
+nw add old inc
+@wr r p0 widx nw
+ret r
+end
+# the side walk, trip t: node i = root - 1 - t joins when eligible, in no candidate group, and every
+# use is from the side or from a group select's operand of this side. State and extras as shcw,
+# then the GC column p12
+fn shgw (u32x128x24,u32x128x24,u32) u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 u32x128x310 u32 u32x128x24 -> (u32x128x24,u32x128x24,u32)
+cnt at p0 1
+t1 add p1 1
+i sub p11 t1
+g add p5 i
+@rd nty p4 g
+sc lt nty 2
+@rd ef p9 i
+nef eq ef 0
+retn1 eq p6 1
+retn2 eq p7 i
+retn and retn1 retn2
+nret select retn false true
+@col ow p10 2816 g
+nown eq ow 0
+@rd uc p8 i
+hasu gt uc 0
+@rd cn cnt i
+same eq cn uc
+@rd gv p12 i
+ngr eq gv 0
+a1 and sc nef
+a2 and a1 nret
+a3 and a2 nown
+a4 and a3 hasu
+a5 and a4 ngr
+join and a5 same
+step call shadd p0 i p2 p3 p5
+r select join step p0
+ret r
+end
+# side p14 (operand 1 or 2) of the group led by node p10 (condition p11 p12; p13: run it, else
+# empty): (members column, cost). Tables as shcw (sh p0), the GC column p9
+fn shgside u32x128x310 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 u32x128x24 u32 u32 u32 bool u32 -> (u32x128x24,u32)
+z call zcol
+z2 call zcol
+l1 add p10 1
+n1 select p13 l1 0
+cnt fold shgsd n1 z2 p1 p2 p4 p9 p11 p12 p14
+s0 rec z cnt 0
+steps select p13 p10 0
+st fold shgw steps s0 p1 p2 p3 p4 p5 p6 p7 p8 p0 p10 p9
+mem at st 0
+cost at st 2
+r rec mem cost
+ret r
+end
+# trip i: a select of the group (condition p6 p7) before the leader p8 gets OWN p8 + 1, ARM 3
+fn shgmw u32x128x310 u32 u32x128x132 u32x128x512 u32 u32x128x24 u32 u32 u32 -> u32x128x310
+g add p4 p1
+@rd gv p5 p1
+gnz ne gv 0
+@nwd fa p2 g 3
+@aw ck p3 fa 0
+@aw cv p3 fa 1
+k1 eq ck p6
+k2 eq cv p7
+a1 and gnz k1
+mem and a1 k2
+@col oo p0 2816 g
+@col oa p0 5632 g
+l1 add p8 1
+nwo select mem l1 oo
+nwa select mem 3 oa
+@colw s1 p0 2816 g nwo
+@colw s2 s1 5632 g nwa
+ret s2
+end
+# trip j: the group led by node j, when j leads one: every select of the group is read only after
+# j, and the costlier side plus one per select costs at least LAZY_ARM_COST 8
+fn shgz u32x128x310 u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 u32x128x24 -> u32x128x310
+g add p5 p1
+@rd gv p10 p1
+ld ge gv 1048576
+mc and gv 1048575
+@nwd fa p2 g 3
+@aw ck p3 fa 0
+@aw cv p3 fa 1
+j1 add p1 1
+n1 select ld j1 0
+bad fold shglu n1 0 p2 p3 p5 p10 ck cv
+late eq bad 0
+go1 and ld late
+ra call shgside p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p1 ck cv go1 1
+rb call shgside p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p1 ck cv go1 2
+mema at ra 0
+ca at ra 1
+memb at rb 0
+cb at rb 1
+cgt gt ca cb
+cmx select cgt ca cb
+tot add cmx mc
+big ge tot 8
+go and go1 big
+n select go p1 0
+s1 fold shlw n p0 mema memb p5 p1
+s2 fold shgmw n s1 p2 p3 p5 p10 ck cv p1
+@col oa s2 5632 g
+nv select go 4 oa
+@colw s3 s2 5632 g nv
+ret s3
 end
 # a missing body: chunk function p1 is added to the list of the shape table (once)
 fn shmq u32 u32 u32x128x310 u32 -> u32
@@ -874,7 +1166,90 @@ nn select add1 nl1 n
 @wr b a 16128 nn
 ret b
 end
-# node j of a function: fillRun, overwritesState, borrowLive
+# The BORR of a rec node (src/wasm.ts `recInPlaceField`): the record's only aggregate field k,
+# when its operand is `at Y k` or reaches it through the targets (operand 0) of set / put nodes:
+# 2 (that at node + 1) + borrowLive(Y, j, selfRead), else 0.
+# field step: (aggregate fields, the last one's position), field p1 of the tlist p2 from p3
+fn shrcf (u32,u32) u32 u32x128x65 u32 -> (u32,u32)
+cnt at p0 0
+pos at p0 1
+ti add p3 p1
+@rd ft p2 ti
+isagg ge ft 3
+inc select isagg 1 0
+cnt2 add cnt inc
+pos2 select isagg p1 pos
+r rec cnt2 pos2
+ret r
+end
+# chain walk (loop predicate and step share (x, trip, nodes, args, fst)): x is a set / put node;
+# x becomes its operand 0 when that is a node, else 4294967295
+fn shrcok u32 u32 u32x128x132 u32x128x512 u32 -> bool
+isx ne p0 4294967295
+xi select isx p0 0
+g add p4 xi
+@nwd op p2 g 1
+iss eq op 26
+isp eq op 28
+sp or iss isp
+ok and isx sp
+ret ok
+end
+fn shrcst u32 u32 u32x128x132 u32x128x512 u32 -> u32
+g add p4 p0
+@nwd af p2 g 3
+@aw k p3 af 0
+@aw v p3 af 1
+isn eq k 1
+r select isn v 4294967295
+ret r
+end
+# rec node j (p9; isrec p10) of the function with first node p6 (p5 nodes), ret (p7, p8), the
+# shape table p11 (its OWN column)
+fn shrecb u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32 u32 u32 u32 u32 bool u32x128x310 -> u32
+g add p6 p9
+@nwd af p0 g 3
+@rd nty p2 g
+@ty ta p3 nty 1
+@ty tb p3 nty 2
+nf select p10 tb 0
+st rec 0 0
+fr fold shrcf nf st p4 ta
+cnt at fr 0
+pos at fr 1
+one eq cnt 1
+fs add af pos
+@aw fk p1 fs 0
+@aw fv p1 fs 1
+fnode eq fk 1
+go and one fnode
+x0 select go fv 4294967295
+x loop shrcok shrcst p5 x0 p0 p1 p6
+isx ne x 4294967295
+xi select isx x 0
+gx add p6 xi
+@nwd xop p0 gx 1
+@nwd xaf p0 gx 3
+xaf1 add xaf 1
+@aw ik p1 xaf1 0
+@aw iv p1 xaf1 1
+@aw yk p1 xaf 0
+@aw yv p1 xaf 1
+isat eq xop 27
+ilit eq ik 3
+ipos eq iv pos
+c1 and isx isat
+c2 and c1 ilit
+cand and c2 ipos
+nn select cand p5 0
+b call shborr p0 p1 p2 nn p6 p7 yk yv p9 p8 1 p11
+x1 add x 1
+x2 mul x1 2
+v add x2 b
+r select cand v 0
+ret r
+end
+# node j of a function: fillRun, overwritesState, liveAfter (OWN of the table p0 is filled)
 fn shpn u32x128x310 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32 -> u32x128x310
 g add p8 p1
 fr call shfill p5 p6 p4 p2 p3 p7 g
@@ -912,14 +1287,32 @@ d26 eq dop 26
 d28 eq dop 28
 da or d22 d23
 db or d26 d28
-dc or da db
+dc0 or da db
+d20 eq dop 20
+d21 eq dop 21
+dfl or d20 d21
+dc or dc0 dfl
 fn1 and isn dc
-fresh or isp fn1
+d25 eq dop 25
+d27 eq dop 27
+dga or d25 d27
+ga0 and isn dga
+ga and ga0 sp
+@nwd caf p5 gd 3
+@aw ck p6 caf 0
+@aw cv p6 caf 1
+qk select ga ck ok
+qv select ga cv ov
+fr0 or isp fn1
+fresh or fr0 ga
 c2 and c1 fresh
 nn select c2 p11 0
 self select sp 1 0
-bq call shborr p5 p6 p7 nn p8 p9 ok ov p1 p10 self
-@colw s3 s2 11264 g bq
+bq call shborr p5 p6 p7 nn p8 p9 qk qv p1 p10 self p0
+isrec eq op 23
+rb call shrecb p5 p6 p7 p2 p3 p11 p8 p9 p10 p1 isrec p0
+bf select isrec rb bq
+@colw s3 s2 11264 g bf
 s4 call shmiss s3 fm
 s5 call shmiss s4 om
 ret s5
@@ -1156,9 +1549,12 @@ z call zcol
 z2 call zcol
 uc fold shucj nfn z p4 p5 fst
 eff fold shefj nfn z2 p4 p5 p6 fst p2 pf p0
-s1 fold shpn nfn p0 p1 p2 p3 p4 p5 p6 fst retk retv nfn
-s2 fold shlz nfn s1 p4 p5 p6 fst retk retv uc eff
-s3 fold shrot nfn s2 p4 p5 uc fst
+z3 call zcol
+gc fold shgcj nfn z3 p4 p5 p6 fst nfn
+s1g fold shgz nfn p0 p4 p5 p6 fst retk retv uc eff gc
+s2 fold shlz nfn s1g p4 p5 p6 fst retk retv uc eff
+s1 fold shpn nfn s2 p1 p2 p3 p4 p5 p6 fst retk retv nfn
+s3 fold shrot nfn s1 p4 p5 uc fst
 ret s3
 end
 # ---------------------------------------------------------------------------------------------
@@ -1672,7 +2068,8 @@ end
 # 1 kind (1 extra, 2 state, 3 recurrence), 2 parameter count of the fused body, 3 its result
 # type, 4 operand count of the replacement fold, 5 consumer node, 6 producer node, 7 k, 8 the
 # consumer's type, 9 1 when the type of the (state, previous) record is to be interned (the
-# placeholder 4294967280 is used for it), 10 the state type; 16.. its parameter types; 128..
+# placeholder 4294967280 is used for it), 10 the state type, 12 13 the seed of the carried
+# element (seededPrevSelects; u32 0 when there is none); 16.. its parameter types; 128..
 # the replacement fold's operand pairs (kind 9: a replacement node of the recurrence, value its
 # index).
 
@@ -1978,6 +2375,64 @@ r rec b4 pg
 ret r
 end
 
+# seededPrevSelects (src/optimize.ts): operand k of node j (first node p4) of a recurrence's
+# producer body, p6 its guarded previous-element reads. A use of a read must be a select arm
+# whose other arm K is a u32 literal or an extra parameter, the same K for every use. State
+# (K kind, K value, 1 when K is set, failed, column): the column (the reads to start with) gets
+# word j set to 1 for each such select, which the copy then replaces by the carried element.
+fn shsd1 (u32,u32,u32,u32,u32x128x24) u32 u32x128x132 u32x128x512 u32 u32 u32x128x24 -> (u32,u32,u32,u32,u32x128x24)
+sk at p0 0
+sv at p0 1
+hv at p0 2
+fl at p0 3
+col at p0 4
+g add p4 p5
+@nrow n p2 g
+@opk a p3 n_af p1
+isnode eq a_k 1
+widx select isnode a_v 3071
+@rd pv p6 widx
+hit_b eq pv 1
+hit and isnode hit_b
+isel eq n_op 18
+k1 eq p1 1
+k2 eq p1 2
+k12 or k1 k2
+arm and isel k12
+oj sub 3 p1
+oja select k12 oj 0
+@opk o p3 n_af oja
+ou eq o_k 3
+op_a eq o_k 2
+op_b ge o_v 2
+op and op_a op_b
+form or ou op
+nh eq hv 0
+sm_a eq sk o_k
+sm_b eq sv o_v
+sm and sm_a sm_b
+same or nh sm
+g1 and hit arm
+g2 and g1 form
+good and g2 same
+ngood select good false true
+bad and hit ngood
+badu select bad 1 0
+fl2 or fl badu
+sk2 select good o_k sk
+sv2 select good o_v sv
+hv2 select good 1 hv
+@wrs col2 col p5 1 good
+r rec sk2 sv2 hv2 fl2 col2
+ret r
+end
+fn shsd2 (u32,u32,u32,u32,u32x128x24) u32 u32x128x132 u32x128x512 u32 u32x128x24 -> (u32,u32,u32,u32,u32x128x24)
+g add p4 p1
+@nwd na p2 g 2
+r fold shsd1 na p0 p2 p3 p4 p1 p5
+ret r
+end
+
 # fuseRecurrence (k >= 2, recordState): the record type is interned by the caller
 fn shatr u32x128x132 u32x128x512 u32x128x45 u32x128x65 u32x128x24 u32x128 bool -> (u32x128x132,u32x128x2)
 @pg ff p5 0
@@ -2045,7 +2500,25 @@ y12 set y11 12 1
 np3 sub d2_np 3
 cx1 set y12 9 np3
 t1 select ok0 d1_n 0
-rs1 fold shcp1 t1 rs0 p0 p1 p4 cx1 prev1
+sd0 rec 3 0 0 0 prev1
+sd fold shsd2 t1 sd0 p0 p1 d1_f prev1
+sd_k at sd 0
+sd_v at sd 1
+sd_h at sd 2
+sd_f at sd 3
+sd_c at sd 4
+sd_h1 eq sd_h 1
+sd_f0 eq sd_f 0
+seeded and sd_h1 sd_f0
+prevc select seeded sd_c prev1
+sd_p eq sd_k 2
+sd_pi add paf sd_v
+@opr sdp p1 sd_pi
+sd_pk select sd_p sdp_k sd_k
+sd_pv select sd_p sdp_v sd_v
+seedk select seeded sd_pk 3
+seedv select seeded sd_pv 0
+rs1 fold shcp1 t1 rs0 p0 p1 p4 cx1 prevc
 mp1 at rs1 2
 gsn add d1_f setj1
 @nwd ssf p0 gsn 3
@@ -2109,7 +2582,9 @@ nra sub nra0 1
 @wr i8 i7 8 cty
 @wr i9 i8 9 1
 @wr i10 i9 10 s2
-@wr i16 i10 16 4294967280
+@wr i12 i10 12 seedk
+@wr i13 i12 13 seedv
+@wr i16 i13 16 4294967280
 pa fold shpa d2_np i16 p3 d2_pf k true
 pb fold shpb np1g pa p3 d1_pf npm1
 @opr q0 p1 caf
@@ -2564,7 +3039,7 @@ r select lt a b
 ret r
 end
 # operand j of replacement node r (kind p2; consumer first operand p5): (kind, value), kind 9 a
-# replacement node
+# replacement node; operand 1 of the record init is the seed in words 12 13 of INF
 fn shrwo u32x128x2 u32x128x512 u32 u32 u32 u32 -> (u32,u32)
 a mul p4 2
 ix add 128 a
@@ -2577,8 +3052,10 @@ r1 eq p3 1
 j0 eq p4 0
 c1s add p5 1
 @opr c1 p1 c1s
-q0k select j0 c1_k 3
-q0v select j0 c1_v 0
+@rd sdk p0 12
+@rd sdv p0 13
+q0k select j0 c1_k sdk
+q0v select j0 c1_v sdv
 q2k select j0 9 3
 q2v select j0 1 0
 k02 select r0 q0k q2k

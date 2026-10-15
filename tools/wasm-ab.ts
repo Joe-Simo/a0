@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { COMPILER_VERSION, compile } from '../src/backends.js';
 import { parseAndValidate } from '../src/core.js';
-import { findWasmClang, runTool, withTempDir } from '../src/toolchain.js';
+import { findWasmClang, runTool, WASM_CLANG_REF_FLAGS, withTempDir } from '../src/toolchain.js';
 import { wasmModuleBytes } from '../src/wasm.js';
 import { KERNELS, type Kernel } from './exec-bench-kernels.js';
 import { loadGate, waitQuiet } from './quiet.js';
@@ -53,6 +53,7 @@ function cDriver(k: Kernel): string {
     return `uint32_t a${n} = (a${n - 1} ^ (a${n - 1} >> 15)) * ${MULS[n]}u;`;
   }).join(' ');
   return `typedef unsigned int uint32_t;
+typedef unsigned char uint8_t;
 ${k.c}
 __attribute__((export_name("wb_run"))) uint32_t wb_run(uint32_t n, uint32_t h) {
   for (uint32_t i = 0; i < n; i++) {
@@ -97,16 +98,7 @@ async function main(): Promise<void> {
       const cPath = join(dir, `${k.name}.c`);
       const wPath = join(dir, `${k.name}.wasm`);
       await writeFile(cPath, cDriver(k));
-      const r = runTool(clang, [
-        '--target=wasm32',
-        '-O3',
-        '-nostdlib',
-        '-fuse-ld=lld',
-        '-Wl,--no-entry',
-        '-o',
-        wPath,
-        cPath,
-      ]);
+      const r = runTool(clang, [...WASM_CLANG_REF_FLAGS, '-o', wPath, cPath]);
       if (r.status !== 0) throw new Error(`clang ${k.name}: ${r.stderr}`);
       const subjects: Subject[] = [
         { label: 'clang', bytes: new Uint8Array(await readFile(wPath)), entry: 'wb_run', ns: [] },
@@ -167,7 +159,7 @@ async function main(): Promise<void> {
   const report = {
     compiler: COMPILER_VERSION,
     engine: `node ${process.version} (V8 ${process.versions.v8})`,
-    clang: `${clang} (${tool.version ?? 'unknown'}), -O3 --target=wasm32 -nostdlib, wasm-ld --no-entry`,
+    clang: `${clang} (${tool.version ?? 'unknown'}), -O3 --target=wasm32 -nostdlib -mbulk-memory, wasm-ld --no-entry`,
     platform: `${process.platform}-${process.arch}`,
     loadAverage: systemLoadTriple(),
     loadSource: loadSource(),

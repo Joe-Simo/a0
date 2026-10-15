@@ -134,3 +134,27 @@ so the reports carry `a0.cliCheckProcess` and `a0.binaryCheckProcess`; the ledge
 not a loss. If the binary still trails tsc-rs there, the remaining cost is the Bun runtime's start-up and parse of the
 bundle; the way past it is shipping a native `check` (the self-hosted checker) with its 16384-byte program limit lifted,
 which is a larger change than this one.
+
+## The fresh-process row is now the shipped command; the release executable stores bytecode
+
+`tools/check-latency.ts` no longer times a node process that imports `src/core.js` for "a0 whole front end, fresh
+process". That row is now `a0 check front.a0` of the release executable, built with the flags of `tools/release.sh`
+(`BINARY_FLAGS`, host target) and alone in its directory as `install.sh` installs it (no `a0-check` beside it); where bun
+is missing it is `node dist/src/cli.js check front.a0`. `a0.binaryCheckProcess` is then the same samples, and no
+separate "a0 binary check (fresh process)" row is written.
+
+The release executable spent most of every start parsing its own bundle: `a0 --version` took about 73 ms where an empty
+`bun build --compile` program takes 7 ms. `tools/release.sh` now passes `--bytecode` (with `--format=esm`, which the
+top-level `await` of `src/cli.ts` needs), so the bundle ships as JSC bytecode; the cross-target builds succeed. The node
+command line also stopped loading two node modules it did not need on `a0 check`: the output goes to fd 1 and fd 2 with
+synchronous writes (`src/node-fs.ts` writeFd; `process.stdout` on a pipe loads node's stream and net modules), and the
+revisions are hashed by a SHA-256 in `src/revision.ts` instead of node:crypto (about 12 ms to load), held equal to
+node:crypto by `test/revision.test.ts`.
+
+Interleaved base/new, 40 rounds, medians, Linux x64 with 4 CPUs at load average at most 0.53 (`a0-dev check
+bench-validity`: publishable), `a0 check front.a0` on the same 79164-byte front end: release executable 128.0 ms before,
+66.2 ms after; `node dist/src/cli.js check` 112.4 ms before, 110.3 ms after (inside the noise). The regenerated
+`results/check-latency-linux-x64.json` (load 1.19, 15 interleaved runs) reads 69.2 ms for the row against 86.0 ms for
+tsc-rs 0.1.0 and 120.3 ms for tsgo, a tie and a win, so its loss left `results/loss-ledger.json`; the node command line
+row, new to that report, trails tsc-rs (112.5 ms) and was added. The tsc-rs median of that run is above the 55.7 ms the
+earlier CI report recorded, so the comparison is only the one inside each run.

@@ -1,0 +1,683 @@
+{
+  "generatedAt": "2026-10-15T18:03:58.140Z",
+  "meaning": "Before/after timing of the x86-64 backend change that keeps a fold or loop body's carried read (the element the previous trip stored, as src/wasm.ts carriedRead) and its p1 * K induction variables in registers. \"before\" is the backend at commit 1b9d537, \"after\" the change; both are tools/exec-bench.ts runs (--langs=none --samples=7) on the kernels whose x86-64 code the change alters, run back to back as before, after, before, after on one Linux x86-64 host (4 cores). Each round interleaves the direct backend (x86_64, the kernel assembled from src/x86_64.ts behind the C driver, called out of line) with the same emitted C at clang -O3 -march=native in its own object behind the identical driver (x86_64ClangO3OutOfLine), so ratio = x86_64 / x86_64ClangO3OutOfLine compares the code generators at equal call cost (below 1 the backend is faster). loadAverage is the 1/5/15-minute load when each round finished; loadGate.highestLoadAtSampleStart is the highest 1-minute load at a sample start.",
+  "platform": "linux-x64",
+  "rounds": [
+    {
+      "build": "before",
+      "samplesPerSide": 7,
+      "loadAverage": [
+        1.09,
+        1.4,
+        1.75
+      ],
+      "loadGate": {
+        "maxLoad": 10,
+        "checks": 350,
+        "waits": 0,
+        "waitedSeconds": 0,
+        "loadSource": "loadavg",
+        "highestLoadAtSampleStart": 2.33
+      },
+      "kernels": {
+        "dot1k": {
+          "x86_64": {
+            "medianNsPerCall": 1172.8549,
+            "minNsPerCall": 1097.7475,
+            "maxNsPerCall": 1308.05,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 319.0226,
+            "minNsPerCall": 305.9678,
+            "maxNsPerCall": 338.7182,
+            "samples": 7
+          },
+          "ratio": 3.676
+        },
+        "prefix1k": {
+          "x86_64": {
+            "medianNsPerCall": 2842.973,
+            "minNsPerCall": 2769.0815,
+            "maxNsPerCall": 2993.1634,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 485.2907,
+            "minNsPerCall": 468.1795,
+            "maxNsPerCall": 547.3946,
+            "samples": 7
+          },
+          "ratio": 5.858
+        },
+        "hist256": {
+          "x86_64": {
+            "medianNsPerCall": 4355.8851,
+            "minNsPerCall": 3899.8386,
+            "maxNsPerCall": 6756.188,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 2170.6413,
+            "minNsPerCall": 1938.9424,
+            "maxNsPerCall": 2764.9416,
+            "samples": 7
+          },
+          "ratio": 2.007
+        },
+        "fnv4k": {
+          "x86_64": {
+            "medianNsPerCall": 23506.2318,
+            "minNsPerCall": 22983.2505,
+            "maxNsPerCall": 24867.1712,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 24513.2395,
+            "minNsPerCall": 24154.2447,
+            "maxNsPerCall": 26258.1927,
+            "samples": 7
+          },
+          "ratio": 0.959
+        },
+        "xs4k": {
+          "x86_64": {
+            "medianNsPerCall": 19467.1001,
+            "minNsPerCall": 19196.887,
+            "maxNsPerCall": 20264.4208,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 8997.5121,
+            "minNsPerCall": 8764.195,
+            "maxNsPerCall": 9331.1406,
+            "samples": 7
+          },
+          "ratio": 2.164
+        },
+        "minmax1k": {
+          "x86_64": {
+            "medianNsPerCall": 1387.9203,
+            "minNsPerCall": 1346.6851,
+            "maxNsPerCall": 1736.5988,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 33304.096,
+            "minNsPerCall": 29938.856,
+            "maxNsPerCall": 34281.1228,
+            "samples": 7
+          },
+          "ratio": 0.042
+        },
+        "sieve4k": {
+          "x86_64": {
+            "medianNsPerCall": 7847.9343,
+            "minNsPerCall": 7284.7911,
+            "maxNsPerCall": 10122.1035,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 3109.2909,
+            "minNsPerCall": 3019.3109,
+            "maxNsPerCall": 3320.7672,
+            "samples": 7
+          },
+          "ratio": 2.524
+        },
+        "isort256": {
+          "x86_64": {
+            "medianNsPerCall": 38364.105,
+            "minNsPerCall": 36309.1995,
+            "maxNsPerCall": 46073.272,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 32570.6812,
+            "minNsPerCall": 31911.9053,
+            "maxNsPerCall": 34115.1847,
+            "samples": 7
+          },
+          "ratio": 1.178
+        },
+        "crc4k": {
+          "x86_64": {
+            "medianNsPerCall": 11819.3208,
+            "minNsPerCall": 11641.2236,
+            "maxNsPerCall": 12029.4579,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 11866.1912,
+            "minNsPerCall": 11488.044,
+            "maxNsPerCall": 11967.499,
+            "samples": 7
+          },
+          "ratio": 0.996
+        },
+        "bsearch1k": {
+          "x86_64": {
+            "medianNsPerCall": 17780.5148,
+            "minNsPerCall": 17057.1145,
+            "maxNsPerCall": 18658.959,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 201803.9305,
+            "minNsPerCall": 199476.0184,
+            "maxNsPerCall": 249870.875,
+            "samples": 7
+          },
+          "ratio": 0.088
+        }
+      }
+    },
+    {
+      "build": "after",
+      "samplesPerSide": 7,
+      "loadAverage": [
+        5.42,
+        3.91,
+        2.92
+      ],
+      "loadGate": {
+        "maxLoad": 10,
+        "checks": 350,
+        "waits": 0,
+        "waitedSeconds": 0,
+        "loadSource": "loadavg",
+        "highestLoadAtSampleStart": 5.42
+      },
+      "kernels": {
+        "dot1k": {
+          "x86_64": {
+            "medianNsPerCall": 761.5119,
+            "minNsPerCall": 749.5312,
+            "maxNsPerCall": 1104.0412,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 311.4192,
+            "minNsPerCall": 289.7923,
+            "maxNsPerCall": 330.7799,
+            "samples": 7
+          },
+          "ratio": 2.445
+        },
+        "prefix1k": {
+          "x86_64": {
+            "medianNsPerCall": 486.5759,
+            "minNsPerCall": 463.3651,
+            "maxNsPerCall": 623.925,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 489.5251,
+            "minNsPerCall": 463.82,
+            "maxNsPerCall": 574.3016,
+            "samples": 7
+          },
+          "ratio": 0.994
+        },
+        "hist256": {
+          "x86_64": {
+            "medianNsPerCall": 4144.4257,
+            "minNsPerCall": 3915.7629,
+            "maxNsPerCall": 4699.8182,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 2032.8491,
+            "minNsPerCall": 2006.8306,
+            "maxNsPerCall": 3420.6387,
+            "samples": 7
+          },
+          "ratio": 2.039
+        },
+        "fnv4k": {
+          "x86_64": {
+            "medianNsPerCall": 23467.8234,
+            "minNsPerCall": 22990.5384,
+            "maxNsPerCall": 24504.8328,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 24239.9301,
+            "minNsPerCall": 23730.7944,
+            "maxNsPerCall": 25841.9527,
+            "samples": 7
+          },
+          "ratio": 0.968
+        },
+        "xs4k": {
+          "x86_64": {
+            "medianNsPerCall": 12652.526,
+            "minNsPerCall": 12065.7163,
+            "maxNsPerCall": 13685.9157,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 9379.1368,
+            "minNsPerCall": 9011.7917,
+            "maxNsPerCall": 9760.7075,
+            "samples": 7
+          },
+          "ratio": 1.349
+        },
+        "minmax1k": {
+          "x86_64": {
+            "medianNsPerCall": 1269.4143,
+            "minNsPerCall": 1150.3755,
+            "maxNsPerCall": 1377.2128,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 34866.0415,
+            "minNsPerCall": 31022.3621,
+            "maxNsPerCall": 39385.3146,
+            "samples": 7
+          },
+          "ratio": 0.036
+        },
+        "sieve4k": {
+          "x86_64": {
+            "medianNsPerCall": 8407.1671,
+            "minNsPerCall": 8019.541,
+            "maxNsPerCall": 10567.4537,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 3139.5977,
+            "minNsPerCall": 3026.7389,
+            "maxNsPerCall": 3686.6646,
+            "samples": 7
+          },
+          "ratio": 2.678
+        },
+        "isort256": {
+          "x86_64": {
+            "medianNsPerCall": 33029.5147,
+            "minNsPerCall": 31578.9593,
+            "maxNsPerCall": 44203.2086,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 32921.4521,
+            "minNsPerCall": 32027.3359,
+            "maxNsPerCall": 48018.8398,
+            "samples": 7
+          },
+          "ratio": 1.003
+        },
+        "crc4k": {
+          "x86_64": {
+            "medianNsPerCall": 11828.0972,
+            "minNsPerCall": 11747.1745,
+            "maxNsPerCall": 13133.2929,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 11697.4322,
+            "minNsPerCall": 11408.5571,
+            "maxNsPerCall": 13019.1801,
+            "samples": 7
+          },
+          "ratio": 1.011
+        },
+        "bsearch1k": {
+          "x86_64": {
+            "medianNsPerCall": 19121.6841,
+            "minNsPerCall": 17727.5995,
+            "maxNsPerCall": 21419.5249,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 208137.2409,
+            "minNsPerCall": 198430.6744,
+            "maxNsPerCall": 241062.3425,
+            "samples": 7
+          },
+          "ratio": 0.092
+        }
+      }
+    },
+    {
+      "build": "before",
+      "samplesPerSide": 7,
+      "loadAverage": [
+        3.31,
+        4.27,
+        3.99
+      ],
+      "loadGate": {
+        "maxLoad": 10,
+        "checks": 350,
+        "waits": 0,
+        "waitedSeconds": 0,
+        "loadSource": "loadavg",
+        "highestLoadAtSampleStart": 8.11
+      },
+      "kernels": {
+        "dot1k": {
+          "x86_64": {
+            "medianNsPerCall": 1166.8365,
+            "minNsPerCall": 1106.516,
+            "maxNsPerCall": 1394.8441,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 320.5019,
+            "minNsPerCall": 309.7918,
+            "maxNsPerCall": 373.9109,
+            "samples": 7
+          },
+          "ratio": 3.641
+        },
+        "prefix1k": {
+          "x86_64": {
+            "medianNsPerCall": 2847.4234,
+            "minNsPerCall": 2738.3569,
+            "maxNsPerCall": 2967.6111,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 478.9107,
+            "minNsPerCall": 466.5089,
+            "maxNsPerCall": 531.2098,
+            "samples": 7
+          },
+          "ratio": 5.946
+        },
+        "hist256": {
+          "x86_64": {
+            "medianNsPerCall": 4179.3943,
+            "minNsPerCall": 3991.736,
+            "maxNsPerCall": 4618.2659,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 2289.5946,
+            "minNsPerCall": 2068.5661,
+            "maxNsPerCall": 2692.2794,
+            "samples": 7
+          },
+          "ratio": 1.825
+        },
+        "fnv4k": {
+          "x86_64": {
+            "medianNsPerCall": 23732.2158,
+            "minNsPerCall": 23414.0391,
+            "maxNsPerCall": 26683.9265,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 25422.46,
+            "minNsPerCall": 24616.276,
+            "maxNsPerCall": 27722.697,
+            "samples": 7
+          },
+          "ratio": 0.934
+        },
+        "xs4k": {
+          "x86_64": {
+            "medianNsPerCall": 20095.0424,
+            "minNsPerCall": 19850.8914,
+            "maxNsPerCall": 20470.5973,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 9162.1157,
+            "minNsPerCall": 9050.6131,
+            "maxNsPerCall": 9838.0815,
+            "samples": 7
+          },
+          "ratio": 2.193
+        },
+        "minmax1k": {
+          "x86_64": {
+            "medianNsPerCall": 1551.2114,
+            "minNsPerCall": 1375.3242,
+            "maxNsPerCall": 1838.2788,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 33616.9075,
+            "minNsPerCall": 31422.8182,
+            "maxNsPerCall": 36062.254,
+            "samples": 7
+          },
+          "ratio": 0.046
+        },
+        "sieve4k": {
+          "x86_64": {
+            "medianNsPerCall": 8024.9715,
+            "minNsPerCall": 7481.0276,
+            "maxNsPerCall": 10910.5216,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 3232.9014,
+            "minNsPerCall": 3072.5533,
+            "maxNsPerCall": 3293.536,
+            "samples": 7
+          },
+          "ratio": 2.482
+        },
+        "isort256": {
+          "x86_64": {
+            "medianNsPerCall": 37725.3923,
+            "minNsPerCall": 36473.9871,
+            "maxNsPerCall": 47759.1169,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 34408.0338,
+            "minNsPerCall": 32752.8356,
+            "maxNsPerCall": 39190.7752,
+            "samples": 7
+          },
+          "ratio": 1.096
+        },
+        "crc4k": {
+          "x86_64": {
+            "medianNsPerCall": 11852.4475,
+            "minNsPerCall": 11716.7491,
+            "maxNsPerCall": 13152.3354,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 11847.9835,
+            "minNsPerCall": 11605.7919,
+            "maxNsPerCall": 13647.7734,
+            "samples": 7
+          },
+          "ratio": 1
+        },
+        "bsearch1k": {
+          "x86_64": {
+            "medianNsPerCall": 18766.7537,
+            "minNsPerCall": 17660.8332,
+            "maxNsPerCall": 19141.0801,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 206978.7455,
+            "minNsPerCall": 200610.8245,
+            "maxNsPerCall": 213867.9779,
+            "samples": 7
+          },
+          "ratio": 0.091
+        }
+      }
+    },
+    {
+      "build": "after",
+      "samplesPerSide": 7,
+      "loadAverage": [
+        2.26,
+        2.55,
+        3.22
+      ],
+      "loadGate": {
+        "maxLoad": 10,
+        "checks": 350,
+        "waits": 0,
+        "waitedSeconds": 0,
+        "loadSource": "loadavg",
+        "highestLoadAtSampleStart": 3.85
+      },
+      "kernels": {
+        "dot1k": {
+          "x86_64": {
+            "medianNsPerCall": 791.0735,
+            "minNsPerCall": 757.7978,
+            "maxNsPerCall": 1087.6172,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 306.2698,
+            "minNsPerCall": 304.0979,
+            "maxNsPerCall": 354.9352,
+            "samples": 7
+          },
+          "ratio": 2.583
+        },
+        "prefix1k": {
+          "x86_64": {
+            "medianNsPerCall": 513.5912,
+            "minNsPerCall": 477.6356,
+            "maxNsPerCall": 695.2682,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 490.6521,
+            "minNsPerCall": 471.8489,
+            "maxNsPerCall": 524.4369,
+            "samples": 7
+          },
+          "ratio": 1.047
+        },
+        "hist256": {
+          "x86_64": {
+            "medianNsPerCall": 4396.7489,
+            "minNsPerCall": 3981.4957,
+            "maxNsPerCall": 4896.6867,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 2337.1025,
+            "minNsPerCall": 2024.7975,
+            "maxNsPerCall": 2543.4862,
+            "samples": 7
+          },
+          "ratio": 1.881
+        },
+        "fnv4k": {
+          "x86_64": {
+            "medianNsPerCall": 23869.7116,
+            "minNsPerCall": 23241.3037,
+            "maxNsPerCall": 25002.1349,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 24511.672,
+            "minNsPerCall": 24117.1902,
+            "maxNsPerCall": 26026.9279,
+            "samples": 7
+          },
+          "ratio": 0.974
+        },
+        "xs4k": {
+          "x86_64": {
+            "medianNsPerCall": 12112.7252,
+            "minNsPerCall": 11625.2718,
+            "maxNsPerCall": 12846.1472,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 9116.9799,
+            "minNsPerCall": 8961.9591,
+            "maxNsPerCall": 9289.2798,
+            "samples": 7
+          },
+          "ratio": 1.329
+        },
+        "minmax1k": {
+          "x86_64": {
+            "medianNsPerCall": 1302.2277,
+            "minNsPerCall": 1186.1557,
+            "maxNsPerCall": 1519.4926,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 33740.5623,
+            "minNsPerCall": 30567.7399,
+            "maxNsPerCall": 36398.74,
+            "samples": 7
+          },
+          "ratio": 0.039
+        },
+        "sieve4k": {
+          "x86_64": {
+            "medianNsPerCall": 8906.5635,
+            "minNsPerCall": 7748.1451,
+            "maxNsPerCall": 10476.0674,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 3267.8822,
+            "minNsPerCall": 3057.0214,
+            "maxNsPerCall": 4032.3864,
+            "samples": 7
+          },
+          "ratio": 2.725
+        },
+        "isort256": {
+          "x86_64": {
+            "medianNsPerCall": 35470.432,
+            "minNsPerCall": 32421.6175,
+            "maxNsPerCall": 39775.5088,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 35148.8572,
+            "minNsPerCall": 34070.2031,
+            "maxNsPerCall": 37322.6944,
+            "samples": 7
+          },
+          "ratio": 1.009
+        },
+        "crc4k": {
+          "x86_64": {
+            "medianNsPerCall": 12138.7361,
+            "minNsPerCall": 11843.7518,
+            "maxNsPerCall": 13729.8505,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 11853.5992,
+            "minNsPerCall": 11560.8018,
+            "maxNsPerCall": 12260.6582,
+            "samples": 7
+          },
+          "ratio": 1.024
+        },
+        "bsearch1k": {
+          "x86_64": {
+            "medianNsPerCall": 19032.9565,
+            "minNsPerCall": 17367.8003,
+            "maxNsPerCall": 21113.5654,
+            "samples": 7
+          },
+          "x86_64ClangO3OutOfLine": {
+            "medianNsPerCall": 205466.9664,
+            "minNsPerCall": 201241.6463,
+            "maxNsPerCall": 244378.4406,
+            "samples": 7
+          },
+          "ratio": 0.093
+        }
+      }
+    }
+  ]
+}

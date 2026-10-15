@@ -482,27 +482,30 @@ function matrixPlan(fn: TypedFunc): MatrixPlan {
     readonly pairs: [Operand, Operand][];
     readonly owned: string[];
   }
-  // Left-leaning chains of four products: add(add(add(m0, m1), m2), m3).
+  // Four products, including balanced sums introduced by latency reassociation.
   const chainOf = (top: Node): Raw | undefined => {
     const terms: Node[] = [];
     const owned: string[] = [];
-    let cur: Node = top;
-    for (let i = 0; i < 3; i += 1) {
-      if (cur.op !== 'add' || fn.types.get(cur.id) !== 'u32') return undefined;
-      owned.push(cur.id);
-      const [l, r] = cur.args as [Operand, Operand];
-      const mr = r.kind === 'node' ? byId.get(r.id) : undefined;
-      if (mr?.op !== 'mul') return undefined;
-      terms.unshift(mr);
-      const ln = l.kind === 'node' ? byId.get(l.id) : undefined;
-      if (ln === undefined) return undefined;
-      if (i === 2) {
-        if (ln.op !== 'mul') return undefined;
-        terms.unshift(ln);
+    const pending = [top];
+    while (pending.length > 0) {
+      const cur = pending.pop() as Node;
+      if (fn.types.get(cur.id) !== 'u32') return undefined;
+      if (cur.op === 'mul') {
+        terms.push(cur);
+        if (terms.length > 4) return undefined;
+      } else if (cur.op === 'add') {
+        owned.push(cur.id);
+        if (owned.length > 3) return undefined;
+        for (const o of [...cur.args].reverse()) {
+          const d = o.kind === 'node' ? byId.get(o.id) : undefined;
+          if (d === undefined) return undefined;
+          pending.push(d);
+        }
       } else {
-        cur = ln;
+        return undefined;
       }
     }
+    if (terms.length !== 4) return undefined;
     for (const m of terms) owned.push(m.id);
     return {
       z: top.id,

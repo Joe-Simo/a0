@@ -18,6 +18,7 @@ import {
   run,
   type Type,
   type TypedFunc,
+  type TypedProgram,
   typeEquals,
   validate,
 } from '../src/core.js';
@@ -1884,14 +1885,10 @@ test('arm64 backend: assembled, linked with a C driver, and executed equal to th
   }
 });
 
-test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the interpreter', {
-  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
-}, async () => {
+test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the interpreter', async (t) => {
   const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
   const { writeFile } = await import('node:fs/promises');
   const { join } = await import('node:path');
-  const clang = findClang().path;
-  assert.ok(clang, 'clang is required as the assembler/linker driver');
   const zeros = (n: number): string => Array.from({ length: n }, () => '0').join(' ');
   const src = [
     // element-wise fills (vectorized) feeding a multiply-accumulate (fused, no arrays stored)
@@ -1899,6 +1896,8 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
     'fn fb u32x64 u32 u32 u32 -> u32x64\nv xor p1 p3\nw mul v p2\nn set p0 p1 w\nret n\nend',
     'fn dot u32 u32 u32x64 u32x64 -> u32\ne get p2 p1\nf get p3 p1\ng mul e f\nh add p0 g\nret h\nend',
     `fn fused u32 u32 -> u32\nz arr ${zeros(64)}\na fold fa 64 z p0 p1\nz2 arr ${zeros(64)}\nb fold fb 64 z2 p0 p1\nd fold dot 64 p1 a b\nx get a p0\nr add d x\nret r\nend`,
+    'fn costly u32x64 u32 u32 u32 -> u32x64\nv mul p1 p2\nw xor v p3\nx mul w p2\ny xor x p3\nz mul y p2\nn set p0 p1 z\nret n\nend',
+    `fn stored u32 u32 -> u32\nz arr ${zeros(64)}\na fold costly 64 z p0 p1\nz2 arr ${zeros(64)}\nb fold fb 64 z2 p0 p1\nd fold dot 64 p1 a b\nx get a p0\nr add d x\nret r\nend`,
     // record state: running (min, max) as NEON umin/umax, plus a scalar min and a mul reduce
     'fn mm (u32,u32) u32 u32x64 -> (u32,u32)\nv get p2 p1\nlo at p0 0\nhi at p0 1\nc lt v lo\nnlo select c v lo\nd gt v hi\nnhi select d v hi\nr put p0 0 nlo\nr2 put r 1 nhi\nret r2\nend',
     'fn smin u32 u32 u32x64 -> u32\nv get p2 p1\nc le p0 v\nm select c p0 v\nret m\nend',
@@ -1919,7 +1918,7 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
     'fn wide u32 u32 -> u32\na mul p0 3\nb mul p1 5\nc mul a b\nd add a b\ne xor c d\nf mul e 7\ng sub f a\nh shr g 3\nr arr a b c d e f g h a b c d e f g h\nk and p0 15\nx get r k\ny get r 7\nz add x y\nret z\nend',
   ].join('\n\n');
   const p = parseAndValidate(src);
-  const names = ['fused', 'minmax', 'carried', 'shifted', 'wide'];
+  const names = ['stored', 'fused', 'minmax', 'carried', 'shifted', 'wide'];
   const inputs: [number, number][] = [
     [0, 0],
     [1, 2],
@@ -1943,26 +1942,38 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
   assert.match(asm, /addv s\d+/);
   assert.match(asm, /ext v\d+\.16b, v30\.16b, v31\.16b, #12/);
   const fusedBody = /_a0_fused:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
-  // `a` is also read after the loop, so it is stored; `b` has one use and is fused away.
-  // Two loops: the fill of `a`, and the dot product with `b` computed in its lanes.
-  assert.equal(fusedBody.match(/\nLa0_fused_\d+:/g)?.length, 2);
-  assert.equal(fusedBody.match(/\n\tst[rp] q/g)?.length, 2);
-  for (const optimize of [true, false]) {
-    const text = compile(p, 'arm64', { optimize }).text;
-    await withTempDir(async (dir) => {
-      await writeFile(join(dir, 'module.s'), text, 'utf8');
-      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
-      const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
-        cwd: dir,
-      });
-      assert.ok(as.ok, as.stderr);
-      const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
-      assert.ok(ld.ok, ld.stderr);
-      const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
-      assert.ok(exec.ok, exec.stderr);
-      assert.equal(exec.stdout.trim(), expected);
-    });
-  }
+  // The extra get reads through the cheap fill; both arrays fuse into the dot product.
+  assert.equal(fusedBody.match(/\nLa0_fused_\d+:/g)?.length, 1);
+  assert.doesNotMatch(fusedBody, /\n\tst[rp] q/);
+  const storedBody = /_a0_stored:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  assert.equal(storedBody.match(/\nLa0_stored_\d+:/g)?.length, 2);
+  assert.equal(storedBody.match(/\n\tst[rp] q/g)?.length, 1);
+  await t.test(
+    'native execution equals the interpreter',
+    {
+      skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+    },
+    async () => {
+      const clang = findClang().path;
+      assert.ok(clang, 'clang is required as the assembler/linker driver');
+      for (const optimize of [true, false]) {
+        const text = compile(p, 'arm64', { optimize }).text;
+        await withTempDir(async (dir) => {
+          await writeFile(join(dir, 'module.s'), text, 'utf8');
+          await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+          const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+            cwd: dir,
+          });
+          assert.ok(as.ok, as.stderr);
+          const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
+          assert.ok(ld.ok, ld.stderr);
+          const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
+          assert.ok(exec.ok, exec.stderr);
+          assert.equal(exec.stdout.trim(), expected);
+        });
+      }
+    },
+  );
 });
 
 test('arm64 instruction selection, unrolled and vectorized folds equal the interpreter', {
@@ -2080,12 +2091,31 @@ test('arm64 instruction selection, unrolled and vectorized folds equal the inter
   }
 });
 
-test('x86_64 backend refuses io functions with a diagnostic', () => {
-  const p = parseAndValidate('fn w io u32 -> io\nt write p0 p1\nret t\nend');
-  assert.throws(
-    () => compile(p, 'x86_64'),
-    (e: unknown) => e instanceof A0Error && /io functions are out of scope/.test(e.message),
+test('x86_64 backend: io goes through module helpers sized by the io capacities', () => {
+  const p = parseAndValidate(
+    'fn w io u32 -> io\nt write p0 p1\nret t\nend\nfn r io -> (u32,io)\nx read p0\nret x\nend',
   );
+  const text = compile(p, 'x86_64', {
+    x86Platform: 'linux',
+    ioInputCapacity: 8,
+    ioOutputCapacity: 16,
+  }).text;
+  // A token result returns its address in rax; the helpers are local labels, emitted once.
+  assert.match(text, /call \.La0io_write\n\tmovq %r11, /);
+  assert.match(text, /call \.La0io_read\n/);
+  assert.equal(text.split('\n.La0io_write:').length, 2);
+  // ninput at 4 * 8, position at 36, output at 40, noutput at 40 + 4 * 16.
+  assert.match(text, /\.La0io_read:\n\tmovl 36\(%r11\), %eax\n\tcmpl 32\(%r11\), %eax/);
+  assert.match(text, /\.La0io_write:\n\tmovl 104\(%r11\), %r10d\n\tcmpl \$16, %r10d/);
+  assert.doesNotMatch(text, /La0io_sread|La0io_puts|a0_trap/);
+  // The strict read traps `input` through the trap runtime.
+  const strict = compile(
+    parseAndValidate('profile strict\nfn r io -> u32\nx read p0\nv at x 0\nret v\nend'),
+    'x86_64',
+    { x86Platform: 'linux' },
+  ).text;
+  assert.match(strict, /call \.La0io_sread\n/);
+  assert.match(strict, /\.asciz "input"/);
 });
 
 test('x86_64 backend: emitted sequences carry the exact semantics', async () => {
@@ -2179,9 +2209,9 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
   const pair = emitDarwin(fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nret r\nend', 'p'));
   assert.match(
     pair,
-    /movq %rdi, (\d+\(%rsp\))[\s\S]*movq \1, %r11[\s\S]*movq \1, %rax\n\tmovq %rbp, %rsp/,
+    /movq %rdi, (\d*\(%rsp\))[\s\S]*movq \1, %r11[\s\S]*movq \1, %rax\n\tmovq %rbp, %rsp/,
   );
-  // Aggregates are copied 16 bytes at a time through xmm0 (a loop above 32 words), so a
+  // Aggregates are copied 16 bytes at a time through xmm0 (one shared helper above 32 words), so a
   // parameter arriving in rcx stays there in a leaf.
   const big = emitDarwin(
     fn('fn b u32x32 u32 u32 u32 -> u32\nv get p0 p3\nw add v p2\nret w\nend', 'b'),
@@ -2190,7 +2220,7 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
   const huge = emitDarwin(fn('fn h u32x40 -> u32\nv get p0 39\nret v\nend', 'h'));
   assert.match(
     huge,
-    /movups \(%r10,%rax\), %xmm0\n\tmovups %xmm0, \(%r11,%rax\)\n\taddq \$16, %rax\n\tcmpq \$160, %rax/,
+    /leaq 160\(%rdi\), %r10\n\tleaq 160\(%rsp\), %r11\n\tmovq \$-160, %rax\n\tcall La0copy/,
   );
   // Frames above a page are probed page by page.
   const zeros = Array.from({ length: 2048 }, () => '0').join(' ');
@@ -3609,6 +3639,259 @@ end`);
   }
 });
 
+test('direct wasm backend: sets through borrows, records built in place, late lazy reads', async () => {
+  const { wasmModuleBytes, emitWasmFunction } = await import('../src/wasm.js');
+  const { KERNELS } = await import('../tools/exec-bench-kernels.js');
+  const frames = (p: TypedProgram, name: string): number[] =>
+    (
+      JSON.parse(emitWasmFunction(p.byName.get(name) as TypedFunc)) as {
+        variants: { frame: number }[];
+      }
+    ).variants.map((v) => v.frame);
+  // heap256: the sift-down step sets through the `at` borrow of its owned record state and
+  // rebuilds the record from it, so the owned variants of the step and of the pop around its
+  // loop update the state where it is (no frame; each used to copy the 2 KiB heap).
+  const heap = KERNELS.find((k) => k.name === 'heap256');
+  assert.ok(heap !== undefined);
+  const hp = parseAndValidate(heap.a0);
+  assert.deepEqual(frames(hp, 'dnstep'), [2048, 0]);
+  assert.deepEqual(frames(hp, 'hpop'), [2048, 0]);
+  // The same on an 8-element heap, with the cases that keep copies: a nested row written back
+  // into its container (rowstep), an old borrow read after the set (keepold), a record of two
+  // aggregate fields (twin) and a value variant (valuevar, its record read again after the call).
+  const p = parseAndValidate(`fn sdok (u32x8,u32) u32 u32 -> bool
+h at p0 0
+j at p0 1
+l shl j 1
+r add l 1
+inl le l p2
+inr le r p2
+lv get h l
+rv get h r
+rl lt rv lv
+pr and inr rl
+c select pr r l
+cv get h c
+jv get h j
+g lt cv jv
+ok and inl g
+ret ok
+end
+fn sdstep (u32x8,u32) u32 u32 -> (u32x8,u32)
+h at p0 0
+j at p0 1
+l shl j 1
+r add l 1
+inr le r p2
+lv get h l
+rv get h r
+rl lt rv lv
+pr and inr rl
+c select pr r l
+cv get h c
+jv get h j
+a set h j cv
+b set a c jv
+s rec b c
+ret s
+end
+fn pop (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+acc at p0 1
+n sub 7 p1
+top get h 1
+last get h n
+a set h 1 last
+m sub n 1
+st rec a 1
+r loop sdok sdstep 3 st m
+b at r 0
+x xor acc top
+y mul x 33
+o rec b y
+ret o
+end
+fn rowstep u32x4x4 u32 u32 -> u32x4x4
+i shr p1 2
+j and p1 3
+row get p0 i
+v get row j
+w mul v p2
+x add w p1
+nrow set row j x
+g set p0 i nrow
+ret g
+end
+fn keepold (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+h2 at p0 0
+a set h 1 p1
+x get h2 1
+o rec a x
+ret o
+end
+fn twin (u32x4,u32x4,u32) u32 -> (u32x4,u32x4,u32)
+f at p0 0
+g at p0 1
+k at p0 2
+a set f 1 p1
+b set g 2 k
+o rec a b p1
+ret o
+end
+fn bump u32x8 u32 u32 -> u32x8
+v get p0 p1
+w add v p2
+n set p0 p1 w
+ret n
+end
+fn valuevar (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+a set h 2 p1
+o rec a p1
+ret o
+end
+fn inplace u32 u32 -> u32
+z arr 0 p0 p1 5 9 2 7 4
+q fold bump 8 z p1
+r fold bump 8 q p0
+c set r 3 77
+st rec c 5
+s fold pop 7 st
+k at s 1
+hz at s 0
+e get hz 2
+g arr 1 2 3 4
+gz arr g g g g
+m fold rowstep 16 gz p0
+m2 get m 2
+m3 get m2 1
+t1 rec r 9
+t2 fold keepold 3 t1
+t3 at t2 1
+w arr p0 1 2 3
+w2 arr 4 p1 6 7
+tw rec w w2 p1
+tw2 fold twin 2 tw
+tw3 at tw2 1
+tw4 get tw3 2
+vv call valuevar t1 p1
+vv1 at vv 0
+vv2 get vv1 2
+hz2 at t1 0
+vv3 get hz2 2
+o1 add k e
+o2 add o1 m3
+o3 add o2 t3
+o4 add o3 tw4
+o5 add o4 vv2
+o6 add o5 vv3
+ret o6
+end
+`);
+  assert.deepEqual(frames(p, 'sdstep'), [32, 0]);
+  assert.deepEqual(frames(p, 'pop'), [32, 0]);
+  assert.deepEqual(frames(p, 'rowstep'), [16, 16]);
+  assert.deepEqual(frames(p, 'keepold'), [32, 80]);
+  // A read that a lazy select arm emits after the update keeps the update a copy: an element of
+  // a literal array (lzr) or of a fold result (lzf) read before a set, and a read of the record
+  // state's borrow before a set through it (lzb).
+  const lazy = parseAndValidate(`fn fl u32x8 u32 u32 -> u32x8
+a mul p1 p2
+b xor a p1
+n set p0 p1 b
+ret n
+end
+fn lzr u32 u32 -> u32
+a arr p0 p1 3 4 5 6 7 8
+v get a 2
+w0 mul v 7
+w1 div w0 3
+w2 rem w1 5
+w3 mul w2 w1
+w4 div w3 p1
+b set a 2 99
+c lt p0 p1
+s select c w4 p0
+x get b 2
+r add s x
+ret r
+end
+fn lzf u32 u32 -> u32
+z arr 0 0 0 0 0 0 0 0
+a fold fl 8 z p0
+v get a p1
+w0 mul v 7
+w1 div w0 3
+w2 rem w1 5
+w3 mul w2 w1
+w4 div w3 p1
+b set a p1 99
+c lt p0 p1
+s select c w4 p0
+x get b 2
+r add s x
+ret r
+end
+fn lzb (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+k at p0 1
+v get h p1
+w0 mul v 7
+w1 div w0 3
+w2 rem w1 5
+w3 mul w2 w1
+w4 div w3 k
+a set h p1 k
+c lt p1 k
+s select c w4 p1
+o rec a s
+ret o
+end
+fn lzd u32 u32 -> u32
+z arr p0 p1 3 4 5 6 7 8
+st rec z p1
+r fold lzb 5 st
+q at r 0
+q1 get q 3
+q2 at r 1
+o add q1 q2
+ret o
+end
+fn lazy u32 u32 -> u32
+a call lzr p0 p1
+b call lzf p1 p0
+c call lzd p0 p1
+d add a b
+e add d c
+ret e
+end
+`);
+  for (const [q, name] of [
+    [p, 'inplace'],
+    [lazy, 'lazy'],
+  ] as const) {
+    for (const optimize of [true, false]) {
+      const text = compile(q, 'wasm', { optimize, wasmExports: [name] }).text;
+      const { instance } = await WebAssembly.instantiate(wasmModuleBytes(text) as BufferSource, {});
+      const g = (instance.exports as Record<string, (a: number, b: number) => number>)[
+        `a0_${name}`
+      ];
+      for (const x of [0, 1, 7, 1029, 0x9e37_79b9, 0xffff_ffff]) {
+        const args = [(x * 3) >>> 0, (x * 4 + 1) >>> 0];
+        assert.equal(
+          (g as (a: number, b: number) => number)(
+            (args[0] as number) | 0,
+            (args[1] as number) | 0,
+          ) >>> 0,
+          run(q.byName.get(name) as TypedFunc, args),
+          `${name}(${args}) optimize=${optimize}`,
+        );
+      }
+    }
+  }
+});
+
 test('direct wasm backend: simd fills, carried reads, scalar state, lazy arms, exports equal the interpreter', async () => {
   const { wasmModuleBytes } = await import('../src/wasm.js');
   const { KERNELS } = await import('../tools/exec-bench-kernels.js');
@@ -3641,10 +3924,65 @@ s add x y
 t add s w
 ret t
 end`;
+  // Stores forwarded to the next trip's read (src/wasm.ts `carriedRead`): an insertion sort
+  // sinking by swaps over a length that is not a power of two (the read index p2 - p1 is the
+  // index p2 - p1 - 1 written last on the trip before), and a fold writing p1 + 3 that the next
+  // trip reads at p1 + 2.
+  const isort10 = `fn swp u32x10 u32 u32 -> u32x10
+j sub p2 p1
+i1 sub j 1
+u get p0 i1
+v get p0 j
+b set p0 j u
+c set b i1 v
+ret c
+end
+fn swpok u32x10 u32 u32 -> bool
+j sub p2 p1
+i1 sub j 1
+u get p0 i1
+v get p0 j
+g gt u v
+ret g
+end
+fn ins u32x10 u32 -> u32x10
+r loop swpok swp p1 p0 p1
+ret r
+end
+fn srt u32 u32 -> u32
+a arr p0 p1 7 3 p1 9 0 p0 4000000000 5
+s fold ins 10 a
+q rem p1 10
+r get s q
+w get s 0
+m mul w 3
+o add r m
+ret o
+end`;
+  const ahead = `fn stp u32x12 u32 u32 -> u32x12
+j add p1 2
+v get p0 j
+w mul v 3
+x add w p2
+k add p1 3
+n set p0 k x
+ret n
+end
+fn ahd u32 u32 -> u32
+a arr p0 1 2 3 4 5 6 7 8 9 10 p1
+s fold stp 9 a p1
+q rem p0 12
+r get s q
+w get s 11
+o add r w
+ret o
+end`;
   const cases: [string, string, number][] = [
     ...KERNELS.map((k): [string, string, number] => [k.a0, k.name, k.arity]),
     [lazy, 'lz', 2],
     [fill, 'part', 2],
+    [isort10, 'srt', 2],
+    [ahead, 'ahd', 2],
   ];
   const inputs = [0, 1, 7, 1029, 0x9e3779b9, 0xffff_ffff];
   for (const [src, name, arity] of cases) {
@@ -3746,6 +4084,23 @@ test('loop fusion and fill runs: IR shapes, and arm64, x86_64, wasm equal the in
     [
       `fn xf u32x10 u32 u32 -> u32x10\nc eq p1 0\nj sub p1 1\nt get p0 j\ns select c p2 t\na shl s 13\nb xor s a\nc2 shr b 17\nd xor b c2\nn set p0 p1 d\nret n\nend\nfn xr u32 u32 u32x10 -> u32\nv get p2 p1\nw add p0 v\nret w\nend\nfn rec u32 u32 -> u32\nz arr ${zeros(10)}\na fold xf 10 z p0\nr fold xr 9 p1 a\nret r\nend`,
       'rec',
+      1,
+    ],
+    // recurrences whose carried element starts at the trip-0 arm: a literal (ne form), a
+    // parameter of the caller, and two guards with different arms (seeded with 0 instead)
+    [
+      `fn yl u32x10 u32 u32 -> u32x10\nc ne p1 0\nj sub p1 1\nt get p0 j\ns select c t 7\na mul s 3\nb add a p2\nn set p0 p1 b\nret n\nend\nfn yr u32 u32 u32x10 -> u32\nv get p2 p1\nw xor p0 v\nm mul w 5\nret m\nend\nfn recl u32 u32 -> u32\nz arr ${zeros(10)}\na fold yl 10 z p0\nr fold yr 10 p1 a\nret r\nend`,
+      'recl',
+      1,
+    ],
+    [
+      `fn yp u32x10 u32 u32 -> u32x10\nc eq p1 0\nj sub p1 1\nt get p0 j\ns select c p2 t\na shl s 13\nb xor s a\nn set p0 p1 b\nret n\nend\nfn recp u32 u32 -> u32\nz arr ${zeros(10)}\nq add p1 3\na fold yp 10 z q\nr fold yr 10 p0 a\nret r\nend`,
+      'recp',
+      1,
+    ],
+    [
+      `fn ym u32x10 u32 u32 -> u32x10\nc eq p1 0\nj sub p1 1\nt get p0 j\ns select c p2 t\nu select c 9 t\nb xor s u\nd add b p1\nn set p0 p1 d\nret n\nend\nfn recm u32 u32 -> u32\nz arr ${zeros(10)}\na fold ym 10 z p0\nr fold yr 10 p1 a\nret r\nend`,
+      'recm',
       1,
     ],
     // not fused: the array is also read after the consumer

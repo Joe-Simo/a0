@@ -35,6 +35,10 @@
  * node. A `set`/`put` whose aggregate operand is not used after it (and is not the result)
  * writes that operand's slot in place; everything else copies, as value semantics say.
  */
+/* glibc under -std=c11 hides POSIX (realpath, readlink, clock_gettime, PATH_MAX) unless asked. */
+#if defined(__linux__) && !defined(_DEFAULT_SOURCE)
+#define _DEFAULT_SOURCE
+#endif
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>

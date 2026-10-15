@@ -249,7 +249,7 @@ export function cDriver(
       : '';
     const call = `${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print}${flush} printf("\\n");`;
     if (forked)
-      return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } if (!a0_fork) { ${call} break; } fflush(stdout); int fd[2]; if (pipe(fd) != 0) exit(2); pid_t pid = fork(); if (pid == 0) { dup2(fd[1], 2); close(fd[0]); close(fd[1]); ${call} fflush(stdout); _exit(0); } close(fd[1]); a0_reap(pid, fd[0]); break; }`;
+      return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } ${setup}if (!a0_fork) { ${call} break; } fflush(stdout); int fd[2]; if (pipe(fd) != 0) exit(2); pid_t pid = fork(); if (pid == 0) { dup2(fd[1], 2); close(fd[0]); close(fd[1]); ${call} fflush(stdout); _exit(0); } close(fd[1]); a0_reap(pid, fd[0]); break; }`;
     return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } ${setup}${guard}${call} break; }`;
   });
   const hooks = strict
@@ -501,19 +501,24 @@ export function x86Host(clang: string): { arch: string[]; runner: string[] } | s
   return { arch: ['-arch', 'x86_64'], runner: ['/usr/bin/arch', '-x86_64'] };
 }
 
+/**
+ * The C declaration of the io struct a direct native module reads and writes, with the
+ * capacities it was compiled for (src/backends.ts `cIoRuntime`'s layout).
+ */
+export function cIoStruct(caps: { ioInputCapacity: number; ioOutputCapacity: number }): string {
+  return `typedef struct a0_io a0_io;\nstruct a0_io { uint32_t input[${caps.ioInputCapacity}]; uint32_t ninput; uint32_t position; uint32_t output[${caps.ioOutputCapacity}]; uint32_t noutput; };`;
+}
+
 export async function checkX86_64(
   program: TypedProgram,
   cases: readonly Case[],
   tool: ToolInfo,
 ): Promise<TargetReport & { skippedIoFunctions: number; skippedIoCases: number }> {
-  const subset = ioFreeSubset(program);
-  const keep = new Set(subset.functions.map((f) => f.name));
-  const own = cases.filter((c) => keep.has(c.functionName));
-  const skipped = {
-    skippedIoFunctions: program.functions.length - subset.functions.length,
-    skippedIoCases: cases.length - own.length,
-  };
-  const label = `native x86-64 assembly (src/x86_64.ts) via ${'`clang -x assembler`'}, linked with the C test driver; ${skipped.skippedIoFunctions} io functions (${skipped.skippedIoCases} cases) skipped: io is out of scope for this backend`;
+  const subset = program;
+  const own = cases;
+  const skipped = { skippedIoFunctions: 0, skippedIoCases: 0 };
+  const caps = ioCaps(own);
+  const label = `native x86-64 assembly (src/x86_64.ts) via ${'`clang -x assembler`'}, linked with the C test driver; io functions included`;
   if (tool.path === undefined) return { ...blocked(tool, 'x86_64'), ...skipped };
   const host = x86Host(tool.path);
   if (typeof host === 'string')
@@ -524,6 +529,7 @@ export async function checkX86_64(
   const protos = [
     '#include <stdint.h>',
     '#include <stdbool.h>',
+    ...(usesIo(subset) ? [cIoStruct(caps)] : []),
     ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
   ].join('\n');
   const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({
@@ -536,7 +542,7 @@ export async function checkX86_64(
   });
   let report: TargetReport | undefined;
   for (const optimize of [true, false]) {
-    const asm = compile(subset, 'x86_64', { optimize }).text;
+    const asm = compile(subset, 'x86_64', { optimize, ...caps }).text;
     const level = optimize ? 'optimized' : 'unoptimized';
     const r = await withTempDir(async (dir): Promise<TargetReport> => {
       await writeFile(join(dir, 'module.s'), asm, 'utf8');

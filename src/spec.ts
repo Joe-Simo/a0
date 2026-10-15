@@ -85,6 +85,9 @@ const outsideQuotes = (text: string): string => text.replace(/"(?:[^"\\]|\\.)*"/
  * there, so the first node of a function must not be named `pre` or `post`.
  */
 export function specWordOf(text: string): SpecWord | undefined {
+  // Every spec word starts with `e` or `p`: other lines (nearly all) skip the regular expression.
+  const c0 = text.charCodeAt(0);
+  if (c0 !== 101 && c0 !== 112) return undefined;
   const m = /^(ex|pre|post)(?![a-z0-9_])/.exec(text);
   if (m === null) return undefined;
   const word = m[1] as SpecWord;

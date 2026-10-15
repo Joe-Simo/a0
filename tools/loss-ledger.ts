@@ -7,8 +7,15 @@
  *
  * Sources (all under results/):
  *   exec-benchmark.json   ns per call, A0 emitted C against hand-written C, Rust, and every language
- *                         that ran; emitted JS against hand-written JS; binary size against C.
+ *                         that ran; emitted JS against hand-written JS; binary size against C; the
+ *                         direct native backend (axis ns-per-call-arm64 or ns-per-call-x86_64)
+ *                         against the emitted C at clang -O3 in its own object behind the same
+ *                         driver (`clang-o3-out-of-line`: the same program and the same call boundary).
+ *   exec-benchmark-linux-x64.json  the same on Linux x64 (source `exec-benchmark-linux-x64`; the
+ *                         canonical file above is the Apple silicon run).
  *   wasm-benchmark.json   ns per trip, module bytes and load time, A0 direct wasm against clang.
+ *   wasm-benchmark-linux-x64.json  the same on Linux x64 (source `wasm-benchmark-linux-x64`; the
+ *                         canonical file above is the Windows x64 run the site shows).
  *   lang-axes.json        tokens per kernel and per program for canonical A0 and, as a separate
  *                         subject `a0-dense`, for the dense view (src/dense.ts); validation time.
  *   ai-edit-experiment.{haiku,sonnet}-min.json and .{a..f,c400,c4000}.{haiku,sonnet}-min.json
@@ -46,6 +53,8 @@ export const LEDGER_PATH = join('results', 'loss-ledger.json');
 export type Axis =
   | 'ns-per-call'
   | 'ns-per-call-js'
+  | 'ns-per-call-arm64'
+  | 'ns-per-call-x86_64'
   | 'binary-bytes'
   | 'ns-per-trip'
   | 'wasm-bytes'
@@ -66,7 +75,10 @@ export type Axis =
   | 'primer-tokens-per-accepted'
   | 'app-edit-accepted'
   | 'app-edit-tokens-per-accepted'
-  | 'check-latency-ms';
+  | 'check-latency-ms'
+  | 'compile-ms'
+  | 'compile-rss-bytes'
+  | 'compile-output-bytes';
 
 export interface Observation {
   readonly id: string;
@@ -174,8 +186,8 @@ function spreadBand(a: Json, b: Json): number {
   return Math.min(Math.max(1.08, sp(a), sp(b)), 1.25) - 1;
 }
 
-function execObservations(root: string): Observation[] {
-  const doc = readJson(root, 'exec-benchmark.json');
+function execObservations(root: string, file: string, source: string): Observation[] {
+  const doc = readJson(root, file);
   const kernels = obj(doc?.kernels);
   if (doc === undefined || kernels === undefined) return [];
   const load = num((doc.loadAverage as unknown[] | undefined)?.[0]) ?? null;
@@ -192,22 +204,25 @@ function execObservations(root: string): Observation[] {
     const vs = (name: string, s: Json | undefined): void => {
       const v = num(s?.medianNsPerCall);
       if (s !== undefined && v !== undefined)
-        push(
-          lower(
-            'exec-benchmark',
-            kernel,
-            'ns-per-call',
-            name,
-            a0,
-            v,
-            spreadBand(emitted, s),
-            load,
-            true,
-          ),
-        );
+        push(lower(source, kernel, 'ns-per-call', name, a0, v, spreadBand(emitted, s), load, true));
     };
     vs('c-handwritten', obj(c.handwritten));
     vs('rust', obj(c.rust));
+    // The direct native backend against clang -O3 on the same emitted program, both called out of
+    // line from the same driver: the code generators compared at equal call cost.
+    for (const [axis, mine, theirs] of [
+      ['ns-per-call-arm64', 'arm64', 'clangO3OutOfLine'],
+      ['ns-per-call-x86_64', 'x86_64', 'x86_64ClangO3OutOfLine'],
+    ] as const) {
+      const a = obj(c[mine]);
+      const b = obj(c[theirs]);
+      const an = num(a?.medianNsPerCall);
+      const bn = num(b?.medianNsPerCall);
+      if (a !== undefined && b !== undefined && an !== undefined && bn !== undefined)
+        push(
+          lower(source, kernel, axis, 'clang-o3-out-of-line', an, bn, spreadBand(a, b), load, true),
+        );
+    }
     for (const [lang, value] of Object.entries(k)) {
       const l = obj(value);
       if (l?.status === 'ran') vs(lang, l);
@@ -215,7 +230,7 @@ function execObservations(root: string): Observation[] {
     const bytes = obj(c.binaryBytes);
     push(
       lower(
-        'exec-benchmark',
+        source,
         kernel,
         'binary-bytes',
         'c-handwritten',
@@ -232,7 +247,7 @@ function execObservations(root: string): Observation[] {
     if (jsA !== undefined && jsB !== undefined)
       push(
         lower(
-          'exec-benchmark',
+          source,
           kernel,
           'ns-per-call-js',
           'js-handwritten',
@@ -247,8 +262,8 @@ function execObservations(root: string): Observation[] {
   return out;
 }
 
-function wasmObservations(root: string): Observation[] {
-  const doc = readJson(root, 'wasm-benchmark.json');
+function wasmObservations(root: string, file: string, source: string): Observation[] {
+  const doc = readJson(root, file);
   const rows = doc?.rows;
   if (doc === undefined || !Array.isArray(rows)) return [];
   // The file records no load average: its timings are flagged unverified until it does.
@@ -264,7 +279,7 @@ function wasmObservations(root: string): Observation[] {
       timing: boolean,
     ): void => {
       const o = lower(
-        'wasm-benchmark',
+        source,
         r.kernel as string,
         axis,
         'clang',
@@ -597,6 +612,49 @@ function checkLatencyObservations(root: string): Observation[] {
   return out;
 }
 
+/**
+ * The compile-speed reports (results/compile-speed-<platform>.json, tools/compile-speed.ts): per program
+ * and target, the shipped `a0 emit` against clang (wasm) and tsc/esbuild (js) on the equivalent input:
+ * median wall time, median peak RSS and output bytes. Times and RSS carry the report's tie band and its
+ * highest load; output bytes are deterministic.
+ */
+function compileSpeedObservations(root: string): Observation[] {
+  const out: Observation[] = [];
+  let files: string[] = [];
+  try {
+    files = readdirSync(join(root, 'results')).filter((f) => /^compile-speed-.*\.json$/.test(f));
+  } catch {
+    return out;
+  }
+  for (const file of files.sort()) {
+    const rep = readJson(root, file);
+    const comps = rep?.comparisons;
+    if (!Array.isArray(comps)) continue;
+    const load = num(obj(rep?.load)?.max) ?? null;
+    const source = file.replace(/\.json$/, '');
+    for (const c of comps) {
+      const r = obj(c);
+      if (r === undefined) continue;
+      const axis = String(r.metric) as Axis;
+      if (axis !== 'compile-ms' && axis !== 'compile-rss-bytes' && axis !== 'compile-output-bytes')
+        continue;
+      const o = lower(
+        source,
+        `${String(r.program)}/${String(r.target)}`,
+        axis,
+        String(r.competitor),
+        num(r.a0) ?? 0,
+        num(r.other) ?? 0,
+        num(r.band) ?? 0.08,
+        load,
+        axis !== 'compile-output-bytes',
+      );
+      if (o !== undefined) out.push(o);
+    }
+  }
+  return out;
+}
+
 interface PrimerCell {
   readonly n: number;
   readonly oneShot: { readonly rate: number };
@@ -737,14 +795,17 @@ function editProtocolObservations(root: string): Observation[] {
 /** Every observation the results files give, losses and ties and wins alike. */
 export function observations(root = '.'): Observation[] {
   return [
-    ...execObservations(root),
-    ...wasmObservations(root),
+    ...execObservations(root, 'exec-benchmark.json', 'exec-benchmark'),
+    ...execObservations(root, 'exec-benchmark-linux-x64.json', 'exec-benchmark-linux-x64'),
+    ...wasmObservations(root, 'wasm-benchmark.json', 'wasm-benchmark'),
+    ...wasmObservations(root, 'wasm-benchmark-linux-x64.json', 'wasm-benchmark-linux-x64'),
     ...langAxesObservations(root),
     ...aiObservations(root),
     ...specObservations(root),
     ...primerObservations(root),
     ...appEditObservations(root),
     ...checkLatencyObservations(root),
+    ...compileSpeedObservations(root),
     ...editProtocolObservations(root),
   ];
 }

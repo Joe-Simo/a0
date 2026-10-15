@@ -24,7 +24,7 @@ import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { COMPILER_VERSION, compile } from '../src/backends.js';
 import { parseAndValidate } from '../src/core.js';
-import { findWasmClang, runTool, withTempDir } from '../src/toolchain.js';
+import { findWasmClang, runTool, WASM_CLANG_REF_FLAGS, withTempDir } from '../src/toolchain.js';
 import { wasmModuleBytes } from '../src/wasm.js';
 import { KERNELS, type Kernel } from './exec-bench-kernels.js';
 import { loadGate, waitQuiet } from './quiet.js';
@@ -67,6 +67,7 @@ function cDriver(k: Kernel): string {
     return `uint32_t a${n} = (a${n - 1} ^ (a${n - 1} >> 15)) * ${MULS[n]}u;`;
   }).join(' ');
   return `typedef unsigned int uint32_t;
+typedef unsigned char uint8_t;
 ${k.c}
 __attribute__((export_name("wb_run"))) uint32_t wb_run(uint32_t n, uint32_t h) {
   for (uint32_t i = 0; i < n; i++) {
@@ -109,6 +110,14 @@ interface Row {
   readonly verdict: 'win' | 'tie' | 'loss';
 }
 
+/** A kernel whose clang reference failed to build: reported, not timed, and kept out of the geomean. */
+interface Skip {
+  readonly kernel: string;
+  readonly reason: string;
+}
+
+class BuildSkip extends Error {}
+
 async function benchKernel(k: Kernel, clang: string, dir: string): Promise<Row> {
   const program = parseAndValidate(a0Driver(k));
   const a0Bytes = new Uint8Array(
@@ -117,17 +126,8 @@ async function benchKernel(k: Kernel, clang: string, dir: string): Promise<Row> 
   const cPath = join(dir, `${k.name}.c`);
   const wPath = join(dir, `${k.name}.wasm`);
   await writeFile(cPath, cDriver(k));
-  const r = runTool(clang, [
-    '--target=wasm32',
-    '-O3',
-    '-nostdlib',
-    '-fuse-ld=lld',
-    '-Wl,--no-entry',
-    '-o',
-    wPath,
-    cPath,
-  ]);
-  if (r.status !== 0) throw new Error(`clang ${k.name}: ${r.stderr}`);
+  const r = runTool(clang, [...WASM_CLANG_REF_FLAGS, '-o', wPath, cPath]);
+  if (r.status !== 0) throw new BuildSkip(`clang build failed: ${r.stderr.trim()}`);
   const clangBytes = new Uint8Array(await readFile(wPath));
 
   const trips = Math.max(1, Math.floor(TRIPS / (k.iterScale ?? 1) / SCALE));
@@ -188,23 +188,36 @@ async function main(): Promise<void> {
     throw new Error('wasm-bench needs a clang with the wasm32 target and wasm-ld');
   const clang = tool.path;
   const rows: Row[] = [];
+  const skipped: Skip[] = [];
   await withTempDir(async (dir) => {
     for (const k of KERNELS) {
       if (ONLY !== null && !ONLY.has(k.name)) continue;
       waitQuiet();
-      const row = await benchKernel(k, clang, dir);
+      let row: Row;
+      try {
+        row = await benchKernel(k, clang, dir);
+      } catch (e) {
+        // Only a reference build failure is a skip; a checksum mismatch or a crash still aborts.
+        if (!(e instanceof BuildSkip)) throw e;
+        skipped.push({ kernel: k.name, reason: e.message });
+        console.log(`${k.name.padEnd(10)} SKIPPED: ${e.message}`);
+        continue;
+      }
       rows.push(row);
       console.log(
         `${row.kernel.padEnd(10)} bytes ${String(row.bytes.a0).padStart(5)} vs ${String(row.bytes.clang).padStart(5)}  load ${row.loadMs.a0.toFixed(3)} vs ${row.loadMs.clang.toFixed(3)} ms  run ${row.nsPerTrip.a0.toFixed(3)} vs ${row.nsPerTrip.clang.toFixed(3)} ns/trip  ${row.speedup.toFixed(2)}x ${row.verdict}`,
       );
     }
   });
+  if (rows.length === 0) throw new Error('wasm-bench: every kernel was skipped');
   const geomean = Math.exp(rows.reduce((n, r) => n + Math.log(r.speedup), 0) / rows.length);
-  console.log(`geomean clang/A0 run time: ${geomean.toFixed(3)} (above 1: A0 faster)`);
+  console.log(
+    `geomean clang/A0 run time: ${geomean.toFixed(3)} (above 1: A0 faster)${skipped.length > 0 ? `, ${skipped.length} kernel(s) skipped` : ''}`,
+  );
   const report = {
     compiler: COMPILER_VERSION,
     engine: `node ${process.version} (V8 ${process.versions.v8})`,
-    clang: `${clang} (${tool.version ?? 'unknown'}), -O3 --target=wasm32 -nostdlib, wasm-ld --no-entry`,
+    clang: `${clang} (${tool.version ?? 'unknown'}), -O3 --target=wasm32 -nostdlib -mbulk-memory, wasm-ld --no-entry`,
     platform: `${process.platform}-${process.arch}`,
     loadAverage: systemLoadTriple(),
     loadSource: loadSource(),
@@ -214,6 +227,7 @@ async function main(): Promise<void> {
       'Same driver on both sides (n dependent trips of h = h*5 + K(args(h, i)), run inside the module). A0: kernel and driver in A0, direct wasm32 backend. clang: hand-written C kernel from tools/exec-bench-kernels.ts, driver as a C loop. Medians over interleaved samples after warm-up; load = WebAssembly.compile + instantiate.',
     geomeanSpeedup: geomean,
     rows,
+    skipped,
   };
   await mkdir(dirname(OUT), { recursive: true });
   await writeReport(OUT, report);

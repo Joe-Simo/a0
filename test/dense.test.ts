@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
@@ -75,6 +76,30 @@ function roundTrip(
     assert.equal(formatSource(back), formatSource(program), `comments differ for:\n${dense}`);
   return dense;
 }
+
+test('dense: deep prefix expressions round-trip with a small host stack', () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--stack-size=512',
+      '--input-type=module',
+      '-e',
+      `
+    import assert from 'node:assert/strict';
+    import { parseDense, formatDense } from ${JSON.stringify(new URL('../src/dense.js', import.meta.url).href)};
+    import { formatProgram } from ${JSON.stringify(new URL('../src/core.js', import.meta.url).href)};
+    const source = 'fn deep ' + 'add '.repeat(4000) + 'A' + ' 1'.repeat(4000);
+    const program = parseDense(source);
+    assert.equal(program.functions[0].nodes.length, 4000);
+    const dense = formatDense(program);
+    assert.equal(formatProgram(parseDense(dense)), formatProgram(program));
+    assert.equal(formatDense(parseDense(dense)), dense);
+  `,
+    ],
+    { encoding: 'utf8', timeout: 30_000 },
+  );
+  assert.equal(result.status, 0, result.stderr || String(result.error));
+});
 
 test('dense: the kernels print as short as designed and convert back exactly', () => {
   assert.equal(
@@ -886,4 +911,33 @@ test('dense combined compact rules: every program round-trips exactly with all o
       assert.equal(formatDense(back, { known, style: DIGITS }), dense, `${path}: fixed point`);
     }
   }
+});
+
+test('dense: natural spellings parse as meant (bound p-words, `;` separators, spaced record types)', () => {
+  const run1 = (src: string, ...args: unknown[]): unknown => {
+    const p = parseAndValidate(formatProgram(parseDense(src)));
+    return run(p.byName.get('f') as TypedProgram['functions'][number], args as never);
+  };
+  const arr = (v: unknown): number[] => Array.from(v as Uint32Array);
+  // A name bound at the start of a line is that value, even when spelled like a parameter word.
+  const absdiff =
+    'fn f u32x4 -> u32\na get A 0\nb get A 1\nl0 lt a b\np0 sub b a\nq0 sub a b\nr select l0 p0 q0';
+  assert.equal(run1(absdiff, [7, 3, 0, 0]), 4);
+  assert.equal(run1(absdiff, [3, 7, 0, 0]), 4);
+  assert.match(formatProgram(parseDense(absdiff)), /p0_2 sub/);
+  assert.equal(run1('fn f\np0 mov A\nadd p0 1', 4), 5);
+  // An unbound p-word is still a parameter.
+  assert.equal(run1('fn f _ _ -> u32\nadd p0 p1', 2, 5), 7);
+  // `;` between array elements separates them; `[x;N]` with a decimal N still repeats.
+  const rot =
+    'fn f u32x4 -> u32x4\nx0 get A 0\nx1 get A 1\nx2 get A 2\nx3 get A 3\nr [x1;x2;x3;x0]';
+  assert.deepEqual(arr(run1(rot, [1, 2, 3, 4])), [2, 3, 4, 1]);
+  assert.deepEqual(arr(run1('fn f _ -> u32x3\n[A;3]', 9)), [9, 9, 9]);
+  assert.throws(() => parseDense('fn f _ -> u32x3\n[A;0]'), /repeat count/);
+  assert.throws(() => parseDense('fn f -> u32x3\n[7 8;2]'), /unexpected ';'/);
+  // A record type may separate its fields with blanks.
+  assert.equal(
+    formatProgram(parseDense('fn f (u32 u32) -> (u32 u32)\nr (at A 1 at A 0)')),
+    formatProgram(parseDense('fn f (u32,u32) -> (u32,u32)\nr (at A 1 at A 0)')),
+  );
 });

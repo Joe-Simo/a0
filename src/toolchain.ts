@@ -224,6 +224,25 @@ export function findGcc(): ToolInfo {
   return { name: 'gcc', path, version: versionOf(path) };
 }
 
+/**
+ * Flags for the freestanding clang wasm32 reference builds (wasm-bench, wasm-ab). `-nostdlib` means
+ * no libc, but clang still lowers a zeroed or copied local array (`uint32_t h[256] = {0}`) to a call
+ * to `memset`/`memcpy`, which then fails to link. `-mbulk-memory` lets LLVM lower those intrinsics to
+ * the wasm `memory.fill`/`memory.copy` instructions instead: no libc call, no hand-written memset in
+ * the measured module, no change to the kernel's own code (unlike `-fno-builtin`, which also stops
+ * clang recognizing idioms). Bulk memory is a finished wasm proposal shipped in every engine we run
+ * (V8 since Node 12) and on by default for clang's generic wasm CPU from LLVM 20, so this matches
+ * what a current clang emits anyway.
+ */
+export const WASM_CLANG_REF_FLAGS: readonly string[] = [
+  '--target=wasm32',
+  '-O3',
+  '-nostdlib',
+  '-mbulk-memory',
+  '-fuse-ld=lld',
+  '-Wl,--no-entry',
+];
+
 /** A Clang that can target wasm32 together with a reachable wasm-ld. */
 export function findWasmClang(): ToolInfo & { readonly wasmLd: string | undefined } {
   const llvmClangs = BREW_PREFIXES.flatMap((p) => [

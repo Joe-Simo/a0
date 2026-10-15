@@ -1124,10 +1124,16 @@ test('native: every op at the boundaries equals the interpreter on arm64 and x86
 test('native: the strict corpus equals the interpreter (value, or the exact trap line) on arm64 and x86_64', async () => {
   const strict = validate({ profile: 'strict', functions: generateCorpus().functions });
   const cases: Case[] = [];
-  for (const c of generateCases(strict)) {
-    if (c.input !== undefined) continue;
-    cases.push(caseFor(fnOf(strict, c.functionName), [...c.args]));
-  }
+  // The io functions too: x86_64 runs them (an exhausted read traps `input`); arm64 leaves them out.
+  for (const c of generateCases(strict))
+    cases.push(
+      caseFor(
+        fnOf(strict, c.functionName),
+        [...c.args],
+        c.input === undefined ? undefined : [...c.input],
+      ),
+    );
+  assert.ok(cases.some((c) => c.expectedTrap?.startsWith('runtime: trap input')));
   const traps = cases.filter((c) => c.expectedTrap !== undefined).length;
   assert.ok(traps > 0 && traps < cases.length, `${traps} of ${cases.length} cases trap`);
   await nativeBackends(strict, cases, 'corpus');

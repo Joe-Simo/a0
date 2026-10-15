@@ -165,11 +165,7 @@ test('arm64 carried recurrences start at the guard value instead of selecting it
   assert.doesNotMatch(body, /csel/);
 });
 
-test('arm64 4x4 products of scalar grids run in NEON registers and equal the interpreter', {
-  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
-}, async () => {
-  const clang = findClang().path;
-  assert.ok(clang, 'clang is required as the assembler/linker driver');
+test('arm64 4x4 products of scalar grids run in NEON registers and equal the interpreter', async (t) => {
   // S x M (right) or M x S (left) as straight-line code, folded `count` times over two arrays
   // built from the inputs; the optimizer turns the fold into products of scalar grids.
   const step = (name: string, side: 'right' | 'left'): string => {
@@ -238,11 +234,22 @@ test('arm64 4x4 products of scalar grids run in NEON registers and equal the int
     ),
   ].join('\n\n');
   const names = ['mr1', 'mr2', 'mr3', 'mr5', 'mr8', 'ml3', 'ml8', 'mr4', 'mr6'];
-  const asm = await checkAgainstInterpreter(src, names, clang);
+  const asm = compile(parseAndValidate(src), 'arm64').text;
   const body = /_a0_mr8:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
   assert.match(body, /mla v\d+\.4s, v\d+\.4s, v\d+\.s\[\d\]/);
   // the 32 + 16 scalar products of the straight-line form are gone
   assert.ok((body.match(/\n\tmul w/g)?.length ?? 0) < 60);
+  await t.test(
+    'native execution equals the interpreter',
+    {
+      skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+    },
+    async () => {
+      const clang = findClang().path;
+      assert.ok(clang, 'clang is required as the assembler/linker driver');
+      await checkAgainstInterpreter(src, names, clang);
+    },
+  );
 });
 
 test('arm64 absolute differences and bit tests use subs/cneg and tst, and equal the interpreter', {

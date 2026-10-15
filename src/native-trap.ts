@@ -9,8 +9,8 @@
  * and the C runtime print (`formatTrap`: `runtime: trap bounds fn=.. at=f.n trip=3 chain=a>b
  * fix: ..`) to stderr with the write system call, then exits with status 3. It uses no libc.
  *
- * Only the two traps these backends can raise exist here: `bounds` (0) and `divzero` (1); the
- * backends refuse io, so the `input` trap has no site.
+ * The traps these backends can raise: `bounds` (0), `divzero` (1) and `input` (2, a strict `read`
+ * past the input; only the x86-64 backend implements io, so only its reporter selects it).
  */
 
 import type { TypedFunc } from './core.js';
@@ -26,15 +26,19 @@ export const FRAME_BASE = 16;
 export const NATIVE_TRAPS = [
   ['bounds', TRAP_FIX.bounds],
   ['divzero', TRAP_FIX.divzero],
+  ['input', TRAP_FIX.input],
 ] as const;
 
-export type NativeTrapKind = 'bounds' | 'divzero';
-export const trapIndex = (kind: NativeTrapKind): number => (kind === 'bounds' ? 0 : 1);
+export type NativeTrapKind = (typeof NATIVE_TRAPS)[number][0];
+export const trapIndex = (kind: NativeTrapKind): number =>
+  NATIVE_TRAPS.findIndex(([k]) => k === kind);
 
 /** What a module needs of the runtime: the frame area and the line buffer, sized from its functions. */
 export interface TrapModule {
   readonly stackBytes: number;
   readonly bufferBytes: number;
+  /** Some function has a strict `read`: the reporter also knows the `input` kind. */
+  readonly input: boolean;
 }
 
 /** The runtime a module of `program` needs, or undefined when no function of it can trap. */
@@ -48,11 +52,18 @@ export function trapModuleOf(program: {
   return {
     stackBytes: FRAME_BASE + FRAME_BYTES * depth,
     bufferBytes: 1024 + 3 * (names + depth * (ids + 2)),
+    input: program.functions.some((f) => f.nodes.some((n) => n.op === 'read')),
   };
 }
 
-/** The texts the reporter copies, as `[label suffix, text]`. */
-function texts(): readonly (readonly [string, string])[] {
+/** The texts the reporter copies, as `[label suffix, text]`; `io` adds the `input` kind. */
+function texts(io: boolean): readonly (readonly [string, string])[] {
+  const input: (readonly [string, string])[] = io
+    ? [
+        ['k2', NATIVE_TRAPS[2][0]],
+        ['f2', NATIVE_TRAPS[2][1]],
+      ]
+    : [];
   return [
     ['head', 'runtime: trap '],
     ['k0', NATIVE_TRAPS[0][0]],
@@ -65,6 +76,7 @@ function texts(): readonly (readonly [string, string])[] {
     ['fix', ' fix: '],
     ['f0', NATIVE_TRAPS[0][1]],
     ['f1', NATIVE_TRAPS[1][1]],
+    ...input,
   ];
 }
 
@@ -174,7 +186,7 @@ export function arm64TrapRuntime(mod: TrapModule): string {
     '\tmov x0, #3',
     '\tmov x16, #1',
     '\tsvc #0x80',
-    ...texts().flatMap(([k, t]) => [`${S(k)}:`, asciz(t)]),
+    ...texts(false).flatMap(([k, t]) => [`${S(k)}:`, asciz(t)]),
     '\t.p2align 2',
     `\t.zerofill __DATA,__bss,_a0_ts,${mod.stackBytes},4`,
     `\t.zerofill __DATA,__bss,_a0_tb,${mod.bufferBytes},4`,
@@ -231,13 +243,17 @@ export function x86TrapRuntime(mod: TrapModule, platform: 'darwin' | 'linux'): s
     '\tmovq %rdi, %r13',
     `\tleaq ${S('head')}(%rip), %rsi`,
     `\tcall ${u}a0_cpy`,
-    '\ttestl %r12d, %r12d',
-    '\tjne 1f',
+    ...(mod.input
+      ? ['\tcmpl $1, %r12d', '\tje 1f', '\tja 3f']
+      : ['\ttestl %r12d, %r12d', '\tjne 1f']),
     `\tleaq ${S('k0')}(%rip), %rsi`,
     `\tleaq ${S('f0')}(%rip), %rbp`,
     '\tjmp 2f',
     `1:\tleaq ${S('k1')}(%rip), %rsi`,
     `\tleaq ${S('f1')}(%rip), %rbp`,
+    ...(mod.input
+      ? ['\tjmp 2f', `3:\tleaq ${S('k2')}(%rip), %rsi`, `\tleaq ${S('f2')}(%rip), %rbp`]
+      : []),
     `2:\tcall ${u}a0_cpy`,
     `\tleaq ${S('fn')}(%rip), %rsi`,
     `\tcall ${u}a0_cpy`,
@@ -296,7 +312,7 @@ export function x86TrapRuntime(mod: TrapModule, platform: 'darwin' | 'linux'): s
     '\tmovl $3, %edi',
     `\tmovl $${platform === 'darwin' ? '0x2000001' : '231'}, %eax`,
     '\tsyscall',
-    ...texts().flatMap(([k, t]) => [`${S(k)}:`, asciz(t)]),
+    ...texts(mod.input).flatMap(([k, t]) => [`${S(k)}:`, asciz(t)]),
   ];
   if (platform === 'darwin')
     lines.push(

@@ -59,7 +59,8 @@ export function containsIo(t: Type): boolean {
   if (t === 'io') return true;
   if (typeof t === 'string') return false;
   if (t.kind === 'arr') return containsIo(t.elem);
-  return t.fields.some(containsIo);
+  for (const f of t.fields) if (containsIo(f)) return true;
+  return false;
 }
 export interface ArrayType {
   readonly kind: 'arr';
@@ -81,14 +82,15 @@ export function isPrimitive(t: Type): t is 'u32' | 'bool' | 'io' {
 }
 
 export function typeEquals(a: Type, b: Type): boolean {
-  if (isScalar(a) || isScalar(b) || a === 'io' || b === 'io') return a === b;
+  // Types are immutable: one object (a type passed along from a signature) equals itself.
+  if (a === b) return true;
+  if (typeof a === 'string' || typeof b === 'string') return false;
   if (a.kind === 'arr')
     return b.kind === 'arr' && a.length === b.length && typeEquals(a.elem, b.elem);
-  return (
-    b.kind === 'rec' &&
-    a.fields.length === b.fields.length &&
-    a.fields.every((f, i) => typeEquals(f, b.fields[i] as Type))
-  );
+  if (b.kind !== 'rec' || a.fields.length !== b.fields.length) return false;
+  for (let i = 0; i < a.fields.length; i += 1)
+    if (!typeEquals(a.fields[i] as Type, b.fields[i] as Type)) return false;
+  return true;
 }
 
 export function formatType(t: Type): string {
@@ -206,6 +208,7 @@ export const OPS: readonly Op[] = [
 export const CHECKED_OP_NAMES = ['cadd', 'csub', 'cmul', 'cdiv', 'crem', 'cget'] as const;
 export const CHECKED_OPS: ReadonlySet<Op> = new Set<Op>(CHECKED_OP_NAMES);
 export const ALL_OPS: readonly Op[] = [...OPS, ...CHECKED_OP_NAMES];
+const ALL_OP_SET: ReadonlySet<string> = new Set(ALL_OPS);
 
 /**
  * The targets that implement the strict profile and the checked ops: `js`, `c` (with its C++ and
@@ -345,13 +348,13 @@ export interface Comments {
 function commentStart(line: string): number {
   let quoted = false;
   for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i];
-    if (ch === '\\' && quoted) {
-      i += 1;
-    } else if (ch === '"') {
-      quoted = !quoted;
-    } else if (ch === '#' && !quoted) {
-      return i;
+    const c = line.charCodeAt(i);
+    if (c === 92 && quoted) {
+      i += 1; // a `\` escape inside a text literal
+    } else if (c === 34) {
+      quoted = !quoted; // `"`
+    } else if (c === 35 && !quoted) {
+      return i; // `#`
     }
   }
   return -1;
@@ -469,16 +472,8 @@ export interface TypedProgram {
   readonly byName: ReadonlyMap<string, TypedFunc>;
 }
 
-/**
- * Borrowed reads (backends with flat aggregate storage: C, the native targets, wasm). A `get`
- * or `at` whose result is an aggregate names a part of its container's storage instead of
- * copying it; `mov` and `select` of a borrow alias it too. Value semantics then require that
- * the container is not updated in place while a borrow of it is still read. Is some borrow of
- * `o` read after the node at `index` (or by that node itself, unless `selfRead`: a `set`/`put`
- * reads its value operand before writing its target, whereas a fold's body keeps reading its
- * extras while the state changes), or returned?
- */
-export function borrowLive(fn: TypedFunc, o: Operand, index: number, selfRead: boolean): boolean {
+/** The borrows of `o` (`borrowLive`): aggregate reads of it, or of an earlier borrow of it. */
+export function borrowsOf(fn: TypedFunc, o: Operand): Set<string> {
   const same = (x: Operand): boolean =>
     (x.kind === 'node' && o.kind === 'node' && x.id === o.id) ||
     (x.kind === 'param' && o.kind === 'param' && x.index === o.index);
@@ -495,6 +490,20 @@ export function borrowLive(fn: TypedFunc, o: Operand, index: number, selfRead: b
     // From `o` itself or from an earlier borrow of it (nodes are in definition order).
     if (borrowed) borrows.add(n.id);
   }
+  return borrows;
+}
+
+/**
+ * Borrowed reads (backends with flat aggregate storage: C, the native targets, wasm). A `get`
+ * or `at` whose result is an aggregate names a part of its container's storage instead of
+ * copying it; `mov` and `select` of a borrow alias it too. Value semantics then require that
+ * the container is not updated in place while a borrow of it is still read. Is some borrow of
+ * `o` read after the node at `index` (or by that node itself, unless `selfRead`: a `set`/`put`
+ * reads its value operand before writing its target, whereas a fold's body keeps reading its
+ * extras while the state changes), or returned?
+ */
+export function borrowLive(fn: TypedFunc, o: Operand, index: number, selfRead: boolean): boolean {
+  const borrows = borrowsOf(fn, o);
   if (borrows.size === 0) return false;
   const isBorrow = (x: Operand): boolean => x.kind === 'node' && borrows.has(x.id);
   if (isBorrow(fn.ret)) return true;
@@ -547,9 +556,85 @@ export const LIMITS = {
   maxIoOutput: 1 << 20,
 } as const;
 
-const IDENT = /^[a-z][a-z0-9_]{0,63}$/;
-const PARAM = /^p(0|[1-9][0-9]*)$/;
-const U32_LITERAL = /^(0|[1-9][0-9]*)$/;
+// The word shapes below are tested over char codes, not with regular expressions: a regular expression
+// starts in V8's regexp interpreter, and a cold `a0 check` runs these once per word of the program.
+
+/** `/^[a-z][a-z0-9_]{0,63}$/.test(s)`. */
+function isIdentShape(s: string): boolean {
+  const n = s.length;
+  if (n === 0 || n > 64) return false;
+  let c = s.charCodeAt(0);
+  if (c < 97 || c > 122) return false;
+  for (let i = 1; i < n; i += 1) {
+    c = s.charCodeAt(i);
+    if (!((c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95)) return false;
+  }
+  return true;
+}
+
+/** `/^(0|[1-9][0-9]*)$/.test(s.slice(from))`. */
+function isDecimalFrom(s: string, from: number): boolean {
+  const n = s.length;
+  if (from >= n) return false;
+  const c0 = s.charCodeAt(from);
+  if (c0 === 48) return n === from + 1;
+  if (c0 < 49 || c0 > 57) return false;
+  for (let i = from + 1; i < n; i += 1) {
+    const c = s.charCodeAt(i);
+    if (c < 48 || c > 57) return false;
+  }
+  return true;
+}
+
+/** `/^p(0|[1-9][0-9]*)$/.test(s)`: a parameter reference. */
+function isParamWord(s: string): boolean {
+  return s.charCodeAt(0) === 112 && isDecimalFrom(s, 1);
+}
+
+/** Whether `c` is a char code `\s` matches. */
+function isSpaceCode(c: number): boolean {
+  return (
+    c === 32 ||
+    (c >= 9 && c <= 13) ||
+    c === 0xa0 ||
+    c === 0x1680 ||
+    (c >= 0x2000 && c <= 0x200a) ||
+    c === 0x2028 ||
+    c === 0x2029 ||
+    c === 0x202f ||
+    c === 0x205f ||
+    c === 0x3000 ||
+    c === 0xfeff
+  );
+}
+
+// The scanners below (and the line scanner in `parse`) test the printable ASCII range (`!` to `~`,
+// never `\s`) inline before calling `isSpaceCode`: nearly every char of a program is in it, and a
+// cold run executes them unoptimised, where each call costs.
+
+/** `text.trim().split(/\s+/)`, in one pass over the char codes. */
+function splitWords(text: string): string[] {
+  const out: string[] = [];
+  const n = text.length;
+  let i = 0;
+  for (;;) {
+    while (i < n) {
+      const c = text.charCodeAt(i);
+      if ((c > 32 && c < 0x7f) || !isSpaceCode(c)) break;
+      i += 1;
+    }
+    if (i === n) break;
+    const start = i;
+    while (i < n) {
+      const c = text.charCodeAt(i);
+      if (!((c > 32 && c < 0x7f) || !isSpaceCode(c))) break;
+      i += 1;
+    }
+    out.push(start === 0 && i === n ? text : text.slice(start, i));
+  }
+  if (out.length === 0) out.push('');
+  return out;
+}
 const RESERVED = new Set(['fn', 'ret', 'end', 'patch', 'true', 'false']);
 const U32_MAX = 0xffff_ffff;
 
@@ -559,11 +644,11 @@ export function utf8Length(text: string): number {
 }
 
 export function isValidIdentifier(id: string): boolean {
-  return IDENT.test(id) && !RESERVED.has(id) && !PARAM.test(id);
+  return isIdentShape(id) && !RESERVED.has(id) && !isParamWord(id);
 }
 
 export function isValidFunctionName(name: string): boolean {
-  return IDENT.test(name) && !RESERVED.has(name);
+  return isIdentShape(name) && !RESERVED.has(name);
 }
 
 /** A line of source as the checker compares it: comment removed, whitespace normalised. */
@@ -676,15 +761,21 @@ export function parseType(text: string, line?: number, header?: string): Type {
  * literals.
  */
 export function parseOperand(text: string, line?: number, lineText?: string): Operand {
-  if (text === 'true') return { kind: 'bool', value: true };
-  if (text === 'false') return { kind: 'bool', value: false };
-  if (PARAM.test(text)) return { kind: 'param', index: Number(text.slice(1)) };
-  if (U32_LITERAL.test(text)) {
-    const value = Number(text);
-    if (value > U32_MAX) throw diag('A0004', [text], line === undefined ? {} : { line });
-    return { kind: 'u32', value };
+  // The first char picks the one shape the word can have: a literal, a parameter, or a name.
+  const c0 = text.charCodeAt(0);
+  if (c0 >= 48 && c0 <= 57) {
+    if (isDecimalFrom(text, 0)) {
+      const value = Number(text);
+      if (value > U32_MAX) throw diag('A0004', [text], lineAt(line));
+      return { kind: 'u32', value };
+    }
+  } else if (c0 === 112 && isDecimalFrom(text, 1)) {
+    return { kind: 'param', index: Number(text.slice(1)) };
+  } else if (isIdentShape(text)) {
+    if (text === 'true') return { kind: 'bool', value: true };
+    if (text === 'false') return { kind: 'bool', value: false };
+    if (!RESERVED.has(text)) return { kind: 'node', id: text };
   }
-  if (isValidIdentifier(text)) return { kind: 'node', id: text };
   const at = line === undefined ? {} : { line };
   if (lineText !== undefined) {
     const edit = (rule: string, to: string): FixEdit => lineEdit(rule, lineText, to, line);
@@ -710,7 +801,7 @@ export function parseOperand(text: string, line?: number, lineText?: string): Op
     }
     if (
       lower !== text &&
-      (lower === 'true' || lower === 'false' || PARAM.test(lower) || isValidIdentifier(lower))
+      (lower === 'true' || lower === 'false' || isParamWord(lower) || isValidIdentifier(lower))
     ) {
       throw diag('A0003', [text], {
         ...at,
@@ -733,7 +824,7 @@ export function parseOperand(text: string, line?: number, lineText?: string): Op
 }
 
 function isOp(text: string): text is Op {
-  return (ALL_OPS as readonly string[]).includes(text);
+  return ALL_OP_SET.has(text);
 }
 
 /**
@@ -877,33 +968,64 @@ function nestedError(
   return cls === e.code ? e : new A0Error(e.detail, e.line, { ...e.detailOf(), code: cls });
 }
 
+/** `words.map((w) => parseOperand(w, line, lineText))`, without a closure per line. */
+function operandsOf(
+  words: readonly string[],
+  line: number | undefined,
+  lineText: string,
+): Operand[] {
+  const out: Operand[] = [];
+  for (let k = 0; k < words.length; k += 1)
+    out.push(parseOperand(words[k] as string, line, lineText));
+  return out;
+}
+
 /** Parse one instruction line `id op operand...` (no validation of references). */
+/** The `line` field of a diagnostic, built only when one is thrown. */
+function lineAt(line: number | undefined): { line?: number } {
+  return line === undefined ? {} : { line };
+}
+
 export function parseNode(lineText: string, line?: number): Node {
-  const at = line === undefined ? {} : { line };
-  const textMatch = TEXT_LINE.exec(lineText.trim());
+  return parseNodeOf(lineText, line, undefined);
+}
+
+/**
+ * `parseNode`, given the line's words (`lineText.trim().split(/\s+/)`) when the parser has them
+ * already; only for a line without a `"`, as a text literal is matched on the whole line.
+ */
+function parseNodeOf(
+  lineText: string,
+  line: number | undefined,
+  words: readonly string[] | undefined,
+): Node {
+  // TEXT_LINE needs a quote: a line without one skips the regular expression.
+  const textMatch =
+    words === undefined && lineText.includes('"') ? TEXT_LINE.exec(lineText.trim()) : null;
   if (textMatch !== null) {
     // `id text "..."` desugars to `arr` of UTF-8 byte words; the source form is retained.
     const [, id, raw] = textMatch;
     if (id === undefined || !isValidIdentifier(id)) {
-      throw diag('A0005', [id ?? ''], at);
+      throw diag('A0005', [id ?? ''], lineAt(line));
     }
     const text = decodeText(raw ?? '', line);
     const bytes = new TextEncoder().encode(text);
-    if (bytes.length === 0) throw diag('A0006', [], at);
+    if (bytes.length === 0) throw diag('A0006', [], lineAt(line));
     if (bytes.length > LIMITS.maxArrayLength) {
-      throw diag('A0007', [LIMITS.maxArrayLength], at);
+      throw diag('A0007', [LIMITS.maxArrayLength], lineAt(line));
     }
     return { id, op: 'arr', args: [...bytes].map((value) => ({ kind: 'u32', value })), text };
   }
-  const parts = lineText.trim().split(/\s+/);
-  const [id, word, ...rest] = parts;
-  if (id === undefined || word === undefined) throw diag('A0009', [], at);
-  const operand = (r: string): Operand => parseOperand(r, line, lineText);
+  const parts = words ?? splitWords(lineText);
+  const id = parts[0];
+  const word = parts[1];
+  const rest = parts.slice(2);
+  if (id === undefined || word === undefined) throw diag('A0009', [], lineAt(line));
   if (!isValidIdentifier(id)) {
     const colon = id.endsWith(':') && isValidIdentifier(id.slice(0, -1));
     const snake = lowerName(id);
     throw diag('A0005', [id], {
-      ...at,
+      ...lineAt(line),
       ...(colon
         ? {
             fix: `write '${id.slice(0, -1)}': a node id has no colon`,
@@ -917,11 +1039,19 @@ export function parseNode(lineText: string, line?: number): Node {
           : {}),
     });
   }
-  if (rest.some((r) => r.startsWith('(') || r.endsWith(')')))
-    throw nestedError(id, [id, word], rest, lineText, line, 'parse');
+  let nested = false;
+  for (let k = 0; k < rest.length; k += 1) {
+    const r = rest[k] as string;
+    if (r.charCodeAt(0) === 40 || r.charCodeAt(r.length - 1) === 41) {
+      nested = true;
+      break;
+    }
+  }
+  if (nested) throw nestedError(id, [id, word], rest, lineText, line, 'parse');
   // `id F args…` with F a function name (not an op) is the direct form of `id call F args…`.
-  if (isDirectCallee(word)) return { id, op: 'call', callee: word, args: rest.map(operand) };
   const op = opOf(word);
+  if (op === undefined && isDirectCallee(word))
+    return { id, op: 'call', callee: word, args: operandsOf(rest, line, lineText) };
   if (op === undefined) {
     const lower = word.toLowerCase();
     const assign = word === '=' && rest.length > 0;
@@ -929,7 +1059,7 @@ export function parseNode(lineText: string, line?: number): Node {
     const symbol = Object.hasOwn(SYMBOL_OPS, word) ? SYMBOL_OPS[word] : undefined;
     const symbolFix = newFixes() && symbol !== undefined && rest.length === OP_ARITY[symbol];
     throw diag('A0011', [word], {
-      ...at,
+      ...lineAt(line),
       ...(symbolFix
         ? {
             fix: `write \`${id} ${symbol} ${rest.join(' ')}\`: the op is written as a word, \`${symbol}\`, before its operands`,
@@ -961,9 +1091,9 @@ export function parseNode(lineText: string, line?: number): Node {
       callee === undefined ||
       !isValidFunctionName(callee)
     ) {
-      throw diag('A0012', [], at);
+      throw diag('A0012', [], lineAt(line));
     }
-    return { id, op, pred, callee, args: args.map(operand) };
+    return { id, op, pred, callee, args: operandsOf(args, line, lineText) };
   }
   if (op === 'call' || op === 'fold') {
     const [callee, ...args] = rest;
@@ -971,7 +1101,7 @@ export function parseNode(lineText: string, line?: number): Node {
       const lower = (callee ?? '').toLowerCase();
       const caseFix = callee !== undefined && lower !== callee && isValidFunctionName(lower);
       throw diag('A0013', [op, callee ?? ''], {
-        ...at,
+        ...lineAt(line),
         ...(caseFix
           ? {
               fix: `write '${lower}': function names are lowercase`,
@@ -981,7 +1111,7 @@ export function parseNode(lineText: string, line?: number): Node {
           : {}),
       });
     }
-    return { id, op, callee, args: args.map(operand) };
+    return { id, op, callee, args: operandsOf(args, line, lineText) };
   }
   if (OP_ARITY[op] >= 0 && rest.length !== OP_ARITY[op]) {
     // an associative binary op written with more operands: show the chain that says it
@@ -1006,7 +1136,7 @@ export function parseNode(lineText: string, line?: number): Node {
             return `${target} ${op} ${i === 0 ? rest[0] : `${id}t${i - 1}`} ${r}`;
           });
     throw diag('A0014', [op, OP_ARITY[op], rest.length], {
-      ...at,
+      ...lineAt(line),
       expected: String(OP_ARITY[op]),
       actual: String(rest.length),
       ...(chain === undefined ? {} : { fix: chain }),
@@ -1018,8 +1148,8 @@ export function parseNode(lineText: string, line?: number): Node {
           }),
     });
   }
-  if (OP_ARITY[op] < 0 && rest.length === 0) throw diag('A0015', [op], at);
-  return { id, op, args: rest.map(operand) };
+  if (OP_ARITY[op] < 0 && rest.length === 0) throw diag('A0015', [op], lineAt(line));
+  return { id, op, args: operandsOf(rest, line, lineText) };
 }
 
 // ---------------------------------------------------------------------------
@@ -1059,29 +1189,94 @@ export function retOperandError(
   return code === e.code ? e : new A0Error(e.detail, e.line, { ...e.detailOf(), code });
 }
 
+/** A non-blank source line as `parse` reads it. */
+interface SourceLine {
+  /** The code, comment removed and trimmed. */
+  readonly text: string;
+  /** 1-based line number. */
+  readonly line: number;
+  /** `text.split(/\s+/)`. */
+  readonly words: readonly string[];
+  /** Whether the code has a `"` (a text literal, so `words` may split inside it). */
+  readonly quote: boolean;
+  readonly comments?: Comments;
+}
+
 export function parse(source: string): Program {
-  if (utf8Length(source) > LIMITS.maxSourceBytes) {
+  // A UTF-16 unit is at most 3 UTF-8 bytes: a source that short cannot be over, and is not encoded to measure it.
+  if (source.length * 3 > LIMITS.maxSourceBytes && utf8Length(source) > LIMITS.maxSourceBytes) {
     throw diag('A0016', [LIMITS.maxSourceBytes]);
   }
-  const lines = source.split(/\r?\n/);
   const functions: Func[] = [];
   const names = new Set<string>();
-  let i = 0;
+  // One pass over the source, cut into lines as `source.split(/\r?\n/)` would (a `\r` before the
+  // `\n` is dropped). Each line is scanned once: the comment start (a `#` outside a text literal),
+  // the words of the code before it (`text.split(/\s+/)` of the trimmed code) and its bounds, so
+  // neither the raw line nor an untrimmed copy is made, and a node line is not split again.
+  const n = source.length;
+  let pos = 0;
+  let lineNo = 0;
   let pending: string[] = [];
-  const next = (): { text: string; line: number; comments?: Comments } | undefined => {
-    while (i < lines.length) {
-      const raw = lines[i] ?? '';
-      i += 1;
-      const text = stripComment(raw).trim();
-      const comment = lineComment(raw);
-      if (text.length === 0) {
+  const next = (): SourceLine | undefined => {
+    while (pos <= n) {
+      const start = pos;
+      let end = source.indexOf('\n', start);
+      if (end < 0) end = n;
+      pos = end + 1;
+      lineNo += 1;
+      if (end > start && source.charCodeAt(end - 1) === 13) end -= 1;
+      const words: string[] = [];
+      let quote = false;
+      let at = -1;
+      let word = -1; // start of the word being scanned, or -1 between words
+      let lo = -1; // start of the first word
+      let hi = -1; // end of the last word
+      for (let k = start; k < end; k += 1) {
+        const c = source.charCodeAt(k);
+        if (c === 34) {
+          // A text literal: its words are split from the trimmed code below; here it is only
+          // skipped, so a `#` or space inside it is not taken for a comment or a word break.
+          quote = true;
+          if (word < 0) word = k;
+          if (lo < 0) lo = k;
+          for (k += 1; k < end; k += 1) {
+            const q = source.charCodeAt(k);
+            if (q === 92) k += 1;
+            else if (q === 34) break;
+          }
+          hi = k < end ? k + 1 : end;
+        } else if (c === 35) {
+          at = k;
+          break;
+        } else if ((c > 32 && c < 0x7f) || !isSpaceCode(c)) {
+          if (word < 0) word = k;
+          if (lo < 0) lo = k;
+          hi = k + 1;
+        } else if (word >= 0) {
+          words.push(source.slice(word, k));
+          word = -1;
+        }
+      }
+      let comment: string | undefined;
+      if (at >= 0) {
+        // The comment starts with `#`, so trimming its end never empties it.
+        let ce = end;
+        while (isSpaceCode(source.charCodeAt(ce - 1))) ce -= 1;
+        comment = source.slice(at, ce);
+      }
+      if (lo < 0) {
         if (comment !== undefined) pending.push(comment);
         continue;
       }
+      if (word >= 0) words.push(source.slice(word, hi));
+      const text = words.length === 1 && !quote ? (words[0] as string) : source.slice(lo, hi);
       const leading = pending;
       pending = [];
       const comments = commentsOf(leading, comment);
-      return comments === undefined ? { text, line: i } : { text, line: i, comments };
+      const parts = quote ? splitWords(text) : words;
+      return comments === undefined
+        ? { text, line: lineNo, words: parts, quote }
+        : { text, line: lineNo, words: parts, quote, comments };
     }
     return undefined;
   };
@@ -1092,7 +1287,7 @@ export function parse(source: string): Program {
   let profileComments: Comments | undefined;
   let first = true;
   for (let cur = next(); cur !== undefined; cur = next()) {
-    const head = cur.text.split(/\s+/);
+    const head = cur.words;
     const atStart = first;
     first = false;
     if (head[0] === 'profile') {
@@ -1139,7 +1334,8 @@ export function parse(source: string): Program {
     let closed = false;
     const specs = new SpecBuilder(name);
     for (let body = next(); body !== undefined; body = next()) {
-      const first = body.text.split(/\s+/)[0];
+      const parts = body.words;
+      const first = parts[0];
       // Spec lines stand between the header and the first node (or `ret`).
       if (nodes.length === 0 && ret === undefined) {
         const word = specWordOf(body.text);
@@ -1155,7 +1351,6 @@ export function parse(source: string): Program {
       }
       if (first === 'ret') {
         retComments = body.comments;
-        const parts = body.text.split(/\s+/);
         if (isRetNodeForm(parts)) {
           // `ret OP ARGS…` is sugar for a fresh node followed by `ret` of it.
           const id = freshRetId(nodes);
@@ -1173,7 +1368,7 @@ export function parse(source: string): Program {
         const endLine = next();
         if (endLine === undefined || endLine.text !== 'end') {
           // A missing `end` before the next function (or the end of the file) is added.
-          const addable = endLine === undefined || endLine.text.split(/\s+/)[0] === 'fn';
+          const addable = endLine === undefined || endLine.words[0] === 'fn';
           throw diag('A0025', [], {
             line: endLine?.line ?? body.line,
             ...(addable
@@ -1205,7 +1400,7 @@ export function parse(source: string): Program {
       if (nodes.length >= LIMITS.maxNodesPerFunction) {
         throw diag('A0027', [], { line: body.line });
       }
-      const node = parseNode(body.text, body.line);
+      const node = parseNodeOf(body.text, body.line, body.quote ? undefined : parts);
       nodes.push(body.comments === undefined ? node : { ...node, comments: body.comments });
     }
     if (!closed || ret === undefined) throw diag('A0028', [name]);
@@ -1517,7 +1712,7 @@ function unknownFunction(
   node: Node,
   name: string,
   scope: ReadonlyMap<string, TypedFunc>,
-  later: ReadonlySet<string> | undefined,
+  later: LaterNames | undefined,
   args: readonly (string | number)[],
 ): A0Error {
   const guess = spellingSuggestion(name, scope.keys());
@@ -1540,6 +1735,310 @@ function unknownFunction(
   });
 }
 
+/** The iteration bounds of a function being validated, raised by each call, fold and loop node. */
+interface Iterations {
+  static: number;
+  literal: number;
+}
+
+/*
+ * The node kinds that need more than an operand check each have their own function, apart from the
+ * per-node loop of `validateFunction`: the loop stays small, and so does the code an optimizing
+ * compiler builds for it (a fresh `a0 check` process waits for that compile before it exits).
+ */
+
+// Linearity: an io-carrying value is consumed at most once. `at` of a field without io
+// only reads; `at` of the io-carrying field takes the token out of the record, which may
+// then only read its other fields or get that field back with `put` (anything else would
+// use the token twice).
+function checkLinearity(
+  node: Node,
+  argTypes: readonly Type[],
+  where: string,
+  consumed: Set<string>,
+  taken: Map<string, number>,
+): void {
+  for (let k = 0; k < node.args.length; k += 1) {
+    const arg = node.args[k] as Operand;
+    const t = argTypes[k] as Type;
+    if (!containsIo(t)) continue;
+    const key = arg.kind === 'param' ? `p${arg.index}` : arg.kind === 'node' ? arg.id : '';
+    const field = node.args[1]?.kind === 'u32' ? node.args[1].value : -1;
+    if (node.op === 'at' && k === 0) {
+      const ft = !isPrimitive(t) && t.kind === 'rec' ? t.fields[field] : undefined;
+      if (ft === undefined || !containsIo(ft)) continue;
+      if (consumed.has(key)) throw diag('A0310', [where, key]);
+      if (taken.has(key))
+        throw diag('A0311', [where, taken.get(key) as number, key], {
+          fix: `use the value that \`at\` returned, or put a token back first with \`put ${key} ${taken.get(key)} <io>\``,
+        });
+      taken.set(key, field);
+      continue;
+    }
+    if (consumed.has(key)) throw diag('A0310', [where, key]);
+    const out = taken.get(key);
+    if (out !== undefined && !(node.op === 'put' && k === 0 && field === out))
+      throw diag('A0312', [where, key, out], {
+        fix: `read the other fields first, or put the token back with \`put ${key} ${out} <io>\` and use that record`,
+      });
+    consumed.add(key);
+  }
+}
+
+/** The type of an `at` or `put` node (a record field read or write). */
+function recordOpType(node: Node, argTypes: readonly Type[], where: string): Type {
+  const [recT, idx] = argTypes;
+  const index = node.args[1];
+  if (recT === undefined || isPrimitive(recT) || recT.kind !== 'rec') {
+    throw diag('A0220', [where, node.op, recT === undefined ? 'nothing' : formatType(recT)], {
+      ...(recT !== undefined && !isPrimitive(recT) && recT.kind === 'arr'
+        ? {
+            fix: `arrays use ${node.op === 'at' ? 'get: `get A I`' : 'set: `set A I V`'} (${node.op} is for records)`,
+            // `at`/`put` on an array has one meaning: `get`/`set` at that index (the index wraps by the length).
+            applicability: 'exact' as const,
+            edits: [
+              lineEdit(
+                'array-op',
+                formatNode(node),
+                formatNode({ ...node, op: node.op === 'at' ? 'get' : 'set' }),
+              ),
+            ],
+          }
+        : {}),
+    });
+  }
+  if (index === undefined || index.kind !== 'u32' || idx !== 'u32') {
+    throw diag('A0221', [where, node.op]);
+  }
+  const field = recT.fields[index.value];
+  if (field === undefined) throw diag('A0222', [where, index.value, formatType(recT)]);
+  if (node.op === 'put') expect(argTypes[2] as Type, field, `${where} field value`);
+  return node.op === 'at' ? field : recT;
+}
+
+/** The type of a `call` node; records the callee and raises the iteration bounds. */
+function callType(
+  fn: Func,
+  node: Node,
+  argTypes: readonly Type[],
+  where: string,
+  scope: ReadonlyMap<string, TypedFunc>,
+  later: LaterNames | undefined,
+  calls: Map<string, TypedFunc>,
+  iter: Iterations,
+): Type {
+  const callee = scope.get(node.callee ?? '');
+  if (callee === undefined) {
+    const name = node.callee ?? '';
+    // `a mod x y` is `a rem x y`: every A0 number is a u32, where remainder and modulo agree.
+    // Exact when the line is that two-operand op and no operand is a node of the same name.
+    if (
+      (name === 'mod' || name === 'umod') &&
+      later?.has(name) !== true &&
+      node.args.length === 2 &&
+      node.args.every((a) => a.kind !== 'node' || a.id !== name)
+    ) {
+      throw diag('A0102', [where, name], {
+        fix: `write \`${node.id} rem …\`: the remainder op is \`rem\` (on u32 it is the modulo)`,
+        applicability: 'exact',
+        edits: [{ op: 'rename', rule: 'mod', fn: fn.name, node: node.id, from: name, to: 'rem' }],
+      });
+    }
+    const written = `${node.id} ${name} ${node.args.map(formatOperand).join(' ')}`.trimEnd();
+    const clash = (n: string): boolean => fn.nodes.some((m) => m.id === n);
+    // `x not b` on a bool is `x xor b true`: the only meaning `not` has on one bool operand.
+    if (
+      newFixes() &&
+      name === 'not' &&
+      later?.has(name) !== true &&
+      node.args.length === 1 &&
+      argTypes[0] === 'bool'
+    ) {
+      throw diag('A0102', [where, name], {
+        fix: `write \`${node.id} xor ${formatOperand(node.args[0] as Operand)} true\`: there is no \`not\`, flipping a bool is xor with true`,
+        applicability: 'exact',
+        edits: [
+          lineEdit('not', written, `${node.id} xor ${formatOperand(node.args[0] as Operand)} true`),
+        ],
+      });
+    }
+    // `x max a b` and `x min a b` on two u32 are a compare and a select: `t gt a b` then `x select t a b`
+    // (`lt` for min); the compare gets a fresh id.
+    if (
+      newFixes() &&
+      (name === 'max' || name === 'min') &&
+      later?.has(name) !== true &&
+      node.args.length === 2 &&
+      argTypes[0] === 'u32' &&
+      argTypes[1] === 'u32'
+    ) {
+      let k = 0;
+      while (clash(`${node.id}t${k}`)) k += 1;
+      const fresh = `${node.id}t${k}`;
+      const [a, b] = node.args.map(formatOperand);
+      const cmp = name === 'max' ? 'gt' : 'lt';
+      throw diag('A0102', [where, name], {
+        fix: `write \`${fresh} ${cmp} ${a} ${b}\` then \`${node.id} select ${fresh} ${a} ${b}\`: there is no \`${name}\`, it is a compare and a select`,
+        applicability: 'exact',
+        edits: [
+          lineEdit(
+            name,
+            written,
+            `${fresh} ${cmp} ${a} ${b}\n${node.id} select ${fresh} ${a} ${b}`,
+          ),
+        ],
+      });
+    }
+    // Other spellings of an op that models write (`sel c a b`, `lte a b`): the op they name, exact when the
+    // operand count is the op's own and no operand is a node of the same name.
+    const spelled = Object.hasOwn(OP_SPELLINGS, name) ? OP_SPELLINGS[name] : undefined;
+    if (
+      spelled !== undefined &&
+      later?.has(name) !== true &&
+      node.args.length === spelled.arity &&
+      node.args.every((a) => a.kind !== 'node' || a.id !== name)
+    ) {
+      throw diag('A0102', [where, name], {
+        fix: `write \`${node.id} ${spelled.op} …\`: '${name}' is not an op, the op is \`${spelled.op}\`${spelled.note}`,
+        applicability: 'exact',
+        edits: [
+          {
+            op: 'rename',
+            rule: 'alias',
+            fn: fn.name,
+            node: node.id,
+            from: name,
+            to: spelled.op,
+          },
+        ],
+      });
+    }
+    const guess = spellingSuggestion(name, [...OPS, ...Object.keys(OP_ALIASES), ...scope.keys()]);
+    // Names models write for an op that has no single exact rewrite: say what to write instead.
+    const named = newFixes() && Object.hasOwn(NAMED_HINTS, name) ? NAMED_HINTS[name] : undefined;
+    throw diag('A0102', [where, name], {
+      fix:
+        later?.has(name) === true
+          ? `'${name}' is defined below ${fn.name}: callees must be defined above their callers, so move '${name}' above ${fn.name}`
+          : named !== undefined
+            ? named
+            : guess !== undefined
+              ? `did you mean '${guess}'?`
+              : `'${name}' is neither an op nor a function defined above ${fn.name}: define it above, or use one of ${OPS.join(' ')}; rarely needed: text "s", loop P F n s a... (F while P(state,i,a...) holds, at most n times), io values are one linear token used once: read t -> (u32,io), write t v -> io, puts t a -> io`,
+      ...(guess === undefined || later?.has(name) === true || named !== undefined
+        ? {}
+        : {
+            edits: [
+              {
+                op: 'rename',
+                rule: 'typo',
+                fn: fn.name,
+                node: node.id,
+                from: name,
+                to: guess,
+              },
+            ],
+          }),
+    });
+  }
+  if (argTypes.length !== callee.params.length) {
+    throw diag('A0219', [where, callee.name, callee.params.length, argTypes.length]);
+  }
+  const params = callee.params;
+  for (let i = 0; i < params.length; i += 1) {
+    const t = params[i] as Type;
+    // The label is built only for the diagnostic.
+    if (!typeEquals(argTypes[i] as Type, t))
+      expect(argTypes[i] as Type, t, `${where} argument ${i}`);
+  }
+  calls.set(callee.name, callee);
+  iter.static = Math.max(iter.static, callee.staticIterations);
+  iter.literal = Math.max(iter.literal, callee.literalIterations);
+  return callee.result;
+}
+
+/** The type of a `fold` or `loop` node; records the body (and predicate) and raises the iteration bounds. */
+function foldType(
+  fn: Func,
+  node: Node,
+  argTypes: readonly Type[],
+  where: string,
+  scope: ReadonlyMap<string, TypedFunc>,
+  later: LaterNames | undefined,
+  calls: Map<string, TypedFunc>,
+  iter: Iterations,
+): Type {
+  const callee = scope.get(node.callee ?? '');
+  if (callee === undefined) {
+    const name = node.callee ?? '';
+    throw unknownFunction('A0103', where, fn, node, name, scope, later, [node.op, name]);
+  }
+  // fold f n s a...  with f : (T, u32, A...) -> T
+  // loop p f n s a... additionally p : (T, u32, A...) -> bool with identical parameters
+  const [count, init, ...extra] = argTypes;
+  if (count === undefined || init === undefined) {
+    throw diag('A0216', [where]);
+  }
+  expect(count, 'u32', `${where} trip count`);
+  // Every body mismatch names the step's expected header and the call shape it implies.
+  // (Built only when a diagnostic needs it: it is a pure function of these operands.)
+  const fixOf = (): string =>
+    foldBodyFix(node.op === 'loop' ? 'loop' : 'fold', callee, init, extra);
+  const expectBody = (actual: Type, wanted: Type, what: string): void => {
+    if (!typeEquals(actual, wanted))
+      throw diag('A0213', [where, what, formatType(wanted), formatType(actual)], {
+        expected: formatType(wanted),
+        actual: formatType(actual),
+        fix: fixOf(),
+      });
+  };
+  const [stateT, indexT, ...extraT] = callee.params;
+  if (stateT === undefined || indexT === undefined)
+    throw diag('A0214', [where, callee.name], { fix: fixOf() });
+  expectBody(indexT, 'u32', 'body index parameter');
+  expectBody(init, stateT, 'initial state');
+  expectBody(callee.result, stateT, 'body result');
+  if (extra.length !== extraT.length)
+    throw diag('A0215', [where, callee.name, extraT.length, extra.length], { fix: fixOf() });
+  for (let i = 0; i < extraT.length; i += 1) {
+    const t = extraT[i] as Type;
+    if (!typeEquals(extra[i] as Type, t)) expectBody(extra[i] as Type, t, `extra argument ${i}`);
+  }
+  calls.set(callee.name, callee);
+  if (node.op === 'loop') {
+    const pred = scope.get(node.pred ?? '');
+    if (pred === undefined) {
+      const name = node.pred ?? '';
+      throw unknownFunction('A0104', where, fn, node, name, scope, later, [name]);
+    }
+    expect(pred.result, 'bool', `${where} predicate result`);
+    if (
+      pred.params.length !== callee.params.length ||
+      pred.params.some((t, i) => !typeEquals(t, callee.params[i] as Type))
+    ) {
+      throw diag('A0217', [where, pred.name, callee.name]);
+    }
+    calls.set(pred.name, pred);
+  }
+  const countOp = node.args[0];
+  const trips = countOp?.kind === 'u32' ? countOp.value : 2 ** 32;
+  iter.static = Math.max(iter.static, trips * callee.staticIterations);
+  if (countOp?.kind === 'u32') {
+    iter.literal = Math.max(iter.literal, trips * callee.literalIterations);
+    if (iter.literal > LIMITS.maxStaticIterations) {
+      throw diag('A0218', [where, iter.literal, LIMITS.maxStaticIterations]);
+    }
+  } else {
+    iter.literal = Math.max(iter.literal, callee.literalIterations);
+  }
+  return stateT;
+}
+
+/** The names defined after a function; only membership is asked (a `Set` is one). */
+export interface LaterNames {
+  has(name: string): boolean;
+}
+
 /**
  * Validate one function. `scope` holds the functions defined earlier in the program
  * (the only legal call targets); a function cannot call itself or a later function. `later`
@@ -1548,7 +2047,7 @@ function unknownFunction(
 export function validateFunction(
   fn: Func,
   scope: ReadonlyMap<string, TypedFunc> = new Map(),
-  later?: ReadonlySet<string>,
+  later?: LaterNames,
   profile?: 'strict',
 ): TypedFunc {
   if (!isValidFunctionName(fn.name)) throw diag('A0301', [fn.name]);
@@ -1560,8 +2059,7 @@ export function validateFunction(
   const consumed = new Set<string>();
   /** Records whose io-carrying field (the value) was taken out by `at`. */
   const taken = new Map<string, number>();
-  let staticIterations = 1;
-  let literalIterations = 1;
+  const iter: Iterations = { static: 1, literal: 1 };
   if (fn.params.filter(containsIo).length > 1) {
     throw diag('A0309', [fn.name]);
   }
@@ -1582,8 +2080,12 @@ export function validateFunction(
     if (OP_ARITY[node.op] < 0 && !hasCallee && node.args.length === 0) {
       throw diag('A0307', [where, node.op]);
     }
-    const argTypes = node.args.map((arg) => operandType(arg, fn, types, defined, where));
-    for (const arg of node.args) {
+    const args = node.args;
+    const argTypes: Type[] = [];
+    for (let k = 0; k < args.length; k += 1)
+      argTypes.push(operandType(args[k] as Operand, fn, types, defined, where));
+    for (let k = 0; k < args.length; k += 1) {
+      const arg = args[k] as Operand;
       if (
         arg.kind === 'u32' &&
         (!Number.isInteger(arg.value) || arg.value < 0 || arg.value > U32_MAX)
@@ -1591,258 +2093,13 @@ export function validateFunction(
         throw diag('A0308', [where]);
       }
     }
-    // Linearity: an io-carrying value is consumed at most once. `at` of a field without io
-    // only reads; `at` of the io-carrying field takes the token out of the record, which may
-    // then only read its other fields or get that field back with `put` (anything else would
-    // use the token twice).
-    for (const [k, arg] of node.args.entries()) {
-      const t = argTypes[k] as Type;
-      if (!containsIo(t)) continue;
-      const key = arg.kind === 'param' ? `p${arg.index}` : arg.kind === 'node' ? arg.id : '';
-      const field = node.args[1]?.kind === 'u32' ? node.args[1].value : -1;
-      if (node.op === 'at' && k === 0) {
-        const ft = !isPrimitive(t) && t.kind === 'rec' ? t.fields[field] : undefined;
-        if (ft === undefined || !containsIo(ft)) continue;
-        if (consumed.has(key)) throw diag('A0310', [where, key]);
-        if (taken.has(key))
-          throw diag('A0311', [where, taken.get(key) as number, key], {
-            fix: `use the value that \`at\` returned, or put a token back first with \`put ${key} ${taken.get(key)} <io>\``,
-          });
-        taken.set(key, field);
-        continue;
-      }
-      if (consumed.has(key)) throw diag('A0310', [where, key]);
-      const out = taken.get(key);
-      if (out !== undefined && !(node.op === 'put' && k === 0 && field === out))
-        throw diag('A0312', [where, key, out], {
-          fix: `read the other fields first, or put the token back with \`put ${key} ${out} <io>\` and use that record`,
-        });
-      consumed.add(key);
-    }
+    checkLinearity(node, argTypes, where, consumed, taken);
     if (node.op === 'at' || node.op === 'put') {
-      const [recT, idx] = argTypes;
-      const index = node.args[1];
-      if (recT === undefined || isPrimitive(recT) || recT.kind !== 'rec') {
-        throw diag('A0220', [where, node.op, recT === undefined ? 'nothing' : formatType(recT)], {
-          ...(recT !== undefined && !isPrimitive(recT) && recT.kind === 'arr'
-            ? {
-                fix: `arrays use ${node.op === 'at' ? 'get: `get A I`' : 'set: `set A I V`'} (${node.op} is for records)`,
-                // `at`/`put` on an array has one meaning: `get`/`set` at that index (the index wraps by the length).
-                applicability: 'exact' as const,
-                edits: [
-                  lineEdit(
-                    'array-op',
-                    formatNode(node),
-                    formatNode({ ...node, op: node.op === 'at' ? 'get' : 'set' }),
-                  ),
-                ],
-              }
-            : {}),
-        });
-      }
-      if (index === undefined || index.kind !== 'u32' || idx !== 'u32') {
-        throw diag('A0221', [where, node.op]);
-      }
-      const field = recT.fields[index.value];
-      if (field === undefined) throw diag('A0222', [where, index.value, formatType(recT)]);
-      if (node.op === 'put') expect(argTypes[2] as Type, field, `${where} field value`);
-      types.set(node.id, node.op === 'at' ? field : recT);
+      types.set(node.id, recordOpType(node, argTypes, where));
     } else if (node.op === 'call') {
-      const callee = scope.get(node.callee ?? '');
-      if (callee === undefined) {
-        const name = node.callee ?? '';
-        // `a mod x y` is `a rem x y`: every A0 number is a u32, where remainder and modulo agree.
-        // Exact when the line is that two-operand op and no operand is a node of the same name.
-        if (
-          (name === 'mod' || name === 'umod') &&
-          later?.has(name) !== true &&
-          node.args.length === 2 &&
-          node.args.every((a) => a.kind !== 'node' || a.id !== name)
-        ) {
-          throw diag('A0102', [where, name], {
-            fix: `write \`${node.id} rem …\`: the remainder op is \`rem\` (on u32 it is the modulo)`,
-            applicability: 'exact',
-            edits: [
-              { op: 'rename', rule: 'mod', fn: fn.name, node: node.id, from: name, to: 'rem' },
-            ],
-          });
-        }
-        const written = `${node.id} ${name} ${node.args.map(formatOperand).join(' ')}`.trimEnd();
-        const clash = (n: string): boolean => fn.nodes.some((m) => m.id === n);
-        // `x not b` on a bool is `x xor b true`: the only meaning `not` has on one bool operand.
-        if (
-          newFixes() &&
-          name === 'not' &&
-          later?.has(name) !== true &&
-          node.args.length === 1 &&
-          argTypes[0] === 'bool'
-        ) {
-          throw diag('A0102', [where, name], {
-            fix: `write \`${node.id} xor ${formatOperand(node.args[0] as Operand)} true\`: there is no \`not\`, flipping a bool is xor with true`,
-            applicability: 'exact',
-            edits: [
-              lineEdit(
-                'not',
-                written,
-                `${node.id} xor ${formatOperand(node.args[0] as Operand)} true`,
-              ),
-            ],
-          });
-        }
-        // `x max a b` and `x min a b` on two u32 are a compare and a select: `t gt a b` then `x select t a b`
-        // (`lt` for min); the compare gets a fresh id.
-        if (
-          newFixes() &&
-          (name === 'max' || name === 'min') &&
-          later?.has(name) !== true &&
-          node.args.length === 2 &&
-          argTypes[0] === 'u32' &&
-          argTypes[1] === 'u32'
-        ) {
-          let k = 0;
-          while (clash(`${node.id}t${k}`)) k += 1;
-          const fresh = `${node.id}t${k}`;
-          const [a, b] = node.args.map(formatOperand);
-          const cmp = name === 'max' ? 'gt' : 'lt';
-          throw diag('A0102', [where, name], {
-            fix: `write \`${fresh} ${cmp} ${a} ${b}\` then \`${node.id} select ${fresh} ${a} ${b}\`: there is no \`${name}\`, it is a compare and a select`,
-            applicability: 'exact',
-            edits: [
-              lineEdit(
-                name,
-                written,
-                `${fresh} ${cmp} ${a} ${b}\n${node.id} select ${fresh} ${a} ${b}`,
-              ),
-            ],
-          });
-        }
-        // Other spellings of an op that models write (`sel c a b`, `lte a b`): the op they name, exact when the
-        // operand count is the op's own and no operand is a node of the same name.
-        const spelled = Object.hasOwn(OP_SPELLINGS, name) ? OP_SPELLINGS[name] : undefined;
-        if (
-          spelled !== undefined &&
-          later?.has(name) !== true &&
-          node.args.length === spelled.arity &&
-          node.args.every((a) => a.kind !== 'node' || a.id !== name)
-        ) {
-          throw diag('A0102', [where, name], {
-            fix: `write \`${node.id} ${spelled.op} …\`: '${name}' is not an op, the op is \`${spelled.op}\`${spelled.note}`,
-            applicability: 'exact',
-            edits: [
-              {
-                op: 'rename',
-                rule: 'alias',
-                fn: fn.name,
-                node: node.id,
-                from: name,
-                to: spelled.op,
-              },
-            ],
-          });
-        }
-        const guess = spellingSuggestion(name, [
-          ...OPS,
-          ...Object.keys(OP_ALIASES),
-          ...scope.keys(),
-        ]);
-        // Names models write for an op that has no single exact rewrite: say what to write instead.
-        const named =
-          newFixes() && Object.hasOwn(NAMED_HINTS, name) ? NAMED_HINTS[name] : undefined;
-        throw diag('A0102', [where, name], {
-          fix:
-            later?.has(name) === true
-              ? `'${name}' is defined below ${fn.name}: callees must be defined above their callers, so move '${name}' above ${fn.name}`
-              : named !== undefined
-                ? named
-                : guess !== undefined
-                  ? `did you mean '${guess}'?`
-                  : `'${name}' is neither an op nor a function defined above ${fn.name}: define it above, or use one of ${OPS.join(' ')}; rarely needed: text "s", loop P F n s a... (F while P(state,i,a...) holds, at most n times), io values are one linear token used once: read t -> (u32,io), write t v -> io, puts t a -> io`,
-          ...(guess === undefined || later?.has(name) === true || named !== undefined
-            ? {}
-            : {
-                edits: [
-                  {
-                    op: 'rename',
-                    rule: 'typo',
-                    fn: fn.name,
-                    node: node.id,
-                    from: name,
-                    to: guess,
-                  },
-                ],
-              }),
-        });
-      }
-      if (argTypes.length !== callee.params.length) {
-        throw diag('A0219', [where, callee.name, callee.params.length, argTypes.length]);
-      }
-      for (const [i, t] of callee.params.entries()) {
-        expect(argTypes[i] as Type, t, `${where} argument ${i}`);
-      }
-      calls.set(callee.name, callee);
-      types.set(node.id, callee.result);
-      staticIterations = Math.max(staticIterations, callee.staticIterations);
-      literalIterations = Math.max(literalIterations, callee.literalIterations);
+      types.set(node.id, callType(fn, node, argTypes, where, scope, later, calls, iter));
     } else if (node.op === 'fold' || node.op === 'loop') {
-      const callee = scope.get(node.callee ?? '');
-      if (callee === undefined) {
-        const name = node.callee ?? '';
-        throw unknownFunction('A0103', where, fn, node, name, scope, later, [node.op, name]);
-      }
-      // fold f n s a...  with f : (T, u32, A...) -> T
-      // loop p f n s a... additionally p : (T, u32, A...) -> bool with identical parameters
-      const [count, init, ...extra] = argTypes;
-      if (count === undefined || init === undefined) {
-        throw diag('A0216', [where]);
-      }
-      expect(count, 'u32', `${where} trip count`);
-      // Every body mismatch names the step's expected header and the call shape it implies.
-      const bodyFix = foldBodyFix(node.op, callee, init, extra);
-      const expectBody = (actual: Type, wanted: Type, what: string): void => {
-        if (!typeEquals(actual, wanted))
-          throw diag('A0213', [where, what, formatType(wanted), formatType(actual)], {
-            expected: formatType(wanted),
-            actual: formatType(actual),
-            fix: bodyFix,
-          });
-      };
-      const [stateT, indexT, ...extraT] = callee.params;
-      if (stateT === undefined || indexT === undefined)
-        throw diag('A0214', [where, callee.name], { fix: bodyFix });
-      expectBody(indexT, 'u32', 'body index parameter');
-      expectBody(init, stateT, 'initial state');
-      expectBody(callee.result, stateT, 'body result');
-      if (extra.length !== extraT.length)
-        throw diag('A0215', [where, callee.name, extraT.length, extra.length], { fix: bodyFix });
-      for (const [i, t] of extraT.entries()) expectBody(extra[i] as Type, t, `extra argument ${i}`);
-      calls.set(callee.name, callee);
-      if (node.op === 'loop') {
-        const pred = scope.get(node.pred ?? '');
-        if (pred === undefined) {
-          const name = node.pred ?? '';
-          throw unknownFunction('A0104', where, fn, node, name, scope, later, [name]);
-        }
-        expect(pred.result, 'bool', `${where} predicate result`);
-        if (
-          pred.params.length !== callee.params.length ||
-          pred.params.some((t, i) => !typeEquals(t, callee.params[i] as Type))
-        ) {
-          throw diag('A0217', [where, pred.name, callee.name]);
-        }
-        calls.set(pred.name, pred);
-      }
-      const countOp = node.args[0];
-      const trips = countOp?.kind === 'u32' ? countOp.value : 2 ** 32;
-      staticIterations = Math.max(staticIterations, trips * callee.staticIterations);
-      if (countOp?.kind === 'u32') {
-        literalIterations = Math.max(literalIterations, trips * callee.literalIterations);
-        if (literalIterations > LIMITS.maxStaticIterations) {
-          throw diag('A0218', [where, literalIterations, LIMITS.maxStaticIterations]);
-        }
-      } else {
-        literalIterations = Math.max(literalIterations, callee.literalIterations);
-      }
-      types.set(node.id, stateT);
+      types.set(node.id, foldType(fn, node, argTypes, where, scope, later, calls, iter));
     } else {
       types.set(node.id, resultType(node.op, argTypes, where));
     }
@@ -1866,8 +2123,8 @@ export function validateFunction(
     ...(profile === 'strict' ? { profile } : {}),
     types,
     calls,
-    staticIterations,
-    literalIterations,
+    staticIterations: iter.static,
+    literalIterations: iter.literal,
   };
 }
 
@@ -1940,7 +2197,9 @@ export function validate(program: Program): TypedProgram {
   const byName = new Map<string, TypedFunc>();
   const functions: TypedFunc[] = [];
   const profile = program.profile === 'strict' ? 'strict' : undefined;
-  let names: string[] | undefined;
+  // Last index of each name: a name is defined below function k when its last index is above k.
+  // One map for the whole program, where a set of the remaining names per function was quadratic.
+  let lastIndex: Map<string, number> | undefined;
   for (const [k, fn] of program.functions.entries()) {
     if (byName.has(fn.name)) throw diag('A0021', [fn.name]);
     const kept = reusable(fn, byName, profile);
@@ -1949,8 +2208,10 @@ export function validate(program: Program): TypedProgram {
       functions.push(kept);
       continue;
     }
-    names ??= program.functions.map((f) => f.name);
-    const typed = validateFunction(fn, byName, new Set(names.slice(k + 1)), profile);
+    lastIndex ??= new Map(program.functions.map((f, j) => [f.name, j]));
+    const index = lastIndex;
+    const later: LaterNames = { has: (name) => (index.get(name) ?? -1) > k };
+    const typed = validateFunction(fn, byName, later, profile);
     // Spec lines are checked once the function is typed, against its callees (all above it).
     if (typed.spec !== undefined) verifySpec(typed, byName);
     const deps = new Map(typed.calls);
@@ -1991,8 +2252,9 @@ export function formatNode(node: Node): string {
     return `${node.id} text ${formatTextLiteral(node.text)}`;
   const pred = node.op === 'loop' ? ` ${node.pred ?? ''}` : '';
   const callee = node.callee !== undefined ? ` ${node.callee}` : '';
-  const args = node.args.length > 0 ? ` ${node.args.map(formatOperand).join(' ')}` : '';
-  return `${node.id} ${node.op}${pred}${callee}${args}`;
+  let out = `${node.id} ${node.op}${pred}${callee}`;
+  for (const arg of node.args) out += ` ${formatOperand(arg)}`;
+  return out;
 }
 
 const canonicalText = new WeakMap<Func, string>();

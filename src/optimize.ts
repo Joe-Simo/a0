@@ -25,6 +25,7 @@ import {
   formatOperand,
   isPrimitive,
   isScalar,
+  isValidIdentifier,
   LIMITS,
   type Node,
   type Operand,
@@ -1447,6 +1448,18 @@ function nodeCost(op: Node['op']): number {
   return 1;
 }
 
+/**
+ * Selects on one condition emitted as one if/else (see `lazyArms`): `members` in body order
+ * (the last is the leader, where the branch is emitted), `arms` the nodes only the members'
+ * first (second) operands need, in body order.
+ */
+export interface SelectGroup {
+  readonly members: readonly string[];
+  readonly arms: readonly [readonly string[], readonly string[]];
+}
+
+const lastOf = (xs: readonly Node[]): Node => xs[xs.length - 1] as Node;
+
 /** A select arm whose own nodes cost at least this much (see nodeCost) gets its own path. */
 export const LAZY_ARM_COST = 8;
 
@@ -1457,30 +1470,94 @@ export const LAZY_ARM_COST = 8;
  * total, and nothing else reads them). `owner` maps each such node to its select; `arms` gives
  * each select's two node lists in body order. Selects are taken in body order and a node is
  * owned once, so a select inside an outer arm keeps its own arms (emitted when it is).
+ *
+ * Groups come first: two or more scalar selects on one condition (a node or a parameter) whose
+ * every select but the last (the leader) is read only after the leader, with the nodes only
+ * their first operands need on one side and those only their second operands need on the
+ * other (a select of any candidate group never joins a side). When the costlier side's nodes
+ * plus one per select cost at least LAZY_ARM_COST, the group is one branch on the condition at
+ * the leader: `groups` gives its selects and sides, `owner` maps the side nodes and the other
+ * selects to the leader, and its selects get no arms of their own.
  */
 export function lazyArms(fn: TypedFunc): {
   owner: ReadonlyMap<string, string>;
   arms: ReadonlyMap<string, readonly [readonly string[], readonly string[]]>;
+  groups: ReadonlyMap<string, SelectGroup>;
 } {
   const owner = new Map<string, string>();
   const arms = new Map<string, readonly [readonly string[], readonly string[]]>();
+  const groups = new Map<string, SelectGroup>();
   const byId = new Map(fn.nodes.map((n) => [n.id, n]));
   const index = new Map(fn.nodes.map((n, i) => [n.id, i]));
   const users = new Map<string, string[]>();
+  const uses = new Map<string, { u: string; k: number }[]>();
   for (const n of fn.nodes)
-    for (const a of n.args)
-      if (a.kind === 'node') users.set(a.id, [...(users.get(a.id) ?? []), n.id]);
+    for (const [k, a] of n.args.entries())
+      if (a.kind === 'node') {
+        users.set(a.id, [...(users.get(a.id) ?? []), n.id]);
+        uses.set(a.id, [...(uses.get(a.id) ?? []), { u: n.id, k }]);
+      }
   const isRet = (id: string): boolean => fn.ret.kind === 'node' && fn.ret.id === id;
   const defs = nodeDefs(fn);
+  const isSel = (n: Node): boolean => n.op === 'select' && isScalar(fn.types.get(n.id) ?? 'io');
+  // Selects sharing a condition (a node or a parameter), two or more of them.
+  const condKey = (o: Operand | undefined): string | undefined =>
+    o?.kind === 'node' ? `n${o.id}` : o?.kind === 'param' ? `p${o.index}` : undefined;
+  const byCond = new Map<string, Node[]>();
+  for (const s of fn.nodes) {
+    const key = isSel(s) ? condKey(s.args[0]) : undefined;
+    if (key !== undefined) byCond.set(key, [...(byCond.get(key) ?? []), s]);
+  }
+  const grouped = new Set<string>();
+  for (const ss of byCond.values()) if (ss.length >= 2) for (const s of ss) grouped.add(s.id);
+  const inGroup = new Set<string>();
   // Under strict a node that can trap is not total: a select still evaluates both arms.
   const eligible = (n: Node): boolean =>
     isScalar(fn.types.get(n.id) ?? 'io') &&
     !isEffectful(n, fn) &&
     !mayTrapNode(fn, n, defs) &&
     !isRet(n.id) &&
-    !owner.has(n.id);
+    !owner.has(n.id) &&
+    !inGroup.has(n.id);
+  const cost = (ids: readonly string[]): number =>
+    ids.reduce((n, id) => n + nodeCost((byId.get(id) as Node).op), 0);
+  // Groups, by the position of their last select (the leader, where the group is emitted).
+  const candidates = [...byCond.values()]
+    .filter((ss) => ss.length >= 2)
+    .sort((x, y) => (index.get(lastOf(x).id) ?? 0) - (index.get(lastOf(y).id) ?? 0));
+  for (const members of candidates) {
+    const leader = lastOf(members);
+    const at = index.get(leader.id) ?? 0;
+    const ids = new Set(members.map((m) => m.id));
+    // Every read of a select other than the leader comes after the leader.
+    const late = members.every(
+      (m) => m === leader || (users.get(m.id) ?? []).every((u) => (index.get(u) ?? 0) > at),
+    );
+    if (!late) continue;
+    const side = (k: number): string[] => {
+      const set = new Set<string>();
+      for (let i = at - 1; i >= 0; i -= 1) {
+        const n = fn.nodes[i] as Node;
+        const us = uses.get(n.id) ?? [];
+        const inside = (x: { u: string; k: number }): boolean =>
+          set.has(x.u) || (ids.has(x.u) && x.k === k);
+        if (eligible(n) && !grouped.has(n.id) && us.length > 0 && us.every(inside)) set.add(n.id);
+      }
+      return fn.nodes.filter((n) => set.has(n.id)).map((n) => n.id);
+    };
+    const a = side(1);
+    const b = side(2);
+    if (Math.max(cost(a), cost(b)) + members.length < LAZY_ARM_COST) continue;
+    for (const id of [...a, ...b]) owner.set(id, leader.id);
+    for (const m of members) {
+      inGroup.add(m.id);
+      if (m !== leader) owner.set(m.id, leader.id);
+    }
+    groups.set(leader.id, { members: members.map((m) => m.id), arms: [a, b] });
+  }
   for (const s of fn.nodes) {
     if (s.op !== 'select' || !isScalar(fn.types.get(s.id) ?? 'io')) continue;
+    if (inGroup.has(s.id)) continue;
     const [c, x, y] = s.args;
     const same = (p: Operand | undefined, q: Operand | undefined): boolean =>
       p?.kind === 'node' && q?.kind === 'node' && p.id === q.id;
@@ -1500,13 +1577,11 @@ export function lazyArms(fn: TypedFunc): {
     };
     const a = cone(x, y);
     const b = cone(y, x);
-    const cost = (ids: readonly string[]): number =>
-      ids.reduce((n, id) => n + nodeCost((byId.get(id) as Node).op), 0);
     if (Math.max(cost(a), cost(b)) < LAZY_ARM_COST) continue;
     for (const id of [...a, ...b]) owner.set(id, s.id);
     arms.set(s.id, [a, b]);
   }
-  return { owner, arms };
+  return { owner, arms, groups };
 }
 
 // ---------------------------------------------------------------------------
@@ -1591,8 +1666,14 @@ function producerShape(
 class BodyBuilder {
   readonly nodes: Node[] = [];
   #next = 0;
+  /** The next unused id, skipping reserved words (the 24th id would otherwise be `fn`). */
+  fresh(): string {
+    let id = `f${(this.#next++).toString(36)}`;
+    while (!isValidIdentifier(id)) id = `f${(this.#next++).toString(36)}`;
+    return id;
+  }
   add(op: Node['op'], args: readonly Operand[]): Operand {
-    const id = `f${(this.#next++).toString(36)}`;
+    const id = this.fresh();
     this.nodes.push({ id, op, args });
     return { kind: 'node', id };
   }
@@ -1623,7 +1704,7 @@ class BodyBuilder {
         ids.set(n.id, replaced);
         continue;
       }
-      const id = `f${(this.#next++).toString(36)}`;
+      const id = this.fresh();
       const { callee, pred } = n;
       this.nodes.push({
         id,
@@ -1906,6 +1987,33 @@ function fuseIntoState(site: FuseSite): TypedFunc | undefined {
   return rewriteTop(site, [{ ...consumer, callee: fused.name, args }], fused);
 }
 
+/**
+ * The selects that guard a recurrence's previous-element reads, and their common trip-0 arm.
+ * Every user of every read in `prev` is a select picking the read on p1 != 0 (guardedPrevReads);
+ * when each picks the same loop-invariant K on p1 == 0, K being a u32 literal or an extra
+ * parameter (index >= 2), the fused fold can seed the carried element with K and use it in place
+ * of the select: trip 0 picks K, the carried init, and trip i >= 1 picks element i-1, the carried
+ * value. Undefined when there is no read or the arms differ.
+ */
+function seededPrevSelects(
+  body: TypedFunc,
+  prev: ReadonlySet<string>,
+): { selects: ReadonlySet<string>; seed: Operand } | undefined {
+  let seed: Operand | undefined;
+  const selects = new Set<string>();
+  for (const n of body.nodes)
+    for (const [j, a] of n.args.entries()) {
+      if (a.kind !== 'node' || !prev.has(a.id)) continue;
+      if (n.op !== 'select' || (j !== 1 && j !== 2)) return undefined;
+      const other = n.args[3 - j] as Operand;
+      if (!(other.kind === 'u32' || (other.kind === 'param' && other.index >= 2))) return undefined;
+      if (seed !== undefined && !sameOperand(seed, other)) return undefined;
+      seed = other;
+      selects.add(n.id);
+    }
+  return seed === undefined ? undefined : { selects, seed };
+}
+
 function fuseRecurrence(site: FuseSite): TypedFunc | undefined {
   const { fn, consumer, body2, k, producer, body1, shape, n1, n2 } = site;
   const s2 = body2.params[0];
@@ -1923,10 +2031,11 @@ function fuseRecurrence(site: FuseSite): TypedFunc | undefined {
     { kind: 'u32', value: 1 },
   ]);
   const extraBase = body2.params.length - 1;
+  const seeded = seededPrevSelects(body1, shape.prev);
   const map1 = b.copy(
     body1,
     (i) => (i === 1 ? { kind: 'param', index: 1 } : { kind: 'param', index: extraBase + i - 2 }),
-    (n) => (shape.prev.has(n.id) ? carried : undefined),
+    (n) => (shape.prev.has(n.id) || seeded?.selects.has(n.id) === true ? carried : undefined),
     shape.set,
   );
   const element = map1(shape.set.args[2] as Operand);
@@ -1951,6 +2060,13 @@ function fuseRecurrence(site: FuseSite): TypedFunc | undefined {
     taken.add(`${base}${i}`);
     return `${base}${i}`;
   };
+  const seed = seeded?.seed;
+  const seedTop: Operand =
+    seed === undefined
+      ? { kind: 'u32', value: 0 }
+      : seed.kind === 'param'
+        ? (producer.args[seed.index] as Operand)
+        : seed;
   const initId = freshTop('zfi');
   const foldId = freshTop('zff');
   const args: Operand[] = [
@@ -1962,7 +2078,7 @@ function fuseRecurrence(site: FuseSite): TypedFunc | undefined {
   return rewriteTop(
     site,
     [
-      { id: initId, op: 'rec', args: [consumer.args[1] as Operand, { kind: 'u32', value: 0 }] },
+      { id: initId, op: 'rec', args: [consumer.args[1] as Operand, seedTop] },
       { id: foldId, op: 'fold', callee: fused.name, args },
       {
         id: consumer.id,

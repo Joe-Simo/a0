@@ -29,16 +29,22 @@
  * pointer, so a fold over an array touches one element per trip instead of copying the state.
  *
  * In-place updates follow the other backends' `mutableHere` analysis: a `set`/`put` on a value
- * that is provably unshared (a fresh allocation or the owned state, read only by `get`/`at`
- * before this node and no aggregate one of them read after it, never returned) stores one element and the node aliases the container; a
- * fold or loop whose initial value is unshared runs in that value's storage. An aggregate
- * `get`/`at` result aliases into its container (no copy), which is why such reads count as
- * sharing for the analysis; `mov` aliases; `select` chooses an address at run time.
+ * that is provably unshared (a fresh allocation, a fold or loop result, or the owned state, read
+ * only by `get`/`at` before this node and no aggregate one of them read after it, never returned)
+ * stores one element and the node aliases the container; a fold or loop whose initial value is
+ * unshared runs in that value's storage. An aggregate `get`/`at` result aliases into its
+ * container (no copy), which is why such reads count as sharing for the analysis; a `set`/`put`
+ * of such a borrow writes into the container when the container is unshared until then, and a
+ * `rec` whose one aggregate field is that updated borrow is built in the container's storage
+ * (`#recContainer`). A read that a lazy select arm emits later than its place counts as a read
+ * after the update (`liveAfter`). `mov` aliases; `select` chooses an address at run time.
  *
  * Code shape: fold/loop bodies and predicates of up to INLINE_BODY_NODES nodes, and scalar
  * calls of functions of up to INLINE_CALL_NODES nodes, are emitted in place when they need no
  * frame and no io (literal arguments become constants); counted loops are rotated (one entry
- * guard, a `br_if` back edge); element addresses scale by a shift. Each body then goes through
+ * guard, a `br_if` back edge), a loop's predicate too (tested on entry, then at the bottom after
+ * the trip test); element addresses scale by a shift, and the in-range affine accesses of an
+ * inlined loop body or predicate go through pointers the loop steps. Each body then goes through
  * `Code.finish`: a value read once across balanced code stays on the operand stack (`stackify`),
  * other set/get pairs become `local.tee`, dead stores are dropped, and locals with disjoint live
  * ranges share an index.
@@ -63,6 +69,7 @@
 import {
   A0Error,
   borrowLive,
+  borrowsOf,
   containsIo,
   evalOp,
   formatType,
@@ -184,9 +191,18 @@ const SIMD = {
   store: 0x0b,
   const: 0x0c,
   splat: 0x11,
+  extract: 0x1b,
+  replace: 0x1c,
+  eq: 0x37,
+  ne: 0x38,
+  lt_u: 0x3a,
+  gt_u: 0x3c,
+  le_u: 0x3e,
+  ge_u: 0x40,
   and: 0x4e,
   or: 0x50,
   xor: 0x51,
+  bitselect: 0x52,
   shl: 0xab,
   shr_u: 0xad,
   add: 0xae,
@@ -389,8 +405,9 @@ function localCounts(ins: readonly Ins[]): {
 /**
  * Stack effect of an instruction-list entry: `net` is its change of depth and `low` the lowest
  * depth it reaches relative to its start (for a run, the least of its instructions' depth before
- * their pops minus those pops). An entry with no known effect (a call, a loop, a branch, a
- * simd or i64 instruction) is a barrier: `undefined`.
+ * their pops minus those pops). An entry with no known effect (a call, a loop, a branch, an i64
+ * instruction, a simd instruction other than v128.const, v128.store, i32x4.splat, extract_lane,
+ * replace_lane and the lane-wise `SLP_OPS`) is a barrier: `undefined`.
  */
 interface Effect {
   readonly net: number;
@@ -450,6 +467,26 @@ function runEffect(bytes: readonly number[]): Effect | undefined {
     } else if (op === 0xfc && bytes[p] === 0x0b) {
       pops = 3;
       p += 2;
+    } else if (op === 0xfd) {
+      const v = bytes[p] as number;
+      p = skipLeb(bytes, p);
+      if (v === SIMD.const) {
+        pushes = 1;
+        p += 16;
+      } else if (v === SIMD.store) {
+        pops = 2;
+        p = skipLeb(bytes, skipLeb(bytes, p));
+      } else if (v === SIMD.splat) {
+        pops = 1;
+        pushes = 1;
+      } else if (v === SIMD.extract || v === SIMD.replace) {
+        pops = v === SIMD.extract ? 1 : 2;
+        pushes = 1;
+        p += 1;
+      } else if (Object.values(SLP_OPS).includes(v)) {
+        pops = 2;
+        pushes = 1;
+      } else return undefined;
     } else {
       return undefined;
     }
@@ -562,8 +599,12 @@ function stackify(input: readonly Ins[], params: number): Ins[] {
     const q = pairTo[p] as number;
     if (q < 0) continue;
     const after = (depth[p] as number) + (effects[p] as Effect).net;
-    let ok = depth[q] === after;
-    for (let k = p + 1; ok && k < q; k += 1) {
+    // Taken gets right before this one (`get a; get b; add` with both sets taken): their values
+    // are already piled on the stack in set order, so this value only has to land on top of them.
+    let first = q;
+    while (ends.has(first - 1)) first -= 1;
+    let ok = first > p && depth[first] === after;
+    for (let k = p + 1; ok && k < first; k += 1) {
       if ((depth[k] as number) + (effects[k] as Effect).low < after || ends.has(k)) ok = false;
     }
     if (!ok) continue;
@@ -744,10 +785,103 @@ function rotatesOf(fn: TypedFunc): Rotates {
 }
 
 /**
+ * Is the aggregate operand `o` storage no other value shares, read by nothing at or after the
+ * node at `index`: a fresh value (FRESH_OPS, or a fold or loop result, which runs in its own slot
+ * or in its unshared initial value's storage) or the owned state, not the result, and named
+ * before `index` only as the container of `get`/`at` reads?
+ */
+function unsharedUntil(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  ownedParam: (paramIndex: number) => boolean,
+): boolean {
+  if (o.kind === 'node') {
+    const def = fn.nodes.find((n) => n.id === o.id);
+    if (def === undefined || !(FRESH_OPS.has(def.op) || def.op === 'fold' || def.op === 'loop'))
+      return false;
+  } else if (!(o.kind === 'param' && ownedParam(o.index))) {
+    return false;
+  }
+  if (sameOp(fn.ret, o)) return false;
+  for (const [j, n] of fn.nodes.entries())
+    for (const [k, arg] of n.args.entries())
+      if (sameOp(arg, o) && (j >= index || !((n.op === 'get' || n.op === 'at') && k === 0)))
+        return false;
+  return true;
+}
+
+/**
+ * The field a `rec` may find already in place: the record's only aggregate field k, when its
+ * operand is `at Y k` itself or reaches it through the targets (operand 0) of `set`/`put` nodes.
+ * Returns that `at` node and its container Y (compiler/shape.a0 finds the same, `shrecb`).
+ */
+function recInPlaceField(
+  fn: TypedFunc,
+  node: Node,
+): { readonly field: number; readonly at: Node; readonly container: Operand } | undefined {
+  const fields = recordType(fn, { kind: 'node', id: node.id });
+  const aggregates = fields.flatMap((f, k) => (isPrimitive(f) ? [] : [k]));
+  const field = aggregates[0];
+  if (aggregates.length !== 1 || field === undefined) return undefined;
+  let x = node.args[field];
+  for (let steps = 0; steps < fn.nodes.length && x?.kind === 'node'; steps += 1) {
+    const id = x.id;
+    const def = fn.nodes.find((n) => n.id === id);
+    if (def?.op === 'set' || def?.op === 'put') {
+      x = def.args[0];
+      continue;
+    }
+    if (def?.op === 'at' && literalIndex(def.args[1]) === field)
+      return { field, at: def, container: def.args[0] as Operand };
+    return undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Where node j is emitted: a node a lazy select arm owns (optimize.ts `lazyArms`) runs with its
+ * select, and a select inside an outer arm with that select, so at the outermost owner.
+ */
+function emittedAtOf(fn: TypedFunc, owner: ReadonlyMap<string, string>): (j: number) => number {
+  const position = new Map(fn.nodes.map((n, i) => [n.id, i]));
+  return (j) => {
+    let id = fn.nodes[j]?.id ?? '';
+    for (let steps = 0; steps < fn.nodes.length; steps += 1) {
+      const up = owner.get(id);
+      if (up === undefined) break;
+      id = up;
+    }
+    return position.get(id) ?? j;
+  };
+}
+
+/**
+ * `borrowLive`, or a read that runs late: a node before `index` that names `o` or a borrow of it
+ * and is emitted at or after `index` (in a lazy select arm, `emittedAt`) reads the storage after
+ * an update there.
+ */
+function liveAfter(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  selfRead: boolean,
+  emittedAt: (j: number) => number,
+): boolean {
+  if (borrowLive(fn, o, index, selfRead)) return true;
+  const borrows = borrowsOf(fn, o);
+  const reads = (x: Operand): boolean => sameOp(x, o) || (x.kind === 'node' && borrows.has(x.id));
+  return fn.nodes.some((n, j) => j < index && emittedAt(j) >= index && n.args.some(reads));
+}
+
+/**
  * May the aggregate operand `o` be updated in place by the node at `index`? The same analysis
  * as the C and native backends: an aggregate-typed `get`/`at` result aliases into its
  * container here (a borrowed read), so the container is updated in place only when no such
- * borrow is read after this node (`borrowLive`).
+ * borrow is read after this node (`borrowLive`). A fold or loop result is fresh too. A `set`/`put`
+ * may also update such a borrow, writing into its container, when the container is unshared until
+ * here (`unsharedUntil`) and no borrow of it (the target among them) is read after. Reads emitted
+ * late by lazy select arms count as reads after (`liveAfter`).
  */
 function mutableHere(
   fn: TypedFunc,
@@ -755,10 +889,15 @@ function mutableHere(
   index: number,
   position: number,
   ownedParam: (paramIndex: number) => boolean,
+  emittedAt: (j: number) => number,
 ): boolean {
+  const writes = fn.nodes[index]?.op === 'set' || fn.nodes[index]?.op === 'put';
+  let container: Operand | undefined;
   if (o.kind === 'node') {
     const def = fn.nodes.find((n) => n.id === o.id);
-    if (def === undefined || !FRESH_OPS.has(def.op)) return false;
+    if (def === undefined) return false;
+    if (writes && (def.op === 'get' || def.op === 'at')) container = def.args[0] as Operand;
+    else if (!(FRESH_OPS.has(def.op) || def.op === 'fold' || def.op === 'loop')) return false;
   } else if (!(o.kind === 'param' && ownedParam(o.index))) {
     return false;
   }
@@ -776,8 +915,13 @@ function mutableHere(
       if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
     }
   }
-  const writes = fn.nodes[index]?.op === 'set' || fn.nodes[index]?.op === 'put';
-  return !borrowLive(fn, o, index, writes);
+  // The target is one of the container's borrows: no borrow of the container read after.
+  if (container !== undefined)
+    return (
+      unsharedUntil(fn, container, index, ownedParam) &&
+      !liveAfter(fn, container, index, true, emittedAt)
+    );
+  return !liveAfter(fn, o, index, writes, emittedAt);
 }
 
 // ---------------------------------------------------------------------------
@@ -800,35 +944,336 @@ interface InlineHost {
    * The previous element carried in a local: `get` (reading p0 at p1 - 1) is that local, and
    * after the in-place `set` (p0 at p1) the stored value becomes it (see `carriedRead`).
    */
-  readonly carry?: { readonly get: string; readonly set: string; readonly local: number };
+  readonly carry?: {
+    readonly get: string;
+    readonly set: string;
+    readonly local: number;
+    /** A `select` that is the carried element on every trip (see `guardedCarry`). */
+    readonly select?: string;
+  };
+  /**
+   * A sliding read of an extra argument (see `slidingRead`): `cur` (reading pK at p1) is the
+   * local `curLocal`, and `next` (reading pK at p1 + 1) is bound to `nextLocal`, which the host
+   * moves to `curLocal` after each trip.
+   */
+  readonly slide?: {
+    readonly cur: string;
+    readonly next: string;
+    readonly curLocal: number;
+    readonly nextLocal: number;
+  };
   /** p1 is the host's trip index, below this literal bound (so p1 needs no masking below it). */
   readonly indexBound?: number;
+  /** Element accesses (get or set node id) through a pointer the host steps (see `#pointers`). */
+  readonly pointers?: ReadonlyMap<string, PointerAccess>;
+}
+
+/** A carried read: the read, the store that feeds it, and the read's index on trip p1. */
+interface CarriedRead {
+  readonly get: string;
+  readonly set: string;
+  readonly first: Affine;
+}
+
+/** An index s * p1 + c + t * pK (pK a scalar extra parameter, K >= 2; t is 0, 1 or -1), mod 2^32. */
+interface Affine {
+  readonly s: number;
+  readonly c: number;
+  readonly k: number;
+  readonly t: number;
+}
+
+/** An operand as an affine index, given the affine forms of the nodes before it. */
+function affineOf(
+  o: Operand | undefined,
+  nodes: ReadonlyMap<string, Affine | undefined>,
+): Affine | undefined {
+  if (o === undefined) return undefined;
+  if (o.kind === 'u32') return { s: 0, c: o.value, k: 0, t: 0 };
+  if (o.kind === 'param') {
+    if (o.index === 1) return { s: 1, c: 0, k: 0, t: 0 };
+    // An extra parameter used as an index or an add/sub operand is a u32 in a valid program.
+    if (o.index >= 2) return { s: 0, c: 0, k: o.index, t: 1 };
+    return undefined;
+  }
+  return o.kind === 'node' ? nodes.get(o.id) : undefined;
+}
+
+/** The affine form (in p1 and at most one extra parameter) of every add/sub node of `body`. */
+function affineNodes(body: TypedFunc): Map<string, Affine | undefined> {
+  const out = new Map<string, Affine | undefined>();
+  for (const n of body.nodes) {
+    const a = affineOf(n.args[0], out);
+    const b = affineOf(n.args[1], out);
+    if ((n.op !== 'add' && n.op !== 'sub') || a === undefined || b === undefined) {
+      out.set(n.id, undefined);
+      continue;
+    }
+    const sign = n.op === 'add' ? 1 : -1;
+    const t = a.t + sign * b.t;
+    const k = a.t !== 0 ? a.k : b.k;
+    if ((a.t !== 0 && b.t !== 0 && a.k !== b.k) || (t !== 0 && Math.abs(t) !== 1)) {
+      out.set(n.id, undefined);
+      continue;
+    }
+    out.set(n.id, {
+      s: (a.s + sign * b.s) >>> 0,
+      c: (a.c + sign * b.c) >>> 0,
+      k: t === 0 ? 0 : k,
+      t,
+    });
+  }
+  return out;
 }
 
 /**
- * A fold body `set p0 p1 v` (its only update) that also reads the element before p1,
- * `get p0 (sub p1 1)`: trip i reads what trip i-1 stored, so a backend may carry that value
- * in a register instead of reloading it (trip 0 reads element (2^32 - 1) mod length).
+ * Does the affine index `f` (unit stride: s is 1 or -1) stay inside [0, length) on every trip p1
+ * of [start, n - 1], for any count n of at most `hi`? Without an extra parameter the index is
+ * s * p1 + c, at its extremes on the first and last trip. With one it must be the count itself
+ * (`same`) and enter as t * (pK - p1) + c, so t * d + c for d in [1, hi - start]. The ends are
+ * computed mod 2^32 and must be ordered and below the length; then they are the true values,
+ * since they differ by less than the length and a negative end wraps above 2^31.
  */
-function carriedRead(body: TypedFunc): { get: string; set: string } | undefined {
+function affineInRange(
+  f: Affine,
+  length: number,
+  start: number,
+  hi: number,
+  same: boolean,
+): boolean {
+  if (hi <= start || (f.s !== 1 && f.s !== 0xffffffff)) return false;
+  if (f.t !== 0 && !(same && (f.s + f.t) % 0x100000000 === 0)) return false;
+  const m = f.t === 0 ? f.s : f.t >>> 0;
+  const from = f.t === 0 ? start : 1;
+  const to = f.t === 0 ? hi - 1 : hi - start;
+  const e1 = (Math.imul(m, from) + f.c) >>> 0;
+  const e2 = (Math.imul(m, to) + f.c) >>> 0;
+  const lo = m === 1 ? e1 : e2;
+  const up = m === 1 ? e2 : e1;
+  return lo <= up && up < length;
+}
+
+/** An element access through a host pointer: the pointer local and the static byte offset. */
+interface PointerAccess {
+  readonly local: number;
+  readonly offset: number;
+}
+
+/**
+ * A fold or loop body over array state whose result is `set X w v` (its last store) and which
+ * reads `get p0 r` where r at trip p1 + 1 is w at trip p1 (both affine in p1, see `affineNodes`):
+ * trip i + 1 reads the value trip i stored last, so a backend may carry v in a local instead of
+ * reloading it. The elements are scalars.
+ */
+function carriedRead(body: TypedFunc): CarriedRead | undefined {
   const ret = body.ret;
   if (ret.kind !== 'node') return undefined;
   const set = body.nodes.find((n) => n.id === ret.id);
-  const isParam = (o: Operand | undefined, i: number): boolean =>
-    o?.kind === 'param' && o.index === i;
-  if (set?.op !== 'set' || !isParam(set.args[0], 0) || !isParam(set.args[1], 1)) return undefined;
-  if (body.nodes.filter((n) => n.op === 'set' || n.op === 'put').length !== 1) return undefined;
-  const defs = new Map(body.nodes.map((n) => [n.id, n]));
+  const st = body.params[0];
+  if (set?.op !== 'set' || st === undefined || isPrimitive(st) || st.kind !== 'arr')
+    return undefined;
+  if (!isPrimitive(st.elem)) return undefined;
+  const forms = affineNodes(body);
+  const w = affineOf(set.args[1], forms);
+  if (w === undefined) return undefined;
   for (const n of body.nodes) {
-    const j = n.args[1];
-    if (n.op !== 'get' || !isParam(n.args[0], 0) || j?.kind !== 'node') continue;
-    const d = defs.get(j.id);
-    const one = d?.args[1];
-    if (d?.op === 'sub' && isParam(d.args[0], 1) && one?.kind === 'u32' && one.value === 1)
-      return { get: n.id, set: set.id };
+    if (n.op !== 'get' || n.args[0]?.kind !== 'param' || n.args[0].index !== 0) continue;
+    const r = affineOf(n.args[1], forms);
+    if (r === undefined || r.s !== w.s || r.k !== w.k || r.t !== w.t) continue;
+    if ((r.c + r.s) >>> 0 === w.c) return { get: n.id, set: set.id, first: r };
   }
   return undefined;
 }
+
+/**
+ * The loop predicate's read of the carried element: its first `get p0 r` whose index has the
+ * affine form `first` of the body's carried read (see `carriedRead`). The predicate runs on a trip
+ * before the body, with the same parameters, so that read is the element the carry local holds.
+ */
+function carriedPredicateRead(pred: TypedFunc, first: Affine): string | undefined {
+  const forms = affineNodes(pred);
+  for (const n of pred.nodes) {
+    if (n.op !== 'get' || n.args[0]?.kind !== 'param' || n.args[0].index !== 0) continue;
+    const r = affineOf(n.args[1], forms);
+    if (r !== undefined && r.s === first.s && r.c === first.c && r.k === first.k && r.t === first.t)
+      return n.id;
+  }
+  return undefined;
+}
+
+/**
+ * The carried read `get` (see `carriedRead`) guarded on the first trip: its only use is
+ * `select (eq p1 first) K get`, the literal K standing in on the trip `first` the loop starts at.
+ * With the carried local starting at K instead of the element before `first`, that select is
+ * the carried local on every trip, so the compare and the select vanish from the loop.
+ */
+function guardedCarry(
+  body: TypedFunc,
+  get: string,
+  first: number,
+): { select: string; first: number } | undefined {
+  const isGet = (o: Operand | undefined): boolean => o?.kind === 'node' && o.id === get;
+  const users = body.nodes.filter((n) => n.args.some(isGet));
+  const sel = users[0];
+  if (users.length !== 1 || sel?.op !== 'select') return undefined;
+  // A select that leads a select group is emitted with its group (see optimize.ts `lazyArms`).
+  if (lazyArms(body).groups.has(sel.id)) return undefined;
+  const [cond, k, other] = sel.args;
+  if (k?.kind !== 'u32' || !isGet(other) || sel.args.filter(isGet).length !== 1) return undefined;
+  if (cond?.kind !== 'node') return undefined;
+  const eq = body.nodes.find((n) => n.id === cond.id);
+  const [x, y] = eq?.args ?? [];
+  const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
+  const isFirst = (o: Operand | undefined): boolean => o?.kind === 'u32' && o.value === first;
+  if (eq?.op !== 'eq' || !((isIndex(x) && isFirst(y)) || (isIndex(y) && isFirst(x))))
+    return undefined;
+  return { select: sel.id, first: k.value };
+}
+
+/**
+ * A fold body reading an extra aggregate argument pK (K >= 2, never updated by the loop) of
+ * scalar elements both at p1 and at `add p1 1`: trip i + 1's read at p1 is trip i's read at
+ * p1 + 1 (both indices wrap mod the length), so a backend may carry that value in a local
+ * instead of reloading it. The read at p1 + 1 must run on every trip (not in a lazy select arm).
+ */
+function slidingRead(body: TypedFunc): { cur: string; next: string; param: number } | undefined {
+  const defs = new Map(body.nodes.map((n) => [n.id, n]));
+  const lazy = lazyArms(body).owner;
+  const isParam = (o: Operand | undefined, i: number): boolean =>
+    o?.kind === 'param' && o.index === i;
+  const isOne = (o: Operand | undefined): boolean => o?.kind === 'u32' && o.value === 1;
+  for (const cur of body.nodes) {
+    const p = cur.args[0];
+    if (cur.op !== 'get' || p?.kind !== 'param' || p.index < 2 || !isParam(cur.args[1], 1))
+      continue;
+    const t = body.params[p.index];
+    if (t === undefined || isPrimitive(t) || t.kind !== 'arr' || !isPrimitive(t.elem)) continue;
+    for (const next of body.nodes) {
+      const j = next.args[1];
+      if (next.op !== 'get' || !isParam(next.args[0], p.index) || j?.kind !== 'node') continue;
+      const d = defs.get(j.id);
+      const [x, y] = d?.args ?? [];
+      const plusOne =
+        d?.op === 'add' && ((isParam(x, 1) && isOne(y)) || (isOne(x) && isParam(y, 1)));
+      if (plusOne && !lazy.has(next.id)) return { cur: cur.id, next: next.id, param: p.index };
+    }
+  }
+  return undefined;
+}
+
+/** i32x4 forms (after the 0xfd prefix) of the lane operations of a reduction body. */
+const REDUCE_OPS: Readonly<Record<string, number>> = {
+  add: SIMD.add,
+  sub: SIMD.sub,
+  mul: SIMD.mul,
+  and: SIMD.and,
+  or: SIMD.or,
+  xor: SIMD.xor,
+  shl: SIMD.shl,
+  shr: SIMD.shr_u,
+  eq: SIMD.eq,
+  ne: SIMD.ne,
+  lt: SIMD.lt_u,
+  gt: SIMD.gt_u,
+  le: SIMD.le_u,
+  ge: SIMD.ge_u,
+};
+
+/** A reduction body has at most this many lane nodes (each one's lanes take a v128 local). */
+const REDUCE_MAX_NODES = 32;
+
+/** A reduction fold body (see `reduceRun`). */
+interface ReduceRun {
+  readonly op: string;
+  readonly value: string;
+  readonly nodes: readonly Node[];
+  readonly bound: number;
+}
+
+/**
+ * A scalar fold body `acc op f(p1, ...)` (op add, xor, or or and, acc = p0 read nowhere else)
+ * whose other nodes are lane operations over the index p1, reads `get pK p1` of extra u32
+ * arrays (K >= 2), loop-invariant u32 extras, literals, compares (a bool lane is a mask of all
+ * ones or zero) and selects; no `mul` reads p1 (an induction variable) and the body cannot
+ * trap. Trips are independent apart from op, which is associative and commutative, so a
+ * backend may run four trips at once in i32x4 lanes and fold the lanes into the state after.
+ * `nodes` are the body nodes but the last (the reduction), `value` the node op folds in, and
+ * `bound` the shortest array read (0 when none): a vector trip never reads past it.
+ */
+function reduceRun(body: TypedFunc): ReduceRun | undefined {
+  const [p0, p1] = body.params;
+  if (p0 !== 'u32' || p1 !== 'u32' || body.result !== 'u32' || mayTrapFn(body)) return undefined;
+  const last = body.nodes[body.nodes.length - 1];
+  const ret = body.ret;
+  if (last === undefined || ret.kind !== 'node' || ret.id !== last.id) return undefined;
+  if (!(last.op === 'add' || last.op === 'xor' || last.op === 'or' || last.op === 'and'))
+    return undefined;
+  const isParam = (o: Operand | undefined, i: number): boolean =>
+    o?.kind === 'param' && o.index === i;
+  const [x, y] = last.args;
+  const value = isParam(x, 0) ? y : isParam(y, 0) ? x : undefined;
+  if (value?.kind !== 'node') return undefined;
+  const nodes = body.nodes.slice(0, -1);
+  if (nodes.length > REDUCE_MAX_NODES) return undefined;
+  const lanes = new Set<string>();
+  const u32 = (o: Operand): boolean => operandType(body, o) === 'u32';
+  const uniform = (o: Operand): boolean =>
+    o.kind === 'u32' || (o.kind === 'param' && o.index >= 2 && body.params[o.index] === 'u32');
+  const lane = (o: Operand): boolean =>
+    o.kind === 'u32' ||
+    o.kind === 'bool' ||
+    isParam(o, 1) ||
+    uniform(o) ||
+    (o.kind === 'node' && lanes.has(o.id));
+  let bound = 0;
+  for (const n of nodes) {
+    const t = body.types.get(n.id);
+    if (t !== 'u32' && t !== 'bool') return undefined;
+    const args = n.args;
+    if (n.op === 'get') {
+      const [a, i] = args;
+      const at = a?.kind === 'param' && a.index >= 2 ? body.params[a.index] : undefined;
+      if (at === undefined || isPrimitive(at) || at.kind !== 'arr' || at.elem !== 'u32')
+        return undefined;
+      if (at.length < 4 || !isParam(i, 1)) return undefined;
+      bound = bound === 0 ? at.length : Math.min(bound, at.length);
+    } else if (n.op === 'select') {
+      if (!args.every(lane)) return undefined;
+    } else if (REDUCE_OPS[n.op] !== undefined) {
+      if (!args.every(lane)) return undefined;
+      const [a, b] = args as [Operand, Operand];
+      if ((n.op === 'shl' || n.op === 'shr') && !uniform(b)) return undefined;
+      if (n.op === 'mul' && (isParam(a, 1) || isParam(b, 1))) return undefined;
+      const order = n.op === 'lt' || n.op === 'gt' || n.op === 'le' || n.op === 'ge';
+      if (order && !(u32(a) && u32(b))) return undefined;
+    } else return undefined;
+    lanes.add(n.id);
+  }
+  if (!lanes.has(value.id) || body.types.get(value.id) !== 'u32') return undefined;
+  return { op: last.op, value: value.id, nodes, bound };
+}
+
+/** Operations with no effect and no trap in an inlined body (one that can trap is never inlined). */
+const PURE_OPS: ReadonlySet<string> = new Set([
+  'mov',
+  'add',
+  'sub',
+  'mul',
+  'and',
+  'or',
+  'xor',
+  'shl',
+  'shr',
+  'eq',
+  'ne',
+  'lt',
+  'le',
+  'gt',
+  'ge',
+  'select',
+  'get',
+  'at',
+]);
 
 /** Fold state of at most this many one-word fields or elements is kept in locals. */
 const STATE_WORDS = 8;
@@ -868,7 +1313,8 @@ function scalarState(body: TypedFunc): ReadonlySet<string> | undefined {
     if (node.args.some((x) => isP0(x) || inChain(x))) return undefined;
   }
   const ret = body.ret;
-  if (!(isP0(ret) || inChain(ret))) return undefined;
+  // A loop predicate (scalar result) only reads the state; a body returns the new state.
+  if (!isPrimitive(body.result) && !(isP0(ret) || inChain(ret))) return undefined;
   // A chain node may be the base of the next update or the result, nothing else.
   for (const node of body.nodes)
     for (const [i, x] of node.args.entries())
@@ -881,6 +1327,253 @@ function scalarState(body: TypedFunc): ReadonlySet<string> | undefined {
   return chain;
 }
 
+/** Lane-wise u32 operations simd128 packs (see `slpPlan`). */
+const SLP_OPS: Readonly<Record<string, number>> = {
+  add: SIMD.add,
+  sub: SIMD.sub,
+  mul: SIMD.mul,
+  and: SIMD.and,
+  or: SIMD.or,
+  xor: SIMD.xor,
+  shl: SIMD.shl,
+  shr: SIMD.shr_u,
+};
+const SLP_COMMUTES = new Set(['add', 'mul', 'and', 'or', 'xor']);
+/** Packs a function makes at most: one v128 local each, the capacity of compiler/wasm_code.a0. */
+const SLP_MAX_PACKS = 128;
+
+/** One side of a pack's operation: another pack, one value in every lane, or four values. */
+type SlpKid =
+  | { readonly pack: SlpPack }
+  | { readonly same: Operand }
+  | { readonly lanes: readonly Operand[] };
+
+interface SlpPack {
+  readonly lanes: readonly string[];
+  readonly op: string;
+  readonly kids: SlpKid[];
+  /** Index of the node after which the pack's inputs exist (-1: at the start). */
+  ready: number;
+  /** Lanes whose scalar value is read (extracted into an i32 local when the pack is made). */
+  readonly demand: Set<number>;
+}
+
+interface SlpPlan {
+  /** The packs, kids before the packs that read them. */
+  readonly packs: readonly SlpPack[];
+  /** Pack-only nodes (not emitted as scalars): the pack and lane that holds each. */
+  readonly holder: ReadonlyMap<string, { readonly pack: SlpPack; readonly lane: number }>;
+  /** Packs by their lanes joined with ',' (array literal groups are stored from them). */
+  readonly byLanes: ReadonlyMap<string, SlpPack>;
+  /**
+   * Operations of parameters and literals read once, by a splat or lane build: computed there
+   * rather than at their place.
+   */
+  readonly inline: ReadonlySet<string>;
+}
+
+const operandKey = (o: Operand): string =>
+  o.kind === 'node' ? o.id : o.kind === 'param' ? `p${o.index}` : `${o.kind}${String(o.value)}`;
+
+/**
+ * Superword packs of a function: groups of four isomorphic lane-wise u32 operations, seeded by
+ * the four-element groups of u32 array literals and grown through their operands, each done as
+ * one i32x4 operation. A lane operand that is the same in every lane is a splat; four other
+ * values are built with replace_lane. A lane node read as a scalar before its pack's inputs
+ * exist is also emitted as a scalar; other scalar reads are lanes extracted once.
+ */
+function slpPlan(fn: TypedFunc, skip: (id: string) => boolean): SlpPlan {
+  const index = new Map<string, number>();
+  const byId = new Map<string, Node>();
+  for (const [k, n] of fn.nodes.entries()) {
+    index.set(n.id, k);
+    byId.set(n.id, n);
+  }
+  const byLanes = new Map<string, SlpPack>();
+  const packs: SlpPack[] = [];
+  const isU32 = (o: Operand): boolean => o.kind !== 'bool' && operandType(fn, o) === 'u32';
+  const opOf = (o: Operand): string => (o.kind === 'node' ? (byId.get(o.id)?.op ?? '') : o.kind);
+  const lanesOk = (ops: readonly Operand[]): Node[] | undefined => {
+    const nodes: Node[] = [];
+    for (const o of ops) {
+      if (o.kind !== 'node' || skip(o.id) || nodes.some((n) => n.id === o.id)) return undefined;
+      const n = byId.get(o.id);
+      if (n === undefined || SLP_OPS[n.op] === undefined || n.op !== opOf(ops[0] as Operand))
+        return undefined;
+      if (fn.types.get(n.id) !== 'u32' || !n.args.every(isU32)) return undefined;
+      nodes.push(n);
+    }
+    return nodes;
+  };
+  const kid = (ops: readonly Operand[]): SlpKid => {
+    const k0 = operandKey(ops[0] as Operand);
+    if (ops.every((o) => operandKey(o) === k0)) return { same: ops[0] as Operand };
+    const p = build(ops);
+    return p === undefined ? { lanes: ops } : { pack: p };
+  };
+  const build = (ops: readonly Operand[]): SlpPack | undefined => {
+    const nodes = lanesOk(ops);
+    if (nodes === undefined) return undefined;
+    const lanes = nodes.map((n) => n.id);
+    const known = byLanes.get(lanes.join());
+    if (known !== undefined) return known;
+    if (byLanes.size >= SLP_MAX_PACKS) return undefined;
+    const op = (nodes[0] as Node).op;
+    const shift = op === 'shl' || op === 'shr';
+    const k = operandKey;
+    let swap = nodes.map(() => false);
+    if (shift) {
+      const r0 = k((nodes[0] as Node).args[1] as Operand);
+      if (!nodes.every((n) => k(n.args[1] as Operand) === r0)) return undefined;
+    } else if (SLP_COMMUTES.has(op)) {
+      // Orient each lane: a value common to every lane goes left (one splat, made first); otherwise each
+      // lane's sides follow the operations of lane 0's.
+      const [l0, r0] = (nodes[0] as Node).args as [Operand, Operand];
+      const common = [r0, l0].find((c) => nodes.every((n) => n.args.some((a) => k(a) === k(c))));
+      swap = nodes.map((n) => {
+        const [a, b] = n.args as [Operand, Operand];
+        if (common !== undefined) return k(b) === k(common) && k(a) !== k(common);
+        if (k(a) === k(l0) || k(b) === k(r0)) return false;
+        if (k(b) === k(l0) || k(a) === k(r0)) return true;
+        return (
+          !(opOf(a) === opOf(l0) && opOf(b) === opOf(r0)) &&
+          opOf(b) === opOf(l0) &&
+          opOf(a) === opOf(r0)
+        );
+      });
+    }
+    const side = (s: number): Operand[] =>
+      nodes.map((n, i) => n.args[(swap[i] ? 1 - s : s) as 0 | 1] as Operand);
+    const pack: SlpPack = { lanes, op, kids: [], ready: -1, demand: new Set() };
+    byLanes.set(lanes.join(), pack);
+    pack.kids.push(kid(side(0)), shift ? { same: side(1)[0] as Operand } : kid(side(1)));
+    packs.push(pack);
+    return pack;
+  };
+  for (const n of fn.nodes) {
+    if (n.op !== 'arr' || arrayType(fn, { kind: 'node', id: n.id }).elem !== 'u32') continue;
+    for (let g = 0; g + 4 <= n.args.length; g += 4) build(n.args.slice(g, g + 4));
+  }
+  // Kids are pushed before their parents, so `packs` is already in emission order.
+  const users = new Map<string, number[]>();
+  const use = (id: string, at: number): void => {
+    users.set(id, [...(users.get(id) ?? []), at]);
+  };
+  for (const [k, n] of fn.nodes.entries()) {
+    // An array literal group stored from its pack reads no lane.
+    const stored = new Set<number>();
+    if (n.op === 'arr')
+      for (let g = 0; g + 4 <= n.args.length; g += 4) {
+        const ids = n.args.slice(g, g + 4).map((a) => (a.kind === 'node' ? a.id : ''));
+        if (byLanes.has(ids.join())) for (let i = g; i < g + 4; i += 1) stored.add(i);
+      }
+    for (const [i, a] of n.args.entries()) if (a.kind === 'node' && !stored.has(i)) use(a.id, k);
+  }
+  if (fn.ret.kind === 'node') use(fn.ret.id, fn.nodes.length);
+  const packed = new Map<string, { pack: SlpPack; lane: number }>();
+  for (const p of packs)
+    for (const [lane, id] of p.lanes.entries())
+      if (!packed.has(id)) packed.set(id, { pack: p, lane });
+  // Nodes emitted as scalars anyway (read before their pack exists), grown to a fixed point.
+  const scalar = new Set<string>();
+  const leafReads = (p: SlpPack): Operand[] =>
+    p.kids.flatMap((kd) => ('pack' in kd ? [] : 'same' in kd ? [kd.same] : kd.lanes));
+  for (;;) {
+    let grew = false;
+    // Ready points, depth first; a leaf read of a lane of a pack still being resolved (a cycle)
+    // makes that lane a scalar.
+    const state = new Map<SlpPack, number>();
+    const resolve = (p: SlpPack): number => {
+      if (state.get(p) === 2) return p.ready;
+      state.set(p, 1);
+      let r = -1;
+      for (const kd of p.kids) if ('pack' in kd) r = Math.max(r, resolve(kd.pack));
+      for (const o of leafReads(p)) {
+        if (o.kind !== 'node') continue;
+        const h = packed.get(o.id);
+        if (h !== undefined && !scalar.has(o.id) && state.get(h.pack) === 1) {
+          scalar.add(o.id);
+          grew = true;
+        }
+        r = Math.max(
+          r,
+          h === undefined || scalar.has(o.id) ? (index.get(o.id) ?? -1) : resolve(h.pack),
+        );
+      }
+      p.ready = r;
+      state.set(p, 2);
+      return r;
+    };
+    for (const p of packs) resolve(p);
+    if (grew) continue;
+    for (const [id, h] of packed) {
+      if (scalar.has(id)) continue;
+      if (
+        (users.get(id) ?? []).some(
+          (u) => u <= h.pack.ready && !packed.has(fn.nodes[u]?.id ?? ''),
+        ) ||
+        (users.get(id) ?? []).some((u) => scalar.has(fn.nodes[u]?.id ?? '') && u <= h.pack.ready)
+      ) {
+        scalar.add(id);
+        grew = true;
+      }
+    }
+    if (!grew) break;
+  }
+  const holder = new Map<string, { pack: SlpPack; lane: number }>();
+  for (const [id, h] of packed) if (!scalar.has(id)) holder.set(id, h);
+  // Scalar reads of pack-only nodes: by scalar nodes and by the leaves of packs.
+  const read = (id: string): void => {
+    const h = holder.get(id);
+    if (h !== undefined) h.pack.demand.add(h.lane);
+  };
+  for (const [id, us] of users)
+    if (us.some((u) => u >= fn.nodes.length || !holder.has(fn.nodes[u]?.id ?? ''))) read(id);
+  const leafCount = new Map<string, number>();
+  for (const p of packs)
+    for (const o of leafReads(p))
+      if (o.kind === 'node') leafCount.set(o.id, (leafCount.get(o.id) ?? 0) + 1);
+  const inline = new Set<string>();
+  for (const [id, count] of leafCount) {
+    const n = byId.get(id) as Node;
+    if (
+      count === 1 &&
+      !packed.has(id) &&
+      !skip(id) &&
+      SLP_OPS[n.op] !== undefined &&
+      n.args.every((a) => a.kind === 'param' || a.kind === 'u32') &&
+      (users.get(id) ?? []).every((u) => holder.has(fn.nodes[u]?.id ?? ''))
+    )
+      inline.add(id);
+  }
+  return { packs, holder, byLanes, inline };
+}
+
+/** A kid of four lanes in a form one vector operation turns into another of the form. */
+interface KidForm {
+  readonly op: string;
+  readonly x: number;
+  readonly c: readonly number[];
+}
+const KID_FORM_OPS: Readonly<Record<string, true>> = { shl: true, shr: true, add: true, sub: true };
+
+/**
+ * The amount s with g = f op s lane-wise (const and add: every lane's literal grows by s; sub:
+ * the subtrahends grow by s; shl and shr: the shift counts grow by s, all below 32), else
+ * undefined.
+ */
+function kidShift(f: KidForm, g: KidForm): number | undefined {
+  if (f.op !== g.op || f.x !== g.x) return undefined;
+  const s = ((g.c[0] as number) - (f.c[0] as number)) >>> 0;
+  for (let i = 0; i < 4; i += 1) {
+    const a = f.c[i] as number;
+    const b = g.c[i] as number;
+    if ((b - a) >>> 0 !== s) return undefined;
+    if ((f.op === 'shl' || f.op === 'shr') && (a >= 32 || b >= 32)) return undefined;
+  }
+  return (f.op === 'shl' || f.op === 'shr') && s >= 32 ? undefined : s;
+}
+
 /** Iteration bodies and predicates up to this many nodes are emitted inside the loop. */
 const INLINE_BODY_NODES = 24;
 /** Scalar calls of functions up to this many nodes are emitted at the call site. */
@@ -890,6 +1583,10 @@ const INLINE_FRAME_NODES = 16;
 const INLINE_DEPTH = 3;
 /** Inlined fold bodies up to this many nodes are unrolled when `WasmEmitOptions.unroll` > 1. */
 const UNROLL_BODY_NODES = 12;
+/** Copies per back edge of a literal-count loop that carries the previous element. */
+const CARRY_UNROLL = 4;
+/** Element pointers a loop steps at most (see `FunctionEmitter#pointers`). */
+const POINTER_GROUPS = 4;
 
 /** Per-function code generation choices (part of the emission cache key when not default). */
 export interface WasmEmitOptions {
@@ -976,6 +1673,8 @@ class FunctionEmitter {
   readonly consts = new Map<string, number>();
   /** Select arms evaluated on their own path (see optimize.ts `lazyArms`). */
   readonly lazy: ReturnType<typeof lazyArms>;
+  /** Where each node is emitted (its outermost lazy owner's position, else its own). */
+  readonly #emittedAt: (j: number) => number;
   /** Rotates among the `or` nodes, and the shift nodes they absorb (see `rotatesOf`). */
   readonly rot: Rotates;
   readonly byId: ReadonlyMap<string, Node>;
@@ -983,6 +1682,9 @@ class FunctionEmitter {
   /** Scalar-replaced state: the update-chain nodes and each one's words (see `scalarState`). */
   readonly #chain: ReadonlySet<string> | undefined;
   readonly #words = new Map<string, readonly ParamSource[]>();
+  /** simd128 packs of lane-wise operations (see `slpPlan`) and their v128 locals. */
+  #slp: SlpPlan | undefined;
+  readonly #vec = new Map<SlpPack, number>();
 
   constructor(
     fn: TypedFunc,
@@ -995,6 +1697,7 @@ class FunctionEmitter {
     this.fn = fn;
     this.options = options;
     this.lazy = lazyArms(fn);
+    this.#emittedAt = emittedAtOf(fn, this.lazy.owner);
     this.rot = rotatesOf(fn);
     this.byId = new Map(fn.nodes.map((n) => [n.id, n]));
     this.#chain = host?.fields === undefined ? undefined : scalarState(fn);
@@ -1009,6 +1712,15 @@ class FunctionEmitter {
     this.paramBase = aggregateResult ? 1 : 0;
     this.#nextLocal = this.paramBase + fn.params.length;
     this.#analyse();
+    if (host === undefined && this.options.simd)
+      this.#slp = slpPlan(
+        fn,
+        (id) =>
+          this.lazy.owner.has(id) ||
+          this.rot.owned.has(id) ||
+          this.rot.at.has(id) ||
+          this.aliases.has(id),
+      );
     this.retSlot = this.#retSlot();
   }
 
@@ -1042,11 +1754,34 @@ class FunctionEmitter {
         this.#mutable(n.args[1] as Operand, index, 1)
       )
         this.aliases.set(n.id, this.root(n.args[1] as Operand));
+      else if (n.op === 'rec') {
+        const container = this.#recContainer(n, index);
+        if (container !== undefined) this.aliases.set(n.id, this.root(container));
+      }
     }
   }
 
+  /**
+   * A record built where its one aggregate field already is: the `rec` at `index` whose field k
+   * operand is `at Y k` updated in place (its root is that `at`), Y of the record's own type and
+   * unshared until here, with no borrow of Y read after. The record is Y's storage with its scalar
+   * fields stored; returns Y.
+   */
+  #recContainer(n: Node, index: number): Operand | undefined {
+    const fn = this.fn;
+    const found = recInPlaceField(fn, n);
+    if (found === undefined) return undefined;
+    const root = this.root(n.args[found.field] as Operand);
+    const y = found.container;
+    const recType = fn.types.get(n.id) ?? 'u32';
+    if (!(root.kind === 'node' && root.id === found.at.id)) return undefined;
+    if (formatType(operandType(fn, y)) !== formatType(recType)) return undefined;
+    if (!unsharedUntil(fn, y, index, (i) => this.#owned(i))) return undefined;
+    return liveAfter(fn, y, index, true, this.#emittedAt) ? undefined : y;
+  }
+
   #mutable(o: Operand, index: number, position: number): boolean {
-    return mutableHere(this.fn, o, index, position, (i) => this.#owned(i));
+    return mutableHere(this.fn, o, index, position, (i) => this.#owned(i), this.#emittedAt);
   }
 
   /** A node that owns a frame slot (not an alias, not a run-time address). */
@@ -1177,7 +1912,10 @@ class FunctionEmitter {
     variant: Variant,
     params: readonly ParamSource[],
     limit: number,
-    loop: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'indexBound'> = {},
+    loop: Pick<
+      InlineHost,
+      'induction' | 'fields' | 'carry' | 'slide' | 'indexBound' | 'pointers'
+    > = {},
     frameOk = false,
   ): boolean {
     if (!this.#canInline(callee, variant, params, limit, loop.fields, frameOk)) return false;
@@ -1242,7 +1980,7 @@ class FunctionEmitter {
   emitInline(): void {
     this.#emitNodes();
     const fields = this.host?.fields;
-    if (this.#chain !== undefined && fields !== undefined) {
+    if (this.#chain !== undefined && fields !== undefined && !isPrimitive(this.fn.result)) {
       // New state words: all read before any field local is written (a swap stays exact).
       const ret = this.fn.ret;
       const words = ret.kind === 'node' ? this.#words.get(ret.id) : undefined;
@@ -1290,8 +2028,52 @@ class FunctionEmitter {
 
   /** Every node in order, except those a lazy select arm emits on its own path. */
   #emitNodes(): void {
+    const slp = this.#slp;
+    if (slp !== undefined && slp.packs.length > 0) {
+      const at = (k: number): void => {
+        for (const p of slp.packs) if (p.ready === k) this.#emitPack(p);
+      };
+      at(-1);
+      for (const [k, n] of this.fn.nodes.entries()) {
+        const skip = slp.holder.has(n.id) || slp.inline.has(n.id);
+        if (!skip && !this.lazy.owner.has(n.id) && !this.rot.owned.has(n.id)) this.emitNode(n);
+        at(k);
+      }
+      return;
+    }
+    const live = this.host === undefined ? undefined : this.#liveInline();
     for (const n of this.fn.nodes)
-      if (!this.lazy.owner.has(n.id) && !this.rot.owned.has(n.id)) this.emitNode(n);
+      if (!this.lazy.owner.has(n.id) && !this.rot.owned.has(n.id) && (live?.has(n.id) ?? true))
+        this.emitNode(n);
+  }
+
+  /**
+   * The nodes an inlined body still needs: its result and every node with an effect, and what
+   * they read. A node the host computes (an induction variable, the carried element) reads
+   * nothing, so a pure node only it used (the `sub p1 1` of a carried read, the compare of a
+   * guarded carry) is dead and emitted not at all, rather than computed and dropped; likewise
+   * the index of an access through a host pointer.
+   */
+  #liveInline(): Set<string> {
+    const host = this.host;
+    const fn = this.fn;
+    const byHost = (id: string): boolean =>
+      host?.induction?.has(id) === true || host?.carry?.get === id || host?.carry?.select === id;
+    const live = new Set<string>();
+    const mark = (o: Operand): void => {
+      if (o.kind === 'node') live.add(o.id);
+    };
+    mark(fn.ret);
+    for (let k = fn.nodes.length - 1; k >= 0; k -= 1) {
+      const n = fn.nodes[k] as Node;
+      // The next read of a sliding pair runs every trip: the host moves it to the cur local.
+      if (!PURE_OPS.has(n.op) || host?.slide?.next === n.id) live.add(n.id);
+      // An access through a host pointer does not read its index.
+      const pointed = host?.pointers?.has(n.id) === true;
+      if (live.has(n.id) && !byHost(n.id))
+        for (const [k, a] of n.args.entries()) if (!(pointed && k === 1)) mark(a);
+    }
+    return live;
   }
 
   /** Is the aggregate literal `id` only the initial state of a fold that overwrites it all? */
@@ -1326,8 +2108,15 @@ class FunctionEmitter {
     idx: Operand | undefined,
     elemBytes: number,
     checked = false,
+    node?: string,
   ): number {
     const { length } = arrayType(this.fn, arr);
+    const pointer = node === undefined || checked ? undefined : this.host?.pointers?.get(node);
+    if (pointer !== undefined) {
+      // The host steps this pointer with the trip index: no index arithmetic here.
+      this.code.local(OP.localGet, pointer.local);
+      return pointer.offset;
+    }
     this.push(arr);
     const lit = literalIndex(idx);
     if (lit !== undefined) {
@@ -1400,8 +2189,12 @@ class FunctionEmitter {
       this.locals.set(node.id, induced);
       return;
     }
-    if (this.host?.carry?.get === node.id) {
+    if (this.host?.carry?.get === node.id || this.host?.carry?.select === node.id) {
       this.locals.set(node.id, this.host.carry.local);
+      return;
+    }
+    if (this.host?.slide?.cur === node.id) {
+      this.locals.set(node.id, this.host.slide.curLocal);
       return;
     }
     const fields = this.host?.fields;
@@ -1443,6 +2236,19 @@ class FunctionEmitter {
           c.local(OP.localSet, carry.local);
         }
       } else if (node.op === 'fold' || node.op === 'loop') this.#iteration(node);
+      else if (node.op === 'rec') {
+        // Built in its container's storage: the aggregate field is there, the scalars are stored.
+        const fields = recordType(fn, { kind: 'node', id: node.id });
+        let offset = 0;
+        for (const [i, arg] of node.args.entries()) {
+          const ft = fields[i] as Type;
+          if (isPrimitive(ft)) {
+            this.push({ kind: 'node', id: node.id });
+            this.storeAt(ft, arg, offset);
+          }
+          offset += bytesOf(ft);
+        }
+      }
       return;
     }
     if (node.op === 'fold' || node.op === 'loop') {
@@ -1450,7 +2256,13 @@ class FunctionEmitter {
       return;
     }
     const [a, b] = node.args;
-    const set = (): void => c.local(OP.localSet, this.#bindScalar(node.id));
+    const slide = this.host?.slide;
+    const set = (): void => {
+      if (slide?.next === node.id) {
+        this.locals.set(node.id, slide.nextLocal);
+        c.local(OP.localSet, slide.nextLocal);
+      } else c.local(OP.localSet, this.#bindScalar(node.id));
+    };
     const rotate = this.rot.at.get(node.id);
     if (rotate !== undefined) {
       this.#emitRotate(node.id, rotate);
@@ -1524,6 +2336,32 @@ class FunctionEmitter {
       }
       case 'select': {
         const k = this.#constOf(a as Operand);
+        const group = this.lazy.groups.get(node.id);
+        if (group !== undefined) {
+          // The group's selects (see optimize.ts `lazyArms`): one branch, each side's nodes on
+          // its own path, every select's local written on both.
+          const members = group.members.map((id) => this.byId.get(id) as Node);
+          const locals = members.map((m) => this.#bindScalar(m.id));
+          const side = (k: 0 | 1): void => {
+            for (const id of group.arms[k]) this.emitNode(this.byId.get(id) as Node);
+            for (const [j, m] of members.entries()) {
+              this.push(m.args[k + 1] as Operand);
+              c.local(OP.localSet, locals[j] as number);
+            }
+          };
+          if (k !== undefined) {
+            // A known condition: its side only.
+            side(k !== 0 ? 0 : 1);
+            return;
+          }
+          this.push(a as Operand);
+          c.op(OP.if, VOID);
+          side(0);
+          c.op(OP.else);
+          side(1);
+          c.op(OP.end);
+          return;
+        }
         if (k !== undefined) {
           this.push((k !== 0 ? b : node.args[2]) as Operand);
           set();
@@ -1592,6 +2430,18 @@ class FunctionEmitter {
         }
         const size = bytesOf(elem);
         for (const [i, arg] of node.args.entries()) {
+          const group = node.args.slice(i - (i % 4), i - (i % 4) + 4);
+          const ids = group.map((x) => (x.kind === 'node' ? x.id : ''));
+          const pack = group.length === 4 ? this.#slp?.byLanes.get(ids.join()) : undefined;
+          if (pack !== undefined) {
+            if (i % 4 === 0) {
+              c.local(OP.localGet, local);
+              c.local(OP.localGet, this.#vec.get(pack) as number);
+              c.simd(SIMD.store);
+              c.op(2, ...uleb(i * size));
+            }
+            continue;
+          }
           c.local(OP.localGet, local);
           this.storeAt(elem, arg, i * size);
         }
@@ -1616,6 +2466,7 @@ class FunctionEmitter {
           b,
           bytesOf(elem),
           siteOf(fn, node) === 'bounds',
+          node.id,
         );
         if (isPrimitive(elem)) {
           c.mem(OP.load, offset);
@@ -1774,6 +2625,192 @@ class FunctionEmitter {
     }
   }
 
+  /**
+   * One pack's i32x4 operation (after the packs it reads), then its lanes read by scalar nodes
+   * extracted into locals. A splat or lane build reads a pack-only lane straight from its pack.
+   */
+  #emitPack(p: SlpPack): void {
+    if (this.#vec.has(p)) return;
+    const c = this.code;
+    const leaves = p.kids.flatMap((k) => ('pack' in k ? [] : 'same' in k ? [k.same] : k.lanes));
+    for (const k of p.kids) if ('pack' in k) this.#emitPack(k.pack);
+    for (const o of leaves) {
+      const h = o.kind === 'node' ? this.#slp?.holder.get(o.id) : undefined;
+      if (h !== undefined) this.#emitPack(h.pack);
+    }
+    const scalar = (o: Operand): void => {
+      const h = o.kind === 'node' ? this.#slp?.holder.get(o.id) : undefined;
+      if (o.kind === 'node' && this.#slp?.inline.has(o.id)) {
+        const n = this.byId.get(o.id) as Node;
+        this.push(n.args[0] as Operand);
+        this.push(n.args[1] as Operand);
+        c.op(BINARY[n.op] as number);
+      } else if (h === undefined || h.pack.demand.has(h.lane)) this.push(o);
+      else {
+        c.local(OP.localGet, this.#vec.get(h.pack) as number);
+        c.simd(SIMD.extract);
+        c.op(h.lane);
+      }
+    };
+    const lanes = (k: SlpKid): void => {
+      if (!('lanes' in k)) return;
+      if (k.lanes.every((o) => o.kind === 'u32')) {
+        c.simd(SIMD.const);
+        const b = new Uint8Array(16);
+        const view = new DataView(b.buffer);
+        for (const [i, o] of k.lanes.entries())
+          view.setUint32(i * 4, (o as { value: number }).value >>> 0, true);
+        c.op(...b);
+      } else
+        for (const [i, o] of k.lanes.entries()) {
+          scalar(o);
+          if (i === 0) c.simd(SIMD.splat);
+          else {
+            c.simd(SIMD.replace);
+            c.op(i);
+          }
+        }
+    };
+    for (const [side, k] of p.kids.entries()) {
+      if ('pack' in k) c.local(OP.localGet, this.#vec.get(k.pack) as number);
+      else if ('same' in k) {
+        scalar(k.same);
+        if (!(k === p.kids[1] && (p.op === 'shl' || p.op === 'shr'))) c.simd(SIMD.splat);
+      } else if (!this.#formKid(p, side, lanes)) lanes(k);
+    }
+    c.simd(SLP_OPS[p.op] as number);
+    const v = this.newVLocal();
+    c.local(OP.localSet, v);
+    this.#vec.set(p, v);
+    for (const lane of [...p.demand].sort()) {
+      c.local(OP.localGet, v);
+      c.simd(SIMD.extract);
+      c.op(lane);
+      c.local(OP.localSet, this.#bindScalar(p.lanes[lane] as string));
+    }
+  }
+
+  /** The packs in the order `#emitPack` makes them (kids and the packs of leaves first). */
+  #packOrder(): SlpPack[] {
+    const slp = this.#slp as SlpPlan;
+    const order: SlpPack[] = [];
+    const seen = new Set<SlpPack>();
+    const visit = (p: SlpPack): void => {
+      if (seen.has(p)) return;
+      seen.add(p);
+      for (const k of p.kids) if ('pack' in k) visit(k.pack);
+      for (const k of p.kids)
+        for (const o of 'pack' in k ? [] : 'same' in k ? [k.same] : k.lanes) {
+          const h = o.kind === 'node' ? slp.holder.get(o.id) : undefined;
+          if (h !== undefined) visit(h.pack);
+        }
+      order.push(p);
+    };
+    for (let k = -1; k < this.fn.nodes.length; k += 1)
+      for (const p of slp.packs) if (p.ready === k) visit(p);
+    return order;
+  }
+
+  /**
+   * The form of a kid built from four lanes: constant lanes (op 'const'), or four inline
+   * operations of one parameter and a literal each (`x shl c`, `x shr c`, `x add c`, `x sub c`).
+   */
+  #kidForm(p: SlpPack, side: number): KidForm | undefined {
+    const k = p.kids[side];
+    if (k === undefined || !('lanes' in k)) return undefined;
+    if (k.lanes.every((o) => o.kind === 'u32'))
+      return { op: 'const', x: -1, c: k.lanes.map((o) => (o as { value: number }).value >>> 0) };
+    let op = '';
+    let x = -1;
+    const c: number[] = [];
+    // A lane that is the parameter itself is `x op 0`.
+    const bare = (o: Operand): boolean => o.kind === 'param' && o.index === x;
+    for (const o of k.lanes) {
+      if (o.kind === 'param') continue;
+      if (o.kind !== 'node' || !this.#slp?.inline.has(o.id)) return undefined;
+      const n = this.byId.get(o.id) as Node;
+      const [a, b] = n.args;
+      if (KID_FORM_OPS[n.op] === undefined || a?.kind !== 'param' || b?.kind !== 'u32')
+        return undefined;
+      if (op !== '' && (n.op !== op || a.index !== x)) return undefined;
+      op = n.op;
+      x = a.index;
+    }
+    if (op === '' || !k.lanes.every((o) => o.kind === 'node' || bare(o))) return undefined;
+    for (const o of k.lanes)
+      c.push(
+        o.kind === 'node'
+          ? ((this.byId.get(o.id) as Node).args[1] as { value: number }).value >>> 0
+          : 0,
+      );
+    return { op, x, c };
+  }
+
+  /** Kids built from lanes kept in a v128 local: the form built and the local. */
+  readonly #kept: { readonly form: KidForm; readonly local: number }[] = [];
+  /** Kids in emission order (see `#packOrder`). */
+  #kidOrder: { readonly p: SlpPack; readonly side: number }[] | undefined;
+
+  /**
+   * A kid in a form (see `#kidForm`): one operation on a kept kid of the form whose lanes
+   * differ by one amount (`kidShift`), else, when a kid not yet made can be derived from it,
+   * built and kept. A shift's base is the kid of the smallest counts among those it derives
+   * from, made here ahead of its own pack. False: built as usual.
+   */
+  #formKid(p: SlpPack, side: number, build: (k: SlpKid) => void): boolean {
+    const f = this.#kidForm(p, side);
+    if (f === undefined) return false;
+    for (const kept of this.#kept) {
+      const s = kidShift(kept.form, f);
+      if (s !== undefined) {
+        this.#deriveKid(kept.local, f.op, s);
+        return true;
+      }
+    }
+    if (this.#kidOrder === undefined)
+      this.#kidOrder = this.#packOrder().flatMap((q) =>
+        q.kids.map((_, qs) => ({ p: q, side: qs })),
+      );
+    const order = this.#kidOrder;
+    const at = order.findIndex((e) => e.p === p && e.side === side);
+    let best = { p, side, form: f };
+    let used = false;
+    for (const e of order.slice(at + 1)) {
+      const g = this.#kidForm(e.p, e.side);
+      if (g === undefined) continue;
+      if (kidShift(f, g) !== undefined) used = true;
+      if (
+        (f.op === 'shl' || f.op === 'shr') &&
+        kidShift(g, f) !== undefined &&
+        (g.c[0] as number) < (best.form.c[0] as number)
+      )
+        best = { ...e, form: g };
+    }
+    if (!used && best.p === p && best.side === side) return false;
+    build(best.p.kids[best.side] as SlpKid);
+    const local = this.newVLocal();
+    this.#kept.push({ form: best.form, local });
+    if (best.p === p && best.side === side) this.code.local(OP.localTee, local);
+    else {
+      this.code.local(OP.localSet, local);
+      this.#deriveKid(local, f.op, kidShift(best.form, f) as number);
+    }
+    return true;
+  }
+
+  /** A kept kid's local, then the operation by s that makes a kid of its form (none for 0). */
+  #deriveKid(local: number, op: string, s: number): void {
+    const c = this.code;
+    c.local(OP.localGet, local);
+    if (s === 0) return;
+    c.i32(s | 0);
+    if (op === 'shl' || op === 'shr') c.simd(op === 'shl' ? SIMD.shl : SIMD.shr_u);
+    else {
+      c.simd(SIMD.splat);
+      c.simd(op === 'sub' ? SIMD.sub : SIMD.add);
+    }
+  }
+
   #bindScalar(id: string): number {
     const local = this.newLocal();
     this.locals.set(id, local);
@@ -1800,6 +2837,7 @@ class FunctionEmitter {
         node.args[1],
         bytesOf(elem),
         siteOf(this.fn, node) === 'bounds',
+        node.id,
       );
       this.storeAt(elem, value, offset);
     } else {
@@ -1873,6 +2911,12 @@ class FunctionEmitter {
     }
     c.i32(start);
     c.local(OP.localSet, i);
+    // Reductions: four trips per vector trip with simd128 while every lane's read is in range,
+    // then the rest by the scalar loop below, from the counter the vector loop left.
+    const red = this.options.simd && !aggregate && node.op === 'fold' ? reduceRun(body) : undefined;
+    const vectorTo =
+      red === undefined ? undefined : this.#vectorReduce(red, state, i, count, extra);
+    if (vectorTo !== undefined) start = vectorTo;
     if (lit !== undefined && start >= lit) return;
     const sources = (): ParamSource[] => [
       { local: state },
@@ -1882,9 +2926,21 @@ class FunctionEmitter {
     // Scalar replacement: a small aggregate state lives in locals for the whole loop.
     const width =
       aggregate && !isPrimitive(t) ? (t.kind === 'arr' ? t.length : t.fields.length) : 0;
-    const small = node.op === 'fold' && aggregate && scalarState(body) !== undefined;
-    const probe = small ? Array.from({ length: width }, () => state) : undefined;
-    const inlineBody = this.#canInline(body, variant, sources(), INLINE_BODY_NODES, probe);
+    // A loop's predicate reads the same state: it must take its words from the locals too.
+    const smallBody = aggregate && scalarState(body) !== undefined;
+    const probe = smallBody ? Array.from({ length: width }, () => state) : undefined;
+    const small =
+      smallBody &&
+      (pred === undefined ||
+        (scalarState(pred) !== undefined &&
+          this.#canInline(pred, 'value', sources(), INLINE_BODY_NODES, probe)));
+    const inlineBody = this.#canInline(
+      body,
+      variant,
+      sources(),
+      INLINE_BODY_NODES,
+      small ? probe : undefined,
+    );
     let fields: number[] | undefined;
     if (small && inlineBody) {
       fields = [];
@@ -1896,20 +2952,33 @@ class FunctionEmitter {
         fields.push(local);
       }
     }
-    // Strength reduction: `p1 * K` in an inlined body is an induction variable stepping by K.
-    const induction = new Map<string, { local: number; step: number }>();
+    // Strength reduction: `p1 * K` in an inlined body is an induction variable stepping by K,
+    // where K is a literal or a loop-invariant extra (a constant, or a host local the loop never
+    // writes).
+    const induction = new Map<string, { local: number; step: ParamSource }>();
     if (inlineBody) {
+      const params = sources();
+      const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
+      const stepOf = (o: Operand | undefined): ParamSource | undefined => {
+        if (o?.kind === 'u32') return { value: o.value };
+        if (o?.kind === 'param' && o.index >= 2) return params[o.index];
+        return undefined;
+      };
       for (const n of body.nodes) {
         if (n.op !== 'mul') continue;
         const [x, y] = n.args;
-        const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
-        const k =
-          isIndex(x) && y?.kind === 'u32' ? y : isIndex(y) && x?.kind === 'u32' ? x : undefined;
-        if (k === undefined || k.kind !== 'u32') continue;
+        const k = isIndex(x) ? stepOf(y) : isIndex(y) ? stepOf(x) : undefined;
+        if (k === undefined) continue;
         const local = this.newLocal();
-        c.i32(Math.imul(start, k.value));
+        if ('value' in k) c.i32(Math.imul(start, k.value));
+        else if (start === 0) c.i32(0);
+        else {
+          c.local(OP.localGet, k.local);
+          c.i32(start);
+          c.op(OP.mul);
+        }
         c.local(OP.localSet, local);
-        induction.set(n.id, { local, step: k.value });
+        induction.set(n.id, { local, step: k });
       }
     }
     const inductionLocals = new Map([...induction].map(([id, v]) => [id, v.local]));
@@ -1919,43 +2988,160 @@ class FunctionEmitter {
     if (carried !== undefined && this.#inPlace(body, carried.set, sources())) {
       const local = this.newLocal();
       const { length } = t as { length: number };
-      c.local(OP.localGet, state);
-      c.mem(OP.load, (((start - 1) >>> 0) % length) * 4);
+      const guard = guardedCarry(body, carried.get, start);
+      // The read's index on the first trip: s * start + c (+/- the extra parameter).
+      const { s, c: k0, k, t: sign } = carried.first;
+      const index = (Math.imul(s, start) + k0) >>> 0;
+      if (guard !== undefined) {
+        c.i32(guard.first);
+      } else if (sign === 0) {
+        c.local(OP.localGet, state);
+        c.mem(OP.load, (index % length) * 4);
+      } else {
+        c.local(OP.localGet, state);
+        c.i32(index);
+        const src = sources()[k] as ParamSource;
+        if ('value' in src) c.i32(src.value);
+        else c.local(OP.localGet, src.local);
+        c.op(sign > 0 ? OP.add : OP.sub);
+        if ((length & (length - 1)) === 0) {
+          c.i32(length - 1);
+          c.op(OP.and);
+        } else {
+          c.i32(length);
+          c.op(OP.rem_u);
+        }
+        c.i32(2);
+        c.op(OP.shl);
+        c.op(OP.add);
+        c.mem(OP.load, 0);
+      }
       c.local(OP.localSet, local);
-      carry = { ...carried, local };
+      carry = {
+        get: carried.get,
+        set: carried.set,
+        local,
+        ...(guard === undefined ? {} : { select: guard.select }),
+      };
     }
-    const loopHost: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'indexBound'> = {
+    // A sliding read of an extra argument: the element at the start index before the loop.
+    const sliding = node.op === 'fold' && inlineBody ? slidingRead(body) : undefined;
+    let slide: InlineHost['slide'];
+    const slideFrom =
+      sliding === undefined ? undefined : this.#source(extra[sliding.param - 2] as Operand);
+    if (sliding !== undefined && slideFrom !== undefined && 'local' in slideFrom) {
+      const { length } = body.params[sliding.param] as { length: number };
+      const curLocal = this.newLocal();
+      const nextLocal = this.newLocal();
+      c.local(OP.localGet, slideFrom.local);
+      c.mem(OP.load, (start % length) * 4);
+      c.local(OP.localSet, curLocal);
+      slide = { cur: sliding.cur, next: sliding.next, curLocal, nextLocal };
+    }
+    // Unrolling: a small inlined fold body runs UNROLL copies per back edge, then a remainder
+    // loop finishes the last count mod UNROLL trips. A literal-count loop with a carried
+    // previous element is unrolled by CARRY_UNROLL whatever the option: each trip's add waits
+    // on the last one, so the counter, compare and address work of every trip sits on top of a
+    // serial chain that V8 does not unroll away. `copies`: the first phase's trips per back edge.
+    const unroll =
+      vectorTo === undefined &&
+      node.op === 'fold' &&
+      inlineBody &&
+      body.nodes.length <= UNROLL_BODY_NODES
+        ? carry !== undefined && lit !== undefined
+          ? CARRY_UNROLL
+          : this.options.unroll
+        : 1;
+    const copies = unroll === 1 || (lit !== undefined && lit - start < unroll) ? 1 : unroll;
+    // Element pointers: the affine accesses of fixed arrays that stay in range on every trip
+    // (see `#pointers`), for an inlined body and predicate; not after a vector reduction, whose
+    // last trip is known only at run time.
+    const predInline =
+      pred !== undefined &&
+      inlineBody &&
+      this.#canInline(pred, 'value', sources(), INLINE_BODY_NODES, fields);
+    const pointers =
+      inlineBody && vectorTo === undefined
+        ? this.#pointers(
+            node,
+            body,
+            predInline ? pred : undefined,
+            variant,
+            sources(),
+            start,
+            aggregate && fields === undefined,
+            copies,
+          )
+        : undefined;
+    const loopHost: Pick<
+      InlineHost,
+      'induction' | 'fields' | 'carry' | 'slide' | 'indexBound' | 'pointers'
+    > = {
       induction: inductionLocals,
       ...(fields === undefined ? {} : { fields }),
       ...(carry === undefined ? {} : { carry }),
+      ...(slide === undefined ? {} : { slide }),
       ...(lit === undefined ? {} : { indexBound: lit }),
+      ...(pointers === undefined || pointers.body.size === 0 ? {} : { pointers: pointers.body }),
     };
+    // The predicate reads the carried element too: its read at the body's carried index is the
+    // carry local (not after a guarded first trip, whose local starts at a literal instead).
+    const predCarry =
+      carry !== undefined && carry.select === undefined && carried !== undefined && predInline
+        ? carriedPredicateRead(pred as TypedFunc, carried.first)
+        : undefined;
     const args = (): void => {
       c.local(OP.localGet, state);
       c.local(OP.localGet, i);
       for (const e of extra) this.push(e);
     };
+    /** The predicate's value for the current state and counter (inlined, else called). */
+    const test = (p: TypedFunc): void => {
+      const bound = {
+        ...(lit === undefined ? {} : { indexBound: lit }),
+        ...(fields === undefined ? {} : { fields }),
+        ...(predCarry === undefined || carry === undefined
+          ? {}
+          : { carry: { get: predCarry, set: '', local: carry.local } }),
+        ...(pointers === undefined || pointers.pred.size === 0 ? {} : { pointers: pointers.pred }),
+      };
+      if (!this.#tryInline(p, 'value', sources(), INLINE_BODY_NODES, bound)) {
+        args();
+        c.call(`a0_${p.name}`);
+      }
+    };
+    // A loop with a predicate is rotated (unless its trips are marked for strict traps): the
+    // predicate guards the entry, then sits at the bottom with the trip test, so the body
+    // dominates every exit of the loop and V8 can hoist the loop's invariants out of it (with
+    // the test at the top it schedules them inside: measured, bsearch1k).
+    const rotated = marked ? undefined : pred;
     /** One trip: predicate exit (to the enclosing block, `depth` labels out), body, steps. */
     const trip = (depth: number): void => {
       if (marked) {
         c.local(OP.localGet, i);
         c.call(RT_IDX);
       }
-      if (pred !== undefined) {
-        const bound = lit === undefined ? {} : { indexBound: lit };
-        if (!this.#tryInline(pred, 'value', sources(), INLINE_BODY_NODES, bound)) {
-          args();
-          c.call(`a0_${pred.name}`);
-        }
+      if (pred !== undefined && rotated === undefined) {
+        test(pred);
         c.op(OP.eqz);
         c.op(OP.br_if, depth);
       }
       if (!inlineBody || !this.#tryInline(body, variant, sources(), INLINE_BODY_NODES, loopHost)) {
         args();
         c.call(aggregate ? `a0o_${body.name}` : `a0_${body.name}`);
+      } else if (slide !== undefined) {
+        c.local(OP.localGet, slide.nextLocal);
+        c.local(OP.localSet, slide.curLocal);
       }
       if (!aggregate) c.local(OP.localSet, state);
       for (const { local, step } of induction.values()) {
+        c.local(OP.localGet, local);
+        if ('value' in step) c.i32(step.value);
+        else c.local(OP.localGet, step.local);
+        c.op(OP.add);
+        c.local(OP.localSet, local);
+      }
+      for (const { local, step } of pointers?.steps ?? []) {
         c.local(OP.localGet, local);
         c.i32(step);
         c.op(OP.add);
@@ -1969,7 +3155,9 @@ class FunctionEmitter {
     /**
      * A rotated counted loop from the current i up to `limit` (pushed by `limit`, or the
      * literal `limitLit`), `copies` trips per back edge: the trip test sits at the bottom,
-     * guarded once on entry unless the bound is a literal above the start.
+     * guarded once on entry unless the bound is a literal above the start. A rotated predicate
+     * is tested after the guard, and at the bottom after the trip test: leave when the counter
+     * reached the limit, go round again when the predicate holds.
      */
     const counted = (
       limit: () => void,
@@ -1986,23 +3174,28 @@ class FunctionEmitter {
         c.op(OP.ge_u);
         c.op(OP.br_if, 0);
       }
+      if (rotated !== undefined) {
+        test(rotated);
+        c.op(OP.eqz);
+        c.op(OP.br_if, 0);
+      }
       c.loopOpen();
       for (let k = 0; k < copies; k += 1) trip(1);
       c.local(OP.localGet, i);
       limit();
-      c.op(OP.lt_u);
+      if (rotated !== undefined) {
+        c.op(OP.ge_u);
+        c.op(OP.br_if, 1);
+        test(rotated);
+      } else {
+        c.op(OP.lt_u);
+      }
       c.op(OP.br_if, 0);
       c.loopClose();
       if (exit) c.op(OP.end);
     };
-    // Unrolling: a small inlined fold body runs UNROLL copies per back edge, then a remainder
-    // loop finishes the last count mod UNROLL trips.
-    const unroll =
-      node.op === 'fold' && inlineBody && body.nodes.length <= UNROLL_BODY_NODES
-        ? this.options.unroll
-        : 1;
     const pushCount = (): void => this.push(count);
-    if (unroll === 1 || (lit !== undefined && lit - start < unroll)) {
+    if (copies === 1) {
       counted(pushCount, lit, start, 1);
     } else if (lit !== undefined) {
       const main = start + (lit - start) - ((lit - start) % unroll);
@@ -2024,6 +3217,287 @@ class FunctionEmitter {
       c.local(OP.localGet, local);
       c.mem(OP.store, k * 4);
     }
+  }
+
+  /** An upper bound on a scalar operand: its constant value, or the host's bounded trip index. */
+  #upper(o: Operand | undefined): number | undefined {
+    if (o === undefined) return undefined;
+    const k = this.#constOf(o);
+    if (k !== undefined) return k;
+    const bound = this.host?.indexBound;
+    return o.kind === 'param' && o.index === 1 && bound !== undefined ? bound - 1 : undefined;
+  }
+
+  /**
+   * Pointers for the element accesses of a loop's inlined body and predicate (`#iterate`, loop
+   * node `node`, first trip `start`): a `get` of an array parameter (the state p0 when `state`,
+   * i.e. it stays in memory, or an extra) or an in-place `set` of the state, of scalar elements,
+   * at an affine index of unit stride that stays in range on every trip (`affineInRange`, with
+   * the count's upper bound `#upper`). The accesses of one array, stride and extra parameter
+   * share a pointer to the element of the least constant term, set up here for the first trip
+   * and stepped by the stride after every trip; each reads or writes at its static offset. The
+   * body's accesses come first, then the predicate's; at most POINTER_GROUPS groups. In a loop
+   * of one trip per back edge (`copies`), a group of one access at the bare trip index p1 under
+   * a literal count within the length gets no pointer: that address is already the array plus
+   * the scaled index with no wrap (one addressing mode), so the pointer's step would cost what it
+   * saves (measured: rle4k, sieve4k). Unrolled copies each pay for their own index instead.
+   */
+  #pointers(
+    node: Node,
+    body: TypedFunc,
+    pred: TypedFunc | undefined,
+    variant: Variant,
+    params: readonly ParamSource[],
+    start: number,
+    state: boolean,
+    copies: number,
+  ): {
+    body: Map<string, PointerAccess>;
+    pred: Map<string, PointerAccess>;
+    steps: { local: number; step: number }[];
+  } {
+    const c = this.code;
+    const out = {
+      body: new Map<string, PointerAccess>(),
+      pred: new Map<string, PointerAccess>(),
+      steps: [] as { local: number; step: number }[],
+    };
+    const [count, , ...extra] = node.args;
+    const hi = this.#upper(count);
+    if (hi === undefined || count === undefined) return out;
+    const lit = count.kind === 'u32' ? count.value : undefined;
+    interface Group {
+      readonly array: number;
+      readonly f: Affine;
+      readonly members: {
+        readonly side: 'body' | 'pred';
+        readonly id: string;
+        readonly c: number;
+      }[];
+      /** 1 per access at the bare trip index (one copy, literal count in the length), else 2. */
+      worth: number;
+    }
+    const groups = new Map<string, Group>();
+    const scan = (fn: TypedFunc, v: Variant, side: 'body' | 'pred'): void => {
+      const probe = new FunctionEmitter(
+        fn,
+        v,
+        this.pool,
+        this.poolIndex,
+        { parent: this, params },
+        this.options,
+      );
+      const forms = affineNodes(fn);
+      for (const n of fn.nodes) {
+        if (n.op !== 'get' && !(n.op === 'set' && probe.aliases.has(n.id))) continue;
+        const root = probe.root(n.args[0] as Operand);
+        if (root.kind !== 'param' || root.index === 1 || (root.index === 0 && !state)) continue;
+        const ty = fn.params[root.index];
+        if (ty === undefined || isPrimitive(ty) || ty.kind !== 'arr' || !isPrimitive(ty.elem))
+          continue;
+        const src = params[root.index];
+        if (src === undefined || !('local' in src)) continue;
+        const f = affineOf(n.args[1], forms);
+        if (f === undefined) continue;
+        const e = f.t === 0 ? undefined : extra[f.k - 2];
+        const same = e !== undefined && sameOp(e, count);
+        if (!affineInRange(f, ty.length, start, hi, same)) continue;
+        const key = `${root.index}:${f.s}:${f.k}:${f.t}`;
+        const found = groups.get(key);
+        if (found === undefined && groups.size >= POINTER_GROUPS) continue;
+        const g = found ?? { array: root.index, f, members: [], worth: 0 };
+        g.members.push({ side, id: n.id, c: f.c });
+        const idx = n.args[1];
+        const plain =
+          copies === 1 &&
+          idx?.kind === 'param' &&
+          idx.index === 1 &&
+          lit !== undefined &&
+          lit <= ty.length;
+        g.worth += plain ? 1 : 2;
+        groups.set(key, g);
+      }
+    };
+    scan(body, variant, 'body');
+    if (pred !== undefined) scan(pred, 'value', 'pred');
+    for (const g of groups.values()) {
+      if (g.worth < 2) continue;
+      const c0 = Math.min(...g.members.map((m) => m.c | 0));
+      const local = this.newLocal();
+      const { s, k, t } = g.f;
+      let konst = Math.imul(s, start) + c0;
+      c.local(OP.localGet, (params[g.array] as { local: number }).local);
+      if (t !== 0) {
+        const src = params[k] as ParamSource;
+        if ('value' in src) konst += Math.imul(t, src.value);
+        else {
+          c.local(OP.localGet, src.local);
+          c.i32(2);
+          c.op(OP.shl);
+          c.op(t > 0 ? OP.add : OP.sub);
+        }
+      }
+      const offset = Math.imul(konst, 4);
+      if (offset !== 0) {
+        c.i32(offset);
+        c.op(OP.add);
+      }
+      c.local(OP.localSet, local);
+      for (const m of g.members) out[m.side].set(m.id, { local, offset: ((m.c | 0) - c0) * 4 });
+      out.steps.push({ local, step: Math.imul(s, 4) });
+    }
+    return out;
+  }
+
+  /**
+   * simd128 form of a reduction (see `reduceRun`) for the fold of `count` trips whose scalar
+   * state is the local `state` and counter the local `i` (0 here): four lanes per trip up to
+   * the count, or the shortest array read, rounded down to a multiple of four (a variable bound
+   * is computed into a local), the lanes then folded into the state in order. Returns the
+   * counter's value after the vector loop when known (a literal count; -1 otherwise, the
+   * scalar loop then guards on the counter), or undefined, having emitted nothing, when a
+   * literal count leaves no vector trip.
+   */
+  #vectorReduce(
+    red: ReduceRun,
+    state: number,
+    i: number,
+    count: Operand,
+    extra: readonly Operand[],
+  ): number | undefined {
+    const c = this.code;
+    const lit = count.kind === 'u32' ? count.value : undefined;
+    let staticTo: number | undefined;
+    if (lit !== undefined) {
+      const m = red.bound === 0 ? lit : Math.min(lit, red.bound);
+      staticTo = m - (m % 4);
+      if (staticTo === 0) return undefined;
+    }
+    const vconst = (lanes: readonly number[]): void => {
+      c.simd(SIMD.const);
+      const b = new Uint8Array(16);
+      const view = new DataView(b.buffer);
+      for (const [k, v] of lanes.entries()) view.setUint32(k * 4, v >>> 0, true);
+      c.op(...b);
+    };
+    const splat = (v: number): void => vconst([v, v, v, v]);
+    const limit = this.newLocal();
+    if (staticTo !== undefined) c.i32(staticTo);
+    else {
+      this.push(count);
+      if (red.bound !== 0) {
+        c.i32(red.bound);
+        this.push(count);
+        c.i32(red.bound);
+        c.op(OP.lt_u);
+        c.op(OP.select);
+      }
+      c.i32(-4);
+      c.op(OP.and);
+    }
+    c.local(OP.localSet, limit);
+    const acc = this.newVLocal();
+    splat(red.op === 'and' ? 0xffffffff : 0);
+    c.local(OP.localSet, acc);
+    const isIndex = (o: Operand): boolean => o.kind === 'param' && o.index === 1;
+    const reads = (n: Node): readonly Operand[] =>
+      n.op === 'get' ? [] : n.op === 'shl' || n.op === 'shr' ? [n.args[0] as Operand] : n.args;
+    let index: number | undefined;
+    if (red.nodes.some((n) => reads(n).some(isIndex))) {
+      index = this.newVLocal();
+      vconst([0, 1, 2, 3]);
+      c.local(OP.localSet, index);
+    }
+    // Loop-invariant extras as splats, once before the loop.
+    const splats = new Map<number, number>();
+    for (const n of red.nodes)
+      for (const a of reads(n))
+        if (a.kind === 'param' && a.index >= 2 && !splats.has(a.index)) {
+          const v = this.newVLocal();
+          this.push(extra[a.index - 2] as Operand);
+          c.simd(SIMD.splat);
+          c.local(OP.localSet, v);
+          splats.set(a.index, v);
+        }
+    const lanes = new Map<string, number>();
+    const pushLanes = (o: Operand): void => {
+      if (o.kind === 'u32') splat(o.value);
+      else if (o.kind === 'bool') splat(o.value ? 0xffffffff : 0);
+      else if (o.kind === 'param')
+        c.local(OP.localGet, o.index === 1 ? (index as number) : (splats.get(o.index) as number));
+      else if (o.kind === 'node') c.local(OP.localGet, lanes.get(o.id) as number);
+    };
+    const guard = staticTo === undefined;
+    if (guard) {
+      c.op(OP.block, VOID);
+      c.local(OP.localGet, i);
+      c.local(OP.localGet, limit);
+      c.op(OP.ge_u);
+      c.op(OP.br_if, 0);
+    }
+    c.loopOpen();
+    for (const n of red.nodes) {
+      const [a, b, s] = n.args as [Operand, Operand, Operand];
+      if (n.op === 'get') {
+        this.push(extra[(a as { index: number }).index - 2] as Operand);
+        c.local(OP.localGet, i);
+        c.i32(2);
+        c.op(OP.shl);
+        c.op(OP.add);
+        // v128.load with a 4-byte alignment hint and offset 0.
+        c.simd(SIMD.load);
+        c.op(2, 0);
+      } else if (n.op === 'select' && s.kind === 'u32' && s.value === 0) {
+        // A zero second arm: the first arm's lanes under the mask.
+        pushLanes(b);
+        pushLanes(a);
+        c.simd(SIMD.and);
+      } else if (n.op === 'select') {
+        pushLanes(b);
+        pushLanes(s);
+        pushLanes(a);
+        c.simd(SIMD.bitselect);
+      } else {
+        pushLanes(a);
+        // A shift amount is the same in every lane: a literal or an extra, as a scalar.
+        if (n.op === 'shl' || n.op === 'shr')
+          this.push(b.kind === 'param' ? (extra[b.index - 2] as Operand) : b);
+        else pushLanes(b);
+        c.simd(REDUCE_OPS[n.op] as number);
+      }
+      const v = this.newVLocal();
+      c.local(OP.localSet, v);
+      lanes.set(n.id, v);
+    }
+    c.local(OP.localGet, acc);
+    c.local(OP.localGet, lanes.get(red.value) as number);
+    c.simd(REDUCE_OPS[red.op] as number);
+    c.local(OP.localSet, acc);
+    if (index !== undefined) {
+      c.local(OP.localGet, index);
+      splat(4);
+      c.simd(SIMD.add);
+      c.local(OP.localSet, index);
+    }
+    c.local(OP.localGet, i);
+    c.i32(4);
+    c.op(OP.add);
+    c.local(OP.localTee, i);
+    c.local(OP.localGet, limit);
+    c.op(OP.lt_u);
+    c.op(OP.br_if, 0);
+    c.loopClose();
+    if (guard) c.op(OP.end);
+    // The lanes into the state, in lane order.
+    c.local(OP.localGet, state);
+    for (let k = 0; k < 4; k += 1) {
+      c.local(OP.localGet, acc);
+      c.simd(SIMD.extract);
+      c.op(k);
+      c.op(BINARY[red.op] as number);
+    }
+    c.local(OP.localSet, state);
+    return staticTo ?? -1;
   }
 
   /**

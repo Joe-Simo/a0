@@ -40,10 +40,14 @@ const HEAVY = [
   'z3enc.js',
   'agents.js',
   'explain.js',
+  'dense.js',
+  'dense-a0.js',
 ];
 
 test('the CLI statically imports none of the heavy modules', () => {
-  const closure = staticClosure('cli.js');
+  // cli.js only turns the compile cache on and loads cli-main.js: it imports no module of its own
+  assert.deepEqual([...staticClosure('cli.js')], ['cli.js']);
+  const closure = staticClosure('cli-main.js');
   for (const m of HEAVY) assert.ok(!closure.has(m), `cli.js statically reaches ${m}`);
 });
 

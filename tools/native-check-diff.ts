@@ -17,7 +17,15 @@
  * program of 200 KB or more, so that the error falls in a late chunk).
  */
 
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { A0Error, formatProgram, parseAndValidate } from '../src/core.js';
@@ -417,7 +425,8 @@ export async function programSet(
 }
 
 export function tempDir(): string {
-  return mkdtempSync(join(tmpdir(), 'a0-native-diff-'));
+  // The native driver resolves paths before reporting diagnostics (macOS aliases /var).
+  return realpathSync(mkdtempSync(join(tmpdir(), 'a0-native-diff-')));
 }
 
 export function cleanup(dir: string): void {
