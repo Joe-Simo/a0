@@ -171,6 +171,161 @@ function deadLiteral(fn: TypedFunc, index: number): boolean {
   );
 }
 
+/** An index s * p1 + c + t * pK (pK a scalar extra parameter, K >= 2; t is 0, 1 or -1), mod 2^32. */
+interface Affine {
+  readonly s: number;
+  readonly c: number;
+  readonly k: number;
+  readonly t: number;
+}
+
+/** An operand as an affine index, given the affine forms of the nodes before it. */
+function affineOf(
+  o: Operand | undefined,
+  nodes: ReadonlyMap<string, Affine | undefined>,
+): Affine | undefined {
+  if (o === undefined) return undefined;
+  if (o.kind === 'u32') return { s: 0, c: o.value >>> 0, k: 0, t: 0 };
+  if (o.kind === 'param') {
+    if (o.index === 1) return { s: 1, c: 0, k: 0, t: 0 };
+    // An extra parameter used as an index or an add/sub operand is a u32 in a valid program.
+    if (o.index >= 2) return { s: 0, c: 0, k: o.index, t: 1 };
+    return undefined;
+  }
+  return o.kind === 'node' ? nodes.get(o.id) : undefined;
+}
+
+/** The affine form (in p1 and at most one extra parameter) of every add/sub node of `body`. */
+function affineNodes(body: TypedFunc): Map<string, Affine | undefined> {
+  const out = new Map<string, Affine | undefined>();
+  for (const n of body.nodes) {
+    const a = affineOf(n.args[0], out);
+    const b = affineOf(n.args[1], out);
+    if ((n.op !== 'add' && n.op !== 'sub') || a === undefined || b === undefined) {
+      out.set(n.id, undefined);
+      continue;
+    }
+    const sign = n.op === 'add' ? 1 : -1;
+    const t = a.t + sign * b.t;
+    const k = a.t !== 0 ? a.k : b.k;
+    if ((a.t !== 0 && b.t !== 0 && a.k !== b.k) || (t !== 0 && Math.abs(t) !== 1)) {
+      out.set(n.id, undefined);
+      continue;
+    }
+    out.set(n.id, {
+      s: (a.s + sign * b.s) >>> 0,
+      c: (a.c + sign * b.c) >>> 0,
+      k: t === 0 ? 0 : k,
+      t,
+    });
+  }
+  return out;
+}
+
+/**
+ * A carried read of a fold or loop body over array state of scalars (the shape of src/wasm.ts
+ * `carriedRead`): the body's result is `set X w v`, which is also its last node, and it reads
+ * `get p0 r` where r at trip p1 + 1 is w at trip p1 (both affine in p1, see `affineNodes`). Trip
+ * i + 1 reads the value trip i stored last, so that value can stay in a register across the back
+ * edge instead of making a round trip through memory. `first` is the read's index on trip 0.
+ * `guard` is set when the read's only use is `select (eq p1 0) K get` with K loop-invariant (a
+ * literal or an extra parameter): K stands in on trip 0, so with the register starting at K the
+ * select is the register on every trip.
+ */
+interface CarriedRead {
+  readonly get: string;
+  readonly set: string;
+  readonly first: Affine;
+  readonly guard?: { readonly select: string; readonly k: Operand };
+}
+
+function carriedRead(body: TypedFunc): CarriedRead | undefined {
+  const ret = body.ret;
+  const set = body.nodes.at(-1);
+  const st = body.params[0];
+  if (ret.kind !== 'node' || set?.id !== ret.id || set.op !== 'set') return undefined;
+  if (st === undefined || isPrimitive(st) || st.kind !== 'arr' || !isScalar(st.elem))
+    return undefined;
+  const forms = affineNodes(body);
+  const w = affineOf(set.args[1], forms);
+  if (w === undefined) return undefined;
+  for (const n of body.nodes) {
+    if (n.op !== 'get' || n.args[0]?.kind !== 'param' || n.args[0].index !== 0) continue;
+    const r = affineOf(n.args[1], forms);
+    if (r === undefined || r.s !== w.s || r.k !== w.k || r.t !== w.t) continue;
+    if ((r.c + r.s) >>> 0 !== w.c) continue;
+    const guard = guardedCarry(body, n.id);
+    return { get: n.id, set: set.id, first: r, ...(guard === undefined ? {} : { guard }) };
+  }
+  return undefined;
+}
+
+/** The `select (eq p1 0) K get` that is the read `get`'s only use, K loop-invariant (see `CarriedRead`). */
+function guardedCarry(body: TypedFunc, get: string): CarriedRead['guard'] {
+  const isGet = (o: Operand | undefined): boolean => o?.kind === 'node' && o.id === get;
+  const users = body.nodes.filter((n) => n.args.some(isGet));
+  const sel = users[0];
+  if (users.length !== 1 || sel?.op !== 'select' || sel.args.filter(isGet).length !== 1)
+    return undefined;
+  const [cond, k, other] = sel.args;
+  const invariant =
+    k?.kind === 'u32' || k?.kind === 'bool' || (k?.kind === 'param' && k.index >= 2);
+  if (!invariant || !isGet(other) || cond?.kind !== 'node') return undefined;
+  const eq = body.nodes.find((n) => n.id === cond.id);
+  const [x, y] = eq?.args ?? [];
+  const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
+  const isZero = (o: Operand | undefined): boolean => o?.kind === 'u32' && o.value === 0;
+  if (eq?.op !== 'eq' || !((isIndex(x) && isZero(y)) || (isIndex(y) && isZero(x))))
+    return undefined;
+  return { select: sel.id, k };
+}
+
+/** Ops a carried read never drops even when nothing reads their value. */
+const KEEP_OPS = new Set<Op>(['read', 'write', 'puts', 'call', 'fold', 'loop']);
+
+/**
+ * The body nodes that emit nothing under a carried read besides the read itself: the guarded
+ * read (its select is the register), and every pure node whose readers all emit nothing (the
+ * read's index, the guard's comparison). Only an inlined body gets a carried read, and a body
+ * that can trap is never inlined (`inlinableAt`), so dropping these nodes drops no trap.
+ */
+function carryDead(body: TypedFunc, found: CarriedRead): Set<string> {
+  const read = found.guard?.select ?? found.get;
+  const quiet = new Set([found.get, read]);
+  const dead = new Set(found.guard === undefined ? [] : [found.get]);
+  const ret = body.ret.kind === 'node' ? body.ret.id : undefined;
+  for (let i = body.nodes.length - 1; i >= 0; i -= 1) {
+    const n = body.nodes[i] as Node;
+    if (quiet.has(n.id) || n.id === ret || KEEP_OPS.has(n.op)) continue;
+    const readers = body.nodes.filter((m) =>
+      m.args.some((o) => o.kind === 'node' && o.id === n.id),
+    );
+    if (readers.every((m) => quiet.has(m.id) || dead.has(m.id))) dead.add(n.id);
+  }
+  return dead;
+}
+
+/**
+ * The last position in `fn` at which the value of a node in `ids` is read: a node absorbed by
+ * its consumer (a rotate half, a tested bit mask, a comparison fused into selects) reads at that
+ * consumer's position.
+ */
+function lastRead(fn: TypedFunc, ids: ReadonlySet<string>): number {
+  const plan = planFor(fn);
+  let last = -1;
+  const visit = (of: ReadonlySet<string>): void => {
+    const absorbed = new Set<string>();
+    for (const [j, m] of fn.nodes.entries()) {
+      if (!m.args.some((o) => o.kind === 'node' && of.has(o.id))) continue;
+      if (plan.skip.has(m.id) || plan.fused.has(m.id)) absorbed.add(m.id);
+      else last = Math.max(last, j);
+    }
+    if (absorbed.size > 0) visit(absorbed);
+  };
+  visit(ids);
+  return last;
+}
+
 /** SSE2 registers for a fill run: xmm1 lane indices, xmm2 step, xmm3.. values, xmm14/15 temps. */
 const SSE_FIRST = 3;
 const SSE_LAST = 13;
@@ -477,6 +632,30 @@ interface Env {
   readonly params: readonly Val[];
   readonly ownedP0: boolean;
   readonly depth: number;
+  /** An inlined fold or loop body: what its host keeps in registers across trips. */
+  readonly loop?: LoopHost;
+}
+
+interface LoopHost {
+  /**
+   * The carried read (see `CarriedRead`): the read (or, guarded, its select) is the scalar key
+   * `key`, and after the store `set` the stored value is written to `key`.
+   */
+  readonly carry?: CarryHost;
+  /**
+   * Induction variables: each `mul p1 K` node of the body (K loop-invariant) -> the key that
+   * holds p1 * K, which the host steps by K after every trip instead of multiplying.
+   */
+  readonly steps: ReadonlyMap<string, string>;
+}
+
+interface CarryHost {
+  readonly read: string;
+  /** Nodes left without a reader once the carried read no longer loads (see `carryDead`). */
+  readonly dead: ReadonlySet<string>;
+  readonly set: string;
+  readonly key: string;
+  readonly type: 'u32' | 'bool';
 }
 
 type Home = { readonly reg: string } | { readonly slot: number };
@@ -710,6 +889,12 @@ class FunctionEmitter {
       case 'param':
         return env.params[o.index] ?? refuse(`unknown parameter p${o.index}`);
       case 'node':
+        if (env.loop !== undefined) {
+          const { carry, steps } = env.loop;
+          if (carry?.read === o.id) return { kind: 'key', key: carry.key, type: carry.type };
+          const step = steps.get(o.id);
+          if (step !== undefined) return { kind: 'key', key: step, type: 'u32' };
+        }
         return {
           kind: 'key',
           key: `${env.prefix}n_${o.id}`,
@@ -944,14 +1129,32 @@ class FunctionEmitter {
     type: Type,
     tag: string,
     sink: 'bind' | 'store',
+    loop?: LoopHost,
   ): void {
+    const carry = loop?.carry;
     const sub: Env = {
       fn: callee,
       prefix: `${env.prefix}${tag}.`,
       params: args,
       ownedP0,
       depth: env.depth + 1,
+      ...(loop === undefined ? {} : { loop }),
     };
+    if (this.#dry && carry !== undefined) {
+      // The stored value takes the carried register when nothing reads the carried value after
+      // it is defined (then writing the register at the store is no move at all).
+      const v = (callee.nodes.find((m) => m.id === carry.set) as Node).args[2];
+      const at = v?.kind === 'node' ? callee.nodes.findIndex((m) => m.id === v.id) : -1;
+      const def = callee.nodes[at];
+      if (
+        v?.kind === 'node' &&
+        def !== undefined &&
+        def.op !== 'fold' &&
+        def.op !== 'loop' &&
+        lastRead(callee, new Set([carry.read])) <= at
+      )
+        this.#shares.set(`${sub.prefix}n_${v.id}`, carry.key);
+    }
     this.#body(sub);
     this.#pos += 1;
     const ret = this.#resolve(sub, callee.ret);
@@ -984,6 +1187,96 @@ class FunctionEmitter {
     this.#copy('%rsp', this.#slot(result), '%rsp', this.#slot(ret.key), words(type));
   }
 
+  /**
+   * The register of the carried read of a fold or loop over the array state `key` (see
+   * `CarriedRead`), set to what the read gives on trip 0: K when guarded, else the initial state's
+   * element at the read's first index. Uses r10 (and eax, edx to reduce an index by a length that
+   * is not a power of two).
+   */
+  #carry(
+    env: Env,
+    n: Node,
+    callee: TypedFunc,
+    key: string,
+    t: Type,
+    extras: readonly Val[],
+  ): CarryHost | undefined {
+    if (isPrimitive(t) || t.kind !== 'arr' || !isScalar(t.elem)) return undefined;
+    const found = carriedRead(callee);
+    if (found === undefined) return undefined;
+    const ck = `${env.prefix}k_${n.id}`;
+    const type = t.elem;
+    const len = t.length;
+    const extra = (k: number): Val => extras[k - 2] ?? refuse(`carried read of missing p${k}`);
+    this.#def(ck, type);
+    const g = found.guard;
+    if (g !== undefined) {
+      const k = g.k.kind === 'param' ? extra(g.k.index) : this.#resolve(env, g.k);
+      this.#use(k);
+      this.#set(ck, (d) => this.#into(d, k));
+    } else {
+      // Trip 0 of s * p1 + c + t * pK is c + t * pK.
+      const { c, k, t: sign } = found.first;
+      const base = this.#slot(key);
+      if (sign === 0)
+        this.#set(ck, (d) => this.#emit(`movl ${this.#m('%rsp', base + (c % len) * 4)}, ${d}`));
+      else {
+        const pk = extra(k);
+        this.#use(pk);
+        this.#into('%r10d', pk);
+        if (sign < 0) this.#emit('negl %r10d');
+        if (c !== 0) this.#emit(`addl ${imm(c)}, %r10d`);
+        if ((len & (len - 1)) === 0) this.#emit(`andl ${imm(len - 1)}, %r10d`);
+        else {
+          this.#needDx = true;
+          this.#emit('movl %r10d, %eax', 'xorl %edx, %edx', `movl ${imm(len)}, %r10d`);
+          this.#emit('divl %r10d', 'movl %edx, %r10d');
+        }
+        this.#set(ck, (d) => this.#emit(`movl ${base}(%rsp,%r10,4), ${d}`));
+      }
+    }
+    return {
+      read: g?.select ?? found.get,
+      dead: carryDead(callee, found),
+      set: found.set,
+      key: ck,
+      type,
+    };
+  }
+
+  /**
+   * Induction variables of an inlined fold or loop body: every `mul p1 K` node with K
+   * loop-invariant (a literal or an extra parameter) gets a key holding p1 * K, zero before trip
+   * 0, which the loop advances by K after each trip; the body reads it in place of the product.
+   * Nodes the carried read leaves dead are not stepped.
+   */
+  #steps(
+    env: Env,
+    n: Node,
+    callee: TypedFunc,
+    extras: readonly Val[],
+    carry: CarryHost | undefined,
+  ): { keys: Map<string, string>; by: { key: string; by: Val }[] } {
+    const keys = new Map<string, string>();
+    const by: { key: string; by: Val }[] = [];
+    const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
+    for (const m of callee.nodes) {
+      if (m.op !== 'mul' || carry?.dead.has(m.id) === true || carry?.read === m.id) continue;
+      const [x, y] = m.args as [Operand, Operand];
+      const k = isIndex(x) ? y : isIndex(y) ? x : undefined;
+      let step: Val | undefined;
+      if (k?.kind === 'u32') step = { kind: 'lit', value: k.value >>> 0, type: 'u32' };
+      else if (k?.kind === 'param' && k.index >= 2) step = extras[k.index - 2];
+      if (step === undefined) continue;
+      const key = `${env.prefix}s_${n.id}_${m.id}`;
+      this.#def(key, 'u32');
+      this.#set(key, (d) => this.#emit(`xorl ${d}, ${d}`));
+      keys.set(m.id, key);
+      by.push({ key, by: step });
+    }
+    return { keys, by };
+  }
+
   // --- nodes -------------------------------------------------------------------------------
 
   #body(env: Env): void {
@@ -991,6 +1284,28 @@ class FunctionEmitter {
   }
 
   #node(env: Env, n: Node, index: number): void {
+    if (env.loop === undefined) {
+      this.#op(env, n, index);
+      return;
+    }
+    const { carry, steps } = env.loop;
+    // A carried read or an induction variable is the host's register (`#resolve`), and what only
+    // the carried read read is dead.
+    if (n.id === carry?.read || carry?.dead.has(n.id) === true || steps.has(n.id)) {
+      this.#pos += 1;
+      return;
+    }
+    this.#op(env, n, index);
+    if (carry === undefined || n.id !== carry.set) return;
+    // After the store, the stored value is what the next trip reads.
+    const v = this.#resolve(env, n.args[2] as Operand);
+    const reg: Val = { kind: 'key', key: carry.key, type: carry.type };
+    this.#use(v);
+    this.#use(reg);
+    this.#set(carry.key, (d) => this.#into(d, v));
+  }
+
+  #op(env: Env, n: Node, index: number): void {
     const t = env.fn.types.get(n.id) ?? refuse(`untyped node ${n.id}`);
     const key = `${env.prefix}n_${n.id}`;
     const plan = planFor(env.fn);
@@ -1362,6 +1677,8 @@ class FunctionEmitter {
         const callee = env.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
         const pred = n.pred === undefined ? undefined : env.fn.calls.get(n.pred);
         const counter = `${env.prefix}i_${n.id}`;
+        /** Induction keys and the loop-invariant step each one advances by after a trip. */
+        let stepping: readonly { key: string; by: Val }[] = [];
         const state: Val = { kind: 'key', key, type: t };
         const cval: Val = { kind: 'key', key: counter, type: 'u32' };
         this.#use(init);
@@ -1399,6 +1716,14 @@ class FunctionEmitter {
         else {
           this.#def(key, t);
           if (!deadInit) this.#place(init, '%rsp', this.#slot(key));
+        }
+        // An inlined body keeps its carried read and its induction variables in registers.
+        let host: LoopHost | undefined;
+        if (this.#inlinable(callee, env, 'loop')) {
+          const carry = this.#carry(env, n, callee, key, t, extras);
+          const steps = this.#steps(env, n, callee, extras, carry);
+          host = { ...(carry === undefined ? {} : { carry }), steps: steps.keys };
+          stepping = steps.by;
         }
         this.#def(counter, 'u32');
         if (count.kind === 'lit') this.#bounds.set(counter, count.value);
@@ -1438,8 +1763,19 @@ class FunctionEmitter {
           this.#emit(`testl ${rp}, ${rp}`, `je ${done}`);
         }
         if (this.#inlinable(callee, env, 'loop'))
-          this.#inline(env, callee, args, true, key, t, n.id, 'store');
+          this.#inline(env, callee, args, true, key, t, n.id, 'store', host);
         else this.#call(name, callee, args, key);
+        for (const { key: k, by } of stepping) {
+          const v: Val = { kind: 'key', key: k, type: 'u32' };
+          this.#use(v);
+          this.#use(by);
+          const cur = this.#read(v, '%eax');
+          const step = by.kind === 'lit' ? imm(by.value) : this.#operand(by, '%r11d');
+          this.#set(k, (d) => {
+            this.#mov(cur, d);
+            this.#emit(`addl ${step}, ${d}`);
+          });
+        }
         this.#use(cval);
         this.#use(count);
         const cr = this.#read(cval, '%eax');
