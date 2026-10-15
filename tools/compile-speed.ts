@@ -55,8 +55,8 @@ export const BYTES_BAND = 0.02;
 
 /**
  * Runs one command and reports its own wall time and peak RSS: os.wait4 returns the rusage of exactly
- * that child (ru_maxrss, KiB on Linux). The clock runs from fork to reap inside the wrapper, so the
- * wrapper's own start is not timed. getrusage(RUSAGE_CHILDREN), what a long-lived parent sees, is the
+ * that child (ru_maxrss: bytes on macOS, KiB on Linux). The clock runs from fork to reap inside the
+ * wrapper, so the wrapper's own start is not timed. getrusage(RUSAGE_CHILDREN), what a long-lived parent sees, is the
  * maximum over every child reaped so far, not this child's peak.
  */
 const WAIT4 = [
@@ -69,7 +69,8 @@ const WAIT4 = [
   ' os.execvp(c[0],c)',
   '_,st,ru=os.wait4(p,0)',
   'ms=(time.perf_counter()-t)*1000',
-  'sys.stdout.write("%d %.3f %d"%(os.waitstatus_to_exitcode(st),ms,ru.ru_maxrss*1024))',
+  'rss=ru.ru_maxrss*(1 if sys.platform=="darwin" else 1024)',
+  'sys.stdout.write("%d %.3f %d"%(os.waitstatus_to_exitcode(st),ms,rss))',
 ].join('\n');
 
 interface Sample {
