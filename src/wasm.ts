@@ -1227,6 +1227,31 @@ function slpPlan(fn: TypedFunc, skip: (id: string) => boolean): SlpPlan {
   return { packs, holder, byLanes, inline };
 }
 
+/** A kid of four lanes in a form one vector operation turns into another of the form. */
+interface KidForm {
+  readonly op: string;
+  readonly x: number;
+  readonly c: readonly number[];
+}
+const KID_FORM_OPS: Readonly<Record<string, true>> = { shl: true, shr: true, add: true, sub: true };
+
+/**
+ * The amount s with g = f op s lane-wise (const and add: every lane's literal grows by s; sub:
+ * the subtrahends grow by s; shl and shr: the shift counts grow by s, all below 32), else
+ * undefined.
+ */
+function kidShift(f: KidForm, g: KidForm): number | undefined {
+  if (f.op !== g.op || f.x !== g.x) return undefined;
+  const s = ((g.c[0] as number) - (f.c[0] as number)) >>> 0;
+  for (let i = 0; i < 4; i += 1) {
+    const a = f.c[i] as number;
+    const b = g.c[i] as number;
+    if ((b - a) >>> 0 !== s) return undefined;
+    if ((f.op === 'shl' || f.op === 'shr') && (a >= 32 || b >= 32)) return undefined;
+  }
+  return (f.op === 'shl' || f.op === 'shr') && s >= 32 ? undefined : s;
+}
+
 /** Iteration bodies and predicates up to this many nodes are emitted inside the loop. */
 const INLINE_BODY_NODES = 24;
 /** Scalar calls of functions up to this many nodes are emitted at the call site. */
@@ -2223,19 +2248,16 @@ class FunctionEmitter {
         c.op(h.lane);
       }
     };
-    for (const k of p.kids) {
-      if ('pack' in k) c.local(OP.localGet, this.#vec.get(k.pack) as number);
-      else if ('same' in k) {
-        scalar(k.same);
-        if (!(k === p.kids[1] && (p.op === 'shl' || p.op === 'shr'))) c.simd(SIMD.splat);
-      } else if (k.lanes.every((o) => o.kind === 'u32')) {
+    const lanes = (k: SlpKid): void => {
+      if (!('lanes' in k)) return;
+      if (k.lanes.every((o) => o.kind === 'u32')) {
         c.simd(SIMD.const);
         const b = new Uint8Array(16);
         const view = new DataView(b.buffer);
         for (const [i, o] of k.lanes.entries())
           view.setUint32(i * 4, (o as { value: number }).value >>> 0, true);
         c.op(...b);
-      } else {
+      } else
         for (const [i, o] of k.lanes.entries()) {
           scalar(o);
           if (i === 0) c.simd(SIMD.splat);
@@ -2244,7 +2266,13 @@ class FunctionEmitter {
             c.op(i);
           }
         }
-      }
+    };
+    for (const [side, k] of p.kids.entries()) {
+      if ('pack' in k) c.local(OP.localGet, this.#vec.get(k.pack) as number);
+      else if ('same' in k) {
+        scalar(k.same);
+        if (!(k === p.kids[1] && (p.op === 'shl' || p.op === 'shr'))) c.simd(SIMD.splat);
+      } else if (!this.#formKid(p, side, lanes)) lanes(k);
     }
     c.simd(SLP_OPS[p.op] as number);
     const v = this.newVLocal();
@@ -2255,6 +2283,127 @@ class FunctionEmitter {
       c.simd(SIMD.extract);
       c.op(lane);
       c.local(OP.localSet, this.#bindScalar(p.lanes[lane] as string));
+    }
+  }
+
+  /** The packs in the order `#emitPack` makes them (kids and the packs of leaves first). */
+  #packOrder(): SlpPack[] {
+    const slp = this.#slp as SlpPlan;
+    const order: SlpPack[] = [];
+    const seen = new Set<SlpPack>();
+    const visit = (p: SlpPack): void => {
+      if (seen.has(p)) return;
+      seen.add(p);
+      for (const k of p.kids) if ('pack' in k) visit(k.pack);
+      for (const k of p.kids)
+        for (const o of 'pack' in k ? [] : 'same' in k ? [k.same] : k.lanes) {
+          const h = o.kind === 'node' ? slp.holder.get(o.id) : undefined;
+          if (h !== undefined) visit(h.pack);
+        }
+      order.push(p);
+    };
+    for (let k = -1; k < this.fn.nodes.length; k += 1)
+      for (const p of slp.packs) if (p.ready === k) visit(p);
+    return order;
+  }
+
+  /**
+   * The form of a kid built from four lanes: constant lanes (op 'const'), or four inline
+   * operations of one parameter and a literal each (`x shl c`, `x shr c`, `x add c`, `x sub c`).
+   */
+  #kidForm(p: SlpPack, side: number): KidForm | undefined {
+    const k = p.kids[side];
+    if (k === undefined || !('lanes' in k)) return undefined;
+    if (k.lanes.every((o) => o.kind === 'u32'))
+      return { op: 'const', x: -1, c: k.lanes.map((o) => (o as { value: number }).value >>> 0) };
+    let op = '';
+    let x = -1;
+    const c: number[] = [];
+    // A lane that is the parameter itself is `x op 0`.
+    const bare = (o: Operand): boolean => o.kind === 'param' && o.index === x;
+    for (const o of k.lanes) {
+      if (o.kind === 'param') continue;
+      if (o.kind !== 'node' || !this.#slp?.inline.has(o.id)) return undefined;
+      const n = this.byId.get(o.id) as Node;
+      const [a, b] = n.args;
+      if (KID_FORM_OPS[n.op] === undefined || a?.kind !== 'param' || b?.kind !== 'u32')
+        return undefined;
+      if (op !== '' && (n.op !== op || a.index !== x)) return undefined;
+      op = n.op;
+      x = a.index;
+    }
+    if (op === '' || !k.lanes.every((o) => o.kind === 'node' || bare(o))) return undefined;
+    for (const o of k.lanes)
+      c.push(
+        o.kind === 'node'
+          ? ((this.byId.get(o.id) as Node).args[1] as { value: number }).value >>> 0
+          : 0,
+      );
+    return { op, x, c };
+  }
+
+  /** Kids built from lanes kept in a v128 local: the form built and the local. */
+  readonly #kept: { readonly form: KidForm; readonly local: number }[] = [];
+  /** Kids in emission order (see `#packOrder`). */
+  #kidOrder: { readonly p: SlpPack; readonly side: number }[] | undefined;
+
+  /**
+   * A kid in a form (see `#kidForm`): one operation on a kept kid of the form whose lanes
+   * differ by one amount (`kidShift`), else, when a kid not yet made can be derived from it,
+   * built and kept. A shift's base is the kid of the smallest counts among those it derives
+   * from, made here ahead of its own pack. False: built as usual.
+   */
+  #formKid(p: SlpPack, side: number, build: (k: SlpKid) => void): boolean {
+    const f = this.#kidForm(p, side);
+    if (f === undefined) return false;
+    for (const kept of this.#kept) {
+      const s = kidShift(kept.form, f);
+      if (s !== undefined) {
+        this.#deriveKid(kept.local, f.op, s);
+        return true;
+      }
+    }
+    if (this.#kidOrder === undefined)
+      this.#kidOrder = this.#packOrder().flatMap((q) =>
+        q.kids.map((_, qs) => ({ p: q, side: qs })),
+      );
+    const order = this.#kidOrder;
+    const at = order.findIndex((e) => e.p === p && e.side === side);
+    let best = { p, side, form: f };
+    let used = false;
+    for (const e of order.slice(at + 1)) {
+      const g = this.#kidForm(e.p, e.side);
+      if (g === undefined) continue;
+      if (kidShift(f, g) !== undefined) used = true;
+      if (
+        (f.op === 'shl' || f.op === 'shr') &&
+        kidShift(g, f) !== undefined &&
+        (g.c[0] as number) < (best.form.c[0] as number)
+      )
+        best = { ...e, form: g };
+    }
+    if (!used && best.p === p && best.side === side) return false;
+    build(best.p.kids[best.side] as SlpKid);
+    const local = this.newVLocal();
+    this.#kept.push({ form: best.form, local });
+    if (best.p === p && best.side === side) this.code.local(OP.localTee, local);
+    else {
+      this.code.local(OP.localSet, local);
+      this.#deriveKid(local, f.op, kidShift(best.form, f) as number);
+    }
+    return true;
+  }
+
+  /** A kept kid's local, then the operation by s that makes a kid of its form (none for 0). */
+  #deriveKid(local: number, op: string, s: number): void {
+    const c = this.code;
+    c.local(OP.localGet, local);
+    if (s === 0) return;
+    c.i32(s | 0);
+    if (op === 'shl' || op === 'shr') c.simd(op === 'shl' ? SIMD.shl : SIMD.shr_u);
+    else {
+      c.simd(SIMD.splat);
+      c.simd(op === 'sub' ? SIMD.sub : SIMD.add);
     }
   }
 

@@ -1544,6 +1544,117 @@ end
 `;
 
 /**
+ * Lane builds of one form (src/wasm.ts `#kidForm`): shl, shr, add and sub of one parameter by
+ * literals, and constant lanes, derived from a kept build by one operation; a shift's base built
+ * ahead of its own pack, a lane that is the parameter itself, counts of 32 or more (not derived),
+ * and builds equal to a kept one.
+ */
+const FORMS_SOURCE = `fn forms u32 u32 u32 -> u32
+u00 shl p0 4
+w00 add p1 10
+y00 xor u00 w00
+u01 shl p0 5
+w01 add p1 11
+y01 xor u01 w01
+u02 shl p0 6
+w02 add p1 12
+y02 xor u02 w02
+u03 shl p0 7
+w03 add p1 13
+y03 xor u03 w03
+u10 shl p0 1
+w10 add p1 20
+y10 xor u10 w10
+u11 shl p0 2
+w11 add p1 21
+y11 xor u11 w11
+u12 shl p0 3
+w12 add p1 22
+y12 xor u12 w12
+u13 shl p0 4
+w13 add p1 23
+y13 xor u13 w13
+u20 shl p0 30
+w20 add p1 13
+y20 xor u20 w20
+u21 shl p0 31
+w21 add p1 12
+y21 xor u21 w21
+u22 shl p0 32
+w22 add p1 11
+y22 xor u22 w22
+u23 shl p0 33
+w23 add p1 10
+y23 xor u23 w23
+u30 sub p2 1
+w30 mul p0 3
+y30 xor u30 w30
+u31 sub p2 2
+w31 mul p0 4
+y31 xor u31 w31
+u32 sub p2 3
+w32 mul p0 5
+y32 xor u32 w32
+u33 sub p2 4
+w33 mul p0 6
+y33 xor u33 w33
+u40 sub p2 5
+w40 mul p0 7
+y40 xor u40 w40
+u41 sub p2 6
+w41 mul p0 8
+y41 xor u41 w41
+u42 sub p2 7
+w42 mul p0 9
+y42 xor u42 w42
+u43 sub p2 8
+w43 mul p0 10
+y43 xor u43 w43
+w50 mul p0 3
+y50 xor p1 w50
+u51 shr p1 1
+w51 mul p0 4
+y51 xor u51 w51
+u52 shr p1 2
+w52 mul p0 5
+y52 xor u52 w52
+u53 shr p1 3
+w53 mul p0 6
+y53 xor u53 w53
+u60 shr p1 8
+w60 add p1 10
+y60 xor u60 w60
+u61 shr p1 9
+w61 add p1 11
+y61 xor u61 w61
+u62 shr p1 10
+w62 add p1 12
+y62 xor u62 w62
+u63 shr p1 11
+w63 add p1 13
+y63 xor u63 w63
+u70 shr p1 4
+w70 mul p0 4294967295
+y70 xor u70 w70
+u71 shr p1 5
+w71 mul p0 0
+y71 xor u71 w71
+u72 shr p1 6
+w72 mul p0 1
+y72 xor u72 w72
+u73 shr p1 7
+w73 mul p0 2
+y73 xor u73 w73
+a arr y00 y01 y02 y03 y10 y11 y12 y13 y20 y21 y22 y23 y30 y31 y32 y33 y40 y41 y42 y43 y50 y51 y52 y53 y60 y61 y62 y63 y70 y71 y72 y73
+i and p2 31
+x get a i
+z get a 5
+r add x z
+ret r
+end
+`;
+
+/**
  * Superword packs (src/wasm.ts `slpPlan`): u32 array literals whose four-element groups are
  * isomorphic lane-wise operations, grown through their operands: splats of a common operand,
  * lanes oriented by their operands' operations, shift amounts the same in every lane, a sub,
@@ -1723,6 +1834,7 @@ async function main(): Promise<void> {
   // superword packs: a crafted program, and the exec-bench kernel mat4 (the 4x4 products as
   // i32x4) with a variable trip count, so that the step stays a function of its own
   programs.push(['slp', parseAndValidate(SLP_SOURCE), small]);
+  programs.push(['slpforms', parseAndValidate(FORMS_SOURCE), small]);
   const mat4 = KERNELS.find((k) => k.name === 'mat4');
   if (mat4 === undefined) throw new Error('exec-bench kernel mat4 is missing');
   const mat4n = mat4.a0.replace('r fold mulstep 8 a b', 'k and p1 7\nr fold mulstep k a b');
