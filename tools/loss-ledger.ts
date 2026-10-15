@@ -7,7 +7,12 @@
  *
  * Sources (all under results/):
  *   exec-benchmark.json   ns per call, A0 emitted C against hand-written C, Rust, and every language
- *                         that ran; emitted JS against hand-written JS; binary size against C.
+ *                         that ran; emitted JS against hand-written JS; binary size against C; the
+ *                         direct native backend (axis ns-per-call-arm64 or ns-per-call-x86_64)
+ *                         against the emitted C at clang -O3 in its own object behind the same
+ *                         driver (`clang-o3-out-of-line`: the same program and the same call boundary).
+ *   exec-benchmark-linux-x64.json  the same on Linux x64 (source `exec-benchmark-linux-x64`; the
+ *                         canonical file above is the Apple silicon run).
  *   wasm-benchmark.json   ns per trip, module bytes and load time, A0 direct wasm against clang.
  *   wasm-benchmark-linux-x64.json  the same on Linux x64 (source `wasm-benchmark-linux-x64`; the
  *                         canonical file above is the Windows x64 run the site shows).
@@ -48,6 +53,8 @@ export const LEDGER_PATH = join('results', 'loss-ledger.json');
 export type Axis =
   | 'ns-per-call'
   | 'ns-per-call-js'
+  | 'ns-per-call-arm64'
+  | 'ns-per-call-x86_64'
   | 'binary-bytes'
   | 'ns-per-trip'
   | 'wasm-bytes'
@@ -179,8 +186,8 @@ function spreadBand(a: Json, b: Json): number {
   return Math.min(Math.max(1.08, sp(a), sp(b)), 1.25) - 1;
 }
 
-function execObservations(root: string): Observation[] {
-  const doc = readJson(root, 'exec-benchmark.json');
+function execObservations(root: string, file: string, source: string): Observation[] {
+  const doc = readJson(root, file);
   const kernels = obj(doc?.kernels);
   if (doc === undefined || kernels === undefined) return [];
   const load = num((doc.loadAverage as unknown[] | undefined)?.[0]) ?? null;
@@ -197,22 +204,25 @@ function execObservations(root: string): Observation[] {
     const vs = (name: string, s: Json | undefined): void => {
       const v = num(s?.medianNsPerCall);
       if (s !== undefined && v !== undefined)
-        push(
-          lower(
-            'exec-benchmark',
-            kernel,
-            'ns-per-call',
-            name,
-            a0,
-            v,
-            spreadBand(emitted, s),
-            load,
-            true,
-          ),
-        );
+        push(lower(source, kernel, 'ns-per-call', name, a0, v, spreadBand(emitted, s), load, true));
     };
     vs('c-handwritten', obj(c.handwritten));
     vs('rust', obj(c.rust));
+    // The direct native backend against clang -O3 on the same emitted program, both called out of
+    // line from the same driver: the code generators compared at equal call cost.
+    for (const [axis, mine, theirs] of [
+      ['ns-per-call-arm64', 'arm64', 'clangO3OutOfLine'],
+      ['ns-per-call-x86_64', 'x86_64', 'x86_64ClangO3OutOfLine'],
+    ] as const) {
+      const a = obj(c[mine]);
+      const b = obj(c[theirs]);
+      const an = num(a?.medianNsPerCall);
+      const bn = num(b?.medianNsPerCall);
+      if (a !== undefined && b !== undefined && an !== undefined && bn !== undefined)
+        push(
+          lower(source, kernel, axis, 'clang-o3-out-of-line', an, bn, spreadBand(a, b), load, true),
+        );
+    }
     for (const [lang, value] of Object.entries(k)) {
       const l = obj(value);
       if (l?.status === 'ran') vs(lang, l);
@@ -220,7 +230,7 @@ function execObservations(root: string): Observation[] {
     const bytes = obj(c.binaryBytes);
     push(
       lower(
-        'exec-benchmark',
+        source,
         kernel,
         'binary-bytes',
         'c-handwritten',
@@ -237,7 +247,7 @@ function execObservations(root: string): Observation[] {
     if (jsA !== undefined && jsB !== undefined)
       push(
         lower(
-          'exec-benchmark',
+          source,
           kernel,
           'ns-per-call-js',
           'js-handwritten',
@@ -785,7 +795,8 @@ function editProtocolObservations(root: string): Observation[] {
 /** Every observation the results files give, losses and ties and wins alike. */
 export function observations(root = '.'): Observation[] {
   return [
-    ...execObservations(root),
+    ...execObservations(root, 'exec-benchmark.json', 'exec-benchmark'),
+    ...execObservations(root, 'exec-benchmark-linux-x64.json', 'exec-benchmark-linux-x64'),
     ...wasmObservations(root, 'wasm-benchmark.json', 'wasm-benchmark'),
     ...wasmObservations(root, 'wasm-benchmark-linux-x64.json', 'wasm-benchmark-linux-x64'),
     ...langAxesObservations(root),

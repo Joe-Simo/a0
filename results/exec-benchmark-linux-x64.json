@@ -1,0 +1,2726 @@
+{
+  "generatedAt": "2026-10-15T18:02:33.772Z",
+  "node": "v22.22.0",
+  "platform": "linux-x64",
+  "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "flags": {
+    "c": "-std=c11 -O2 (no sanitizer); handwrittenBest: -std=c11 -O3 -march=native; every build with the timing driver adds -D_POSIX_C_SOURCE=199309L",
+    "native": "x86_64: the direct backend's assembly (src/x86_64.ts) through clang -c -x assembler, linked with the driver at -std=c11 -O2; its baseline is the emitted C at -std=c11 -O3 -march=native -c in its own object behind the same driver",
+    "js": "Node default JIT, in-process, warm",
+    "rust": "-C opt-level=3 -C target-cpu=native",
+    "table": "see tools/exec-bench-languages*.ts: clang++ -std=c++17 -O2, javac/java and the other JVM and .NET languages with a warm-up pass then a timed pass in one process, kotlinc -include-runtime, scala-cli assembly, dotnet -c Release, go build, swiftc -O, zig -O ReleaseFast, dart compile exe, nim -d:release, crystal --release, ldc2 -O3, fpc -O2, gfortran -O2, ghc -O2, ocamlopt -O3, csc -O3, cobc -O2, v -prod, odin -o:speed, valac -X -O2; interpreters and VMs at their defaults"
+  },
+  "iterationsPerSample": {
+    "c": 20000000,
+    "js": 5000000,
+    "python": 100000
+  },
+  "samplesPerSide": 11,
+  "scale": 1,
+  "loadAverage": [
+    2.33,
+    2.5,
+    2.69
+  ],
+  "loadSource": "loadavg",
+  "loadGate": {
+    "maxLoad": 4,
+    "checks": 1320,
+    "waits": 0,
+    "waitedSeconds": 0,
+    "loadSource": "loadavg",
+    "highestLoadAtSampleStart": 3.82
+  },
+  "meaning": "Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain); startupCompiledMs and startupInterpretersMs hold the same measurement for every baseline language. arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; arm64A0Driver is the same kernel inside a whole program written in A0 (a fold that generates the inputs, calls the kernel and xors the results, compiled by the direct arm64 backend, so the kernel is inlined into the loop as in every other language's own driver); its ratio is against the emitted-C path. clangO3OutOfLine is the same emitted C at clang -O3 -mcpu=native in its own object behind the identical driver (the same call boundary), run interleaved with arm64 in alternating order; arm64VsClangO3OutOfLine and geomeans.arm64VsClangO3 compare the code of the direct backend and of clang at equal call cost. On an x86-64 host the same three rows are x86_64 (the direct x86-64 backend, src/x86_64.ts), x86_64ClangO3OutOfLine (the emitted C at clang -O3 -march=native in its own object) and x86_64A0Driver, compared in x86_64VsEmittedC, x86_64VsClangO3OutOfLine, x86_64VsBestFlags and geomeans.x86_64VsClangO3; the arm64 fields are then null. Every baseline row carries family, toolchain, and status; a row whose checksum did not match the A0 result for the same iteration count is skipped-checksum-mismatch and has no timing. geomeans maps each baseline to the geometric mean over kernels of (baseline median ns / A0 emitted-C median ns), so 1.0 is parity and 50 means A0 native is 50x faster per call. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.",
+  "geomeans": {
+    "c": 0.7538095513500453,
+    "cBest": 0.5835670624809026,
+    "rust": 0.618887151631632,
+    "x86_64": 0.6991708603827878,
+    "x86_64VsClangO3": 0.785964132936079,
+    "x86_64A0Driver": 0.6938584654777925,
+    "js": 4.1576126478316855,
+    "jsEmitted": 4.779795204158258
+  },
+  "x86_64A0DriverVsBestFlags": {
+    "win": 2,
+    "tie": 13,
+    "loss": 9,
+    "rule": "the same comparison for the whole program in A0: the driver loop is an A0 fold calling the kernel, compiled by the direct x86_64 backend (no call boundary, like the other languages' own drivers); x86_64VsBestFlags is the kernel alone called out of line from a C driver"
+  },
+  "x86_64VsBestFlags": {
+    "win": 2,
+    "tie": 12,
+    "loss": 10,
+    "rule": "A0 x86_64 against the fastest of C -O3 -march=native, Rust opt-level=3 target-cpu=native and Zig ReleaseFast; win only at >= 1.2x, loss when slower beyond the tie band"
+  },
+  "languages": {},
+  "skipped": {},
+  "kernels": {
+    "affine": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 6.5699,
+        "speedup": 0.9938432214927541,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 6.5699,
+        "speedup": 0.9947762097995275,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 6.5677,
+          "minNsPerCall": 6.4727,
+          "maxNsPerCall": 7.0038,
+          "checksum": "123884448",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 6.5969,
+          "minNsPerCall": 6.5193,
+          "maxNsPerCall": 6.9387,
+          "checksum": "123884448",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 6.5881,
+          "minNsPerCall": 6.5187,
+          "maxNsPerCall": 6.9397,
+          "checksum": "123884448",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 6.6106,
+          "minNsPerCall": 6.4897,
+          "maxNsPerCall": 6.7773,
+          "checksum": "123884448",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 6.5717,
+          "minNsPerCall": 6.4842,
+          "maxNsPerCall": 7.0113,
+          "checksum": "123884448",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 6.6044,
+          "minNsPerCall": 6.4739,
+          "maxNsPerCall": 7.4745,
+          "checksum": "123884448",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16152,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 2.62073700000019,
+          "handwritten": 2.609269999999924
+        },
+        "rust": {
+          "medianNsPerCall": 6.5699,
+          "minNsPerCall": 6.4672,
+          "maxNsPerCall": 6.7504,
+          "checksum": "123884448",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 98.98878400000012,
+          "rustc": 195.38760599999932
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.0065319670508701,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.0059193207237092,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 61.23382340000003,
+          "minNsPerCall": 58.78490740000006,
+          "maxNsPerCall": 67.1708302000001,
+          "checksum": "3188725591",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 56.53359659999997,
+          "minNsPerCall": 54.59366320000001,
+          "maxNsPerCall": 61.829716600000026,
+          "checksum": "3188725591",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "rotl": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 4.586,
+        "speedup": 0.976409470277636,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 4.586,
+        "speedup": 0.9799773489753616,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 4.7822,
+          "minNsPerCall": 4.6724,
+          "maxNsPerCall": 5.6572,
+          "checksum": "3606392347",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 4.6955,
+          "minNsPerCall": 4.5586,
+          "maxNsPerCall": 5.6157,
+          "checksum": "3606392347",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 4.6238,
+          "minNsPerCall": 4.4509,
+          "maxNsPerCall": 5.6351,
+          "checksum": "3606392347",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 4.6968,
+          "minNsPerCall": 4.5675,
+          "maxNsPerCall": 6.0111,
+          "checksum": "3606392347",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 4.7521,
+          "minNsPerCall": 4.6795,
+          "maxNsPerCall": 5.7983,
+          "checksum": "3606392347",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 4.6797,
+          "minNsPerCall": 4.4868,
+          "maxNsPerCall": 5.5047,
+          "checksum": "3606392347",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16152,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 3.1435899999996764,
+          "handwritten": 3.060997000000498
+        },
+        "rust": {
+          "medianNsPerCall": 4.586,
+          "minNsPerCall": 4.4808,
+          "maxNsPerCall": 5.4921,
+          "checksum": "3606392347",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 91.92938800000047,
+          "rustc": 183.64371799999935
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.9821421103257915,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.9883630394983269,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 47.37712180000017,
+          "minNsPerCall": 45.67314840000036,
+          "maxNsPerCall": 56.823928200000225,
+          "checksum": "2356118761",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 48.93827840000012,
+          "minNsPerCall": 44.20894340000014,
+          "maxNsPerCall": 56.5929204,
+          "checksum": "2356118761",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "clamp": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 6.7023,
+        "speedup": 1.0342736335298293,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 6.7023,
+        "speedup": 1.0246285085305449,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 10.8231,
+          "minNsPerCall": 10.5901,
+          "maxNsPerCall": 11.5249,
+          "checksum": "3059794934",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 10.8778,
+          "minNsPerCall": 10.4624,
+          "maxNsPerCall": 12.2194,
+          "checksum": "3059794934",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 6.8388,
+          "minNsPerCall": 6.6233,
+          "maxNsPerCall": 7.114,
+          "checksum": "3059794934",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 6.4802,
+          "minNsPerCall": 6.3805,
+          "maxNsPerCall": 6.68,
+          "checksum": "3059794934",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 6.7263,
+          "minNsPerCall": 6.597,
+          "maxNsPerCall": 7.3049,
+          "checksum": "3059794934",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 6.5412,
+          "minNsPerCall": 6.4324,
+          "maxNsPerCall": 7.8574,
+          "checksum": "3059794934",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16152,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 3.0857099999993807,
+          "handwritten": 2.9896630000002915
+        },
+        "rust": {
+          "medianNsPerCall": 6.7023,
+          "minNsPerCall": 6.5992,
+          "maxNsPerCall": 6.9448,
+          "checksum": "3059794934",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 104.14112400000886,
+          "rustc": 209.95334599999478
+        },
+        "verdict": "tie",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.5987378847095564,
+          "verdict": "win"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.9634122771806193,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 61.43686479999888,
+          "minNsPerCall": 57.04147159999993,
+          "maxNsPerCall": 64.15590800000064,
+          "checksum": "773013403",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 54.47882059999975,
+          "minNsPerCall": 51.86287799999991,
+          "maxNsPerCall": 58.56576859999914,
+          "checksum": "773013403",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "mix": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 4.5639,
+        "speedup": 0.964109172335122,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 4.5639,
+        "speedup": 0.9521216672925272,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 4.727,
+          "minNsPerCall": 4.6413,
+          "maxNsPerCall": 4.9635,
+          "checksum": "1680684422",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 4.8556,
+          "minNsPerCall": 4.6313,
+          "maxNsPerCall": 5.1112,
+          "checksum": "1680684422",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 4.5923,
+          "minNsPerCall": 4.4999,
+          "maxNsPerCall": 5.1687,
+          "checksum": "1680684422",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 4.7338,
+          "minNsPerCall": 4.6841,
+          "maxNsPerCall": 5.8668,
+          "checksum": "1680684422",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 4.771,
+          "minNsPerCall": 4.6423,
+          "maxNsPerCall": 5.114,
+          "checksum": "1680684422",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 4.7934,
+          "minNsPerCall": 4.6052,
+          "maxNsPerCall": 5.3604,
+          "checksum": "1680684422",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16152,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 2.641435999998066,
+          "handwritten": 2.748171999999613
+        },
+        "rust": {
+          "medianNsPerCall": 4.5639,
+          "minNsPerCall": 4.5155,
+          "maxNsPerCall": 4.7788,
+          "checksum": "1680684422",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 87.3622530000066,
+          "rustc": 191.11852599999838
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.0014385445314151,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.992202892475372,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 47.66568359999946,
+          "minNsPerCall": 46.25932339999999,
+          "maxNsPerCall": 49.557799400000654,
+          "checksum": "1418202781",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 46.96504240000068,
+          "minNsPerCall": 44.77090699999972,
+          "maxNsPerCall": 50.74048340000008,
+          "checksum": "1418202781",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "ident": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 2.1669,
+        "speedup": 0.9783727650352178,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 2.1669,
+        "speedup": 1.0085171739737504,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 2.1688,
+          "minNsPerCall": 2.157,
+          "maxNsPerCall": 2.212,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 2.17,
+          "minNsPerCall": 2.1487,
+          "maxNsPerCall": 2.2758,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 2.1669,
+          "minNsPerCall": 2.1562,
+          "maxNsPerCall": 2.2902,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 2.2148,
+          "minNsPerCall": 2.1348,
+          "maxNsPerCall": 3.1425,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 2.1744,
+          "minNsPerCall": 2.1357,
+          "maxNsPerCall": 2.3935,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 2.1486,
+          "minNsPerCall": 2.134,
+          "maxNsPerCall": 2.3576,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16152,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 2.560444999995525,
+          "handwritten": 2.5880959999922197
+        },
+        "rust": {
+          "medianNsPerCall": 2.1909,
+          "minNsPerCall": 2.1379,
+          "maxNsPerCall": 2.2845,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 90.96009900000354,
+          "rustc": 200.4772510000039
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.0212098856510512,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.0185798381162618,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 23.823396400001364,
+          "minNsPerCall": 22.26165880000044,
+          "maxNsPerCall": 35.46107940000074,
+          "checksum": "3156194351",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 21.69351280000119,
+          "minNsPerCall": 20.127821799999218,
+          "maxNsPerCall": 24.96201300000248,
+          "checksum": "3156194351",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "noop": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 2.1881,
+        "speedup": 0.974828477234251,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 2.1881,
+        "speedup": 0.9773975968195827,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 2.1849,
+          "minNsPerCall": 2.1601,
+          "maxNsPerCall": 2.5806,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 2.2715,
+          "minNsPerCall": 2.1596,
+          "maxNsPerCall": 2.5649,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 2.2192,
+          "minNsPerCall": 2.1598,
+          "maxNsPerCall": 2.3974,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 2.2446,
+          "minNsPerCall": 2.1595,
+          "maxNsPerCall": 2.3734,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 2.2481,
+          "minNsPerCall": 2.1534,
+          "maxNsPerCall": 2.6254,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 2.2387,
+          "minNsPerCall": 2.1255,
+          "maxNsPerCall": 2.3889,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16152,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 3.09214300000167,
+          "handwritten": 2.9881880000029923
+        },
+        "rust": {
+          "medianNsPerCall": 2.1881,
+          "minNsPerCall": 2.1359,
+          "maxNsPerCall": 2.2893,
+          "checksum": "1964997590",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 87.25187699998787,
+          "rustc": 191.65103100000124
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.02732390498421,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.9984431297540146,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 25.246896200001355,
+          "minNsPerCall": 23.387698200001616,
+          "maxNsPerCall": 29.006181600000126,
+          "checksum": "3156194351",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 21.797369400001482,
+          "minNsPerCall": 20.942856999998913,
+          "maxNsPerCall": 25.512214600000878,
+          "checksum": "3156194351",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "chain3": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 4.419,
+        "speedup": 0.9635007849293562,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 4.419,
+        "speedup": 0.9896976483762597,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 4.5118,
+          "minNsPerCall": 4.4868,
+          "maxNsPerCall": 4.6075,
+          "checksum": "3631381073",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 4.588,
+          "minNsPerCall": 4.4881,
+          "maxNsPerCall": 4.8142,
+          "checksum": "3631381073",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 4.4244,
+          "minNsPerCall": 4.3875,
+          "maxNsPerCall": 4.5824,
+          "checksum": "3631381073",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 4.5864,
+          "minNsPerCall": 4.5427,
+          "maxNsPerCall": 4.796,
+          "checksum": "3631381073",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 4.4288,
+          "minNsPerCall": 4.3686,
+          "maxNsPerCall": 5.4117,
+          "checksum": "3631381073",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 4.465,
+          "minNsPerCall": 4.4355,
+          "maxNsPerCall": 5.1355,
+          "checksum": "3631381073",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16216,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 2.6466420000069775,
+          "handwritten": 2.9759520000079647
+        },
+        "rust": {
+          "medianNsPerCall": 4.419,
+          "minNsPerCall": 4.3656,
+          "maxNsPerCall": 4.8112,
+          "checksum": "3631381073",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 90.83891000000585,
+          "rustc": 186.52948399999877
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.0165344208519882,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.035585260115607,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 51.89788660000195,
+          "minNsPerCall": 49.36790639999963,
+          "maxNsPerCall": 56.20318700000062,
+          "checksum": "3028812403",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 48.36835240000219,
+          "minNsPerCall": 46.953827600000665,
+          "maxNsPerCall": 51.3076492000022,
+          "checksum": "3028812403",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "branchy": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 4.6303,
+        "speedup": 0.9475310536763051,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 4.6303,
+        "speedup": 0.9637824448931167,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 4.7858,
+          "minNsPerCall": 4.7356,
+          "maxNsPerCall": 4.8592,
+          "checksum": "707118217",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 5.0204,
+          "minNsPerCall": 4.8414,
+          "maxNsPerCall": 5.369,
+          "checksum": "707118217",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 8.3914,
+          "minNsPerCall": 7.7369,
+          "maxNsPerCall": 9.3265,
+          "checksum": "707118217",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 4.8867,
+          "minNsPerCall": 4.7558,
+          "maxNsPerCall": 5.3857,
+          "checksum": "707118217",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 4.889,
+          "minNsPerCall": 4.7351,
+          "maxNsPerCall": 5.233,
+          "checksum": "707118217",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 4.8043,
+          "minNsPerCall": 4.6925,
+          "maxNsPerCall": 5.4125,
+          "checksum": "707118217",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16152,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 2.2789929999999003,
+          "handwritten": 2.2720030000054976
+        },
+        "rust": {
+          "medianNsPerCall": 4.6303,
+          "minNsPerCall": 4.5407,
+          "maxNsPerCall": 4.9671,
+          "checksum": "707118217",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 90.87094599999546,
+          "rustc": 260.17080500000156
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.0210832044799198,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.9995295561464512,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 51.68848780000117,
+          "minNsPerCall": 49.16626879999822,
+          "maxNsPerCall": 61.68032860000094,
+          "checksum": "2922498074",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 50.40816019999911,
+          "minNsPerCall": 47.33798800000222,
+          "maxNsPerCall": 69.47003839999961,
+          "checksum": "2922498074",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "arrfill": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 4.574,
+        "speedup": 1.009601589228562,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 4.574,
+        "speedup": 0.9917391210077838,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 4.4923,
+          "minNsPerCall": 4.4553,
+          "maxNsPerCall": 5.062,
+          "checksum": "1524041681",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 4.5149,
+          "minNsPerCall": 4.4768,
+          "maxNsPerCall": 5.2922,
+          "checksum": "1524041681",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 4.574,
+          "minNsPerCall": 4.4996,
+          "maxNsPerCall": 12.6041,
+          "checksum": "1524041681",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 4.5305,
+          "minNsPerCall": 4.4718,
+          "maxNsPerCall": 4.8093,
+          "checksum": "1524041681",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 4.4308,
+          "minNsPerCall": 4.4074,
+          "maxNsPerCall": 4.607,
+          "checksum": "1524041681",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 4.6121,
+          "minNsPerCall": 4.4458,
+          "maxNsPerCall": 4.7996,
+          "checksum": "1524041681",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16184,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 3.080965000001015,
+          "handwritten": 3.102748999997857
+        },
+        "rust": {
+          "medianNsPerCall": 4.6481,
+          "minNsPerCall": 4.5609,
+          "maxNsPerCall": 4.9089,
+          "checksum": "1524041681",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 95.10990999999922,
+          "rustc": 222.26900900001056
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.0085034392182177,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.02250157985014,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 45.96723939999938,
+          "minNsPerCall": 44.63923860000213,
+          "maxNsPerCall": 50.692517600001885,
+          "checksum": "2928418179",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 94.29618979999795,
+          "minNsPerCall": 90.16844120000025,
+          "maxNsPerCall": 107.32136860000027,
+          "checksum": "2928418179",
+          "samples": 11
+        },
+        "verdict": "win"
+      }
+    },
+    "arrfill4k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 304.4904,
+        "speedup": 67.76693670435326,
+        "verdict": "win"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 304.4904,
+        "speedup": 67.47560164871693,
+        "verdict": "win"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 4.4606,
+          "minNsPerCall": 4.3412,
+          "maxNsPerCall": 4.6698,
+          "checksum": "2942975950",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 237.0533,
+          "minNsPerCall": 228.8929,
+          "maxNsPerCall": 280.8824,
+          "checksum": "2942975950",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 304.4904,
+          "minNsPerCall": 97.9507,
+          "maxNsPerCall": 320.7689,
+          "checksum": "2942975950",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 4.4932,
+          "minNsPerCall": 4.3616,
+          "maxNsPerCall": 9.7395,
+          "checksum": "2942975950",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 4.4391,
+          "minNsPerCall": 4.2852,
+          "maxNsPerCall": 4.7109,
+          "checksum": "2942975950",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 4.5126,
+          "minNsPerCall": 4.3431,
+          "maxNsPerCall": 4.7307,
+          "checksum": "2942975950",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16240,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.216658000019379,
+          "handwritten": 4.25500999999349
+        },
+        "rust": {
+          "medianNsPerCall": 406.0729,
+          "minNsPerCall": 399.1115,
+          "maxNsPerCall": 421.7012,
+          "checksum": "2942975950",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 129.97474400000647,
+          "rustc": 209.98251900001196
+        },
+        "verdict": "win",
+        "verdictVsRust": "win",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.0073084338429807,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.0121871550539523,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 56.330961036340604,
+          "minNsPerCall": 43.669627771520936,
+          "maxNsPerCall": 109.0185090368419,
+          "checksum": "1527077180",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 9608.398853104833,
+          "minNsPerCall": 8259.986124622139,
+          "maxNsPerCall": 11350.379320055177,
+          "checksum": "1527077180",
+          "samples": 11
+        },
+        "verdict": "win"
+      }
+    },
+    "loop64": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 125.7325,
+        "speedup": 0.9895981318194376,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 125.7325,
+        "speedup": 1.0063325737766455,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 145.3931,
+          "minNsPerCall": 143.7295,
+          "maxNsPerCall": 150.5502,
+          "checksum": "917904645",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 146.313,
+          "minNsPerCall": 142.9984,
+          "maxNsPerCall": 149.594,
+          "checksum": "917904645",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 126.3133,
+          "minNsPerCall": 122.4747,
+          "maxNsPerCall": 131.8596,
+          "checksum": "917904645",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 127.0541,
+          "minNsPerCall": 124.3824,
+          "maxNsPerCall": 131.2984,
+          "checksum": "917904645",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 126.7689,
+          "minNsPerCall": 122.9031,
+          "maxNsPerCall": 130.7081,
+          "checksum": "917904645",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 124.9413,
+          "minNsPerCall": 123.2689,
+          "maxNsPerCall": 128.4777,
+          "checksum": "917904645",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16192,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.1606250000186265,
+          "handwritten": 4.6066569999966305
+        },
+        "rust": {
+          "medianNsPerCall": 125.7325,
+          "minNsPerCall": 124.1021,
+          "maxNsPerCall": 131.9268,
+          "checksum": "917904645",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 96.62366299997666,
+          "rustc": 212.93394099999568
+        },
+        "verdict": "tie",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.8738660913069465,
+          "verdict": "win"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.0022497631516878,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 192.79718659999781,
+          "minNsPerCall": 187.3126648000034,
+          "maxNsPerCall": 198.14579479999958,
+          "checksum": "3865388415",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 192.58767160000278,
+          "minNsPerCall": 186.05750160000173,
+          "maxNsPerCall": 196.47519319999847,
+          "checksum": "3865388415",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "dot1k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 209.1861,
+        "speedup": 0.2406385166847656,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 209.1861,
+        "speedup": 0.2654005003613975,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 916.9951,
+          "minNsPerCall": 891.2843,
+          "maxNsPerCall": 963.9208,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 750.4546,
+          "minNsPerCall": 732.8214,
+          "maxNsPerCall": 859.8287,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 209.1861,
+          "minNsPerCall": 181.4894,
+          "maxNsPerCall": 345.91,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 869.296,
+          "minNsPerCall": 756.4774,
+          "maxNsPerCall": 1070.1839,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 336.7501,
+          "minNsPerCall": 297.0901,
+          "maxNsPerCall": 395.3129,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 788.1903,
+          "minNsPerCall": 755.4193,
+          "maxNsPerCall": 918.6817,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16352,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.212487999990117,
+          "handwritten": 4.110336999990977
+        },
+        "rust": {
+          "medianNsPerCall": 289.634,
+          "minNsPerCall": 274.7784,
+          "maxNsPerCall": 340.413,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 194.37640700000338,
+          "rustc": 381.8977020000457
+        },
+        "verdict": "loss",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.9479832553085618,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 2.581427592746075,
+          "verdict": "loss"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 7995.618956799804,
+          "minNsPerCall": 7478.26447359994,
+          "maxNsPerCall": 9124.87324159965,
+          "checksum": "3467299840",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 7683.663705600054,
+          "minNsPerCall": 7191.096908800304,
+          "maxNsPerCall": 8925.22439680025,
+          "checksum": "3467299840",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "prefix1k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 437.5791,
+        "speedup": 0.8886691706021671,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 437.5791,
+        "speedup": 0.8768241659152389,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 703.9552,
+          "minNsPerCall": 673.1612,
+          "maxNsPerCall": 747.9793,
+          "checksum": "2312011882",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 645.3957,
+          "minNsPerCall": 628.2393,
+          "maxNsPerCall": 747.8929,
+          "checksum": "2312011882",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 437.5791,
+          "minNsPerCall": 409.5741,
+          "maxNsPerCall": 498.2965,
+          "checksum": "2312011882",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 492.3982,
+          "minNsPerCall": 471.9711,
+          "maxNsPerCall": 783.7655,
+          "checksum": "2312011882",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 476.8867,
+          "minNsPerCall": 465.1644,
+          "maxNsPerCall": 526.0521,
+          "checksum": "2312011882",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 499.05,
+          "minNsPerCall": 457.8689,
+          "maxNsPerCall": 568.496,
+          "checksum": "2312011882",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16320,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.2321809999994,
+          "handwritten": 4.202944000018761
+        },
+        "rust": {
+          "medianNsPerCall": 487.272,
+          "minNsPerCall": 467.4803,
+          "maxNsPerCall": 540.9145,
+          "checksum": "2312011882",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 135.6144070000155,
+          "rustc": 218.65300200000638
+        },
+        "verdict": "tie",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.6994737733310301,
+          "verdict": "win"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.03252659384294,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 8830.419724799693,
+          "minNsPerCall": 8541.226368000358,
+          "maxNsPerCall": 9173.918476799874,
+          "checksum": "1175059521",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 6536.561472000181,
+          "minNsPerCall": 6278.693836800009,
+          "maxNsPerCall": 7126.013759999722,
+          "checksum": "1175059521",
+          "samples": 11
+        },
+        "verdict": "loss"
+      }
+    },
+    "hist256": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 1957.9443,
+        "speedup": 0.47006829412716994,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 1957.9443,
+        "speedup": 0.4619225991986949,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 3946.1111,
+          "minNsPerCall": 3697.9758,
+          "maxNsPerCall": 5206.2939,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 4084.3047,
+          "minNsPerCall": 3617.3197,
+          "maxNsPerCall": 5118.0809,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 1957.9443,
+          "minNsPerCall": 1895.6076,
+          "maxNsPerCall": 3191.4016,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 4165.2337,
+          "minNsPerCall": 3866.7749,
+          "maxNsPerCall": 5570.303,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 2137.7536,
+          "minNsPerCall": 1989.0482,
+          "maxNsPerCall": 2841.5432,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 4238.6848,
+          "minNsPerCall": 3951.3832,
+          "maxNsPerCall": 5171.4169,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16464,
+          "handwritten": 16176
+        },
+        "startupMs": {
+          "emitted": 4.020519000012428,
+          "handwritten": 3.9871550000389107
+        },
+        "rust": {
+          "medianNsPerCall": 2181.8759,
+          "minNsPerCall": 2104.6211,
+          "maxNsPerCall": 3123.7748,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 136.2715019999887,
+          "rustc": 201.97161499998765
+        },
+        "verdict": "tie",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.0555287457568034,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.948416178553038,
+          "verdict": "loss"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 19063.21166351036,
+          "minNsPerCall": 17877.98986227148,
+          "maxNsPerCall": 26060.643541037207,
+          "checksum": "1378521",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 18701.512928165233,
+          "minNsPerCall": 17532.122062363884,
+          "maxNsPerCall": 22836.730326148565,
+          "checksum": "1378521",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "mat4": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 67.8746,
+        "speedup": 0.552922871387142,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 67.8746,
+        "speedup": 0.570319195775874,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 78.1004,
+          "minNsPerCall": 71.927,
+          "maxNsPerCall": 85.3958,
+          "checksum": "3463238979",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 202.7309,
+          "minNsPerCall": 192.0345,
+          "maxNsPerCall": 247.6774,
+          "checksum": "3463238979",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 67.8746,
+          "minNsPerCall": 65.3589,
+          "maxNsPerCall": 81.4355,
+          "checksum": "3463238979",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 122.756,
+          "minNsPerCall": 112.8496,
+          "maxNsPerCall": 233.991,
+          "checksum": "3463238979",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 72.5654,
+          "minNsPerCall": 70.1914,
+          "maxNsPerCall": 113.1679,
+          "checksum": "3463238979",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 119.0116,
+          "minNsPerCall": 111.8518,
+          "maxNsPerCall": 201.7227,
+          "checksum": "3463238979",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 20280,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.709322999988217,
+          "handwritten": 4.5634940000018105
+        },
+        "rust": {
+          "medianNsPerCall": 132.0488,
+          "minNsPerCall": 129.2773,
+          "maxNsPerCall": 158.9569,
+          "checksum": "3463238979",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 295.1008000000147,
+          "rustc": 240.77065299998503
+        },
+        "verdict": "win",
+        "verdictVsRust": "win",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.5717717194790297,
+          "verdict": "loss"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.6916602127184581,
+          "verdict": "loss"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 457.3596063999459,
+          "minNsPerCall": 440.08026879988614,
+          "maxNsPerCall": 607.6051359999925,
+          "checksum": "1866587006",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 1039.0683520000428,
+          "minNsPerCall": 1001.8779904000462,
+          "maxNsPerCall": 1151.7129087999463,
+          "checksum": "1866587006",
+          "samples": 11
+        },
+        "verdict": "win"
+      }
+    },
+    "fnv4k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 24100.922,
+        "speedup": 1.02673342427969,
+        "verdict": "tie"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 24100.922,
+        "speedup": 1.0205606434862116,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 26110.4321,
+          "minNsPerCall": 25789.2023,
+          "maxNsPerCall": 26943.9128,
+          "checksum": "1065597242",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 25768.3063,
+          "minNsPerCall": 25479.9115,
+          "maxNsPerCall": 26144.2346,
+          "checksum": "1065597242",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 24100.922,
+          "minNsPerCall": 23792.4323,
+          "maxNsPerCall": 25555.5964,
+          "checksum": "1065597242",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 23473.3977,
+          "minNsPerCall": 23216.0242,
+          "maxNsPerCall": 24628.4223,
+          "checksum": "1065597242",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 24291.0671,
+          "minNsPerCall": 23817.7993,
+          "maxNsPerCall": 25163.1187,
+          "checksum": "1065597242",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 23615.3747,
+          "minNsPerCall": 23166.4505,
+          "maxNsPerCall": 24336.7897,
+          "checksum": "1065597242",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16464,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 5.647475000005215,
+          "handwritten": 5.114919000014197
+        },
+        "rust": {
+          "medianNsPerCall": 24495.2459,
+          "minNsPerCall": 23883.5845,
+          "maxNsPerCall": 26002.7739,
+          "checksum": "1065597242",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 127.07815399998799,
+          "rustc": 225.6457479999517
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.8990045668374825,
+          "verdict": "win"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.9663386792916974,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 36156.48852929183,
+          "minNsPerCall": 35531.4166325254,
+          "maxNsPerCall": 37937.850061442936,
+          "checksum": "1203983823",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 36597.29065957238,
+          "minNsPerCall": 34962.709750099275,
+          "maxNsPerCall": 39452.69233920386,
+          "checksum": "1203983823",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "xs4k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 8973.7123,
+        "speedup": 0.7420688436211278,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 8973.7123,
+        "speedup": 0.8063407533647586,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 9228.6348,
+          "minNsPerCall": 8955.48,
+          "maxNsPerCall": 9645.43,
+          "checksum": "1905518622",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 9027.2556,
+          "minNsPerCall": 8857.6478,
+          "maxNsPerCall": 9205.0327,
+          "checksum": "1905518622",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 8973.7123,
+          "minNsPerCall": 8796.8066,
+          "maxNsPerCall": 9526.4626,
+          "checksum": "1905518622",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 12092.8299,
+          "minNsPerCall": 11732.6015,
+          "maxNsPerCall": 13209.3738,
+          "checksum": "1905518622",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 9074.1849,
+          "minNsPerCall": 8869.4498,
+          "maxNsPerCall": 9675.4574,
+          "checksum": "1905518622",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 11128.9331,
+          "minNsPerCall": 10765.8233,
+          "maxNsPerCall": 11675.1573,
+          "checksum": "1905518622",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16464,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.039443999994546,
+          "handwritten": 4.532478999928571
+        },
+        "rust": {
+          "medianNsPerCall": 9115.2293,
+          "minNsPerCall": 8926.2037,
+          "maxNsPerCall": 9770.0863,
+          "checksum": "1905518622",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 129.45118199987337,
+          "rustc": 195.40775900008157
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.3103595669426642,
+          "verdict": "loss"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.3326629370314023,
+          "verdict": "loss"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 44908.66635944427,
+          "minNsPerCall": 42266.43758320716,
+          "maxNsPerCall": 48969.356682024234,
+          "checksum": "3007506730",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 15775.81955964977,
+          "minNsPerCall": 15089.918996414375,
+          "maxNsPerCall": 19858.593343570163,
+          "checksum": "3007506730",
+          "samples": 11
+        },
+        "verdict": "loss"
+      }
+    },
+    "minmax1k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 183.9335,
+        "speedup": 0.1475045989555946,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 183.9335,
+        "speedup": 0.14894953020610327,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 33907.6077,
+          "minNsPerCall": 32867.4174,
+          "maxNsPerCall": 35436.6136,
+          "checksum": "43913452",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 984.24,
+          "minNsPerCall": 901.679,
+          "maxNsPerCall": 1109.9004,
+          "checksum": "43913452",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 183.9335,
+          "minNsPerCall": 177.4118,
+          "maxNsPerCall": 267.9753,
+          "checksum": "43913452",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 1246.9679,
+          "minNsPerCall": 1175.7817,
+          "maxNsPerCall": 1537.6167,
+          "checksum": "43913452",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 33813.7541,
+          "minNsPerCall": 30621.4234,
+          "maxNsPerCall": 35935.5096,
+          "checksum": "43913452",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 1234.8713,
+          "minNsPerCall": 1187.9583,
+          "maxNsPerCall": 1700.615,
+          "checksum": "43913452",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16328,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.790720999939367,
+          "handwritten": 4.767095000017434
+        },
+        "rust": {
+          "medianNsPerCall": 245.5147,
+          "minNsPerCall": 233.7325,
+          "maxNsPerCall": 263.0392,
+          "checksum": "43913452",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 160.6406770000467,
+          "rustc": 220.68579699995462
+        },
+        "verdict": "loss",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.03677546086508486,
+          "verdict": "win"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.03687753499100534,
+          "verdict": "win"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 7951.202944000066,
+          "minNsPerCall": 7454.427430400252,
+          "maxNsPerCall": 8832.063142400979,
+          "checksum": "4253247625",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 6058.052313598991,
+          "minNsPerCall": 5637.394560000301,
+          "maxNsPerCall": 6885.7169791996475,
+          "checksum": "4253247625",
+          "samples": 11
+        },
+        "verdict": "loss"
+      }
+    },
+    "filter2": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 705.082,
+        "speedup": 0.317435548718754,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 705.082,
+        "speedup": 0.32215083641648373,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 65562.1798,
+          "minNsPerCall": 62924.0984,
+          "maxNsPerCall": 68994.8478,
+          "checksum": "182464894",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 1404.0755,
+          "minNsPerCall": 1291.7439,
+          "maxNsPerCall": 1748.6275,
+          "checksum": "182464894",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 705.082,
+          "minNsPerCall": 678.5486,
+          "maxNsPerCall": 982.0133,
+          "checksum": "182464894",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 2221.1816,
+          "minNsPerCall": 2064.9951,
+          "maxNsPerCall": 2486.8926,
+          "checksum": "182464894",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 69961.0192,
+          "minNsPerCall": 59278.345,
+          "maxNsPerCall": 71967.885,
+          "checksum": "182464894",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 2188.6704,
+          "minNsPerCall": 2078.8816,
+          "maxNsPerCall": 2514.8157,
+          "checksum": "182464894",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16328,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.044333999976516,
+          "handwritten": 4.043116000015289
+        },
+        "rust": {
+          "medianNsPerCall": 833.9349,
+          "minNsPerCall": 783.551,
+          "maxNsPerCall": 1018.9136,
+          "checksum": "182464894",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 145.1216710000299,
+          "rustc": 198.0203900000779
+        },
+        "verdict": "loss",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.03387900778735243,
+          "verdict": "win"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.03174884564860656,
+          "verdict": "win"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 12052.983500799535,
+          "minNsPerCall": 10594.656153599917,
+          "maxNsPerCall": 15703.730649600922,
+          "checksum": "2979815860",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 11704.281139199435,
+          "minNsPerCall": 10576.408614400028,
+          "maxNsPerCall": 12525.479884800314,
+          "checksum": "2979815860",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "sieve4k": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 2563.0504,
+        "speedup": 0.3150483311881254,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 2563.0504,
+        "speedup": 0.2998986495886695,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 2963.2499,
+          "minNsPerCall": 2918.3353,
+          "maxNsPerCall": 5359.0697,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 2642.5666,
+          "minNsPerCall": 2607.2304,
+          "maxNsPerCall": 4086.5423,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 3144.8285,
+          "minNsPerCall": 3087.0407,
+          "maxNsPerCall": 4423.3935,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 8135.4197,
+          "minNsPerCall": 7669.1728,
+          "maxNsPerCall": 9788.0484,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 3115.6275,
+          "minNsPerCall": 3002.3144,
+          "maxNsPerCall": 4776.8451,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 8546.3886,
+          "minNsPerCall": 7934.8573,
+          "maxNsPerCall": 10218.1632,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16496,
+          "handwritten": 16176
+        },
+        "startupMs": {
+          "emitted": 4.452129000099376,
+          "handwritten": 4.369878999888897
+        },
+        "rust": {
+          "medianNsPerCall": 2563.0504,
+          "minNsPerCall": 2455.8826,
+          "maxNsPerCall": 3354.3856,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 153.97853099997155,
+          "rustc": 211.6168290001806
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 2.7454382770754506,
+          "verdict": "loss"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 2.6111657122040426,
+          "verdict": "loss"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 264343.26492575667,
+          "minNsPerCall": 242240.02252943735,
+          "maxNsPerCall": 289933.33333333564,
+          "checksum": "49067075",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 12753.764874551252,
+          "minNsPerCall": 10714.507014841161,
+          "maxNsPerCall": 17844.326062465567,
+          "checksum": "49067075",
+          "samples": 11
+        },
+        "verdict": "loss"
+      }
+    },
+    "isort256": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 11771.2,
+        "speedup": 0.3486080864388842,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 11771.2,
+        "speedup": 0.34103542767701767,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 34833.5529,
+          "minNsPerCall": 32713.7441,
+          "maxNsPerCall": 37703.9963,
+          "checksum": "1956212781",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 10630.1127,
+          "minNsPerCall": 10266.7235,
+          "maxNsPerCall": 14757.5236,
+          "checksum": "1956212781",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 11771.2,
+          "minNsPerCall": 11423.9975,
+          "maxNsPerCall": 15024.4208,
+          "checksum": "1956212781",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 33766.285,
+          "minNsPerCall": 31730.1025,
+          "maxNsPerCall": 42929.8342,
+          "checksum": "1956212781",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 32897.3916,
+          "minNsPerCall": 32468.4428,
+          "maxNsPerCall": 36140.5104,
+          "checksum": "1956212781",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 34516.0621,
+          "minNsPerCall": 31713.4065,
+          "maxNsPerCall": 44823.86,
+          "checksum": "1956212781",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16392,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 3.941431999905035,
+          "handwritten": 4.010562999872491
+        },
+        "rust": {
+          "medianNsPerCall": 13490.4569,
+          "minNsPerCall": 13148.9818,
+          "maxNsPerCall": 17415.4046,
+          "checksum": "1956212781",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 138.62012400012463,
+          "rustc": 216.75891700014472
+        },
+        "verdict": "loss",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.969360923272343,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.0264122277706662,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 856976.9381401646,
+          "minNsPerCall": 784677.6300695767,
+          "maxNsPerCall": 901917.5714871165,
+          "checksum": "269644353",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 21347.47234736262,
+          "minNsPerCall": 20464.09873007608,
+          "maxNsPerCall": 27309.251126605486,
+          "checksum": "269644353",
+          "samples": 11
+        },
+        "verdict": "loss"
+      }
+    },
+    "crc4k": {
+      "x86_64VsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 11351.2316,
+        "speedup": 0.9258975378365516,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "rustO3Native",
+        "bestNsPerCall": 11351.2316,
+        "speedup": 0.9517983624572435,
+        "verdict": "tie"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 12196.8046,
+          "minNsPerCall": 11841.5295,
+          "maxNsPerCall": 12747.3359,
+          "checksum": "2330669114",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 12418.1131,
+          "minNsPerCall": 12102.9523,
+          "maxNsPerCall": 12981.4834,
+          "checksum": "2330669114",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 12150.6487,
+          "minNsPerCall": 11726.7327,
+          "maxNsPerCall": 12743.2808,
+          "checksum": "2330669114",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 12259.706,
+          "minNsPerCall": 11713.6903,
+          "maxNsPerCall": 12646.7545,
+          "checksum": "2330669114",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 11848.1964,
+          "minNsPerCall": 11446.637,
+          "maxNsPerCall": 12134.5845,
+          "checksum": "2330669114",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 11926.0886,
+          "minNsPerCall": 11691.9477,
+          "maxNsPerCall": 12401.7115,
+          "checksum": "2330669114",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16328,
+          "handwritten": 16152
+        },
+        "startupMs": {
+          "emitted": 5.0398959999438375,
+          "handwritten": 5.093862000154331
+        },
+        "rust": {
+          "medianNsPerCall": 11351.2316,
+          "minNsPerCall": 11066.311,
+          "maxNsPerCall": 11735.736,
+          "checksum": "2330669114",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 189.3711979999207,
+          "rustc": 203.23414899990894
+        },
+        "verdict": "tie",
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.0051572032235394,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 1.0347318347963914,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 18814.48136007704,
+          "minNsPerCall": 17684.162638254315,
+          "maxNsPerCall": 22931.095043011086,
+          "checksum": "990450018",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 16121.026013927463,
+          "minNsPerCall": 15555.30868496613,
+          "maxNsPerCall": 19265.705653394176,
+          "checksum": "990450018",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "bsearch1k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 33985.618,
+        "speedup": 1.8715554348466625,
+        "verdict": "win"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 33985.618,
+        "speedup": 1.7886656280752904,
+        "verdict": "win"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 207221.107,
+          "minNsPerCall": 198706.505,
+          "maxNsPerCall": 219870.5418,
+          "checksum": "261464",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 34114.6294,
+          "minNsPerCall": 32758.477,
+          "maxNsPerCall": 35972.2173,
+          "checksum": "261464",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 33985.618,
+          "minNsPerCall": 32881.4255,
+          "maxNsPerCall": 35905.7507,
+          "checksum": "261464",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 18159.0229,
+          "minNsPerCall": 17008.1891,
+          "maxNsPerCall": 19673.452,
+          "checksum": "261464",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 202481.3886,
+          "minNsPerCall": 198178.9925,
+          "maxNsPerCall": 212610.5357,
+          "checksum": "261464",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 19000.5429,
+          "minNsPerCall": 17545.9296,
+          "maxNsPerCall": 19336.3114,
+          "checksum": "261464",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16392,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.483504999894649,
+          "handwritten": 4.279005999909714
+        },
+        "rust": {
+          "medianNsPerCall": 34528.1144,
+          "minNsPerCall": 33708.1383,
+          "maxNsPerCall": 34985.661,
+          "checksum": "261464",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 162.63795000012033,
+          "rustc": 226.0656889998354
+        },
+        "verdict": "loss",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.0876311451226829,
+          "verdict": "win"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.08968242970652958,
+          "verdict": "win"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 53401.259894528426,
+          "minNsPerCall": 51714.096462038295,
+          "maxNsPerCall": 57986.22164763687,
+          "checksum": "262624",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 42250.74199989772,
+          "minNsPerCall": 40364.572525724514,
+          "maxNsPerCall": 45908.37888484574,
+          "checksum": "262624",
+          "samples": 11
+        },
+        "verdict": "loss"
+      }
+    },
+    "rle4k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 3282.4368,
+        "speedup": 0.24081806146319085,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 3282.4368,
+        "speedup": 0.24527325427444416,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 15875.3552,
+          "minNsPerCall": 15279.0489,
+          "maxNsPerCall": 17953.3766,
+          "checksum": "3221798893",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 5368.1712,
+          "minNsPerCall": 5096.8557,
+          "maxNsPerCall": 7383.4263,
+          "checksum": "3221798893",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 3282.4368,
+          "minNsPerCall": 3230.1126,
+          "maxNsPerCall": 4319.72,
+          "checksum": "3221798893",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 13630.3597,
+          "minNsPerCall": 12640.2764,
+          "maxNsPerCall": 18498.5888,
+          "checksum": "3221798893",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 15091.1326,
+          "minNsPerCall": 13918.5902,
+          "maxNsPerCall": 17374.0208,
+          "checksum": "3221798893",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 13382.7751,
+          "minNsPerCall": 12741.3077,
+          "maxNsPerCall": 18885.7799,
+          "checksum": "3221798893",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16464,
+          "handwritten": 16128
+        },
+        "startupMs": {
+          "emitted": 4.935445999959484,
+          "handwritten": 4.952352999942377
+        },
+        "rust": {
+          "medianNsPerCall": 3900.0856,
+          "minNsPerCall": 3751.7724,
+          "maxNsPerCall": 4160.2992,
+          "checksum": "3221798893",
+          "samples": 11
+        },
+        "buildMs": {
+          "a0ToNative": 148.47807800001465,
+          "rustc": 368.97422500001267
+        },
+        "verdict": "loss",
+        "verdictVsRust": "loss",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 0.8585861247375429,
+          "verdict": "tie"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 0.9032032294249406,
+          "verdict": "tie"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 28655.64113064863,
+          "minNsPerCall": 28095.664276927637,
+          "maxNsPerCall": 32013.041786151294,
+          "checksum": "919729024",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 14259.55141336527,
+          "minNsPerCall": 13272.571077428007,
+          "maxNsPerCall": 15338.154854569608,
+          "checksum": "919729024",
+          "samples": 11
+        },
+        "verdict": "loss"
+      }
+    }
+  }
+}
