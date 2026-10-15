@@ -30,7 +30,7 @@
  *
  * In-place updates follow the other backends' `mutableHere` analysis: a `set`/`put` on a value
  * that is provably unshared (a fresh allocation, a fold or loop result, or the owned state, read
- * only by `get`/`at` before this node and no aggregate one of them read after it, never returned)
+ * only by non-escaping reads before this node and no borrow read after it, never returned)
  * stores one element and the node aliases the container; a fold or loop whose initial value is
  * unshared runs in that value's storage. An aggregate `get`/`at` result aliases into its
  * container (no copy), which is why such reads count as sharing for the analysis; a `set`/`put`
@@ -788,7 +788,7 @@ function rotatesOf(fn: TypedFunc): Rotates {
  * Is the aggregate operand `o` storage no other value shares, read by nothing at or after the
  * node at `index`: a fresh value (FRESH_OPS, or a fold or loop result, which runs in its own slot
  * or in its unshared initial value's storage) or the owned state, not the result, and named
- * before `index` only as the container of `get`/`at` reads?
+ * before `index` only by reads that cannot retain its storage (`readOnlyUse`)?
  */
 function unsharedUntil(
   fn: TypedFunc,
@@ -806,9 +806,22 @@ function unsharedUntil(
   if (sameOp(fn.ret, o)) return false;
   for (const [j, n] of fn.nodes.entries())
     for (const [k, arg] of n.args.entries())
-      if (sameOp(arg, o) && (j >= index || !((n.op === 'get' || n.op === 'at') && k === 0)))
-        return false;
+      if (sameOp(arg, o) && (j >= index || !readOnlyUse(n, k))) return false;
   return true;
+}
+
+/**
+ * An aggregate use that keeps no alias: a field/element read (its borrows are checked by
+ * `liveAfter`), a call argument, or a fold/loop extra. Calls receive read-only pointers and
+ * copy aggregate results into separate storage. An iteration's extras are read-only too;
+ * its initial state may share its result, so that operand is excluded.
+ */
+function readOnlyUse(n: Node, position: number): boolean {
+  return (
+    ((n.op === 'get' || n.op === 'at') && position === 0) ||
+    n.op === 'call' ||
+    ((n.op === 'fold' || n.op === 'loop') && position >= 2)
+  );
 }
 
 /**
@@ -881,7 +894,8 @@ function liveAfter(
  * borrow is read after this node (`borrowLive`). A fold or loop result is fresh too. A `set`/`put`
  * may also update such a borrow, writing into its container, when the container is unshared until
  * here (`unsharedUntil`) and no borrow of it (the target among them) is read after. Reads emitted
- * late by lazy select arms count as reads after (`liveAfter`).
+ * late by lazy select arms count as reads after (`liveAfter`). Earlier calls and iteration
+ * extras keep no alias (`readOnlyUse`), so they do not prevent a later in-place update.
  */
 function mutableHere(
   fn: TypedFunc,
@@ -912,7 +926,7 @@ function mutableHere(
         continue;
       }
       if (j > index) return false;
-      if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
+      if (!readOnlyUse(n, k)) return false;
     }
   }
   // The target is one of the container's borrows: no borrow of the container read after.

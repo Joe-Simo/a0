@@ -1,0 +1,89 @@
+fn peek u32x16 u32 -> u32
+v get p0 p1
+ret v
+end
+fn copy u32x16 -> u32x16
+ret p0
+end
+fn sum u32 u32 u32x16 -> u32
+v get p2 p1
+s add p0 v
+ret s
+end
+fn more u32 u32 u32x16 -> bool
+v get p2 p1
+b le p0 v
+ret b
+end
+fn aftercall u32x16 u32 u32 -> u32x16
+v call peek p0 p1
+w add v p2
+n set p0 p1 w
+ret n
+end
+fn afterfold u32x16 u32 u32 -> u32x16
+v fold sum 3 0 p0
+w add v p2
+n set p0 p1 w
+ret n
+end
+fn afterloop u32x16 u32 u32 -> u32x16
+v loop more sum 7 0 p0
+w add v p2
+n set p0 p1 w
+ret n
+end
+fn aftercopy u32x16 u32 u32 -> u32x16
+old call copy p0
+n set p0 p1 p2
+v get old p1
+r set n 15 v
+ret r
+end
+fn peekrec (u32x16,u32) u32 -> u32
+h at p0 0
+v get h p1
+ret v
+end
+fn nested (u32x16,u32) u32 -> (u32x16,u32)
+v call peekrec p0 p1
+h at p0 0
+n set h p1 v
+r rec n v
+ret r
+end
+fn late u32x16 u32 u32 -> u32x16
+v call peek p0 p1
+a mul v 7
+b div a 3
+c rem b 5
+d mul c b
+e div d p2
+n set p0 p1 p2
+cond lt p1 p2
+s select cond e p1
+r set n 15 s
+ret r
+end
+fn shared u32x16 u32 u32x16 -> u32x16
+v get p2 p1
+w add v 1
+n set p0 p1 w
+ret n
+end
+fn probe u32 u32 -> u32
+z arr p0 p1 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+a fold aftercall 17 z p0
+b fold afterfold 17 a p1
+c fold afterloop 17 b p0
+d fold aftercopy 17 c p1
+e fold late 17 d p0
+f fold shared 17 e e
+st rec f p1
+g fold nested 17 st
+h at g 0
+v get h p0
+w at g 1
+r add v w
+ret r
+end

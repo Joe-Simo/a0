@@ -23,6 +23,11 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## Current results
 
+Latest compiler work (`a0c-0.1.53`, 2026-10-15): WebAssembly hash lookup improved 5.55× against
+the previous compiler in a quiet, interleaved Linux run; it still trails clang. Evidence:
+`results/wasm-readonly-hash-linux.json`, with the broader run in `results/wasm-readonly-ab-linux.json`.
+See [the ownership change](docs/history/2026-10-15-wasm-readonly-ownership.md) for scope and reproduction.
+
 | Area | Result | Evidence |
 |---|---|---|
 | Differential execution | 48 generated functions, 5262 input cases: interpreter, optimizer, JS, C (clang and gcc), C++, parallel C, wasm (via C and direct) and JVM pass all of them; direct arm64, x86-64, RISC-V, AVR and ARM32 pass the 4297 io-free cases | `results/verification.json` |
