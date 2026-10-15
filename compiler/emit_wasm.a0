@@ -1491,12 +1491,15 @@ end
 # ---------------------------------------------------------------------------------------------
 # Analysis of a frame's function (src/wasm.ts `mutableHere`, `#analyse`, `#retSlot`). Use
 # statistics, paged like emit_c.a0 `cusn`: word v (node v; parameter v at 4096 + v) holds
-# 2^16 * (operand uses other than operand 0 of a get/at) + (last user + 1). A value may be
+# 2^16 * (operand uses other than read-only uses) + (last user + 1). Read-only uses are
+# operand 0 of a get/at, call arguments (the callee copies aggregate results), and fold/loop
+# extras (the initial state may alias the result, so it is excluded). A value may be
 # updated in place by node j at its target operand when it is fresh (arr text rec set put) or
 # the owned parameter, is not the ret, its only such use is that operand, no later node uses
 # it, and no borrow of it is read later (the shape table's BORR column).
 
-# operand p3 + p1 (args page p2) of node p5 whose operands start at p4; p6: the node is a get/at
+# operand p3 + p1 (args page p2) of node p5 whose operands start at p4; p6: 1 get/at, 2 call,
+# 3 fold/loop, 0 other
 # word p1 of use statistics p0
 fn wxu64 u32x128x64 u32 -> u32
 a shr p1 7
@@ -1505,7 +1508,7 @@ c get p0 a
 d get c b
 ret d
 end
-fn wxusa u32x128x64 u32 u32x128 u32 u32 u32 bool -> u32x128x64
+fn wxusa u32x128x64 u32 u32x128 u32 u32 u32 u32 -> u32x128x64
 a add p3 p1
 b mul a 2
 c and b 127
@@ -1524,8 +1527,16 @@ o shr n 16
 p and o 3
 q shr n 18
 r and q 3
-s eq a p4
-t and p6 s
+s0 eq p6 1
+s1 eq a p4
+s2 and s0 s1
+s3 eq p6 2
+s4 eq p6 3
+s5 add p4 2
+s6 ge a s5
+s7 and s4 s6
+s8 or s2 s3
+t or s8 s7
 u select t 0 1
 v add p u
 w call cumin v 3
@@ -1542,7 +1553,7 @@ ag set l m af
 ah set p0 k ag
 ret ah
 end
-fn wxuspg u32x128x64 u32 u32x128x512 u32 u32 u32 u32 bool -> u32x128x64
+fn wxuspg u32x128x64 u32 u32x128x512 u32 u32 u32 u32 u32 -> u32x128x64
 a add p5 p1
 b get p2 a
 c mul a 64
@@ -1561,7 +1572,14 @@ c call wxnw p2 a 2
 d call wxnw p2 a 3
 e eq b 25
 f eq b 27
-g or e f
+g0 or e f
+g1 eq b 19
+g2 eq b 20
+g3 eq b 21
+g4 or g2 g3
+g5 select g0 1 0
+g6 select g1 2 g5
+g select g4 3 g6
 h add d c
 i lt d h
 j shr d 6
@@ -1572,6 +1590,23 @@ n add m 1
 o select i n 0
 p fold wxuspg o p0 p3 d h j p1 g
 ret p
+end
+
+# Does a node name its update target in another operand too? Earlier read-only uses are
+# harmless, but an iteration's extra naming its own state must keep the original storage.
+# p3 first operand, p4 target position, p5 target kind, p6 target value
+fn wxother u32 u32 u32x128x512 u32 u32 u32 u32 -> u32
+a add p3 p1
+b call wxok p2 a
+c call wxov p2 a
+d ne p1 p4
+e eq b p5
+f eq c p6
+g and d e
+h and g f
+i select h 1 0
+r or p0 i
+ret r
 end
 
 # is the operand (kind p6, value p7) of the function with first node p5 (nodes p8) storage no
@@ -1691,13 +1726,19 @@ aw shr av 16
 ax and aw 3
 ay and av 65535
 az eq ax 1
+az0 call wxnw p8 a 2
+az1 select n az0 0
+az2 select m 1 0
+az3 fold wxother az1 0 p9 c az2 t u
+az4 eq az3 0
+az5 and az az4
 a0 add p1 1
 a1 le ay a0
 a2 add 11264 a
 a3 call wxsh p12 a2
 a4 eq a3 0
 a5 and an ar
-a6 and a5 az
+a6 and a5 az5
 a7 and a6 a1
 a8 and a7 a4
 a9 and n a8

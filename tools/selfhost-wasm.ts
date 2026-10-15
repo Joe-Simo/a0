@@ -2588,6 +2588,15 @@ async function main(): Promise<void> {
   // set/put through borrows and records built in their container, and the exec-bench kernel heap256
   programs.push(['inplace', parseAndValidate(INPLACE_SOURCE), small]);
   programs.push(['lazyread', parseAndValidate(LAZY_READ_SOURCE), small]);
+  // Completed calls and iteration extras do not share the storage updated later.
+  programs.push([
+    'readonly',
+    parseAndValidate(await readFile('test/fixtures/wasm-readonly.a0', 'utf8')),
+    small,
+  ]);
+  const hash1k = KERNELS.find((k) => k.name === 'hash1k');
+  if (hash1k === undefined) throw new Error('exec-bench kernel hash1k is missing');
+  programs.push(['bench/hash1k', parseAndValidate(hash1k.a0), small]);
   const heap256 = KERNELS.find((k) => k.name === 'heap256');
   if (heap256 === undefined) throw new Error('exec-bench kernel heap256 is missing');
   programs.push(['bench/heap256', parseAndValidate(heap256.a0), small]);
