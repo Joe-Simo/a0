@@ -42,7 +42,9 @@
  * Code shape: fold/loop bodies and predicates of up to INLINE_BODY_NODES nodes, and scalar
  * calls of functions of up to INLINE_CALL_NODES nodes, are emitted in place when they need no
  * frame and no io (literal arguments become constants); counted loops are rotated (one entry
- * guard, a `br_if` back edge); element addresses scale by a shift. Each body then goes through
+ * guard, a `br_if` back edge), a loop's predicate too (tested on entry, then at the bottom after
+ * the trip test); element addresses scale by a shift, and the in-range affine accesses of an
+ * inlined loop body or predicate go through pointers the loop steps. Each body then goes through
  * `Code.finish`: a value read once across balanced code stays on the operand stack (`stackify`),
  * other set/get pairs become `local.tee`, dead stores are dropped, and locals with disjoint live
  * ranges share an index.
@@ -962,6 +964,8 @@ interface InlineHost {
   };
   /** p1 is the host's trip index, below this literal bound (so p1 needs no masking below it). */
   readonly indexBound?: number;
+  /** Element accesses (get or set node id) through a pointer the host steps (see `#pointers`). */
+  readonly pointers?: ReadonlyMap<string, PointerAccess>;
 }
 
 /** A carried read: the read, the store that feeds it, and the read's index on trip p1. */
@@ -1023,6 +1027,39 @@ function affineNodes(body: TypedFunc): Map<string, Affine | undefined> {
 }
 
 /**
+ * Does the affine index `f` (unit stride: s is 1 or -1) stay inside [0, length) on every trip p1
+ * of [start, n - 1], for any count n of at most `hi`? Without an extra parameter the index is
+ * s * p1 + c, at its extremes on the first and last trip. With one it must be the count itself
+ * (`same`) and enter as t * (pK - p1) + c, so t * d + c for d in [1, hi - start]. The ends are
+ * computed mod 2^32 and must be ordered and below the length; then they are the true values,
+ * since they differ by less than the length and a negative end wraps above 2^31.
+ */
+function affineInRange(
+  f: Affine,
+  length: number,
+  start: number,
+  hi: number,
+  same: boolean,
+): boolean {
+  if (hi <= start || (f.s !== 1 && f.s !== 0xffffffff)) return false;
+  if (f.t !== 0 && !(same && (f.s + f.t) % 0x100000000 === 0)) return false;
+  const m = f.t === 0 ? f.s : f.t >>> 0;
+  const from = f.t === 0 ? start : 1;
+  const to = f.t === 0 ? hi - 1 : hi - start;
+  const e1 = (Math.imul(m, from) + f.c) >>> 0;
+  const e2 = (Math.imul(m, to) + f.c) >>> 0;
+  const lo = m === 1 ? e1 : e2;
+  const up = m === 1 ? e2 : e1;
+  return lo <= up && up < length;
+}
+
+/** An element access through a host pointer: the pointer local and the static byte offset. */
+interface PointerAccess {
+  readonly local: number;
+  readonly offset: number;
+}
+
+/**
  * A fold or loop body over array state whose result is `set X w v` (its last store) and which
  * reads `get p0 r` where r at trip p1 + 1 is w at trip p1 (both affine in p1, see `affineNodes`):
  * trip i + 1 reads the value trip i stored last, so a backend may carry v in a local instead of
@@ -1044,6 +1081,22 @@ function carriedRead(body: TypedFunc): CarriedRead | undefined {
     const r = affineOf(n.args[1], forms);
     if (r === undefined || r.s !== w.s || r.k !== w.k || r.t !== w.t) continue;
     if ((r.c + r.s) >>> 0 === w.c) return { get: n.id, set: set.id, first: r };
+  }
+  return undefined;
+}
+
+/**
+ * The loop predicate's read of the carried element: its first `get p0 r` whose index has the
+ * affine form `first` of the body's carried read (see `carriedRead`). The predicate runs on a trip
+ * before the body, with the same parameters, so that read is the element the carry local holds.
+ */
+function carriedPredicateRead(pred: TypedFunc, first: Affine): string | undefined {
+  const forms = affineNodes(pred);
+  for (const n of pred.nodes) {
+    if (n.op !== 'get' || n.args[0]?.kind !== 'param' || n.args[0].index !== 0) continue;
+    const r = affineOf(n.args[1], forms);
+    if (r !== undefined && r.s === first.s && r.c === first.c && r.k === first.k && r.t === first.t)
+      return n.id;
   }
   return undefined;
 }
@@ -1532,6 +1585,8 @@ const INLINE_DEPTH = 3;
 const UNROLL_BODY_NODES = 12;
 /** Copies per back edge of a literal-count loop that carries the previous element. */
 const CARRY_UNROLL = 4;
+/** Element pointers a loop steps at most (see `FunctionEmitter#pointers`). */
+const POINTER_GROUPS = 4;
 
 /** Per-function code generation choices (part of the emission cache key when not default). */
 export interface WasmEmitOptions {
@@ -1857,7 +1912,10 @@ class FunctionEmitter {
     variant: Variant,
     params: readonly ParamSource[],
     limit: number,
-    loop: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'slide' | 'indexBound'> = {},
+    loop: Pick<
+      InlineHost,
+      'induction' | 'fields' | 'carry' | 'slide' | 'indexBound' | 'pointers'
+    > = {},
     frameOk = false,
   ): boolean {
     if (!this.#canInline(callee, variant, params, limit, loop.fields, frameOk)) return false;
@@ -1993,7 +2051,8 @@ class FunctionEmitter {
    * The nodes an inlined body still needs: its result and every node with an effect, and what
    * they read. A node the host computes (an induction variable, the carried element) reads
    * nothing, so a pure node only it used (the `sub p1 1` of a carried read, the compare of a
-   * guarded carry) is dead and emitted not at all, rather than computed and dropped.
+   * guarded carry) is dead and emitted not at all, rather than computed and dropped; likewise
+   * the index of an access through a host pointer.
    */
   #liveInline(): Set<string> {
     const host = this.host;
@@ -2009,7 +2068,10 @@ class FunctionEmitter {
       const n = fn.nodes[k] as Node;
       // The next read of a sliding pair runs every trip: the host moves it to the cur local.
       if (!PURE_OPS.has(n.op) || host?.slide?.next === n.id) live.add(n.id);
-      if (live.has(n.id) && !byHost(n.id)) for (const a of n.args) mark(a);
+      // An access through a host pointer does not read its index.
+      const pointed = host?.pointers?.has(n.id) === true;
+      if (live.has(n.id) && !byHost(n.id))
+        for (const [k, a] of n.args.entries()) if (!(pointed && k === 1)) mark(a);
     }
     return live;
   }
@@ -2046,8 +2108,15 @@ class FunctionEmitter {
     idx: Operand | undefined,
     elemBytes: number,
     checked = false,
+    node?: string,
   ): number {
     const { length } = arrayType(this.fn, arr);
+    const pointer = node === undefined || checked ? undefined : this.host?.pointers?.get(node);
+    if (pointer !== undefined) {
+      // The host steps this pointer with the trip index: no index arithmetic here.
+      this.code.local(OP.localGet, pointer.local);
+      return pointer.offset;
+    }
     this.push(arr);
     const lit = literalIndex(idx);
     if (lit !== undefined) {
@@ -2397,6 +2466,7 @@ class FunctionEmitter {
           b,
           bytesOf(elem),
           siteOf(fn, node) === 'bounds',
+          node.id,
         );
         if (isPrimitive(elem)) {
           c.mem(OP.load, offset);
@@ -2767,6 +2837,7 @@ class FunctionEmitter {
         node.args[1],
         bytesOf(elem),
         siteOf(this.fn, node) === 'bounds',
+        node.id,
       );
       this.storeAt(elem, value, offset);
     } else {
@@ -2967,33 +3038,91 @@ class FunctionEmitter {
       c.local(OP.localSet, curLocal);
       slide = { cur: sliding.cur, next: sliding.next, curLocal, nextLocal };
     }
-    const loopHost: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'slide' | 'indexBound'> = {
+    // Unrolling: a small inlined fold body runs UNROLL copies per back edge, then a remainder
+    // loop finishes the last count mod UNROLL trips. A literal-count loop with a carried
+    // previous element is unrolled by CARRY_UNROLL whatever the option: each trip's add waits
+    // on the last one, so the counter, compare and address work of every trip sits on top of a
+    // serial chain that V8 does not unroll away. `copies`: the first phase's trips per back edge.
+    const unroll =
+      vectorTo === undefined &&
+      node.op === 'fold' &&
+      inlineBody &&
+      body.nodes.length <= UNROLL_BODY_NODES
+        ? carry !== undefined && lit !== undefined
+          ? CARRY_UNROLL
+          : this.options.unroll
+        : 1;
+    const copies = unroll === 1 || (lit !== undefined && lit - start < unroll) ? 1 : unroll;
+    // Element pointers: the affine accesses of fixed arrays that stay in range on every trip
+    // (see `#pointers`), for an inlined body and predicate; not after a vector reduction, whose
+    // last trip is known only at run time.
+    const predInline =
+      pred !== undefined &&
+      inlineBody &&
+      this.#canInline(pred, 'value', sources(), INLINE_BODY_NODES, fields);
+    const pointers =
+      inlineBody && vectorTo === undefined
+        ? this.#pointers(
+            node,
+            body,
+            predInline ? pred : undefined,
+            variant,
+            sources(),
+            start,
+            aggregate && fields === undefined,
+            copies,
+          )
+        : undefined;
+    const loopHost: Pick<
+      InlineHost,
+      'induction' | 'fields' | 'carry' | 'slide' | 'indexBound' | 'pointers'
+    > = {
       induction: inductionLocals,
       ...(fields === undefined ? {} : { fields }),
       ...(carry === undefined ? {} : { carry }),
       ...(slide === undefined ? {} : { slide }),
       ...(lit === undefined ? {} : { indexBound: lit }),
+      ...(pointers === undefined || pointers.body.size === 0 ? {} : { pointers: pointers.body }),
     };
+    // The predicate reads the carried element too: its read at the body's carried index is the
+    // carry local (not after a guarded first trip, whose local starts at a literal instead).
+    const predCarry =
+      carry !== undefined && carry.select === undefined && carried !== undefined && predInline
+        ? carriedPredicateRead(pred as TypedFunc, carried.first)
+        : undefined;
     const args = (): void => {
       c.local(OP.localGet, state);
       c.local(OP.localGet, i);
       for (const e of extra) this.push(e);
     };
+    /** The predicate's value for the current state and counter (inlined, else called). */
+    const test = (p: TypedFunc): void => {
+      const bound = {
+        ...(lit === undefined ? {} : { indexBound: lit }),
+        ...(fields === undefined ? {} : { fields }),
+        ...(predCarry === undefined || carry === undefined
+          ? {}
+          : { carry: { get: predCarry, set: '', local: carry.local } }),
+        ...(pointers === undefined || pointers.pred.size === 0 ? {} : { pointers: pointers.pred }),
+      };
+      if (!this.#tryInline(p, 'value', sources(), INLINE_BODY_NODES, bound)) {
+        args();
+        c.call(`a0_${p.name}`);
+      }
+    };
+    // A loop with a predicate is rotated (unless its trips are marked for strict traps): the
+    // predicate guards the entry, then sits at the bottom with the trip test, so the body
+    // dominates every exit of the loop and V8 can hoist the loop's invariants out of it (with
+    // the test at the top it schedules them inside: measured, bsearch1k).
+    const rotated = marked ? undefined : pred;
     /** One trip: predicate exit (to the enclosing block, `depth` labels out), body, steps. */
     const trip = (depth: number): void => {
       if (marked) {
         c.local(OP.localGet, i);
         c.call(RT_IDX);
       }
-      if (pred !== undefined) {
-        const bound = {
-          ...(lit === undefined ? {} : { indexBound: lit }),
-          ...(fields === undefined ? {} : { fields }),
-        };
-        if (!this.#tryInline(pred, 'value', sources(), INLINE_BODY_NODES, bound)) {
-          args();
-          c.call(`a0_${pred.name}`);
-        }
+      if (pred !== undefined && rotated === undefined) {
+        test(pred);
         c.op(OP.eqz);
         c.op(OP.br_if, depth);
       }
@@ -3012,6 +3141,12 @@ class FunctionEmitter {
         c.op(OP.add);
         c.local(OP.localSet, local);
       }
+      for (const { local, step } of pointers?.steps ?? []) {
+        c.local(OP.localGet, local);
+        c.i32(step);
+        c.op(OP.add);
+        c.local(OP.localSet, local);
+      }
       c.local(OP.localGet, i);
       c.i32(1);
       c.op(OP.add);
@@ -3020,7 +3155,9 @@ class FunctionEmitter {
     /**
      * A rotated counted loop from the current i up to `limit` (pushed by `limit`, or the
      * literal `limitLit`), `copies` trips per back edge: the trip test sits at the bottom,
-     * guarded once on entry unless the bound is a literal above the start.
+     * guarded once on entry unless the bound is a literal above the start. A rotated predicate
+     * is tested after the guard, and at the bottom after the trip test: leave when the counter
+     * reached the limit, go round again when the predicate holds.
      */
     const counted = (
       limit: () => void,
@@ -3037,31 +3174,28 @@ class FunctionEmitter {
         c.op(OP.ge_u);
         c.op(OP.br_if, 0);
       }
+      if (rotated !== undefined) {
+        test(rotated);
+        c.op(OP.eqz);
+        c.op(OP.br_if, 0);
+      }
       c.loopOpen();
       for (let k = 0; k < copies; k += 1) trip(1);
       c.local(OP.localGet, i);
       limit();
-      c.op(OP.lt_u);
+      if (rotated !== undefined) {
+        c.op(OP.ge_u);
+        c.op(OP.br_if, 1);
+        test(rotated);
+      } else {
+        c.op(OP.lt_u);
+      }
       c.op(OP.br_if, 0);
       c.loopClose();
       if (exit) c.op(OP.end);
     };
-    // Unrolling: a small inlined fold body runs UNROLL copies per back edge, then a remainder
-    // loop finishes the last count mod UNROLL trips. A literal-count loop with a carried
-    // previous element is unrolled by CARRY_UNROLL whatever the option: each trip's add waits
-    // on the last one, so the counter, compare and address work of every trip sits on top of a
-    // serial chain that V8 does not unroll away.
-    const unroll =
-      vectorTo === undefined &&
-      node.op === 'fold' &&
-      inlineBody &&
-      body.nodes.length <= UNROLL_BODY_NODES
-        ? carry !== undefined && lit !== undefined
-          ? CARRY_UNROLL
-          : this.options.unroll
-        : 1;
     const pushCount = (): void => this.push(count);
-    if (unroll === 1 || (lit !== undefined && lit - start < unroll)) {
+    if (copies === 1) {
       counted(pushCount, lit, start, 1);
     } else if (lit !== undefined) {
       const main = start + (lit - start) - ((lit - start) % unroll);
@@ -3083,6 +3217,136 @@ class FunctionEmitter {
       c.local(OP.localGet, local);
       c.mem(OP.store, k * 4);
     }
+  }
+
+  /** An upper bound on a scalar operand: its constant value, or the host's bounded trip index. */
+  #upper(o: Operand | undefined): number | undefined {
+    if (o === undefined) return undefined;
+    const k = this.#constOf(o);
+    if (k !== undefined) return k;
+    const bound = this.host?.indexBound;
+    return o.kind === 'param' && o.index === 1 && bound !== undefined ? bound - 1 : undefined;
+  }
+
+  /**
+   * Pointers for the element accesses of a loop's inlined body and predicate (`#iterate`, loop
+   * node `node`, first trip `start`): a `get` of an array parameter (the state p0 when `state`,
+   * i.e. it stays in memory, or an extra) or an in-place `set` of the state, of scalar elements,
+   * at an affine index of unit stride that stays in range on every trip (`affineInRange`, with
+   * the count's upper bound `#upper`). The accesses of one array, stride and extra parameter
+   * share a pointer to the element of the least constant term, set up here for the first trip
+   * and stepped by the stride after every trip; each reads or writes at its static offset. The
+   * body's accesses come first, then the predicate's; at most POINTER_GROUPS groups. In a loop
+   * of one trip per back edge (`copies`), a group of one access at the bare trip index p1 under
+   * a literal count within the length gets no pointer: that address is already the array plus
+   * the scaled index with no wrap (one addressing mode), so the pointer's step would cost what it
+   * saves (measured: rle4k, sieve4k). Unrolled copies each pay for their own index instead.
+   */
+  #pointers(
+    node: Node,
+    body: TypedFunc,
+    pred: TypedFunc | undefined,
+    variant: Variant,
+    params: readonly ParamSource[],
+    start: number,
+    state: boolean,
+    copies: number,
+  ): {
+    body: Map<string, PointerAccess>;
+    pred: Map<string, PointerAccess>;
+    steps: { local: number; step: number }[];
+  } {
+    const c = this.code;
+    const out = {
+      body: new Map<string, PointerAccess>(),
+      pred: new Map<string, PointerAccess>(),
+      steps: [] as { local: number; step: number }[],
+    };
+    const [count, , ...extra] = node.args;
+    const hi = this.#upper(count);
+    if (hi === undefined || count === undefined) return out;
+    const lit = count.kind === 'u32' ? count.value : undefined;
+    interface Group {
+      readonly array: number;
+      readonly f: Affine;
+      readonly members: {
+        readonly side: 'body' | 'pred';
+        readonly id: string;
+        readonly c: number;
+      }[];
+      /** 1 per access at the bare trip index (one copy, literal count in the length), else 2. */
+      worth: number;
+    }
+    const groups = new Map<string, Group>();
+    const scan = (fn: TypedFunc, v: Variant, side: 'body' | 'pred'): void => {
+      const probe = new FunctionEmitter(
+        fn,
+        v,
+        this.pool,
+        this.poolIndex,
+        { parent: this, params },
+        this.options,
+      );
+      const forms = affineNodes(fn);
+      for (const n of fn.nodes) {
+        if (n.op !== 'get' && !(n.op === 'set' && probe.aliases.has(n.id))) continue;
+        const root = probe.root(n.args[0] as Operand);
+        if (root.kind !== 'param' || root.index === 1 || (root.index === 0 && !state)) continue;
+        const ty = fn.params[root.index];
+        if (ty === undefined || isPrimitive(ty) || ty.kind !== 'arr' || !isPrimitive(ty.elem))
+          continue;
+        const src = params[root.index];
+        if (src === undefined || !('local' in src)) continue;
+        const f = affineOf(n.args[1], forms);
+        if (f === undefined) continue;
+        const e = f.t === 0 ? undefined : extra[f.k - 2];
+        const same = e !== undefined && sameOp(e, count);
+        if (!affineInRange(f, ty.length, start, hi, same)) continue;
+        const key = `${root.index}:${f.s}:${f.k}:${f.t}`;
+        const found = groups.get(key);
+        if (found === undefined && groups.size >= POINTER_GROUPS) continue;
+        const g = found ?? { array: root.index, f, members: [], worth: 0 };
+        g.members.push({ side, id: n.id, c: f.c });
+        const idx = n.args[1];
+        const plain =
+          copies === 1 &&
+          idx?.kind === 'param' &&
+          idx.index === 1 &&
+          lit !== undefined &&
+          lit <= ty.length;
+        g.worth += plain ? 1 : 2;
+        groups.set(key, g);
+      }
+    };
+    scan(body, variant, 'body');
+    if (pred !== undefined) scan(pred, 'value', 'pred');
+    for (const g of groups.values()) {
+      if (g.worth < 2) continue;
+      const c0 = Math.min(...g.members.map((m) => m.c | 0));
+      const local = this.newLocal();
+      const { s, k, t } = g.f;
+      let konst = Math.imul(s, start) + c0;
+      c.local(OP.localGet, (params[g.array] as { local: number }).local);
+      if (t !== 0) {
+        const src = params[k] as ParamSource;
+        if ('value' in src) konst += Math.imul(t, src.value);
+        else {
+          c.local(OP.localGet, src.local);
+          c.i32(2);
+          c.op(OP.shl);
+          c.op(t > 0 ? OP.add : OP.sub);
+        }
+      }
+      const offset = Math.imul(konst, 4);
+      if (offset !== 0) {
+        c.i32(offset);
+        c.op(OP.add);
+      }
+      c.local(OP.localSet, local);
+      for (const m of g.members) out[m.side].set(m.id, { local, offset: ((m.c | 0) - c0) * 4 });
+      out.steps.push({ local, step: Math.imul(s, 4) });
+    }
+    return out;
   }
 
   /**

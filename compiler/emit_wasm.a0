@@ -449,9 +449,11 @@ end
 #   3328-5375 pool occurrences (global node index of each literal array emitted from the pool)
 #   5376-17023 node rows (4 words: local, constant value, flags bit0 known constant bit1 member
 #     of the scalar state chain, root: 0 itself, 2^28 + node, 2^29 + parameter): frame 0 from 5376 (2816 nodes), frame d from 16640 + 128 (d - 1)
-#   17024-18943 inline-frame node blocks (20 words per node: 0 induction local + 1, 4-19 the
-#     words of a chain node: 8 fields of (kind, value)), frame d from 17024 + 640 (d - 1)
+#   17024-18943 inline-frame node blocks (20 words per node: 0 induction local + 1, 3 an access
+#     through a host pointer (see `wxpq`), 4-19 the words of a chain node: 8 fields of (kind,
+#     value)), frame d from 17024 + 640 (d - 1)
 #   19120-20322 superword packs of frame 0 (see `wyplan`)
+#   20336-20479 element pointer areas of the loop contexts: context d at 20336 + 36 d (`wxpq`)
 #   20480-65535 instructions: 22528 of 2 words (kind, value; the kinds of compiler/wasm_code.a0)
 # A step that mutates M is a fold body (M, trip, ...) -> M run with one trip (or 0: not run);
 # what it computes for its caller is left in registers 16.. (no function takes M but the tiny
@@ -1371,7 +1373,7 @@ end
 # p7 elements of p8 bytes: the array pushed, then the dynamic index (masked or reduced to the
 # length unless it is the host's trip index below the host's literal bound, scaled by the element
 # size, added); a literal index leaves only the array and the static byte offset in register 16
-fn wxea u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+fn wxea0 u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
 a fold wxpsh 1 p0 p2 p3 p4
 b eq p5 3
 c select b false true
@@ -1440,6 +1442,35 @@ bd get a9 bb
 be set bd bc ba
 bf set a9 bb be
 ret bf
+end
+# the element address of `wxea0` for node p9, or, when frame p2 (an inlined loop body or
+# predicate) reaches the element through a pointer of its host (block word 3 of the node, see
+# `wxpq`), that pointer with the access's static byte offset in register 16 (src/wasm.ts
+# `elementAddress`)
+fn wxea u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+q0 gt p2 0
+q1 call wxbk p2 p9 3
+q2 shr q1 7
+q3 and q1 127
+q4 get p0 q2
+q5 get q4 q3
+w select q0 q5 0
+pt ne w 0
+q6 select pt 1 0
+q7 and w 16383
+q8 sub q7 1
+m1 fold wxlg q6 p0 q8
+q9 shr w 14
+q10 get m1 0
+q11 get q10 16
+q12 select pt q9 q11
+m1_g get m1 0
+m1_h set m1_g 16 q12
+m1_1 set m1 0 m1_h
+q13 xor pt true
+q14 select q13 1 0
+q15 fold wxea0 q14 m1_1 p2 p3 p4 p5 p6 p7 p8
+ret q15
 end
 # store operand (kind p3, value p4) of frame p2 (type tag p5, bytes p6) at the pushed address
 # plus the static offset p7 (`storeAt`)
@@ -2310,7 +2341,13 @@ am and ak 127
 an get aj al
 ao set an am 0
 ap set aj al ao
-ret ap
+zb0 call wxbk p2 p1 3
+zb1 shr zb0 7
+zb2 and zb0 127
+zb3 get ap zb1
+zb4 set zb3 zb2 0
+zb5 set ap zb1 zb4
+ret zb5
 end
 # register 18 := 1 when node p1 (first node p3) of frame p2 needs frame storage: an aggregate
 # that is not an alias, not in the scalar state chain, and not a get at select mov
@@ -3049,13 +3086,28 @@ car and cfo cor
 byh or hi0 car
 nbh select byh false true
 prop and lv nbh
-cnt select prop na 0
+pw0 call wxbk p2 j 3
+pw1 shr pw0 7
+pw2 and pw0 127
+pw3 get m0 pw1
+pw4 get pw3 pw2
+pw5 ne pw4 0
+pw6 and prop pw5
+pw7 gt na 2
+pw8 and pw6 pw7
+pw9 sub na 2
+cnt0 select prop na 0
+cnt select pw6 1 cnt0
+cnt2 select pw8 pw9 0
+af2 add af 2
 m1 fold wxlv2 cnt m0 p2 af p6
-ret m1
+m2 fold wxlv2 cnt2 m1 p2 af2 p6
+ret m2
 end
 # the nodes inlined frame p2 still needs (src/wasm.ts `#liveInline`): block word 2 := 1 for the
 # ret node, every node that is not pure, and every node such a node reads, except through a node
-# the host computes (an induction variable, the carried element, the guarded carry's select)
+# the host computes (an induction variable, the carried element, the guarded carry's select), and
+# not the index of an access through a host pointer (block word 3)
 fn wxlive u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
 fb mul p2 128
 fc add fb 128
@@ -3680,8 +3732,8 @@ ret af
 end
 # set (26) and put (28) element store (src/wasm.ts `#storeElement`): element / field (operand k1 v1)
 # of the target operand (tk tv) of frame d to the value operand (k2 v2), the container type ty0:
-# (M, trip, d tk tv k1 v1 k2 v2 op ty0, types tlist info)
-fn wxsto u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+# (M, trip, d tk tv k1 v1 k2 v2 op ty0, types tlist info, the node)
+fn wxsto u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32x384x65 u32x128x65 u32x128x65 u32 -> u32x128x512
 a eq p9 26
 b eq p9 28
 c call wxty p11 p10 1
@@ -3689,7 +3741,7 @@ d call wxty p11 p10 2
 e call wxtag p11 d
 f call wxbyt p13 d
 g select a 1 0
-h fold wxea g p0 p2 p3 p4 p5 p6 c f
+h fold wxea g p0 p2 p3 p4 p5 p6 c f p14
 i shr 16 7
 j and 16 127
 k get h i
@@ -3724,7 +3776,7 @@ g at p2 14
 h at p2 15
 i at p2 16
 j at p2 23
-k fold wxsto 1 p0 a d e f g h i c j p3 p4 p5
+k fold wxsto 1 p0 a d e f g h i c j p3 p4 p5 b
 l mul a 128
 m add l 128
 n add m 18
@@ -3776,7 +3828,7 @@ p get o n
 q fold wxlg 1 l p
 r fold wxpsh 1 q a e f
 s fold wxcp 1 r d
-t fold wxsto 1 s a 1 b g h i j c k p3 p4 p5
+t fold wxsto 1 s a 1 b g h i j c k p3 p4 p5 b
 ret t
 end
 # does node p1 of frame p2 (an arr literal) hold dead initial contents: its only use is the initial
@@ -10377,7 +10429,7 @@ h call wxty p3 g 1
 i call wxty p3 g 2
 j call wxtag p3 i
 k call wxbyt p4 i
-l fold wxea 1 p0 a c d e f h k
+l fold wxea 1 p0 a c d e f h k b
 m shr 16 7
 n and 16 127
 o get l m
@@ -10996,6 +11048,854 @@ c8 select c2 c6 c7
 c9 set c0 c3 c8
 ret c9
 end
+# carried read (src/wasm.ts `carriedRead`, `affineNodes`, `affineOf`): an index as (s, c, k, t),
+# s * p1 + c + t * pk (pk an extra parameter, k >= 2; t 0, 1 or 4294967295), mod 2^32; t 2 when it
+# is not of that form. The affine table holds 4 words a body node (s c k t).
+# operand (kind p1, value p2) as an affine index, given the table p0 of the earlier nodes
+fn wxafo u32x128 u32 u32 -> (u32,u32,u32,u32)
+a mul p2 4
+b get p0 a
+c add a 1
+d get p0 c
+e add a 2
+f get p0 e
+g add a 3
+h get p0 g
+i eq p1 1
+j eq p1 2
+k eq p1 3
+l eq p2 1
+m ge p2 2
+n and j l
+o and j m
+s0 select n 1 0
+s1 select i b s0
+c0 select k p2 0
+c1 select i d c0
+k0 select o p2 0
+k1 select i f k0
+t0 select o 1 2
+t1 select n 0 t0
+t2 select k 0 t1
+t3 select i h t2
+r rec s1 c1 k1 t3
+ret r
+end
+# node p1 of the body (first node p2, nodes p3, operands p4) into the affine table p0: an add or
+# sub of two affine operands with at most one extra parameter, of coefficient 0, 1 or -1
+fn wxafn u32x128 u32 u32 u32x128x132 u32x128x512 -> u32x128
+a add p2 p1
+b call wxnw p3 a 1
+c call wxnw p3 a 3
+d add c 1
+e call wxok p4 c
+f call wxov p4 c
+g call wxok p4 d
+h call wxov p4 d
+i call wxafo p0 e f
+j call wxafo p0 g h
+as at i 0
+ac at i 1
+ak at i 2
+au at i 3
+bs at j 0
+bc at j 1
+bk at j 2
+bu at j 3
+o2 eq b 2
+o3 eq b 3
+ar or o2 o3
+ns sub 0 bs
+nc sub 0 bc
+nu sub 0 bu
+ss select o3 ns bs
+sc select o3 nc bc
+su select o3 nu bu
+s add as ss
+cc add ac sc
+t add au su
+an ne au 0
+bn ne bu 0
+kk select an ak bk
+ab and an bn
+kd ne ak bk
+cf and ab kd
+ai eq au 2
+bi eq bu 2
+t0 eq t 0
+t1 eq t 1
+tm eq t 4294967295
+tv or t0 t1
+tw or tv tm
+iv or ai bi
+iw or iv cf
+ix select iw false true
+ok and ar ix
+ol and ok tw
+k2 select t0 0 kk
+rs select ol s 0
+rc select ol cc 0
+rk select ol k2 0
+rt select ol t 2
+x mul p1 4
+y add x 1
+z add x 2
+w add x 3
+q0 set p0 x rs
+q1 set q0 y rc
+q2 set q1 z rk
+q3 set q2 w rt
+ret q3
+end
+# ---------------------------------------------------------------------------------------------
+# Element pointers (src/wasm.ts `#pointers`, `affineInRange`): the affine accesses of fixed arrays
+# in a loop's inlined body and predicate that stay in range on every trip share pointers the loop
+# steps. The pointer area of loop context d is 36 words of M from 20336 + 36 d: 0 the group count
+# (at most 4), 1 + 6 g group g (array parameter, stride s, extra k, sign t, least constant term c0,
+# pointer local), 25 the count's upper bound, 26 bit k - 2 when extra k is the count operand,
+# 27 1 when the state p0 stays in memory, 28 the predicate's read of the carried element + 1 (0
+# none), 29 + g the worth of group g (1 an access at the bare trip index p1 under a literal count
+# within the length in a loop of one trip per back edge, else 2; a group worth less than 2 gets
+# no pointer), 33 the trips per back edge of the loop's first phase. An access through a
+# pointer has block word 3 of its node: (local + 1) | offset << 14.
+
+# (ok, array, s, c, k, t, worth) for node p1 of frame p2 (first node p3, affine table p4, its
+# function p7) as an access through a pointer of the loop of frame p2 - 1: a get, or an in-place
+# set, of an array parameter of scalar elements (p0 only when the state stays in memory; an extra
+# held in a local), at an affine index of unit stride inside [0, length) on every trip
+# (`affineInRange`)
+fn wxpq u32x128x512 u32 u32 u32 u32x128 u32x128x132 u32x128x512 u32 u32x128x45 u32x384x65 u32x128x65 -> (u32,u32,u32,u32,u32,u32,u32)
+d sub p2 1
+q0 mul 36 d
+pg add 20336 q0
+g add p3 p1
+op call wxnw p5 g 1
+sl call wxnw p5 g 3
+isget eq op 25
+isset eq op 26
+q1 call wxrw p2 p1 3
+q2 shr q1 7
+q3 and q1 127
+q4 get p0 q2
+q5 get q4 q3
+inplace ne q5 0
+q6 and isset inplace
+acc or isget q6
+ak call wxok p6 sl
+av call wxov p6 sl
+q7 call wxrw p2 av 3
+q8 shr q7 7
+q9 and q7 127
+q10 get p0 q8
+q11 get q10 q9
+q12 eq ak 1
+q13 shr q11 28
+q14 eq q13 2
+nodeparam and q12 q14
+q15 eq ak 2
+isparam or q15 nodeparam
+q16 eq ak 2
+q17 and q11 268435455
+a select q16 av q17
+q18 add pg 27
+q19 shr q18 7
+q20 and q18 127
+q21 get p0 q19
+q22 get q21 q20
+stateok ne q22 0
+q23 ne a 1
+q24 and isparam q23
+q25 ne a 0
+q26 or q25 stateok
+arrok and q24 q26
+pfirst call wxfw p8 p7 2
+q27 add pfirst a
+pt call wa65 p10 q27
+q28 call wxty p9 pt 0
+isarr eq q28 4
+len call wxty p9 pt 1
+el call wxty p9 pt 2
+q29 call wxty p9 el 0
+scal lt q29 4
+q30 lt a 2
+q31 sub a 2
+q32 mul 2 q31
+q33 add 104 q32
+q34 call wxcx d q33
+q35 shr q34 7
+q36 and q34 127
+q37 get p0 q35
+q38 get q37 q36
+q39 eq q38 0
+srcl or q30 q39
+q40 add sl 1
+q41 call wxok p6 q40
+q42 add sl 1
+q43 call wxov p6 q42
+q44 call wxafo p4 q41 q43
+s at q44 0
+c at q44 1
+k at q44 2
+t at q44 3
+q45 add pg 26
+q46 shr q45 7
+q47 and q45 127
+q48 get p0 q46
+q49 get q48 q47
+q50 sub k 2
+q51 shr q49 q50
+q52 and q51 1
+same eq q52 1
+q53 call wxcx d 5
+q54 shr q53 7
+q55 and q53 127
+q56 get p0 q54
+q57 get q56 q55
+q58 add pg 25
+q59 shr q58 7
+q60 and q58 127
+q61 get p0 q59
+q62 get q61 q60
+q63 eq s 1
+q64 eq s 4294967295
+unit or q63 q64
+tz eq t 0
+q65 add s t
+q66 eq q65 0
+q67 and same q66
+okt or tz q67
+mm select tz s t
+from select tz q57 1
+q68 sub q62 1
+q69 sub q62 q57
+upto select tz q68 q69
+q70 mul mm from
+e1 add q70 c
+q71 mul mm upto
+e2 add q71 c
+one eq mm 1
+lo select one e1 e2
+up select one e2 e1
+q72 gt q62 q57
+q73 and q72 unit
+q74 and q73 okt
+q75 ne t 2
+q76 and q74 q75
+q77 le lo up
+q78 and q76 q77
+q79 lt up len
+inr and q78 q79
+q80 and acc arrok
+q81 and q80 isarr
+q82 and q81 scal
+q83 and q82 srcl
+ok and q83 inr
+q84 add sl 1
+q85 call wxok p6 q84
+q86 eq q85 2
+q87 add sl 1
+q88 call wxov p6 q87
+q89 eq q88 1
+bare and q86 q89
+q90 add pg 33
+q91 shr q90 7
+q92 and q90 127
+q93 get p0 q91
+q94 get q93 q92
+q95 eq q94 1
+q96 and bare q95
+q97 call wxcx d 3
+q98 shr q97 7
+q99 and q97 127
+q100 get p0 q98
+q101 get q100 q99
+q102 ne q101 0
+q103 and q96 q102
+q104 call wxcx d 4
+q105 shr q104 7
+q106 and q104 127
+q107 get p0 q105
+q108 get q107 q106
+q109 le q108 len
+plain and q103 q109
+q110 select ok 1 0
+q111 select plain 1 2
+q112 rec q110 a s c k t q111
+ret q112
+end
+# the first group g of the loop's pointer area p2 with (array p3, s p4, k p5, t p6), else p0
+fn wxpfg u32 u32 u32x128x512 u32 u32 u32 u32 u32 -> u32
+q0 add p3 1
+q1 mul 6 p1
+gb add q0 q1
+q2 shr gb 7
+q3 and gb 127
+q4 get p2 q2
+q5 get q4 q3
+q6 eq q5 p4
+q7 add gb 1
+q8 shr q7 7
+q9 and q7 127
+q10 get p2 q8
+q11 get q10 q9
+q12 eq q11 p5
+q13 and q6 q12
+q14 add gb 2
+q15 shr q14 7
+q16 and q14 127
+q17 get p2 q15
+q18 get q17 q16
+q19 eq q18 p6
+q20 and q13 q19
+q21 add gb 3
+q22 shr q21 7
+q23 and q21 127
+q24 get p2 q22
+q25 get q24 q23
+q26 eq q25 p7
+hit and q20 q26
+q27 eq p0 4294967295
+q28 and q27 hit
+q29 select q28 p1 p0
+ret q29
+end
+# node p1 of frame p2 (first node p3, affine table p4, function p7) in the scan of the loop of
+# frame p2 - 1: a pointer access joins its group, or opens one (at most 4), keeping the least
+# constant term and adding up the worth
+fn wxpscan u32x128x512 u32 u32 u32 u32x128 u32x128x132 u32x128x512 u32 u32x128x45 u32x384x65 u32x128x65 -> u32x128x512
+q0 call wxpq p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10
+ok at q0 0
+a at q0 1
+s at q0 2
+c at q0 3
+k at q0 4
+t at q0 5
+wo at q0 6
+q1 sub p2 1
+q2 mul 36 q1
+pg add 20336 q2
+q3 shr pg 7
+q4 and pg 127
+q5 get p0 q3
+q6 get q5 q4
+f fold wxpfg q6 4294967295 p0 pg a s k t
+found ne f 4294967295
+okb eq ok 1
+q7 xor found true
+q8 and okb q7
+q9 lt q6 4
+add and q8 q9
+gi select found f q6
+q10 add pg 1
+q11 mul 6 gi
+gb add q10 q11
+q12 add gb 4
+q13 shr q12 7
+q14 and q12 127
+q15 get p0 q13
+q16 get q15 q14
+q17 xor c 2147483648
+q18 xor q16 2147483648
+less lt q17 q18
+q19 shr gb 7
+q20 and gb 127
+q21 get p0 q19
+q22 get q21 q20
+q23 select add a q22
+q24 shr gb 7
+q25 and gb 127
+m_g get p0 q24
+m_h set m_g q25 q23
+m set p0 q24 m_h
+q26 add gb 1
+q27 shr q26 7
+q28 and q26 127
+q29 get m q27
+q30 get q29 q28
+q31 select add s q30
+q32 shr q26 7
+q33 and q26 127
+m_g_1 get m q32
+m_h_1 set m_g_1 q33 q31
+m_1 set m q32 m_h_1
+q34 add gb 2
+q35 shr q34 7
+q36 and q34 127
+q37 get m_1 q35
+q38 get q37 q36
+q39 select add k q38
+q40 shr q34 7
+q41 and q34 127
+m_g_2 get m_1 q40
+m_h_2 set m_g_2 q41 q39
+m_2 set m_1 q40 m_h_2
+q42 add gb 3
+q43 shr q42 7
+q44 and q42 127
+q45 get m_2 q43
+q46 get q45 q44
+q47 select add t q46
+q48 shr q42 7
+q49 and q42 127
+m_g_3 get m_2 q48
+m_h_3 set m_g_3 q49 q47
+m_3 set m_2 q48 m_h_3
+q50 add gb 4
+q51 and okb found
+q52 and q51 less
+q53 or add q52
+q54 shr q50 7
+q55 and q50 127
+q56 get m_3 q54
+q57 get q56 q55
+q58 select q53 c q57
+q59 shr q50 7
+q60 and q50 127
+m_g_4 get m_3 q59
+m_h_4 set m_g_4 q60 q58
+m_4 set m_3 q59 m_h_4
+q61 add pg 29
+wa add q61 gi
+q62 shr wa 7
+q63 and wa 127
+q64 get m_4 q62
+q65 get q64 q63
+q66 select add 0 q65
+q67 add q66 wo
+q68 and okb found
+q69 or add q68
+q70 shr wa 7
+q71 and wa 127
+q72 get m_4 q70
+q73 get q72 q71
+q74 select q69 q67 q73
+q75 shr wa 7
+q76 and wa 127
+m_g_5 get m_4 q75
+m_h_5 set m_g_5 q76 q74
+m_5 set m_4 q75 m_h_5
+q77 add q6 1
+q78 shr pg 7
+q79 and pg 127
+q80 get m_5 q78
+q81 get q80 q79
+q82 select add q77 q81
+q83 shr pg 7
+q84 and pg 127
+m_g_6 get m_5 q83
+m_h_6 set m_g_6 q84 q82
+m_6 set m_5 q83 m_h_6
+ret m_6
+end
+# scan the function p2 inlined into frame p1 (set up there) for the loop of frame p1 - 1
+fn wxpscf u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 -> u32x128x512
+first call wxfw p6 p3 4
+n call wxfw p6 p3 5
+q0 call zpage 
+aff fold wxafn n q0 first p4 p5
+q1 fold wxpscan n p0 p2 first aff p4 p5 p3 p6 p7 p8
+ret q1
+end
+# node p1 of frame p2 (first node p3, affine table p4, function p7): block word 3 := its pointer
+# access when it has one
+fn wxpnode u32x128x512 u32 u32 u32 u32x128 u32x128x132 u32x128x512 u32 u32x128x45 u32x384x65 u32x128x65 -> u32x128x512
+q0 call wxpq p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10
+ok at q0 0
+a at q0 1
+s at q0 2
+c at q0 3
+k at q0 4
+t at q0 5
+wo at q0 6
+q1 sub p2 1
+q2 mul 36 q1
+pg add 20336 q2
+q3 shr pg 7
+q4 and pg 127
+q5 get p0 q3
+q6 get q5 q4
+f fold wxpfg q6 4294967295 p0 pg a s k t
+q7 eq ok 1
+q8 ne f 4294967295
+q9 and q7 q8
+q10 add pg 29
+q11 add q10 f
+q12 shr q11 7
+q13 and q11 127
+q14 get p0 q12
+q15 get q14 q13
+q16 ge q15 2
+hit and q9 q16
+q17 add pg 1
+q18 mul 6 f
+gb add q17 q18
+q19 add gb 5
+q20 shr q19 7
+q21 and q19 127
+q22 get p0 q20
+q23 get q22 q21
+q24 add q23 1
+q25 add gb 4
+q26 shr q25 7
+q27 and q25 127
+q28 get p0 q26
+q29 get q28 q27
+q30 sub c q29
+q31 mul q30 4
+q32 shl q31 14
+w or q24 q32
+q33 call wxbk p2 p1 3
+q34 shr q33 7
+q35 and q33 127
+q36 get p0 q34
+q37 get q36 q35
+q38 select hit w q37
+q39 shr q33 7
+q40 and q33 127
+m_g get p0 q39
+m_h set m_g q40 q38
+m set p0 q39 m_h
+ret m
+end
+# the pointer accesses of the function p2 inlined into frame p1 (set up there) for the loop of
+# frame p1 - 1, and its read of the carried element (a predicate: frame words 18-21)
+fn wxpnodes u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 -> u32x128x512
+first call wxfw p6 p3 4
+n call wxfw p6 p3 5
+q0 call zpage 
+aff fold wxafn n q0 first p4 p5
+q1 fold wxpnode n p0 p2 first aff p4 p5 p3 p6 p7 p8
+ret q1
+end
+# the predicate of the loop of frame p2 inlined as function p3 into frame p2 + 1 (set up there):
+# its pointer accesses, and its read of the carried element as the carry local (frame words 18-21
+# with no store of it)
+fn wxptrip u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 -> u32x128x512
+e add p2 1
+q0 mul 36 p2
+pg add 20336 q0
+q1 shr pg 7
+q2 and pg 127
+q3 get p0 q1
+q4 get q3 q2
+q5 gt q4 0
+q6 select q5 1 0
+m1 fold wxpnodes q6 p0 e p3 p4 p5 p6 p7 p8
+q7 add pg 28
+q8 shr q7 7
+q9 and q7 127
+q10 get m1 q8
+q11 get q10 q9
+q12 ne q11 0
+on select q12 1 0
+m2 fold wxfs on m1 e 18 1
+q13 sub q11 1
+m3 fold wxfs on m2 e 19 q13
+m4 fold wxfs on m3 e 20 4294967295
+q14 call wxcx p2 16
+q15 shr q14 7
+q16 and q14 127
+q17 get m4 q15
+q18 get q17 q16
+q19 fold wxfs on m4 e 21 q18
+ret q19
+end
+# group p2 of the pointer area of loop p3: a fresh local, the element of the least constant term
+# on the first trip (the array, plus or minus the extra scaled when it is not a constant, plus the
+# constant bytes)
+fn wxpini1 u32x128x512 u32 u32 u32 -> u32x128x512
+q0 mul 36 p3
+pg add 20336 q0
+q1 add pg 1
+q2 mul 6 p2
+gb add q1 q2
+q3 shr gb 7
+q4 and gb 127
+q5 get p0 q3
+q6 get q5 q4
+q7 add gb 1
+q8 shr q7 7
+q9 and q7 127
+q10 get p0 q8
+q11 get q10 q9
+q12 add gb 2
+q13 shr q12 7
+q14 and q12 127
+q15 get p0 q13
+q16 get q15 q14
+q17 add gb 3
+q18 shr q17 7
+q19 and q17 127
+q20 get p0 q18
+q21 get q20 q19
+q22 add gb 4
+q23 shr q22 7
+q24 and q22 127
+q25 get p0 q23
+q26 get q25 q24
+m1 fold wxnl 1 p0
+q27 get m1 0
+q28 get q27 16
+q29 add gb 5
+q30 shr q29 7
+q31 and q29 127
+m1_g get m1 q30
+m1_h set m1_g q31 q28
+m1_1 set m1 q30 m1_h
+q32 call wxcx p3 5
+q33 shr q32 7
+q34 and q32 127
+q35 get m1_1 q33
+q36 get q35 q34
+q37 eq q6 0
+q38 call wxcx p3 0
+q39 shr q38 7
+q40 and q38 127
+q41 get m1_1 q39
+q42 get q41 q40
+q43 sub q6 2
+q44 mul 2 q43
+q45 add 105 q44
+q46 call wxcx p3 q45
+q47 shr q46 7
+q48 and q46 127
+q49 get m1_1 q47
+q50 get q49 q48
+base select q37 q42 q50
+m2 fold wxlg 1 m1_1 base
+tz eq q21 0
+q51 sub q16 2
+q52 mul 2 q51
+q53 add 104 q52
+q54 call wxcx p3 q53
+q55 shr q54 7
+q56 and q54 127
+q57 get m2 q55
+q58 get q57 q56
+q59 sub q16 2
+q60 mul 2 q59
+q61 add 105 q60
+q62 call wxcx p3 q61
+q63 shr q62 7
+q64 and q62 127
+q65 get m2 q63
+q66 get q65 q64
+q67 xor tz true
+q68 eq q58 0
+dyn and q67 q68
+q69 select dyn 1 0
+m3 fold wxlg q69 m2 q66
+q70 select dyn 1 0
+m4 fold wxkc q70 m3 2
+q71 select dyn 1 0
+m5 fold wxop q71 m4 116
+q72 select dyn 1 0
+q73 eq q21 1
+q74 select q73 106 107
+m6 fold wxop q72 m5 q74
+q75 xor tz true
+q76 ne q58 0
+kc and q75 q76
+q77 mul q11 q36
+q78 add q77 q26
+q79 mul q21 q66
+q80 select kc q79 0
+konst add q78 q80
+off mul konst 4
+nz ne off 0
+q81 select nz 1 0
+m7 fold wxkc q81 m6 off
+q82 select nz 1 0
+m8 fold wxop q82 m7 106
+q83 fold wxls 1 m8 q28
+ret q83
+end
+# group p1 of the pointer area of loop p2 set up when it is worth a pointer
+fn wxpinit u32x128x512 u32 u32 -> u32x128x512
+q0 mul 36 p2
+q1 add 20336 q0
+q2 add q1 29
+q3 add q2 p1
+q4 shr q3 7
+q5 and q3 127
+q6 get p0 q4
+q7 get q6 q5
+q8 ge q7 2
+q9 select q8 1 0
+q10 fold wxpini1 q9 p0 p1 p2
+ret q10
+end
+# pointer p1 of loop p2 (a group worth one) steps by its stride after a trip
+fn wxpstep u32x128x512 u32 u32 -> u32x128x512
+q0 mul 36 p2
+pg add 20336 q0
+q1 add pg 1
+q2 mul 6 p1
+gb add q1 q2
+q3 add pg 29
+q4 add q3 p1
+q5 shr q4 7
+q6 and q4 127
+q7 get p0 q5
+q8 get q7 q6
+q9 ge q8 2
+on select q9 1 0
+q10 add gb 5
+q11 shr q10 7
+q12 and q10 127
+q13 get p0 q11
+q14 get q13 q12
+m1 fold wxlg on p0 q14
+q15 add gb 1
+q16 shr q15 7
+q17 and q15 127
+q18 get p0 q16
+q19 get q18 q17
+q20 mul q19 4
+m2 fold wxkc on m1 q20
+m3 fold wxop on m2 106
+q21 fold wxls on m3 q14
+ret q21
+end
+# (found, node) the predicate's first `get p0 r` (first node p2, affine table p3) whose index has the
+# affine form p6 p7 p8 p9 of the body's carried read (src/wasm.ts `carriedPredicateRead`)
+fn wxpcr (u32,u32) u32 u32 u32x128 u32x128x132 u32x128x512 u32 u32 u32 u32 -> (u32,u32)
+fd at p0 0
+nn at p0 1
+g add p2 p1
+op call wxnw p4 g 1
+sl call wxnw p4 g 3
+q0 call wxok p5 sl
+q1 eq q0 2
+q2 call wxov p5 sl
+q3 eq q2 0
+onp0 and q1 q3
+q4 add sl 1
+q5 call wxok p5 q4
+q6 add sl 1
+q7 call wxov p5 q6
+q8 call wxafo p3 q5 q7
+s at q8 0
+c at q8 1
+k at q8 2
+t at q8 3
+q9 eq fd 0
+q10 eq op 25
+q11 and q9 q10
+q12 and q11 onp0
+q13 eq s p6
+q14 and q12 q13
+q15 eq c p7
+q16 and q14 q15
+q17 eq k p8
+q18 and q16 q17
+q19 eq t p9
+hit and q18 q19
+q20 select hit 1 fd
+q21 select hit p1 nn
+q22 rec q20 q21
+ret q22
+end
+# (known, value) an upper bound on the count operand (kind p2, value p3) of a loop of frame p1
+# (src/wasm.ts `#upper`): its constant value (a literal, a known node, a literal parameter source
+# of the host), or the host's literal trip bound - 1 for the host's trip index p1
+fn wxcup u32x128x512 u32 u32 u32 -> (u32,u32)
+isn eq p2 1
+q0 call wxrw p1 p3 2
+q1 shr q0 7
+q2 and q0 127
+q3 get p0 q1
+q4 get q3 q2
+q5 call wxrw p1 p3 1
+q6 shr q5 7
+q7 and q5 127
+q8 get p0 q6
+q9 get q8 q7
+q10 call wxrw p1 p3 3
+q11 shr q10 7
+q12 and q10 127
+q13 get p0 q11
+q14 get q13 q12
+q15 and q4 1
+q16 ne q15 0
+konst and isn q16
+q17 eq p2 2
+q18 shr q14 28
+q19 eq q18 2
+q20 and isn q19
+parm or q17 q20
+q21 eq p2 2
+q22 and q14 268435455
+a select q21 p3 q22
+host gt p1 0
+q23 mul 2 a
+q24 add 32 q23
+q25 call wxfr p1 q24
+q26 shr q25 7
+q27 and q25 127
+q28 get p0 q26
+q29 get q28 q27
+q30 mul 2 a
+q31 add 33 q30
+q32 call wxfr p1 q31
+q33 shr q32 7
+q34 and q32 127
+q35 get p0 q33
+q36 get q35 q34
+q37 and host parm
+q38 eq q29 1
+hl and q37 q38
+q39 eq p2 3
+q40 eq p2 4
+lit or q39 q40
+q41 or lit konst
+known or q41 hl
+q42 select konst q9 q36
+kval select lit p3 q42
+q43 eq p2 2
+q44 and host q43
+q45 eq p3 1
+q46 and q44 q45
+q47 call wxfr p1 22
+q48 shr q47 7
+q49 and q47 127
+q50 get p0 q48
+q51 get q50 q49
+q52 ne q51 0
+ib and q46 q52
+q53 call wxfr p1 23
+q54 shr q53 7
+q55 and q53 127
+q56 get p0 q54
+q57 get q56 q55
+bv sub q57 1
+q58 or known ib
+q59 select q58 1 0
+q60 select known kval bv
+q61 rec q59 q60
+ret q61
+end
+# bit p1 of the mask p0 when extra p1 of a loop (operands from p3 + 2, table p2) is the count
+# operand (kind p4, value p5), the same node or parameter (`sameOp`)
+fn wxpmk u32 u32 u32x128x512 u32 u32 u32 -> u32
+q0 add p3 2
+q1 add q0 p1
+k call wxok p2 q1
+q2 add p3 2
+q3 add q2 p1
+v call wxov p2 q3
+q4 eq k p4
+q5 eq v p5
+q6 and q4 q5
+q7 eq p4 1
+q8 eq p4 2
+q9 or q7 q8
+hit and q6 q9
+q10 shl 1 p1
+q11 or p0 q10
+q12 select hit q11 p0
+ret q12
+end
 # ---------------------------------------------------------------------------------------------
 # fold / loop (src/wasm.ts `#iteration`). The loop context of frame d (words from 640 + 176 d):
 # 0 state local, 1 counter local, 2 aggregate state, 3 literal count flag, 4 the literal, 5 first
@@ -11233,7 +12133,8 @@ av fold wxlg au as x
 ret av
 end
 # the loop of frame p2 starts phase p3 (`counted`): a block when it can be left (a guard on the
-# counter, or a predicate), the guard, the loop; the first trip follows
+# counter, or a predicate), the guard, the loop; the first trip follows. A loop with a predicate is
+# rotated: its first trip tests the predicate on entry (item 13 after it opens the loop)
 fn wxlst u32x128x512 u32 u32 u32 -> u32x128x512
 a mul p3 5
 b add a 24
@@ -11341,29 +12242,11 @@ cf select ce cd ca
 cg get b5 b8
 ch select bt cf cg
 ci set b5 b8 ch
-cj get ci 0
-ck get cj 0
-cl get cj 8
-cm ge ck 22528
-cn select cm 0 1
-co add ck cn
-cp select cm 1 cl
-cq set cj 0 co
-cr set cq 8 cp
-cs set ci 0 cr
-ct mul ck 2
-cu add ct 20480
-cv shr cu 7
-cw and cu 127
-cx get cs cv
-cy add cw 1
-cz set cx cw 8
-c0 set cz cy 0
-c1 eq cm false
-c2 select c1 c0 cx
-c3 set cs cv c2
+lp0 select as 0 1
+c3 fold wxe lp0 ci 8 0
 c4 fold wxcs 1 c3 p2 22 0
-c5 fold wxpu 1 c4 9 p2 0 0
+lp1 select as 13 0
+c5 fold wxpu 1 c4 9 p2 lp1 0
 ret c5
 end
 # the induction local of body node p1 of the loop of frame p2 as block word 0 of frame p2 + 1's
@@ -11432,7 +12315,9 @@ an fold wxlg 1 am n
 ao fold wxpa u an p2 al p4
 ret ao
 end
-# the start of a trip of loop p2 (`trip`): the predicate (inlined, else called) before the body
+# the start of a trip of loop p2 (`trip`): the predicate (inlined, else called; see `wxptrip`) before
+# the body (item 10), or, for a rotated loop, before its entry test (item b 13, `wxrot1`) or its
+# bottom test (item b 14, `wxrot2`); register 98 holds the item's b (`wxstep`)
 fn wxtrip u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
 a mul p2 176
 b add a 640
@@ -11469,7 +12354,15 @@ z and o y
 aa select z false true
 ab and o aa
 ac add p2 1
-ad fold wxpu 1 t 10 p2 0 0
+pt0 select z 1 0
+pt1 fold wxptrip pt0 t p2 n p4 p5 p3 p7 p8
+pt2 shr 98 7
+pt3 and 98 127
+pt4 get pt1 pt2
+pt5 get pt4 pt3
+pt6 eq pt5 0
+pt7 select pt6 10 pt5
+ad fold wxpu 1 pt1 pt7 p2 0 0
 ae select z 1 0
 af fold wxenter ae ad ac p4 p5
 ag select ab 1 0
@@ -11522,85 +12415,48 @@ br select bl bp bq
 bs set bj bm br
 ret bs
 end
-# the body of a trip of loop p2: leave the loop when the predicate is false, then the body
-# (inlined when it was probed so, else called: the owned variant for aggregate state)
+# the body of a trip of loop p2 (inlined when it was probed so, with its pointer accesses, else
+# called: the owned variant for aggregate state)
 fn wxtbod u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
-a mul p2 176
-b add a 640
-c add b 6
-d shr c 7
-e and c 127
-f get p0 d
-g get f e
-h ne g 0
-i select h 1 0
-j fold wxop i p0 69
-k select h 1 0
-l ne k 0
-m get j 0
-n get m 0
-o get m 8
-p ge n 22528
-q select p 0 1
-r add n q
-s select p 1 o
-t set m 0 r
-u set t 8 s
-v get j 0
-w select l u v
-x set j 0 w
-y mul n 2
-z add y 20480
-aa shr z 7
-ab and z 127
-ac get x aa
-ad add ab 1
-ae set ac ab 12
-af set ae ad 1
-ag eq p false
-ah select ag af ac
-ai get x aa
-aj select l ah ai
-ak set x aa aj
 al mul p2 176
 am add al 640
 an add am 8
 ao shr an 7
 ap and an 127
-aq get ak ao
+aq get p0 ao
 ar get aq ap
 as mul p2 176
 au add as 640
 av add au 10
 aw shr av 7
 ax and av 127
-ay get ak aw
+ay get p0 aw
 az get ay ax
 a0 mul p2 176
 a1 add a0 640
 a2 add a1 2
 a3 shr a2 7
 a4 and a2 127
-a5 get ak a3
+a5 get p0 a3
 a6 get a5 a4
 a7 mul p2 176
 a8 add a7 640
 a9 add a8 11
 ba shr a9 7
 bb and a9 127
-bc get ak ba
+bc get p0 ba
 bd get bc bb
 be mul p2 176
 bf add be 640
 bg add bf 12
 bh shr bg 7
 bi and bg 127
-bj get ak bh
+bj get p0 bh
 bk get bj bi
 bl ne az 0
 bm select bl false true
 bn select bl 1 0
-bo fold wxhost bn ak p2 1
+bo fold wxhost bn p0 p2 1
 bp select bl 1 0
 bq fold wxcan bp bo p2 ar bd 24 bk p3 p4 p5 p6 p7 p8 p9 p10 0
 br shr 16 7
@@ -11622,8 +12478,18 @@ b6 add p2 1
 b7 call wxfw p3 ar 5
 b8 select bl b7 0
 b9 fold wxindw b8 b5 p2
+pb1 mul 36 p2
+pb2 add 20336 pb1
+pb3 shr pb2 7
+pb4 and pb2 127
+pb5 get b9 pb3
+pb6 get pb5 pb4
+pb7 gt pb6 0
+pb8 and bl pb7
+pb9 select pb8 1 0
+pbz fold wxpnodes pb9 b9 b6 ar p4 p5 p3 p7 p8
 ca select bl 1 0
-cb fold wxpu ca b9 11 p2 0 0
+cb fold wxpu ca pbz 11 p2 0 0
 cc select bl 1 0
 cd fold wxenter cc cb b6 p4 p5
 ce select bm 1 0
@@ -11798,8 +12664,10 @@ br set bg bj bq
 ret br
 end
 # the end of a trip of loop p2 (`trip` after the body): the state of a scalar fold is set, the
-# induction variables and the counter step; the next copy of the trip, or the end of the loop
-# (bound test, back edge) and the next phase, or the state words go back to the storage
+# induction variables, the pointers and the counter step; the next copy of the trip, or the end
+# of the loop (bound test, back edge) and the next phase, or the state words go back to the
+# storage; a rotated loop leaves when the counter reached the bound, then tests its predicate
+# (item 9 with b 14, `wxrot2`)
 fn wxtend u32x128x512 u32 u32 -> u32x128x512
 a mul p2 176
 b add a 640
@@ -11909,7 +12777,14 @@ st4 fold wxlg st2 p0 st0
 st5 fold wxls st2 st4 st3
 cd fold wxls cc st5 n
 ce fold wxupd a4 cd p2
-cf fold wxlg 1 ce u
+pe0 mul 36 p2
+pe1 add 20336 pe0
+pe2 shr pe1 7
+pe3 and pe1 127
+pe4 get ce pe2
+pe5 get pe4 pe3
+ce2 fold wxpstep pe5 ce p2
+cf fold wxlg 1 ce2 u
 cg fold wxkc 1 cf 1
 ch fold wxop 1 cg 106
 ci fold wxls 1 ch u
@@ -11918,13 +12793,17 @@ ck fold wxcs 1 ci p2 22 cj
 cl lt cj bl
 cm select cl false true
 cn select cl 1 0
-co fold wxpu cn ck 9 p2 0 0
+rp0 ne bb 0
+rp1 select rp0 false true
+rp2 select rp0 10 9
+co fold wxpu cn ck rp2 p2 0 0
 cp select cm 1 0
 cq fold wxlg cp co u
 cr select cm 1 0
 cs fold wxlim cr cq p2 ai
 ct select cm 1 0
-cu fold wxop ct cs 73
+rp3 select rp0 79 73
+cu fold wxop ct cs rp3
 cv select cm 1 0
 cw ne cv 0
 cx get cu 0
@@ -11946,13 +12825,15 @@ dc and da 127
 dd get c8 db
 de add dc 1
 df set dd dc 12
-dg set df de 0
+rp4 select rp0 1 0
+dg set df de rp4
 dh eq c0 false
 di select dh dg dd
 dj get c8 db
 dk select cw di dj
 dl set c8 db dk
-dm select cm 1 0
+cmn and cm rp1
+dm select cmn 1 0
 dn ne dm 0
 do get dl 0
 dp get do 0
@@ -11985,22 +12866,66 @@ ef and ed ee
 eg select ef false true
 eh ne bb 0
 ei or eg eh
-ej and cm ei
+ej and cmn ei
 ek select ej 1 0
 el fold wxop ek ec 11
 em add ai 1
 en lt em ap
-eo and cm en
+eo and cmn en
 ep and cm en
 er select en false true
-es and cm er
+es and cmn er
 et select eo 1 0
 eu fold wxcs et el p2 21 em
 ev select eo 1 0
 ew fold wxpu ev eu 8 p2 em 0
 ex select es ax 0
 ey fold wxfst ex ew p2
-ret ey
+rp5 and cm rp0
+rp6 select rp5 1 0
+rp7 fold wxpu rp6 ey 9 p2 14 0
+ret rp7
+end
+# a rotated loop (src/wasm.ts `counted` with a predicate) of frame p2 after the predicate tested on
+# entry: leave when it is false, else the loop and its first trip's body
+fn wxrot1 u32x128x512 u32 u32 -> u32x128x512
+m1 fold wxop 1 p0 69
+m2 fold wxe 1 m1 12 0
+m3 fold wxe 1 m2 8 0
+q0 fold wxpu 1 m3 10 p2 0 0
+ret q0
+end
+# a rotated loop of frame p2 after the predicate tested at the bottom: go round again when it
+# holds, the end of the loop and its block, then the next phase or the state words back to the
+# storage (as `wxtend`)
+fn wxrot2 u32x128x512 u32 u32 -> u32x128x512
+m1 fold wxe 1 p0 12 0
+m2 fold wxe 1 m1 9 0
+m3 fold wxop 1 m2 11
+q0 call wxcx p2 21
+q1 shr q0 7
+q2 and q0 127
+q3 get m3 q1
+q4 get q3 q2
+ph add q4 1
+q5 call wxcx p2 23
+q6 shr q5 7
+q7 and q5 127
+q8 get m3 q6
+q9 get q8 q7
+more lt ph q9
+q10 select more 1 0
+m4 fold wxcs q10 m3 p2 21 ph
+q11 select more 1 0
+m5 fold wxpu q11 m4 8 p2 ph 0
+q12 call wxcx p2 12
+q13 shr q12 7
+q14 and q12 127
+q15 get m5 q13
+q16 get q15 q14
+w select more 0 q16
+q17 fold wxfst w m5 p2
+ret q17
 end
 # extra p1 (operands from p3, table p4) of loop p2 resolved into the loop context
 fn wxext u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
@@ -12452,105 +13377,6 @@ a1 and a1g gl_n
 a2 select a1 1 0
 a3 rec a2 r d
 ret a3
-end
-# carried read (src/wasm.ts `carriedRead`, `affineNodes`, `affineOf`): an index as (s, c, k, t),
-# s * p1 + c + t * pk (pk an extra parameter, k >= 2; t 0, 1 or 4294967295), mod 2^32; t 2 when it
-# is not of that form. The affine table holds 4 words a body node (s c k t).
-# operand (kind p1, value p2) as an affine index, given the table p0 of the earlier nodes
-fn wxafo u32x128 u32 u32 -> (u32,u32,u32,u32)
-a mul p2 4
-b get p0 a
-c add a 1
-d get p0 c
-e add a 2
-f get p0 e
-g add a 3
-h get p0 g
-i eq p1 1
-j eq p1 2
-k eq p1 3
-l eq p2 1
-m ge p2 2
-n and j l
-o and j m
-s0 select n 1 0
-s1 select i b s0
-c0 select k p2 0
-c1 select i d c0
-k0 select o p2 0
-k1 select i f k0
-t0 select o 1 2
-t1 select n 0 t0
-t2 select k 0 t1
-t3 select i h t2
-r rec s1 c1 k1 t3
-ret r
-end
-# node p1 of the body (first node p2, nodes p3, operands p4) into the affine table p0: an add or
-# sub of two affine operands with at most one extra parameter, of coefficient 0, 1 or -1
-fn wxafn u32x128 u32 u32 u32x128x132 u32x128x512 -> u32x128
-a add p2 p1
-b call wxnw p3 a 1
-c call wxnw p3 a 3
-d add c 1
-e call wxok p4 c
-f call wxov p4 c
-g call wxok p4 d
-h call wxov p4 d
-i call wxafo p0 e f
-j call wxafo p0 g h
-as at i 0
-ac at i 1
-ak at i 2
-au at i 3
-bs at j 0
-bc at j 1
-bk at j 2
-bu at j 3
-o2 eq b 2
-o3 eq b 3
-ar or o2 o3
-ns sub 0 bs
-nc sub 0 bc
-nu sub 0 bu
-ss select o3 ns bs
-sc select o3 nc bc
-su select o3 nu bu
-s add as ss
-cc add ac sc
-t add au su
-an ne au 0
-bn ne bu 0
-kk select an ak bk
-ab and an bn
-kd ne ak bk
-cf and ab kd
-ai eq au 2
-bi eq bu 2
-t0 eq t 0
-t1 eq t 1
-tm eq t 4294967295
-tv or t0 t1
-tw or tv tm
-iv or ai bi
-iw or iv cf
-ix select iw false true
-ok and ar ix
-ol and ok tw
-k2 select t0 0 kk
-rs select ol s 0
-rc select ol cc 0
-rk select ol k2 0
-rt select ol t 2
-x mul p1 4
-y add x 1
-z add x 2
-w add x 3
-q0 set p0 x rs
-q1 set q0 y rc
-q2 set q1 z rk
-q3 set q2 w rt
-ret q3
 end
 # node p1 (first node p2, nodes p3, operands p4) as the carried read: the first `get p0 r` with r
 # at trip p1 + 1 equal to the stored index (p6 p7 p8 p9: s c k t), r from the affine table p5;
@@ -14067,6 +14893,152 @@ e set d c 0
 f set p0 b e
 ret f
 end
+# the element pointers of the loop of frame p2 (src/wasm.ts `#pointers`), when p3 (the body is
+# inlined, not after a vector reduction) and the count has an upper bound: the pointer area's
+# facts (p4: the state stays in memory; p7 the first phase's trips per back edge), the scan of
+# the body, then of the predicate when p5 (it can be inlined too: probed here), the predicate's
+# read of the carried element when p6 (a carried element p8 p9 p10 p11 without a first-trip
+# select), and the pointers set up for the first trip
+fn wxpset u32x128x512 u32 u32 bool bool bool bool u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 -> u32x128x512
+e add p2 1
+q0 mul 36 p2
+pg add 20336 q0
+q1 call wxcx p2 18
+q2 shr q1 7
+q3 and q1 127
+q4 get p0 q2
+q5 get q4 q3
+q6 call wxcx p2 19
+q7 shr q6 7
+q8 and q6 127
+q9 get p0 q7
+q10 get q9 q8
+q11 call wxcup p0 p2 q5 q10
+kn at q11 0
+hi at q11 1
+q12 eq kn 1
+go and p3 q12
+q13 call wxfr p2 2
+q14 shr q13 7
+q15 and q13 127
+q16 get p0 q14
+q17 get q16 q15
+q18 call wxcx p2 9
+q19 shr q18 7
+q20 and q18 127
+q21 get p0 q19
+q22 get q21 q20
+q23 add q17 q22
+sl call wxnw p13 q23 3
+q24 call wxcx p2 17
+q25 shr q24 7
+q26 and q24 127
+q27 get p0 q25
+q28 get q27 q26
+mask fold wxpmk q28 0 p14 sl q5 q10
+q29 shr pg 7
+q30 and pg 127
+m_g get p0 q29
+m_h set m_g q30 0
+m set p0 q29 m_h
+q31 add pg 25
+q32 shr q31 7
+q33 and q31 127
+m_g_1 get m q32
+m_h_1 set m_g_1 q33 hi
+m_1 set m q32 m_h_1
+q34 add pg 26
+q35 shr q34 7
+q36 and q34 127
+m_g_2 get m_1 q35
+m_h_2 set m_g_2 q36 mask
+m_2 set m_1 q35 m_h_2
+q37 add pg 27
+q38 select p4 1 0
+q39 shr q37 7
+q40 and q37 127
+m_g_3 get m_2 q39
+m_h_3 set m_g_3 q40 q38
+m_3 set m_2 q39 m_h_3
+q41 add pg 28
+q42 shr q41 7
+q43 and q41 127
+m_g_4 get m_3 q42
+m_h_4 set m_g_4 q43 0
+m_4 set m_3 q42 m_h_4
+q44 add pg 33
+q45 shr q44 7
+q46 and q44 127
+m_g_5 get m_4 q45
+m_h_5 set m_g_5 q46 p7
+m_5 set m_4 q45 m_h_5
+q47 call wxcx p2 8
+q48 shr q47 7
+q49 and q47 127
+q50 get m_5 q48
+q51 get q50 q49
+q52 call wxcx p2 11
+q53 shr q52 7
+q54 and q52 127
+q55 get m_5 q53
+q56 get q55 q54
+q57 call wxcx p2 12
+q58 shr q57 7
+q59 and q57 127
+q60 get m_5 q58
+q61 get q60 q59
+q62 select go 1 0
+m1 fold wxhost q62 m_5 p2 2
+q63 select go 1 0
+m2 fold wxcan q63 m1 p2 q51 q56 24 q61 p12 p13 p14 p15 p16 p17 p18 p19 0
+q64 select go 1 0
+m3 fold wxpscf q64 m2 e q51 p13 p14 p12 p16 p17
+q65 call wxcx p2 7
+q66 shr q65 7
+q67 and q65 127
+q68 get m3 q66
+q69 get q68 q67
+q70 select p5 1 0
+m4 fold wxhost q70 m3 p2 2
+q71 select p5 1 0
+m5 fold wxcan q71 m4 p2 q69 0 24 q61 p12 p13 p14 p15 p16 p17 p18 p19 0
+q72 get m5 0
+q73 get q72 16
+q74 eq q73 1
+pin and p5 q74
+q75 and go pin
+q76 select q75 1 0
+m6 fold wxpscf q76 m5 e q69 p13 p14 p12 p16 p17
+pfirst call wxfw p12 q69 4
+q77 and pin p6
+q78 call wxfw p12 q69 5
+pcn select q77 q78 0
+q79 call zpage 
+aff fold wxafn pcn q79 pfirst p13 p14
+q80 rec 0 0
+q81 fold wxpcr pcn q80 pfirst aff p13 p14 p8 p9 p10 p11
+fd at q81 0
+node at q81 1
+q82 add pg 28
+q83 add node 1
+q84 eq fd 1
+q85 shr q82 7
+q86 and q82 127
+q87 get m6 q85
+q88 get q87 q86
+q89 select q84 q83 q88
+q90 shr q82 7
+q91 and q82 127
+m6_g get m6 q90
+m6_h set m6_g q91 q89
+m6_1 set m6 q90 m6_h
+q92 shr pg 7
+q93 and pg 127
+q94 get m6_1 q92
+q95 get q94 q93
+q96 fold wxpinit q95 m6_1 p2
+ret q96
+end
 # phase p3 of loop p2 as (limit kind p4, literal flag p5, literal or constant p6, first trip p7,
 # copies p8)
 fn wxphs u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
@@ -14390,6 +15362,17 @@ sp5 mul so7 65536
 sp6 add sp5 so8
 sp3 fold wxcs 1 so6 a 38 sp6
 sp4 fold wxcs 1 sp3 a 39 sp1
+# element pointers (`#pointers`): an inlined body, not after a vector reduction
+pz0 eq s 0
+pz1 ne an 0
+pz2 and pz0 pz1
+pz3 select pz2 false true
+pz4 and ci pz3
+pz5 select cj false true
+pz6 and bn pz5
+pz7 and pl0 ci
+pz8 select ft_m false true
+pz9 and dp pz8
 ea shr 14 7
 eb and 14 127
 ec get sp4 ea
@@ -14412,6 +15395,8 @@ ek lt ej eh
 el eq eh 1
 em and ei ek
 en or el em
+e8 select en 1 eh
+pzz fold wxpset 1 sp4 a pz4 pz6 pz7 pz9 e8 rg4 rg5 rg6 rg7 p3 p4 p5 p6 p7 p8 p9 p10
 eo select en false true
 ep and eo ei
 er select ei false true
@@ -14431,8 +15416,7 @@ e4 select ep 1 0
 e5 select en z e4
 e6 select ep ev 0
 e7 select en ag e6
-e8 select en 1 eh
-e9 fold wxphs 1 sp4 a 0 e3 e5 e7 an e8
+e9 fold wxphs 1 pzz a 0 e3 e5 e7 an e8
 fa select ex 1 0
 fb select es 1 0
 fc or fa fb
@@ -15397,8 +16381,9 @@ end
 # a from node b (the node, then the items of the rest), 2 node b of frame a alone, 3 push the
 # operand (kind b, value c) of frame a, 4 emit the instruction (kind a, value b), 5 the end of
 # frame a, 6 the next node of frame a owned by select b in arm c & 3 from node c >> 2, 7 bind
-# and set node b of frame a, 8 start phase b of loop a, 9 a trip of loop a, 10 its body, 11 its
-# end, 12 the superword packs whose ready point + 1 is a (`wyat`)
+# and set node b of frame a, 8 start phase b of loop a, 9 a trip of loop a (b: the item after its
+# predicate, 0 for 10), 10 its body, 11 its end, 12 the superword packs whose ready point + 1 is a
+# (`wyat`), 13 a rotated loop a after its entry test, 14 after its bottom test
 fn wxstep u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
 a shr 95 7
 b and 95 127
@@ -15584,7 +16569,13 @@ de fold wxtend dd dc s
 df eq o 12
 dg select df 1 0
 dh fold wyat dg de s p3 p4
-ret dh
+rt0 eq o 13
+rt1 select rt0 1 0
+rt2 fold wxrot1 rt1 dh s
+rt3 eq o 14
+rt4 select rt3 1 0
+rt5 fold wxrot2 rt4 rt2 s
+ret rt5
 end
 # keep stepping while items remain and no error was raised
 fn wxgo u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> bool
