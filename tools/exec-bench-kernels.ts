@@ -5,6 +5,7 @@
  * tools/exec-bench.ts and tools/lang-axes.ts so both measure the same programs.
  */
 
+import { formatTextLiteral } from '../src/core.js';
 import { ITER, type KernelName } from './exec-bench-languages.js';
 
 export interface Kernel {
@@ -313,6 +314,398 @@ t add hm rn
 ret t
 end`;
 
+/**
+ * hash1k: an open-addressing hash table (1024 slots, linear probing, 0 = empty) built from 512
+ * keys, then probed for 512 keys of which a y-dependent share are present. Each lookup adds the
+ * slot it stopped at, plus 1024 when it found the key.
+ */
+const HASH_A0 = `fn hkey u32 u32 -> u32
+m mul p0 2654435761
+x xor m p1
+k or x 1
+ret k
+end
+fn hslot u32 -> u32
+m mul p0 2246822519
+s shr m 22
+ret s
+end
+fn hbusy u32 u32 u32x1024 u32 -> bool
+v get p2 p0
+f ne v 0
+o ne v p3
+b and f o
+ret b
+end
+fn hnext u32 u32 u32x1024 u32 -> u32
+n add p0 1
+m and n 1023
+ret m
+end
+fn hins u32x1024 u32 u32 -> u32x1024
+k call hkey p1 p2
+h call hslot k
+p loop hbusy hnext 1024 h p0 k
+t set p0 p k
+ret t
+end
+fn hfind u32 u32 u32x1024 u32 u32 -> u32
+q add p1 p4
+k call hkey q p3
+h call hslot k
+p loop hbusy hnext 1024 h p2 k
+v get p2 p
+f eq v k
+b select f 1024 0
+c add p b
+s add p0 c
+ret s
+end
+fn hash1k u32 u32 -> u32
+z arr ${zeros(1024)}
+t fold hins 512 z p0
+w and p1 255
+o add w 128
+s fold hfind 512 0 t p0 o
+ret s
+end`;
+const C_HASH_PROBE =
+  'uint32_t p = (k * 2246822519u) >> 22; while (t[p] != 0 && t[p] != k) p = (p + 1) & 1023u;';
+const JS_HASH_PROBE =
+  'let p = Math.imul(k, 2246822519) >>> 22; while (t[p] !== 0 && t[p] !== k) p = (p + 1) & 1023;';
+const RUST_HASH_PROBE =
+  'let mut p = (k.wrapping_mul(2246822519) >> 22) as usize; while t[p] != 0 && t[p] != k { p = (p + 1) & 1023; }';
+
+/**
+ * utf8dec4k: decode 4096 bytes of mostly valid UTF-8 (a 128-byte multilingual text from offset x,
+ * one byte in 32 replaced by a y-hashed byte), counting code points and errors and FNV-hashing
+ * each code point. Lenient: a sequence cut short is an error and its byte starts afresh; a byte
+ * that starts nothing (a stray continuation, C0, C1, F5..FF) is an error.
+ */
+const UTF8_TEXT =
+  'Grüße aus Köln! 東京は晴れ。 Καλημέρα κόσμε 😀🚀 naïve café — π≈3.14, ∑x²≤∞. abc 123 xyz';
+const UTF8_BYTES: readonly number[] = [...Buffer.from(UTF8_TEXT, 'utf8')];
+const UTF8_LIST = UTF8_BYTES.join(', ');
+const UTF8_A0 = `fn u8fill u32x4096 u32 u32 u32x${UTF8_BYTES.length} u32 -> u32x4096
+j add p1 p2
+c get p3 j
+m mul p1 2654435761
+h xor m p4
+r shr h 27
+bad eq r 0
+g shr h 8
+e and g 255
+v select bad e c
+n set p0 p1 v
+ret n
+end
+fn u8step (u32,u32,u32,u32,u32) u32 u32x4096 -> (u32,u32,u32,u32,u32)
+b get p2 p1
+need at p0 0
+cp at p0 1
+h at p0 2
+n at p0 3
+err at p0 4
+top and b 192
+cont eq top 128
+pend ne need 0
+take and pend cont
+c6 shl cp 6
+lo6 and b 63
+ccp or c6 lo6
+nd1 sub need 1
+fin eq nd1 0
+asc lt b 128
+b2 sub b 194
+two lt b2 30
+b3 sub b 224
+three lt b3 16
+b4 sub b 240
+four lt b4 5
+l1 and b 31
+l2 and b 15
+l3 and b 7
+q3 select four 3 0
+q2 select three 2 q3
+lneed select two 1 q2
+k3 select four l3 cp
+k2 select three l2 k3
+lcp select two l1 k2
+bad1 select pend 1 0
+ok1 or asc two
+ok2 or ok1 three
+ok3 or ok2 four
+bad2 select ok3 0 1
+lerr add bad1 bad2
+emv select take ccp b
+emc select take fin asc
+hx xor h emv
+hm mul hx 16777619
+nh select emc hm h
+one select emc 1 0
+nn add n one
+nneed select take nd1 lneed
+ncp select take ccp lcp
+ae select take 0 lerr
+nerr add err ae
+r0 put p0 0 nneed
+r1 put r0 1 ncp
+r2 put r1 2 nh
+r3 put r2 3 nn
+r4 put r3 4 nerr
+ret r4
+end
+fn utf8dec4k u32 u32 -> u32
+t text ${formatTextLiteral(UTF8_TEXT)}
+z arr ${ZEROS_4096}
+a fold u8fill 4096 z p0 t p1
+st rec 0 0 2166136261 0 0
+r fold u8step 4096 st a
+h at r 2
+n at r 3
+err at r 4
+m mul n 31
+e mul err 65599
+s add h m
+o add s e
+ret o
+end`;
+const C_UTF8_FILL = `for (uint32_t i = 0; i < 4096; i++) { uint32_t h = (i * 2654435761u) ^ y; a[i] = (h >> 27) == 0 ? (h >> 8) & 255u : u8_t[(i + x) % ${UTF8_BYTES.length}u]; }`;
+
+/**
+ * tok4k: tokenize 4096 bytes drawn from a 64-byte alphabet of letters, digits, spaces, newlines
+ * and a full stop: count words (letter runs), lines, and numbers (digit runs), parsing and summing
+ * each number's decimal value.
+ */
+const TOK_ALPHABET = 'etaoinshrdlucmfwypvbgkqjxzetaoinshr01234567890123            \n\n.';
+const TOK_LIST = [...Buffer.from(TOK_ALPHABET, 'utf8')].join(', ');
+const TOK_A0 = `fn tkfill u32x4096 u32 u32 u32 u32x64 -> u32x4096
+v mul p1 p2
+w add v p3
+x shr w 15
+y xor w x
+m mul y 2654435761
+k shr m 26
+c get p4 k
+n set p0 p1 c
+ret n
+end
+fn tkstep (u32,u32,u32,u32,u32,u32) u32 u32x4096 -> (u32,u32,u32,u32,u32,u32)
+b get p2 p1
+pv at p0 0
+wd at p0 1
+ln at p0 2
+nm at p0 3
+vl at p0 4
+sm at p0 5
+la sub b 97
+isl lt la 26
+dg sub b 48
+isd lt dg 10
+c2 select isd 2 0
+cls select isl 1 c2
+nl eq b 10
+l1 select nl 1 0
+nln add ln l1
+pw eq pv 1
+pd eq pv 2
+ws select pw false isl
+w1 select ws 1 0
+nwd add wd w1
+v10 mul vl 10
+base select pd v10 0
+dv add base dg
+nvl select isd dv vl
+close select isd false pd
+s1 add sm vl
+nsm select close s1 sm
+c1 select close 1 0
+nnm add nm c1
+r0 put p0 0 cls
+r1 put r0 1 nwd
+r2 put r1 2 nln
+r3 put r2 3 nnm
+r4 put r3 4 nvl
+r5 put r4 5 nsm
+ret r5
+end
+fn tok4k u32 u32 -> u32
+t text ${formatTextLiteral(TOK_ALPHABET)}
+z arr ${ZEROS_4096}
+a fold tkfill 4096 z p0 p1 t
+st rec 0 0 0 0 0 0
+r fold tkstep 4096 st a
+pv at r 0
+wd at r 1
+ln at r 2
+nm at r 3
+vl at r 4
+sm at r 5
+pd eq pv 2
+s1 add sm vl
+fsm select pd s1 sm
+c1 select pd 1 0
+fnm add nm c1
+a1 mul wd 65599
+a2 mul ln 31
+a3 mul fnm 7
+o1 add a1 a2
+o2 add o1 a3
+o3 add o2 fsm
+ret o3
+end`;
+
+/**
+ * heap256: a binary min-heap (1-based, in a 512-word array) fed 256 hashed words by sift-up, then
+ * popped empty by sift-down, FNV-hashing the popped sequence. Sift-up visits n, n/2, n/4, ...
+ * (the trip count gives the slot); sift-down carries the heap and its slot as a record.
+ */
+const HEAP_A0 = `${hashFill('fillh256', 256)}
+fn upok u32x512 u32 u32 -> bool
+j shr p2 p1
+big gt j 1
+pj shr j 1
+u get p0 pj
+v get p0 j
+g gt u v
+c and big g
+ret c
+end
+fn upstep u32x512 u32 u32 -> u32x512
+j shr p2 p1
+pj shr j 1
+u get p0 pj
+v get p0 j
+a set p0 j u
+b set a pj v
+ret b
+end
+fn hpush u32x512 u32 u32x256 -> u32x512
+n add p1 1
+k get p2 p1
+a set p0 n k
+r loop upok upstep 8 a n
+ret r
+end
+fn dnok (u32x512,u32) u32 u32 -> bool
+h at p0 0
+j at p0 1
+l shl j 1
+r add l 1
+inl le l p2
+inr le r p2
+lv get h l
+rv get h r
+rl lt rv lv
+pr and inr rl
+c select pr r l
+cv get h c
+jv get h j
+g lt cv jv
+ok and inl g
+ret ok
+end
+fn dnstep (u32x512,u32) u32 u32 -> (u32x512,u32)
+h at p0 0
+j at p0 1
+l shl j 1
+r add l 1
+inr le r p2
+lv get h l
+rv get h r
+rl lt rv lv
+pr and inr rl
+c select pr r l
+cv get h c
+jv get h j
+a set h j cv
+b set a c jv
+s rec b c
+ret s
+end
+fn hpop (u32x512,u32) u32 -> (u32x512,u32)
+h at p0 0
+acc at p0 1
+n sub 256 p1
+top get h 1
+last get h n
+a set h 1 last
+m sub n 1
+st rec a 1
+r loop dnok dnstep 8 st m
+b at r 0
+x xor acc top
+y mul x 16777619
+o rec b y
+ret o
+end
+fn heap256 u32 u32 -> u32
+z arr ${zeros(256)}
+a fold fillh256 256 z p0 p1
+hz arr ${zeros(512)}
+h fold hpush 256 hz a
+st rec h 2166136261
+r fold hpop 256 st
+s at r 1
+ret s
+end`;
+
+/**
+ * stencil64: a 64x64 grid of hashed words transposed, then one 5-point stencil pass on the torus
+ * (centre weight 4, each neighbour 1, sum >> 3), xor-reduced.
+ */
+const STENCIL_A0 = `${hashFill('fillh4k', 4096)}
+fn tpose u32x4096 u32 u32x4096 -> u32x4096
+r shr p1 6
+c and p1 63
+s shl c 6
+j or s r
+v get p2 j
+n set p0 p1 v
+ret n
+end
+fn sten u32x4096 u32 u32x4096 -> u32x4096
+r shr p1 6
+c and p1 63
+rb shl r 6
+m get p2 p1
+up sub p1 64
+u get p2 up
+dn add p1 64
+d get p2 dn
+cl sub c 1
+cl6 and cl 63
+li or rb cl6
+l get p2 li
+cr add c 1
+cr6 and cr 63
+ri or rb cr6
+rv get p2 ri
+m4 shl m 2
+s1 add m4 u
+s2 add s1 d
+s3 add s2 l
+s4 add s3 rv
+v shr s4 3
+n set p0 p1 v
+ret n
+end
+fn xstep u32 u32 u32x4096 -> u32
+v get p2 p1
+w xor p0 v
+ret w
+end
+fn stencil64 u32 u32 -> u32
+z arr ${ZEROS_4096}
+a fold fillh4k 4096 z p0 p1
+z2 arr ${ZEROS_4096}
+b fold tpose 4096 z2 a
+z3 arr ${ZEROS_4096}
+c fold sten 4096 z3 b
+r fold xstep 4096 0 c
+ret r
+end`;
+
 export const KERNELS: readonly Kernel[] = [
   {
     name: 'affine',
@@ -521,6 +914,51 @@ export const KERNELS: readonly Kernel[] = [
     c: 'static inline uint32_t hw_rle4k(uint32_t x, uint32_t y) { uint32_t a[4096]; for (uint32_t i = 0; i < 4096; i++) a[i] = (((i >> 2) * x) ^ y) >> 30; uint32_t prev = a[0], len = 1, h = 2166136261u, runs = 0; for (uint32_t i = 1; i < 4096; i++) { uint32_t v = a[i]; if (v == prev && len < 255u) len++; else { h = (h ^ ((prev << 8) | len)) * 16777619u; runs++; prev = v; len = 1; } } h = (h ^ ((prev << 8) | len)) * 16777619u; return h + runs; }',
     js: 'export function rle4k(x, y) { const a = new Uint32Array(4096); for (let i = 0; i < 4096; i++) a[i] = ((Math.imul(i >>> 2, x) ^ y) >>> 30); let prev = a[0], len = 1, h = 2166136261, runs = 0; for (let i = 1; i < 4096; i++) { const v = a[i]; if (v === prev && len < 255) len++; else { h = Math.imul(h ^ ((prev << 8) | len), 16777619) >>> 0; runs++; prev = v; len = 1; } } h = Math.imul(h ^ ((prev << 8) | len), 16777619) >>> 0; return (h + runs) >>> 0; }',
     rust: '#[inline] fn hw_rle4k(x: u32, y: u32) -> u32 { let mut a = [0u32; 4096]; for i in 0..4096u32 { a[i as usize] = ((i >> 2).wrapping_mul(x) ^ y) >> 30; } let (mut prev, mut len, mut h, mut runs) = (a[0], 1u32, 2166136261u32, 0u32); for i in 1..4096 { let v = a[i]; if v == prev && len < 255 { len += 1; } else { h = (h ^ ((prev << 8) | len)).wrapping_mul(16777619); runs += 1; prev = v; len = 1; } } h = (h ^ ((prev << 8) | len)).wrapping_mul(16777619); h.wrapping_add(runs) }',
+  },
+  {
+    name: 'hash1k', // open-addressing hash table: 512 inserts and 512 lookups with linear probing
+    arity: 2,
+    iterScale: 256,
+    a0: HASH_A0,
+    c: `static inline uint32_t hw_hash1k(uint32_t x, uint32_t y) { uint32_t t[1024] = {0}; for (uint32_t i = 0; i < 512; i++) { uint32_t k = ((i * 2654435761u) ^ x) | 1u; ${C_HASH_PROBE} t[p] = k; } uint32_t o = (y & 255u) + 128u, s = 0; for (uint32_t q = 0; q < 512; q++) { uint32_t k = (((q + o) * 2654435761u) ^ x) | 1u; ${C_HASH_PROBE} s += t[p] == k ? p + 1024u : p; } return s; }`,
+    js: `export function hash1k(x, y) { const t = new Uint32Array(1024); for (let i = 0; i < 512; i++) { const k = (Math.imul(i, 2654435761) ^ x | 1) >>> 0; ${JS_HASH_PROBE} t[p] = k; } const o = (y & 255) + 128; let s = 0; for (let q = 0; q < 512; q++) { const k = (Math.imul(q + o, 2654435761) ^ x | 1) >>> 0; ${JS_HASH_PROBE} s = (s + (t[p] === k ? p + 1024 : p)) >>> 0; } return s; }`,
+    rust: `#[inline] fn hw_hash1k(x: u32, y: u32) -> u32 { let mut t = [0u32; 1024]; for i in 0..512u32 { let k = (i.wrapping_mul(2654435761) ^ x) | 1; ${RUST_HASH_PROBE} t[p] = k; } let o = (y & 255) + 128; let mut s = 0u32; for q in 0..512u32 { let k = ((q + o).wrapping_mul(2654435761) ^ x) | 1; ${RUST_HASH_PROBE} s = s.wrapping_add(if t[p] == k { p as u32 + 1024 } else { p as u32 }); } s }`,
+  },
+  {
+    name: 'utf8dec4k', // UTF-8 decoder state machine over 4096 bytes of multilingual text with injected errors
+    arity: 2,
+    iterScale: 1024,
+    a0: UTF8_A0,
+    c: `static const uint8_t u8_t[${UTF8_BYTES.length}] = {${UTF8_LIST}};\nstatic inline uint32_t hw_utf8dec4k(uint32_t x, uint32_t y) { uint8_t a[4096]; ${C_UTF8_FILL} uint32_t need = 0, cp = 0, h = 2166136261u, n = 0, err = 0; for (uint32_t i = 0; i < 4096; i++) { uint32_t b = a[i]; if (need > 0 && (b & 0xc0u) == 0x80u) { cp = (cp << 6) | (b & 0x3fu); if (--need == 0) { h = (h ^ cp) * 16777619u; n++; } } else { if (need > 0) err++; need = 0; if (b < 0x80u) { h = (h ^ b) * 16777619u; n++; } else if (b - 0xc2u < 30u) { cp = b & 0x1fu; need = 1; } else if (b - 0xe0u < 16u) { cp = b & 0x0fu; need = 2; } else if (b - 0xf0u < 5u) { cp = b & 0x07u; need = 3; } else err++; } } return h + n * 31u + err * 65599u; }`,
+    js: `const u8T = new Uint8Array([${UTF8_LIST}]);\nexport function utf8dec4k(x, y) { const a = new Uint8Array(4096); for (let i = 0; i < 4096; i++) { const h = (Math.imul(i, 2654435761) ^ y) >>> 0; a[i] = (h >>> 27) === 0 ? (h >>> 8) & 255 : u8T[((i + x) >>> 0) % ${UTF8_BYTES.length}]; } let need = 0, cp = 0, h = 2166136261, n = 0, err = 0; for (let i = 0; i < 4096; i++) { const b = a[i]; if (need > 0 && (b & 0xc0) === 0x80) { cp = ((cp << 6) | (b & 0x3f)) >>> 0; if (--need === 0) { h = Math.imul(h ^ cp, 16777619) >>> 0; n++; } } else { if (need > 0) err++; need = 0; if (b < 0x80) { h = Math.imul(h ^ b, 16777619) >>> 0; n++; } else if (b - 0xc2 >>> 0 < 30) { cp = b & 0x1f; need = 1; } else if (b - 0xe0 >>> 0 < 16) { cp = b & 0x0f; need = 2; } else if (b - 0xf0 >>> 0 < 5) { cp = b & 0x07; need = 3; } else err++; } } return (h + Math.imul(n, 31) + Math.imul(err, 65599)) >>> 0; }`,
+    rust: `static U8_T: [u8; ${UTF8_BYTES.length}] = [${UTF8_LIST}];\n#[inline] fn hw_utf8dec4k(x: u32, y: u32) -> u32 { let mut a = [0u8; 4096]; for i in 0..4096u32 { let h = i.wrapping_mul(2654435761) ^ y; a[i as usize] = if (h >> 27) == 0 { ((h >> 8) & 255) as u8 } else { U8_T[(i.wrapping_add(x) % ${UTF8_BYTES.length}) as usize] }; } let (mut need, mut cp, mut h, mut n, mut err) = (0u32, 0u32, 2166136261u32, 0u32, 0u32); for i in 0..4096 { let b = a[i] as u32; if need > 0 && (b & 0xc0) == 0x80 { cp = (cp << 6) | (b & 0x3f); need -= 1; if need == 0 { h = (h ^ cp).wrapping_mul(16777619); n += 1; } } else { if need > 0 { err += 1; } need = 0; if b < 0x80 { h = (h ^ b).wrapping_mul(16777619); n += 1; } else if b.wrapping_sub(0xc2) < 30 { cp = b & 0x1f; need = 1; } else if b.wrapping_sub(0xe0) < 16 { cp = b & 0x0f; need = 2; } else if b.wrapping_sub(0xf0) < 5 { cp = b & 0x07; need = 3; } else { err += 1; } } } h.wrapping_add(n.wrapping_mul(31)).wrapping_add(err.wrapping_mul(65599)) }`,
+  },
+  {
+    name: 'tok4k', // tokenizer over 4096 bytes: words, lines, and decimal numbers parsed and summed
+    arity: 2,
+    iterScale: 1024,
+    a0: TOK_A0,
+    c: `static const uint8_t tk_a[64] = {${TOK_LIST}};\nstatic inline uint32_t hw_tok4k(uint32_t x, uint32_t y) { uint8_t a[4096]; for (uint32_t i = 0; i < 4096; i++) { uint32_t w = i * x + y; a[i] = tk_a[((w ^ (w >> 15)) * 2654435761u) >> 26]; } uint32_t prev = 0, words = 0, lines = 0, nums = 0, val = 0, sum = 0; for (uint32_t i = 0; i < 4096; i++) { uint32_t b = a[i]; uint32_t cls = b - 97u < 26u ? 1u : b - 48u < 10u ? 2u : 0u; lines += b == 10u; words += cls == 1u && prev != 1u; if (cls == 2u) val = (prev == 2u ? val * 10u : 0u) + (b - 48u); else if (prev == 2u) { sum += val; nums++; } prev = cls; } if (prev == 2u) { sum += val; nums++; } return words * 65599u + lines * 31u + nums * 7u + sum; }`,
+    js: `const tkA = new Uint8Array([${TOK_LIST}]);\nexport function tok4k(x, y) { const a = new Uint8Array(4096); for (let i = 0; i < 4096; i++) { const w = (Math.imul(i, x) + y) >>> 0; a[i] = tkA[Math.imul(w ^ (w >>> 15), 2654435761) >>> 26]; } let prev = 0, words = 0, lines = 0, nums = 0, val = 0, sum = 0; for (let i = 0; i < 4096; i++) { const b = a[i]; const cls = (b - 97) >>> 0 < 26 ? 1 : (b - 48) >>> 0 < 10 ? 2 : 0; if (b === 10) lines++; if (cls === 1 && prev !== 1) words++; if (cls === 2) val = ((prev === 2 ? Math.imul(val, 10) : 0) + (b - 48)) >>> 0; else if (prev === 2) { sum = (sum + val) >>> 0; nums++; } prev = cls; } if (prev === 2) { sum = (sum + val) >>> 0; nums++; } return (Math.imul(words, 65599) + Math.imul(lines, 31) + Math.imul(nums, 7) + sum) >>> 0; }`,
+    rust: `static TK_A: [u8; 64] = [${TOK_LIST}];\n#[inline] fn hw_tok4k(x: u32, y: u32) -> u32 { let mut a = [0u8; 4096]; for i in 0..4096u32 { let w = i.wrapping_mul(x).wrapping_add(y); a[i as usize] = TK_A[((w ^ (w >> 15)).wrapping_mul(2654435761) >> 26) as usize]; } let (mut prev, mut words, mut lines, mut nums, mut val, mut sum) = (0u32, 0u32, 0u32, 0u32, 0u32, 0u32); for i in 0..4096 { let b = a[i] as u32; let cls = if b.wrapping_sub(97) < 26 { 1 } else if b.wrapping_sub(48) < 10 { 2 } else { 0 }; if b == 10 { lines += 1; } if cls == 1 && prev != 1 { words += 1; } if cls == 2 { val = (if prev == 2 { val.wrapping_mul(10) } else { 0 }).wrapping_add(b - 48); } else if prev == 2 { sum = sum.wrapping_add(val); nums += 1; } prev = cls; } if prev == 2 { sum = sum.wrapping_add(val); nums += 1; } words.wrapping_mul(65599).wrapping_add(lines.wrapping_mul(31)).wrapping_add(nums.wrapping_mul(7)).wrapping_add(sum) }`,
+  },
+  {
+    name: 'heap256', // binary-heap priority queue: 256 pushes (sift-up) then 256 pops (sift-down)
+    arity: 2,
+    iterScale: 1024,
+    a0: HEAP_A0,
+    c: `static inline uint32_t hw_heap256(uint32_t x, uint32_t y) { uint32_t a[256]; ${C_HASH_FILL(256)} uint32_t h[512]; for (uint32_t i = 0; i < 256; i++) { uint32_t j = i + 1; h[j] = a[i]; while (j > 1 && h[j >> 1] > h[j]) { uint32_t t = h[j >> 1]; h[j >> 1] = h[j]; h[j] = t; j >>= 1; } } uint32_t s = 2166136261u; for (uint32_t n = 256; n > 0; n--) { uint32_t top = h[1]; h[1] = h[n]; uint32_t m = n - 1, j = 1; for (;;) { uint32_t l = j * 2, c = l; if (l > m) break; if (l + 1 <= m && h[l + 1] < h[l]) c = l + 1; if (h[c] >= h[j]) break; uint32_t t = h[c]; h[c] = h[j]; h[j] = t; j = c; } s = (s ^ top) * 16777619u; } return s; }`,
+    js: `export function heap256(x, y) { const a = new Uint32Array(256); ${JS_HASH_FILL(256)} const h = new Uint32Array(512); for (let i = 0; i < 256; i++) { let j = i + 1; h[j] = a[i]; while (j > 1 && h[j >> 1] > h[j]) { const t = h[j >> 1]; h[j >> 1] = h[j]; h[j] = t; j >>= 1; } } let s = 2166136261; for (let n = 256; n > 0; n--) { const top = h[1]; h[1] = h[n]; const m = n - 1; let j = 1; for (;;) { const l = j * 2; let c = l; if (l > m) break; if (l + 1 <= m && h[l + 1] < h[l]) c = l + 1; if (h[c] >= h[j]) break; const t = h[c]; h[c] = h[j]; h[j] = t; j = c; } s = Math.imul(s ^ top, 16777619) >>> 0; } return s; }`,
+    rust: `#[inline] fn hw_heap256(x: u32, y: u32) -> u32 { let mut a = [0u32; 256]; ${RUST_HASH_FILL(256)} let mut h = [0u32; 512]; for i in 0..256 { let mut j = i + 1; h[j] = a[i]; while j > 1 && h[j >> 1] > h[j] { h.swap(j >> 1, j); j >>= 1; } } let mut s = 2166136261u32; for n in (1..=256usize).rev() { let top = h[1]; h[1] = h[n]; let m = n - 1; let mut j = 1; loop { let l = j * 2; if l > m { break; } let c = if l + 1 <= m && h[l + 1] < h[l] { l + 1 } else { l }; if h[c] >= h[j] { break; } h.swap(c, j); j = c; } s = (s ^ top).wrapping_mul(16777619); } s }`,
+  },
+  {
+    name: 'stencil64', // 64x64 grid: transpose, one 5-point torus stencil pass, xor-reduce
+    arity: 2,
+    iterScale: 1024,
+    a0: STENCIL_A0,
+    c: `static inline uint32_t hw_stencil64(uint32_t x, uint32_t y) { uint32_t a[4096], b[4096], c[4096]; ${C_HASH_FILL(4096)} for (uint32_t i = 0; i < 4096; i++) b[i] = a[((i & 63u) << 6) | (i >> 6)]; for (uint32_t i = 0; i < 4096; i++) { uint32_t rb = i & ~63u, col = i & 63u; c[i] = ((b[i] << 2) + b[(i - 64u) & 4095u] + b[(i + 64u) & 4095u] + b[rb | ((col - 1u) & 63u)] + b[rb | ((col + 1u) & 63u)]) >> 3; } uint32_t s = 0; for (uint32_t i = 0; i < 4096; i++) s ^= c[i]; return s; }`,
+    js: `export function stencil64(x, y) { const a = new Uint32Array(4096), b = new Uint32Array(4096), c = new Uint32Array(4096); ${JS_HASH_FILL(4096)} for (let i = 0; i < 4096; i++) b[i] = a[((i & 63) << 6) | (i >>> 6)]; for (let i = 0; i < 4096; i++) { const rb = i & ~63, col = i & 63; c[i] = (((b[i] << 2) >>> 0) + b[(i - 64) & 4095] + b[(i + 64) & 4095] + b[rb | ((col - 1) & 63)] + b[rb | ((col + 1) & 63)]) >>> 3; } let s = 0; for (let i = 0; i < 4096; i++) s = (s ^ c[i]) >>> 0; return s; }`,
+    rust: `#[inline] fn hw_stencil64(x: u32, y: u32) -> u32 { let mut a = [0u32; 4096]; let mut b = [0u32; 4096]; let mut c = [0u32; 4096]; ${RUST_HASH_FILL(4096)} for i in 0..4096usize { b[i] = a[((i & 63) << 6) | (i >> 6)]; } for i in 0..4096usize { let rb = i & !63; let col = i & 63; c[i] = (b[i] << 2).wrapping_add(b[(i.wrapping_sub(64)) & 4095]).wrapping_add(b[(i + 64) & 4095]).wrapping_add(b[rb | (col.wrapping_sub(1) & 63)]).wrapping_add(b[rb | ((col + 1) & 63)]) >> 3; } let mut s = 0u32; for i in 0..4096 { s ^= c[i]; } s }`,
   },
 ];
 

@@ -1543,7 +1543,57 @@ p fold wxuspg o p0 p3 d h j p1 g
 ret p
 end
 
-fn wxroot u32x128x512 u32 u32 u32 u32 u32x128x64 u32 u32 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x310 -> u32x128x512
+# is the operand (kind p6, value p7) of the function with first node p5 (nodes p8) storage no
+# other value shares until node p4 (src/wasm.ts `unsharedUntil`): a node defined by fold loop arr
+# rec text set put, or the owned parameter 0 (variant p3 1), not the ret (kind p1, value p2), and
+# used (statistics p0) only as operand 0 of a get / at, by nodes before p4
+fn wxunsh u32x128x64 u32 u32 u32 u32 u32 u32 u32 u32x128x132 -> bool
+a eq p6 1
+b eq p6 2
+c add p5 p7
+d select a c p5
+e call wxnw p8 d 1
+f eq e 20
+g eq e 21
+h eq e 22
+i eq e 23
+j eq e 24
+k eq e 26
+l eq e 28
+m or f g
+n or h i
+o or j k
+q or m n
+r or o l
+s or q r
+t and a s
+u eq p3 1
+v eq p7 0
+w and u v
+x and b w
+y or t x
+z eq p6 p1
+aa eq p7 p2
+ab and z aa
+ac select ab false true
+ad add p7 4096
+ae select b ad p7
+af call wxu64 p0 ae
+ag shr af 16
+ah and ag 3
+ai eq ah 0
+aj and af 65535
+ak le aj p4
+al and y ac
+am and al ai
+an and am ak
+ret an
+end
+# The alias root of node p1 (`#analyse`): a mov, an in-place set / put (its target fresh, the owned
+# parameter, or a get / at of storage `wxunsh` accepts), fold or loop (its state), or a rec built
+# where its only aggregate field already is (`#recContainer`: the shape table's BORR names the
+# `at` node, p13 is the function's result type, the owned parameter's type)
+fn wxroot u32x128x512 u32 u32 u32 u32 u32x128x64 u32 u32 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x310 u32 -> u32x128x512
 a add p3 p1
 b call wxnw p8 a 1
 c call wxnw p8 a 3
@@ -1577,13 +1627,28 @@ ad eq y 28
 ae or z aa
 af or ae ab
 ag or af ac
-ah or ag ad
+ah0 or ag ad
+ah1 eq y 20
+ah2 eq y 21
+ah3 or ah1 ah2
+ah or ah0 ah3
 ai and v ah
 aj eq p4 1
 ak eq u 0
 al and aj ak
 am and w al
-an or ai am
+ga0 eq y 25
+ga1 eq y 27
+ga2 or ga0 ga1
+ga3 and v ga2
+ga4 and l ga3
+ga5 call wxnw p8 x 3
+ga6 call wxok p9 ga5
+ga7 call wxov p9 ga5
+ga8 call wxunsh p5 p6 p7 p4 p1 p3 ga6 ga7 p8
+ga and ga4 ga8
+an0 or ai am
+an or an0 ga
 ao eq t p6
 ap eq u p7
 aq and ao ap
@@ -1607,7 +1672,47 @@ a8 and a7 a4
 a9 and n a8
 ba and a9 f
 bb and f g
-bc or ba bb
+rc eq b 23
+rcd shr a3 1
+rce ne rcd 0
+rca sub rcd 1
+rcg add p3 rca
+rcf call wxnw p8 rcg 3
+rcf1 add rcf 1
+rck call wxov p9 rcf1
+rcyk call wxok p9 rcf
+rcyv call wxov p9 rcf
+rcs add c rck
+rcfk call wxok p9 rcs
+rcfv call wxov p9 rcs
+rcfn eq rcfk 1
+rcrw call wxrg p0 p2 rcfv 3
+rcat eq rcfv rca
+rct add 268435456 rca
+rcrt eq rcrw rct
+rcin or rcat rcrt
+rcip and rcfn rcin
+rcu call wxunsh p5 p6 p7 p4 p1 p3 rcyk rcyv p8
+rcyn eq rcyk 1
+rcyg add p3 rcyv
+rcyt0 call wa24 p10 rcyg
+rcyt select rcyn rcyt0 p13
+rcte eq rcyt d
+rcb and a3 1
+rcbf eq rcb 0
+rc1 and rc rce
+rc2 and rc1 rcip
+rc3 and rc2 rcu
+rc4 and rc3 rcte
+rcok and rc4 rcbf
+rcyr call wxrg p0 p2 rcyv 3
+rcy0 eq rcyr 0
+rcys add 268435456 rcyv
+rcyq select rcy0 rcys rcyr
+rcyp add 536870912 rcyv
+rcroot select rcyn rcyq rcyp
+bc0 or ba bb
+bc or bc0 rcok
 bd select v u 0
 be eq p2 0
 bf mul bd 4
@@ -1627,7 +1732,8 @@ bs add 268435456 u
 bt select br bs bq
 bu add 536870912 u
 bv select v bt bu
-bw select bc bv 0
+bw0 select bc bv 0
+bw select rcok rcroot bw0
 bx call wxu64 p5 p1
 by call wxrw p2 p1 3
 bz shr by 7
@@ -2710,7 +2816,8 @@ e at d 0
 f at d 1
 g call z64
 h fold wxusn b g p6 p7 a
-i fold wxroot b p0 p2 a p4 h e f p6 p7 p8 p9 p10
+rs call wxfw p5 p3 3
+i fold wxroot b p0 p2 a p4 h e f p6 p7 p8 p9 p10 rs
 ret i
 end
 # state p0 plus one when node p1 (first node p2, nodes p3) is a fold or a loop
@@ -10218,6 +10325,45 @@ q set g m p
 r fold wxrecf c q a d k l p3 p4 p5 p6
 ret r
 end
+# field p1 of a rec built in its container's storage: a scalar field stored at its offset
+# (`wxrecf` of one trip, at operand p3 + p1 and field p5 + p1), an aggregate field (already in
+# place) only skipped (register 27 += its byte size)
+fn wxrecfa u32x128x512 u32 u32 u32 u32 u32 u32x128x512 u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+a add p5 p1
+b call wa65 p8 a
+c call wxtag p7 b
+d lt c 4
+e select d 1 0
+f add p3 p1
+g fold wxrecf e p0 p2 f p4 a p6 p7 p8 p9
+h call wxbyt p9 b
+i select d 0 1
+j fold wxad i g 27 h
+ret j
+end
+# rec (23) in its container's storage (the node aliases it, src/wasm.ts `#recContainer`): the
+# aggregate field is already there; each scalar field is stored at its offset from the node's
+# local (its alias root's)
+fn wxhrca u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+a at p2 0
+b at p2 1
+c at p2 4
+d at p2 5
+e at p2 8
+f fold wxres 1 p0 a 1 b
+g shr 17 7
+h and 17 127
+i get f g
+k get i h
+l call wxty p4 e 1
+m shr 27 7
+n and 27 127
+o get f m
+p set o n 0
+q set f m p
+r fold wxrecfa c q a d k l p3 p4 p5 p6
+ret r
+end
 # get (25): the element's value is loaded, or (an aggregate) its address computed
 fn wxhget u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 u32x128x65 -> u32x128x512
 a at p2 0
@@ -14947,7 +15093,8 @@ end
 # ---------------------------------------------------------------------------------------------
 # The node of frame p2 (index p3): `emitNode`. First the cases that bind a node without code: an
 # induction variable, the carried element, a read of scalar state in locals, a chain node's
-# words; then an aliasing set/put (one store), a fold/loop, and the ops by number.
+# words; then an aliasing set/put (one store) or rec (its scalar fields), a fold/loop, and the ops
+# by number.
 fn wxnode u32x128x512 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
 a mul p2 128
 b add a 128
@@ -15212,8 +15359,11 @@ fk select dw 1 0
 fl fold wxhwrd fk fj b1 p6
 fm select d6 1 0
 fo fold wxhali fm fl b1 p8 p9 p10
+rq_a and d5 ei
+rq_b select rq_a 1 0
+rq_c fold wxhrca rq_b fo b1 p6 p8 p9 p10
 fp select d7 1 0
-fq fold wxiter fp fo b1 p4 p5 p6 p7 p8 p9 p10 p11
+fq fold wxiter fp rq_c b1 p4 p5 p6 p7 p8 p9 p10 p11
 fr select e1 1 0
 fs fold wxhmov fr fq b1
 ft select e2 1 0

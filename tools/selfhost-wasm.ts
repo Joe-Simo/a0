@@ -1749,6 +1749,225 @@ end
 `;
 
 /**
+ * In-place updates through borrows and records (src/wasm.ts `mutableHere`, `#recContainer`): a
+ * binary-heap sift-down whose step updates the `at` borrow of its record state and rebuilds the
+ * record in that state's storage (`sdstep`, run by a `loop` in `pop`, itself a fold), folds
+ * chained on a fold result (`bump`), and the cases kept as copies: a nested row written back
+ * into its container (`rowstep`: the container is named again after the row's update), an old
+ * borrow read after the update (`keepold`), a record of two aggregate fields (`twin`: its own
+ * slot, and its first `set` copies, as the other field's borrow is read after it) and the value
+ * variant of a call (`valuevar`).
+ */
+const INPLACE_SOURCE = `fn sdok (u32x8,u32) u32 u32 -> bool
+h at p0 0
+j at p0 1
+l shl j 1
+r add l 1
+inl le l p2
+inr le r p2
+lv get h l
+rv get h r
+rl lt rv lv
+pr and inr rl
+c select pr r l
+cv get h c
+jv get h j
+g lt cv jv
+ok and inl g
+ret ok
+end
+fn sdstep (u32x8,u32) u32 u32 -> (u32x8,u32)
+h at p0 0
+j at p0 1
+l shl j 1
+r add l 1
+inr le r p2
+lv get h l
+rv get h r
+rl lt rv lv
+pr and inr rl
+c select pr r l
+cv get h c
+jv get h j
+a set h j cv
+b set a c jv
+s rec b c
+ret s
+end
+fn pop (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+acc at p0 1
+n sub 7 p1
+top get h 1
+last get h n
+a set h 1 last
+m sub n 1
+st rec a 1
+r loop sdok sdstep 3 st m
+b at r 0
+x xor acc top
+y mul x 33
+o rec b y
+ret o
+end
+fn rowstep u32x4x4 u32 u32 -> u32x4x4
+i shr p1 2
+j and p1 3
+row get p0 i
+v get row j
+w mul v p2
+x add w p1
+nrow set row j x
+g set p0 i nrow
+ret g
+end
+fn keepold (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+h2 at p0 0
+a set h 1 p1
+x get h2 1
+o rec a x
+ret o
+end
+fn twin (u32x4,u32x4,u32) u32 -> (u32x4,u32x4,u32)
+f at p0 0
+g at p0 1
+k at p0 2
+a set f 1 p1
+b set g 2 k
+o rec a b p1
+ret o
+end
+fn bump u32x8 u32 u32 -> u32x8
+v get p0 p1
+w add v p2
+n set p0 p1 w
+ret n
+end
+fn valuevar (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+a set h 2 p1
+o rec a p1
+ret o
+end
+fn inplace u32 u32 -> u32
+z arr 0 p0 p1 5 9 2 7 4
+q fold bump 8 z p1
+r fold bump 8 q p0
+c set r 3 77
+st rec c 5
+s fold pop 7 st
+k at s 1
+hz at s 0
+e get hz 2
+g arr 1 2 3 4
+gz arr g g g g
+m fold rowstep 16 gz p0
+m2 get m 2
+m3 get m2 1
+t1 rec r 9
+t2 fold keepold 3 t1
+t3 at t2 1
+w arr p0 1 2 3
+w2 arr 4 p1 6 7
+tw rec w w2 p1
+tw2 fold twin 2 tw
+tw3 at tw2 1
+tw4 get tw3 2
+vv call valuevar t1 p1
+vv1 at vv 0
+vv2 get vv1 2
+hz2 at t1 0
+vv3 get hz2 2
+o1 add k e
+o2 add o1 m3
+o3 add o2 t3
+o4 add o3 tw4
+o5 add o4 vv2
+o6 add o5 vv3
+ret o6
+end
+`;
+
+/**
+ * Reads that a lazy select arm emits after an in-place update (src/wasm.ts `liveAfter`): an
+ * element read before a `set` of a literal array (`lzr`) and of a fold result (`lzf`), and a read
+ * of the `at` borrow of the owned record state before a `set` through it (`lzb`), each used only
+ * by the costly arm of a later select. The updates stay copies.
+ */
+const LAZY_READ_SOURCE = `fn fl u32x8 u32 u32 -> u32x8
+a mul p1 p2
+b xor a p1
+n set p0 p1 b
+ret n
+end
+fn lzr u32 u32 -> u32
+a arr p0 p1 3 4 5 6 7 8
+v get a 2
+w0 mul v 7
+w1 div w0 3
+w2 rem w1 5
+w3 mul w2 w1
+w4 div w3 p1
+b set a 2 99
+c lt p0 p1
+s select c w4 p0
+x get b 2
+r add s x
+ret r
+end
+fn lzf u32 u32 -> u32
+z arr 0 0 0 0 0 0 0 0
+a fold fl 8 z p0
+v get a p1
+w0 mul v 7
+w1 div w0 3
+w2 rem w1 5
+w3 mul w2 w1
+w4 div w3 p1
+b set a p1 99
+c lt p0 p1
+s select c w4 p0
+x get b 2
+r add s x
+ret r
+end
+fn lzb (u32x8,u32) u32 -> (u32x8,u32)
+h at p0 0
+k at p0 1
+v get h p1
+w0 mul v 7
+w1 div w0 3
+w2 rem w1 5
+w3 mul w2 w1
+w4 div w3 k
+a set h p1 k
+c lt p1 k
+s select c w4 p1
+o rec a s
+ret o
+end
+fn lzd u32 u32 -> u32
+z arr p0 p1 3 4 5 6 7 8
+st rec z p1
+r fold lzb 5 st
+q at r 0
+q1 get q 3
+q2 at r 1
+o add q1 q2
+ret o
+end
+fn lazy u32 u32 -> u32
+a call lzr p0 p1
+b call lzf p1 p0
+c call lzd p0 p1
+d add a b
+e add d c
+ret e
+end
+`;
+
+/**
  * A fill fused into an in-place prefix fold (the exec-bench prefix1k shape): an induction
  * variable stepping by a parameter, the carried previous element guarded on the first trip, and
  * the dead index arithmetic of the carried read; `pfx2` reads the carried element twice (no guard).
@@ -2162,6 +2381,12 @@ async function main(): Promise<void> {
   const isort256 = KERNELS.find((k) => k.name === 'isort256');
   if (isort256 === undefined) throw new Error('exec-bench kernel isort256 is missing');
   programs.push(['bench/isort256', parseAndValidate(isort256.a0), small]);
+  // set/put through borrows and records built in their container, and the exec-bench kernel heap256
+  programs.push(['inplace', parseAndValidate(INPLACE_SOURCE), small]);
+  programs.push(['lazyread', parseAndValidate(LAZY_READ_SOURCE), small]);
+  const heap256 = KERNELS.find((k) => k.name === 'heap256');
+  if (heap256 === undefined) throw new Error('exec-bench kernel heap256 is missing');
+  programs.push(['bench/heap256', parseAndValidate(heap256.a0), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,

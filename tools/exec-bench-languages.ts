@@ -39,6 +39,11 @@ export const KERNEL_NAMES = [
   'crc4k',
   'bsearch1k',
   'rle4k',
+  'hash1k',
+  'utf8dec4k',
+  'tok4k',
+  'heap256',
+  'stencil64',
 ] as const;
 export type KernelName = (typeof KERNEL_NAMES)[number];
 
