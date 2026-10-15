@@ -8146,7 +8146,8 @@ end
 # The second half of `#iteration`, run when the loop has trips left after a vector fill: the
 # body probe (it is inlined when small and frameless, with its scalar state in locals when
 # `scalarState` allows), the induction variables, the carried previous element, and the phases
-# (`counted`, with `unroll` copies per back edge when the option asks); the loop's first
+# (`counted`, with `unroll` copies per back edge when the option asks, 4 for a literal count
+# with a carried element); the loop's first
 # phase follows as an item
 fn wxiter2 u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 -> u32x128x512
 a at p2 0
@@ -8386,8 +8387,10 @@ ed get ec eb
 ee le bg 12
 ef and bo ci
 eg and ef ee
-eh select eg ed 1
 ei ne z 0
+un1 and dp ei
+un2 select un1 4 ed
+eh select eg un2 1
 ej sub ag an
 ek lt ej eh
 el eq eh 1

@@ -1418,6 +1418,39 @@ end
 `;
 
 /**
+ * Carried-element folds unrolled by 4 (src/wasm.ts `CARRY_UNROLL`): a literal count with a
+ * remainder (7: one 4-copy phase, then 3 single trips), a count below 4 (no unrolling), a count
+ * that is a multiple of 4, and a variable count (the option decides).
+ */
+const CARRY_UNROLL_SOURCE = `fn pfx u32x16 u32 -> u32x16
+c eq p1 0
+j sub p1 1
+t get p0 j
+u select c 1 t
+s get p0 p1
+v add u s
+n set p0 p1 v
+ret n
+end
+fn main u32 u32 -> u32
+z arr ${Array.from({ length: 16 }, (_, i) => (i % 2 === 0 ? 'p0' : 'p1')).join(' ')}
+a fold pfx 7 z
+b fold pfx 3 a
+c fold pfx 16 b
+k and p1 15
+d fold pfx k c
+e get a 6
+f get b 2
+g get c 15
+h get d 9
+r add e f
+r2 add r g
+r3 xor r2 h
+ret r3
+end
+`;
+
+/**
  * A fill fused into an in-place prefix fold (the exec-bench prefix1k shape): an induction
  * variable stepping by a parameter, the carried previous element guarded on the first trip, and
  * the dead index arithmetic of the carried read; `pfx2` reads the carried element twice (no guard).
@@ -1607,6 +1640,8 @@ async function main(): Promise<void> {
   programs.push(['bench/prefix1k', parseAndValidate(prefix1k.a0), small]);
   programs.push(['recseed', parseAndValidate(REC_SEED_SOURCE), small]);
   programs.push(['prefix', parseAndValidate(PREFIX_SOURCE), small]);
+  // carried-element folds unrolled by 4 (src/wasm.ts `CARRY_UNROLL`)
+  programs.push(['carryunroll', parseAndValidate(CARRY_UNROLL_SOURCE), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,

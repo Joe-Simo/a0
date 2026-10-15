@@ -991,6 +991,8 @@ const INLINE_FRAME_NODES = 16;
 const INLINE_DEPTH = 3;
 /** Inlined fold bodies up to this many nodes are unrolled when `WasmEmitOptions.unroll` > 1. */
 const UNROLL_BODY_NODES = 12;
+/** Copies per back edge of a literal-count loop that carries the previous element. */
+const CARRY_UNROLL = 4;
 
 /** Per-function code generation choices (part of the emission cache key when not default). */
 export interface WasmEmitOptions {
@@ -2171,10 +2173,15 @@ class FunctionEmitter {
       if (exit) c.op(OP.end);
     };
     // Unrolling: a small inlined fold body runs UNROLL copies per back edge, then a remainder
-    // loop finishes the last count mod UNROLL trips.
+    // loop finishes the last count mod UNROLL trips. A literal-count loop with a carried
+    // previous element is unrolled by CARRY_UNROLL whatever the option: each trip's add waits
+    // on the last one, so the counter, compare and address work of every trip sits on top of a
+    // serial chain that V8 does not unroll away.
     const unroll =
       node.op === 'fold' && inlineBody && body.nodes.length <= UNROLL_BODY_NODES
-        ? this.options.unroll
+        ? carry !== undefined && lit !== undefined
+          ? CARRY_UNROLL
+          : this.options.unroll
         : 1;
     const pushCount = (): void => this.push(count);
     if (unroll === 1 || (lit !== undefined && lit - start < unroll)) {
