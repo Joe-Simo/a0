@@ -53,6 +53,7 @@ import {
   A0Error,
   formatProgram,
   formatTextLiteral,
+  type Operand,
   type Program,
   parse,
   parseAndValidate,
@@ -2960,23 +2961,24 @@ const REGION_CAPS = [2112, 448, 64, 64, 64, 64, 64, 64];
  */
 function readerUse(dense: string): { frames: number; regions: number[] } {
   const proto = FunctionParser.prototype as unknown as {
-    expr: () => unknown;
+    expression: () => Generator<undefined, Operand, Operand>;
     toks: { text: string; kind: string }[];
     pos: number;
     nodes: { op: string; args: unknown[]; text?: string }[];
   };
-  const orig = proto.expr;
+  const orig = proto.expression;
   const regions: number[] = Array.from({ length: 64 }, () => 0);
   const depths = new WeakMap<object, number>();
   let frames = 0;
-  proto.expr = function (this: typeof proto) {
+  // Observe expression generators across suspension, including child frames on the heap.
+  proto.expression = function* (this: typeof proto) {
     const t = this.toks[this.pos];
     const before = this.nodes.length;
     const open = t !== undefined && (t.text === '(' || t.text === '[');
     const frame = depths.get(this) ?? 0;
     depths.set(this, frame + 1);
     try {
-      return orig.call(this);
+      return yield* orig.call(this);
     } finally {
       depths.set(this, frame);
       const last = this.nodes[this.nodes.length - 1];
@@ -2997,7 +2999,7 @@ function readerUse(dense: string): { frames: number; regions: number[] } {
   } catch (e) {
     if (!(e instanceof A0Error)) throw e;
   } finally {
-    proto.expr = orig;
+    proto.expression = orig;
   }
   return { frames, regions };
 }
