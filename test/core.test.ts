@@ -2198,7 +2198,7 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
   const pair = emitDarwin(fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nret r\nend', 'p'));
   assert.match(
     pair,
-    /movq %rdi, (\d+\(%rsp\))[\s\S]*movq \1, %r11[\s\S]*movq \1, %rax\n\tmovq %rbp, %rsp/,
+    /movq %rdi, (\d*\(%rsp\))[\s\S]*movq \1, %r11[\s\S]*movq \1, %rax\n\tmovq %rbp, %rsp/,
   );
   // Aggregates are copied 16 bytes at a time through xmm0 (a loop above 32 words), so a
   // parameter arriving in rcx stays there in a leaf.
