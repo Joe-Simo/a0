@@ -39,13 +39,14 @@ test('behavior: the skip ledger names real targets, programs and functions, each
   const ioRows = (BEHAVIOR_TABLE.io ?? []).length;
   // The strict and checked-op programs run on the interpreter, the optimizer, js, the C paths,
   // Java, .NET, both wasm paths and the direct arm64, x86_64, riscv64, arm32 and avr backends
-  // (minus the programs that read input, which they cannot run).
+  // (minus, but on x86_64, the io program, which they cannot run).
   const strictRows = BEHAVIOR_SPEC.filter((p) => p.profile === 'strict' || p.checkedOps === true)
     .map((p) => (BEHAVIOR_TABLE[p.name] ?? []).length)
     .reduce((n, r) => n + r, 0);
   assert.ok(strictRows > 0);
-  for (const id of ['arm64', 'x86_64', 'riscv64', 'arm32', 'avr'])
+  for (const id of ['arm64', 'riscv64', 'arm32', 'avr'])
     assert.equal(select(id).cases.length, total - ioRows, id);
+  assert.equal(select('x86_64').cases.length, total);
   assert.equal(select('c-clang').cases.length, total);
   for (const id of ['java', 'dotnet', 'wasm-c', 'wasm-direct'])
     assert.equal(select(id).cases.length, total, id);

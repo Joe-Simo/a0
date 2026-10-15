@@ -2196,7 +2196,10 @@ export function assemble(
     case 'arm64':
       return assembleArm64(bodies, COMPILER_VERSION, trapModuleOf(program));
     case 'x86_64':
-      return assembleX86_64(bodies, COMPILER_VERSION, options.x86Platform, trapModuleOf(program));
+      return assembleX86_64(bodies, COMPILER_VERSION, options.x86Platform, trapModuleOf(program), {
+        input: options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
+        output: options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
+      });
     case 'riscv64':
       return assembleRiscv64(bodies, COMPILER_VERSION);
     case 'avr':
@@ -2273,7 +2276,7 @@ export interface CompileOptions {
   /** x86_64 target only: the symbol and section conventions (default: the host's). */
   readonly x86Platform?: X86Platform;
   readonly optimize?: boolean;
-  /** C/wasm/Java/C# io capacities in words (defaults C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY); prelude only, bodies are unaffected. */
+  /** C/wasm/x86_64/Java/C# io capacities in words (defaults C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY); prelude only, bodies are unaffected. */
   readonly ioInputCapacity?: number;
   readonly ioOutputCapacity?: number;
   /** C target only: automatic parallel folds (src/parallel.ts `parallelC`); absent = sequential. */

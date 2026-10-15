@@ -9,6 +9,7 @@ import { makeIo, parseAndValidate, run, type TypedFunc, validate } from '../src/
 import { link } from '../src/link.js';
 import { findClang, runTool } from '../src/toolchain.js';
 import { assembleX86_64Text, MNEMONICS, type X86Module } from '../src/x86_64enc.js';
+import { BEHAVIOR_SPEC } from '../tools/behavior-spec.js';
 import { generateCorpus, ioFreeSubset } from '../tools/corpus.js';
 
 // The x86-64 encoder: src/x86_64enc.ts (the reference) against clang's assembler, instruction by
@@ -163,22 +164,27 @@ function mnemonics(text: string): Set<string> {
 
 /**
  * Every x86-64 text the repository produces for the corpus and the examples: src/x86_64.ts on
- * what it accepts (the scalar corpus, the io-free subsets of the corpus and of examples/life.a0,
- * examples/kernels.a0, and the io-free corpus under the strict profile, which adds the trap
- * runtime of src/native-trap.ts), for Linux and macOS, optimized and not.
+ * the scalar corpus, the io-free subset of the corpus (the whole corpus is over the A0 encoder's
+ * capacities), examples/life.a0 and the behavior table's io programs (io helpers), examples/kernels.a0,
+ * and the io-free corpus and the strict io program under the strict profile (the trap runtime of
+ * src/native-trap.ts, the latter with the `input` kind), for Linux and macOS, optimized and not.
  */
 async function repositoryTexts(): Promise<[string, string][]> {
   const kernels = parseAndValidate(await readFile('examples/kernels.a0', 'utf8'));
-  const life = ioFreeSubset(parseAndValidate(await readFile('examples/life.a0', 'utf8')));
+  const life = parseAndValidate(await readFile('examples/life.a0', 'utf8'));
   const scalar = generateCorpus(undefined, undefined, { scalar: true });
   const corpus = ioFreeSubset(generateCorpus());
+  const io = (name: string): ReturnType<typeof parseAndValidate> =>
+    parseAndValidate(BEHAVIOR_SPEC.find((s) => s.name === name)?.source ?? '');
   const strict = validate({ profile: 'strict', functions: corpus.functions });
   const programs: [string, ReturnType<typeof parseAndValidate>][] = [
     ['examples/kernels.a0', kernels],
-    ['examples/life.a0, io-free subset', life],
+    ['examples/life.a0', life],
     ['scalar corpus', scalar],
     ['corpus, io-free subset', corpus],
     ['corpus, io-free subset, strict', strict],
+    ['behavior io', io('io')],
+    ['behavior strict_io', io('strict_io')],
   ];
   const texts: [string, string][] = [];
   for (const [name, p] of programs)
@@ -820,7 +826,7 @@ test("x86_64enc.ts: every Linux text of the repository is clang's module, byte f
     } else assert.equal(mine.bssSize, 0);
     checked += 1;
   }
-  assert.equal(checked, 10);
+  assert.equal(checked, 14);
 });
 
 // --- the A0 encoder against the reference ---------------------------------------------------
@@ -840,7 +846,7 @@ test('asm_x86_64.a0: the same bytes, labels, relocations and bss as src/x86_64en
     for (const mn of mnemonics(text)) seen.add(mn);
   }
   assert.equal(matched, texts.length);
-  assert.equal(texts.length, 20);
+  assert.equal(texts.length, 28);
   // the instructions these texts exercise (the forms test covers every mnemonic)
   assert.ok(seen.size >= 50, `${seen.size}: ${[...seen].join(' ')}; ${bytes} bytes`);
 });

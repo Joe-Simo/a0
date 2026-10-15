@@ -5,11 +5,22 @@
  *
  * Scope: the same as the AArch64 backend (src/arm64.ts). Functions over u32 and bool,
  * fixed-size arrays and records of them (value semantics), every scalar op with A0's exact
- * meaning, `call`, `fold`, and `loop` as real loops with literal or variable trip counts.
- * io functions are refused (the C path covers them).
+ * meaning, `call`, `fold`, and `loop` as real loops with literal or variable trip counts,
+ * and io (`read`, `write`, `puts`).
  *
  * Representation: every value is a sequence of 32-bit words. u32 is one word, bool is one
  * word holding 0 or 1, an array is its elements back to back, a record its fields in order.
+ * An io token is two words: the address of the caller's io struct, laid out as the C
+ * runtime's (src/backends.ts `cIoRuntime`): `{ u32 input[IN]; u32 ninput; u32 position;
+ * u32 output[OUT]; u32 noutput; }`. A token lives in a stack slot like an aggregate (never in a
+ * register home) but crosses calls by value, as the C ABI passes `a0_io *`: a pointer in the
+ * next argument register or eightbyte, and a token result in rax. `read`, `write` and `puts`
+ * call small module-local helpers that `assembleX86_64` emits once per module with IN and OUT
+ * (so function bodies do not depend on the capacities and the emission cache stays keyed as
+ * before): the token in r11 (kept), the value or length in eax, the element address in r10;
+ * they clobber only rax and r10, so a leaf stays a leaf. Exhausted input reads 0; under the
+ * strict profile it traps `input` through the shared trap runtime. A full output buffer drops
+ * the word, as the C runtime does.
  *
  * Code shape (the AArch64 backend's second version, on x86-64):
  * - Small callees (at most INLINE_MAX_NODES nodes, nested to INLINE_MAX_DEPTH) are inlined
@@ -63,7 +74,6 @@
 import {
   A0Error,
   borrowLive,
-  containsIo,
   isPrimitive,
   type Node,
   type Op,
@@ -97,17 +107,20 @@ export const HOST_X86_PLATFORM: X86Platform = process.platform === 'linux' ? 'li
 function refuse(message: string): never {
   throw new A0Error(`x86_64: ${message}`, undefined, {
     code: 'structure',
-    fix: 'compile io functions with the c target; the x86_64 backend covers io-free functions',
+    fix: 'compile this function with the c target',
   });
 }
 
 /** Size of a value in 32-bit words. */
 function words(t: Type): number {
   if (t === 'u32' || t === 'bool') return 1;
-  if (t === 'io') return refuse('io values are not supported by this backend');
+  if (t === 'io') return 2;
   if (t.kind === 'arr') return t.length * words(t.elem);
   return t.fields.reduce((n, f) => n + words(f), 0);
 }
+
+/** A value held in a 32-bit register home: u32 and bool (an io token is a 64-bit address in a slot). */
+const isScalar = (t: Type): t is 'u32' | 'bool' => t === 'u32' || t === 'bool';
 
 const align = (n: number, a: number): number => Math.ceil(n / a) * a;
 
@@ -568,7 +581,7 @@ class FunctionEmitter {
   #def(key: string, type: Type): void {
     if (!this.#dry) return;
     this.#defs.set(key, { pos: this.#pos, type });
-    if (!isPrimitive(type)) this.#alloc(key, 4 * words(type));
+    if (!isScalar(type)) this.#alloc(key, 4 * words(type));
   }
 
   #defAlias(key: string, target: string, type: Type, offset = 0): void {
@@ -722,7 +735,7 @@ class FunctionEmitter {
       this.#emit(`movl ${imm(v.value)}, ${this.#m(base, off)}`);
       return;
     }
-    if (isPrimitive(v.type)) {
+    if (isScalar(v.type)) {
       this.#emit(`movl ${this.#read(v, '%eax')}, ${this.#m(base, off)}`);
       return;
     }
@@ -805,18 +818,25 @@ class FunctionEmitter {
       const place = places[k] as ArgPlace;
       if (place.reg !== undefined) {
         const r = ARG_REGS[place.reg] as string;
-        if (a.kind === 'lit' || isPrimitive(a.type)) this.#into(r, a);
-        else this.#emit(`leaq ${this.#m('%rsp', this.#slot(a.key))}, ${q(r)}`);
+        if (a.kind === 'lit' || isScalar(a.type)) this.#into(r, a);
+        else
+          this.#emit(
+            `${a.type === 'io' ? 'movq' : 'leaq'} ${this.#m('%rsp', this.#slot(a.key))}, ${q(r)}`,
+          );
         return;
       }
       const at = this.#m('%rsp', place.stack as number);
-      if (a.kind === 'lit' || isPrimitive(a.type)) this.#into('%eax', a);
-      else this.#emit(`leaq ${this.#m('%rsp', this.#slot(a.key))}, %rax`);
+      if (a.kind === 'lit' || isScalar(a.type)) this.#into('%eax', a);
+      else
+        this.#emit(
+          `${a.type === 'io' ? 'movq' : 'leaq'} ${this.#m('%rsp', this.#slot(a.key))}, %rax`,
+        );
       this.#emit(`movq %rax, ${at}`);
     });
     if (sret) this.#emit(`leaq ${this.#m('%rsp', this.#slot(dst))}, %rdi`);
     this.#emit(`call ${this.#sym(name)}`);
-    if (!sret) this.#set(dst, (d) => this.#mov('%eax', d));
+    if (callee.result === 'io') this.#emit(`movq %rax, ${this.#m('%rsp', this.#slot(dst))}`);
+    else if (!sret) this.#set(dst, (d) => this.#mov('%eax', d));
   }
 
   #inline(
@@ -840,7 +860,7 @@ class FunctionEmitter {
     this.#pos += 1;
     const ret = this.#resolve(sub, callee.ret);
     this.#use(ret);
-    if (isPrimitive(type)) {
+    if (isScalar(type)) {
       const r = callee.ret;
       const at = r.kind === 'node' ? callee.nodes.findIndex((m) => m.id === r.id) : -1;
       const plan = planFor(callee);
@@ -987,7 +1007,7 @@ class FunctionEmitter {
     switch (n.op) {
       case 'mov': {
         const v = a as Val;
-        if (v.kind === 'key' && !isPrimitive(v.type)) this.#defAlias(key, v.key, t);
+        if (v.kind === 'key' && !isScalar(v.type)) this.#defAlias(key, v.key, t);
         else {
           bound(this.#bound(v));
           scalar((d) => this.#into(d, v));
@@ -1083,7 +1103,7 @@ class FunctionEmitter {
           this.#emit(`testl ${rc}, ${rc}`);
           return 'ne';
         };
-        if (isPrimitive(t)) {
+        if (isScalar(t)) {
           // cmov takes a register or memory source; literals are materialized before the
           // flags are set (a later movl leaves the flags alone).
           const rb = b?.kind === 'lit' ? this.#operand(b, '%r11d') : this.#operand(b as Val, '');
@@ -1138,7 +1158,7 @@ class FunctionEmitter {
         if (checked) this.#checkBounds(b as Val, at.length);
         if (b?.kind === 'lit') {
           const off = base + (b.value % at.length) * ew * 4;
-          if (isPrimitive(t)) scalar((d) => this.#emit(`movl ${this.#m('%rsp', off)}, ${d}`));
+          if (isScalar(t)) scalar((d) => this.#emit(`movl ${this.#m('%rsp', off)}, ${d}`));
           else {
             // A borrowed read of a literal element: named in place, not copied.
             this.#defAlias(key, src.key, t, (b.value % at.length) * ew * 4);
@@ -1146,7 +1166,7 @@ class FunctionEmitter {
           return;
         }
         const scale = this.#scaledIndex(b as Val, at.length, ew * 4, checked);
-        if (isPrimitive(t)) scalar((d) => this.#emit(`movl ${base}(%rsp,${scale}), ${d}`));
+        if (isScalar(t)) scalar((d) => this.#emit(`movl ${base}(%rsp,${scale}), ${d}`));
         else {
           this.#def(key, t);
           this.#emit(`leaq ${base}(%rsp,${scale}), %r11`);
@@ -1175,7 +1195,7 @@ class FunctionEmitter {
         }
         const scale = this.#scaledIndex(b as Val, at.length, ew * 4, checked);
         const v = c as Val;
-        if (v.kind === 'lit' || isPrimitive(v.type)) {
+        if (v.kind === 'lit' || isScalar(v.type)) {
           const src = v.kind === 'lit' ? imm(v.value) : this.#read(v, '%eax');
           this.#emit(`movl ${src}, ${dst}(%rsp,${scale})`);
           return;
@@ -1194,7 +1214,7 @@ class FunctionEmitter {
         const off = 4 * rt.fields.slice(0, b.value).reduce((s, f) => s + words(f), 0);
         if (n.op === 'at') {
           const from = this.#slot(src.key) + off;
-          if (isPrimitive(t)) scalar((d) => this.#emit(`movl ${this.#m('%rsp', from)}, ${d}`));
+          if (isScalar(t)) scalar((d) => this.#emit(`movl ${this.#m('%rsp', from)}, ${d}`));
           else {
             // A borrowed read: the field is named in place, not copied.
             this.#defAlias(key, src.key, t, off);
@@ -1261,7 +1281,7 @@ class FunctionEmitter {
           this.#use(state);
           return;
         }
-        if (isPrimitive(t)) scalar((d) => this.#into(d, init));
+        if (isScalar(t)) scalar((d) => this.#into(d, init));
         else if (
           init.kind === 'key' &&
           mutableHere(env.fn, n.args[1] as Operand, index, 1, env.ownedP0)
@@ -1347,9 +1367,40 @@ class FunctionEmitter {
       case 'read':
       case 'write':
       case 'puts':
-        refuse(`${n.op} is an io operation`);
+        this.#io(env, n, key, t, vals);
         return;
     }
+  }
+
+  /**
+   * `read`, `write` and `puts` through the module's io helpers (see the file comment): the
+   * token's address goes in r11 and comes back unchanged, so the result token is that address.
+   */
+  #io(env: Env, n: Node, key: string, t: Type, vals: readonly Val[]): void {
+    const [a, b] = vals as [Val, Val | undefined];
+    if (a.kind !== 'key' || a.type !== 'io') refuse(`${n.op} needs an io token`);
+    this.#def(key, t);
+    if (n.op === 'read') {
+      const helper = siteOf(env.fn, n) === 'input' ? 'sread' : 'read';
+      this.#emit(`movq ${this.#m('%rsp', this.#slot(a.key))}, %r11`);
+      this.#emit(`call ${ioHelper(this.platform, helper)}`);
+      const at = this.#slot(key);
+      this.#emit(`movl %eax, ${this.#m('%rsp', at)}`, `movq %r11, ${this.#m('%rsp', at + 4)}`);
+      return;
+    }
+    if (n.op === 'write') {
+      this.#into('%eax', b as Val);
+      this.#emit(`movq ${this.#m('%rsp', this.#slot(a.key))}, %r11`);
+      this.#emit(`call ${ioHelper(this.platform, 'write')}`);
+    } else {
+      const arr = b?.kind === 'key' ? b : refuse('puts needs an array');
+      if (isPrimitive(arr.type) || arr.type.kind !== 'arr') refuse('puts needs an array');
+      this.#emit(`leaq ${this.#m('%rsp', this.#slot(arr.key))}, %r10`);
+      this.#emit(`movl ${imm(arr.type.length)}, %eax`);
+      this.#emit(`movq ${this.#m('%rsp', this.#slot(a.key))}, %r11`);
+      this.#emit(`call ${ioHelper(this.platform, 'puts')}`);
+    }
+    this.#emit(`movq %r11, ${this.#m('%rsp', this.#slot(key))}`);
   }
 
   /** `value` in eax and `ok` in r11d are stored as the two words of the record `key`. */
@@ -1575,7 +1626,7 @@ class FunctionEmitter {
     ];
     const pool = this.#leaf ? [...leafHomes, ...CALLEE_SAVED] : CALLEE_SAVED;
     const keys = [...this.#defs.entries()]
-      .filter(([k, d]) => isPrimitive(d.type) && !this.#alias.has(k))
+      .filter(([k, d]) => isScalar(d.type) && !this.#alias.has(k))
       .sort((x, y) => x[1].pos - y[1].pos);
     const busy = new Map<string, number>();
     for (const [key, d] of keys) {
@@ -1647,12 +1698,6 @@ class FunctionEmitter {
 
   emit(): string {
     const fn = this.fn;
-    if (
-      containsIo(fn.result) ||
-      fn.params.some(containsIo) ||
-      [...fn.types.values()].some(containsIo)
-    )
-      refuse(`function ${fn.name} uses io; io functions are out of scope for this backend`);
     const env: Env = {
       fn,
       prefix: '',
@@ -1674,7 +1719,7 @@ class FunctionEmitter {
     // between that node and the return; a loop keeps eax as scratch, so it is excluded).
     const last = fn.nodes.at(-1);
     const retKey =
-      !sret &&
+      isScalar(fn.result) &&
       last !== undefined &&
       fn.ret.kind === 'node' &&
       fn.ret.id === last.id &&
@@ -1685,7 +1730,7 @@ class FunctionEmitter {
         : undefined;
     this.#allocate(places, retKey);
     for (const [k, d] of this.#defs)
-      if (isPrimitive(d.type) && !this.#regs.has(k) && !this.#alias.has(k)) this.#alloc(k, 4);
+      if (isScalar(d.type) && !this.#regs.has(k) && !this.#alias.has(k)) this.#alloc(k, 4);
     if (this.#saved.length > 0) this.#alloc('save', 8 * this.#saved.length, 8);
     if (sret) this.#alloc('sret', 8, 8);
     this.#outgoing = align(this.#outgoing, 16);
@@ -1720,7 +1765,18 @@ class FunctionEmitter {
     // argument registers survive), then scalars move to their homes.
     fn.params.forEach((t, i) => {
       const place = places[i] as ArgPlace;
-      if (isPrimitive(t)) return;
+      if (isScalar(t)) return;
+      if (t === 'io') {
+        // A token arrives as the address itself.
+        let src: string;
+        if (place.reg !== undefined) src = q(ARG_REGS[place.reg] as string);
+        else {
+          this.#emit(`movq ${this.#m('%rsp', incoming(i))}, %r11`);
+          src = '%r11';
+        }
+        this.#emit(`movq ${src}, ${this.#m('%rsp', this.#slot(`p${i}`))}`);
+        return;
+      }
       let base: string;
       if (place.reg !== undefined) base = q(ARG_REGS[place.reg] as string);
       else {
@@ -1733,7 +1789,7 @@ class FunctionEmitter {
     fn.params.forEach((t, i) => {
       const place = places[i] as ArgPlace;
       // A scalar nobody reads is left where it arrived: moving it could clobber a live one.
-      if (!isPrimitive(t) || !this.#last.has(`p${i}`)) return;
+      if (!isScalar(t) || !this.#last.has(`p${i}`)) return;
       const home = this.#home(`p${i}`);
       if (place.reg === undefined) {
         // Stack scalars: one eightbyte each; bools carry their value in the low byte.
@@ -1754,7 +1810,10 @@ class FunctionEmitter {
     this.#parallelMove(moves);
     this.#body(env);
     this.#pos += 1;
-    if (!sret) this.#into('%eax', ret);
+    if (fn.result === 'io') {
+      if (ret.kind !== 'key') refuse('an io result must be a token');
+      this.#emit(`movq ${this.#m('%rsp', this.#slot(ret.key))}, %rax`);
+    } else if (!sret) this.#into('%eax', ret);
     else {
       this.#emit(`movq ${this.#m('%rsp', this.#slot('sret'))}, %r11`);
       this.#place(ret, '%r11', 0);
@@ -1772,6 +1831,93 @@ class FunctionEmitter {
   }
 }
 
+type IoHelper = 'read' | 'sread' | 'write' | 'puts';
+const IO_HELPERS: readonly IoHelper[] = ['read', 'sread', 'write', 'puts'];
+
+/** The module-local label of an io helper (a local label: no A0 function can take its name). */
+function ioHelper(platform: X86Platform, which: IoHelper): string {
+  return `${platform === 'darwin' ? 'L' : '.L'}a0io_${which}`;
+}
+
+/**
+ * The io helpers `bodies` call, for io structs of `io.input` input and `io.output` output words (the
+ * C runtime's semantics, src/backends.ts `cIoRuntime`). Calling convention: token address in
+ * r11 (preserved), value or length in eax (read returns the word in eax), element address in
+ * r10 (puts); only rax, r10 and the flags change. `sread` (strict) traps `input` instead of
+ * reading 0 past the input.
+ */
+function ioRuntime(
+  bodies: readonly string[],
+  platform: X86Platform,
+  io: { readonly input: number; readonly output: number } | undefined,
+): string {
+  const text = bodies.join('\n');
+  const used = new Set(IO_HELPERS.filter((h) => text.includes(ioHelper(platform, h))));
+  if (used.size === 0) return '';
+  if (io === undefined) refuse('a module that uses io needs its io capacities');
+  const inCap = io.input;
+  const outCap = io.output;
+  if (used.has('puts')) used.add('write');
+  const nin = 4 * inCap;
+  const pos = nin + 4;
+  const out = pos + 4;
+  const nout = out + 4 * outCap;
+  const trap = platform === 'darwin' ? '_a0_trap' : 'a0_trap';
+  const lines: string[] = [];
+  for (const h of ['read', 'sread'] as const) {
+    if (!used.has(h)) continue;
+    lines.push(
+      '\t.p2align 4',
+      `${ioHelper(platform, h)}:`,
+      `\tmovl ${pos}(%r11), %eax`,
+      `\tcmpl ${nin}(%r11), %eax`,
+      '\tjae 1f',
+      `\tcmpl $${inCap}, %eax`,
+      '\tjae 1f',
+      '\tleal 1(%rax), %r10d',
+      `\tmovl %r10d, ${pos}(%r11)`,
+      '\tmovl (%r11,%rax,4), %eax',
+      '\tret',
+      ...(h === 'read'
+        ? ['1:\txorl %eax, %eax', '\tret']
+        : [`1:\tmovl $${trapIndex('input')}, %eax`, `\tjmp ${trap}`]),
+    );
+  }
+  if (used.has('write'))
+    lines.push(
+      '\t.p2align 4',
+      `${ioHelper(platform, 'write')}:`,
+      `\tmovl ${nout}(%r11), %r10d`,
+      `\tcmpl $${outCap}, %r10d`,
+      '\tjae 1f',
+      `\tmovl %eax, ${out}(%r11,%r10,4)`,
+      '\tincl %r10d',
+      `\tmovl %r10d, ${nout}(%r11)`,
+      '1:\tret',
+    );
+  if (used.has('puts'))
+    lines.push(
+      '\t.p2align 4',
+      `${ioHelper(platform, 'puts')}:`,
+      '\tpushq %rcx',
+      '\tpushq %rdx',
+      '\tmovq %r10, %rdx',
+      '\tmovl %eax, %ecx',
+      `\tcall ${ioHelper(platform, 'write')}`,
+      '\ttestl %ecx, %ecx',
+      '\tje 2f',
+      '1:\tmovl (%rdx), %eax',
+      `\tcall ${ioHelper(platform, 'write')}`,
+      '\taddq $4, %rdx',
+      '\tdecl %ecx',
+      '\tjne 1b',
+      '2:\tpopq %rdx',
+      '\tpopq %rcx',
+      '\tret',
+    );
+  return lines.join('\n');
+}
+
 /** Emit one function as x86-64 assembly (a `.globl a0_<name>` block, `_a0_` on macOS). */
 export function emitX86_64Function(
   fn: TypedFunc,
@@ -1786,11 +1932,15 @@ export function assembleX86_64(
   compilerVersion: string,
   platform: X86Platform = HOST_X86_PLATFORM,
   trap?: TrapModule,
+  /** io struct capacities in words (src/backends.ts C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY). */
+  io?: { readonly input: number; readonly output: number },
 ): string {
   const head =
     platform === 'darwin' ? '\t.section __TEXT,__text,regular,pure_instructions' : '\t.text';
   const tail =
     platform === 'darwin' ? '.subsections_via_symbols' : '\t.section .note.GNU-stack,"",@progbits';
   const runtime = trap === undefined ? '' : `${x86TrapRuntime(trap, platform)}\n\n`;
-  return `# Generated by A0 ${compilerVersion}. x86-64 (${platform}) assembly, System V AMD64 ABI, AT&T syntax; exact u32/bool semantics.\n${head}\n\n${bodies.join('\n\n')}\n\n${runtime}${tail}\n`;
+  const ioText = ioRuntime(bodies, platform, io);
+  const helpers = ioText === '' ? '' : `${ioText}\n\n`;
+  return `# Generated by A0 ${compilerVersion}. x86-64 (${platform}) assembly, System V AMD64 ABI, AT&T syntax; exact u32/bool semantics.\n${head}\n\n${bodies.join('\n\n')}\n\n${helpers}${runtime}${tail}\n`;
 }
