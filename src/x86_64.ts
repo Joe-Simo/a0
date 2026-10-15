@@ -24,7 +24,9 @@
  *
  * Code shape (the AArch64 backend's second version, on x86-64):
  * - Small callees (at most INLINE_MAX_NODES nodes, nested to INLINE_MAX_DEPTH) are inlined
- *   at `call`, `fold`, and `loop` sites; larger callees are called out of line.
+ *   at `call`, `fold`, and `loop` sites when what they expand to (their own inlined callees
+ *   counted) fits a budget: INLINE_MAX_CALL at a plain `call`, INLINE_MAX_LOOP_BODY for a
+ *   fold or loop body; larger callees are called out of line.
  * - Scalars live in registers. A linear scan over definition order gives each u32/bool
  *   value a home among the callee-saved ebx, r12d-r15d (spilled to a stack slot when they
  *   run out); a function with no residual call is a leaf and also uses edi, esi, r8d, r9d,
@@ -41,8 +43,9 @@
  * - Aggregates live in stack slots and are updated in place when provably unshared (the
  *   same `mutableHere` analysis as the JavaScript and AArch64 backends); `at` and a
  *   literal-index `get` of an aggregate borrow that part of the slot (`borrowLive`). Copies and
- *   literal fills move 16 bytes at a time through xmm0; a variable index uses SIB scaling
- *   and skips its mask when a range fact (a fold counter below a literal count, `and`,
+ *   literal fills move 16 bytes at a time through xmm0 (a loop above 32 words; an `arr` of one
+ *   aggregate repeated copies it once, then replicates it forward); a variable index uses SIB
+ *   scaling and skips its mask when a range fact (a fold counter below a literal count, `and`,
  *   `rem`, `shr` by a literal) proves it below the length.
  *
  * Calling convention (System V AMD64 for scalar signatures, so C can call `a0_<name>`
@@ -126,6 +129,17 @@ const align = (n: number, a: number): number => Math.ceil(n / a) * a;
 
 const INLINE_MAX_NODES = 48;
 const INLINE_MAX_DEPTH = 6;
+/**
+ * Budgets for the nodes an inlined callee expands to, counting its own inlined callees (a
+ * nest of small callees inlined into each other grows multiplicatively, so the per-callee
+ * limit alone duplicated whole call trees at every site). A fold or loop body runs once per
+ * trip from one site, so it gets the larger budget; a plain `call` site only inlines what is
+ * about as cheap as the call sequence it replaces.
+ */
+const INLINE_MAX_LOOP_BODY = 96;
+const INLINE_MAX_CALL = 8;
+
+type Site = 'call' | 'loop';
 const CALLEE_SAVED = ['%ebx', '%r12d', '%r13d', '%r14d', '%r15d'];
 /** Integer argument registers in order; a home only in a leaf, and never edx/ecx. */
 const ARG_REGS = ['%edi', '%esi', '%edx', '%ecx', '%r8d', '%r9d'];
@@ -411,6 +425,41 @@ function argLayout(params: readonly Type[], sret: boolean): { places: ArgPlace[]
     return place;
   });
   return { places, bytes: offset };
+}
+
+/** Whether `callee` is inlined at a `site` `depth` inlinings deep (see INLINE_MAX_CALL). */
+function inlinableAt(callee: TypedFunc, depth: number, site: Site): boolean {
+  return (
+    callee.nodes.length <= INLINE_MAX_NODES &&
+    depth < INLINE_MAX_DEPTH &&
+    !mayTrapFn(callee) &&
+    expandedNodes(callee, depth + 1) <= (site === 'call' ? INLINE_MAX_CALL : INLINE_MAX_LOOP_BODY)
+  );
+}
+
+const EXPANDED = new WeakMap<TypedFunc, Map<number, number>>();
+
+/** Nodes `fn` emits when its body is emitted `depth` inlinings deep, inlined callees included. */
+function expandedNodes(fn: TypedFunc, depth: number): number {
+  let memo = EXPANDED.get(fn);
+  if (memo === undefined) {
+    memo = new Map();
+    EXPANDED.set(fn, memo);
+  }
+  const known = memo.get(depth);
+  if (known !== undefined) return known;
+  let total = 0;
+  for (const n of fn.nodes) {
+    total += 1;
+    for (const name of [n.callee, n.pred]) {
+      if (name === undefined) continue;
+      const g = fn.calls.get(name);
+      if (g !== undefined && inlinableAt(g, depth, n.op === 'call' ? 'call' : 'loop'))
+        total += expandedNodes(g, depth + 1);
+    }
+  }
+  memo.set(depth, total);
+  return total;
 }
 
 /** A value in the emitter: a literal, or a named key whose home is a register or a slot. */
@@ -799,10 +848,8 @@ class FunctionEmitter {
   // --- calls and inlining ------------------------------------------------------------------
 
   /** A callee that can trap (strict) keeps its own shadow-stack frame: it is always a real call. */
-  #inlinable(callee: TypedFunc, env: Env): boolean {
-    return (
-      callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH && !mayTrapFn(callee)
-    );
+  #inlinable(callee: TypedFunc, env: Env, site: Site): boolean {
+    return inlinableAt(callee, env.depth, site);
   }
 
   /** Residual out-of-line call: arguments per the convention, result into `dst`. */
@@ -1141,9 +1188,22 @@ class FunctionEmitter {
           this.#fill('%rsp', off, first.value, vals.length);
           return;
         }
-        for (const v of vals) {
+        for (let i = 0; i < vals.length; ) {
+          const v = vals[i] as Val;
+          const w = words(v.type);
+          let run = 1;
+          if (v.kind === 'key' && w >= 4)
+            while (
+              vals[i + run]?.kind === 'key' &&
+              (vals[i + run] as Val & { key: string }).key === v.key
+            )
+              run += 1;
           this.#place(v, '%rsp', off);
-          off += 4 * words(v.type);
+          // A run of one aggregate repeated: the later copies replicate the first with one
+          // forward copy (each 16-byte read is at least one element behind the writes).
+          if (run > 1) this.#copy('%rsp', off + 4 * w, '%rsp', off, (run - 1) * w);
+          off += 4 * w * run;
+          i += run;
         }
         return;
       }
@@ -1233,7 +1293,7 @@ class FunctionEmitter {
       case 'call': {
         const name = n.callee as string;
         const callee = env.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
-        if (this.#inlinable(callee, env)) {
+        if (this.#inlinable(callee, env, 'call')) {
           const owned =
             a !== undefined &&
             a.kind === 'key' &&
@@ -1261,7 +1321,7 @@ class FunctionEmitter {
           n.op === 'fold' &&
           count.kind === 'lit' &&
           count.value >= 4 &&
-          this.#inlinable(callee, env)
+          this.#inlinable(callee, env, 'loop')
             ? fillRun(env.fn, n)
             : undefined;
         // The initial value is dead when every element is written before any trip reads it.
@@ -1317,7 +1377,7 @@ class FunctionEmitter {
         const args: Val[] = [state, cval, ...extras];
         if (pred !== undefined) {
           const pkey = `${env.prefix}c_${n.id}`;
-          if (this.#inlinable(pred, env))
+          if (this.#inlinable(pred, env, 'loop'))
             this.#inline(env, pred, args, false, pkey, 'bool', `${n.id}.p`, 'bind');
           else {
             this.#def(pkey, 'bool');
@@ -1328,7 +1388,7 @@ class FunctionEmitter {
           const rp = this.#read(pv, '%eax');
           this.#emit(`testl ${rp}, ${rp}`, `je ${done}`);
         }
-        if (this.#inlinable(callee, env))
+        if (this.#inlinable(callee, env, 'loop'))
           this.#inline(env, callee, args, true, key, t, n.id, 'store');
         else this.#call(name, callee, args, key);
         this.#use(cval);
