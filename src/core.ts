@@ -348,13 +348,13 @@ export interface Comments {
 function commentStart(line: string): number {
   let quoted = false;
   for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i];
-    if (ch === '\\' && quoted) {
-      i += 1;
-    } else if (ch === '"') {
-      quoted = !quoted;
-    } else if (ch === '#' && !quoted) {
-      return i;
+    const c = line.charCodeAt(i);
+    if (c === 92 && quoted) {
+      i += 1; // a `\` escape inside a text literal
+    } else if (c === 34) {
+      quoted = !quoted; // `"`
+    } else if (c === 35 && !quoted) {
+      return i; // `#`
     }
   }
   return -1;
@@ -602,13 +602,9 @@ function isSpaceCode(c: number): boolean {
   );
 }
 
-// The first word of `text`: what `/^\S*/` matches at its start.
-function firstWord(text: string): string {
-  const n = text.length;
-  let i = 0;
-  while (i < n && !isSpaceCode(text.charCodeAt(i))) i += 1;
-  return i === n ? text : text.slice(0, i);
-}
+// The scanners below (and the line scanner in `parse`) test the printable ASCII range (`!` to `~`,
+// never `\s`) inline before calling `isSpaceCode`: nearly every char of a program is in it, and a
+// cold run executes them unoptimised, where each call costs.
 
 /** `text.trim().split(/\s+/)`, in one pass over the char codes. */
 function splitWords(text: string): string[] {
@@ -616,10 +612,18 @@ function splitWords(text: string): string[] {
   const n = text.length;
   let i = 0;
   for (;;) {
-    while (i < n && isSpaceCode(text.charCodeAt(i))) i += 1;
+    while (i < n) {
+      const c = text.charCodeAt(i);
+      if ((c > 32 && c < 0x7f) || !isSpaceCode(c)) break;
+      i += 1;
+    }
     if (i === n) break;
     const start = i;
-    while (i < n && !isSpaceCode(text.charCodeAt(i))) i += 1;
+    while (i < n) {
+      const c = text.charCodeAt(i);
+      if (!((c > 32 && c < 0x7f) || !isSpaceCode(c))) break;
+      i += 1;
+    }
     out.push(start === 0 && i === n ? text : text.slice(start, i));
   }
   if (out.length === 0) out.push('');
@@ -751,15 +755,21 @@ export function parseType(text: string, line?: number, header?: string): Type {
  * literals.
  */
 export function parseOperand(text: string, line?: number, lineText?: string): Operand {
-  if (text === 'true') return { kind: 'bool', value: true };
-  if (text === 'false') return { kind: 'bool', value: false };
-  if (isParamWord(text)) return { kind: 'param', index: Number(text.slice(1)) };
-  if (isDecimalFrom(text, 0)) {
-    const value = Number(text);
-    if (value > U32_MAX) throw diag('A0004', [text], line === undefined ? {} : { line });
-    return { kind: 'u32', value };
+  // The first char picks the one shape the word can have: a literal, a parameter, or a name.
+  const c0 = text.charCodeAt(0);
+  if (c0 >= 48 && c0 <= 57) {
+    if (isDecimalFrom(text, 0)) {
+      const value = Number(text);
+      if (value > U32_MAX) throw diag('A0004', [text], lineAt(line));
+      return { kind: 'u32', value };
+    }
+  } else if (c0 === 112 && isDecimalFrom(text, 1)) {
+    return { kind: 'param', index: Number(text.slice(1)) };
+  } else if (isIdentShape(text)) {
+    if (text === 'true') return { kind: 'bool', value: true };
+    if (text === 'false') return { kind: 'bool', value: false };
+    if (!RESERVED.has(text)) return { kind: 'node', id: text };
   }
-  if (isValidIdentifier(text)) return { kind: 'node', id: text };
   const at = line === undefined ? {} : { line };
   if (lineText !== undefined) {
     const edit = (rule: string, to: string): FixEdit => lineEdit(rule, lineText, to, line);
@@ -965,34 +975,51 @@ function operandsOf(
 }
 
 /** Parse one instruction line `id op operand...` (no validation of references). */
+/** The `line` field of a diagnostic, built only when one is thrown. */
+function lineAt(line: number | undefined): { line?: number } {
+  return line === undefined ? {} : { line };
+}
+
 export function parseNode(lineText: string, line?: number): Node {
-  const at = line === undefined ? {} : { line };
+  return parseNodeOf(lineText, line, undefined);
+}
+
+/**
+ * `parseNode`, given the line's words (`lineText.trim().split(/\s+/)`) when the parser has them
+ * already; only for a line without a `"`, as a text literal is matched on the whole line.
+ */
+function parseNodeOf(
+  lineText: string,
+  line: number | undefined,
+  words: readonly string[] | undefined,
+): Node {
   // TEXT_LINE needs a quote: a line without one skips the regular expression.
-  const textMatch = lineText.includes('"') ? TEXT_LINE.exec(lineText.trim()) : null;
+  const textMatch =
+    words === undefined && lineText.includes('"') ? TEXT_LINE.exec(lineText.trim()) : null;
   if (textMatch !== null) {
     // `id text "..."` desugars to `arr` of UTF-8 byte words; the source form is retained.
     const [, id, raw] = textMatch;
     if (id === undefined || !isValidIdentifier(id)) {
-      throw diag('A0005', [id ?? ''], at);
+      throw diag('A0005', [id ?? ''], lineAt(line));
     }
     const text = decodeText(raw ?? '', line);
     const bytes = new TextEncoder().encode(text);
-    if (bytes.length === 0) throw diag('A0006', [], at);
+    if (bytes.length === 0) throw diag('A0006', [], lineAt(line));
     if (bytes.length > LIMITS.maxArrayLength) {
-      throw diag('A0007', [LIMITS.maxArrayLength], at);
+      throw diag('A0007', [LIMITS.maxArrayLength], lineAt(line));
     }
     return { id, op: 'arr', args: [...bytes].map((value) => ({ kind: 'u32', value })), text };
   }
-  const parts = splitWords(lineText);
+  const parts = words ?? splitWords(lineText);
   const id = parts[0];
   const word = parts[1];
   const rest = parts.slice(2);
-  if (id === undefined || word === undefined) throw diag('A0009', [], at);
+  if (id === undefined || word === undefined) throw diag('A0009', [], lineAt(line));
   if (!isValidIdentifier(id)) {
     const colon = id.endsWith(':') && isValidIdentifier(id.slice(0, -1));
     const snake = lowerName(id);
     throw diag('A0005', [id], {
-      ...at,
+      ...lineAt(line),
       ...(colon
         ? {
             fix: `write '${id.slice(0, -1)}': a node id has no colon`,
@@ -1016,9 +1043,9 @@ export function parseNode(lineText: string, line?: number): Node {
   }
   if (nested) throw nestedError(id, [id, word], rest, lineText, line, 'parse');
   // `id F args…` with F a function name (not an op) is the direct form of `id call F args…`.
-  if (isDirectCallee(word))
-    return { id, op: 'call', callee: word, args: operandsOf(rest, line, lineText) };
   const op = opOf(word);
+  if (op === undefined && isDirectCallee(word))
+    return { id, op: 'call', callee: word, args: operandsOf(rest, line, lineText) };
   if (op === undefined) {
     const lower = word.toLowerCase();
     const assign = word === '=' && rest.length > 0;
@@ -1026,7 +1053,7 @@ export function parseNode(lineText: string, line?: number): Node {
     const symbol = Object.hasOwn(SYMBOL_OPS, word) ? SYMBOL_OPS[word] : undefined;
     const symbolFix = newFixes() && symbol !== undefined && rest.length === OP_ARITY[symbol];
     throw diag('A0011', [word], {
-      ...at,
+      ...lineAt(line),
       ...(symbolFix
         ? {
             fix: `write \`${id} ${symbol} ${rest.join(' ')}\`: the op is written as a word, \`${symbol}\`, before its operands`,
@@ -1058,7 +1085,7 @@ export function parseNode(lineText: string, line?: number): Node {
       callee === undefined ||
       !isValidFunctionName(callee)
     ) {
-      throw diag('A0012', [], at);
+      throw diag('A0012', [], lineAt(line));
     }
     return { id, op, pred, callee, args: operandsOf(args, line, lineText) };
   }
@@ -1068,7 +1095,7 @@ export function parseNode(lineText: string, line?: number): Node {
       const lower = (callee ?? '').toLowerCase();
       const caseFix = callee !== undefined && lower !== callee && isValidFunctionName(lower);
       throw diag('A0013', [op, callee ?? ''], {
-        ...at,
+        ...lineAt(line),
         ...(caseFix
           ? {
               fix: `write '${lower}': function names are lowercase`,
@@ -1103,7 +1130,7 @@ export function parseNode(lineText: string, line?: number): Node {
             return `${target} ${op} ${i === 0 ? rest[0] : `${id}t${i - 1}`} ${r}`;
           });
     throw diag('A0014', [op, OP_ARITY[op], rest.length], {
-      ...at,
+      ...lineAt(line),
       expected: String(OP_ARITY[op]),
       actual: String(rest.length),
       ...(chain === undefined ? {} : { fix: chain }),
@@ -1115,7 +1142,7 @@ export function parseNode(lineText: string, line?: number): Node {
           }),
     });
   }
-  if (OP_ARITY[op] < 0 && rest.length === 0) throw diag('A0015', [op], at);
+  if (OP_ARITY[op] < 0 && rest.length === 0) throw diag('A0015', [op], lineAt(line));
   return { id, op, args: operandsOf(rest, line, lineText) };
 }
 
@@ -1156,31 +1183,94 @@ export function retOperandError(
   return code === e.code ? e : new A0Error(e.detail, e.line, { ...e.detailOf(), code });
 }
 
+/** A non-blank source line as `parse` reads it. */
+interface SourceLine {
+  /** The code, comment removed and trimmed. */
+  readonly text: string;
+  /** 1-based line number. */
+  readonly line: number;
+  /** `text.split(/\s+/)`. */
+  readonly words: readonly string[];
+  /** Whether the code has a `"` (a text literal, so `words` may split inside it). */
+  readonly quote: boolean;
+  readonly comments?: Comments;
+}
+
 export function parse(source: string): Program {
   // A UTF-16 unit is at most 3 UTF-8 bytes: a source that short cannot be over, and is not encoded to measure it.
   if (source.length * 3 > LIMITS.maxSourceBytes && utf8Length(source) > LIMITS.maxSourceBytes) {
     throw diag('A0016', [LIMITS.maxSourceBytes]);
   }
-  const lines = source.split(/\r?\n/);
   const functions: Func[] = [];
   const names = new Set<string>();
-  let i = 0;
+  // One pass over the source, cut into lines as `source.split(/\r?\n/)` would (a `\r` before the
+  // `\n` is dropped). Each line is scanned once: the comment start (a `#` outside a text literal),
+  // the words of the code before it (`text.split(/\s+/)` of the trimmed code) and its bounds, so
+  // neither the raw line nor an untrimmed copy is made, and a node line is not split again.
+  const n = source.length;
+  let pos = 0;
+  let lineNo = 0;
   let pending: string[] = [];
-  const next = (): { text: string; line: number; comments?: Comments } | undefined => {
-    while (i < lines.length) {
-      const raw = lines[i] ?? '';
-      i += 1;
-      const at = commentStart(raw);
-      const text = (at < 0 ? raw : raw.slice(0, at)).trim();
-      const comment = at < 0 ? undefined : raw.slice(at).trimEnd();
-      if (text.length === 0) {
+  const next = (): SourceLine | undefined => {
+    while (pos <= n) {
+      const start = pos;
+      let end = source.indexOf('\n', start);
+      if (end < 0) end = n;
+      pos = end + 1;
+      lineNo += 1;
+      if (end > start && source.charCodeAt(end - 1) === 13) end -= 1;
+      const words: string[] = [];
+      let quote = false;
+      let at = -1;
+      let word = -1; // start of the word being scanned, or -1 between words
+      let lo = -1; // start of the first word
+      let hi = -1; // end of the last word
+      for (let k = start; k < end; k += 1) {
+        const c = source.charCodeAt(k);
+        if (c === 34) {
+          // A text literal: its words are split from the trimmed code below; here it is only
+          // skipped, so a `#` or space inside it is not taken for a comment or a word break.
+          quote = true;
+          if (word < 0) word = k;
+          if (lo < 0) lo = k;
+          for (k += 1; k < end; k += 1) {
+            const q = source.charCodeAt(k);
+            if (q === 92) k += 1;
+            else if (q === 34) break;
+          }
+          hi = k < end ? k + 1 : end;
+        } else if (c === 35) {
+          at = k;
+          break;
+        } else if ((c > 32 && c < 0x7f) || !isSpaceCode(c)) {
+          if (word < 0) word = k;
+          if (lo < 0) lo = k;
+          hi = k + 1;
+        } else if (word >= 0) {
+          words.push(source.slice(word, k));
+          word = -1;
+        }
+      }
+      let comment: string | undefined;
+      if (at >= 0) {
+        // The comment starts with `#`, so trimming its end never empties it.
+        let ce = end;
+        while (isSpaceCode(source.charCodeAt(ce - 1))) ce -= 1;
+        comment = source.slice(at, ce);
+      }
+      if (lo < 0) {
         if (comment !== undefined) pending.push(comment);
         continue;
       }
+      if (word >= 0) words.push(source.slice(word, hi));
+      const text = words.length === 1 && !quote ? (words[0] as string) : source.slice(lo, hi);
       const leading = pending;
       pending = [];
       const comments = commentsOf(leading, comment);
-      return comments === undefined ? { text, line: i } : { text, line: i, comments };
+      const parts = quote ? splitWords(text) : words;
+      return comments === undefined
+        ? { text, line: lineNo, words: parts, quote }
+        : { text, line: lineNo, words: parts, quote, comments };
     }
     return undefined;
   };
@@ -1191,7 +1281,7 @@ export function parse(source: string): Program {
   let profileComments: Comments | undefined;
   let first = true;
   for (let cur = next(); cur !== undefined; cur = next()) {
-    const head = cur.text.split(/\s+/);
+    const head = cur.words;
     const atStart = first;
     first = false;
     if (head[0] === 'profile') {
@@ -1238,8 +1328,8 @@ export function parse(source: string): Program {
     let closed = false;
     const specs = new SpecBuilder(name);
     for (let body = next(); body !== undefined; body = next()) {
-      // The first word, as `split(/\s+/)[0]` gives it (the text is trimmed), without splitting the whole line.
-      const first = firstWord(body.text);
+      const parts = body.words;
+      const first = parts[0];
       // Spec lines stand between the header and the first node (or `ret`).
       if (nodes.length === 0 && ret === undefined) {
         const word = specWordOf(body.text);
@@ -1255,7 +1345,6 @@ export function parse(source: string): Program {
       }
       if (first === 'ret') {
         retComments = body.comments;
-        const parts = body.text.split(/\s+/);
         if (isRetNodeForm(parts)) {
           // `ret OP ARGS…` is sugar for a fresh node followed by `ret` of it.
           const id = freshRetId(nodes);
@@ -1273,7 +1362,7 @@ export function parse(source: string): Program {
         const endLine = next();
         if (endLine === undefined || endLine.text !== 'end') {
           // A missing `end` before the next function (or the end of the file) is added.
-          const addable = endLine === undefined || endLine.text.split(/\s+/)[0] === 'fn';
+          const addable = endLine === undefined || endLine.words[0] === 'fn';
           throw diag('A0025', [], {
             line: endLine?.line ?? body.line,
             ...(addable
@@ -1305,7 +1394,7 @@ export function parse(source: string): Program {
       if (nodes.length >= LIMITS.maxNodesPerFunction) {
         throw diag('A0027', [], { line: body.line });
       }
-      const node = parseNode(body.text, body.line);
+      const node = parseNodeOf(body.text, body.line, body.quote ? undefined : parts);
       nodes.push(body.comments === undefined ? node : { ...node, comments: body.comments });
     }
     if (!closed || ret === undefined) throw diag('A0028', [name]);
