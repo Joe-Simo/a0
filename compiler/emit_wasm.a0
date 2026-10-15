@@ -1917,7 +1917,90 @@ f select e 1 0
 g add p0 f
 ret g
 end
-fn wxhsel u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 -> u32x128x512
+# a select group (the shape table's ARM 4 on its leader, `lazyArms` groups): one branch on the
+# condition; each side's nodes (ARM 1 / 2, owned by the leader) on its own path, then every select
+# of the group (ARM 3, owned by the leader, and the leader) sets its local to its operand of that
+# side; a known condition emits its side only. The selects' locals are bound first, in node order.
+# member test of node p1 of the frame (first node p2) for the leader p3
+fn wxgmem u32 u32 u32 u32x128x310 -> bool
+a add p1 p0
+b add 2816 a
+c call wxsh p3 b
+d add 5632 a
+e call wxsh p3 d
+f add p2 1
+g eq c f
+h eq e 3
+i and g h
+j eq p0 p2
+k or i j
+ret k
+end
+# trip i: node i of frame p2 (first node p4) gets a fresh local when it is a select of the group
+# led by node p3
+fn wxgbind u32x128x512 u32 u32 u32 u32 u32x128x310 -> u32x128x512
+a call wxgmem p1 p4 p3 p5
+b select a 1 0
+c fold wxnl b p0
+d shr 16 7
+e and 16 127
+f get c d
+g get f e
+h fold wxbind b c p2 p1 g
+ret h
+end
+# trip t: select i = p3 - t of the group led by node p3 (frame p2, first node p4): push the items
+# that push its operand p8 (1 or 2) and set its local (run before the items pushed earlier)
+fn wxgpu u32x128x512 u32 u32 u32 u32 u32x128x310 u32x128x132 u32x128x512 u32 -> u32x128x512
+i sub p3 p1
+a call wxgmem i p4 p3 p5
+b select a 1 0
+l call wxrg p0 p2 i 0
+g add p4 i
+fa call wxnw p6 g 3
+sl add fa p8
+k call wxok p7 sl
+v call wxov p7 sl
+m1 fold wxpu b p0 4 4 l 0
+m2 fold wxpu b m1 3 p2 k v
+ret m2
+end
+fn wxhgrp u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 u32x128x132 u32x128x512 -> u32x128x512
+a at p2 0
+b at p2 1
+g at p2 17
+h at p2 18
+v mul a 128
+w add v 128
+x add w 2
+y shr x 7
+z and x 127
+aa get p0 y
+fst get aa z
+b1 add b 1
+s1 fold wxgbind b1 p0 a b fst p3
+isk eq g 1
+nk select isk false true
+pk select nk 1 0
+s2 fold wxpr pk s1 g h
+s3 fold wxe pk s2 15 64
+s4 fold wxpu pk s3 4 1 11 0
+nb select nk b1 0
+s5 fold wxgpu nb s4 a b fst p3 p4 p5 2
+s6 fold wxpu pk s5 6 a b 1
+s7 fold wxpu pk s6 4 1 5 0
+s8 fold wxgpu nb s7 a b fst p3 p4 p5 1
+s9 fold wxpu pk s8 6 a b 0
+kk select isk 1 0
+kb select isk b1 0
+o ne h 0
+sd select o 1 2
+sc select o 0 1
+t1 fold wxgpu kb s9 a b fst p3 p4 p5 sd
+t2 fold wxpu kk t1 6 a b sc
+ret t2
+end
+fn wxhsel0 u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 -> u32x128x512
 a at p2 0
 b at p2 1
 c at p2 13
@@ -2012,6 +2095,26 @@ b3 fold wxpu b2 b1 3 a c d
 b4 select al 1 0
 b5 fold wxpu b4 b3 6 a b 0
 ret b5
+end
+fn wxhsel u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 u32x128x132 u32x128x512 -> u32x128x512
+a at p2 0
+b at p2 1
+v mul a 128
+w add v 128
+x add w 2
+y shr x 7
+z and x 127
+aa get p0 y
+fst get aa z
+gl add fst b
+gx add 5632 gl
+gv call wxsh p3 gx
+grp eq gv 4
+ng select grp 0 1
+gg select grp 1 0
+r0 fold wxhsel0 ng p0 p2 p3
+r1 fold wxhgrp gg r0 p2 p3 p4 p5
+ret r1
 end
 # the first node at or after node p5 of the frame (first node p2) owned by select p3 in ARM column
 # value p4 (1 or 2); p0 is the node found so far (4294967295: none): node p1 + p5
@@ -12133,8 +12236,9 @@ l rec g k
 ret l
 end
 # (applies, K, select node) for the carried read p2 of the body from p0 (p1 nodes, ret operand
-# kind p3 value p4, nodes p5, operands p6, first trip p7)
-fn wxfts u32 u32 u32 u32 u32 u32x128x132 u32x128x512 u32 -> (u32,u32,u32)
+# kind p3 value p4, nodes p5, operands p6, first trip p7, shape table p8: a select that leads a
+# select group does not apply)
+fn wxfts u32 u32 u32 u32 u32 u32x128x132 u32x128x512 u32 u32x128x310 -> (u32,u32,u32)
 a rec 0 0
 b fold wxfu1 p1 a p0 p2 p5 p6
 c at b 0
@@ -12194,7 +12298,11 @@ gy4 and gy0 gy1
 gy5 and gy2 gy3
 gya and gy4 gy5
 gor or gxa gya
-a1 and ax gor
+a1g and ax gor
+gl_x add e 5632
+gl_v call wxsh p8 gl_x
+gl_n ne gl_v 4
+a1 and a1g gl_n
 a2 select a1 1 0
 a3 rec a2 r d
 ret a3
@@ -14035,7 +14143,7 @@ ft_c call wxfw p3 av 6
 ft_d call waretop p5 ft_c
 ft_e at ft_d 0
 ft_f at ft_d 1
-ft_g call wxfts ft_a ft_b c4 ft_e ft_f p4 p5 an
+ft_g call wxfts ft_a ft_b c4 ft_e ft_f p4 p5 an p10
 ft_h at ft_g 0
 ft_i at ft_g 1
 ft_j at ft_g 2
@@ -14142,7 +14250,13 @@ ec get sp4 ea
 ed get ec eb
 ee le bg 12
 ef and bo ci
-eg and ef ee
+eg0 and ef ee
+# no unrolling after a vector reduction (a scalar fold that starts past trip 0)
+rv0 eq s 0
+rv1 ne an 0
+rv2 and rv0 rv1
+rv3 select rv2 false true
+eg and eg0 rv3
 ei ne z 0
 un1 and dp ei
 un2 select un1 4 ed
@@ -14215,6 +14329,461 @@ gd fold wxcs 1 gc a 21 0
 gf fold wxcs 1 gd a 23 e1
 gg fold wxpu 1 gf 8 a 0 0
 ret gg
+end
+# ---------------------------------------------------------------------------------------------
+# simd128 reductions (src/wasm.ts `reduceRun`, `#vectorReduce`): a scalar fold whose body is
+# `acc op f(p1, ...)` (op add xor or and) with lane operations for f runs four trips a vector
+# trip while every lane's read is in range, then the scalar loop finishes from the counter the
+# vector loop left. Scratch words of M as the fill runs: 19008 + j the lanes of body node j,
+# 19072 + p the splat of parameter p, 19104 the index vector, 19110 the host frame, 19111 the first
+# extra operand of the fold, 19112 the body's first node.
+
+# the type of parameter p1 of a body whose first parameter type is word p2 of tlist p0
+fn wxrpt u32x128x65 u32 u32 -> u32
+a add p2 p1
+b call wa65 p0 a
+ret b
+end
+# the operand (p0 kind, p1 value) is the same in every lane: a u32 literal, or an extra (p1 >= 2,
+# below the p4 parameters) of type u32 (tlist p2, first parameter type p3)
+fn wxrun u32 u32 u32x128x65 u32 u32 -> bool
+a eq p0 3
+b eq p0 2
+c ge p1 2
+d lt p1 p4
+e call wxrpt p2 p1 p3
+f eq e 0
+g and b c
+h and g d
+i and h f
+r or a i
+ret r
+end
+# a lane operand: a literal, the index p1, a uniform extra, or a node
+fn wxrlo u32 u32 u32x128x65 u32 u32 -> bool
+a eq p0 4
+b eq p0 1
+c eq p0 2
+d eq p1 1
+e and c d
+f call wxrun p0 p1 p2 p3 p4
+g or a b
+h or g e
+r or h f
+ret r
+end
+# the operand is of type u32: a node (node types p2, first node p3), a parameter (tlist p4, first
+# parameter type p5), a u32 literal
+fn wxru3 u32 u32 u32x128x24 u32 u32x128x65 u32 -> bool
+a eq p0 1
+b eq p0 2
+c eq p0 3
+d add p3 p1
+e call wa24 p2 d
+f eq e 0
+g call wxrpt p4 p1 p5
+h eq g 0
+i and a f
+j and b h
+k or i j
+r or k c
+ret r
+end
+# trip j: body node j (first node p2, nodes p3, operands p4, node types p5, types p6, tlist p7,
+# first parameter type p8, parameter count p9) as a lane operation; state (ok, bound: the shortest
+# array read, index: a lane operand is p1)
+fn wxrdn (u32,u32,u32) u32 u32 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32 u32 -> (u32,u32,u32)
+ok at p0 0
+bd at p0 1
+ix at p0 2
+g add p2 p1
+op call wxnw p3 g 1
+fa call wxnw p3 g 3
+t call wa24 p5 g
+tok lt t 2
+k0 call wxok p4 fa
+v0 call wxov p4 fa
+s1 add fa 1
+k1 call wxok p4 s1
+v1 call wxov p4 s1
+s2 add fa 2
+k2 call wxok p4 s2
+v2 call wxov p4 s2
+l0 call wxrlo k0 v0 p7 p8 p9
+l1 call wxrlo k1 v1 p7 p8 p9
+l2 call wxrlo k2 v2 p7 p8 p9
+a0p0 eq k0 2
+a0p1 eq v0 1
+a0p and a0p0 a0p1
+a1p0 eq k1 2
+a1p1 eq v1 1
+a1p and a1p0 a1p1
+a2p0 eq k2 2
+a2p1 eq v2 1
+a2p and a2p0 a2p1
+isg eq op 25
+gq ge v0 2
+gr lt v0 p9
+at call wxrpt p7 v0 p8
+tg call wxtag p6 at
+ta eq tg 4
+el call wxty p6 at 2
+te eq el 0
+ln call wxty p6 at 1
+l4 ge ln 4
+g1 and a0p0 gq
+g2 and g1 gr
+g3 and g2 ta
+g4 and g3 te
+g5 and g4 l4
+gok and g5 a1p
+iss eq op 18
+s3 and l0 l1
+sok and s3 l2
+b1 ge op 2
+b2 le op 9
+b3 ge op 12
+b4 le op 17
+b5 and b1 b2
+b6 and b3 b4
+isb or b5 b6
+ish1 eq op 8
+ish2 eq op 9
+ish or ish1 ish2
+u1 call wxrun k1 v1 p7 p8 p9
+nsh select ish false true
+shok or nsh u1
+ism eq op 4
+mp or a0p a1p
+mbad and ism mp
+mok select mbad false true
+ord1 ge op 14
+ord2 le op 17
+ord and ord1 ord2
+u3a call wxru3 k0 v0 p5 p2 p7 p8
+u3b call wxru3 k1 v1 p5 p2 p7 p8
+u3 and u3a u3b
+nord select ord false true
+ook or nord u3
+bb1 and l0 l1
+bb2 and bb1 shok
+bb3 and bb2 mok
+bok and bb3 ook
+c1 and isg gok
+c2 and iss sok
+c3 and isb bok
+c4 or c1 c2
+c5 or c4 c3
+nok and c5 tok
+okn select nok ok 0
+bz eq bd 0
+blt lt ln bd
+bmin or bz blt
+bnew select bmin ln bd
+nbd select c1 bnew bd
+r1 and a1p nsh
+r2 and a2p iss
+ra or a0p r1
+rb or ra r2
+ng select isg false true
+uix and rb ng
+nix select uix 1 ix
+r rec okn nbd nix
+ret r
+end
+# trip 0 (run when it applies): the reduction of the body p2 (fns p1... as the state (applies, op,
+# value node, bound, index read, first node, lane nodes)): nodes p3, operands p4, node types p5,
+# types p6, tlist p7
+fn wxrdan (u32,u32,u32,u32,u32,u32,u32) u32 u32x128x45 u32 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 -> (u32,u32,u32,u32,u32,u32,u32)
+bf call wxfw p2 p3 4
+bn call wxfw p2 p3 5
+np call wxfw p2 p3 1
+pf call wxfw p2 p3 2
+rs call wxfw p2 p3 3
+rw call wxfw p2 p3 6
+t0 call wxrpt p8 0 pf
+t1 call wxrpt p8 1 pf
+c0 ge np 2
+c1 eq t0 0
+c2 eq t1 0
+c3 eq rs 0
+c6 ge bn 1
+ls0 sub bn 1
+ls select c6 ls0 0
+rk shr rw 28
+rv and rw 268435455
+c4 eq rk 1
+c5 eq rv ls
+c7 le ls 32
+lg add bf ls
+lop call wxnw p4 lg 1
+lfa call wxnw p4 lg 3
+o1 eq lop 2
+o2 eq lop 7
+o3 eq lop 6
+o4 eq lop 5
+o12 or o1 o2
+o34 or o3 o4
+c8 or o12 o34
+xk call wxok p5 lfa
+xv call wxov p5 lfa
+ys add lfa 1
+yk call wxok p5 ys
+yv call wxov p5 ys
+xa eq xk 2
+xb eq xv 0
+xp and xa xb
+ya eq yk 2
+yb eq yv 0
+yp and ya yb
+vk1 select yp xk 0
+vk select xp yk vk1
+vv1 select yp xv 0
+vv select xp yv vv1
+c9 eq vk 1
+vg add bf vv
+vt call wa24 p6 vg
+c10 eq vt 0
+h1 and c0 c1
+h2 and h1 c2
+h3 and h2 c3
+h4 and h3 c4
+h5 and h4 c5
+h6 and h5 c6
+h7 and h6 c7
+h8 and h7 c8
+h9 and h8 c9
+hd and h9 c10
+n select hd ls 0
+s0 rec 1 0 0
+s fold wxrdn n s0 bf p4 p5 p6 p7 p8 pf np
+ok at s 0
+bd at s 1
+ix at s 2
+okk ne ok 0
+ap and hd okk
+apv select ap 1 0
+r rec apv lop vv bd ix bf ls
+ret r
+end
+# push the lanes of the operand (kind p2, value p3): a bool literal as a mask, else `wxvpl`
+fn wxrpl u32x128x512 u32 u32 u32 -> u32x128x512
+a eq p2 4
+b ne p3 0
+c select b 4294967295 0
+d select a 1 0
+e fold wxe d p0 21 c
+f fold wxvpl 1 e p2 p3
+ret f
+end
+# trip j: the splats of body node j (first node p2, nodes p3, operands p4): the operands it reads
+# as lanes (none for a get, the first for a shift)
+fn wxrsp u32x128x512 u32 u32 u32x128x132 u32x128x512 -> u32x128x512
+g add p2 p1
+op call wxnw p3 g 1
+fa call wxnw p3 g 3
+isg eq op 25
+iss eq op 18
+ish1 eq op 8
+ish2 eq op 9
+ish or ish1 ish2
+c1 select ish 1 2
+c2 select iss 3 c1
+n select isg 0 c2
+r fold wxvsb n p0 fa p4
+ret r
+end
+# the i32x4 operation of the lane op p0 (the IR op number)
+fn wxrop u32 -> u32
+a eq p0 2
+b eq p0 3
+c eq p0 4
+d eq p0 5
+e eq p0 6
+f eq p0 7
+g eq p0 8
+h eq p0 9
+i eq p0 12
+j eq p0 13
+k eq p0 14
+l eq p0 15
+m eq p0 16
+n0 eq p0 17
+n select n0 64 0
+r1 select m 60 n
+r2 select l 62 r1
+r3 select k 58 r2
+r4 select j 56 r3
+r5 select i 55 r4
+r6 select h 173 r5
+r7 select g 171 r6
+r8 select f 81 r7
+r9 select e 80 r8
+r10 select d 78 r9
+r11 select c 181 r10
+r12 select b 177 r11
+r13 select a 174 r12
+ret r13
+end
+# trip j: the lanes of body node j (first node p2, nodes p3, operands p4, counter local p5) into a
+# fresh v128 local (scratch word 19008 + j)
+fn wxrnd u32x128x512 u32 u32 u32x128x132 u32x128x512 u32 -> u32x128x512
+g add p2 p1
+op call wxnw p3 g 1
+fa call wxnw p3 g 3
+k0 call wxok p4 fa
+v0 call wxov p4 fa
+s1 add fa 1
+k1 call wxok p4 s1
+v1 call wxov p4 s1
+s2 add fa 2
+k2 call wxok p4 s2
+v2 call wxov p4 s2
+isg eq op 25
+iss eq op 18
+ish1 eq op 8
+ish2 eq op 9
+ish or ish1 ish2
+z1 eq k2 3
+z2 eq v2 0
+z3 and z1 z2
+sz and iss z3
+nsz select z3 false true
+sel and iss nsz
+ng select isg false true
+nss select iss false true
+bin and ng nss
+bsh and bin ish
+nsh select ish false true
+bln and bin nsh
+fr call wxg p0 19110
+fe call wxg p0 19111
+vm sub v0 2
+es add fe vm
+ek call wxok p4 es
+ev call wxov p4 es
+gi select isg 1 0
+m1 fold wxpsh gi p0 fr ek ev
+m2 fold wxlg gi m1 p5
+m3 fold wxkc gi m2 2
+m4 fold wxop gi m3 116
+m5 fold wxop gi m4 106
+m6 fold wxe gi m5 18 0
+m7 fold wxop gi m6 2
+m8 fold wxop gi m7 0
+zi select sz 1 0
+m9 fold wxrpl zi m8 k1 v1
+m10 fold wxrpl zi m9 k0 v0
+m11 fold wxe zi m10 18 78
+si select sel 1 0
+m12 fold wxrpl si m11 k1 v1
+m13 fold wxrpl si m12 k2 v2
+m14 fold wxrpl si m13 k0 v0
+m15 fold wxe si m14 18 82
+bi select bin 1 0
+m16 fold wxrpl bi m15 k0 v0
+hi select bsh 1 0
+m17 fold wxvsc hi m16 k1 v1 p4
+li select bln 1 0
+m18 fold wxrpl li m17 k1 v1
+code call wxrop op
+m19 fold wxe bi m18 18 code
+m20 fold wxnv 1 m19
+v call wxg m20 16
+m21 fold wxls 1 m20 v
+w add 19008 p1
+m22 fold wxs 1 m21 w v
+ret m22
+end
+# trip k: lane k of the accumulator p2 folded into the value on the stack by the op p3 (a byte)
+fn wxrhz u32x128x512 u32 u32 u32 -> u32x128x512
+a fold wxlg 1 p0 p2
+b fold wxe 1 a 24 p1
+c fold wxop 1 b p3
+ret c
+end
+# the vector loop of the fold of frame p2 (its first operand slot p3, count operand p4 p5, literal
+# count p6, state local p7, counter local p8) for the reduction p9 (applies, op, value node, bound,
+# index read, the body's first node, its lane nodes), the vector trips' end p10 for a literal count
+fn wxvred u32x128x512 u32 u32 u32 u32 u32 bool u32 u32 (u32,u32,u32,u32,u32,u32,u32) u32 u32x128x132 u32x128x512 -> u32x128x512
+op at p9 1
+val at p9 2
+bd at p9 3
+ix at p9 4
+bf at p9 5
+nn at p9 6
+m0 fold wxvclr 32 p0
+m1 fold wxs 1 m0 19110 p2
+fe add p3 2
+m2 fold wxs 1 m1 19111 fe
+m3 fold wxs 1 m2 19112 bf
+m4 fold wxnl 1 m3
+lim call wxg m4 16
+gl select p6 1 0
+nlb select p6 false true
+nl select p6 0 1
+m5 fold wxkc gl m4 p10
+m6 fold wxpsh nl m5 p2 p4 p5
+bnz ne bd 0
+bgb and nlb bnz
+bg select bgb 1 0
+m7 fold wxkc bg m6 bd
+m8 fold wxpsh bg m7 p2 p4 p5
+m9 fold wxkc bg m8 bd
+m10 fold wxop bg m9 73
+m11 fold wxop bg m10 27
+m12 fold wxkc nl m11 4294967292
+m13 fold wxop nl m12 113
+m14 fold wxls 1 m13 lim
+m15 fold wxnv 1 m14
+acc call wxg m15 16
+isand eq op 5
+idv select isand 4294967295 0
+m16 fold wxe 1 m15 21 idv
+m17 fold wxls 1 m16 acc
+m18 fold wxnv ix m17
+idx call wxg m18 16
+m19 fold wxs ix m18 19104 idx
+m20 fold wxe ix m19 20 0
+m21 fold wxls ix m20 idx
+m22 fold wxrsp nn m21 bf p11 p12
+m23 fold wxe nl m22 14 64
+m24 fold wxlg nl m23 p8
+m25 fold wxlg nl m24 lim
+m26 fold wxop nl m25 79
+m27 fold wxe nl m26 12 0
+m28 fold wxe 1 m27 8 0
+m29 fold wxrnd nn m28 bf p11 p12 p8
+m30 fold wxlg 1 m29 acc
+vw add 19008 val
+vl call wxg m30 vw
+m31 fold wxlg 1 m30 vl
+code call wxrop op
+m32 fold wxe 1 m31 18 code
+m33 fold wxls 1 m32 acc
+m34 fold wxlg ix m33 idx
+m35 fold wxe ix m34 21 4
+m36 fold wxe ix m35 18 174
+m37 fold wxls ix m36 idx
+m38 fold wxlg 1 m37 p8
+m39 fold wxkc 1 m38 4
+m40 fold wxop 1 m39 106
+m41 fold wxe 1 m40 5 p8
+m42 fold wxlg 1 m41 lim
+m43 fold wxop 1 m42 73
+m44 fold wxe 1 m43 12 0
+m45 fold wxe 1 m44 9 0
+m46 fold wxop nl m45 11
+m47 fold wxlg 1 m46 p7
+o1 eq op 2
+o2 eq op 7
+o3 eq op 6
+b1 select o3 114 113
+b2 select o2 115 b1
+bin select o1 106 b2
+m48 fold wxrhz 4 m47 acc bin
+m49 fold wxls 1 m48 p7
+ret m49
 end
 # fold (20) and loop (21): the state, the counter, a vector fill and the first trip (src/wasm.ts
 # `#iteration`); the loop's context is set up here, `wxiter2` plans the rest when trips are left
@@ -14317,17 +14886,41 @@ b7 select bx 1 0
 b8 fold wxvfill b7 b6 a g f a8 b0 p4 p5 p3
 b9 fold wxkc 1 b8 b0
 ca fold wxls 1 b9 bo
-cb ge b0 k
+# a reduction (src/wasm.ts `reduceRun`): the vector loop first, the scalar loop from where it left
+rd_s call wxg ca 13
+rd_o ne rd_s 0
+rd_p and rd_o v
+rd_on and rd_p q
+rd_n select rd_on 1 0
+rd_z rec 0 0 0 0 0 0 0
+rd fold wxrdan rd_n rd_z p3 g p4 p5 p6 p7 p8
+rd_ap at rd 0
+rd_bd at rd 3
+rd_b0 eq rd_bd 0
+rd_lt lt k rd_bd
+rd_mn or rd_b0 rd_lt
+rd_m select rd_mn k rd_bd
+rd_st and rd_m 4294967292
+rd_sz eq rd_st 0
+rd_zl and aa rd_sz
+rd_nz select rd_zl false true
+rd_ok ne rd_ap 0
+rd_go and rd_ok rd_nz
+rd_gn select rd_go 1 0
+rd_m2 fold wxvred rd_gn ca a f j k aa a8 bo rd rd_st p4 p5
+rd_v select aa rd_st 4294967295
+nb0 select rd_go rd_v b0
+cb ge nb0 k
 cc and aa cb
 cd select cc 0 1
-ce fold wxcs 1 ca a 0 a8
+ce fold wxcs 1 rd_m2 a 0 a8
 cf fold wxcs 1 ce a 1 bo
 cg select p 1 0
 ch fold wxcs 1 cf a 2 cg
 ci select aa 1 0
 cj fold wxcs 1 ch a 3 ci
 ck fold wxcs 1 cj a 4 k
-cl fold wxcs 1 ck a 5 b0
+cl fold wxcs 1 ck a 5 nb0
 cm eq d 21
 cn select cm 1 0
 co fold wxcs 1 cl a 6 cn
@@ -14628,7 +15221,7 @@ fu fold wxhbin ft fs b1
 fv select e3 1 0
 fw fold wxhdiv fv fu b1
 fx select e4 1 0
-fy fold wxhsel fx fw b1 p11
+fy fold wxhsel fx fw b1 p11 p5 p6
 fz select e5 1 0
 f0 fold wxhcall fz fy b1 p4 p5 p6 p7 p8 p9 p10 p11 p12
 f1 select e6 1 0

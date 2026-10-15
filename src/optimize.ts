@@ -1448,6 +1448,18 @@ function nodeCost(op: Node['op']): number {
   return 1;
 }
 
+/**
+ * Selects on one condition emitted as one if/else (see `lazyArms`): `members` in body order
+ * (the last is the leader, where the branch is emitted), `arms` the nodes only the members'
+ * first (second) operands need, in body order.
+ */
+export interface SelectGroup {
+  readonly members: readonly string[];
+  readonly arms: readonly [readonly string[], readonly string[]];
+}
+
+const lastOf = (xs: readonly Node[]): Node => xs[xs.length - 1] as Node;
+
 /** A select arm whose own nodes cost at least this much (see nodeCost) gets its own path. */
 export const LAZY_ARM_COST = 8;
 
@@ -1458,30 +1470,94 @@ export const LAZY_ARM_COST = 8;
  * total, and nothing else reads them). `owner` maps each such node to its select; `arms` gives
  * each select's two node lists in body order. Selects are taken in body order and a node is
  * owned once, so a select inside an outer arm keeps its own arms (emitted when it is).
+ *
+ * Groups come first: two or more scalar selects on one condition (a node or a parameter) whose
+ * every select but the last (the leader) is read only after the leader, with the nodes only
+ * their first operands need on one side and those only their second operands need on the
+ * other (a select of any candidate group never joins a side). When the costlier side's nodes
+ * plus one per select cost at least LAZY_ARM_COST, the group is one branch on the condition at
+ * the leader: `groups` gives its selects and sides, `owner` maps the side nodes and the other
+ * selects to the leader, and its selects get no arms of their own.
  */
 export function lazyArms(fn: TypedFunc): {
   owner: ReadonlyMap<string, string>;
   arms: ReadonlyMap<string, readonly [readonly string[], readonly string[]]>;
+  groups: ReadonlyMap<string, SelectGroup>;
 } {
   const owner = new Map<string, string>();
   const arms = new Map<string, readonly [readonly string[], readonly string[]]>();
+  const groups = new Map<string, SelectGroup>();
   const byId = new Map(fn.nodes.map((n) => [n.id, n]));
   const index = new Map(fn.nodes.map((n, i) => [n.id, i]));
   const users = new Map<string, string[]>();
+  const uses = new Map<string, { u: string; k: number }[]>();
   for (const n of fn.nodes)
-    for (const a of n.args)
-      if (a.kind === 'node') users.set(a.id, [...(users.get(a.id) ?? []), n.id]);
+    for (const [k, a] of n.args.entries())
+      if (a.kind === 'node') {
+        users.set(a.id, [...(users.get(a.id) ?? []), n.id]);
+        uses.set(a.id, [...(uses.get(a.id) ?? []), { u: n.id, k }]);
+      }
   const isRet = (id: string): boolean => fn.ret.kind === 'node' && fn.ret.id === id;
   const defs = nodeDefs(fn);
+  const isSel = (n: Node): boolean => n.op === 'select' && isScalar(fn.types.get(n.id) ?? 'io');
+  // Selects sharing a condition (a node or a parameter), two or more of them.
+  const condKey = (o: Operand | undefined): string | undefined =>
+    o?.kind === 'node' ? `n${o.id}` : o?.kind === 'param' ? `p${o.index}` : undefined;
+  const byCond = new Map<string, Node[]>();
+  for (const s of fn.nodes) {
+    const key = isSel(s) ? condKey(s.args[0]) : undefined;
+    if (key !== undefined) byCond.set(key, [...(byCond.get(key) ?? []), s]);
+  }
+  const grouped = new Set<string>();
+  for (const ss of byCond.values()) if (ss.length >= 2) for (const s of ss) grouped.add(s.id);
+  const inGroup = new Set<string>();
   // Under strict a node that can trap is not total: a select still evaluates both arms.
   const eligible = (n: Node): boolean =>
     isScalar(fn.types.get(n.id) ?? 'io') &&
     !isEffectful(n, fn) &&
     !mayTrapNode(fn, n, defs) &&
     !isRet(n.id) &&
-    !owner.has(n.id);
+    !owner.has(n.id) &&
+    !inGroup.has(n.id);
+  const cost = (ids: readonly string[]): number =>
+    ids.reduce((n, id) => n + nodeCost((byId.get(id) as Node).op), 0);
+  // Groups, by the position of their last select (the leader, where the group is emitted).
+  const candidates = [...byCond.values()]
+    .filter((ss) => ss.length >= 2)
+    .sort((x, y) => (index.get(lastOf(x).id) ?? 0) - (index.get(lastOf(y).id) ?? 0));
+  for (const members of candidates) {
+    const leader = lastOf(members);
+    const at = index.get(leader.id) ?? 0;
+    const ids = new Set(members.map((m) => m.id));
+    // Every read of a select other than the leader comes after the leader.
+    const late = members.every(
+      (m) => m === leader || (users.get(m.id) ?? []).every((u) => (index.get(u) ?? 0) > at),
+    );
+    if (!late) continue;
+    const side = (k: number): string[] => {
+      const set = new Set<string>();
+      for (let i = at - 1; i >= 0; i -= 1) {
+        const n = fn.nodes[i] as Node;
+        const us = uses.get(n.id) ?? [];
+        const inside = (x: { u: string; k: number }): boolean =>
+          set.has(x.u) || (ids.has(x.u) && x.k === k);
+        if (eligible(n) && !grouped.has(n.id) && us.length > 0 && us.every(inside)) set.add(n.id);
+      }
+      return fn.nodes.filter((n) => set.has(n.id)).map((n) => n.id);
+    };
+    const a = side(1);
+    const b = side(2);
+    if (Math.max(cost(a), cost(b)) + members.length < LAZY_ARM_COST) continue;
+    for (const id of [...a, ...b]) owner.set(id, leader.id);
+    for (const m of members) {
+      inGroup.add(m.id);
+      if (m !== leader) owner.set(m.id, leader.id);
+    }
+    groups.set(leader.id, { members: members.map((m) => m.id), arms: [a, b] });
+  }
   for (const s of fn.nodes) {
     if (s.op !== 'select' || !isScalar(fn.types.get(s.id) ?? 'io')) continue;
+    if (inGroup.has(s.id)) continue;
     const [c, x, y] = s.args;
     const same = (p: Operand | undefined, q: Operand | undefined): boolean =>
       p?.kind === 'node' && q?.kind === 'node' && p.id === q.id;
@@ -1501,13 +1577,11 @@ export function lazyArms(fn: TypedFunc): {
     };
     const a = cone(x, y);
     const b = cone(y, x);
-    const cost = (ids: readonly string[]): number =>
-      ids.reduce((n, id) => n + nodeCost((byId.get(id) as Node).op), 0);
     if (Math.max(cost(a), cost(b)) < LAZY_ARM_COST) continue;
     for (const id of [...a, ...b]) owner.set(id, s.id);
     arms.set(s.id, [a, b]);
   }
-  return { owner, arms };
+  return { owner, arms, groups };
 }
 
 // ---------------------------------------------------------------------------

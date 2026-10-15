@@ -186,9 +186,16 @@ const SIMD = {
   splat: 0x11,
   extract: 0x1b,
   replace: 0x1c,
+  eq: 0x37,
+  ne: 0x38,
+  lt_u: 0x3a,
+  gt_u: 0x3c,
+  le_u: 0x3e,
+  ge_u: 0x40,
   and: 0x4e,
   or: 0x50,
   xor: 0x51,
+  bitselect: 0x52,
   shl: 0xab,
   shr_u: 0xad,
   add: 0xae,
@@ -948,6 +955,8 @@ function guardedCarry(
   const users = body.nodes.filter((n) => n.args.some(isGet));
   const sel = users[0];
   if (users.length !== 1 || sel?.op !== 'select') return undefined;
+  // A select that leads a select group is emitted with its group (see optimize.ts `lazyArms`).
+  if (lazyArms(body).groups.has(sel.id)) return undefined;
   const [cond, k, other] = sel.args;
   if (k?.kind !== 'u32' || !isGet(other) || sel.args.filter(isGet).length !== 1) return undefined;
   if (cond?.kind !== 'node') return undefined;
@@ -989,6 +998,98 @@ function slidingRead(body: TypedFunc): { cur: string; next: string; param: numbe
     }
   }
   return undefined;
+}
+
+/** i32x4 forms (after the 0xfd prefix) of the lane operations of a reduction body. */
+const REDUCE_OPS: Readonly<Record<string, number>> = {
+  add: SIMD.add,
+  sub: SIMD.sub,
+  mul: SIMD.mul,
+  and: SIMD.and,
+  or: SIMD.or,
+  xor: SIMD.xor,
+  shl: SIMD.shl,
+  shr: SIMD.shr_u,
+  eq: SIMD.eq,
+  ne: SIMD.ne,
+  lt: SIMD.lt_u,
+  gt: SIMD.gt_u,
+  le: SIMD.le_u,
+  ge: SIMD.ge_u,
+};
+
+/** A reduction body has at most this many lane nodes (each one's lanes take a v128 local). */
+const REDUCE_MAX_NODES = 32;
+
+/** A reduction fold body (see `reduceRun`). */
+interface ReduceRun {
+  readonly op: string;
+  readonly value: string;
+  readonly nodes: readonly Node[];
+  readonly bound: number;
+}
+
+/**
+ * A scalar fold body `acc op f(p1, ...)` (op add, xor, or or and, acc = p0 read nowhere else)
+ * whose other nodes are lane operations over the index p1, reads `get pK p1` of extra u32
+ * arrays (K >= 2), loop-invariant u32 extras, literals, compares (a bool lane is a mask of all
+ * ones or zero) and selects; no `mul` reads p1 (an induction variable) and the body cannot
+ * trap. Trips are independent apart from op, which is associative and commutative, so a
+ * backend may run four trips at once in i32x4 lanes and fold the lanes into the state after.
+ * `nodes` are the body nodes but the last (the reduction), `value` the node op folds in, and
+ * `bound` the shortest array read (0 when none): a vector trip never reads past it.
+ */
+function reduceRun(body: TypedFunc): ReduceRun | undefined {
+  const [p0, p1] = body.params;
+  if (p0 !== 'u32' || p1 !== 'u32' || body.result !== 'u32' || mayTrapFn(body)) return undefined;
+  const last = body.nodes[body.nodes.length - 1];
+  const ret = body.ret;
+  if (last === undefined || ret.kind !== 'node' || ret.id !== last.id) return undefined;
+  if (!(last.op === 'add' || last.op === 'xor' || last.op === 'or' || last.op === 'and'))
+    return undefined;
+  const isParam = (o: Operand | undefined, i: number): boolean =>
+    o?.kind === 'param' && o.index === i;
+  const [x, y] = last.args;
+  const value = isParam(x, 0) ? y : isParam(y, 0) ? x : undefined;
+  if (value?.kind !== 'node') return undefined;
+  const nodes = body.nodes.slice(0, -1);
+  if (nodes.length > REDUCE_MAX_NODES) return undefined;
+  const lanes = new Set<string>();
+  const u32 = (o: Operand): boolean => operandType(body, o) === 'u32';
+  const uniform = (o: Operand): boolean =>
+    o.kind === 'u32' || (o.kind === 'param' && o.index >= 2 && body.params[o.index] === 'u32');
+  const lane = (o: Operand): boolean =>
+    o.kind === 'u32' ||
+    o.kind === 'bool' ||
+    isParam(o, 1) ||
+    uniform(o) ||
+    (o.kind === 'node' && lanes.has(o.id));
+  let bound = 0;
+  for (const n of nodes) {
+    const t = body.types.get(n.id);
+    if (t !== 'u32' && t !== 'bool') return undefined;
+    const args = n.args;
+    if (n.op === 'get') {
+      const [a, i] = args;
+      const at = a?.kind === 'param' && a.index >= 2 ? body.params[a.index] : undefined;
+      if (at === undefined || isPrimitive(at) || at.kind !== 'arr' || at.elem !== 'u32')
+        return undefined;
+      if (at.length < 4 || !isParam(i, 1)) return undefined;
+      bound = bound === 0 ? at.length : Math.min(bound, at.length);
+    } else if (n.op === 'select') {
+      if (!args.every(lane)) return undefined;
+    } else if (REDUCE_OPS[n.op] !== undefined) {
+      if (!args.every(lane)) return undefined;
+      const [a, b] = args as [Operand, Operand];
+      if ((n.op === 'shl' || n.op === 'shr') && !uniform(b)) return undefined;
+      if (n.op === 'mul' && (isParam(a, 1) || isParam(b, 1))) return undefined;
+      const order = n.op === 'lt' || n.op === 'gt' || n.op === 'le' || n.op === 'ge';
+      if (order && !(u32(a) && u32(b))) return undefined;
+    } else return undefined;
+    lanes.add(n.id);
+  }
+  if (!lanes.has(value.id) || body.types.get(value.id) !== 'u32') return undefined;
+  return { op: last.op, value: value.id, nodes, bound };
 }
 
 /** Operations with no effect and no trap in an inlined body (one that can trap is never inlined). */
@@ -2019,6 +2120,32 @@ class FunctionEmitter {
       }
       case 'select': {
         const k = this.#constOf(a as Operand);
+        const group = this.lazy.groups.get(node.id);
+        if (group !== undefined) {
+          // The group's selects (see optimize.ts `lazyArms`): one branch, each side's nodes on
+          // its own path, every select's local written on both.
+          const members = group.members.map((id) => this.byId.get(id) as Node);
+          const locals = members.map((m) => this.#bindScalar(m.id));
+          const side = (k: 0 | 1): void => {
+            for (const id of group.arms[k]) this.emitNode(this.byId.get(id) as Node);
+            for (const [j, m] of members.entries()) {
+              this.push(m.args[k + 1] as Operand);
+              c.local(OP.localSet, locals[j] as number);
+            }
+          };
+          if (k !== undefined) {
+            // A known condition: its side only.
+            side(k !== 0 ? 0 : 1);
+            return;
+          }
+          this.push(a as Operand);
+          c.op(OP.if, VOID);
+          side(0);
+          c.op(OP.else);
+          side(1);
+          c.op(OP.end);
+          return;
+        }
         if (k !== undefined) {
           this.push((k !== 0 ? b : node.args[2]) as Operand);
           set();
@@ -2566,6 +2693,12 @@ class FunctionEmitter {
     }
     c.i32(start);
     c.local(OP.localSet, i);
+    // Reductions: four trips per vector trip with simd128 while every lane's read is in range,
+    // then the rest by the scalar loop below, from the counter the vector loop left.
+    const red = this.options.simd && !aggregate && node.op === 'fold' ? reduceRun(body) : undefined;
+    const vectorTo =
+      red === undefined ? undefined : this.#vectorReduce(red, state, i, count, extra);
+    if (vectorTo !== undefined) start = vectorTo;
     if (lit !== undefined && start >= lit) return;
     const sources = (): ParamSource[] => [
       { local: state },
@@ -2772,7 +2905,10 @@ class FunctionEmitter {
     // on the last one, so the counter, compare and address work of every trip sits on top of a
     // serial chain that V8 does not unroll away.
     const unroll =
-      node.op === 'fold' && inlineBody && body.nodes.length <= UNROLL_BODY_NODES
+      vectorTo === undefined &&
+      node.op === 'fold' &&
+      inlineBody &&
+      body.nodes.length <= UNROLL_BODY_NODES
         ? carry !== undefined && lit !== undefined
           ? CARRY_UNROLL
           : this.options.unroll
@@ -2800,6 +2936,157 @@ class FunctionEmitter {
       c.local(OP.localGet, local);
       c.mem(OP.store, k * 4);
     }
+  }
+
+  /**
+   * simd128 form of a reduction (see `reduceRun`) for the fold of `count` trips whose scalar
+   * state is the local `state` and counter the local `i` (0 here): four lanes per trip up to
+   * the count, or the shortest array read, rounded down to a multiple of four (a variable bound
+   * is computed into a local), the lanes then folded into the state in order. Returns the
+   * counter's value after the vector loop when known (a literal count; -1 otherwise, the
+   * scalar loop then guards on the counter), or undefined, having emitted nothing, when a
+   * literal count leaves no vector trip.
+   */
+  #vectorReduce(
+    red: ReduceRun,
+    state: number,
+    i: number,
+    count: Operand,
+    extra: readonly Operand[],
+  ): number | undefined {
+    const c = this.code;
+    const lit = count.kind === 'u32' ? count.value : undefined;
+    let staticTo: number | undefined;
+    if (lit !== undefined) {
+      const m = red.bound === 0 ? lit : Math.min(lit, red.bound);
+      staticTo = m - (m % 4);
+      if (staticTo === 0) return undefined;
+    }
+    const vconst = (lanes: readonly number[]): void => {
+      c.simd(SIMD.const);
+      const b = new Uint8Array(16);
+      const view = new DataView(b.buffer);
+      for (const [k, v] of lanes.entries()) view.setUint32(k * 4, v >>> 0, true);
+      c.op(...b);
+    };
+    const splat = (v: number): void => vconst([v, v, v, v]);
+    const limit = this.newLocal();
+    if (staticTo !== undefined) c.i32(staticTo);
+    else {
+      this.push(count);
+      if (red.bound !== 0) {
+        c.i32(red.bound);
+        this.push(count);
+        c.i32(red.bound);
+        c.op(OP.lt_u);
+        c.op(OP.select);
+      }
+      c.i32(-4);
+      c.op(OP.and);
+    }
+    c.local(OP.localSet, limit);
+    const acc = this.newVLocal();
+    splat(red.op === 'and' ? 0xffffffff : 0);
+    c.local(OP.localSet, acc);
+    const isIndex = (o: Operand): boolean => o.kind === 'param' && o.index === 1;
+    const reads = (n: Node): readonly Operand[] =>
+      n.op === 'get' ? [] : n.op === 'shl' || n.op === 'shr' ? [n.args[0] as Operand] : n.args;
+    let index: number | undefined;
+    if (red.nodes.some((n) => reads(n).some(isIndex))) {
+      index = this.newVLocal();
+      vconst([0, 1, 2, 3]);
+      c.local(OP.localSet, index);
+    }
+    // Loop-invariant extras as splats, once before the loop.
+    const splats = new Map<number, number>();
+    for (const n of red.nodes)
+      for (const a of reads(n))
+        if (a.kind === 'param' && a.index >= 2 && !splats.has(a.index)) {
+          const v = this.newVLocal();
+          this.push(extra[a.index - 2] as Operand);
+          c.simd(SIMD.splat);
+          c.local(OP.localSet, v);
+          splats.set(a.index, v);
+        }
+    const lanes = new Map<string, number>();
+    const pushLanes = (o: Operand): void => {
+      if (o.kind === 'u32') splat(o.value);
+      else if (o.kind === 'bool') splat(o.value ? 0xffffffff : 0);
+      else if (o.kind === 'param')
+        c.local(OP.localGet, o.index === 1 ? (index as number) : (splats.get(o.index) as number));
+      else if (o.kind === 'node') c.local(OP.localGet, lanes.get(o.id) as number);
+    };
+    const guard = staticTo === undefined;
+    if (guard) {
+      c.op(OP.block, VOID);
+      c.local(OP.localGet, i);
+      c.local(OP.localGet, limit);
+      c.op(OP.ge_u);
+      c.op(OP.br_if, 0);
+    }
+    c.loopOpen();
+    for (const n of red.nodes) {
+      const [a, b, s] = n.args as [Operand, Operand, Operand];
+      if (n.op === 'get') {
+        this.push(extra[(a as { index: number }).index - 2] as Operand);
+        c.local(OP.localGet, i);
+        c.i32(2);
+        c.op(OP.shl);
+        c.op(OP.add);
+        // v128.load with a 4-byte alignment hint and offset 0.
+        c.simd(SIMD.load);
+        c.op(2, 0);
+      } else if (n.op === 'select' && s.kind === 'u32' && s.value === 0) {
+        // A zero second arm: the first arm's lanes under the mask.
+        pushLanes(b);
+        pushLanes(a);
+        c.simd(SIMD.and);
+      } else if (n.op === 'select') {
+        pushLanes(b);
+        pushLanes(s);
+        pushLanes(a);
+        c.simd(SIMD.bitselect);
+      } else {
+        pushLanes(a);
+        // A shift amount is the same in every lane: a literal or an extra, as a scalar.
+        if (n.op === 'shl' || n.op === 'shr')
+          this.push(b.kind === 'param' ? (extra[b.index - 2] as Operand) : b);
+        else pushLanes(b);
+        c.simd(REDUCE_OPS[n.op] as number);
+      }
+      const v = this.newVLocal();
+      c.local(OP.localSet, v);
+      lanes.set(n.id, v);
+    }
+    c.local(OP.localGet, acc);
+    c.local(OP.localGet, lanes.get(red.value) as number);
+    c.simd(REDUCE_OPS[red.op] as number);
+    c.local(OP.localSet, acc);
+    if (index !== undefined) {
+      c.local(OP.localGet, index);
+      splat(4);
+      c.simd(SIMD.add);
+      c.local(OP.localSet, index);
+    }
+    c.local(OP.localGet, i);
+    c.i32(4);
+    c.op(OP.add);
+    c.local(OP.localTee, i);
+    c.local(OP.localGet, limit);
+    c.op(OP.lt_u);
+    c.op(OP.br_if, 0);
+    c.loopClose();
+    if (guard) c.op(OP.end);
+    // The lanes into the state, in lane order.
+    c.local(OP.localGet, state);
+    for (let k = 0; k < 4; k += 1) {
+      c.local(OP.localGet, acc);
+      c.simd(SIMD.extract);
+      c.op(k);
+      c.op(BINARY[red.op] as number);
+    }
+    c.local(OP.localSet, state);
+    return staticTo ?? -1;
   }
 
   /**
