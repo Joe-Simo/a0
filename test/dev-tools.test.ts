@@ -847,3 +847,58 @@ test('measurement merge driver: git keeps the gated run of two branches, gate fi
     rmSync(repo, { recursive: true, force: true });
   }
 });
+
+test('step cache: added tests, edited tests and fixtures invalidate a cached pass', async () => {
+  for (const change of ['added', 'edited', 'fixture'] as const) {
+    const repo = tempRepo();
+    const out = scratch();
+    try {
+      mkdirSync(join(repo, 'test', 'fixtures'), { recursive: true });
+      const testFile = join(repo, 'test', 'current.test.mjs');
+      const fixture = join(repo, 'test', 'fixtures', 'value.txt');
+      writeFileSync(fixture, 'ok');
+      writeFileSync(
+        testFile,
+        change === 'fixture'
+          ? "import { test } from 'node:test'; import assert from 'node:assert/strict'; import { readFileSync } from 'node:fs'; test('value', () => assert.equal(readFileSync('test/fixtures/value.txt', 'utf8'), 'ok'));\n"
+          : "import { test } from 'node:test'; test('value', () => {});\n",
+      );
+      // Start a separate runner; inheriting this suite's context skips nested test discovery.
+      const run = {
+        id: 'test',
+        cmd: 'env -u NODE_TEST_CONTEXT node --test test/*.test.mjs',
+        timeoutMs: 10_000,
+      };
+      const opts = {
+        repo,
+        runs: [run],
+        required: ['test'],
+        light: false,
+        keepGoing: false,
+        scratch: out,
+        cache: true,
+        note: false,
+        log: () => undefined,
+      };
+      assert.equal((await runGate(opts)).pass, true, change);
+      assert.equal((await runGate(opts)).results[0]?.outcome, 'cached', change);
+      if (change === 'fixture') writeFileSync(fixture, 'wrong');
+      else
+        writeFileSync(
+          change === 'added' ? join(repo, 'test', 'new.test.mjs') : testFile,
+          "import { test } from 'node:test'; test('value', () => { throw Error('new failure'); });\n",
+        );
+      const changed = await runGate(opts);
+      const log = changed.results[0]?.log;
+      assert.equal(
+        changed.results[0]?.outcome,
+        'fail',
+        `${change}: ${log == null ? 'no step log' : readFileSync(log, 'utf8')}`,
+      );
+      assert.equal(changed.pass, false, change);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true });
+    }
+  }
+});

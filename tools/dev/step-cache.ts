@@ -65,6 +65,8 @@ export function stepFiles(root: string, step: StepId): string[] {
   // the unit tests also read results, examples, the compiler sources and the guides
   if (step === 'site') extra.push(...walk(root, 'results', /\.json$/), ...walk(root, 'site', /./));
   if (step === 'test') {
+    // The runner discovers every test; include their fixtures and golden files too.
+    extra.push(...walk(root, 'test', /./));
     extra.push(...walk(root, 'examples', /\.a0$/), ...walk(root, 'compiler', /\.a0$/));
     extra.push(...walk(root, 'src', /\.ts$/), ...walk(root, 'tools', /\.ts$/));
     extra.push(

@@ -29,3 +29,8 @@ Use separate output directories for each revision; the JSON records raw samples 
 Regression coverage checks completed scalar and aggregate calls, fold and loop extras, borrowed
 record fields, delayed reads, and state passed again as an extra against the interpreter with and
 without optimization. The self-hosted wasm parity suite includes those cases and the hash kernel.
+
+The gate cache now includes every test file and fixture in its input hash. Previously a changed
+test outside the fixed entry list could reuse a cached pass. A regression test first caches a
+passing run, then adds a failing test, edits a test to fail, or changes its fixture, and requires
+the gate to rerun and report the failure.
