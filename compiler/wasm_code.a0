@@ -19,10 +19,14 @@ use "emit_c.a0"
 #    6 CALL v: one marker word v (>= 256)               7 POOL v: one marker word 2^31 + v
 #    8 LOOP 0x03 0x40        9 LOOPEND 0x0b             10 LOAD v 0x28 2 uleb(v)  11 STORE v 0x36 2 uleb(v)
 #   12 BRIF v 0x0d uleb(v)  13 BR v 0x0c uleb(v)        14 BLOCK v 0x02 v&255     15 IF v 0x04 v&255
-#   16 MEMCOPY 0xfc 0x0a 0 0  17 MEMFILL 0xfc 0x0b 0    18 SIMD v 0xfd uleb(v)    19 VSTORE 0xfd 0x0b 2 0
+#   16 MEMCOPY 0xfc 0x0a 0 0  17 MEMFILL 0xfc 0x0b 0    18 SIMD v 0xfd uleb(v)
+#   19 VSTORE v 0xfd 0x0b 2 uleb(v) (v128.store at offset v)
 #   20 VCONSTIDX 0xfd 0x0c then the lanes 0 1 2 3 (u32, little endian)
 #   21 VCONSTSPLAT v 0xfd 0x0c then v (little endian) four times
 #   22 GGET v 0x23 v&255    23 GSET v 0x24 v&255
+#   24 VEXTRACT v 0xfd 0x1b v&255 (i32x4.extract_lane)   25 VREPLACE v 0xfd 0x1c v&255 (replace_lane)
+#   26 VCONST v 0xfd 0x0c then v (little endian): lane 0 of a v128.const whose lanes 1..3 follow
+#   27 WORD v v (little endian): a lane of the v128.const before it
 # A local id below 2^20 (VBASE) is an i32 local (id < 8192 when not a parameter), an id VBASE + k
 # (k < 128) a v128 local; the v128 locals are placed after the i32 ones. A local id outside these
 # ranges, more than 22528 instructions, or more than 65533 output words is the failure value.
@@ -296,7 +300,15 @@ al eq p0 22
 am select al 1 ak
 an eq p0 23
 ao select an 1 am
-ret ao
+b0 eq p0 19
+b1 select b0 3 ao
+b2 eq p0 24
+b3 select b2 2 b1
+b4 eq p0 25
+b5 select b4 2 b3
+b6 eq p0 26
+b7 select b6 2 b5
+ret b7
 end
 # the fixed prefix bytes of kind p0, packed little endian
 fn wfzpack u32 -> u32
@@ -341,7 +353,13 @@ al eq p0 22
 am select al 35 ak
 an eq p0 23
 ao select an 36 am
-ret ao
+b0 eq p0 24
+b1 select b0 7165 ao
+b2 eq p0 25
+b3 select b2 7421 b1
+b4 eq p0 26
+b5 select b4 3325 b3
+ret b5
 end
 # length of the variable part of kind p0 whose operand is p1
 fn wfzvlen u32 u32 -> u32
@@ -384,7 +402,17 @@ aj eq p0 22
 ak select aj 1 ai
 al eq p0 23
 am select al 1 ak
-ret am
+b0 eq p0 19
+b1 select b0 a am
+b2 eq p0 24
+b3 eq p0 25
+b4 or b2 b3
+b5 select b4 1 b1
+b6 eq p0 26
+b7 eq p0 27
+b8 or b6 b7
+b9 select b8 4 b5
+ret b9
 end
 # words of the instruction of kind p0 with operand p1 (a local access: its final index)
 fn wfzlen u32 u32 -> u32
@@ -443,7 +471,20 @@ as eq p0 22
 au select as c ar
 av eq p0 23
 aw select av c au
-ret aw
+b0 eq p0 19
+b1 select b0 a aw
+b2 eq p0 24
+b3 eq p0 25
+b4 or b2 b3
+b5 select b4 c b1
+b6 mul p2 8
+b7 shr p1 b6
+b8 and b7 255
+b9 eq p0 26
+c0 eq p0 27
+c1 or b9 c0
+c2 select c1 b8 b5
+ret c2
 end
 # word p2 of the instruction of kind p0 with operand p1: a byte, or a marker for a call or a pool address
 fn wfzbyte u32 u32 u32 -> u32
@@ -511,7 +552,7 @@ end
 # The stack effect of an instruction of kind p0 and value p1 (src/wasm.ts `effectOf` and
 # `runEffect`): net is its change of depth, low the lowest depth it reaches relative to its start
 # (two's complement: 4294967295 is -1). An instruction with no known effect (kind 0, 6, 8, 9, 12..15,
-# 18..21, or an OP byte outside the table) is a barrier.
+# a SIMD (18) other than a splat or a lane-wise operation, or an OP byte outside the table) is a barrier.
 
 # the single-byte op p0 has a known stack effect: drop 0x1a, select 0x1b, eqz 0x45, a comparison
 # 0x46..0x4f, a unary op 0x67..0x69 or a binary op 0x6a..0x78
@@ -569,7 +610,28 @@ q select i 4294967295 p
 r select c 4294967295 q
 ret r
 end
-# 1 when an instruction of kind p0 and value p1 is a barrier (has no known stack effect)
+# the simd128 opcode p0 (kind 18) is a lane-wise i32x4 operation of two operands (src/wasm.ts
+# `SLP_OPS`: and or xor shl shr_u add sub mul)
+fn wfzvbin u32 -> bool
+a eq p0 78
+b eq p0 80
+c eq p0 81
+d eq p0 171
+e eq p0 173
+f eq p0 174
+g eq p0 177
+h eq p0 181
+i or a b
+j or i c
+k or j d
+l or k e
+m or l f
+n or m g
+o or n h
+ret o
+end
+# 1 when an instruction of kind p0 and value p1 is a barrier (has no known stack effect): simd128
+# runs have known effects (kinds 19..21, 24..27, and a splat or a lane-wise operation of kind 18)
 fn wfzbar u32 u32 -> bool
 a eq p0 1
 b call wfzopok p1
@@ -594,7 +656,21 @@ t or s j
 u or t k
 v or u l
 w or v m
-x select a b w
+b0 eq p0 18
+b1 eq p1 17
+b2 call wfzvbin p1
+b3 or b1 b2
+b4 and b0 b3
+b5 ge p0 19
+b6 le p0 21
+b7 and b5 b6
+b8 ge p0 24
+b9 le p0 27
+c0 and b8 b9
+c1 or w b4
+c2 or c1 b7
+c3 or c2 c0
+x select a b c3
 y eq x false
 ret y
 end
@@ -621,7 +697,21 @@ r select k 4294967294 q
 s select n 4294967293 r
 t eq p0 1
 u select t o s
-ret u
+b0 eq p0 18
+b1 call wfzvbin p1
+b2 select b1 4294967295 0
+b3 select b0 b2 u
+b4 eq p0 19
+b5 select b4 4294967294 b3
+b6 eq p0 20
+b7 eq p0 21
+b8 eq p0 26
+b9 or b6 b7
+c0 or b9 b8
+c1 select c0 1 b5
+c2 eq p0 25
+c3 select c2 4294967295 c1
+ret c3
 end
 # the lowest depth an instruction of kind p0 and value p1 reaches relative to its start
 fn wfzlow u32 u32 -> u32
@@ -649,7 +739,17 @@ u select n 4294967294 0
 v select q 4294967293 u
 w select t 4294967295 v
 x select s r w
-ret x
+b0 eq p0 18
+b1 call wfzvbin p1
+b2 select b1 4294967294 4294967295
+b3 select b0 b2 x
+b4 eq p0 19
+b5 eq p0 25
+b6 or b4 b5
+b7 select b6 4294967294 b3
+b8 eq p0 24
+b9 select b8 4294967295 b7
+ret b9
 end
 
 # Forward pass, one trip per instruction k = p1 of the list p2 (np = p3). State W, all words of

@@ -184,6 +184,8 @@ const SIMD = {
   store: 0x0b,
   const: 0x0c,
   splat: 0x11,
+  extract: 0x1b,
+  replace: 0x1c,
   and: 0x4e,
   or: 0x50,
   xor: 0x51,
@@ -389,8 +391,9 @@ function localCounts(ins: readonly Ins[]): {
 /**
  * Stack effect of an instruction-list entry: `net` is its change of depth and `low` the lowest
  * depth it reaches relative to its start (for a run, the least of its instructions' depth before
- * their pops minus those pops). An entry with no known effect (a call, a loop, a branch, a
- * simd or i64 instruction) is a barrier: `undefined`.
+ * their pops minus those pops). An entry with no known effect (a call, a loop, a branch, an i64
+ * instruction, a simd instruction other than v128.const, v128.store, i32x4.splat, extract_lane,
+ * replace_lane and the lane-wise `SLP_OPS`) is a barrier: `undefined`.
  */
 interface Effect {
   readonly net: number;
@@ -450,6 +453,26 @@ function runEffect(bytes: readonly number[]): Effect | undefined {
     } else if (op === 0xfc && bytes[p] === 0x0b) {
       pops = 3;
       p += 2;
+    } else if (op === 0xfd) {
+      const v = bytes[p] as number;
+      p = skipLeb(bytes, p);
+      if (v === SIMD.const) {
+        pushes = 1;
+        p += 16;
+      } else if (v === SIMD.store) {
+        pops = 2;
+        p = skipLeb(bytes, skipLeb(bytes, p));
+      } else if (v === SIMD.splat) {
+        pops = 1;
+        pushes = 1;
+      } else if (v === SIMD.extract || v === SIMD.replace) {
+        pops = v === SIMD.extract ? 1 : 2;
+        pushes = 1;
+        p += 1;
+      } else if (Object.values(SLP_OPS).includes(v)) {
+        pops = 2;
+        pushes = 1;
+      } else return undefined;
     } else {
       return undefined;
     }
@@ -982,6 +1005,228 @@ function scalarState(body: TypedFunc): ReadonlySet<string> | undefined {
   return chain;
 }
 
+/** Lane-wise u32 operations simd128 packs (see `slpPlan`). */
+const SLP_OPS: Readonly<Record<string, number>> = {
+  add: SIMD.add,
+  sub: SIMD.sub,
+  mul: SIMD.mul,
+  and: SIMD.and,
+  or: SIMD.or,
+  xor: SIMD.xor,
+  shl: SIMD.shl,
+  shr: SIMD.shr_u,
+};
+const SLP_COMMUTES = new Set(['add', 'mul', 'and', 'or', 'xor']);
+/** Packs a function makes at most: one v128 local each, the capacity of compiler/wasm_code.a0. */
+const SLP_MAX_PACKS = 128;
+
+/** One side of a pack's operation: another pack, one value in every lane, or four values. */
+type SlpKid =
+  | { readonly pack: SlpPack }
+  | { readonly same: Operand }
+  | { readonly lanes: readonly Operand[] };
+
+interface SlpPack {
+  readonly lanes: readonly string[];
+  readonly op: string;
+  readonly kids: SlpKid[];
+  /** Index of the node after which the pack's inputs exist (-1: at the start). */
+  ready: number;
+  /** Lanes whose scalar value is read (extracted into an i32 local when the pack is made). */
+  readonly demand: Set<number>;
+}
+
+interface SlpPlan {
+  /** The packs, kids before the packs that read them. */
+  readonly packs: readonly SlpPack[];
+  /** Pack-only nodes (not emitted as scalars): the pack and lane that holds each. */
+  readonly holder: ReadonlyMap<string, { readonly pack: SlpPack; readonly lane: number }>;
+  /** Packs by their lanes joined with ',' (array literal groups are stored from them). */
+  readonly byLanes: ReadonlyMap<string, SlpPack>;
+  /**
+   * Operations of parameters and literals read once, by a splat or lane build: computed there
+   * rather than at their place.
+   */
+  readonly inline: ReadonlySet<string>;
+}
+
+const operandKey = (o: Operand): string =>
+  o.kind === 'node' ? o.id : o.kind === 'param' ? `p${o.index}` : `${o.kind}${String(o.value)}`;
+
+/**
+ * Superword packs of a function: groups of four isomorphic lane-wise u32 operations, seeded by
+ * the four-element groups of u32 array literals and grown through their operands, each done as
+ * one i32x4 operation. A lane operand that is the same in every lane is a splat; four other
+ * values are built with replace_lane. A lane node read as a scalar before its pack's inputs
+ * exist is also emitted as a scalar; other scalar reads are lanes extracted once.
+ */
+function slpPlan(fn: TypedFunc, skip: (id: string) => boolean): SlpPlan {
+  const index = new Map<string, number>();
+  const byId = new Map<string, Node>();
+  for (const [k, n] of fn.nodes.entries()) {
+    index.set(n.id, k);
+    byId.set(n.id, n);
+  }
+  const byLanes = new Map<string, SlpPack>();
+  const packs: SlpPack[] = [];
+  const isU32 = (o: Operand): boolean => o.kind !== 'bool' && operandType(fn, o) === 'u32';
+  const opOf = (o: Operand): string => (o.kind === 'node' ? (byId.get(o.id)?.op ?? '') : o.kind);
+  const lanesOk = (ops: readonly Operand[]): Node[] | undefined => {
+    const nodes: Node[] = [];
+    for (const o of ops) {
+      if (o.kind !== 'node' || skip(o.id) || nodes.some((n) => n.id === o.id)) return undefined;
+      const n = byId.get(o.id);
+      if (n === undefined || SLP_OPS[n.op] === undefined || n.op !== opOf(ops[0] as Operand))
+        return undefined;
+      if (fn.types.get(n.id) !== 'u32' || !n.args.every(isU32)) return undefined;
+      nodes.push(n);
+    }
+    return nodes;
+  };
+  const kid = (ops: readonly Operand[]): SlpKid => {
+    const k0 = operandKey(ops[0] as Operand);
+    if (ops.every((o) => operandKey(o) === k0)) return { same: ops[0] as Operand };
+    const p = build(ops);
+    return p === undefined ? { lanes: ops } : { pack: p };
+  };
+  const build = (ops: readonly Operand[]): SlpPack | undefined => {
+    const nodes = lanesOk(ops);
+    if (nodes === undefined) return undefined;
+    const lanes = nodes.map((n) => n.id);
+    const known = byLanes.get(lanes.join());
+    if (known !== undefined) return known;
+    if (byLanes.size >= SLP_MAX_PACKS) return undefined;
+    const op = (nodes[0] as Node).op;
+    const shift = op === 'shl' || op === 'shr';
+    const k = operandKey;
+    let swap = nodes.map(() => false);
+    if (shift) {
+      const r0 = k((nodes[0] as Node).args[1] as Operand);
+      if (!nodes.every((n) => k(n.args[1] as Operand) === r0)) return undefined;
+    } else if (SLP_COMMUTES.has(op)) {
+      // Orient each lane: a value common to every lane goes left (one splat, made first); otherwise each
+      // lane's sides follow the operations of lane 0's.
+      const [l0, r0] = (nodes[0] as Node).args as [Operand, Operand];
+      const common = [r0, l0].find((c) => nodes.every((n) => n.args.some((a) => k(a) === k(c))));
+      swap = nodes.map((n) => {
+        const [a, b] = n.args as [Operand, Operand];
+        if (common !== undefined) return k(b) === k(common) && k(a) !== k(common);
+        if (k(a) === k(l0) || k(b) === k(r0)) return false;
+        if (k(b) === k(l0) || k(a) === k(r0)) return true;
+        return (
+          !(opOf(a) === opOf(l0) && opOf(b) === opOf(r0)) &&
+          opOf(b) === opOf(l0) &&
+          opOf(a) === opOf(r0)
+        );
+      });
+    }
+    const side = (s: number): Operand[] =>
+      nodes.map((n, i) => n.args[(swap[i] ? 1 - s : s) as 0 | 1] as Operand);
+    const pack: SlpPack = { lanes, op, kids: [], ready: -1, demand: new Set() };
+    byLanes.set(lanes.join(), pack);
+    pack.kids.push(kid(side(0)), shift ? { same: side(1)[0] as Operand } : kid(side(1)));
+    packs.push(pack);
+    return pack;
+  };
+  for (const n of fn.nodes) {
+    if (n.op !== 'arr' || arrayType(fn, { kind: 'node', id: n.id }).elem !== 'u32') continue;
+    for (let g = 0; g + 4 <= n.args.length; g += 4) build(n.args.slice(g, g + 4));
+  }
+  // Kids are pushed before their parents, so `packs` is already in emission order.
+  const users = new Map<string, number[]>();
+  const use = (id: string, at: number): void => {
+    users.set(id, [...(users.get(id) ?? []), at]);
+  };
+  for (const [k, n] of fn.nodes.entries()) {
+    // An array literal group stored from its pack reads no lane.
+    const stored = new Set<number>();
+    if (n.op === 'arr')
+      for (let g = 0; g + 4 <= n.args.length; g += 4) {
+        const ids = n.args.slice(g, g + 4).map((a) => (a.kind === 'node' ? a.id : ''));
+        if (byLanes.has(ids.join())) for (let i = g; i < g + 4; i += 1) stored.add(i);
+      }
+    for (const [i, a] of n.args.entries()) if (a.kind === 'node' && !stored.has(i)) use(a.id, k);
+  }
+  if (fn.ret.kind === 'node') use(fn.ret.id, fn.nodes.length);
+  const packed = new Map<string, { pack: SlpPack; lane: number }>();
+  for (const p of packs)
+    for (const [lane, id] of p.lanes.entries())
+      if (!packed.has(id)) packed.set(id, { pack: p, lane });
+  // Nodes emitted as scalars anyway (read before their pack exists), grown to a fixed point.
+  const scalar = new Set<string>();
+  const leafReads = (p: SlpPack): Operand[] =>
+    p.kids.flatMap((kd) => ('pack' in kd ? [] : 'same' in kd ? [kd.same] : kd.lanes));
+  for (;;) {
+    let grew = false;
+    // Ready points, depth first; a leaf read of a lane of a pack still being resolved (a cycle)
+    // makes that lane a scalar.
+    const state = new Map<SlpPack, number>();
+    const resolve = (p: SlpPack): number => {
+      if (state.get(p) === 2) return p.ready;
+      state.set(p, 1);
+      let r = -1;
+      for (const kd of p.kids) if ('pack' in kd) r = Math.max(r, resolve(kd.pack));
+      for (const o of leafReads(p)) {
+        if (o.kind !== 'node') continue;
+        const h = packed.get(o.id);
+        if (h !== undefined && !scalar.has(o.id) && state.get(h.pack) === 1) {
+          scalar.add(o.id);
+          grew = true;
+        }
+        r = Math.max(
+          r,
+          h === undefined || scalar.has(o.id) ? (index.get(o.id) ?? -1) : resolve(h.pack),
+        );
+      }
+      p.ready = r;
+      state.set(p, 2);
+      return r;
+    };
+    for (const p of packs) resolve(p);
+    if (grew) continue;
+    for (const [id, h] of packed) {
+      if (scalar.has(id)) continue;
+      if (
+        (users.get(id) ?? []).some(
+          (u) => u <= h.pack.ready && !packed.has(fn.nodes[u]?.id ?? ''),
+        ) ||
+        (users.get(id) ?? []).some((u) => scalar.has(fn.nodes[u]?.id ?? '') && u <= h.pack.ready)
+      ) {
+        scalar.add(id);
+        grew = true;
+      }
+    }
+    if (!grew) break;
+  }
+  const holder = new Map<string, { pack: SlpPack; lane: number }>();
+  for (const [id, h] of packed) if (!scalar.has(id)) holder.set(id, h);
+  // Scalar reads of pack-only nodes: by scalar nodes and by the leaves of packs.
+  const read = (id: string): void => {
+    const h = holder.get(id);
+    if (h !== undefined) h.pack.demand.add(h.lane);
+  };
+  for (const [id, us] of users)
+    if (us.some((u) => u >= fn.nodes.length || !holder.has(fn.nodes[u]?.id ?? ''))) read(id);
+  const leafCount = new Map<string, number>();
+  for (const p of packs)
+    for (const o of leafReads(p))
+      if (o.kind === 'node') leafCount.set(o.id, (leafCount.get(o.id) ?? 0) + 1);
+  const inline = new Set<string>();
+  for (const [id, count] of leafCount) {
+    const n = byId.get(id) as Node;
+    if (
+      count === 1 &&
+      !packed.has(id) &&
+      !skip(id) &&
+      SLP_OPS[n.op] !== undefined &&
+      n.args.every((a) => a.kind === 'param' || a.kind === 'u32') &&
+      (users.get(id) ?? []).every((u) => holder.has(fn.nodes[u]?.id ?? ''))
+    )
+      inline.add(id);
+  }
+  return { packs, holder, byLanes, inline };
+}
+
 /** Iteration bodies and predicates up to this many nodes are emitted inside the loop. */
 const INLINE_BODY_NODES = 24;
 /** Scalar calls of functions up to this many nodes are emitted at the call site. */
@@ -1086,6 +1331,9 @@ class FunctionEmitter {
   /** Scalar-replaced state: the update-chain nodes and each one's words (see `scalarState`). */
   readonly #chain: ReadonlySet<string> | undefined;
   readonly #words = new Map<string, readonly ParamSource[]>();
+  /** simd128 packs of lane-wise operations (see `slpPlan`) and their v128 locals. */
+  #slp: SlpPlan | undefined;
+  readonly #vec = new Map<SlpPack, number>();
 
   constructor(
     fn: TypedFunc,
@@ -1112,6 +1360,15 @@ class FunctionEmitter {
     this.paramBase = aggregateResult ? 1 : 0;
     this.#nextLocal = this.paramBase + fn.params.length;
     this.#analyse();
+    if (host === undefined && this.options.simd)
+      this.#slp = slpPlan(
+        fn,
+        (id) =>
+          this.lazy.owner.has(id) ||
+          this.rot.owned.has(id) ||
+          this.rot.at.has(id) ||
+          this.aliases.has(id),
+      );
     this.retSlot = this.#retSlot();
   }
 
@@ -1393,6 +1650,19 @@ class FunctionEmitter {
 
   /** Every node in order, except those a lazy select arm emits on its own path. */
   #emitNodes(): void {
+    const slp = this.#slp;
+    if (slp !== undefined && slp.packs.length > 0) {
+      const at = (k: number): void => {
+        for (const p of slp.packs) if (p.ready === k) this.#emitPack(p);
+      };
+      at(-1);
+      for (const [k, n] of this.fn.nodes.entries()) {
+        const skip = slp.holder.has(n.id) || slp.inline.has(n.id);
+        if (!skip && !this.lazy.owner.has(n.id) && !this.rot.owned.has(n.id)) this.emitNode(n);
+        at(k);
+      }
+      return;
+    }
     const live = this.host === undefined ? undefined : this.#liveInline();
     for (const n of this.fn.nodes)
       if (!this.lazy.owner.has(n.id) && !this.rot.owned.has(n.id) && (live?.has(n.id) ?? true))
@@ -1732,6 +2002,18 @@ class FunctionEmitter {
         }
         const size = bytesOf(elem);
         for (const [i, arg] of node.args.entries()) {
+          const group = node.args.slice(i - (i % 4), i - (i % 4) + 4);
+          const ids = group.map((x) => (x.kind === 'node' ? x.id : ''));
+          const pack = group.length === 4 ? this.#slp?.byLanes.get(ids.join()) : undefined;
+          if (pack !== undefined) {
+            if (i % 4 === 0) {
+              c.local(OP.localGet, local);
+              c.local(OP.localGet, this.#vec.get(pack) as number);
+              c.simd(SIMD.store);
+              c.op(2, ...uleb(i * size));
+            }
+            continue;
+          }
           c.local(OP.localGet, local);
           this.storeAt(elem, arg, i * size);
         }
@@ -1911,6 +2193,68 @@ class FunctionEmitter {
         set();
         return;
       }
+    }
+  }
+
+  /**
+   * One pack's i32x4 operation (after the packs it reads), then its lanes read by scalar nodes
+   * extracted into locals. A splat or lane build reads a pack-only lane straight from its pack.
+   */
+  #emitPack(p: SlpPack): void {
+    if (this.#vec.has(p)) return;
+    const c = this.code;
+    const leaves = p.kids.flatMap((k) => ('pack' in k ? [] : 'same' in k ? [k.same] : k.lanes));
+    for (const k of p.kids) if ('pack' in k) this.#emitPack(k.pack);
+    for (const o of leaves) {
+      const h = o.kind === 'node' ? this.#slp?.holder.get(o.id) : undefined;
+      if (h !== undefined) this.#emitPack(h.pack);
+    }
+    const scalar = (o: Operand): void => {
+      const h = o.kind === 'node' ? this.#slp?.holder.get(o.id) : undefined;
+      if (o.kind === 'node' && this.#slp?.inline.has(o.id)) {
+        const n = this.byId.get(o.id) as Node;
+        this.push(n.args[0] as Operand);
+        this.push(n.args[1] as Operand);
+        c.op(BINARY[n.op] as number);
+      } else if (h === undefined || h.pack.demand.has(h.lane)) this.push(o);
+      else {
+        c.local(OP.localGet, this.#vec.get(h.pack) as number);
+        c.simd(SIMD.extract);
+        c.op(h.lane);
+      }
+    };
+    for (const k of p.kids) {
+      if ('pack' in k) c.local(OP.localGet, this.#vec.get(k.pack) as number);
+      else if ('same' in k) {
+        scalar(k.same);
+        if (!(k === p.kids[1] && (p.op === 'shl' || p.op === 'shr'))) c.simd(SIMD.splat);
+      } else if (k.lanes.every((o) => o.kind === 'u32')) {
+        c.simd(SIMD.const);
+        const b = new Uint8Array(16);
+        const view = new DataView(b.buffer);
+        for (const [i, o] of k.lanes.entries())
+          view.setUint32(i * 4, (o as { value: number }).value >>> 0, true);
+        c.op(...b);
+      } else {
+        for (const [i, o] of k.lanes.entries()) {
+          scalar(o);
+          if (i === 0) c.simd(SIMD.splat);
+          else {
+            c.simd(SIMD.replace);
+            c.op(i);
+          }
+        }
+      }
+    }
+    c.simd(SLP_OPS[p.op] as number);
+    const v = this.newVLocal();
+    c.local(OP.localSet, v);
+    this.#vec.set(p, v);
+    for (const lane of [...p.demand].sort()) {
+      c.local(OP.localGet, v);
+      c.simd(SIMD.extract);
+      c.op(lane);
+      c.local(OP.localSet, this.#bindScalar(p.lanes[lane] as string));
     }
   }
 

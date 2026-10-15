@@ -1543,6 +1543,88 @@ ret x
 end
 `;
 
+/**
+ * Superword packs (src/wasm.ts `slpPlan`): u32 array literals whose four-element groups are
+ * isomorphic lane-wise operations, grown through their operands: splats of a common operand,
+ * lanes oriented by their operands' operations, shift amounts the same in every lane, a sub,
+ * lane builds with replace_lane, constant lanes, lanes read as scalars (extracted once), groups
+ * of an inner pack stored from it, and a regrouping of the same nodes.
+ */
+const SLP_SOURCE = `fn lanes u32 u32 u32 -> u32
+e0 mul p0 3
+e1 mul p0 5
+e2 mul p0 7
+e3 mul p0 9
+f0 shr p1 1
+g0 xor e0 f0
+z xor g0 p2
+f1 shr p1 2
+f2 shr p1 3
+f3 shr p1 4
+g1 xor f1 e1
+g2 xor e2 f2
+g3 xor e3 f3
+h0 shl g0 5
+h1 shl g1 5
+h2 shl g2 5
+h3 shl g3 5
+k0 sub h0 p2
+k1 sub h1 p2
+k2 sub h2 p2
+k3 sub h3 p2
+m0 add k0 10
+m1 add k1 20
+m2 add 30 k2
+m3 add k3 40
+w0 and m0 p0
+w1 and m1 p1
+w2 and p2 m2
+w3 and m3 9
+v0 or w0 k1
+v1 or w1 k0
+v2 or w2 k3
+v3 or w3 k2
+a arr m0 m1 m2 m3 k0 k1 k2 k3 v0 v1
+b arr w0 w1 w2 w3 v0 v1 v2 v3
+c arr k1 k0 k3 k2
+i and p2 7
+j and p0 3
+x get a i
+y get b i
+q get c j
+s add k1 z
+t add s x
+u add t y
+r add u q
+ret r
+end
+fn shifts u32 u32 -> u32
+a0 add p0 1
+a1 add p0 2
+a2 add p0 3
+a3 add p0 4
+b0 shr a0 p1
+b1 shr a1 p1
+b2 shr a2 p1
+b3 shr a3 p1
+c0 shl a0 1
+c1 shl a1 2
+c2 shl a2 3
+c3 shl a3 4
+d0 mul b0 c0
+d1 mul c1 b1
+d2 mul b2 c2
+d3 mul b3 c3
+n arr d0 d1 d2 d3 b0 b1 b2 b3
+i and p0 7
+j and p1 7
+e get n i
+f get n j
+r xor e f
+ret r
+end
+`;
+
 // Recurrences fused with their consumer (src/optimize.ts `fuseRecurrence`): the carried previous
 // element seeded with the trip-0 arm (a parameter, a literal), and unseeded when the arms differ.
 const REC_SEED_SOURCE = `fn rpar u32x16 u32 u32 -> u32x16
@@ -1638,6 +1720,14 @@ async function main(): Promise<void> {
   const prefix1k = KERNELS.find((k) => k.name === 'prefix1k');
   if (prefix1k === undefined) throw new Error('exec-bench kernel prefix1k is missing');
   programs.push(['bench/prefix1k', parseAndValidate(prefix1k.a0), small]);
+  // superword packs: a crafted program, and the exec-bench kernel mat4 (the 4x4 products as
+  // i32x4) with a variable trip count, so that the step stays a function of its own
+  programs.push(['slp', parseAndValidate(SLP_SOURCE), small]);
+  const mat4 = KERNELS.find((k) => k.name === 'mat4');
+  if (mat4 === undefined) throw new Error('exec-bench kernel mat4 is missing');
+  const mat4n = mat4.a0.replace('r fold mulstep 8 a b', 'k and p1 7\nr fold mulstep k a b');
+  if (mat4n === mat4.a0) throw new Error('exec-bench kernel mat4 has no fold of mulstep');
+  programs.push(['bench/mat4n', parseAndValidate(mat4n), small]);
   programs.push(['recseed', parseAndValidate(REC_SEED_SOURCE), small]);
   programs.push(['prefix', parseAndValidate(PREFIX_SOURCE), small]);
   // carried-element folds unrolled by 4 (src/wasm.ts `CARRY_UNROLL`)
