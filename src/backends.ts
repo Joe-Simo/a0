@@ -255,10 +255,10 @@ function sameOp(x: Operand, y: Operand): boolean {
 /**
  * May the aggregate operand `o` be updated in place by the node at `index`?
  * Sound when the value is provably unshared: it is a fresh allocation (arr/rec/set/put result)
- * or a parameter the target owns privately (`ownedParam`: in JS only the p0 state of an
- * iteration body, in C every by-value parameter and the owned loop state); every other use of
- * it is a non-escaping element/field read (`get`/`at` as first operand) that happens before
- * `index`; and it is not returned. `get`/`at` results alias their container and are never mutated.
+ * or the privately owned p0 state of a JS iteration body. Every other use must finish before
+ * `index` without retaining the container, and the container must not be returned. Element/field
+ * reads are safe: aggregate `get`/`at` results are never mutated. Calls and iteration extras are
+ * safe only with a scalar result; an aggregate result can retain a reference to the input in JS.
  */
 function mutableHere(
   fn: TypedFunc,
@@ -278,7 +278,14 @@ function mutableHere(
     for (const [k, arg] of n.args.entries()) {
       if (!sameOp(arg, o)) continue;
       if (j > index) return false;
-      if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
+      if ((n.op === 'get' || n.op === 'at') && k === 0) continue;
+      const result = fn.types.get(n.id);
+      if (
+        (result === 'u32' || result === 'bool') &&
+        (n.op === 'call' || ((n.op === 'fold' || n.op === 'loop') && k >= 2))
+      )
+        continue;
+      return false;
     }
   }
   return true;
