@@ -26,11 +26,13 @@ how the project got here, session by session, is in [docs/history/](docs/history
 ## Current results
 
 Source unification is in progress: grammar-independent A0 arena construction and direct parsed-IR
-linking are implemented. The first printing candidate failed its AI-cost rule; a later flat candidate
-passed that bounded rule, but compiler timings still contain losses. The official syntax and tooling
-cutover remain unfinished. Both independent studies, raw timing samples and conversion evidence are
-recorded in `results/unification-codex-v1.json`, `results/unification-codex-v2.json`,
-`results/unification-link-header-scan.json` and [the refactor record](docs/history/2026-10-16-unified-source-refactor.md).
+linking are implemented. The recorded edit-study outcomes are preserved, but their Dense guidance
+incorrectly described generated IDs and omitted operation/function-name escaping. Their comparative
+AI-cost conclusions are therefore withdrawn pending a matched replication with corrected guidance.
+Compiler timings still contain losses, and the official syntax and tooling cutover remain unfinished.
+Raw outcomes, timing samples and conversion evidence are recorded in `results/unification-codex-v1.json`,
+`results/unification-codex-v2.json`, `results/unification-link-header-scan.json` and
+[the refactor record and guide erratum](docs/history/2026-10-16-unified-source-refactor.md).
 
 Current integration (`a0c-0.1.62`) adds experimental arena services for Darwin arm64, RISC-V64, Wasm and Java,
 plus canonical formatting, semantic revisions and UTF-8 provenance. Native C/x86 emitters reuse private

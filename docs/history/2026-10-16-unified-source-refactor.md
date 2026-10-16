@@ -6,9 +6,11 @@ The A0 arena parser now calls a grammar-independent builder for operand, node an
 
 ## Independent Codex edit studies
 
+**Guide erratum.** The frozen Dense primers incorrectly say that unnamed statement results receive consecutive numeric IDs. The implementation generates alphabetic IDs while skipping reserved and explicit names (`src/dense.ts`, `defaultNames`). The primers also omit the `$ID` escape required when a value name matches an operation or function. These are material differences in the guidance supplied to the arms. The original outcomes and token accounting below remain unchanged, but comparative AI-cost conclusions from these studies are withdrawn. In particular, the original second-study Dense failure involves a function/value name collision. A matched replication uses the same frozen tasks, views and evaluator, corrected Dense guidance, and fresh independent subjects in every arm. Reusing the task packet makes this a replication, not new held-out tasks. See `results/unification-codex-guide-erratum.json`.
+
 Each study froze its task packet, controls, syntax guides, dependency closures, evaluator and selection rule before subject trials. Each arm/task used a fresh independent Codex context. A failure received at most one fresh independent repair. The separate packets contain frontend maintenance, Life and website UI/frame tasks. The author and runner knew the references; subjects were instructed to read only their assigned prompt. Filesystem isolation and independent transcript auditing were unavailable.
 
-The first policy retained Dense parsing with explicit IDs and flat statements. It failed its cost selection rule. Data: `results/unification-codex-v1.json`.
+The first policy retained Dense parsing with explicit IDs and flat statements. Its recorded arithmetic failed the cost selection rule; the guide erratum prevents a fair comparative conclusion. Data: `results/unification-codex-v1.json`.
 
 | Arm | First attempt | Accepted after repair | Visible o200k tokens per accepted edit |
 | --- | ---: | ---: | ---: |
@@ -16,7 +18,7 @@ The first policy retained Dense parsing with explicit IDs and flat statements. I
 | Dense | 12/12 | 12/12 | 2044.42 |
 | Anchored candidate | 11/12 | 12/12 | 2288.17 |
 
-The second candidate extends the line parser with short parameter operands, compact aggregates and text, shifts, abbreviated types and unambiguous u32 headers. It passed the bounded AI-cost rule, with lower measured visible payload cost than both controls. Data: `results/unification-codex-v2.json`.
+The second candidate extends the line parser with short parameter operands, compact aggregates and text, shifts, abbreviated types and unambiguous u32 headers. Its recorded arithmetic passed the bounded AI-cost rule, but the guide erratum prevents treating that as a fair syntax comparison. Data: `results/unification-codex-v2.json`.
 
 | Arm | First attempt | Accepted after repair | Visible o200k tokens per accepted edit |
 | --- | ---: | ---: | ---: |

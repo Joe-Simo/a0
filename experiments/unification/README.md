@@ -2,6 +2,8 @@
 
 These are historical measurement fixtures. The production compiler does not import them. They preserve the rejected candidate as well as the later candidate, so changing the compiler cannot silently change old trial outcomes.
 
+**Guide erratum:** the original Dense primers misdescribe generated IDs and omit the `$ID` escape for operation/function-name collisions. Raw outcomes remain unchanged; comparative AI-cost conclusions are withdrawn pending corrected-guidance replication. See `results/unification-codex-guide-erratum.json` and the source-unification history record. Replay reproduces the original adjudications, including this experimental flaw.
+
 Run `node experiments/unification/replay.mjs` after installing the repository dependencies. Replay checks the published file hashes, unchanged source replies, both reply tokenizers, all first submissions and repairs, and the independent base/reference/wrong controls. It makes no provider calls and writes no files.
 
 Each study has twelve different maintenance tasks: four sealed frontend tasks, four Life application tasks, and four website UI/frame tasks. Each task has three syntax arms with the same AST dependency closure, semantics, whole-function replacement protocol and hidden evaluator. Each first submission came from a fresh independent Codex agent with no inherited conversation; a failure received at most one fresh independent repair with the same prompt, raw previous answer and first rejection. Subjects were instructed to read only their assigned prompt; shared filesystem access was not isolated or independently audited. The author selected and froze tasks and controls before subject trials. The second packet was separate from the first.
