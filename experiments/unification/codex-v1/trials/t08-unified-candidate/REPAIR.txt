@@ -1,0 +1,258 @@
+You are making one requested maintenance change to A0. Work independently. Read only this prompt file. Do not read the repository, other files, references, tests or prior trials; do not run code, search, ask another agent or test your answer. Write your answer exactly once to the designated reply file using a literal patch or quoted heredoc, then reply done. Your answer file must contain only complete replacement fn blocks for the requested functions and any needed new helpers, with no handle, Markdown or explanation. Preserve all other functions and existing signatures. This is a single attempt; the runner will check it. The source view contains the target functions and their transitive callees; included callees are context and must remain unchanged unless the task requests otherwise. You may introduce internal helpers; define helpers before their callers.
+
+Syntax: fn NAME TYPE... -> TYPE; types may be omitted when all are u32 (a parameter letter A,B,... then determines arity). Parameters A,B,C,... by position. Use one statement per line, explicit result names ID OP ARGS..., and earlier names as operands. The last statement gives the function result and needs no ret/end. ret VALUE is also accepted. F args calls F (call F args is explicit); << and >> are shifts. [a b] is array, [0;32] repeat array, (a b) record, (a,) one-field record, "txt" byte array. A bare final value returns it. Escape an ID that matches an operation as $ID. Operations use the same names as above. A next fn header ends the previous function.
+
+Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select mov call fold loop arr rec text get set at put read write puts. Types: u32, bool, io, arrays such as u32x32, records such as (u32,io). Arithmetic is unsigned u32 modulo 2^32; comparisons return bool; select c x y evaluates existing values and returns x if c else y. div a 0 gives4294967295, rem a 0 gives a; shifts mask count&31. get/set wrap the array index modulo its length; at/put use constant record slots. fold F n s a.. starts state=s, then state=F(state,i,a..) for i=0..n-1. loop P F n s a.. tests P before each step. IO is affine: read t returns (word,next-token); write t v and puts t array return next-token. mov copies a value. Arrays/records are immutable values. Function signatures must typecheck; all defined nodes execute in source order.
+
+Requested change:
+Extend the life session commands without changing its 32-row input or 32-row output/population protocol: 0 steps, 1 toggles, 2 clears the whole board, new 3 sets the selected cell alive, new 4 erases only that cell. Coordinates retain wrapping modulo32. Any other command must preserve the grid. Always consume cmd,x,y, emit all32 rows and return the new population. Keep other functions/capabilities intact.
+
+Source view:
+fn nb u32x32 u32 u32 -> u32
+row get A B
+bit >> row C
+one and bit 1
+
+fn count u32x32 u32 u32 -> u32
+ru sub B 1
+rd add B 1
+cl sub C 1
+cr add C 1
+a nb A ru cl
+b nb A ru C
+c nb A ru cr
+d nb A B cl
+e nb A B cr
+f nb A rd cl
+g nb A rd C
+h nb A rd cr
+s1 add a b
+s2 add s1 c
+s3 add s2 d
+s4 add s3 e
+s5 add s4 f
+s6 add s5 g
+s7 add s6 h
+
+fn cell u32x32 u32 u32x32 -> u32x32
+r >> B 5
+c and B 31
+n count C r c
+me nb C r c
+is3 eq n 3
+is2 eq n 2
+me1 eq me 1
+alive2 select me1 is2 false
+alive select is3 true alive2
+bit select alive 1 0
+mask << bit c
+old get A r
+new or old mask
+next set A r new
+
+fn zero -> u32x32
+z [0;32]
+
+fn step u32x32 -> u32x32
+z zero
+g fold cell 1024 z A
+
+fn bitstep
+b >> C B
+one and b 1
+s add A one
+
+fn popcount
+n fold bitstep 32 0 A
+
+fn rowpop u32 u32 u32x32 -> u32
+row get C B
+n popcount row
+s add A n
+
+fn population u32x32 -> u32
+n fold rowpop 32 0 A
+
+fn readrow u32x32 u32 io -> (u32x32,io)
+r read C
+v at r 0
+t at r 1
+g set A B v
+out (g t)
+
+fn readgrid u32x32 io -> (u32x32,io)
+r read B
+v at r 0
+t at r 1
+g set A 0 v
+s readrow g 1 t
+g1 at s 0
+t1 at s 1
+s2 readrow g1 2 t1
+g2 at s2 0
+t2 at s2 1
+s3 readrow g2 3 t2
+g3 at s3 0
+t3 at s3 1
+s4 readrow g3 4 t3
+g4 at s4 0
+t4 at s4 1
+s5 readrow g4 5 t4
+g5 at s5 0
+t5 at s5 1
+s6 readrow g5 6 t5
+g6 at s6 0
+t6 at s6 1
+s7 readrow g6 7 t6
+g7 at s7 0
+t7 at s7 1
+s8 readrow g7 8 t7
+g8 at s8 0
+t8 at s8 1
+s9 readrow g8 9 t8
+g9 at s9 0
+t9 at s9 1
+s10 readrow g9 10 t9
+g10 at s10 0
+t10 at s10 1
+s11 readrow g10 11 t10
+g11 at s11 0
+t11 at s11 1
+s12 readrow g11 12 t11
+g12 at s12 0
+t12 at s12 1
+s13 readrow g12 13 t12
+g13 at s13 0
+t13 at s13 1
+s14 readrow g13 14 t13
+g14 at s14 0
+t14 at s14 1
+s15 readrow g14 15 t14
+g15 at s15 0
+t15 at s15 1
+s16 readrow g15 16 t15
+g16 at s16 0
+t16 at s16 1
+s17 readrow g16 17 t16
+g17 at s17 0
+t17 at s17 1
+s18 readrow g17 18 t17
+g18 at s18 0
+t18 at s18 1
+s19 readrow g18 19 t18
+g19 at s19 0
+t19 at s19 1
+s20 readrow g19 20 t19
+g20 at s20 0
+t20 at s20 1
+s21 readrow g20 21 t20
+g21 at s21 0
+t21 at s21 1
+s22 readrow g21 22 t21
+g22 at s22 0
+t22 at s22 1
+s23 readrow g22 23 t22
+g23 at s23 0
+t23 at s23 1
+s24 readrow g23 24 t23
+g24 at s24 0
+t24 at s24 1
+s25 readrow g24 25 t24
+g25 at s25 0
+t25 at s25 1
+s26 readrow g25 26 t25
+g26 at s26 0
+t26 at s26 1
+s27 readrow g26 27 t26
+g27 at s27 0
+t27 at s27 1
+s28 readrow g27 28 t27
+g28 at s28 0
+t28 at s28 1
+s29 readrow g28 29 t28
+g29 at s29 0
+t29 at s29 1
+s30 readrow g29 30 t29
+g30 at s30 0
+t30 at s30 1
+s31 readrow g30 31 t30
+
+fn writerow io u32 u32x32 -> io
+row get C B
+t write A row
+
+fn writegrid u32x32 io -> io
+t fold writerow 32 B A
+
+fn life io -> u32
+z zero
+rg readgrid z A
+grid at rg 0
+t0 at rg 1
+rc read t0
+cmd at rc 0
+t1 at rc 1
+rx read t1
+x at rx 0
+t2 at rx 1
+ry read t2
+y at ry 0
+t3 at ry 1
+stepped step grid
+is0 eq cmd 0
+is1 eq cmd 1
+bit << 1 x
+row get grid y
+flipped xor row bit
+toggled set grid y flipped
+zero2 zero
+g1 select is1 toggled zero2
+g2 select is0 stepped g1
+t4 writegrid g2 t3
+pop population g2
+
+Write only the replacement functions to: <study>/trials/t08-unified-candidate/repair.a0
+
+This is the sole repair attempt. The previous answer was rejected. Correct the answer, retaining the same requested capabilities.
+Previous answer:
+fn life io -> u32
+z zero
+rg readgrid z A
+grid at rg 0
+t0 at rg 1
+rc read t0
+cmd at rc 0
+t1 at rc 1
+rx read t1
+x at rx 0
+t2 at rx 1
+ry read t2
+y at ry 0
+t3 at ry 1
+stepped step grid
+is0 eq cmd 0
+is1 eq cmd 1
+is2 eq cmd 2
+is3 eq cmd 3
+is4 eq cmd 4
+bit << 1 x
+row get grid y
+flipped xor row bit
+toggled set grid y flipped
+aliveRow or row bit
+aliveGrid set grid y aliveRow
+inverse xor bit 4294967295
+erasedRow and row inverse
+erasedGrid set grid y erasedRow
+zero2 zero
+g1 select is4 erasedGrid grid
+g2 select is3 aliveGrid g1
+g3 select is2 zero2 g2
+g4 select is1 toggled g3
+g5 select is0 stepped g4
+t4 writegrid g5 t3
+pop population g5
+
+First rejection:
+line 25: 'aliveRow' is not an operation, a function, or a named value defined above
+Write the corrected complete replacement functions only to: <study>/trials/t08-unified-candidate/repair.a0

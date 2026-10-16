@@ -1,0 +1,91 @@
+You are making one requested maintenance change to A0. Work independently. Read only this prompt file. Do not read the repository, other files, references, tests or prior trials; do not run code, search, ask another agent or test your answer. Write your answer exactly once to the designated reply file using a literal patch or quoted heredoc, then reply done. Your answer file must contain only complete replacement fn blocks for the requested functions and any needed new helpers, with no handle, Markdown or explanation. Preserve all other functions and existing signatures. This is a single attempt; the runner will check it. The source view contains the target functions and their transitive callees; included callees are context and must remain unchanged unless the task requests otherwise. You may introduce internal helpers; define helpers before their callers.
+
+Syntax: fn NAME TYPE... -> TYPE; a bare header uses u32 parameters through the highest referenced position, and infers the result from the statements; write a full header when needed to preserve the signature. Parameters A,B,C,... by position. Prefix expressions have fixed arity: add mul A B C means (A*B)+C. Earlier results may be bound as ID EXPR; unnamed results receive alphabetic IDs a,b,...,aa,..., skipping reserved and explicitly used names. Escape a value ID matching an operation or function as $ID, both in bindings and references. Last statement is the function result; end and ret are optional. F args calls F (call F args is explicit); << and >> are shifts. [a b] is array, [0;32] repeat array, (a b) record, (a,) one-field record, "txt" byte array. Operations use the same names as above. A next fn header ends the previous function.
+
+Identifiers are lowercase a-z followed by a-z,0-9,_ (up to64 characters); parameters use the syntax-specific spelling. Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select mov call fold loop arr rec text get set at put read write puts. Types: u32, bool, io, arrays such as u32x32, records such as (u32,io). Arithmetic is unsigned u32 modulo 2^32; comparisons return bool; select c x y evaluates existing values and returns x if c else y. div a 0 gives4294967295, rem a 0 gives a; shifts mask count&31. get/set wrap the array index modulo its length; at/put use constant record slots. fold F n s a.. starts state=s, then state=F(state,i,a..) for i=0..n-1. loop P F n s a.. tests P before each step. IO is affine: read t returns (word,next-token); write t v and puts t array return next-token. mov copies a value. Arrays/records are immutable values. Function signatures must typecheck; all defined nodes execute in source order.
+
+Requested change:
+Change request for the A0 front end (lexer and parser): accept `mod` as another spelling of the operation `rem`, the way `udiv` and `urem` are accepted for `div` and `rem`: a node `a mod p0 p1` gets the op code of `rem` in the word IR.
+
+Source view:
+fn opcode
+k1 eq A 30686
+r1 select k1 1 0
+k2 eq A 5625
+r2 select k2 2 r1
+k3 eq A 3534
+r3 select k3 3 r2
+k4 eq A 17218
+r4 select k4 4 r3
+k5 eq A 5995
+r5 select k5 5 r4
+k6 eq A 681
+r6 select k6 6 r5
+k7 eq A 25221
+r7 select k7 7 r6
+k8 eq A 16743
+r8 select k8 8 r7
+k9 eq A 24957
+r9 select k9 9 r8
+k10 eq A 30455
+r10 select k10 10 r9
+k11 eq A 18000
+r11 select k11 11 r10
+k12 eq A 634
+r12 select k12 12 r11
+k13 eq A 199
+r13 select k13 13 r12
+k14 eq A 752
+r14 select k14 14 r13
+k15 eq A 197
+r15 select k15 15 r14
+k16 eq A 747
+r16 select k16 16 r15
+k17 eq A 192
+r17 select k17 17 r16
+k18 eq A 1392771520
+r18 select k18 18 r17
+k19 eq A 624304
+r19 select k19 19 r18
+k20 eq A 219601
+r20 select k20 20 r19
+k21 eq A 831550
+r21 select k21 21 r20
+k22 eq A 25309
+r22 select k22 22 r21
+k23 eq A 4310
+r23 select k23 23 r22
+k24 eq A 1046121
+r24 select k24 24 r23
+k25 eq A 27572
+r25 select k25 25 r24
+k26 eq A 27584
+r26 select k26 26 r25
+k27 eq A 741
+r27 select k27 27 r26
+k28 eq A 28173
+r28 select k28 28 r27
+k29 eq A 204184
+r29 select k29 29 r28
+k30 eq A 10396875
+r30 select k30 30 r29
+k31 eq A 990580
+r31 select k31 31 r30
+k32 eq A 1126856
+r32 select k32 10 r31
+k33 eq A 666021
+r33 select k33 11 r32
+k34 eq A 208128
+r34 select k34 32 r33
+k35 eq A 130761
+r35 select k35 33 r34
+k36 eq A 637069
+r36 select k36 34 r35
+k37 eq A 1126838
+r37 select k37 35 r36
+k38 eq A 666003
+r38 select k38 36 r37
+k39 eq A 1020167
+r39 select k39 37 r38
+
+Write only the replacement functions to: <study>/trials/t02-dense/reply.a0

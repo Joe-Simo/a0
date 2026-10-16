@@ -1,0 +1,17 @@
+fn readgridrow (u32x32,io) u32 -> (u32x32,io)
+g at p0 0
+t at p0 1
+out call readrow g p1 t
+ret out
+end
+
+fn readgrid u32x32 io -> (u32x32,io)
+r read p1
+count at r 0
+t at r 1
+within le count 32
+n select within count 32
+s rec p0 t
+out fold readgridrow n s
+ret out
+end

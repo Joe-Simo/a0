@@ -1,0 +1,21 @@
+fn fr_brackets io u32 u32 u32 u32 u32 u32 u32 -> io
+ax xor p1 2147483648
+bx xor p3 2147483648
+ay xor p2 2147483648
+by xor p4 2147483648
+cx lt ax bx
+cy lt ay by
+minx select cx p1 p3
+maxx select cx p3 p1
+miny select cy p2 p4
+maxy select cy p4 p2
+a write p0 17
+b write a minx
+c write b miny
+d write c maxx
+e write d maxy
+f write e p5
+g write f p6
+h write g p7
+ret h
+end

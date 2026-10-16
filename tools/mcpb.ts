@@ -56,6 +56,7 @@ for (const { id, platform } of targets) {
   chmodSync(join(stage, 'server', exe), 0o755);
   copyFileSync(join(root, 'mcpb/icon.png'), join(stage, 'icon.png'));
   copyFileSync(join(root, 'LICENSE'), join(stage, 'LICENSE'));
+  copyFileSync(join(root, 'NOTICE'), join(stage, 'NOTICE'));
   const manifest = {
     ...template,
     version,

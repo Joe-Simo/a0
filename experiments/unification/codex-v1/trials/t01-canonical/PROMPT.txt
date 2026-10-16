@@ -1,0 +1,113 @@
+You are making one requested maintenance change to A0. Work independently. Read only this prompt file. Do not read the repository, other files, references, tests or prior trials; do not run code, search, ask another agent or test your answer. Write your answer exactly once to the designated reply file using a literal patch or quoted heredoc, then reply done. Your answer file must contain only complete replacement fn blocks for the requested functions and any needed new helpers, with no handle, Markdown or explanation. Preserve all other functions and existing signatures. This is a single attempt; the runner will check it. The source view contains the target functions and their transitive callees; included callees are context and must remain unchanged unless the task requests otherwise. You may introduce internal helpers; define helpers before their callers.
+
+Syntax: fn NAME TYPE... -> TYPE, then lines ID OP ARGS..., then ret VALUE and end. Parameters p0,p1,...; literals decimal u32,true,false. Types u32,bool,io,u32x32,(u32,io). Nodes refer only to parameters or earlier IDs. Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select; call F args; fold F n state args; loop P F n state args; arr elements; rec elements; text "bytes"; get array index; set array index value; at record slot; put record slot value; read token; write token word; puts token array. Every replacement function includes its full header/body/ret/end.
+
+Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select mov call fold loop arr rec text get set at put read write puts. Types: u32, bool, io, arrays such as u32x32, records such as (u32,io). Arithmetic is unsigned u32 modulo 2^32; comparisons return bool; select c x y evaluates existing values and returns x if c else y. div a 0 gives4294967295, rem a 0 gives a; shifts mask count&31. get/set wrap the array index modulo its length; at/put use constant record slots. fold F n s a.. starts state=s, then state=F(state,i,a..) for i=0..n-1. loop P F n s a.. tests P before each step. IO is affine: read t returns (word,next-token); write t v and puts t array return next-token. mov copies a value. Arrays/records are immutable values. Function signatures must typecheck; all defined nodes execute in source order.
+
+Requested change:
+Change request for the A0 front end (lexer and parser): a semicolon `;` must also start a comment, exactly like `#`: everything from it to the end of the line is dropped, the newline itself stays a token. `#` comments keep working.
+
+Source view:
+fn isalpha u32 -> bool
+lo ge p0 97
+hi le p0 122
+a and lo hi
+us eq p0 95
+r or a us
+ret r
+end
+
+fn isdigit u32 -> bool
+lo ge p0 48
+hi le p0 57
+r and lo hi
+ret r
+end
+
+fn isword u32 -> bool
+a call isalpha p0
+d call isdigit p0
+r or a d
+ret r
+end
+
+fn isspace u32 -> bool
+sp eq p0 32
+tb eq p0 9
+cr eq p0 13
+a or sp tb
+r or a cr
+ret r
+end
+
+fn lexstep u32 u32 u32 u32 u32 -> (bool,u32,u32,u32,u32,u32,u32)
+c mov p2
+isw call isword c
+isnl eq c 10
+isq eq c 34
+isbs eq c 92
+ishash eq c 35
+isminus eq c 45
+isgt eq c 62
+isat eq c 64
+issp call isspace c
+k1 eq p0 1
+k2 eq p0 2
+k3 eq p0 3
+k6 eq p0 6
+k8 eq p0 8
+k5 eq p0 5
+k7 eq p0 7
+k9 eq p0 9
+inw or k1 k2
+notw select isw false true
+wclose and inw notw
+escd eq p4 1
+notesc select escd false true
+sq and k3 isq
+sclose and sq notesc
+cclose and k8 isnl
+s57 or k5 k7
+single or s57 k9
+arrow and k6 isgt
+e0 or wclose sclose
+e1 or e0 single
+emit or e1 k6
+c0 or e0 cclose
+c1 or c0 single
+closed or c1 k6
+consumed or sclose arrow
+ek0 select k6 6 p0
+ek1 select arrow 4 ek0
+ek select sclose 3 ek1
+s1 add p1 1
+es select sclose s1 p1
+wl sub p3 p1
+sl sub wl 1
+l0 select arrow 2 1
+l1 select sclose sl l0
+el select wclose wl l1
+k0 eq p0 0
+none or k0 closed
+notcons select consumed false true
+free and none notcons
+isd call isdigit c
+wk select isd 2 1
+n0 select issp 0 9
+n1 select isat 7 n0
+n2 select isminus 6 n1
+n3 select isnl 5 n2
+n4 select ishash 8 n3
+n5 select isq 3 n4
+n6 select isw wk n5
+cont select closed 0 p0
+nk select free n6 cont
+ns select free p3 p1
+e2 select isbs 1 0
+e3 select escd 0 e2
+esc select k3 e3 0
+r rec emit ek es el nk ns esc
+ret r
+end
+
+Write only the replacement functions to: <study>/trials/t01-canonical/reply.a0

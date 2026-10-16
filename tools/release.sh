@@ -4,7 +4,8 @@
 #                                         (the compiler with its runtime embedded; no Node or Bun needed)
 #   a0-mcp-<os>-<arch>.mcpb               one MCP Bundle per binary
 #   server.json                           the registry manifest with the bundles' URLs and SHA-256
-#   checksums.txt                         SHA-256 of the five binaries and the five bundles
+#   LICENSE NOTICE                        license and attribution for this release
+#   checksums.txt                         SHA-256 of the five binaries, five bundles, and two texts
 # Usage: sh tools/release.sh <version>      e.g. sh tools/release.sh 0.8.16
 # Fails when a version file disagrees with <version>, when any artifact is missing or empty, or
 # when the binary built for this host does not report <version>. macOS binaries are ad-hoc signed
@@ -24,6 +25,11 @@ bun run build
 
 rm -rf release
 mkdir release
+notices="LICENSE NOTICE"
+for name in $notices; do
+  [ -s "$name" ] || { echo "release: missing or empty $name" >&2; exit 1; }
+  cp "$name" "release/$name"
+done
 binaries="a0-darwin-arm64 a0-darwin-x64 a0-linux-arm64 a0-linux-x64 a0-windows-x64.exe"
 for name in $binaries; do
   target=${name#a0-}
@@ -46,7 +52,7 @@ for name in $binaries; do
   [ -s "release/$name" ] || { echo "release: missing or empty release/$name" >&2; exit 1; }
 done
 
-# The native checker (src/native-fast.ts) is not one of the twelve assets yet. With A0_NATIVE_CHECK_ASSETS=1
+# The native checker (src/native-fast.ts) is not one of the fourteen assets yet. With A0_NATIVE_CHECK_ASSETS=1
 # the one for this machine is built beside them (a0-check-<os>-<arch>; on macOS both CPUs), for the workflow
 # to upload and the installers to place next to a0 as `a0-check` (docs/RELEASING.md). Each target needs a C
 # compiler for it, so the Linux and Windows ones come from a runner of that platform.
@@ -94,7 +100,7 @@ done
 
 # Sorted, so the file is the same on every run for the same artifacts.
 if command -v sha256sum >/dev/null 2>&1; then sha() { sha256sum "$@"; }; else sha() { shasum -a 256 "$@"; }; fi
-(cd release && sha $(printf '%s\n' $binaries $bundles | LC_ALL=C sort) > checksums.txt)
-[ "$(wc -l < release/checksums.txt | tr -d ' ')" = 10 ] || { echo "release: checksums.txt must list 10 files" >&2; exit 1; }
+(cd release && sha $(printf '%s\n' $binaries $bundles $notices | LC_ALL=C sort) > checksums.txt)
+[ "$(wc -l < release/checksums.txt | tr -d ' ')" = 12 ] || { echo "release: checksums.txt must list 12 files" >&2; exit 1; }
 cat release/checksums.txt
 ls -la release

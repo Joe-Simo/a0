@@ -1,0 +1,53 @@
+You are making one requested maintenance change to A0. Work independently. Read only this prompt file. Do not read the repository, other files, references, tests or prior trials; do not run code, search, ask another agent or test your answer. Write your answer exactly once to the designated reply file using a literal patch or quoted heredoc, then reply done. Your answer file must contain only complete replacement fn blocks for the requested functions and any needed new helpers, with no handle, Markdown or explanation. Preserve all other functions and existing signatures. This is a single attempt; the runner will check it. The source view contains the target functions and their transitive callees; included callees are context and must remain unchanged unless the task requests otherwise. You may introduce internal helpers; define helpers before their callers.
+
+Syntax: fn NAME TYPE... -> TYPE; types may be omitted when all are u32 (a parameter letter A,B,... then determines arity). Parameters A,B,C,... by position. Use one statement per line, explicit result names ID OP ARGS..., and earlier names as operands. The last statement gives the function result and needs no ret/end. ret VALUE is also accepted. F args calls F (call F args is explicit); << and >> are shifts. [a b] is array, [0;32] repeat array, (a b) record, (a,) one-field record, "txt" byte array. A bare final value returns it. Escape an ID that matches an operation as $ID. Operations use the same names as above. A next fn header ends the previous function.
+
+Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select mov call fold loop arr rec text get set at put read write puts. Types: u32, bool, io, arrays such as u32x32, records such as (u32,io). Arithmetic is unsigned u32 modulo 2^32; comparisons return bool; select c x y evaluates existing values and returns x if c else y. div a 0 gives4294967295, rem a 0 gives a; shifts mask count&31. get/set wrap the array index modulo its length; at/put use constant record slots. fold F n s a.. starts state=s, then state=F(state,i,a..) for i=0..n-1. loop P F n s a.. tests P before each step. IO is affine: read t returns (word,next-token); write t v and puts t array return next-token. mov copies a value. Arrays/records are immutable values. Function signatures must typecheck; all defined nodes execute in source order.
+
+Requested change:
+Change the cell rule to HighLife B36/S23: a dead cell is born with exactly 3 or 6 neighbours; an existing live cell survives only with 2 or 3. Keep the 32x32 torus, count/nb semantics, accumulator merge, step signature and IO/session commands unchanged. Change cell; other existing function signatures stay intact. You may add internal helpers.
+
+Source view:
+fn nb u32x32 u32 u32 -> u32
+row get A B
+bit >> row C
+one and bit 1
+
+fn count u32x32 u32 u32 -> u32
+ru sub B 1
+rd add B 1
+cl sub C 1
+cr add C 1
+a nb A ru cl
+b nb A ru C
+c nb A ru cr
+d nb A B cl
+e nb A B cr
+f nb A rd cl
+g nb A rd C
+h nb A rd cr
+s1 add a b
+s2 add s1 c
+s3 add s2 d
+s4 add s3 e
+s5 add s4 f
+s6 add s5 g
+s7 add s6 h
+
+fn cell u32x32 u32 u32x32 -> u32x32
+r >> B 5
+c and B 31
+n count C r c
+me nb C r c
+is3 eq n 3
+is2 eq n 2
+me1 eq me 1
+alive2 select me1 is2 false
+alive select is3 true alive2
+bit select alive 1 0
+mask << bit c
+old get A r
+new or old mask
+next set A r new
+
+Write only the replacement functions to: <study>/trials/t05-unified-candidate/reply.a0

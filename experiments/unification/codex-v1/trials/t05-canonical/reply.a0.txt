@@ -1,0 +1,18 @@
+fn cell u32x32 u32 u32x32 -> u32x32
+r shr p1 5
+c and p1 31
+n call count p2 r c
+me call nb p2 r c
+is3 eq n 3
+is2 eq n 2
+is6 eq n 6
+me1 eq me 1
+eligible select me1 is2 is6
+alive select is3 true eligible
+bit select alive 1 0
+mask shl bit c
+old get p0 r
+new or old mask
+next set p0 r new
+ret next
+end

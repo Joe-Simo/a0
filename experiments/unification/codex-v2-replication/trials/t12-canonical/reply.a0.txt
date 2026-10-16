@@ -1,0 +1,20 @@
+fn fr_line_emit io u32 u32 u32 u32 u32 u32 u32 -> io
+a write p0 11
+b write a p2
+c write b p3
+d write c p4
+e write d p5
+f write e p6
+g write f p7
+ret g
+end
+
+fn fr_line io u32 u32 u32 u32 u32 u32 -> io
+a and p6 255
+b ne a 0
+c ne p5 0
+d select b 1 0
+e select c d 0
+f fold fr_line_emit e p0 p1 p2 p3 p4 p5 p6
+ret f
+end

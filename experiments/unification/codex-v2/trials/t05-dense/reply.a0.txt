@@ -1,0 +1,18 @@
+fn cell u32x32 u32 u32x32 -> u32x32
+r >> B 5
+c and B 31
+n count C r c
+me nb C r c
+is3 eq n 3
+is2 eq n 2
+me1 eq me 1
+alive2 select me1 is2 false
+alive select is3 true alive2
+bit select alive 1 0
+mask << bit c
+cellmask << 1 c
+keepmask xor cellmask 4294967295
+old get A r
+cleared and old keepmask
+new or cleared mask
+next set A r new

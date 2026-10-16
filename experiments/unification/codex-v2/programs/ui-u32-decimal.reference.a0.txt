@@ -1,0 +1,351 @@
+fn open io u32 -> io
+a write p0 1
+b write a p1
+ret b
+end
+
+fn close io -> io
+a write p0 3
+ret a
+end
+
+fn mulstep u32 u32 -> u32
+m mul p0 10
+ret m
+end
+
+fn tenpow u32 -> u32
+r fold mulstep p0 1
+ret r
+end
+
+fn digitstep u32 u32 u32 -> u32
+s add p0 1
+ret s
+end
+
+fn morecheck u32 u32 u32 -> bool
+p call tenpow p0
+fits lt p2 p
+more select fits false true
+ret more
+end
+
+fn ndigits u32 -> u32
+base mov 1
+b1 ge p0 10
+v1 select b1 1 0
+n1 add base v1
+b2 ge p0 100
+v2 select b2 1 0
+n2 add n1 v2
+b3 ge p0 1000
+v3 select b3 1 0
+n3 add n2 v3
+b4 ge p0 10000
+v4 select b4 1 0
+n4 add n3 v4
+b5 ge p0 100000
+v5 select b5 1 0
+n5 add n4 v5
+b6 ge p0 1000000
+v6 select b6 1 0
+n6 add n5 v6
+b7 ge p0 10000000
+v7 select b7 1 0
+n7 add n6 v7
+b8 ge p0 100000000
+v8 select b8 1 0
+n8 add n7 v8
+b9 ge p0 1000000000
+v9 select b9 1 0
+n9 add n8 v9
+ret n9
+end
+
+fn putdigit io u32 u32 u32 -> io
+rest sub p3 p1
+pos sub rest 1
+p call tenpow pos
+q div p2 p
+d rem q 10
+ch add d 48
+t write p0 2
+u write t 1
+v write u ch
+ret v
+end
+
+fn putnum io u32 -> io
+nd call ndigits p1
+t fold putdigit nd p0 p1 nd
+ret t
+end
+
+fn putfix io u32 -> io
+ip div p1 100
+fp rem p1 100
+a call putnum p0 ip
+b write a 2
+dot text "."
+c puts b dot
+tens div fp 10
+ones rem fp 10
+d0 add tens 48
+d1 add ones 48
+d write c 2
+e write d 2
+f write e d0
+g write f d1
+ret g
+end
+
+fn fill io u32 u32 -> io
+a call open p0 5
+b write a 4
+c write b 2
+cls text "fill"
+d puts c cls
+e write d 12
+f write e 1
+num mul p1 100
+pct div num p2
+g write f pct
+h call close g
+ret h
+end
+
+fn r_int io u32 u32 -> io
+q div p2 100
+r call putnum p0 q
+ret r
+end
+
+fn r_one io u32 u32 -> io
+q div p2 100
+a call putnum p0 q
+b write a 2
+dot text "."
+c puts b dot
+tn div p2 10
+td rem tn 10
+ch add td 48
+d write c 2
+e write d 1
+f write e ch
+ret f
+end
+
+fn r_two io u32 u32 -> io
+r call putfix p0 p2
+ret r
+end
+
+fn putratio io u32 -> io
+big ge p1 10000
+mid ge p1 1000
+nb select big 1 0
+nm0 select mid 1 0
+nm select big 0 nm0
+rest add nb nm
+ns sub 1 rest
+a fold r_int nb p0 p1
+b fold r_one nm a p1
+c fold r_two ns b p1
+ret c
+end
+
+fn max3 u32 u32 u32 -> u32
+ab lt p0 p1
+m1 select ab p1 p0
+mc lt m1 p2
+m2 select mc p2 m1
+ret m2
+end
+
+fn max2 u32 u32 -> u32
+ab lt p0 p1
+m select ab p1 p0
+ret m
+end
+
+fn nav io -> io
+n1 call open p0 18
+n2 write n1 4
+n3 write n2 2
+n4 text "top"
+n5 puts n3 n4
+n6 call open n5 9
+n7 write n6 4
+n8 write n7 2
+n9 text "skip"
+n10 puts n8 n9
+n11 write n10 4
+n12 write n11 3
+n13 text "#content"
+n14 puts n12 n13
+n15 write n14 2
+n16 text "Skip to content"
+n17 puts n15 n16
+n18 call close n17
+n19 call open n18 14
+n20 write n19 4
+n21 write n20 2
+n22 text "nav"
+n23 puts n21 n22
+n24 write n23 4
+n25 write n24 6
+n26 text "Primary"
+n27 puts n25 n26
+n28 call open n27 9
+n29 write n28 4
+n30 write n29 2
+n31 text "brand"
+n32 puts n30 n31
+n33 write n32 4
+n34 write n33 3
+n35 text "/"
+n36 puts n34 n35
+n37 write n36 2
+n38 text "A0"
+n39 puts n37 n38
+n40 call close n39
+n41 call open n40 5
+n42 write n41 4
+n43 write n42 2
+n44 text "links"
+n45 puts n43 n44
+n46 call open n45 9
+n47 write n46 4
+n48 write n47 3
+n49 text "/docs/"
+n50 puts n48 n49
+n51 write n50 2
+n52 text "Docs"
+n53 puts n51 n52
+n54 call close n53
+n55 call open n54 9
+n56 write n55 4
+n57 write n56 3
+n58 text "/benchmarks"
+n59 puts n57 n58
+n60 write n59 2
+n61 text "Benchmarks"
+n62 puts n60 n61
+n63 call close n62
+n64 call open n63 9
+n65 write n64 4
+n66 write n65 3
+n67 text "https://github.com/Joe-Simo/a0"
+n68 puts n66 n67
+n69 write n68 2
+n70 text "GitHub"
+n71 puts n69 n70
+n72 call close n71
+n73 call close n72
+n74 call open n73 6
+n75 write n74 4
+n76 write n75 2
+n77 text "sp"
+n78 puts n76 n77
+n79 call close n78
+n80 call open n79 3
+n81 write n80 4
+n82 write n81 2
+n83 text "theme"
+n84 puts n82 n83
+n85 write n84 4
+n86 write n85 4
+n87 text "button"
+n88 puts n86 n87
+n89 write n88 4
+n90 write n89 6
+n91 text "Switch light or dark theme"
+n92 puts n90 n91
+n93 call open n92 6
+n94 write n93 4
+n95 write n94 11
+n96 text "true"
+n97 puts n95 n96
+n98 write n97 2
+n99 text "◐"
+n100 puts n98 n99
+n101 call close n100
+n102 write n101 2
+n103 text " Theme"
+n104 puts n102 n103
+n105 call close n104
+n106 call open n105 9
+n107 write n106 4
+n108 write n107 2
+n109 text "btn"
+n110 puts n108 n109
+n111 write n110 4
+n112 write n111 3
+n113 text "/#install"
+n114 puts n112 n113
+n115 write n114 2
+n116 text "Install"
+n117 puts n115 n116
+n118 call close n117
+n119 call close n118
+n120 call close n119
+ret n120
+end
+
+fn foot io -> io
+f1 call open p0 17
+f2 write f1 4
+f3 write f2 2
+f4 text "foot"
+f5 puts f3 f4
+f6 call open f5 5
+f7 write f6 4
+f8 write f7 2
+f9 text "fwrap"
+f10 puts f8 f9
+f11 call open f10 6
+f12 write f11 4
+f13 write f12 2
+f14 text "mono"
+f15 puts f13 f14
+f16 write f15 2
+f17 text "A0"
+f18 puts f16 f17
+f19 call close f18
+f20 call open f19 9
+f21 write f20 4
+f22 write f21 3
+f23 text "/docs/"
+f24 puts f22 f23
+f25 write f24 2
+f26 text "Docs"
+f27 puts f25 f26
+f28 call close f27
+f29 call open f28 9
+f30 write f29 4
+f31 write f30 3
+f32 text "/benchmarks"
+f33 puts f31 f32
+f34 write f33 2
+f35 text "Benchmarks"
+f36 puts f34 f35
+f37 call close f36
+f38 call open f37 9
+f39 write f38 4
+f40 write f39 3
+f41 text "https://github.com/Joe-Simo/a0"
+f42 puts f40 f41
+f43 write f42 2
+f44 text "GitHub"
+f45 puts f43 f44
+f46 call close f45
+f47 call open f46 6
+f48 write f47 2
+f49 text "Numbers from results/*.json in the repository."
+f50 puts f48 f49
+f51 call close f50
+f52 call close f51
+f53 call close f52
+ret f53
+end

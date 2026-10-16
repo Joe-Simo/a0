@@ -1,0 +1,31 @@
+fn finite_nb u32x32 u32 u32 -> u32
+v nb A B C
+rowok lt B 32
+colok lt C 32
+colval select colok v 0
+result select rowok colval 0
+
+fn count u32x32 u32 u32 -> u32
+ru sub B 1
+rd add B 1
+cl sub C 1
+cr add C 1
+a finite_nb A ru cl
+b finite_nb A ru C
+c finite_nb A ru cr
+d finite_nb A B cl
+e finite_nb A B cr
+f finite_nb A rd cl
+g finite_nb A rd C
+h finite_nb A rd cr
+s1 add a b
+s2 add s1 c
+s3 add s2 d
+s4 add s3 e
+s5 add s4 f
+s6 add s5 g
+s7 add s6 h
+rowok lt B 32
+colok lt C 32
+colval select colok s7 0
+result select rowok colval 0
