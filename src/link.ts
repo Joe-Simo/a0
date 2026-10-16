@@ -5,14 +5,16 @@
  * dependency-ordered concatenation: every used file is loaded once (by resolved path),
  * its own uses come first, cycles are rejected, and the result is validated as a whole.
  * Function names must be unique across all files; a clash is reported with both files.
- * Diagnostics raised on the combined text are mapped back to `file:line`.
+ * Validator diagnostics are mapped back to the function's original `file:line`.
  */
 
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import {
   A0Error,
+  type Func,
   formatSource,
   LIMITS,
+  lineComment,
   type Profile,
   type Program,
   parse,
@@ -58,7 +60,7 @@ export interface LinkedSource {
 
 export interface Linked {
   readonly program: TypedProgram;
-  /** Combined source text, dependency order, exactly what was validated. */
+  /** Flattened source artifact in dependency order; compilation uses the composed program. */
   readonly text: string;
   readonly sources: readonly LinkedSource[];
 }
@@ -108,6 +110,70 @@ async function canonical(path: string): Promise<string> {
   }
 }
 
+/** Compose already parsed modules while preserving comments between source units. */
+function composePrograms(programs: readonly Program[], profile: Profile): Program {
+  const functions: Func[] = [];
+  let pending: string[] = [];
+  for (const program of programs) {
+    pending.push(...(program.profileComments?.leading ?? []));
+    if (program.profileComments?.trailing !== undefined)
+      pending.push(program.profileComments.trailing);
+    for (const comments of program.useComments ?? []) {
+      pending.push(...(comments?.leading ?? []));
+      if (comments?.trailing !== undefined) pending.push(comments.trailing);
+    }
+    for (const fn of program.functions) {
+      let body = fn;
+      if (fn.afterComments !== undefined) {
+        const { afterComments: _after, ...withoutTail } = fn;
+        body = withoutTail;
+      }
+      functions.push(
+        pending.length === 0
+          ? body
+          : {
+              ...body,
+              comments: {
+                ...body.comments,
+                leading: [...pending, ...(body.comments?.leading ?? [])],
+              },
+            },
+      );
+      pending = [...(fn.afterComments ?? [])];
+    }
+    pending.push(...(program.tailComments ?? []));
+  }
+  const last = functions.at(-1);
+  if (last !== undefined && pending.length > 0)
+    functions[functions.length - 1] = { ...last, afterComments: pending };
+  return {
+    functions,
+    ...(profile === 'strict' ? { profile } : {}),
+    ...(last === undefined && pending.length > 0 ? { tailComments: pending } : {}),
+  };
+}
+
+/** Remove resolved directives from a parsed file's header, preserving physical LF lines. */
+function flattenedSource(text: string): string {
+  const parts: string[] = [];
+  let kept = 0;
+  for (let lo = 0; lo < text.length; ) {
+    const newline = text.indexOf('\n', lo);
+    const hi = newline < 0 ? text.length : newline;
+    const raw = text.slice(lo, hi);
+    const code = stripComment(raw).trim();
+    // A parsed module has no directives after its first function. Keep its body verbatim,
+    // including Unicode line separators inside quoted text, without rescanning it.
+    if (/^fn(?:\s|$)/.test(code)) break;
+    if (USE_PATH.test(code) || /^profile\s+strict$/.test(code)) {
+      parts.push(text.slice(kept, lo), lineComment(raw) ?? '', raw.endsWith('\r') ? '\r' : '');
+      kept = hi;
+    }
+    lo = hi + 1;
+  }
+  return parts.length === 0 ? text : parts.join('') + text.slice(kept);
+}
+
 /** Load `entry` and everything it uses; `read` is injected so tests need no filesystem. */
 export async function link(
   entry: string,
@@ -126,8 +192,8 @@ export async function link(
     shown: string;
     fns: string[];
     profile: Profile;
-    /** The parse of `text`, when the file was canonical (reused when it is the whole program). */
-    parsed: Program | undefined;
+    /** One source parse, retained for direct dependency-ordered IR composition. */
+    parsed: Program;
   }[] = [];
   const visiting = new Set<string>();
   const done = new Set<string>();
@@ -160,14 +226,13 @@ export async function link(
       for (const [name, g] of sigsOf.get(target) ?? []) usedSigs.set(name, g);
     }
     let text = shown;
-    let functions: readonly { name: string; params: readonly Type[]; result: Type }[];
-    let declared: Profile = 'canonical';
-    if (isDense && options.denseReader !== undefined) {
+    let parsedFile: Program;
+    if (parsedCanonical !== undefined) {
+      parsedFile = parsedCanonical;
+    } else if (options.denseReader !== undefined) {
       text = options.denseReader(shown, usedSigs, abs);
-      const parsed = parse(text);
-      functions = parsed.functions;
-      declared = profileOf(parsed);
-    } else if (isDense) {
+      parsedFile = parse(text);
+    } else {
       // dense.ts is loaded only for a dense file: a canonical `a0 check` never pays its start-up
       const { parseDense } = await import('./dense.js');
       let parsed: ReturnType<typeof parseDense>;
@@ -177,13 +242,11 @@ export async function link(
         if (!(e instanceof A0Error) || e.line === undefined) throw e;
         throw e.rewrite(`${abs}:${e.line}: ${e.message.replace(/^line \d+: /, '')}`);
       }
+      parsedFile = parsed;
       text = formatSource(parsed);
-      functions = parsed.functions;
-      declared = profileOf(parsed);
-    } else {
-      functions = (parsedCanonical as Program).functions;
-      declared = profileOf(parsedCanonical);
     }
+    const functions = parsedFile.functions;
+    const declared = profileOf(parsedFile);
     const own = new Map<string, number>();
     for (const f of functions) own.set(f.name, f.params.length);
     closureOf.set(abs, new Map([...known, ...own]));
@@ -196,7 +259,7 @@ export async function link(
       shown,
       fns: functions.map((f) => f.name),
       profile: declared,
-      parsed: parsedCanonical,
+      parsed: parsedFile,
     });
   };
   await visit(entry, undefined);
@@ -226,26 +289,24 @@ export async function link(
   let line = 1;
   const parts: string[] = [];
   for (const { path, text } of order) {
-    // Drop `use` lines (already resolved) but keep line count so diagnostics map back.
-    const body = text
-      .replace(/^\s*use\s+"[^"]*"\s*$/gm, '')
-      .replace(/^[ \t]*profile[ \t]+strict[ \t]*(#.*)?$/gm, '');
-    const lineCount = body.split(/\r?\n/).length;
+    const body = flattenedSource(text);
+    const lineCount = body.split('\n').length;
     sources.push({ path, startLine: line, lineCount });
     parts.push(body);
     line += lineCount;
   }
   const combined = parts.join('\n');
   if (utf8Length(combined) > LIMITS.maxSourceBytes) throw diag('A0623', [LIMITS.maxSourceBytes]);
-  // A single canonical file with no `use` or `profile` line to drop is its own combined text: its
-  // parse above is the parse of `combined` (parse is a pure function of the text), so it is not
-  // parsed a second time.
-  const only = order.length === 1 ? order[0] : undefined;
-  const reuse = only?.parsed !== undefined && combined === only.text ? only.parsed : undefined;
+  // Linking composes already parsed IR in dependency order. Text remains the combined
+  // source artifact for callers; source parsing and syntax expansion are never repeated.
+  const parsed = composePrograms(
+    order.map((o) => o.parsed),
+    profile,
+  );
   try {
-    const parsed = reuse ?? parse(combined);
     return {
-      program: validate(profile === 'strict' ? { ...parsed, profile } : parsed),
+      // Validation returns typed functions; retain source metadata on an empty graph too.
+      program: { ...parsed, ...validate(parsed) },
       text: combined,
       sources,
     };
@@ -293,16 +354,15 @@ export async function parseFile(
     const abs = resolve(path);
     const text = await read(abs);
     const isDense = asDense || isDensePath(abs);
-    const uses = isDense ? denseUses(text) : (parse(text).uses ?? []);
+    const parsedCanonical = isDense ? undefined : parse(text);
+    const uses = isDense ? denseUses(text) : (parsedCanonical?.uses ?? []);
     const known = new Map<string, number>();
     for (const use of uses) {
       const target = resolve(dirname(abs), use);
       if (!seen.has(target)) await load(target, false);
       for (const [name, n] of seen.get(target) ?? []) known.set(name, n);
     }
-    const program = isDense
-      ? (await import('./dense.js')).parseDense(text, { known })
-      : parse(text);
+    const program = parsedCanonical ?? (await import('./dense.js')).parseDense(text, { known });
     const own = new Map(program.functions.map((f) => [f.name, f.params.length] as const));
     seen.set(abs, new Map([...known, ...own]));
     return program;
