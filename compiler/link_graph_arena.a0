@@ -2,6 +2,7 @@
 use "filesystem_arena.a0"
 use "link_paths_arena.a0"
 use "parse_arena.a0"
+use "link_grammar_ready_arena.a0"
 fn lk_code (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
 p at p0 0
 q0 get p 0
@@ -409,42 +410,44 @@ p at p0 0
 q1 at r 0
 error eq q1 6
 parsed at r 1
-q2 at r 0
-q set p 0 q2
-q3 get parsed 1
-q4 get q 1
-q5 select error q3 q4
-q_1 set q 1 q5
-q6 get p 15
-q7 get q_1 2
-q8 select error q6 q7
-q_2 set q_1 2 q8
-q9 get q_2 5
-q10 select error 1 q9
-q_3 set q_2 5 q10
-q11 get parsed 2
-q12 get q_3 95
-q13 select error q11 q12
-q_4 set q_3 95 q13
-q14 get parsed 3
-q15 get q_4 96
-q16 select error q14 q15
-q_5 set q_4 96 q16
-q17 get parsed 4
-q18 get q_5 97
-q19 select error q17 q18
-q_6 set q_5 97 q19
-q20 get parsed 5
-q21 get q_6 98
-q22 select error q20 q21
-q_7 set q_6 98 q22
-q23 get parsed 94
-q24 get q_7 99
-q25 select error q23 q24
-q_8 set q_7 99 q25
-q26 at r 2
-q27 rec q_8 parsed q26
-ret q27
+q2 at r 2
+ready call lv_parse_ready q2 parsed
+q3 at ready 0
+q set p 0 q3
+q4 get parsed 1
+q5 get q 1
+q6 select error q4 q5
+q_1 set q 1 q6
+q7 get p 15
+q8 get q_1 2
+q9 select error q7 q8
+q_2 set q_1 2 q9
+q10 get q_2 5
+q11 select error 1 q10
+q_3 set q_2 5 q11
+q12 get parsed 2
+q13 get q_3 95
+q14 select error q12 q13
+q_4 set q_3 95 q14
+q15 get parsed 3
+q16 get q_4 96
+q17 select error q15 q16
+q_5 set q_4 96 q17
+q18 get parsed 4
+q19 get q_5 97
+q20 select error q18 q19
+q_6 set q_5 97 q20
+q21 get parsed 5
+q22 get q_6 98
+q23 select error q21 q22
+q_7 set q_6 98 q23
+q24 get parsed 94
+q25 get q_7 99
+q26 select error q24 q25
+q_8 set q_7 99 q26
+q27 at ready 2
+q28 rec q_8 parsed q27
+ret q28
 end
 fn lk_savesnapshot (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
 saved call lk_snapshot p0

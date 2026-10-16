@@ -261,6 +261,11 @@ async function sourceCases(level) {
     assert.equal(got.state[94], 2, 'link schema2');
     if (c.scope) {
       assert.equal(got.status, c.want, c.name);
+      if (c.scope === 'spec-grammar') {
+        assert.equal(got.state[121], 1, 'complete schema1 grammar');
+        assert.equal(got.state[122], 1, 'specs still require ordered verification');
+        assert.equal(got.parsed.status, 7, 'grammar completion does not authorize backend use');
+      }
     } else {
       const reads = [];
       let linked, error;

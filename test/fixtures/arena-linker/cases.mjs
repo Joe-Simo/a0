@@ -239,9 +239,9 @@ cases.push(
     },
   },
   {
-    name: 'spec-explicit-incomplete',
+    name: 'spec-grammar-complete-awaiting-verifier',
     files: { 'main.a0': 'fn main u32 -> u32\nex 0 -> 1\nret add p0 1\nend\n' },
-    scope: 'spec',
-    want: 7,
+    scope: 'spec-grammar',
+    want: 0,
   },
 );
