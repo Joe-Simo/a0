@@ -55,6 +55,8 @@ The latest linked-build medians remain mixed. Pipeline milliseconds include link
 
 In particular, the candidate's Life pipeline and the new linker's Canonical bootstrap pipeline have slower medians (`results/unification-link-header-scan.json`). Memory measurements and earlier runs remain in the records. No all-workload speed improvement or absence of regressions is established. Exact IR and identical emitted artifacts are correctness evidence; they are not a newly measured runtime speedup.
 
+The C emitter now indexes operand uses and memoizes projection facts within each function emission. Exact ownership observations and emitted C remain unchanged for the recorded corpus, including strict-profile controls. `results/unification-c-analysis.json` contains both the initial persistent-cache experiment and the final function-scoped version, their raw samples and source/input hashes, the local behavior report, and a separate controlled retained-memory probe. The scoped version releases those analysis maps even on exceptional exits. Bootstrap and arena-parser pipelines improve in these runs, but the final Canonical frame-helper median is slower and some memory cells increase. These data do not establish absence of regressions, target runtime improvements, or readiness to cut over the source grammar.
+
 ## Conversion evidence and remaining work
 
 The static token comparison uses the same frozen source units for each representation, preserves names/order/profiles/specs and never normalizes the program. `results/unification-token-baseline.json` records both tokenizers, exact AST checks and formatting fixed points. Module source units and whole applications are distinguished from kernels; expanded literal arrays account for much of the kernel savings.

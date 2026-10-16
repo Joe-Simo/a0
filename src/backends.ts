@@ -474,6 +474,39 @@ function mutableHere(
   return true;
 }
 
+interface CUseSummary {
+  readonly lastUse: number;
+  /** First use that can retain/modify the value, or -1 when all uses only read it. */
+  readonly firstUnsafe: number;
+}
+const C_USES = new WeakMap<TypedFunc, ReadonlyMap<string | number, CUseSummary>>();
+
+/** Node ids and parameter indices are disjoint Map key types. Literals cannot own storage. */
+function cUses(fn: TypedFunc): ReadonlyMap<string | number, CUseSummary> {
+  const have = C_USES.get(fn);
+  if (have !== undefined) return have;
+  const uses = new Map<string | number, { lastUse: number; firstUnsafe: number }>();
+  for (const [index, node] of fn.nodes.entries()) {
+    for (const [argIndex, operand] of node.args.entries()) {
+      if (operand.kind !== 'node' && operand.kind !== 'param') continue;
+      const key = operand.kind === 'node' ? operand.id : operand.index;
+      const readonly =
+        ((node.op === 'get' || node.op === 'at') && argIndex === 0) ||
+        node.op === 'call' ||
+        ((node.op === 'fold' || node.op === 'loop') && argIndex >= 2);
+      const prior = uses.get(key);
+      if (prior === undefined) {
+        uses.set(key, { lastUse: index, firstUnsafe: readonly ? -1 : index });
+      } else {
+        prior.lastUse = index;
+        if (!readonly && prior.firstUnsafe < 0) prior.firstUnsafe = index;
+      }
+    }
+  }
+  C_USES.set(fn, uses);
+  return uses;
+}
+
 /**
  * C only: `mutableHere` with two more facts of the C emitter. A `fold`/`loop`/`call` result is
  * storage of this function (a fresh local, or the loop state aliasing an unshared initial value),
@@ -487,10 +520,10 @@ function mutableHereC(
   o: Operand,
   index: number,
   ownedParam: (paramIndex: number) => boolean,
-  ownedNodes: ReadonlySet<string> = NO_NODES,
+  ownedNodes: Pick<ReadonlySet<string>, 'has'> = NO_NODES,
 ): boolean {
   if (o.kind === 'node') {
-    const def = fn.nodes.find((n) => n.id === o.id);
+    const def = nodeDefs(fn).get(o.id);
     if (
       def === undefined ||
       !(FRESH_OPS.has(def.op) || C_FRESH_OPS.has(def.op) || ownedNodes.has(o.id))
@@ -500,18 +533,13 @@ function mutableHereC(
     return false;
   }
   if (sameOp(fn.ret, o)) return false;
-  for (const [j, n] of fn.nodes.entries()) {
-    if (j === index) continue;
-    for (const [k, arg] of n.args.entries()) {
-      if (!sameOp(arg, o)) continue;
-      if (j > index) return false;
-      if ((n.op === 'get' || n.op === 'at') && k === 0) continue;
-      if (n.op === 'call') continue;
-      if ((n.op === 'fold' || n.op === 'loop') && k >= 2) continue;
-      return false;
-    }
-  }
-  return true;
+  const uses = cUses(fn).get(o.kind === 'node' ? o.id : o.index);
+  // All uses after the update are forbidden. Earlier uses must only read storage;
+  // uses by the current node itself are ignored, exactly as in the original scan.
+  return (
+    uses === undefined ||
+    (uses.lastUse <= index && (uses.firstUnsafe < 0 || uses.firstUnsafe === index))
+  );
 }
 const C_FRESH_OPS = new Set<Op>(['fold', 'loop', 'call']);
 const NO_NODES: ReadonlySet<string> = new Set();
@@ -533,8 +561,11 @@ interface Projections {
   /** Projection node id to its container operand and field. */
   readonly of: ReadonlyMap<string, { readonly container: Operand; readonly field: number }>;
 }
+const C_PROJECTIONS = new WeakMap<TypedFunc, Map<CVariant, Projections>>();
 
 function cProjections(fn: TypedFunc, variant: CVariant): Projections {
+  const have = C_PROJECTIONS.get(fn)?.get(variant);
+  if (have !== undefined) return have;
   const of = new Map<string, { container: Operand; field: number }>();
   const last = fn.nodes[fn.nodes.length - 1];
   const stateOk =
@@ -575,7 +606,14 @@ function cProjections(fn: TypedFunc, variant: CVariant): Projections {
         of.set(id, { container: c, field });
     }
   }
-  return { of };
+  const projections = { of };
+  let modes = C_PROJECTIONS.get(fn);
+  if (modes === undefined) {
+    modes = new Map();
+    C_PROJECTIONS.set(fn, modes);
+  }
+  modes.set(variant, projections);
+  return projections;
 }
 
 /** JS ownership: only the p0 state of the owned iteration-body variant is private. */
@@ -1238,10 +1276,7 @@ function cMutableHere(
   selfRead: boolean,
   projections: Projections = { of: new Map() },
 ): boolean {
-  return (
-    mutableHereC(fn, o, index, owned, new Set(projections.of.keys())) &&
-    !borrowLive(fn, o, index, selfRead)
-  );
+  return mutableHereC(fn, o, index, owned, projections.of) && !borrowLive(fn, o, index, selfRead);
 }
 
 /** Does the node at `index` update its first operand in place? Records the alias. */
@@ -1972,13 +2007,19 @@ const tripCall = (trap: boolean, fn: TypedFunc, n: Node): string =>
   trap ? ` a0_trip("${fn.name}", "${n.id}", i);` : '';
 
 const emitCFunction = (fn: TypedFunc, parallel?: CParallel, trap = false): string => {
-  const variants: CVariant[] = ['value'];
-  if (hasOwnedVariant(fn)) variants.push('owned');
-  if (hasRefVariant(fn)) variants.push('ref');
-  if (hasViewVariant(fn)) variants.push('view');
-  const helpers = new Map<string, string>();
-  const bodies = variants.map((v) => cBody(fn, v, parallel, helpers, trap));
-  return [...helpers.values(), ...bodies].join('\n\n');
+  try {
+    const variants: CVariant[] = ['value'];
+    if (hasOwnedVariant(fn)) variants.push('owned');
+    if (hasRefVariant(fn)) variants.push('ref');
+    if (hasViewVariant(fn)) variants.push('view');
+    const helpers = new Map<string, string>();
+    const bodies = variants.map((v) => cBody(fn, v, parallel, helpers, trap));
+    return [...helpers.values(), ...bodies].join('\n\n');
+  } finally {
+    // Reuse analysis across this function's variants without retaining it for a live project.
+    C_USES.delete(fn);
+    C_PROJECTIONS.delete(fn);
+  }
 };
 
 // ---------------------------------------------------------------------------
