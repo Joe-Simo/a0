@@ -131,6 +131,10 @@ c nav
 "Contents
 >
 <a
++href #syntax-research
+"New syntax research
+>
+<a
 +href #method
 "Method
 >
@@ -182,6 +186,68 @@ c nav
 <div
 +id benchmarks
 +class main
+}
+{sec_syntax_research
+<section
++id syntax-research
+=h2 Syntax research · 16 October 2026
+=p A matched study of independent Codex agents compared Canonical, Dense and a unified-syntax prototype on the same maintenance tasks. This is research; the prototype is not the shipped language.
+.div tblwrap
++tabindex 0
++role group
++aria-label Syntax research results, scrolls sideways
+.table ops rank fit
+# Source: results/unification-codex-v2-replication.json; whole-function edits, visible payload only.
+=caption Corrected-guide replication: 12 tasks per syntax, one repair allowed; tokens use o200k_base
+<tr
+=th Syntax
+=th First attempt
+=th After repair
+=th Visible tokens per accepted edit
+>
+<tr
+=td Canonical
+=td 12 / 12
+=td 12 / 12
+=td 1855.00
+>
+<tr
+=td Dense
+=td 11 / 12
+=td 12 / 12
+=td 1884.08
+>
+<tr
+=td Unified prototype
+=td 12 / 12
+=td 12 / 12
+=td 1763.92
+>
+>
+>
+=p The sample covers four frontend tasks, four Life application tasks and four website tasks. Every submission used a fresh agent. These reused tasks are a matched replication, not a new held-out set.
+=p Counts include supplied prompts, source replies and repair prompts. Hidden reasoning, system and tool framing, billed usage and exact model identity were unavailable. Subjects shared a filesystem; isolation was instructional. This small study does not establish general AI accuracy or total computational cost.
+=p Earlier Dense guides contained errors; their comparative conclusions are withdrawn. The corrected replication is shown above. Native frontend performance, complete migration and the tool cutover remain unfinished, so this is not a production-readiness result.
+<p
+<a
++href /results/unification-codex-v2-replication.json
+"Raw corrected results
+>
+" · 
+<a
++href /results/unification-codex-guide-erratum.json
+"Guide erratum
+>
+" · 
+<a
++href https://github.com/Joe-Simo/a0/tree/main/experiments/unification
+"Prompts, replies, controls and deterministic replay
+>
+>
+.p cap
+"Sources: results/unification-codex-v2-replication.json and results/unification-codex-guide-erratum.json. Historical language comparisons below retain their original dates and methods.
+>
+>
 }
 {sec_headline
 .div tblwrap

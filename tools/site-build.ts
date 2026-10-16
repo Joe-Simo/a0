@@ -322,6 +322,8 @@ async function writeAgentFiles(page: Built, docs: Built, bench: Built): Promise<
   await mkdir(join(out, 'results'), { recursive: true });
   for (const f of [
     'exec-benchmark.json',
+    'unification-codex-v2-replication.json',
+    'unification-codex-guide-erratum.json',
     'verification.json',
     'equivalence.json',
     'hardware.json',
