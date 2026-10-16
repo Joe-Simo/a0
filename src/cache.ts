@@ -8,9 +8,8 @@
  * behind a stale hit. Entries are immutable files; absence or corruption is a miss.
  */
 
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   assemble,
@@ -53,11 +52,16 @@ export class DiskCache {
   }
 
   async put(key: string, data: Buffer | string): Promise<void> {
-    await mkdir(join(this.dir, key.slice(0, 2)), { recursive: true });
-    // Write then rename so a concurrent reader never sees a partial entry.
-    const tmp = join(tmpdir(), `a0-cache-${process.pid}-${Math.random().toString(16).slice(2)}`);
-    await writeFile(tmp, data);
-    await rename(tmp, this.#path(key));
+    const parent = join(this.dir, key.slice(0, 2));
+    await mkdir(parent, { recursive: true });
+    // Atomic rename requires both files to be on the same filesystem.
+    const tmp = join(parent, `.a0-cache-${process.pid}-${randomUUID()}`);
+    try {
+      await writeFile(tmp, data, { flag: 'wx' });
+      await rename(tmp, this.#path(key));
+    } finally {
+      await rm(tmp, { force: true });
+    }
   }
 }
 
