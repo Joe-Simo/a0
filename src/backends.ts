@@ -22,6 +22,7 @@ import {
   assertVectorSized,
   bitWidth,
   borrowLive,
+  borrowsOf,
   CHECKED_OPS,
   containsIo,
   formatType,
@@ -247,6 +248,184 @@ const FRESH_OPS = new Set<Op>(['arr', 'rec', 'set', 'put']);
 // Iterations also own their outer result: initialization and each owned body preserve that
 // invariant. This says nothing about references held in nested fields.
 const JS_OWNED_RESULTS = new Set<Op>([...FRESH_OPS, 'fold', 'loop']);
+type JSMode = 'value' | 'owned' | 'deep';
+interface JSOwnership {
+  /** Exclusive flat-array field borrows; actual mutations still check every use. */
+  readonly projections: ReadonlySet<string>;
+  /** Candidates for transfer. `consume` rechecks prior/later/return uses at each site. */
+  readonly deep: ReadonlySet<string>;
+  /** Deep-record iteration id -> whether its initializer can transfer without a deep copy. */
+  readonly iterations: ReadonlyMap<string, boolean>;
+  readonly reuseReturn: boolean;
+}
+const JS_PLANS = new WeakMap<TypedFunc, Map<JSMode, JSOwnership>>();
+const JS_EMPTY_OWNERSHIP: JSOwnership = {
+  projections: new Set(),
+  deep: new Set(),
+  iterations: new Map(),
+  reuseReturn: false,
+};
+const JS_EMPTY_PLANS = new Map<JSMode, JSOwnership>(
+  (['value', 'owned', 'deep'] as const).map((mode) => [mode, JS_EMPTY_OWNERSHIP]),
+);
+const JS_DEEP_BODIES = new WeakMap<TypedFunc, boolean>();
+const jsFlatArray = (t: Type): boolean =>
+  !isPrimitive(t) && t.kind === 'arr' && (t.elem === 'u32' || t.elem === 'bool');
+const jsFlatRecord = (t: Type): boolean =>
+  !isPrimitive(t) &&
+  t.kind === 'rec' &&
+  t.fields.some(jsFlatArray) &&
+  t.fields.every((f) => f === 'u32' || f === 'bool' || jsFlatArray(f));
+
+/** Only a proved deep-private result may replace a deep-private iteration state. The call
+ * graph is acyclic; entry cloning plus this result proof preserves the invariant on every trip. */
+function jsDeepBody(fn: TypedFunc): boolean {
+  const have = JS_DEEP_BODIES.get(fn);
+  if (have !== undefined) return have;
+  const p0 = fn.params[0];
+  const last = fn.nodes.at(-1);
+  const yes =
+    p0 !== undefined &&
+    jsFlatRecord(p0) &&
+    fn.params[1] === 'u32' &&
+    formatType(fn.result) === formatType(p0) &&
+    last?.op === 'rec' &&
+    fn.ret.kind === 'node' &&
+    fn.ret.id === last.id &&
+    jsOwnership(fn, 'deep').deep.has(last.id);
+  JS_DEEP_BODIES.set(fn, yes);
+  return yes;
+}
+
+/** Ownership of records containing only scalars and flat arrays, separately for each JS variant.
+ * Unknown calls, puts, moves and selections cannot establish deep ownership. Consumption is
+ * rechecked at every site: an earlier record/array can retain a reference even after the direct
+ * field borrow's last use, which `borrowLive` alone does not cover in JS. */
+function jsOwnership(fn: TypedFunc, mode: JSMode): JSOwnership {
+  const have = JS_PLANS.get(fn)?.get(mode);
+  if (have !== undefined) return have;
+  if (
+    !fn.params.some(jsFlatRecord) &&
+    !jsFlatRecord(fn.result) &&
+    ![...fn.types.values()].some(jsFlatRecord)
+  ) {
+    JS_PLANS.set(fn, JS_EMPTY_PLANS);
+    return JS_EMPTY_OWNERSHIP;
+  }
+  const deep = new Set<string>();
+  const projections = new Set<string>();
+  const iterations = new Map<string, boolean>();
+  const reads = new Map<string, Map<number, string[]>>();
+  const whole = new Set<string>();
+  for (const n of fn.nodes)
+    for (const [k, o] of n.args.entries()) {
+      if (!jsFlatRecord(operandTypeOf(fn, o))) continue;
+      const key = jsOperand(o),
+        field = n.args[1];
+      if (n.op !== 'at' || k !== 0 || field?.kind !== 'u32') whole.add(key);
+      else {
+        let fields = reads.get(key);
+        if (fields === undefined) {
+          fields = new Map();
+          reads.set(key, fields);
+        }
+        fields.set(field.value, [...(fields.get(field.value) ?? []), n.id]);
+      }
+    }
+  if (jsFlatRecord(operandTypeOf(fn, fn.ret))) whole.add(jsOperand(fn.ret));
+  const deepValue = (o: Operand): boolean =>
+    o.kind === 'node'
+      ? deep.has(o.id)
+      : o.kind === 'param' &&
+        o.index === 0 &&
+        mode !== 'value' &&
+        (jsFlatArray(fn.params[0] ?? 'u32') || mode === 'deep');
+  const consume = (o: Operand, index: number): boolean => {
+    if (!mutableHere(fn, o, index, jsOwned(mode !== 'value'), deep)) return false;
+    if (borrowLive(fn, o, index, false)) return false;
+    // A prior aggregate construction or aggregate-returning call can hide an escaped borrow.
+    const borrows = borrowsOf(fn, o);
+    if (borrows.size === 0) return true;
+    for (const [j, n] of fn.nodes.entries()) {
+      if (j >= index) break;
+      for (const [k, a] of n.args.entries()) {
+        if (a.kind !== 'node' || !borrows.has(a.id)) continue;
+        if ((n.op === 'get' || n.op === 'at') && k === 0) continue;
+        if (n.op === 'mov' || n.op === 'select') continue;
+        const t = fn.types.get(n.id);
+        if (
+          (t === 'u32' || t === 'bool') &&
+          (n.op === 'call' || ((n.op === 'fold' || n.op === 'loop') && k >= 2))
+        )
+          continue;
+        return false;
+      }
+    }
+    return true;
+  };
+  for (const [index, n] of fn.nodes.entries()) {
+    const t = fn.types.get(n.id) ?? 'u32';
+    if (jsFlatArray(t) && ['arr', 'set', 'fold', 'loop'].includes(n.op)) deep.add(n.id);
+    if (n.op === 'at' && jsFlatArray(t)) {
+      const parent = n.args[0] as Operand,
+        field = n.args[1];
+      const fields = reads.get(jsOperand(parent));
+      if (
+        deepValue(parent) &&
+        !whole.has(jsOperand(parent)) &&
+        field?.kind === 'u32' &&
+        fields?.get(field.value)?.length === 1
+      ) {
+        projections.add(n.id);
+        deep.add(n.id);
+      }
+    }
+    if (n.op === 'rec' && jsFlatRecord(t)) {
+      const arrays = n.args.filter((o) => jsFlatArray(operandTypeOf(fn, o)));
+      if (
+        new Set(arrays.map(jsOperand)).size === arrays.length &&
+        arrays.every((o) => deepValue(o) && consume(o, index))
+      )
+        deep.add(n.id);
+    }
+    if ((n.op === 'fold' || n.op === 'loop') && jsFlatRecord(t)) {
+      const callee = fn.calls.get(n.callee ?? '');
+      if (callee !== undefined && jsDeepBody(callee)) {
+        const init = n.args[1] as Operand;
+        const transfer =
+          deepValue(init) && consume(init, index) && !n.args.slice(2).some((o) => sameOp(o, init));
+        iterations.set(n.id, transfer);
+        deep.add(n.id);
+      }
+    }
+  }
+  const last = fn.nodes.at(-1);
+  const plan = {
+    projections,
+    deep,
+    iterations,
+    reuseReturn:
+      mode === 'deep' &&
+      last?.op === 'rec' &&
+      fn.ret.kind === 'node' &&
+      fn.ret.id === last.id &&
+      deep.has(last.id) &&
+      !whole.has('p0'),
+  };
+  let modes = JS_PLANS.get(fn);
+  if (modes === undefined) {
+    modes = new Map();
+    JS_PLANS.set(fn, modes);
+  }
+  modes.set(mode, plan);
+  return plan;
+}
+
+/** Clone each array field independently, separating even repeated input references. */
+function jsCopyRecord(value: string, type: Type): string {
+  if (isPrimitive(type) || type.kind !== 'rec') throw new A0Error('expected record');
+  return `[${type.fields.map((t, i) => `${value}[${i}]${jsFlatArray(t) ? '.slice()' : ''}`).join(', ')}]`;
+}
 
 function sameOp(x: Operand, y: Operand): boolean {
   return (
@@ -268,10 +447,11 @@ function mutableHere(
   o: Operand,
   index: number,
   ownedParam: (paramIndex: number) => boolean,
+  ownedNodes: ReadonlySet<string> = NO_NODES,
 ): boolean {
   if (o.kind === 'node') {
     const def = fn.nodes.find((n) => n.id === o.id);
-    if (def === undefined || !FRESH_OPS.has(def.op)) return false;
+    if (def === undefined || !(FRESH_OPS.has(def.op) || ownedNodes.has(o.id))) return false;
   } else if (!(o.kind === 'param' && ownedParam(o.index))) {
     return false;
   }
@@ -407,7 +587,13 @@ const jsOwned =
 /** A node whose result (and therefore whose and/or/xor operands) is bool. */
 const isBoolNode = (fn: TypedFunc, node: Node): boolean => fn.types.get(node.id) === 'bool';
 
-function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string {
+function jsExpr(
+  node: Node,
+  fn: TypedFunc,
+  index = -1,
+  ownedP0 = false,
+  ownedNodes: ReadonlySet<string> = NO_NODES,
+): string {
   const [a, b, c] = node.args.map(jsOperand);
   const site = siteOf(fn, node);
   switch (node.op) {
@@ -482,7 +668,7 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
     }
     case 'set': {
       const inPlace =
-        index >= 0 && mutableHere(fn, node.args[0] as Operand, index, jsOwned(ownedP0));
+        index >= 0 && mutableHere(fn, node.args[0] as Operand, index, jsOwned(ownedP0), ownedNodes);
       const et = operandTypeOf(fn, node.args[0] as Operand);
       const boolElem = !isPrimitive(et) && et.kind === 'arr' && et.elem === 'bool';
       const value = boolElem ? `(${c} ? 1 : 0)` : c;
@@ -493,7 +679,7 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       return `${a}[${b}]`;
     case 'put': {
       const inPlace =
-        index >= 0 && mutableHere(fn, node.args[0] as Operand, index, jsOwned(ownedP0));
+        index >= 0 && mutableHere(fn, node.args[0] as Operand, index, jsOwned(ownedP0), ownedNodes);
       return inPlace ? `(${a}[${b}] = ${c}, ${a})` : `a0_with(${a}, ${b}, ${c})`;
     }
     case 'read':
@@ -516,14 +702,20 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
 }
 
 /** Emit one JS function body; `owned` marks the p0-owned iteration-body variant. */
-function jsBody(fn: TypedFunc, owned: boolean): string[] {
+function jsBody(fn: TypedFunc, owned: boolean, deep = false): string[] {
+  const plan = jsOwnership(fn, deep ? 'deep' : owned ? 'owned' : 'value');
   const stateAggregate = (o: Operand): boolean => !isPrimitive(operandTypeOf(fn, o));
   // Strict: a function that can trap keeps a frame (its name, and the fold it is iterating) on
   // the shadow stack, so a trap names the same fn/at/trip/chain as the interpreter's.
   const framed = mayTrapFn(fn);
   const body = fn.nodes.map((n, index) => {
+    if (plan.reuseReturn && index === fn.nodes.length - 1)
+      return (
+        n.args.map((o, i) => `  p0[${i}] = ${jsOperand(o)};`).join('\n') +
+        `\n  const n_${n.id} = p0;`
+      );
     if (n.op !== 'fold' && n.op !== 'loop')
-      return `  const n_${n.id} = ${jsExpr(n, fn, index, owned)};`;
+      return `  const n_${n.id} = ${jsExpr(n, fn, index, owned, plan.projections)};`;
     const [count, init, ...extra] = n.args.map(jsOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
     const guard = n.op === 'loop' ? ` if (!a0i_${n.pred ?? ''}(${call})) break;` : '';
@@ -531,12 +723,23 @@ function jsBody(fn: TypedFunc, owned: boolean): string[] {
     // value once unless it is already provably unshared (fresh and used only here; an initial
     // value passed again as an extra is read by every trip).
     const initOwned =
-      mutableHere(fn, n.args[1] as Operand, index, jsOwned(owned)) &&
+      mutableHere(fn, n.args[1] as Operand, index, jsOwned(owned), plan.projections) &&
       !n.args.slice(2).some((o) => sameOp(o, n.args[1] as Operand));
-    const initExpr = stateAggregate(n.args[1] as Operand) && !initOwned ? `${init}.slice()` : init;
-    const bodyName = stateAggregate(n.args[1] as Operand)
-      ? `a0o_${n.callee ?? ''}`
-      : `a0i_${n.callee ?? ''}`;
+    const deepIteration = plan.iterations.get(n.id);
+    const initExpr =
+      deepIteration === false
+        ? jsCopyRecord(init as string, operandTypeOf(fn, n.args[1] as Operand))
+        : deepIteration === true
+          ? init
+          : stateAggregate(n.args[1] as Operand) && !initOwned
+            ? `${init}.slice()`
+            : init;
+    const bodyName =
+      deepIteration !== undefined
+        ? `a0d_${n.callee ?? ''}`
+        : stateAggregate(n.args[1] as Operand)
+          ? `a0o_${n.callee ?? ''}`
+          : `a0i_${n.callee ?? ''}`;
     const marked = framed && callTraps(fn, n);
     const trip = marked ? ' a0_tr[a0_depth - 1] = i;' : '';
     return `  let n_${n.id} = ${initExpr};\n${marked ? `  a0_nd[a0_depth - 1] = ${JSON.stringify(n.id)};\n` : ''}  for (let i = 0; i < ${count}; i++) {${trip}${guard} n_${n.id} = ${bodyName}(${call}); }${marked ? '\n  a0_nd[a0_depth - 1] = null;' : ''}`;
@@ -563,7 +766,7 @@ function jsBody(fn: TypedFunc, owned: boolean): string[] {
 const emitJsFunction: Emitter = (fn) => {
   const params = fn.params.map((_, i) => `p${i}`).join(', ');
   // Public entry: validate inputs once, then run the unguarded internal function.
-  // Internal calls, folds, and loops target the a0i_/a0o_ variants, so guards are paid only at the boundary.
+  // Internal calls/iterations target a0i_/a0o_/a0d_, so guards are paid only at the boundary.
   // Scalar guards are a single comparison: `(v >>> 0) === v` holds exactly for integers in
   // [0, 2^32) and for no string, boolean, object, NaN, or fraction (measured: the call into
   // a0_u32 cost 1.3-1.4x on three-operation kernels).
@@ -577,8 +780,14 @@ const emitJsFunction: Emitter = (fn) => {
   const lines = [`function a0i_${fn.name}(${params}) {`, ...jsBody(fn, false), '}'];
   const p0 = fn.params[0];
   if (p0 !== undefined && !isPrimitive(p0) && fn.params[1] === 'u32') {
-    // Iteration-body shape (state, index, ...): owned-state variant for fold/loop.
-    lines.push(`function a0o_${fn.name}(${params}) {`, ...jsBody(fn, true), '}');
+    // Every loop using a capable deep body selects a0d_, cloning unproved initializers.
+    // Its ordinary owned variant is therefore unreachable; keep just the required variant.
+    const deep = jsDeepBody(fn);
+    lines.push(
+      `function ${deep ? 'a0d' : 'a0o'}_${fn.name}(${params}) {`,
+      ...jsBody(fn, true, deep),
+      '}',
+    );
   }
   // Scalar-signature entries carry the body after the guards instead of calling a0i_: one frame
   // fewer at the boundary (aggregate entries keep the call, their guards rebind the parameters).

@@ -1,6 +1,6 @@
 # A0 status
 
-Last updated 2026-10-01, compiler `a0c-0.1.36` (`COMPILER_VERSION` in `src/backends.ts`). This is the current state of the project:
+Last updated 2026-10-16, compiler `a0c-0.1.57` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
 what exists, what is measured and where the numbers live, what is lost or unknown, how to reproduce it, and what comes next.
 Every number on this page is in the `results/` file named beside it, or is reproduced by the command shown. The long record of
 how the project got here, session by session, is in [docs/history/](docs/history/) (index at the end). Contributing rules are in
@@ -23,10 +23,16 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## Current results
 
-Latest iteration work (`a0c-0.1.56`, 2026-10-16): JavaScript sieve and insertion sort improved
+JavaScript deep record state (`a0c-0.1.57`): the Linux heap comparison improved from
+3,218,934 to 17,128 ns/call (187.93×); handwritten JS measured 11,950 ns/call. One observed
+call dropped 1,651 typed-array copies (3,381,248 bytes) to zero. The generated heap module
+grew 42 bytes; the warm compilation study's median increased about 1.1%.
+Evidence: `results/js-deep-owned-heap-linux.json`.
+
+Previous iteration work (`a0c-0.1.56`, 2026-10-16): JavaScript sieve and insertion sort improved
 20.01× and 14.17× against the previous compiler; direct x86 heap operations improved 6.51×.
-Evidence: `results/owned-iterations-linux.json`. Significant losses remain against handwritten
-references, especially JavaScript heap operations. See
+Evidence: `results/owned-iterations-linux.json`. This comparison predates the deep-state
+measurements above. See
 [the ownership and predicate changes](docs/history/2026-10-16-owned-iterations.md).
 
 Latest native work (`a0c-0.1.55`, 2026-10-16): hash lookup improved 10.00× for emitted C and
