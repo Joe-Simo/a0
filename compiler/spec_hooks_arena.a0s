@@ -1,0 +1,100 @@
+raw use "specs_arena.a0"
+extern arena_zero() -> u32x128
+extern av_load(io,(u32,u32,u32),u32,u32) -> (u32,u32x128,io)
+extern av_store(io,(u32,u32,u32),u32,u32,u32x128) -> (u32,io)
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+extern sp_raw((u32x128,u32x128,io),u32,u32x128) -> (u32x128,u32x128,io)
+extern sp_finishfunction((u32x128,u32x128,io),u32) -> (u32x128,u32x128,io)
+def as_vec(p:u32x128,o:u32) -> (u32,u32,u32)
+ return (p[o],p[o+1],p[o+2])
+end
+def as_setvec(p:u32x128,o:u32,v:(u32,u32,u32)) -> u32x128
+ let a=set(p,o,v#0)
+ let b=set(a,o+1,v#1)
+ return set(b,o+2,v#2)
+end
+def as_setsy(p:u32x128,o:u32,sy:((u32,u32,u32),u32,u32,u32)) -> u32x128
+ let a=as_setvec(p,o,sy#0)
+ let b=set(a,o+3,sy#1)
+ let c=set(b,o+4,sy#2)
+ return set(c,o+5,sy#3)
+end
+def as_sy(p:u32x128,o:u32) -> ((u32,u32,u32),u32,u32,u32)
+ return (as_vec(p,o),p[o+3],p[o+4],p[o+5])
+end
+fn as_resume_load(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let r=av_load(s#2,as_vec(p,59),0,128)
+ return (set(p,0,r#0),r#1,r#2)
+end
+fn as_resume(s:(u32x128,io)) -> (u32x128,u32x128,io)
+ let p=s#0
+ let z=arena_zero()
+ let q=set(z,6,p[6])
+ let q=set(q,24,4294967295)
+ let q=set(q,92,1)
+ let r=fold(as_resume_load,p[60]!=0?1:0,(p,q,s#1))
+ let sp=r#1
+ let sp=set(sp,11,0)
+ let sp=as_setsy(sp,80,as_sy(p,62))
+ return (r#0,sp,r#2)
+end
+fn as_save_new(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let r=av_append(s#2,as_vec(p,59),128,s#1)
+ let q=as_setvec(p,59,r#1)
+ return (set(q,0,r#0),s#1,r#2)
+end
+fn as_save_old(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let r=av_store(s#2,as_vec(p,59),0,128,s#1)
+ return (set(p,0,r#0),s#1,r#1)
+end
+fn as_publish(s:(u32x128,u32x128,io)) -> (u32x128,io)
+ let p=s#0
+ let fresh=p[60]==0
+ let r=fold(as_save_new,fresh?1:0,s)
+ let r=fold(as_save_old,fresh?0:1,r)
+ let q=r#0
+ let sp=r#1
+ let code=q[0]==0?sp[0]:q[0]
+ let grammar=(code==6)&(q[0]==0)
+ let q=as_setsy(q,62,as_sy(sp,80))
+ let q=set(q,0,code)
+ let q=set(q,1,grammar?714:q[1])
+ let q=set(q,2,grammar?sp[31]:q[2])
+ let q=set(q,3,grammar?sp[2]:q[3])
+ let q=set(q,4,grammar?sp[3]:q[4])
+ let q=set(q,5,grammar?sp[1]:q[5])
+ return (q,r#2)
+end
+fn as_runraw(s:(u32x128,u32x128,io),i:u32,index:u32,parser:u32x128) -> (u32x128,u32x128,io)
+ return sp_raw(s,index,parser)
+end
+fn as_accept_go(s:(u32x128,io),i:u32) -> (u32x128,io)
+ let loaded=as_resume(s)
+ let p=loaded#0
+ let z=arena_zero()
+ let sp=loaded#1
+ let sp=set(sp,0,p[0])
+ let parsed=fold(as_runraw,p[0]==0?1:0,(sp,z,loaded#2),p[57]/6-1,p)
+ return as_publish((p,parsed#0,parsed#2))
+end
+fn as_accept(s:(u32x128,io)) -> (u32x128,io)
+ let p=s#0
+ return fold(as_accept_go,p[0]==0?1:0,s)
+end
+fn as_finish_go(s:(u32x128,io),i:u32) -> (u32x128,io)
+ let loaded=as_resume(s)
+ let p=loaded#0
+ let z=arena_zero()
+ let sp=loaded#1
+ let sp=set(sp,0,p[0])
+ let finished=fold(sp_finishfunction,(p[0]==0)&(sp[24]!=4294967295)?1:0,(sp,z,loaded#2))
+ let sp=set(finished#0,24,4294967295)
+ return as_publish((p,sp,finished#2))
+end
+fn as_finish(s:(u32x128,io)) -> (u32x128,io)
+ let p=s#0
+ return fold(as_finish_go,(p[0]==0)&(p[60]!=0)?1:0,s)
+end

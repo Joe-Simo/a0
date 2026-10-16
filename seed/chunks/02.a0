@@ -16,6 +16,9 @@ end
 fn z64 -> u32x128x64
 ret 0
 end
+fn z65 -> u32x128x65
+ret 0
+end
 fn pass1 u32x512x64 u32x128x384 u32 -> (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 ret 0
 end
@@ -43,29 +46,327 @@ end
 fn z24 -> u32x128x24
 ret 0
 end
+fn zl64 -> u32x64
+ret 0
+end
 fn umax u32 u32 -> u32
 ret 0
 end
-fn checkir u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x8 u32 u32 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x65,u32x128x24,u32x128x24,u32x64,u32x128x8,u32,u32,u32,u32,u32,u32,u32)
+fn infostep (u32x128x65,u32x128x65) u32 u32x384x65 u32x128x65 -> (u32x128x65,u32x128x65)
 ret 0
+end
+fn nodestep (u32x384x65,u32x128x65,u32x128x65,u32x128x65,u32x128x24,u32x128x24,u32x64,u32x128x8,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x512 u32x128x45 u32 u32x64 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x65,u32x128x24,u32x128x24,u32x64,u32x128x8,u32,u32,u32,u32,u32,u32,u32)
+ret 0
+end
+fn plstep u32x64 u32 u32x128x65 u32 -> u32x64
+ret 0
+end
+fn ioparam u32 u32 u32x64 u32x128x65 -> u32
+t get p2 p1
+th shr t 7
+tl and t 127
+tg get p3 th
+ti get tg tl
+io shr ti 31
+r add p0 io
+ret r
+end
+fn fnstep (u32x384x65,u32x128x65,u32x128x65,u32x128x65,u32x128x24,u32x128x24,u32x64,u32x128x8,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x512 u32x128x45 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x65,u32x128x24,u32x128x24,u32x64,u32x128x8,u32,u32,u32,u32,u32,u32,u32)
+f add p5 p1
+tlist at p0 2
+tinfo at p0 3
+err at p0 10
+f7 mul f 7
+f71 add f7 1
+fh1 shr f71 7
+fl1 and f71 127
+fg1 get p4 fh1
+np get fg1 fl1
+f72 add f7 2
+fh2 shr f72 7
+fl2 and f72 127
+fg2 get p4 fh2
+fp get fg2 fl2
+f73 add f7 3
+fh3 shr f73 7
+fl3 and f73 127
+fg3 get p4 fh3
+res get fg3 fl3
+f74 add f7 4
+fh4 shr f74 7
+fl4 and f74 127
+fg4 get p4 fh4
+first get fg4 fl4
+f75 add f7 5
+fh5 shr f75 7
+fl5 and f75 127
+fg5 get p4 fh5
+cnt get fg5 fl5
+f76 add f7 6
+fh6 shr f76 7
+fl6 and f76 127
+fg6 get p4 fh6
+retw get fg6 fl6
+npbad gt np 64
+cntbad gt cnt 4096
+npc select npbad 64 np
+z call zl64
+pl fold plstep npc z tlist fp
+nio fold ioparam npc 0 pl tinfo
+iobad gt nio 1
+hc0 select iobad 2 0
+hc1 select cntbad 4 hc0
+hcode select npbad 4 hc1
+noerr eq err 0
+hok0 eq hcode 0
+hok and noerr hok0
+herr and noerr hok0
+hbad select hok0 false true
+hset and noerr hbad
+e1 select hset hcode err
+en1 at p0 12
+efn1 at p0 11
+efn2 select hset f efn1
+enode2 select hset 4294967295 en1
+s1 put p0 13 1
+s2 put s1 14 1
+s3 put s2 10 e1
+s4 put s3 11 efn2
+s5 put s4 12 enode2
+ncnt select hok cnt 0
+s6 fold nodestep ncnt s5 p2 p3 p4 f pl npc first
+err6 at s6 10
+ntys6 at s6 4
+ncons6 at s6 5
+pcons6 at s6 6
+tinfo6 at s6 3
+fstat6 at s6 7
+errnode6 at s6 12
+lit6 at s6 13
+rk0 shr retw 28
+rv0 and retw 268435455
+rbig eq rk0 5
+rai mul rv0 2
+rah shr rai 7
+rao and rai 127
+rai1 add rai 1
+rah1 shr rai1 7
+rao1 and rai1 127
+rapg get p3 rah
+rapg1 get p3 rah1
+rak get rapg rao
+rav get rapg1 rao1
+rk select rbig rak rk0
+rv select rbig rav rv0
+isn eq rk 1
+isp eq rk 2
+isb eq rk 4
+gi add first rv
+gh shr gi 7
+gl and gi 127
+gg get ntys6 gh
+nt get gg gl
+inr lt rv npc
+pt get pl rv
+pty select inr pt 4294967295
+c0 select isb 1 0
+c1 select isp pty c0
+rt select isn nt c1
+rbad eq rt 4294967295
+rne ne rt res
+rth shr rt 7
+rtl and rt 127
+rtg get tinfo6 rth
+rti get rtg rtl
+rio shr rti 31
+cg get ncons6 gh
+nc get cg gl
+pc get pcons6 rv
+stamp add f 1
+nc1 eq nc 1
+pcs eq pc stamp
+ca select isp pcs false
+c0r select isn nc1 ca
+ncm ge nc 2
+pclo and pc 1048575
+pchi shr pc 20
+pcst eq pclo stamp
+pchz ne pchi 0
+pcm and pcst pchz
+cmp select isp pcm false
+cm select isn ncm cmp
+c or c0r cm
+rio1 eq rio 1
+rcons and rio1 c
+rc0 select rcons 2 0
+rc1 select rne 3 rc0
+rcode select rbad 3 rc1
+e6ok eq err6 0
+ran and e6ok hok
+rerr ne rcode 0
+apply and ran rerr
+err7 select apply rcode err6
+errnode7 select apply cnt errnode6
+efn7 at s6 11
+efn8 select apply f efn7
+fsh shr f 7
+fsl and f 127
+fsg get fstat6 fsh
+fso get fsg fsl
+fsx select noerr lit6 fso
+fsg2 set fsg fsl fsx
+fstat7 set fstat6 fsh fsg2
+s7 put s6 10 err7
+s8 put s7 12 errnode7
+s9 put s8 11 efn8
+s10 put s9 7 fstat7
+r select noerr s10 p0
+ret r
+end
+fn checkir u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x8 u32 u32 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x65,u32x128x24,u32x128x24,u32x64,u32x128x8,u32,u32,u32,u32,u32,u32,u32)
+z65 call z65
+inf0 rec z65 z65
+inf fold infostep p6 inf0 p0 p1
+tinfo at inf 0
+tsig at inf 1
+toomany gt p8 65536
+code0 select toomany 4 0
+z24 call z24
+zl call zl64
+s0 rec p0 tsig p1 tinfo z24 z24 zl p5 p6 p7 code0 4294967295 4294967295 1 1
+n0 sub p8 p9
+n select toomany 0 n0
+s fold fnstep n s0 p3 p4 p2 p9
+ret s
+end
+fn cwsb io u32 u32 -> io
+s mul p1 8
+v shr p2 s
+b and v 255
+w write p0 b
+ret w
+end
+fn cws io u32 -> io
+a ne p1 0
+b ge p1 256
+c ge p1 65536
+d ge p1 16777216
+na select a 1 0
+nb select b 1 0
+nx select c 1 0
+nd select d 1 0
+s1 add na nb
+s2 add s1 nx
+n add s2 nd
+r fold cwsb n p0 p1
+ret r
 end
 fn cws6 io u32 u32 u32 u32 u32 u32 -> io
-ret 0
+a call cws p0 p1
+b call cws a p2
+c call cws b p3
+d call cws c p4
+e call cws d p5
+f call cws e p6
+ret f
+end
+fn cws6st io u32 u32 u32 u32 u32 u32 u32 -> io
+r call cws6 p0 p2 p3 p4 p5 p6 p7
+ret r
 end
 fn cws6c io bool u32 u32 u32 u32 u32 u32 -> io
-ret 0
+n select p1 1 0
+r fold cws6st n p0 p2 p3 p4 p5 p6 p7
+ret r
+end
+fn cpow10 -> u32x10
+r arr 1 10 100 1000 10000 100000 1000000 10000000 100000000 1000000000
+ret r
+end
+fn cdecst io u32 u32 u32 u32x10 -> io
+k sub p3 1
+j sub k p1
+d get p4 j
+q div p2 d
+r rem q 10
+c add r 48
+w write p0 c
+ret w
 end
 fn cwdec io u32 -> io
-ret 0
+a1 ge p1 10
+a2 ge p1 100
+a3 ge p1 1000
+a4 ge p1 10000
+a5 ge p1 100000
+a6 ge p1 1000000
+a7 ge p1 10000000
+a8 ge p1 100000000
+a9 ge p1 1000000000
+b1 select a1 1 0
+b2 select a2 1 0
+b3 select a3 1 0
+b4 select a4 1 0
+b5 select a5 1 0
+b6 select a6 1 0
+b7 select a7 1 0
+b8 select a8 1 0
+b9 select a9 1 0
+c1 add b1 1
+c2 add c1 b2
+c3 add c2 b3
+c4 add c3 b4
+c5 add c4 b5
+c6 add c5 b6
+c7 add c6 b7
+c8 add c7 b8
+n add c8 b9
+pw call cpow10
+r fold cdecst n p0 p1 n pw
+ret r
+end
+fn cdecst2 io u32 u32 -> io
+r call cwdec p0 p2
+ret r
 end
 fn cwdecc io bool u32 -> io
-ret 0
+n select p1 1 0
+r fold cdecst2 n p0 p2
+ret r
 end
 fn cwop io u32 u32 -> io
-ret 0
+k1 eq p1 1
+k2 eq p1 2
+k3 eq p1 3
+k4 eq p1 4
+k6 eq p1 6
+a call cws6c p0 k1 110 0 0 0 0 0
+b0 call cws6c a k2 112 0 0 0 0 0
+b call cws6c b0 k6 7219752 0 0 0 0 0
+x or k1 k2
+x6 or x k6
+num or x6 k3
+c call cwdecc b num p2
+d call cws6c c k3 117 0 0 0 0 0
+nz ne p2 0
+tr and k4 nz
+z eq p2 0
+fa and k4 z
+e call cws6c d tr 1702195828 0 0 0 0 0
+f call cws6c e fa 1936482662 101 0 0 0 0
+k5 eq p1 5
+f0 call cws6c f k5 812657192 41 0 0 0 0
+f1 call cws6c f0 k6 41 0 0 0 0 0
+ret f1
+end
+fn cwopst io u32 u32 u32 -> io
+r call cwop p0 p2 p3
+ret r
 end
 fn cwopc io bool u32 u32 -> io
-ret 0
+n select p1 1 0
+r fold cwopst n p0 p2 p3
+ret r
 end
 fn cwty io u32 u32 -> io
 c1 eq p1 1

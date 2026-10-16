@@ -1,0 +1,466 @@
+# POSIX byte path operations; grammar/policy decisions execute in A0.
+use "symbol_arena.a0"
+fn lp_copyok (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn lp_copystore (u32,(u32,u32,u32),io) u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 at p0 1
+q2 call av_append q0 q1 p2 p3
+ret q2
+end
+fn lp_copypage (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+base mul p1 128
+rem sub p4 base
+q0 gt rem 128
+n select q0 128 rem
+q1 at p0 2
+q2 add p3 base
+r call arena_load q1 p2 q2 n
+q3 at r 0
+q4 eq q3 0
+q5 select q4 1 0
+q6 at r 0
+q7 at p0 1
+q8 at r 2
+q9 rec q6 q7 q8
+q10 at r 1
+a fold lp_copystore q5 q9 n q10
+ret a
+end
+fn lp_copy io (u32,u32,u32) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 sub 4294967295 p3
+safe le p4 q0
+q1 div p4 128
+q2 rem p4 128
+q3 eq q2 0
+q4 select q3 0 1
+pages add q1 q4
+q5 select safe pages 0
+q6 select safe 0 3
+q7 rec q6 p1 p0
+q8 loop lp_copyok lp_copypage q5 q7 p2 p3 p4
+ret q8
+end
+fn lp_byte io (u32,u32,u32) u32 -> (u32,(u32,u32,u32),io)
+q0 call arena_zero
+q1 set q0 0 p2
+q2 call av_append p0 p1 1 q1
+ret q2
+end
+fn lp_normal (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io) u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io)
+out at p0 1
+q0 call arena_zero
+q1 at out 1
+mark set q0 0 q1
+q2 at p0 5
+q3 at p0 2
+stack call av_append q2 q3 1 mark
+q4 at stack 0
+q5 eq q4 0
+q6 at out 1
+q7 gt q6 1
+q8 and q5 q7
+q9 select q8 1 0
+q10 at stack 0
+q11 at stack 2
+q12 rec q10 out q11
+q13 call arena_zero
+q14 set q13 0 47
+sep fold lp_copystore q9 q12 1 q14
+q15 at p0 4
+q16 div q15 128
+q17 at p0 4
+q18 rem q17 128
+q19 eq q18 0
+q20 select q19 0 1
+q21 add q16 q20
+q22 at p0 3
+q23 at p0 4
+copied loop lp_copyok lp_copypage q21 sep p2 q22 q23
+q24 at copied 0
+q25 at copied 1
+q26 at stack 1
+q27 at p0 3
+q28 at p0 4
+q29 at copied 2
+q30 rec q24 q25 q26 q27 q28 q29
+ret q30
+end
+fn lp_pop (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io) u32 -> (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io)
+stack at p0 2
+q0 at p0 5
+q1 at stack 1
+q2 sub q1 1
+r call av_load q0 stack q2 1
+a at r 1
+out at p0 1
+q3 at r 0
+q4 at out 0
+q5 get a 0
+q6 at out 2
+q7 rec q4 q5 q6
+q8 at stack 0
+q9 at stack 1
+q10 sub q9 1
+q11 at stack 2
+q12 rec q8 q10 q11
+q13 at p0 3
+q14 at p0 4
+q15 at r 2
+q16 rec q3 q7 q12 q13 q14 q15
+ret q16
+end
+fn lp_component (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io) u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io)
+q0 at p0 5
+q1 at p0 3
+q2 at p0 4
+q3 gt q2 2
+q4 at p0 4
+q5 select q3 2 q4
+r call arena_load q0 p2 q1 q5
+a at r 1
+q6 at p0 4
+q7 eq q6 1
+q8 get a 0
+q9 eq q8 46
+dot and q7 q9
+q10 at p0 4
+q11 eq q10 2
+q12 get a 0
+q13 eq q12 46
+q14 and q11 q13
+q15 get a 1
+q16 eq q15 46
+parent and q14 q16
+q17 at r 0
+q18 at p0 1
+q19 at p0 2
+q20 at p0 3
+q21 at p0 4
+q22 at r 2
+st at p0 2
+q23 at r 0
+q24 eq q23 0
+q25 and q24 parent
+q26 at st 1
+q27 gt q26 0
+q28 and q25 q27
+q29 select q28 1 0
+q30 rec q17 q18 q19 q20 q21 q22
+p fold lp_pop q29 q30
+q31 at p 0
+q32 eq q31 0
+q33 xor dot true
+q34 and q32 q33
+q35 xor parent true
+q36 and q34 q35
+q37 select q36 1 0
+q38 fold lp_normal q37 p p2
+ret q38
+end
+fn lp_nbyteok (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io) u32 u32x128 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn lp_nbyte (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io) u32 u32x128 u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io)
+q0 get p2 p1
+slash eq q0 47
+q1 at p0 4
+q2 gt q1 0
+q3 and slash q2
+q4 select q3 1 0
+r fold lp_component q4 p0 p4
+q5 at r 0
+q6 at r 1
+q7 at r 2
+q8 add p3 p1
+q9 add q8 1
+q10 at r 3
+q11 select slash q9 q10
+q12 at r 4
+q13 add q12 1
+q14 select slash 0 q13
+q15 at r 5
+q16 rec q5 q6 q7 q11 q14 q15
+ret q16
+end
+fn lp_npageok (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io) u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn lp_npage (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io) u32 u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),u32,u32,io)
+base mul p1 128
+rem sub p3 base
+q0 gt rem 128
+n select q0 128 rem
+q1 at p0 5
+r call arena_load q1 p2 base n
+q2 at r 0
+q3 at p0 1
+q4 at p0 2
+q5 at p0 3
+q6 at p0 4
+q7 at r 2
+q8 rec q2 q3 q4 q5 q6 q7
+q9 at r 1
+q10 loop lp_nbyteok lp_nbyte n q8 q9 base p2
+ret q10
+end
+fn lp_normalize io u32 u32 -> (u32,(u32,u32,u32),io)
+q0 rec 0 0 0
+out call lp_byte p0 q0 47
+q1 div p2 128
+q2 rem p2 128
+q3 eq q2 0
+q4 select q3 0 1
+pages add q1 q4
+q5 at out 0
+q6 at out 1
+q7 rec 0 0 0
+q8 at out 2
+q9 rec q5 q6 q7 0 0 q8
+r loop lp_npageok lp_npage pages q9 p1 p2
+q10 at r 0
+q11 eq q10 0
+q12 at r 4
+q13 gt q12 0
+q14 and q11 q13
+q15 select q14 1 0
+s fold lp_component q15 r p1
+q16 at s 0
+q17 at s 1
+q18 at s 5
+q19 rec q16 q17 q18
+ret q19
+end
+fn lp_inputfirst (u32,bool,io) u32 u32 u32 -> (u32,bool,io)
+q0 at p0 2
+r call arena_load q0 p2 p3 1
+page at r 1
+q1 at r 0
+q2 get page 0
+q3 eq q2 47
+q4 at r 2
+q5 rec q1 q3 q4
+ret q5
+end
+fn lp_resolvenorm (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 call lp_normalize q0 p2 p3
+ret q1
+end
+fn lp_resolve io u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 sub 4294967295 p4
+safe le p5 q0
+q1 gt p5 0
+q2 and safe q1
+q3 select q2 1 0
+q4 select safe 0 3
+q5 rec q4 false p0
+first fold lp_inputfirst q3 q5 p3 p4
+q6 at first 1
+q7 div p2 128
+q8 rem p2 128
+q9 eq q8 0
+q10 select q9 0 1
+q11 add q7 q10
+q12 select q6 0 q11
+q13 at first 0
+q14 rec 0 0 0
+q15 at first 2
+q16 rec q13 q14 q15
+a loop lp_copyok lp_copypage q12 q16 p1 0 p2
+q17 at a 0
+q18 eq q17 0
+q19 at first 1
+q20 xor q19 true
+q21 and q18 q20
+q22 select q21 1 0
+q23 call arena_zero
+q24 set q23 0 47
+a_1 fold lp_copystore q22 a 1 q24
+q25 div p5 128
+q26 rem p5 128
+q27 eq q26 0
+q28 select q27 0 1
+q29 add q25 q28
+b loop lp_copyok lp_copypage q29 a_1 p3 p4 p5
+v at b 1
+q30 at b 0
+q31 eq q30 0
+q32 select q31 1 0
+q33 at v 0
+q34 at v 1
+r fold lp_resolvenorm q32 b q33 q34
+ret r
+end
+fn lp_dirbyte u32 u32 u32x128 u32 -> u32
+q0 get p2 p1
+q1 eq q0 47
+q2 add p3 p1
+q3 select q1 q2 p0
+ret q3
+end
+fn lp_dirok (u32,u32,io) u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn lp_dirpage (u32,u32,io) u32 u32 u32 -> (u32,u32,io)
+base mul p1 128
+rem sub p3 base
+q0 gt rem 128
+n select q0 128 rem
+q1 at p0 2
+r call arena_load q1 p2 base n
+q2 at r 0
+q3 eq q2 0
+q4 select q3 n 0
+q5 at p0 1
+q6 at r 1
+last fold lp_dirbyte q4 q5 q6 base
+q7 at r 0
+q8 at r 2
+q9 rec q7 last q8
+ret q9
+end
+fn lp_dirname io u32 u32 -> (u32,(u32,u32,u32),io)
+q0 div p2 128
+q1 rem p2 128
+q2 eq q1 0
+q3 select q2 0 1
+pages add q0 q3
+q4 eq p2 0
+q5 select q4 3 0
+q6 rec q5 0 p0
+r loop lp_dirok lp_dirpage pages q6 p1 p2
+q7 at r 0
+q8 at r 1
+q9 eq q8 0
+q10 at r 1
+q11 select q9 1 q10
+q12 rec p1 q11 p2
+q13 at r 2
+q14 rec q7 q12 q13
+ret q14
+end
+fn lp_inspect (u32,bool,bool,io) u32 u32 u32 u32 -> (u32,bool,bool,io)
+q0 at p0 3
+r call arena_load q0 p2 p3 p4
+p at r 1
+q1 at r 0
+q2 get p 0
+q3 eq q2 47
+q4 ge p4 2
+q5 get p 0
+q6 eq q5 46
+q7 and q4 q6
+q8 get p 1
+q9 eq q8 46
+q10 and q7 q9
+q11 at r 2
+q12 rec q1 q3 q10 q11
+ret q12
+end
+fn lp_inside io u32 u32 u32 u32 -> (u32,bool,io)
+enough ge p4 p2
+q0 select enough 1 0
+q1 rec 0 enough p0
+eq fold si_compare q0 q1 p1 0 p3 0 p2
+prefix at eq 1
+same eq p4 p2
+q2 at eq 0
+q3 eq q2 0
+q4 and q3 prefix
+q5 xor same true
+q6 and q4 q5
+q7 ne p2 1
+q8 and q6 q7
+q9 select q8 1 0
+q10 at eq 0
+q11 eq p2 1
+q12 at eq 2
+q13 rec q10 q11 false q12
+sep fold lp_inspect q9 q13 p3 p2 1
+q14 eq p2 1
+q15 add p2 1
+offset select q14 1 q15
+q16 ge p4 offset
+q17 sub p4 offset
+rem select q16 q17 0
+q18 at sep 1
+q19 and prefix q18
+q20 xor same true
+valid and q19 q20
+q21 at sep 0
+q22 eq q21 0
+q23 and q22 valid
+q24 gt rem 0
+q25 and q23 q24
+q26 select q25 1 0
+q27 at sep 0
+q28 at sep 3
+q29 rec q27 false false q28
+q30 gt rem 2
+q31 select q30 2 rem
+dot fold lp_inspect q26 q29 p3 offset q31
+q32 at dot 0
+q33 at dot 2
+q34 xor q33 true
+q35 and valid q34
+q36 or same q35
+q37 and prefix q36
+q38 at dot 3
+q39 rec q32 q37 q38
+ret q39
+end
+fn lp_extread (u32,u32,io) u32 u32 u32 -> (u32,u32,io)
+q0 gt p3 4
+n select q0 4 p3
+q1 at p0 2
+q2 sub p3 n
+r call arena_load q1 p2 q2 n
+p at r 1
+k sub n 3
+q3 get p k
+q4 eq q3 46
+q5 add k 1
+q6 get p q5
+q7 eq q6 97
+q8 and q4 q7
+q9 add k 2
+q10 get p q9
+q11 eq q10 48
+a0 and q8 q11
+q12 eq n 4
+q13 get p 0
+q14 eq q13 46
+q15 and q12 q14
+q16 get p 1
+q17 eq q16 97
+q18 and q15 q17
+q19 get p 2
+q20 eq q19 48
+q21 and q18 q20
+q22 get p 3
+q23 eq q22 100
+a0d and q21 q23
+q24 at r 0
+q25 select a0d 2 0
+q26 select a0 1 q25
+q27 at r 2
+q28 rec q24 q26 q27
+ret q28
+end
+fn lp_extension io u32 u32 -> (u32,u32,io)
+q0 ge p2 3
+q1 select q0 1 0
+q2 rec 0 0 p0
+q3 fold lp_extread q1 q2 p1 p2
+ret q3
+end

@@ -30,9 +30,11 @@ AArch64 and Wasm emitters. A0 optimization now uses weighted expansion costs and
 the reference optimizer also preserves the unsigned exponent when an earlier call exposes a large iteration count.
 The website compiler tool builds from the verified A0-generated seed. A0 optimization supports canonical checked
 operations; strict trapping semantics remain explicitly unsupported in these A0 paths.
-Arena storage, full-width lexer spans, vectors and symbol interning are available for frontend migration.
-The shipped frontend still needs the complete arena-backed parser and checker; the entire compiler migration is in progress.
-Reproduce the focused coverage with `node --test dist/test/selfhost-*.test.js dist/test/matrix-u32-exponent.test.js dist/test/arena-frontend.test.js`
+The experimental arena frontend now includes parsing, typing, ordered spec verification, interpretation and a partial diagnostic formatter.
+Additional A0 JavaScript, Java, SystemVerilog, x86, RISC-V and ARM32 emitters and ELF/PE writers are available
+for integration. Their source/table interfaces and limits are documented in [Compiler ports](docs/design/compiler-ports.md).
+The shipped CLI still uses TypeScript compiler stages; the entire compiler migration is in progress.
+Reproduce the focused coverage with `node --test dist/test/selfhost-*.test.js dist/test/matrix-u32-exponent.test.js dist/test/arena-frontend.test.js dist/test/arena-program.test.js`
 after `bun run build`; the bootstrap reproduction check is `bun run seed`.
 
 Readonly C iteration extras (`a0c-0.1.58`): minmax, filtering and binary search improved

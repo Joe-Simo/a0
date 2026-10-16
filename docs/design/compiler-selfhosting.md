@@ -14,18 +14,20 @@ optimization, target ABI decisions and code emission belong in A0.
 
 | Stage | A0 implementation | Work before dependency removal |
 | --- | --- | --- |
-| Canonical frontend | `compiler/lex.a0`, `parse.a0`, `check.a0`, `suggest.a0`; arena lexer, vectors and symbols | Connect the arena tables to a complete parser/checker. Specs (`ex`, `pre`, `post`), diagnostic detail/source locations, current accepted input limits, generic module/chunk planning and a lossless checked-IR interface remain. Ordinary loads still use `src/link.ts` and `src/core.ts`. |
+| Canonical frontend | `compiler/lex.a0`, `parse.a0`, `check.a0`, `suggest.a0`; full-word arena parser/checker, spec grammar/binder/ordered verifier and a partial diagnostic formatter | Complete diagnostic coverage, multifile checking/spec origins, generic chunk planning and authoritative routing. Ordinary loads still use `src/link.ts` and `src/core.ts`. |
 | Browser frontend | `compiler/front512.a0` | The playground retains a separate legacy lexer/parser/checker with a smaller language surface. Complete or replace it through the same A0 compiler interface. |
 | Dense frontend | `compiler/dense.a0` | Complete the documented syntax gaps and execute it without the TypeScript interpreter or a subsequent TypeScript parse. |
-| Evaluation | `compiler/evalrun.a0` | IO, strict traps, fuel/trip behavior and command/spec evaluation. The native driver's C evaluator is also compiler logic that must migrate. |
+| Evaluation | `compiler/evalrun.a0`, experimental `eval_arena.a0` with full-word frames and continuations | Connect command/spec evaluation and full diagnostics; address allocation retention and production resource/performance behavior. The native driver's C evaluator is also compiler logic that must migrate. |
 | Optimization | `compiler/optimize.a0`, `shape.a0`, including canonical checked operations | Preserve reference behavior, support strict metadata and existing input sizes, and use these stages for every target. Checked bodies conservatively decline fusion. Ordinary emits still use `src/optimize.ts`. |
 | C | `compiler/emit_c.a0` | Strict traps and metadata; current aggregate ABI, arena, ownership, parallel and option behavior. |
 | Darwin arm64 | `compiler/emit_arm64.a0` | Strict traps and metadata; current backend ABI, ownership and option behavior. |
 | Direct Wasm | `compiler/emit_wasm.a0`, `wasm_code.a0` | Strict traps and metadata; full optimizer/frontend parity and authoritative command routing. |
-| Other code generators | No corresponding full A0 program emitters yet | Port JavaScript, Java, SystemVerilog, x86-64, RISC-V, AVR, ARM32, C# and Metal capabilities. `compiler/asm_x86_64.a0` assembles instructions; it does not generate a program from A0 IR. |
-| Assembly and executable writing | `compiler/asm_arm64.a0`, `asm_x86_64.a0`, `macho.a0` | Promote existing ports and port remaining ELF/PE logic used by supported executable paths. |
+| Other code generators | `compiler/emit_js.a0`, `emit_java.a0`, `emit_sv.a0`, `emit_x86_64.a0`, `emit_riscv64.a0`, `emit_arm32.a0` | Complete their documented frontend/strict/option interfaces and production routing; port AVR, C# and Metal capabilities. `compiler/asm_x86_64.a0` assembles instructions; it does not generate a program from A0 IR. |
+| Assembly and executable writing | `compiler/asm_arm64.a0`, `asm_x86_64.a0`, `macho.a0` | Connect arena-based ELF/PE writers and existing ports to the full A0 pipeline; preserve platform and ABI validation. |
 | Production entrypoints | A0 plain-check acceleration and the website's A0 optimizer/Wasm emitter | Route CLI, MCP and editor semantic operations through the complete A0 service. Replace semantic parts of `tools/native/a0.c`; update release packaging and smoke tests. |
 | Authoring/bootstrap | Checked-in self-reproducing C seed | Retain seed verification, port semantic source/chunk planning, and remove TypeScript generation dependencies from normal compiler builds. A0S/A0M generators also need an explicit bootstrap/authoring boundary. |
+
+Experimental interfaces and current limits are documented in [Arena frontend](arena-frontend.md) and [Compiler ports](compiler-ports.md). The public CLI still uses the reference frontend/backends.
 
 ## Migration rules
 

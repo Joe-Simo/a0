@@ -1,0 +1,25 @@
+# Private source packet protocol v1: length, byte words, completion tag.
+# Byte payload words must be in 0..255 (trusted transport precondition).
+use "lex.a0"
+
+fn source_packet_readio io -> (u32x512x64,u32,io,bool)
+r0 read p0
+n0 at r0 0
+t0 at r0 1
+big gt n0 131072
+n select big 0 n0
+z call zsrcp
+zp call zpk
+n2047 add n 2047
+np shr n2047 11
+s0 rec z t0
+s fold readpage np s0 n zp
+src at s 0
+t1 at s 1
+last read t1
+magic at last 0
+t2 at last 1
+complete eq magic 2690135777
+r rec src n0 t2 complete
+ret r
+end

@@ -1,0 +1,5440 @@
+# Arena diagnostic rendering in canonical A0. Development A0S expands static catalog bytes.
+use "check_arena.a0"
+fn ad_appendgo (u32,(u32,u32,u32),io) u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 at p0 1
+q2 call av_append q0 q1 p2 p3
+ret q2
+end
+fn ad_append (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold ad_appendgo q2 p0 p1 p2
+ret q3
+end
+fn ad_byte (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+q0 set z 0 p1
+q1 call ad_append p0 1 q0
+ret q1
+end
+fn ad_copyok (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn ad_copypage (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+offset mul p1 128
+remain sub p4 offset
+q0 gt remain 128
+n select q0 128 remain
+q1 at p0 2
+q2 add p3 offset
+r call arena_load q1 p2 q2 n
+q3 at r 0
+q4 at p0 1
+q5 at r 2
+q6 rec q3 q4 q5
+q7 at r 1
+q8 call ad_append q6 n q7
+ret q8
+end
+fn ad_copy (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 div p3 128
+q1 rem p3 128
+q2 eq q1 0
+q3 select q2 0 1
+q4 add q0 q3
+q5 loop ad_copyok ad_copypage q4 p0 p1 p2 p3
+ret q5
+end
+fn ad_string (u32,(u32,u32,u32),io) (u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 at p1 0
+q1 at p1 1
+q2 call ad_copy p0 q0 0 q1
+ret q2
+end
+fn ad_numstep (u32,u32x128,u32) u32 -> (u32,u32x128,u32)
+v at p0 0
+q0 at p0 1
+q1 rem v 10
+q2 add 48 q1
+page set q0 p1 q2
+q3 ne v 0
+q4 eq p1 0
+q5 or q3 q4
+q6 add p1 1
+q7 at p0 2
+count select q5 q6 q7
+q8 div v 10
+q9 rec q8 page count
+ret q9
+end
+fn ad_numrev u32x128 u32 u32x128 u32 -> u32x128
+q0 sub p3 1
+q1 sub q0 p1
+q2 get p2 q1
+q3 set p0 p1 q2
+ret q3
+end
+fn ad_number (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+q0 rec p1 z 0
+r fold ad_numstep 10 q0
+q1 at r 2
+q2 at r 1
+q3 at r 2
+page fold ad_numrev q1 z q2 q3
+q4 at r 2
+q5 call ad_append p0 q4 page
+ret q5
+end
+fn ad_lit_u32 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 117
+z_2 set z_1 1 51
+z_3 set z_2 2 50
+s call ad_append p0 3 z_3
+ret s
+end
+fn ad_lit_bool (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 98
+z_2 set z_1 1 111
+z_3 set z_2 2 111
+z_4 set z_3 3 108
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_io (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 105
+z_2 set z_1 1 111
+s call ad_append p0 2 z_2
+ret s
+end
+fn ad_lit_dot (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 46
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_ret (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 114
+z_2 set z_1 1 101
+z_3 set z_2 2 116
+s call ad_append p0 3 z_3
+ret s
+end
+fn ad_lit_p (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 112
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_x (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 120
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_comma (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_open (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 40
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_close (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 41
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_quote (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 34
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_slash (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 92
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_line (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 108
+z_2 set z_1 1 105
+z_3 set z_2 2 110
+z_4 set z_3 3 101
+z_5 set z_4 4 32
+s call ad_append p0 5 z_5
+ret s
+end
+fn ad_lit_colon (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+s call ad_append p0 2 z_2
+ret s
+end
+fn ad_lit_space (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_maybe (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 109
+z_2 set z_1 1 97
+z_3 set z_2 2 121
+z_4 set z_3 3 98
+z_5 set z_4 4 101
+s call ad_append p0 5 z_5
+ret s
+end
+fn ad_lit_exact (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 101
+z_2 set z_1 1 120
+z_3 set z_2 2 97
+z_4 set z_3 3 99
+z_5 set z_4 4 116
+s call ad_append p0 5 z_5
+ret s
+end
+fn ad_lit_null (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 110
+z_2 set z_1 1 117
+z_3 set z_2 2 108
+z_4 set z_3 3 108
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_type (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 116
+z_2 set z_1 1 121
+z_3 set z_2 2 112
+z_4 set z_3 3 101
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_parse (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 112
+z_2 set z_1 1 97
+z_3 set z_2 2 114
+z_4 set z_3 3 115
+z_5 set z_4 4 101
+s call ad_append p0 5 z_5
+ret s
+end
+fn ad_lit_structure (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 115
+z_2 set z_1 1 116
+z_3 set z_2 2 114
+z_4 set z_3 3 117
+z_5 set z_4 4 99
+z_6 set z_5 5 116
+z_7 set z_6 6 117
+z_8 set z_7 7 114
+z_9 set z_8 8 101
+s call ad_append p0 9 z_9
+ret s
+end
+fn ad_lit_limit (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 108
+z_2 set z_1 1 105
+z_3 set z_2 2 109
+z_4 set z_3 3 105
+z_5 set z_4 4 116
+s call ad_append p0 5 z_5
+ret s
+end
+fn ad_lit_idprefix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 65
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_json0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 123
+z_2 set z_1 1 34
+z_3 set z_2 2 99
+z_4 set z_3 3 111
+z_5 set z_4 4 100
+z_6 set z_5 5 101
+z_7 set z_6 6 34
+z_8 set z_7 7 58
+s call ad_append p0 8 z_8
+ret s
+end
+fn ad_lit_jsonid (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 105
+z_4 set z_3 3 100
+z_5 set z_4 4 34
+z_6 set z_5 5 58
+s call ad_append p0 6 z_6
+ret s
+end
+fn ad_lit_jsonmessage (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 109
+z_4 set z_3 3 101
+z_5 set z_4 4 115
+z_6 set z_5 5 115
+z_7 set z_6 6 97
+z_8 set z_7 7 103
+z_9 set z_8 8 101
+z_10 set z_9 9 34
+z_11 set z_10 10 58
+s call ad_append p0 11 z_11
+ret s
+end
+fn ad_lit_jsonline (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 108
+z_4 set z_3 3 105
+z_5 set z_4 4 110
+z_6 set z_5 5 101
+z_7 set z_6 6 34
+z_8 set z_7 7 58
+s call ad_append p0 8 z_8
+ret s
+end
+fn ad_lit_jsonexpected (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 101
+z_4 set z_3 3 120
+z_5 set z_4 4 112
+z_6 set z_5 5 101
+z_7 set z_6 6 99
+z_8 set z_7 7 116
+z_9 set z_8 8 101
+z_10 set z_9 9 100
+z_11 set z_10 10 34
+z_12 set z_11 11 58
+s call ad_append p0 12 z_12
+ret s
+end
+fn ad_lit_jsonactual (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 97
+z_4 set z_3 3 99
+z_5 set z_4 4 116
+z_6 set z_5 5 117
+z_7 set z_6 6 97
+z_8 set z_7 7 108
+z_9 set z_8 8 34
+z_10 set z_9 9 58
+s call ad_append p0 10 z_10
+ret s
+end
+fn ad_lit_jsonfix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 102
+z_4 set z_3 3 105
+z_5 set z_4 4 120
+z_6 set z_5 5 34
+z_7 set z_6 6 58
+s call ad_append p0 7 z_7
+ret s
+end
+fn ad_lit_jsonapp (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 97
+z_4 set z_3 3 112
+z_5 set z_4 4 112
+z_6 set z_5 5 108
+z_7 set z_6 6 105
+z_8 set z_7 7 99
+z_9 set z_8 8 97
+z_10 set z_9 9 98
+z_11 set z_10 10 105
+z_12 set z_11 11 108
+z_13 set z_12 12 105
+z_14 set z_13 13 116
+z_15 set z_14 14 121
+z_16 set z_15 15 34
+z_17 set z_16 16 58
+s call ad_append p0 17 z_17
+ret s
+end
+fn ad_lit_jsonedits (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 101
+z_4 set z_3 3 100
+z_5 set z_4 4 105
+z_6 set z_5 5 116
+z_7 set z_6 6 115
+z_8 set z_7 7 34
+z_9 set z_8 8 58
+z_10 set z_9 9 91
+z_11 set z_10 10 93
+z_12 set z_11 11 125
+s call ad_append p0 12 z_12
+ret s
+end
+fn ad_lit_argument (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 97
+z_3 set z_2 2 114
+z_4 set z_3 3 103
+z_5 set z_4 4 117
+z_6 set z_5 5 109
+z_7 set z_6 6 101
+z_8 set z_7 7 110
+z_9 set z_8 8 116
+z_10 set z_9 9 32
+s call ad_append p0 10 z_10
+ret s
+end
+fn ad_lit_element (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 101
+z_3 set z_2 2 108
+z_4 set z_3 3 101
+z_5 set z_4 4 109
+z_6 set z_5 5 101
+z_7 set z_6 6 110
+z_8 set z_7 7 116
+z_9 set z_8 8 32
+s call ad_append p0 9 z_9
+ret s
+end
+fn ad_lit_index (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 105
+z_3 set z_2 2 110
+z_4 set z_3 3 100
+z_5 set z_4 4 101
+z_6 set z_5 5 120
+s call ad_append p0 6 z_6
+ret s
+end
+fn ad_lit_token (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 116
+z_3 set z_2 2 111
+z_4 set z_3 3 107
+z_5 set z_4 4 101
+z_6 set z_5 5 110
+s call ad_append p0 6 z_6
+ret s
+end
+fn ad_lit_value (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 118
+z_3 set z_2 2 97
+z_4 set z_3 3 108
+z_5 set z_4 4 117
+z_6 set z_5 5 101
+s call ad_append p0 6 z_6
+ret s
+end
+fn ad_lit_fieldvalue (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 102
+z_3 set z_2 2 105
+z_4 set z_3 3 101
+z_5 set z_4 4 108
+z_6 set z_5 5 100
+z_7 set z_6 6 32
+z_8 set z_7 7 118
+z_9 set z_8 8 97
+z_10 set z_9 9 108
+z_11 set z_10 10 117
+z_12 set z_11 11 101
+s call ad_append p0 12 z_12
+ret s
+end
+fn ad_lit_tripcount (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 116
+z_3 set z_2 2 114
+z_4 set z_3 3 105
+z_5 set z_4 4 112
+z_6 set z_5 5 32
+z_7 set z_6 6 99
+z_8 set z_7 7 111
+z_9 set z_8 8 117
+z_10 set z_9 9 110
+z_11 set z_10 10 116
+s call ad_append p0 11 z_11
+ret s
+end
+fn ad_lit_predresult (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 112
+z_3 set z_2 2 114
+z_4 set z_3 3 101
+z_5 set z_4 4 100
+z_6 set z_5 5 105
+z_7 set z_6 6 99
+z_8 set z_7 7 97
+z_9 set z_8 8 116
+z_10 set z_9 9 101
+z_11 set z_10 10 32
+z_12 set z_11 11 114
+z_13 set z_12 12 101
+z_14 set z_13 13 115
+z_15 set z_14 14 117
+z_16 set z_15 15 108
+z_17 set z_16 16 116
+s call ad_append p0 17 z_17
+ret s
+end
+fn ad_lit_at (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 97
+z_2 set z_1 1 116
+s call ad_append p0 2 z_2
+ret s
+end
+fn ad_lit_put (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 112
+z_2 set z_1 1 117
+z_3 set z_2 2 116
+s call ad_append p0 3 z_3
+ret s
+end
+fn ad_lit_call (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 99
+z_2 set z_1 1 97
+z_3 set z_2 2 108
+z_4 set z_3 3 108
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_fold (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 102
+z_2 set z_1 1 111
+z_3 set z_2 2 108
+z_4 set z_3 3 100
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_loop (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 108
+z_2 set z_1 1 111
+z_3 set z_2 2 111
+z_4 set z_3 3 112
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_message201part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 101
+z_4 set z_3 3 120
+z_5 set z_4 4 112
+z_6 set z_5 5 101
+z_7 set z_6 6 99
+z_8 set z_7 7 116
+z_9 set z_8 8 101
+z_10 set z_9 9 100
+z_11 set z_10 10 32
+s call ad_append p0 11 z_11
+ret s
+end
+fn ad_lit_message201part4 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 32
+z_3 set z_2 2 103
+z_4 set z_3 3 111
+z_5 set z_4 4 116
+z_6 set z_5 5 32
+s call ad_append p0 6 z_6
+ret s
+end
+fn ad_lit_message203part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 115
+z_4 set z_3 3 101
+z_5 set z_4 4 108
+z_6 set z_5 5 101
+z_7 set z_6 6 99
+z_8 set z_7 7 116
+z_9 set z_8 8 32
+z_10 set z_9 9 98
+z_11 set z_10 10 114
+z_12 set z_11 11 97
+z_13 set z_12 12 110
+z_14 set z_13 13 99
+z_15 set z_14 14 104
+z_16 set z_15 15 101
+z_17 set z_16 16 115
+z_18 set z_17 17 32
+z_19 set z_18 18 100
+z_20 set z_19 19 105
+z_21 set z_20 20 102
+z_22 set z_21 21 102
+z_23 set z_22 22 101
+z_24 set z_23 23 114
+z_25 set z_24 24 32
+z_26 set z_25 25 40
+s call ad_append p0 26 z_26
+ret s
+end
+fn ad_lit_message203part4 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 118
+z_3 set z_2 2 115
+z_4 set z_3 3 32
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_message203part6 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 41
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_message205part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 97
+z_4 set z_3 3 114
+z_5 set z_4 4 114
+z_6 set z_5 5 97
+z_7 set z_6 6 121
+z_8 set z_7 7 115
+z_9 set z_8 8 32
+z_10 set z_9 9 99
+z_11 set z_10 10 97
+z_12 set z_11 11 110
+z_13 set z_12 12 110
+z_14 set z_13 13 111
+z_15 set z_14 14 116
+z_16 set z_15 15 32
+z_17 set z_16 16 104
+z_18 set z_17 17 111
+z_19 set z_18 18 108
+z_20 set z_19 19 100
+z_21 set z_20 20 32
+z_22 set z_21 21 105
+z_23 set z_22 22 111
+z_24 set z_23 23 32
+z_25 set z_24 24 116
+z_26 set z_25 25 111
+z_27 set z_26 26 107
+z_28 set z_27 27 101
+z_29 set z_28 28 110
+z_30 set z_29 29 115
+s call ad_append p0 30 z_30
+ret s
+end
+fn ad_lit_message206part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 97
+z_4 set z_3 3 103
+z_5 set z_4 4 103
+z_6 set z_5 5 114
+z_7 set z_6 6 101
+z_8 set z_7 7 103
+z_9 set z_8 8 97
+z_10 set z_9 9 116
+z_11 set z_10 10 101
+z_12 set z_11 11 32
+z_13 set z_12 12 116
+z_14 set z_13 13 111
+z_15 set z_14 14 111
+z_16 set z_15 15 32
+z_17 set z_16 16 108
+z_18 set z_17 17 97
+z_19 set z_18 18 114
+z_20 set z_19 19 103
+z_21 set z_20 20 101
+s call ad_append p0 21 z_21
+ret s
+end
+fn ad_lit_message207part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 97
+z_4 set z_3 3 32
+z_5 set z_4 4 114
+z_6 set z_5 5 101
+z_7 set z_6 6 99
+z_8 set z_7 7 111
+z_9 set z_8 8 114
+z_10 set z_9 9 100
+z_11 set z_10 10 32
+z_12 set z_11 11 104
+z_13 set z_12 12 111
+z_14 set z_13 13 108
+z_15 set z_14 14 100
+z_16 set z_15 15 115
+z_17 set z_16 16 32
+z_18 set z_17 17 97
+z_19 set z_18 18 116
+z_20 set z_19 19 32
+z_21 set z_20 20 109
+z_22 set z_21 21 111
+z_23 set z_22 22 115
+z_24 set z_23 23 116
+z_25 set z_24 24 32
+z_26 set z_25 25 111
+z_27 set z_26 26 110
+z_28 set z_27 27 101
+z_29 set z_28 28 32
+z_30 set z_29 29 105
+z_31 set z_30 30 111
+z_32 set z_31 31 32
+z_33 set z_32 32 116
+z_34 set z_33 33 111
+z_35 set z_34 34 107
+z_36 set z_35 35 101
+z_37 set z_36 36 110
+s call ad_append p0 37 z_37
+ret s
+end
+fn ad_lit_message208part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 112
+z_4 set z_3 3 117
+z_5 set z_4 4 116
+z_6 set z_5 5 115
+z_7 set z_6 6 32
+z_8 set z_7 7 101
+z_9 set z_8 8 120
+z_10 set z_9 9 112
+z_11 set z_10 10 101
+z_12 set z_11 11 99
+z_13 set z_12 12 116
+z_14 set z_13 13 115
+z_15 set z_14 14 32
+z_16 set z_15 15 97
+z_17 set z_16 16 32
+z_18 set z_17 17 117
+z_19 set z_18 18 51
+z_20 set z_19 19 50
+z_21 set z_20 20 32
+z_22 set z_21 21 97
+z_23 set z_22 22 114
+z_24 set z_23 23 114
+z_25 set z_24 24 97
+z_26 set z_25 25 121
+z_27 set z_26 26 44
+z_28 set z_27 27 32
+z_29 set z_28 28 103
+z_30 set z_29 29 111
+z_31 set z_30 30 116
+z_32 set z_31 31 32
+s call ad_append p0 32 z_32
+ret s
+end
+fn ad_lit_message209part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 103
+z_4 set z_3 3 101
+z_5 set z_4 4 116
+z_6 set z_5 5 32
+z_7 set z_6 6 101
+z_8 set z_7 7 120
+z_9 set z_8 8 112
+z_10 set z_9 9 101
+z_11 set z_10 10 99
+z_12 set z_11 11 116
+z_13 set z_12 12 115
+z_14 set z_13 13 32
+z_15 set z_14 14 97
+z_16 set z_15 15 110
+z_17 set z_16 16 32
+z_18 set z_17 17 97
+z_19 set z_18 18 114
+z_20 set z_19 19 114
+z_21 set z_20 20 97
+z_22 set z_21 21 121
+z_23 set z_22 22 44
+z_24 set z_23 23 32
+z_25 set z_24 24 103
+z_26 set z_25 25 111
+z_27 set z_26 26 116
+z_28 set z_27 27 32
+s call ad_append p0 28 z_28
+ret s
+end
+fn ad_lit_message210part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 115
+z_4 set z_3 3 101
+z_5 set z_4 4 116
+z_6 set z_5 5 32
+z_7 set z_6 6 101
+z_8 set z_7 7 120
+z_9 set z_8 8 112
+z_10 set z_9 9 101
+z_11 set z_10 10 99
+z_12 set z_11 11 116
+z_13 set z_12 12 115
+z_14 set z_13 13 32
+z_15 set z_14 14 97
+z_16 set z_15 15 110
+z_17 set z_16 16 32
+z_18 set z_17 17 97
+z_19 set z_18 18 114
+z_20 set z_19 19 114
+z_21 set z_20 20 97
+z_22 set z_21 21 121
+z_23 set z_22 22 44
+z_24 set z_23 23 32
+z_25 set z_24 24 103
+z_26 set z_25 25 111
+z_27 set z_26 26 116
+z_28 set z_27 27 32
+s call ad_append p0 28 z_28
+ret s
+end
+fn ad_lit_message220part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+s call ad_append p0 2 z_2
+ret s
+end
+fn ad_lit_message220part4 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 101
+z_3 set z_2 2 120
+z_4 set z_3 3 112
+z_5 set z_4 4 101
+z_6 set z_5 5 99
+z_7 set z_6 6 116
+z_8 set z_7 7 115
+z_9 set z_8 8 32
+z_10 set z_9 9 97
+z_11 set z_10 10 32
+z_12 set z_11 11 114
+z_13 set z_12 12 101
+z_14 set z_13 13 99
+z_15 set z_14 14 111
+z_16 set z_15 15 114
+z_17 set z_16 16 100
+z_18 set z_17 17 44
+z_19 set z_18 18 32
+z_20 set z_19 19 103
+z_21 set z_20 20 111
+z_22 set z_21 21 116
+z_23 set z_22 22 32
+s call ad_append p0 23 z_23
+ret s
+end
+fn ad_lit_message221part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+s call ad_append p0 2 z_2
+ret s
+end
+fn ad_lit_message221part4 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 102
+z_3 set z_2 2 105
+z_4 set z_3 3 101
+z_5 set z_4 4 108
+z_6 set z_5 5 100
+z_7 set z_6 6 32
+z_8 set z_7 7 105
+z_9 set z_8 8 110
+z_10 set z_9 9 100
+z_11 set z_10 10 101
+z_12 set z_11 11 120
+z_13 set z_12 12 32
+z_14 set z_13 13 109
+z_15 set z_14 14 117
+z_16 set z_15 15 115
+z_17 set z_16 16 116
+z_18 set z_17 17 32
+z_19 set z_18 18 98
+z_20 set z_19 19 101
+z_21 set z_20 20 32
+z_22 set z_21 21 97
+z_23 set z_22 22 32
+z_24 set z_23 23 117
+z_25 set z_24 24 51
+z_26 set z_25 25 50
+z_27 set z_26 26 32
+z_28 set z_27 27 108
+z_29 set z_28 28 105
+z_30 set z_29 29 116
+z_31 set z_30 30 101
+z_32 set z_31 31 114
+z_33 set z_32 32 97
+z_34 set z_33 33 108
+s call ad_append p0 34 z_34
+ret s
+end
+fn ad_lit_message222part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 102
+z_4 set z_3 3 105
+z_5 set z_4 4 101
+z_6 set z_5 5 108
+z_7 set z_6 6 100
+z_8 set z_7 7 32
+s call ad_append p0 8 z_8
+ret s
+end
+fn ad_lit_message222part4 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 111
+z_3 set z_2 2 117
+z_4 set z_3 3 116
+z_5 set z_4 4 32
+z_6 set z_5 5 111
+z_7 set z_6 6 102
+z_8 set z_7 7 32
+z_9 set z_8 8 114
+z_10 set z_9 9 97
+z_11 set z_10 10 110
+z_12 set z_11 11 103
+z_13 set z_12 12 101
+z_14 set z_13 13 32
+z_15 set z_14 14 102
+z_16 set z_15 15 111
+z_17 set z_16 16 114
+z_18 set z_17 17 32
+s call ad_append p0 18 z_18
+ret s
+end
+fn ad_lit_message303part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 100
+z_4 set z_3 3 117
+z_5 set z_4 4 112
+z_6 set z_5 5 108
+z_7 set z_6 6 105
+z_8 set z_7 7 99
+z_9 set z_8 8 97
+z_10 set z_9 9 116
+z_11 set z_10 10 101
+z_12 set z_11 11 32
+z_13 set z_12 12 100
+z_14 set z_13 13 101
+z_15 set z_14 14 102
+z_16 set z_15 15 105
+z_17 set z_16 16 110
+z_18 set z_17 17 105
+z_19 set z_18 18 116
+z_20 set z_19 19 105
+z_21 set z_20 20 111
+z_22 set z_21 21 110
+s call ad_append p0 22 z_22
+ret s
+end
+fn ad_lit_message309part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 97
+z_4 set z_3 3 116
+z_5 set z_4 4 32
+z_6 set z_5 5 109
+z_7 set z_6 6 111
+z_8 set z_7 7 115
+z_9 set z_8 8 116
+z_10 set z_9 9 32
+z_11 set z_10 10 111
+z_12 set z_11 11 110
+z_13 set z_12 12 101
+z_14 set z_13 13 32
+z_15 set z_14 14 112
+z_16 set z_15 15 97
+z_17 set z_16 16 114
+z_18 set z_17 17 97
+z_19 set z_18 18 109
+z_20 set z_19 19 101
+z_21 set z_20 20 116
+z_22 set z_21 21 101
+z_23 set z_22 22 114
+z_24 set z_23 23 32
+z_25 set z_24 24 109
+z_26 set z_25 25 97
+z_27 set z_26 26 121
+z_28 set z_27 27 32
+z_29 set z_28 28 99
+z_30 set z_29 29 97
+z_31 set z_30 30 114
+z_32 set z_31 31 114
+z_33 set z_32 32 121
+z_34 set z_33 33 32
+z_35 set z_34 34 97
+z_36 set z_35 35 110
+z_37 set z_36 36 32
+z_38 set z_37 37 105
+z_39 set z_38 38 111
+z_40 set z_39 39 32
+z_41 set z_40 40 116
+z_42 set z_41 41 111
+z_43 set z_42 42 107
+z_44 set z_43 43 101
+z_45 set z_44 44 110
+s call ad_append p0 45 z_45
+ret s
+end
+fn ad_lit_message315part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 116
+z_4 set z_3 3 111
+z_5 set z_4 4 111
+z_6 set z_5 5 32
+z_7 set z_6 6 109
+z_8 set z_7 7 97
+z_9 set z_8 8 110
+z_10 set z_9 9 121
+z_11 set z_10 10 32
+z_12 set z_11 11 112
+z_13 set z_12 12 97
+z_14 set z_13 13 114
+z_15 set z_14 14 97
+z_16 set z_15 15 109
+z_17 set z_16 16 101
+z_18 set z_17 17 116
+z_19 set z_18 18 101
+z_20 set z_19 19 114
+z_21 set z_20 20 115
+s call ad_append p0 21 z_21
+ret s
+end
+fn ad_lit_message316part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 116
+z_4 set z_3 3 111
+z_5 set z_4 4 111
+z_6 set z_5 5 32
+z_7 set z_6 6 109
+z_8 set z_7 7 97
+z_9 set z_8 8 110
+z_10 set z_9 9 121
+z_11 set z_10 10 32
+z_12 set z_11 11 110
+z_13 set z_12 12 111
+z_14 set z_13 13 100
+z_15 set z_14 14 101
+z_16 set z_15 15 115
+s call ad_append p0 16 z_16
+ret s
+end
+fn ad_lit_message6part0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 116
+z_2 set z_1 1 101
+z_3 set z_2 2 120
+z_4 set z_3 3 116
+z_5 set z_4 4 32
+z_6 set z_5 5 108
+z_7 set z_6 6 105
+z_8 set z_7 7 116
+z_9 set z_8 8 101
+z_10 set z_9 9 114
+z_11 set z_10 10 97
+z_12 set z_11 11 108
+z_13 set z_12 12 32
+z_14 set z_13 13 109
+z_15 set z_14 14 117
+z_16 set z_15 15 115
+z_17 set z_16 16 116
+z_18 set z_17 17 32
+z_19 set z_18 18 110
+z_20 set z_19 19 111
+z_21 set z_20 20 116
+z_22 set z_21 21 32
+z_23 set z_22 22 98
+z_24 set z_23 23 101
+z_25 set z_24 24 32
+z_26 set z_25 25 101
+z_27 set z_26 26 109
+z_28 set z_27 27 112
+z_29 set z_28 28 116
+z_30 set z_29 29 121
+s call ad_append p0 30 z_30
+ret s
+end
+fn ad_lit_message16part0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 115
+z_2 set z_1 1 111
+z_3 set z_2 2 117
+z_4 set z_3 3 114
+z_5 set z_4 4 99
+z_6 set z_5 5 101
+z_7 set z_6 6 32
+z_8 set z_7 7 101
+z_9 set z_8 8 120
+z_10 set z_9 9 99
+z_11 set z_10 10 101
+z_12 set z_11 11 101
+z_13 set z_12 12 100
+z_14 set z_13 13 115
+z_15 set z_14 14 32
+s call ad_append p0 15 z_15
+ret s
+end
+fn ad_lit_message16part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 98
+z_3 set z_2 2 121
+z_4 set z_3 3 116
+z_5 set z_4 4 101
+z_6 set z_5 5 115
+s call ad_append p0 6 z_6
+ret s
+end
+fn ad_lit_message24part0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 116
+z_2 set z_1 1 111
+z_3 set z_2 2 111
+z_4 set z_3 3 32
+z_5 set z_4 4 109
+z_6 set z_5 5 97
+z_7 set z_6 6 110
+z_8 set z_7 7 121
+z_9 set z_8 8 32
+z_10 set z_9 9 112
+z_11 set z_10 10 97
+z_12 set z_11 11 114
+z_13 set z_12 12 97
+z_14 set z_13 13 109
+z_15 set z_14 14 101
+z_16 set z_15 15 116
+z_17 set z_16 16 101
+z_18 set z_17 17 114
+z_19 set z_18 18 115
+s call ad_append p0 19 z_19
+ret s
+end
+fn ad_lit_message25part0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 101
+z_2 set z_1 1 120
+z_3 set z_2 2 112
+z_4 set z_3 3 101
+z_5 set z_4 4 99
+z_6 set z_5 5 116
+z_7 set z_6 6 101
+z_8 set z_7 7 100
+z_9 set z_8 8 32
+z_10 set z_9 9 39
+z_11 set z_10 10 101
+z_12 set z_11 11 110
+z_13 set z_12 12 100
+z_14 set z_13 13 39
+z_15 set z_14 14 32
+z_16 set z_15 15 97
+z_17 set z_16 16 102
+z_18 set z_17 17 116
+z_19 set z_18 18 101
+z_20 set z_19 19 114
+z_21 set z_20 20 32
+z_22 set z_21 21 114
+z_23 set z_22 22 101
+z_24 set z_23 23 116
+s call ad_append p0 24 z_24
+ret s
+end
+fn ad_lit_message29part0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 116
+z_2 set z_1 1 111
+z_3 set z_2 2 111
+z_4 set z_3 3 32
+z_5 set z_4 4 109
+z_6 set z_5 5 97
+z_7 set z_6 6 110
+z_8 set z_7 7 121
+z_9 set z_8 8 32
+z_10 set z_9 9 102
+z_11 set z_10 10 117
+z_12 set z_11 11 110
+z_13 set z_12 12 99
+z_14 set z_13 13 116
+z_15 set z_14 14 105
+z_16 set z_15 15 111
+z_17 set z_16 16 110
+z_18 set z_17 17 115
+s call ad_append p0 18 z_18
+ret s
+end
+fn ad_lit_fix201part0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 114
+z_2 set z_1 1 101
+z_3 set z_2 2 112
+z_4 set z_3 3 108
+z_5 set z_4 4 97
+z_6 set z_5 5 99
+z_7 set z_6 6 101
+z_8 set z_7 7 32
+z_9 set z_8 8 116
+z_10 set z_9 9 104
+z_11 set z_10 10 101
+z_12 set z_11 11 32
+z_13 set z_12 12 111
+z_14 set z_13 13 112
+z_15 set z_14 14 101
+z_16 set z_15 15 114
+z_17 set z_16 16 97
+z_18 set z_17 17 110
+z_19 set z_18 18 100
+z_20 set z_19 19 32
+z_21 set z_20 20 97
+z_22 set z_21 21 116
+z_23 set z_22 22 32
+s call ad_append p0 23 z_23
+ret s
+end
+fn ad_lit_fix201part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 119
+z_3 set z_2 2 105
+z_4 set z_3 3 116
+z_5 set z_4 4 104
+z_6 set z_5 5 32
+z_7 set z_6 6 97
+z_8 set z_7 7 32
+z_9 set z_8 8 118
+z_10 set z_9 9 97
+z_11 set z_10 10 108
+z_12 set z_11 11 117
+z_13 set z_12 12 101
+z_14 set z_13 13 32
+z_15 set z_14 14 111
+z_16 set z_15 15 102
+z_17 set z_16 16 32
+z_18 set z_17 17 116
+z_19 set z_18 18 121
+z_20 set z_19 19 112
+z_21 set z_20 20 101
+z_22 set z_21 21 32
+s call ad_append p0 22 z_22
+ret s
+end
+fn ad_lit_fix25part0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 99
+z_2 set z_1 1 108
+z_3 set z_2 2 111
+z_4 set z_3 3 115
+z_5 set z_4 4 101
+z_6 set z_5 5 32
+z_7 set z_6 6 116
+z_8 set z_7 7 104
+z_9 set z_8 8 101
+z_10 set z_9 9 32
+z_11 set z_10 10 102
+z_12 set z_11 11 117
+z_13 set z_12 12 110
+z_14 set z_13 13 99
+z_15 set z_14 14 116
+z_16 set z_15 15 105
+z_17 set z_16 16 111
+z_18 set z_17 17 110
+z_19 set z_18 18 32
+z_20 set z_19 19 119
+z_21 set z_20 20 105
+z_22 set z_21 21 116
+z_23 set z_22 22 104
+z_24 set z_23 23 32
+z_25 set z_24 24 96
+z_26 set z_25 25 101
+z_27 set z_26 26 110
+z_28 set z_27 27 100
+z_29 set z_28 28 96
+z_30 set z_29 29 32
+z_31 set z_30 30 111
+z_32 set z_31 31 110
+z_33 set z_32 32 32
+z_34 set z_33 33 116
+z_35 set z_34 34 104
+z_36 set z_35 35 101
+z_37 set z_36 36 32
+z_38 set z_37 37 108
+z_39 set z_38 38 105
+z_40 set z_39 39 110
+z_41 set z_40 40 101
+z_42 set z_41 41 32
+z_43 set z_42 42 97
+z_44 set z_43 43 102
+z_45 set z_44 44 116
+z_46 set z_45 45 101
+z_47 set z_46 46 114
+z_48 set z_47 47 32
+z_49 set z_48 48 96
+z_50 set z_49 49 114
+z_51 set z_50 50 101
+z_52 set z_51 51 116
+z_53 set z_52 52 96
+s call ad_append p0 53 z_53
+ret s
+end
+fn ad_lit_returna (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 114
+z_2 set z_1 1 101
+z_3 set z_2 2 116
+z_4 set z_3 3 117
+z_5 set z_4 4 114
+z_6 set z_5 5 110
+z_7 set z_6 6 32
+z_8 set z_7 7 97
+z_9 set z_8 8 32
+s call ad_append p0 9 z_9
+ret s
+end
+fn ad_lit_returnvalue (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 118
+z_3 set z_2 2 97
+z_4 set z_3 3 108
+z_5 set z_4 4 117
+z_6 set z_5 5 101
+s call ad_append p0 6 z_6
+ret s
+end
+fn ad_lit_returnbool (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 40
+z_3 set z_2 2 96
+z_4 set z_3 3 115
+z_5 set z_4 4 101
+z_6 set z_5 5 108
+z_7 set z_6 6 101
+z_8 set z_7 7 99
+z_9 set z_8 8 116
+z_10 set z_9 9 32
+z_11 set z_10 10 99
+z_12 set z_11 11 32
+z_13 set z_12 12 49
+z_14 set z_13 13 32
+z_15 set z_14 14 48
+z_16 set z_15 15 96
+z_17 set z_16 16 32
+z_18 set z_17 17 116
+z_19 set z_18 18 117
+z_20 set z_19 19 114
+z_21 set z_20 20 110
+z_22 set z_21 21 115
+z_23 set z_22 22 32
+z_24 set z_23 23 97
+z_25 set z_24 24 32
+z_26 set z_25 25 98
+z_27 set z_26 26 111
+z_28 set z_27 27 111
+z_29 set z_28 28 108
+z_30 set z_29 29 32
+z_31 set z_30 30 99
+z_32 set z_31 31 32
+z_33 set z_32 32 105
+z_34 set z_33 33 110
+z_35 set z_34 34 116
+z_36 set z_35 35 111
+z_37 set z_36 36 32
+z_38 set z_37 37 97
+z_39 set z_38 38 32
+z_40 set z_39 39 117
+z_41 set z_40 40 51
+z_42 set z_41 41 50
+z_43 set z_42 42 41
+s call ad_append p0 43 z_43
+ret s
+end
+fn ad_lit_returnchange (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 32
+z_3 set z_2 2 111
+z_4 set z_3 3 114
+z_5 set z_4 4 32
+z_6 set z_5 5 99
+z_7 set z_6 6 104
+z_8 set z_7 7 97
+z_9 set z_8 8 110
+z_10 set z_9 9 103
+z_11 set z_10 10 101
+z_12 set z_11 11 32
+z_13 set z_12 12 116
+z_14 set z_13 13 104
+z_15 set z_14 14 101
+z_16 set z_15 15 32
+z_17 set z_16 16 100
+z_18 set z_17 17 101
+z_19 set z_18 18 99
+z_20 set z_19 19 108
+z_21 set z_20 20 97
+z_22 set z_21 21 114
+z_23 set z_22 22 101
+z_24 set z_23 23 100
+z_25 set z_24 24 32
+z_26 set z_25 25 114
+z_27 set z_26 26 101
+z_28 set z_27 27 115
+z_29 set z_28 28 117
+z_30 set z_29 29 108
+z_31 set z_30 30 116
+z_32 set z_31 31 58
+z_33 set z_32 32 32
+z_34 set z_33 33 115
+z_35 set z_34 34 101
+z_36 set z_35 35 110
+z_37 set z_36 36 100
+z_38 set z_37 37 32
+z_39 set z_38 38 116
+z_40 set z_39 39 104
+z_41 set z_40 40 101
+z_42 set z_41 41 32
+z_43 set z_42 42 102
+z_44 set z_43 43 117
+z_45 set z_44 44 110
+z_46 set z_45 45 99
+z_47 set z_46 46 116
+z_48 set z_47 47 105
+z_49 set z_48 48 111
+z_50 set z_49 49 110
+z_51 set z_50 50 32
+z_52 set z_51 51 119
+z_53 set z_52 52 105
+z_54 set z_53 53 116
+z_55 set z_54 54 104
+z_56 set z_55 55 32
+z_57 set z_56 56 105
+z_58 set z_57 57 116
+z_59 set z_58 58 115
+z_60 set z_59 59 32
+z_61 set z_60 60 104
+z_62 set z_61 61 101
+z_63 set z_62 62 97
+z_64 set z_63 63 100
+z_65 set z_64 64 101
+z_66 set z_65 65 114
+z_67 set z_66 66 32
+z_68 set z_67 67 97
+z_69 set z_68 68 115
+z_70 set z_69 69 32
+z_71 set z_70 70 96
+z_72 set z_71 71 102
+z_73 set z_72 72 110
+z_74 set z_73 73 32
+s call ad_append p0 74 z_74
+ret s
+end
+fn ad_lit_arrow (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 45
+z_3 set z_2 2 62
+z_4 set z_3 3 32
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_backtick (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 96
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_selectfix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 116
+z_2 set z_1 1 104
+z_3 set z_2 2 101
+z_4 set z_3 3 32
+z_5 set z_4 4 115
+z_6 set z_5 5 101
+z_7 set z_6 6 108
+z_8 set z_7 7 101
+z_9 set z_8 8 99
+z_10 set z_9 9 116
+z_11 set z_10 10 32
+z_12 set z_11 11 99
+z_13 set z_12 12 111
+z_14 set z_13 13 110
+z_15 set z_14 14 100
+z_16 set z_15 15 105
+z_17 set z_16 16 116
+z_18 set z_17 17 105
+z_19 set z_18 18 111
+z_20 set z_19 19 110
+z_21 set z_20 20 32
+z_22 set z_21 21 105
+z_23 set z_22 22 115
+z_24 set z_23 23 32
+z_25 set z_24 24 97
+z_26 set z_25 25 32
+z_27 set z_26 26 98
+z_28 set z_27 27 111
+z_29 set z_28 28 111
+z_30 set z_29 29 108
+z_31 set z_30 30 32
+z_32 set z_31 31 97
+z_33 set z_32 32 110
+z_34 set z_33 33 100
+z_35 set z_34 34 32
+z_36 set z_35 35 65
+z_37 set z_36 36 48
+z_38 set z_37 37 32
+z_39 set z_38 38 104
+z_40 set z_39 39 97
+z_41 set z_40 40 115
+z_42 set z_41 41 32
+z_43 set z_42 42 110
+z_44 set z_43 43 111
+z_45 set z_44 44 32
+z_46 set z_45 45 116
+z_47 set z_46 46 114
+z_48 set z_47 47 117
+z_49 set z_48 48 116
+z_50 set z_49 49 104
+z_51 set z_50 50 105
+z_52 set z_51 51 110
+z_53 set z_52 52 101
+z_54 set z_53 53 115
+z_55 set z_54 54 115
+z_56 set z_55 55 58
+z_57 set z_56 56 32
+z_58 set z_57 57 102
+z_59 set z_58 58 111
+z_60 set z_59 59 114
+z_61 set z_60 60 32
+z_62 set z_61 61 97
+z_63 set z_62 62 32
+z_64 set z_63 63 117
+z_65 set z_64 64 51
+z_66 set z_65 65 50
+z_67 set z_66 66 32
+z_68 set z_67 67 88
+z_69 set z_68 68 32
+z_70 set z_69 69 119
+z_71 set z_70 70 114
+z_72 set z_71 71 105
+z_73 set z_72 72 116
+z_74 set z_73 73 101
+z_75 set z_74 74 32
+z_76 set z_75 75 96
+z_77 set z_76 76 116
+z_78 set z_77 77 32
+z_79 set z_78 78 110
+z_80 set z_79 79 101
+z_81 set z_80 80 32
+z_82 set z_81 81 88
+z_83 set z_82 82 32
+z_84 set z_83 83 48
+z_85 set z_84 84 96
+z_86 set z_85 85 32
+z_87 set z_86 86 97
+z_88 set z_87 87 98
+z_89 set z_88 88 111
+z_90 set z_89 89 118
+z_91 set z_90 90 101
+z_92 set z_91 91 32
+z_93 set z_92 92 40
+z_94 set z_93 93 116
+z_95 set z_94 94 114
+z_96 set z_95 95 117
+z_97 set z_96 96 101
+z_98 set z_97 97 32
+z_99 set z_98 98 119
+z_100 set z_99 99 104
+z_101 set z_100 100 101
+z_102 set z_101 101 110
+z_103 set z_102 102 32
+z_104 set z_103 103 88
+z_105 set z_104 104 32
+z_106 set z_105 105 105
+z_107 set z_106 106 115
+z_108 set z_107 107 32
+z_109 set z_108 108 110
+z_110 set z_109 109 111
+z_111 set z_110 110 110
+z_112 set z_111 111 122
+z_113 set z_112 112 101
+z_114 set z_113 113 114
+z_115 set z_114 114 111
+z_116 set z_115 115 41
+z_117 set z_116 116 32
+z_118 set z_117 117 97
+z_119 set z_118 118 110
+z_120 set z_119 119 100
+z_121 set z_120 120 32
+z_122 set z_121 121 115
+z_123 set z_122 122 101
+z_124 set z_123 123 108
+z_125 set z_124 124 101
+z_126 set z_125 125 99
+z_127 set z_126 126 116
+z_128 set z_127 127 32
+s call ad_append p0 128 z_128
+z_129 call arena_zero
+z_130 set z_129 0 111
+z_131 set z_130 1 110
+z_132 set z_131 2 32
+z_133 set z_132 3 116
+s_1 call ad_append s 4 z_133
+ret s_1
+end
+fn ad_lit_eqfixa (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 97
+z_2 set z_1 1 32
+z_3 set z_2 2 98
+z_4 set z_3 3 111
+z_5 set z_4 4 111
+z_6 set z_5 5 108
+z_7 set z_6 6 32
+z_8 set z_7 7 105
+z_9 set z_8 8 115
+z_10 set z_9 9 32
+z_11 set z_10 10 99
+z_12 set z_11 11 111
+z_13 set z_12 12 109
+z_14 set z_13 13 112
+z_15 set z_14 14 97
+z_16 set z_15 15 114
+z_17 set z_16 16 101
+z_18 set z_17 17 100
+z_19 set z_18 18 32
+z_20 set z_19 19 111
+z_21 set z_20 20 110
+z_22 set z_21 21 108
+z_23 set z_22 22 121
+z_24 set z_23 23 32
+z_25 set z_24 24 119
+z_26 set z_25 25 105
+z_27 set z_26 26 116
+z_28 set z_27 27 104
+z_29 set z_28 28 32
+z_30 set z_29 29 97
+z_31 set z_30 30 32
+z_32 set z_31 31 98
+z_33 set z_32 32 111
+z_34 set z_33 33 111
+z_35 set z_34 34 108
+z_36 set z_35 35 58
+z_37 set z_36 36 32
+z_38 set z_37 37 102
+z_39 set z_38 38 111
+z_40 set z_39 39 114
+z_41 set z_40 40 32
+z_42 set z_41 41 96
+s call ad_append p0 42 z_42
+ret s
+end
+fn ad_lit_eqfixb (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 67
+z_3 set z_2 2 32
+z_4 set z_3 3 49
+z_5 set z_4 4 96
+z_6 set z_5 5 32
+z_7 set z_6 6 117
+z_8 set z_7 7 115
+z_9 set z_8 8 101
+z_10 set z_9 9 32
+z_11 set z_10 10 116
+z_12 set z_11 11 104
+z_13 set z_12 12 101
+z_14 set z_13 13 32
+z_15 set z_14 14 98
+z_16 set z_15 15 111
+z_17 set z_16 16 111
+z_18 set z_17 17 108
+z_19 set z_18 18 32
+z_20 set z_19 19 67
+z_21 set z_20 20 32
+z_22 set z_21 21 105
+z_23 set z_22 22 116
+z_24 set z_23 23 115
+z_25 set z_24 24 101
+z_26 set z_25 25 108
+z_27 set z_26 26 102
+z_28 set z_27 27 32
+z_29 set z_28 28 40
+z_30 set z_29 29 111
+z_31 set z_30 30 114
+z_32 set z_31 31 32
+z_33 set z_32 32 96
+s call ad_append p0 33 z_33
+ret s
+end
+fn ad_lit_eqfixc (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 67
+z_3 set z_2 2 32
+z_4 set z_3 3 116
+z_5 set z_4 4 114
+z_6 set z_5 5 117
+z_7 set z_6 6 101
+z_8 set z_7 7 96
+z_9 set z_8 8 41
+z_10 set z_9 9 44
+z_11 set z_10 10 32
+z_12 set z_11 11 97
+z_13 set z_12 12 110
+z_14 set z_13 13 100
+z_15 set z_14 14 32
+z_16 set z_15 15 116
+z_17 set z_16 16 117
+z_18 set z_17 17 114
+z_19 set z_18 18 110
+z_20 set z_19 19 32
+z_21 set z_20 20 97
+z_22 set z_21 21 32
+z_23 set z_22 22 117
+z_24 set z_23 23 51
+z_25 set z_24 24 50
+z_26 set z_25 25 32
+z_27 set z_26 26 88
+z_28 set z_27 27 32
+z_29 set z_28 28 105
+z_30 set z_29 29 110
+z_31 set z_30 30 116
+z_32 set z_31 31 111
+z_33 set z_32 32 32
+z_34 set z_33 33 97
+z_35 set z_34 34 32
+z_36 set z_35 35 98
+z_37 set z_36 36 111
+z_38 set z_37 37 111
+z_39 set z_38 38 108
+z_40 set z_39 39 32
+z_41 set z_40 40 119
+z_42 set z_41 41 105
+z_43 set z_42 42 116
+z_44 set z_43 43 104
+z_45 set z_44 44 32
+z_46 set z_45 45 96
+z_47 set z_46 46 110
+z_48 set z_47 47 101
+z_49 set z_48 48 32
+z_50 set z_49 49 88
+z_51 set z_50 50 32
+z_52 set z_51 51 48
+z_53 set z_52 52 96
+s call ad_append p0 53 z_53
+ret s
+end
+fn ad_lit_eq (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 101
+z_2 set z_1 1 113
+s call ad_append p0 2 z_2
+ret s
+end
+fn ad_lit_ne (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 110
+z_2 set z_1 1 101
+s call ad_append p0 2 z_2
+ret s
+end
+fn ad_lit_get (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 103
+z_2 set z_1 1 101
+z_3 set z_2 2 116
+s call ad_append p0 3 z_3
+ret s
+end
+fn ad_lit_set (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 115
+z_2 set z_1 1 101
+z_3 set z_2 2 116
+s call ad_append p0 3 z_3
+ret s
+end
+fn ad_lit_true (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 116
+z_2 set z_1 1 114
+z_3 set z_2 2 117
+z_4 set z_3 3 101
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_false (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 102
+z_2 set z_1 1 97
+z_3 set z_2 2 108
+z_4 set z_3 3 115
+z_5 set z_4 4 101
+s call ad_append p0 5 z_5
+ret s
+end
+fn ad_lit_arrayatfix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 97
+z_2 set z_1 1 114
+z_3 set z_2 2 114
+z_4 set z_3 3 97
+z_5 set z_4 4 121
+z_6 set z_5 5 115
+z_7 set z_6 6 32
+z_8 set z_7 7 117
+z_9 set z_8 8 115
+z_10 set z_9 9 101
+z_11 set z_10 10 32
+z_12 set z_11 11 103
+z_13 set z_12 12 101
+z_14 set z_13 13 116
+z_15 set z_14 14 58
+z_16 set z_15 15 32
+z_17 set z_16 16 96
+z_18 set z_17 17 103
+z_19 set z_18 18 101
+z_20 set z_19 19 116
+z_21 set z_20 20 32
+z_22 set z_21 21 65
+z_23 set z_22 22 32
+z_24 set z_23 23 73
+z_25 set z_24 24 96
+z_26 set z_25 25 32
+z_27 set z_26 26 40
+z_28 set z_27 27 97
+z_29 set z_28 28 116
+z_30 set z_29 29 32
+z_31 set z_30 30 105
+z_32 set z_31 31 115
+z_33 set z_32 32 32
+z_34 set z_33 33 102
+z_35 set z_34 34 111
+z_36 set z_35 35 114
+z_37 set z_36 36 32
+z_38 set z_37 37 114
+z_39 set z_38 38 101
+z_40 set z_39 39 99
+z_41 set z_40 40 111
+z_42 set z_41 41 114
+z_43 set z_42 42 100
+z_44 set z_43 43 115
+z_45 set z_44 44 41
+s call ad_append p0 45 z_45
+ret s
+end
+fn ad_lit_arrayputfix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 97
+z_2 set z_1 1 114
+z_3 set z_2 2 114
+z_4 set z_3 3 97
+z_5 set z_4 4 121
+z_6 set z_5 5 115
+z_7 set z_6 6 32
+z_8 set z_7 7 117
+z_9 set z_8 8 115
+z_10 set z_9 9 101
+z_11 set z_10 10 32
+z_12 set z_11 11 115
+z_13 set z_12 12 101
+z_14 set z_13 13 116
+z_15 set z_14 14 58
+z_16 set z_15 15 32
+z_17 set z_16 16 96
+z_18 set z_17 17 115
+z_19 set z_18 18 101
+z_20 set z_19 19 116
+z_21 set z_20 20 32
+z_22 set z_21 21 65
+z_23 set z_22 22 32
+z_24 set z_23 23 73
+z_25 set z_24 24 32
+z_26 set z_25 25 86
+z_27 set z_26 26 96
+z_28 set z_27 27 32
+z_29 set z_28 28 40
+z_30 set z_29 29 112
+z_31 set z_30 30 117
+z_32 set z_31 31 116
+z_33 set z_32 32 32
+z_34 set z_33 33 105
+z_35 set z_34 34 115
+z_36 set z_35 35 32
+z_37 set z_36 36 102
+z_38 set z_37 37 111
+z_39 set z_38 38 114
+z_40 set z_39 39 32
+z_41 set z_40 40 114
+z_42 set z_41 41 101
+z_43 set z_42 42 99
+z_44 set z_43 43 111
+z_45 set z_44 44 114
+z_46 set z_45 45 100
+z_47 set z_46 46 115
+z_48 set z_47 47 41
+s call ad_append p0 48 z_48
+ret s
+end
+fn ad_lit_newlineend (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 10
+z_2 set z_1 1 101
+z_3 set z_2 2 110
+z_4 set z_3 3 100
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_jsoneditarray (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 101
+z_4 set z_3 3 100
+z_5 set z_4 4 105
+z_6 set z_5 5 116
+z_7 set z_6 6 115
+z_8 set z_7 7 34
+z_9 set z_8 8 58
+z_10 set z_9 9 91
+z_11 set z_10 10 123
+z_12 set z_11 11 34
+z_13 set z_12 12 111
+z_14 set z_13 13 112
+z_15 set z_14 14 34
+z_16 set z_15 15 58
+z_17 set z_16 16 34
+z_18 set z_17 17 108
+z_19 set z_18 18 105
+z_20 set z_19 19 110
+z_21 set z_20 20 101
+z_22 set z_21 21 115
+z_23 set z_22 22 34
+z_24 set z_23 23 44
+z_25 set z_24 24 34
+z_26 set z_25 25 114
+z_27 set z_26 26 117
+z_28 set z_27 27 108
+z_29 set z_28 28 101
+z_30 set z_29 29 34
+z_31 set z_30 30 58
+z_32 set z_31 31 34
+z_33 set z_32 32 97
+z_34 set z_33 33 114
+z_35 set z_34 34 114
+z_36 set z_35 35 97
+z_37 set z_36 36 121
+z_38 set z_37 37 45
+z_39 set z_38 38 111
+z_40 set z_39 39 112
+z_41 set z_40 40 34
+z_42 set z_41 41 44
+z_43 set z_42 42 34
+z_44 set z_43 43 116
+z_45 set z_44 44 101
+z_46 set z_45 45 120
+z_47 set z_46 46 116
+z_48 set z_47 47 34
+z_49 set z_48 48 58
+s call ad_append p0 49 z_49
+ret s
+end
+fn ad_lit_jsoneditend (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 101
+z_4 set z_3 3 100
+z_5 set z_4 4 105
+z_6 set z_5 5 116
+z_7 set z_6 6 115
+z_8 set z_7 7 34
+z_9 set z_8 8 58
+z_10 set z_9 9 91
+z_11 set z_10 10 123
+z_12 set z_11 11 34
+z_13 set z_12 12 111
+z_14 set z_13 13 112
+z_15 set z_14 14 34
+z_16 set z_15 15 58
+z_17 set z_16 16 34
+z_18 set z_17 17 108
+z_19 set z_18 18 105
+z_20 set z_19 19 110
+z_21 set z_20 20 101
+z_22 set z_21 21 115
+z_23 set z_22 22 34
+z_24 set z_23 23 44
+z_25 set z_24 24 34
+z_26 set z_25 25 114
+z_27 set z_26 26 117
+z_28 set z_27 27 108
+z_29 set z_28 28 101
+z_30 set z_29 29 34
+z_31 set z_30 30 58
+z_32 set z_31 31 34
+z_33 set z_32 32 101
+z_34 set z_33 33 110
+z_35 set z_34 34 100
+z_36 set z_35 35 34
+z_37 set z_36 36 44
+z_38 set z_37 37 34
+z_39 set z_38 38 116
+z_40 set z_39 39 101
+z_41 set z_40 40 120
+z_42 set z_41 41 116
+z_43 set z_42 42 34
+z_44 set z_43 43 58
+s call ad_append p0 44 z_44
+ret s
+end
+fn ad_lit_jsoneditto (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 116
+z_4 set z_3 3 111
+z_5 set z_4 4 34
+z_6 set z_5 5 58
+s call ad_append p0 6 z_6
+ret s
+end
+fn ad_lit_jsoneditline (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 108
+z_4 set z_3 3 105
+z_5 set z_4 4 110
+z_6 set z_5 5 101
+z_7 set z_6 6 34
+z_8 set z_7 7 58
+s call ad_append p0 8 z_8
+ret s
+end
+fn ad_lit_jsoneditclose (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 32
+z_2 set z_1 1 125
+z_3 set z_2 2 93
+z_4 set z_3 3 125
+s call ad_append p0 4 z_4
+ret s
+end
+fn ad_lit_getrecfix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 114
+z_2 set z_1 1 101
+z_3 set z_2 2 99
+z_4 set z_3 3 111
+z_5 set z_4 4 114
+z_6 set z_5 5 100
+z_7 set z_6 6 115
+z_8 set z_7 7 32
+z_9 set z_8 8 117
+z_10 set z_9 9 115
+z_11 set z_10 10 101
+z_12 set z_11 11 32
+z_13 set z_12 12 97
+z_14 set z_13 13 116
+z_15 set z_14 14 32
+z_16 set z_15 15 119
+z_17 set z_16 16 105
+z_18 set z_17 17 116
+z_19 set z_18 18 104
+z_20 set z_19 19 32
+z_21 set z_20 20 97
+z_22 set z_21 21 32
+z_23 set z_22 22 108
+z_24 set z_23 23 105
+z_25 set z_24 24 116
+z_26 set z_25 25 101
+z_27 set z_26 26 114
+z_28 set z_27 27 97
+z_29 set z_28 28 108
+z_30 set z_29 29 32
+z_31 set z_30 30 102
+z_32 set z_31 31 105
+z_33 set z_32 32 101
+z_34 set z_33 33 108
+z_35 set z_34 34 100
+z_36 set z_35 35 32
+z_37 set z_36 36 105
+z_38 set z_37 37 110
+z_39 set z_38 38 100
+z_40 set z_39 39 101
+z_41 set z_40 40 120
+z_42 set z_41 41 58
+z_43 set z_42 42 32
+z_44 set z_43 43 96
+z_45 set z_44 44 97
+z_46 set z_45 45 116
+z_47 set z_46 46 32
+z_48 set z_47 47 82
+z_49 set z_48 48 32
+z_50 set z_49 49 75
+z_51 set z_50 50 96
+z_52 set z_51 51 32
+z_53 set z_52 52 40
+z_54 set z_53 53 103
+z_55 set z_54 54 101
+z_56 set z_55 55 116
+z_57 set z_56 56 32
+z_58 set z_57 57 105
+z_59 set z_58 58 115
+z_60 set z_59 59 32
+z_61 set z_60 60 102
+z_62 set z_61 61 111
+z_63 set z_62 62 114
+z_64 set z_63 63 32
+z_65 set z_64 64 97
+z_66 set z_65 65 114
+z_67 set z_66 66 114
+z_68 set z_67 67 97
+z_69 set z_68 68 121
+z_70 set z_69 69 115
+z_71 set z_70 70 41
+s call ad_append p0 71 z_71
+ret s
+end
+fn ad_lit_setrecfix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 114
+z_2 set z_1 1 101
+z_3 set z_2 2 99
+z_4 set z_3 3 111
+z_5 set z_4 4 114
+z_6 set z_5 5 100
+z_7 set z_6 6 115
+z_8 set z_7 7 32
+z_9 set z_8 8 117
+z_10 set z_9 9 115
+z_11 set z_10 10 101
+z_12 set z_11 11 32
+z_13 set z_12 12 112
+z_14 set z_13 13 117
+z_15 set z_14 14 116
+z_16 set z_15 15 32
+z_17 set z_16 16 119
+z_18 set z_17 17 105
+z_19 set z_18 18 116
+z_20 set z_19 19 104
+z_21 set z_20 20 32
+z_22 set z_21 21 97
+z_23 set z_22 22 32
+z_24 set z_23 23 108
+z_25 set z_24 24 105
+z_26 set z_25 25 116
+z_27 set z_26 26 101
+z_28 set z_27 27 114
+z_29 set z_28 28 97
+z_30 set z_29 29 108
+z_31 set z_30 30 32
+z_32 set z_31 31 102
+z_33 set z_32 32 105
+z_34 set z_33 33 101
+z_35 set z_34 34 108
+z_36 set z_35 35 100
+z_37 set z_36 36 32
+z_38 set z_37 37 105
+z_39 set z_38 38 110
+z_40 set z_39 39 100
+z_41 set z_40 40 101
+z_42 set z_41 41 120
+z_43 set z_42 42 58
+z_44 set z_43 43 32
+z_45 set z_44 44 96
+z_46 set z_45 45 112
+z_47 set z_46 46 117
+z_48 set z_47 47 116
+z_49 set z_48 48 32
+z_50 set z_49 49 82
+z_51 set z_50 50 32
+z_52 set z_51 51 75
+z_53 set z_52 52 32
+z_54 set z_53 53 86
+z_55 set z_54 54 96
+z_56 set z_55 55 32
+z_57 set z_56 56 40
+z_58 set z_57 57 115
+z_59 set z_58 58 101
+z_60 set z_59 59 116
+z_61 set z_60 60 32
+z_62 set z_61 61 105
+z_63 set z_62 62 115
+z_64 set z_63 63 32
+z_65 set z_64 64 102
+z_66 set z_65 65 111
+z_67 set z_66 66 114
+z_68 set z_67 67 32
+z_69 set z_68 68 97
+z_70 set z_69 69 114
+z_71 set z_70 70 114
+z_72 set z_71 71 97
+z_73 set z_72 72 121
+z_74 set z_73 73 115
+z_75 set z_74 74 41
+s call ad_append p0 75 z_75
+ret s
+end
+fn ad_lit_cgetfix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 99
+z_2 set z_1 1 103
+z_3 set z_2 2 101
+z_4 set z_3 3 116
+z_5 set z_4 4 32
+z_6 set z_5 5 114
+z_7 set z_6 6 101
+z_8 set z_7 7 97
+z_9 set z_8 8 100
+z_10 set z_9 9 115
+z_11 set z_10 10 32
+z_12 set z_11 11 97
+z_13 set z_12 12 110
+z_14 set z_13 13 32
+z_15 set z_14 14 97
+z_16 set z_15 15 114
+z_17 set z_16 16 114
+z_18 set z_17 17 97
+z_19 set z_18 18 121
+z_20 set z_19 19 32
+z_21 set z_20 20 111
+z_22 set z_21 21 102
+z_23 set z_22 22 32
+z_24 set z_23 23 117
+z_25 set z_24 24 51
+z_26 set z_25 25 50
+z_27 set z_26 26 58
+z_28 set z_27 27 32
+z_29 set z_28 28 96
+z_30 set z_29 29 99
+z_31 set z_30 30 103
+z_32 set z_31 31 101
+z_33 set z_32 32 116
+z_34 set z_33 33 32
+z_35 set z_34 34 65
+z_36 set z_35 35 32
+z_37 set z_36 36 73
+z_38 set z_37 37 96
+z_39 set z_38 38 32
+z_40 set z_39 39 103
+z_41 set z_40 40 105
+z_42 set z_41 41 118
+z_43 set z_42 42 101
+z_44 set z_43 43 115
+z_45 set z_44 44 32
+z_46 set z_45 45 40
+z_47 set z_46 46 118
+z_48 set z_47 47 97
+z_49 set z_48 48 108
+z_50 set z_49 49 117
+z_51 set z_50 50 101
+z_52 set z_51 51 44
+z_53 set z_52 52 32
+z_54 set z_53 53 105
+z_55 set z_54 54 110
+z_56 set z_55 55 45
+z_57 set z_56 56 114
+z_58 set z_57 57 97
+z_59 set z_58 58 110
+z_60 set z_59 59 103
+z_61 set z_60 60 101
+z_62 set z_61 61 41
+s call ad_append p0 62 z_62
+ret s
+end
+fn ad_lit_didmean (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 100
+z_2 set z_1 1 105
+z_3 set z_2 2 100
+z_4 set z_3 3 32
+z_5 set z_4 4 121
+z_6 set z_5 5 111
+z_7 set z_6 6 117
+z_8 set z_7 7 32
+z_9 set z_8 8 109
+z_10 set z_9 9 101
+z_11 set z_10 10 97
+z_12 set z_11 11 110
+z_13 set z_12 12 32
+z_14 set z_13 13 39
+s call ad_append p0 14 z_14
+ret s
+end
+fn ad_lit_didmeanend (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 39
+z_2 set z_1 1 63
+s call ad_append p0 2 z_2
+ret s
+end
+fn ad_lit_apostrophe (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 39
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_nodelater (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 39
+z_2 set z_1 1 32
+z_3 set z_2 2 105
+z_4 set z_3 3 115
+z_5 set z_4 4 32
+z_6 set z_5 5 100
+z_7 set z_6 6 101
+z_8 set z_7 7 102
+z_9 set z_8 8 105
+z_10 set z_9 9 110
+z_11 set z_10 10 101
+z_12 set z_11 11 100
+z_13 set z_12 12 32
+z_14 set z_13 13 111
+z_15 set z_14 14 110
+z_16 set z_15 15 32
+z_17 set z_16 16 97
+z_18 set z_17 17 32
+z_19 set z_18 18 108
+z_20 set z_19 19 97
+z_21 set z_20 20 116
+z_22 set z_21 21 101
+z_23 set z_22 22 114
+z_24 set z_23 23 32
+z_25 set z_24 24 108
+z_26 set z_25 25 105
+z_27 set z_26 26 110
+z_28 set z_27 27 101
+z_29 set z_28 28 32
+z_30 set z_29 29 111
+z_31 set z_30 30 102
+z_32 set z_31 31 32
+s call ad_append p0 32 z_32
+ret s
+end
+fn ad_lit_moveabove (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 109
+z_4 set z_3 3 111
+z_5 set z_4 4 118
+z_6 set z_5 5 101
+z_7 set z_6 6 32
+z_8 set z_7 7 105
+z_9 set z_8 8 116
+z_10 set z_9 9 32
+z_11 set z_10 10 97
+z_12 set z_11 11 98
+z_13 set z_12 12 111
+z_14 set z_13 13 118
+z_15 set z_14 14 101
+z_16 set z_15 15 32
+s call ad_append p0 16 z_16
+ret s
+end
+fn ad_lit_jsonrename (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 101
+z_4 set z_3 3 100
+z_5 set z_4 4 105
+z_6 set z_5 5 116
+z_7 set z_6 6 115
+z_8 set z_7 7 34
+z_9 set z_8 8 58
+z_10 set z_9 9 91
+z_11 set z_10 10 123
+z_12 set z_11 11 34
+z_13 set z_12 12 111
+z_14 set z_13 13 112
+z_15 set z_14 14 34
+z_16 set z_15 15 58
+z_17 set z_16 16 34
+z_18 set z_17 17 114
+z_19 set z_18 18 101
+z_20 set z_19 19 110
+z_21 set z_20 20 97
+z_22 set z_21 21 109
+z_23 set z_22 22 101
+z_24 set z_23 23 34
+z_25 set z_24 24 44
+z_26 set z_25 25 34
+z_27 set z_26 26 114
+z_28 set z_27 27 117
+z_29 set z_28 28 108
+z_30 set z_29 29 101
+z_31 set z_30 30 34
+z_32 set z_31 31 58
+z_33 set z_32 32 34
+z_34 set z_33 33 116
+z_35 set z_34 34 121
+z_36 set z_35 35 112
+z_37 set z_36 36 111
+z_38 set z_37 37 34
+z_39 set z_38 38 44
+z_40 set z_39 39 34
+z_41 set z_40 40 102
+z_42 set z_41 41 110
+z_43 set z_42 42 34
+z_44 set z_43 43 58
+s call ad_append p0 44 z_44
+ret s
+end
+fn ad_lit_jsonnode (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 110
+z_4 set z_3 3 111
+z_5 set z_4 4 100
+z_6 set z_5 5 101
+z_7 set z_6 6 34
+z_8 set z_7 7 58
+s call ad_append p0 8 z_8
+ret s
+end
+fn ad_lit_jsonfrom (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 44
+z_2 set z_1 1 34
+z_3 set z_2 2 102
+z_4 set z_3 3 114
+z_5 set z_4 4 111
+z_6 set z_5 5 109
+z_7 set z_6 6 34
+z_8 set z_7 7 58
+s call ad_append p0 8 z_8
+ret s
+end
+fn ad_lit_message101part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 114
+z_4 set z_3 3 101
+z_5 set z_4 4 102
+z_6 set z_5 5 101
+z_7 set z_6 6 114
+z_8 set z_7 7 101
+z_9 set z_8 8 110
+z_10 set z_9 9 99
+z_11 set z_10 10 101
+z_12 set z_11 11 32
+z_13 set z_12 12 116
+z_14 set z_13 13 111
+z_15 set z_14 14 32
+z_16 set z_15 15 117
+z_17 set z_16 16 110
+z_18 set z_17 17 100
+z_19 set z_18 18 101
+z_20 set z_19 19 102
+z_21 set z_20 20 105
+z_22 set z_21 21 110
+z_23 set z_22 22 101
+z_24 set z_23 23 100
+z_25 set z_24 24 32
+z_26 set z_25 25 111
+z_27 set z_26 26 114
+z_28 set z_27 27 32
+z_29 set z_28 28 108
+z_30 set z_29 29 97
+z_31 set z_30 30 116
+z_32 set z_31 31 101
+z_33 set z_32 32 114
+z_34 set z_33 33 32
+z_35 set z_34 34 110
+z_36 set z_35 35 111
+z_37 set z_36 36 100
+z_38 set z_37 37 101
+z_39 set z_38 38 32
+z_40 set z_39 39 39
+s call ad_append p0 40 z_40
+ret s
+end
+fn ad_lit_message101part4 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 39
+s call ad_append p0 1 z_1
+ret s
+end
+fn ad_lit_message202part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 109
+z_4 set z_3 3 105
+z_5 set z_4 4 115
+z_6 set z_5 5 115
+z_7 set z_6 6 105
+z_8 set z_7 7 110
+z_9 set z_8 8 103
+z_10 set z_9 9 32
+z_11 set z_10 10 111
+z_12 set z_11 11 112
+z_13 set z_12 12 101
+z_14 set z_13 13 114
+z_15 set z_14 14 97
+z_16 set z_15 15 110
+z_17 set z_16 16 100
+s call ad_append p0 17 z_17
+ret s
+end
+fn ad_lit_message204part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 58
+z_2 set z_1 1 32
+z_3 set z_2 2 115
+z_4 set z_3 3 101
+z_5 set z_4 4 108
+z_6 set z_5 5 101
+z_7 set z_6 6 99
+z_8 set z_7 7 116
+z_9 set z_8 8 32
+z_10 set z_9 9 99
+z_11 set z_10 10 97
+z_12 set z_11 11 110
+z_13 set z_12 12 110
+z_14 set z_13 13 111
+z_15 set z_14 14 116
+z_16 set z_15 15 32
+z_17 set z_16 16 99
+z_18 set z_17 17 104
+z_19 set z_18 18 111
+z_20 set z_19 19 111
+z_21 set z_20 20 115
+z_22 set z_21 21 101
+z_23 set z_22 22 32
+z_24 set z_23 23 98
+z_25 set z_24 24 101
+z_26 set z_25 25 116
+z_27 set z_26 26 119
+z_28 set z_27 27 101
+z_29 set z_28 28 101
+z_30 set z_29 29 110
+z_31 set z_30 30 32
+z_32 set z_31 31 105
+z_33 set z_32 32 111
+z_34 set z_33 33 32
+z_35 set z_34 34 116
+z_36 set z_35 35 111
+z_37 set z_36 36 107
+z_38 set z_37 37 101
+z_39 set z_38 38 110
+z_40 set z_39 39 115
+s call ad_append p0 40 z_40
+ret s
+end
+fn ad_lit_fix101part0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 100
+z_2 set z_1 1 101
+z_3 set z_2 2 102
+z_4 set z_3 3 105
+z_5 set z_4 4 110
+z_6 set z_5 5 101
+z_7 set z_6 6 32
+z_8 set z_7 7 39
+s call ad_append p0 8 z_8
+ret s
+end
+fn ad_lit_fix101part2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 39
+z_2 set z_1 1 32
+z_3 set z_2 2 111
+z_4 set z_3 3 110
+z_5 set z_4 4 32
+z_6 set z_5 5 97
+z_7 set z_6 6 110
+z_8 set z_7 7 32
+z_9 set z_8 8 101
+z_10 set z_9 9 97
+z_11 set z_10 10 114
+z_12 set z_11 11 108
+z_13 set z_12 12 105
+z_14 set z_13 13 101
+z_15 set z_14 14 114
+z_16 set z_15 15 32
+z_17 set z_16 16 108
+z_18 set z_17 17 105
+z_19 set z_18 18 110
+z_20 set z_19 19 101
+z_21 set z_20 20 32
+z_22 set z_21 21 111
+z_23 set z_22 22 102
+z_24 set z_23 23 32
+z_25 set z_24 24 116
+z_26 set z_25 25 104
+z_27 set z_26 26 105
+z_28 set z_27 27 115
+z_29 set z_28 28 32
+z_30 set z_29 29 102
+z_31 set z_30 30 117
+z_32 set z_31 31 110
+z_33 set z_32 32 99
+z_34 set z_33 33 116
+z_35 set z_34 34 105
+z_36 set z_35 35 111
+z_37 set z_36 36 110
+z_38 set z_37 37 44
+z_39 set z_38 38 32
+z_40 set z_39 39 111
+z_41 set z_40 40 114
+z_42 set z_41 41 32
+z_43 set z_42 42 114
+z_44 set z_43 43 101
+z_45 set z_44 44 102
+z_46 set z_45 45 101
+z_47 set z_46 46 114
+z_48 set z_47 47 101
+z_49 set z_48 48 110
+z_50 set z_49 49 99
+z_51 set z_50 50 101
+z_52 set z_51 51 32
+z_53 set z_52 52 97
+z_54 set z_53 53 32
+z_55 set z_54 54 110
+z_56 set z_55 55 111
+z_57 set z_56 56 100
+z_58 set z_57 57 101
+z_59 set z_58 58 32
+z_60 set z_59 59 100
+z_61 set z_60 60 101
+z_62 set z_61 61 102
+z_63 set z_62 62 105
+z_64 set z_63 63 110
+z_65 set z_64 64 101
+z_66 set z_65 65 100
+z_67 set z_66 66 32
+z_68 set z_67 67 97
+z_69 set z_68 68 98
+z_70 set z_69 69 111
+z_71 set z_70 70 118
+z_72 set z_71 71 101
+z_73 set z_72 72 32
+s call ad_append p0 73 z_73
+ret s
+end
+fn ad_message_101 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message101part2 s
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_2 call ad_string s_1 q7
+s_3 call ad_lit_message101part4 s_2
+ret s_3
+end
+fn ad_message_202 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message202part2 s
+ret s_1
+end
+fn ad_message_204 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message204part2 s
+ret s_1
+end
+fn ad_message_222 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message222part2 s
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_2 call ad_string s_1 q7
+s_3 call ad_lit_message222part4 s_2
+q8 get p2 6
+q9 get p2 7
+q10 get p2 8
+q11 rec q8 q9 q10
+s_4 call ad_string s_3 q11
+ret s_4
+end
+fn ad_message_201 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message201part2 s
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_2 call ad_string s_1 q7
+s_3 call ad_lit_message201part4 s_2
+q8 get p2 6
+q9 get p2 7
+q10 get p2 8
+q11 rec q8 q9 q10
+s_4 call ad_string s_3 q11
+ret s_4
+end
+fn ad_message_203 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message203part2 s
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_2 call ad_string s_1 q7
+s_3 call ad_lit_message203part4 s_2
+q8 get p2 6
+q9 get p2 7
+q10 get p2 8
+q11 rec q8 q9 q10
+s_4 call ad_string s_3 q11
+s_5 call ad_lit_message203part6 s_4
+ret s_5
+end
+fn ad_message_205 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message205part2 s
+ret s_1
+end
+fn ad_message_206 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message206part2 s
+ret s_1
+end
+fn ad_message_207 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message207part2 s
+ret s_1
+end
+fn ad_message_208 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message208part2 s
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_2 call ad_string s_1 q7
+ret s_2
+end
+fn ad_message_209 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message209part2 s
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_2 call ad_string s_1 q7
+ret s_2
+end
+fn ad_message_210 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message210part2 s
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_2 call ad_string s_1 q7
+ret s_2
+end
+fn ad_message_220 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message220part2 s
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_2 call ad_string s_1 q7
+s_3 call ad_lit_message220part4 s_2
+q8 get p2 6
+q9 get p2 7
+q10 get p2 8
+q11 rec q8 q9 q10
+s_4 call ad_string s_3 q11
+ret s_4
+end
+fn ad_message_221 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message221part2 s
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_2 call ad_string s_1 q7
+s_3 call ad_lit_message221part4 s_2
+ret s_3
+end
+fn ad_message_303 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message303part2 s
+ret s_1
+end
+fn ad_message_309 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message309part2 s
+ret s_1
+end
+fn ad_message_315 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message315part2 s
+ret s_1
+end
+fn ad_message_316 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s call ad_string p0 q3
+s_1 call ad_lit_message316part2 s
+ret s_1
+end
+fn ad_message_6 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+s call ad_lit_message6part0 p0
+ret s
+end
+fn ad_message_16 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+s call ad_lit_message16part0 p0
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s_1 call ad_string s q3
+s_2 call ad_lit_message16part2 s_1
+ret s_2
+end
+fn ad_message_24 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+s call ad_lit_message24part0 p0
+ret s
+end
+fn ad_message_25 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+s call ad_lit_message25part0 p0
+ret s
+end
+fn ad_message_29 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+s call ad_lit_message29part0 p0
+ret s
+end
+fn ad_message (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 eq p1 101
+q1 select q0 1 0
+s fold ad_message_101 q1 p0 p2
+q2 eq p1 202
+q3 select q2 1 0
+s_1 fold ad_message_202 q3 s p2
+q4 eq p1 204
+q5 select q4 1 0
+s_2 fold ad_message_204 q5 s_1 p2
+q6 eq p1 222
+q7 select q6 1 0
+s_3 fold ad_message_222 q7 s_2 p2
+q8 eq p1 201
+q9 select q8 1 0
+s_4 fold ad_message_201 q9 s_3 p2
+q10 eq p1 203
+q11 select q10 1 0
+s_5 fold ad_message_203 q11 s_4 p2
+q12 eq p1 205
+q13 select q12 1 0
+s_6 fold ad_message_205 q13 s_5 p2
+q14 eq p1 206
+q15 select q14 1 0
+s_7 fold ad_message_206 q15 s_6 p2
+q16 eq p1 207
+q17 select q16 1 0
+s_8 fold ad_message_207 q17 s_7 p2
+q18 eq p1 208
+q19 select q18 1 0
+s_9 fold ad_message_208 q19 s_8 p2
+q20 eq p1 209
+q21 select q20 1 0
+s_10 fold ad_message_209 q21 s_9 p2
+q22 eq p1 210
+q23 select q22 1 0
+s_11 fold ad_message_210 q23 s_10 p2
+q24 eq p1 220
+q25 select q24 1 0
+s_12 fold ad_message_220 q25 s_11 p2
+q26 eq p1 221
+q27 select q26 1 0
+s_13 fold ad_message_221 q27 s_12 p2
+q28 eq p1 303
+q29 select q28 1 0
+s_14 fold ad_message_303 q29 s_13 p2
+q30 eq p1 309
+q31 select q30 1 0
+s_15 fold ad_message_309 q31 s_14 p2
+q32 eq p1 315
+q33 select q32 1 0
+s_16 fold ad_message_315 q33 s_15 p2
+q34 eq p1 316
+q35 select q34 1 0
+s_17 fold ad_message_316 q35 s_16 p2
+q36 eq p1 6
+q37 select q36 1 0
+s_18 fold ad_message_6 q37 s_17 p2
+q38 eq p1 16
+q39 select q38 1 0
+s_19 fold ad_message_16 q39 s_18 p2
+q40 eq p1 24
+q41 select q40 1 0
+s_20 fold ad_message_24 q41 s_19 p2
+q42 eq p1 25
+q43 select q42 1 0
+s_21 fold ad_message_25 q43 s_20 p2
+q44 eq p1 29
+q45 select q44 1 0
+s_22 fold ad_message_29 q45 s_21 p2
+ret s_22
+end
+fn ad_fix_101 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+s call ad_lit_fix101part0 p0
+q0 get p2 3
+q1 get p2 4
+q2 get p2 5
+q3 rec q0 q1 q2
+s_1 call ad_string s q3
+s_2 call ad_lit_fix101part2 s_1
+q4 get p2 0
+q5 get p2 1
+q6 get p2 2
+q7 rec q4 q5 q6
+s_3 call ad_string s_2 q7
+ret s_3
+end
+fn ad_fix_202 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_204 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_222 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_201 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+s call ad_lit_fix201part0 p0
+q0 get p2 0
+q1 get p2 1
+q2 get p2 2
+q3 rec q0 q1 q2
+s_1 call ad_string s q3
+s_2 call ad_lit_fix201part2 s_1
+q4 get p2 3
+q5 get p2 4
+q6 get p2 5
+q7 rec q4 q5 q6
+s_3 call ad_string s_2 q7
+ret s_3
+end
+fn ad_fix_203 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_205 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_206 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_207 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_208 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_209 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_210 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_220 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_221 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_303 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_309 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_315 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_316 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_6 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_16 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_24 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix_25 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+s call ad_lit_fix25part0 p0
+ret s
+end
+fn ad_fix_29 (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+ret p0
+end
+fn ad_fix (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 eq p1 101
+q1 select q0 1 0
+s fold ad_fix_101 q1 p0 p2
+q2 eq p1 202
+q3 select q2 1 0
+s_1 fold ad_fix_202 q3 s p2
+q4 eq p1 204
+q5 select q4 1 0
+s_2 fold ad_fix_204 q5 s_1 p2
+q6 eq p1 222
+q7 select q6 1 0
+s_3 fold ad_fix_222 q7 s_2 p2
+q8 eq p1 201
+q9 select q8 1 0
+s_4 fold ad_fix_201 q9 s_3 p2
+q10 eq p1 203
+q11 select q10 1 0
+s_5 fold ad_fix_203 q11 s_4 p2
+q12 eq p1 205
+q13 select q12 1 0
+s_6 fold ad_fix_205 q13 s_5 p2
+q14 eq p1 206
+q15 select q14 1 0
+s_7 fold ad_fix_206 q15 s_6 p2
+q16 eq p1 207
+q17 select q16 1 0
+s_8 fold ad_fix_207 q17 s_7 p2
+q18 eq p1 208
+q19 select q18 1 0
+s_9 fold ad_fix_208 q19 s_8 p2
+q20 eq p1 209
+q21 select q20 1 0
+s_10 fold ad_fix_209 q21 s_9 p2
+q22 eq p1 210
+q23 select q22 1 0
+s_11 fold ad_fix_210 q23 s_10 p2
+q24 eq p1 220
+q25 select q24 1 0
+s_12 fold ad_fix_220 q25 s_11 p2
+q26 eq p1 221
+q27 select q26 1 0
+s_13 fold ad_fix_221 q27 s_12 p2
+q28 eq p1 303
+q29 select q28 1 0
+s_14 fold ad_fix_303 q29 s_13 p2
+q30 eq p1 309
+q31 select q30 1 0
+s_15 fold ad_fix_309 q31 s_14 p2
+q32 eq p1 315
+q33 select q32 1 0
+s_16 fold ad_fix_315 q33 s_15 p2
+q34 eq p1 316
+q35 select q34 1 0
+s_17 fold ad_fix_316 q35 s_16 p2
+q36 eq p1 6
+q37 select q36 1 0
+s_18 fold ad_fix_6 q37 s_17 p2
+q38 eq p1 16
+q39 select q38 1 0
+s_19 fold ad_fix_16 q39 s_18 p2
+q40 eq p1 24
+q41 select q40 1 0
+s_20 fold ad_fix_24 q41 s_19 p2
+q42 eq p1 25
+q43 select q42 1 0
+s_21 fold ad_fix_25 q43 s_20 p2
+q44 eq p1 29
+q45 select q44 1 0
+s_22 fold ad_fix_29 q45 s_21 p2
+ret s_22
+end
+fn ad_known u32 -> bool
+q0 eq p0 101
+q1 eq p0 202
+q2 or q0 q1
+q3 eq p0 204
+q4 or q2 q3
+q5 eq p0 222
+q6 or q4 q5
+q7 eq p0 201
+q8 or q6 q7
+q9 eq p0 203
+q10 or q8 q9
+q11 eq p0 205
+q12 or q10 q11
+q13 eq p0 206
+q14 or q12 q13
+q15 eq p0 207
+q16 or q14 q15
+q17 eq p0 208
+q18 or q16 q17
+q19 eq p0 209
+q20 or q18 q19
+q21 eq p0 210
+q22 or q20 q21
+q23 eq p0 220
+q24 or q22 q23
+q25 eq p0 221
+q26 or q24 q25
+q27 eq p0 303
+q28 or q26 q27
+q29 eq p0 309
+q30 or q28 q29
+q31 eq p0 315
+q32 or q30 q31
+q33 eq p0 316
+q34 or q32 q33
+q35 eq p0 6
+q36 or q34 q35
+q37 eq p0 16
+q38 or q36 q37
+q39 eq p0 24
+q40 or q38 q39
+q41 eq p0 25
+q42 or q40 q41
+q43 eq p0 29
+q44 or q42 q43
+ret q44
+end
+fn ad_class u32 -> u32
+q0 eq p0 101
+out select q0 3 0
+q1 eq p0 202
+out_1 select q1 2 out
+q2 eq p0 204
+out_2 select q2 2 out_1
+q3 eq p0 222
+out_3 select q3 3 out_2
+q4 eq p0 201
+out_4 select q4 2 out_3
+q5 eq p0 203
+out_5 select q5 2 out_4
+q6 eq p0 205
+out_6 select q6 2 out_5
+q7 eq p0 206
+out_7 select q7 4 out_6
+q8 eq p0 207
+out_8 select q8 2 out_7
+q9 eq p0 208
+out_9 select q9 2 out_8
+q10 eq p0 209
+out_10 select q10 2 out_9
+q11 eq p0 210
+out_11 select q11 2 out_10
+q12 eq p0 220
+out_12 select q12 3 out_11
+q13 eq p0 221
+out_13 select q13 3 out_12
+q14 eq p0 303
+out_14 select q14 3 out_13
+q15 eq p0 309
+out_15 select q15 3 out_14
+q16 eq p0 315
+out_16 select q16 4 out_15
+q17 eq p0 316
+out_17 select q17 4 out_16
+q18 eq p0 6
+out_18 select q18 1 out_17
+q19 eq p0 16
+out_19 select q19 4 out_18
+q20 eq p0 24
+out_20 select q20 4 out_19
+q21 eq p0 25
+out_21 select q21 1 out_20
+q22 eq p0 29
+out_22 select q22 4 out_21
+ret out_22
+end
+fn ad_hasfix u32 -> bool
+q0 eq p0 101
+q1 eq p0 201
+q2 or q0 q1
+q3 eq p0 25
+q4 or q2 q3
+ret q4
+end
+fn ad_symbol (u32,(u32,u32,u32),io) u32x128 u32 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p1 62
+q2 get p1 63
+q3 get p1 64
+q4 rec q1 q2 q3
+q5 mul p2 5
+r call av_load q0 q4 q5 3
+row at r 1
+q6 at p0 0
+q7 eq q6 0
+q8 at r 0
+q9 at p0 0
+q10 select q7 q8 q9
+q11 at p0 1
+q12 at r 2
+q13 rec q10 q11 q12
+q14 get row 0
+q15 get row 1
+q16 get row 2
+q17 call ad_copy q13 q14 q15 q16
+ret q17
+end
+fn ad_typepush io (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 p2
+q0 set z_1 1 p3
+q1 call av_append p0 p1 2 q0
+ret q1
+end
+fn ad_push (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 p1
+q0 set z_1 1 p2
+q1 call ad_append p0 2 q0
+ret q1
+end
+fn ad_fields_ok (u32,(u32,u32,u32),io) u32 u32x128 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn ad_fields (u32,(u32,u32,u32),io) u32 u32x128 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 sub p4 1
+j sub q0 p1
+q1 at p0 2
+q2 get p2 71
+q3 get p2 72
+q4 get p2 73
+q5 rec q2 q3 q4
+q6 add p3 j
+r call av_load q1 q5 q6 1
+row at r 1
+q7 at r 0
+q8 at p0 1
+q9 at r 2
+q10 rec q7 q8 q9
+q11 get row 0
+a call ad_push q10 0 q11
+z call arena_zero
+z_1 set z 0 1
+z_2 set z_1 1 44
+q12 gt j 0
+q13 select q12 2 0
+q14 call ad_append a q13 z_2
+ret q14
+end
+fn ad_trecord (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+open call ad_lit_open q3
+q4 at open 0
+q5 at p0 2
+q6 at open 2
+q7 rec q4 q5 q6
+ending call ad_push q7 1 41
+q8 get p3 2
+q9 get p3 1
+q10 get p3 2
+fields loop ad_fields_ok ad_fields q8 ending p2 q9 q10
+q11 at fields 0
+q12 at open 1
+q13 at fields 1
+q14 at fields 2
+q15 rec q11 q12 q13 q14
+ret q15
+end
+fn ad_tarray (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 0
+q1 at p0 2
+q2 at p0 3
+q3 rec q0 q1 q2
+q4 get p2 2
+num call ad_push q3 2 q4
+sep call ad_push num 1 120
+q5 get p2 1
+elem call ad_push sep 0 q5
+q6 at elem 0
+q7 at p0 1
+q8 at elem 1
+q9 at elem 2
+q10 rec q6 q7 q8 q9
+ret q10
+end
+fn ad_u32_part (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_u32 p0
+ret q0
+end
+fn ad_bool_part (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_bool p0
+ret q0
+end
+fn ad_io_part (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_io p0
+ret q0
+end
+fn ad_tprimitive (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 eq p2 0
+q4 select q3 1 0
+q5 rec q0 q1 q2
+a fold ad_u32_part q4 q5
+q6 eq p2 1
+q7 select q6 1 0
+b fold ad_bool_part q7 a
+q8 eq p2 2
+q9 select q8 1 0
+c fold ad_io_part q9 b
+q10 at c 0
+q11 at c 1
+q12 at p0 2
+q13 at c 2
+q14 rec q10 q11 q12 q13
+ret q14
+end
+fn ad_tnode (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 3
+q1 get p2 68
+q2 get p2 69
+q3 get p2 70
+q4 rec q1 q2 q3
+q5 mul p3 5
+r call av_load q0 q4 q5 5
+row at r 1
+q6 at r 0
+q7 at p0 1
+q8 at p0 2
+q9 at r 2
+q10 at r 0
+q11 eq q10 0
+q12 get row 0
+q13 lt q12 3
+q14 and q11 q13
+q15 select q14 1 0
+q16 rec q6 q7 q8 q9
+q17 get row 0
+b fold ad_tprimitive q15 q16 q17
+q18 at r 0
+q19 eq q18 0
+q20 get row 0
+q21 eq q20 3
+q22 and q19 q21
+q23 select q22 1 0
+c fold ad_tarray q23 b row
+q24 at r 0
+q25 eq q24 0
+q26 get row 0
+q27 eq q26 4
+q28 and q25 q27
+q29 select q28 1 0
+q30 fold ad_trecord q29 c p2 row
+ret q30
+end
+fn ad_tbyte (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+r call ad_byte q3 p2
+q4 at r 0
+q5 at r 1
+q6 at p0 2
+q7 at r 2
+q8 rec q4 q5 q6 q7
+ret q8
+end
+fn ad_tnumber (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+r call ad_number q3 p2
+q4 at r 0
+q5 at r 1
+q6 at p0 2
+q7 at r 2
+q8 rec q4 q5 q6 q7
+ret q8
+end
+fn ad_tmore (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 -> bool
+stack at p0 2
+q0 at p0 0
+q1 eq q0 0
+q2 at stack 1
+q3 ne q2 0
+q4 and q1 q3
+ret q4
+end
+fn ad_tstep (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+stack at p0 2
+q0 at p0 3
+q1 at stack 1
+q2 sub q1 2
+r call av_load q0 stack q2 2
+action at r 1
+q3 at stack 0
+q4 at stack 1
+q5 sub q4 2
+q6 at stack 2
+q7 at r 0
+q8 at p0 1
+q9 rec q3 q5 q6
+q10 at r 2
+q11 at r 0
+q12 eq q11 0
+q13 get action 0
+q14 eq q13 0
+q15 and q12 q14
+q16 select q15 1 0
+q17 rec q7 q8 q9 q10
+q18 get action 1
+b fold ad_tnode q16 q17 p2 q18
+q19 at r 0
+q20 eq q19 0
+q21 get action 0
+q22 eq q21 1
+q23 and q20 q22
+q24 select q23 1 0
+q25 get action 1
+c fold ad_tbyte q24 b q25
+q26 at r 0
+q27 eq q26 0
+q28 get action 0
+q29 eq q28 2
+q30 and q27 q29
+q31 select q30 1 0
+q32 get action 1
+q33 fold ad_tnumber q31 c q32
+ret q33
+end
+fn ad_type (u32,(u32,u32,u32),io) u32x128 u32 -> (u32,(u32,u32,u32),io)
+q0 at p0 0
+q1 rec 0 0 0
+q2 at p0 2
+q3 rec q0 q1 q2
+push call ad_push q3 0 p2
+q4 at p0 0
+q5 eq q4 0
+q6 at push 0
+q7 at p0 0
+status select q5 q6 q7
+q8 get p1 96
+max sub 0 q8
+q9 at p0 1
+q10 at push 1
+q11 at push 2
+q12 rec status q9 q10 q11
+r loop ad_tmore ad_tstep max q12 p1
+q13 at r 0
+q14 at r 1
+q15 at r 3
+q16 rec q13 q14 q15
+ret q16
+end
+fn ad_json_hex (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z_1 set z 0 92
+z_2 set z_1 1 117
+z_3 set z_2 2 48
+z_4 set z_3 3 48
+q0 shr p1 4
+a and q0 15
+b and p1 15
+q1 lt a 10
+q2 add 48 a
+q3 add 87 a
+q4 select q1 q2 q3
+z_5 set z_4 4 q4
+q5 lt b 10
+q6 add 48 b
+q7 add 87 b
+q8 select q5 q6 q7
+q9 set z_5 5 q8
+q10 call ad_append p0 6 q9
+ret q10
+end
+fn ad_json_raw (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_byte p0 p2
+ret q0
+end
+fn ad_json_control (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_json_hex p0 p2
+ret q0
+end
+fn ad_json_escape (u32,(u32,u32,u32),io) u32 (u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+r call av_load q0 p2 p1 1
+row at r 1
+q1 get row 0
+q2 eq q1 34
+q3 eq q1 92
+special or q2 q3
+z call arena_zero
+z_1 set z 0 92
+q4 at r 0
+q5 at p0 1
+q6 at r 2
+q7 rec q4 q5 q6
+q8 select special 1 0
+escaped call ad_append q7 q8 z_1
+q9 ge q1 32
+q10 select q9 1 0
+raw fold ad_json_raw q10 escaped q1
+q11 lt q1 32
+q12 select q11 1 0
+q13 fold ad_json_control q12 raw q1
+ret q13
+end
+fn ad_json_ok (u32,(u32,u32,u32),io) u32 (u32,u32,u32) -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn ad_quoted (u32,(u32,u32,u32),io) (u32,u32,u32) -> (u32,(u32,u32,u32),io)
+start call ad_lit_quote p0
+q0 at p1 1
+r loop ad_json_ok ad_json_escape q0 start p1
+q1 call ad_lit_quote r
+ret q1
+end
+fn ad_part_dot (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_dot p0
+ret q0
+end
+fn ad_part_ret (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_ret p0
+ret q0
+end
+fn ad_part_argument (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_argument p0
+ret q0
+end
+fn ad_part_element (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_element p0
+ret q0
+end
+fn ad_part_token (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_token p0
+ret q0
+end
+fn ad_part_value (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_value p0
+ret q0
+end
+fn ad_part_index (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_index p0
+ret q0
+end
+fn ad_part_fieldvalue (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_fieldvalue p0
+ret q0
+end
+fn ad_part_tripcount (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_tripcount p0
+ret q0
+end
+fn ad_part_predresult (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_predresult p0
+ret q0
+end
+fn ad_part_at (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_at p0
+ret q0
+end
+fn ad_part_put (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_put p0
+ret q0
+end
+fn ad_part_null (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_null p0
+ret q0
+end
+fn ad_part_parse (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_parse p0
+ret q0
+end
+fn ad_part_type (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_type p0
+ret q0
+end
+fn ad_part_structure (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_structure p0
+ret q0
+end
+fn ad_part_limit (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_limit p0
+ret q0
+end
+fn ad_number_part (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_number p0 p2
+ret q0
+end
+fn ad_node_name (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p2 44
+q2 get p2 45
+q3 get p2 46
+q4 rec q1 q2 q3
+q5 get p2 110
+q6 mul q5 14
+r call av_load q0 q4 q6 1
+row at r 1
+q7 at r 0
+q8 at p0 1
+q9 at r 2
+q10 rec q7 q8 q9
+q11 get row 0
+q12 call ad_symbol q10 p2 q11
+ret q12
+end
+fn ad_quote_part (u32,(u32,u32,u32),io) u32 (u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 call ad_quoted p0 p2
+ret q0
+end
+fn ad_where (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p2 41
+q2 get p2 42
+q3 get p2 43
+q4 rec q1 q2 q3
+q5 get p2 109
+q6 mul q5 14
+f call av_load q0 q4 q6 14
+fnrow at f 1
+q7 at p0 0
+q8 eq q7 0
+q9 at f 0
+q10 at p0 0
+q11 select q8 q9 q10
+q12 at p0 1
+q13 at f 2
+q14 rec q11 q12 q13
+q15 get fnrow 0
+name call ad_symbol q14 p2 q15
+q16 get p2 110
+header eq q16 4294967295
+q17 xor header true
+q18 get p2 110
+q19 get fnrow 4
+q20 get fnrow 5
+q21 add q19 q20
+q22 ge q18 q21
+retline and q17 q22
+q23 xor header true
+q24 select q23 1 0
+dotted fold ad_part_dot q24 name
+q25 select retline 1 0
+returned fold ad_part_ret q25 dotted
+q26 xor header true
+q27 xor retline true
+q28 and q26 q27
+q29 select q28 1 0
+r fold ad_node_name q29 returned p2
+ret r
+end
+fn ad_label (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p2 41
+q2 get p2 42
+q3 get p2 43
+q4 rec q1 q2 q3
+q5 get p2 109
+q6 mul q5 14
+f call av_load q0 q4 q6 14
+fr at f 1
+q7 get p2 110
+q8 ne q7 4294967295
+q9 get p2 110
+q10 get fr 4
+q11 get fr 5
+q12 add q10 q11
+q13 lt q9 q12
+isnode and q8 q13
+q14 at f 2
+q15 get p2 44
+q16 get p2 45
+q17 get p2 46
+q18 rec q15 q16 q17
+q19 get p2 110
+q20 mul q19 14
+q21 select isnode q20 0
+q22 select isnode 14 0
+n call av_load q14 q18 q21 q22
+nr at n 1
+q23 get nr 1
+q24 get p2 111
+q25 at p0 0
+q26 eq q25 0
+q27 at n 0
+q28 at p0 0
+q29 select q26 q27 q28
+q30 at p0 1
+q31 at n 2
+q32 eq q23 22
+q33 and isnode q32
+q34 select q33 1 0
+q35 rec q29 q30 q31
+x fold ad_part_element q34 q35
+q36 eq q23 19
+q37 and isnode q36
+q38 select q37 1 0
+x_1 fold ad_part_argument q38 x
+q39 eq q23 22
+q40 eq q23 19
+q41 or q39 q40
+q42 and isnode q41
+q43 select q42 1 0
+x_2 fold ad_number_part q43 x_1 q24
+q44 eq q23 29
+q45 eq q23 30
+q46 eq q23 31
+q47 or q45 q46
+q48 eq q24 0
+q49 and q47 q48
+q50 or q44 q49
+q51 and isnode q50
+q52 select q51 1 0
+x_3 fold ad_part_token q52 x_2
+q53 eq q23 30
+q54 and isnode q53
+q55 eq q24 1
+q56 and q54 q55
+q57 select q56 1 0
+x_4 fold ad_part_value q57 x_3
+q58 eq q23 25
+q59 eq q23 37
+q60 or q58 q59
+q61 eq q23 26
+q62 eq q24 1
+q63 and q61 q62
+q64 or q60 q63
+q65 and isnode q64
+q66 select q65 1 0
+x_5 fold ad_part_index q66 x_4
+q67 eq q23 26
+q68 and isnode q67
+q69 eq q24 2
+q70 and q68 q69
+q71 select q70 1 0
+x_6 fold ad_part_element q71 x_5
+q72 eq q23 28
+q73 and isnode q72
+q74 eq q24 2
+q75 and q73 q74
+q76 select q75 1 0
+x_7 fold ad_part_fieldvalue q76 x_6
+q77 eq q23 20
+q78 eq q23 21
+q79 or q77 q78
+q80 and isnode q79
+q81 eq q24 0
+q82 and q80 q81
+q83 select q82 1 0
+x_8 fold ad_part_tripcount q83 x_7
+q84 eq q23 21
+q85 and isnode q84
+q86 eq q24 4294967295
+q87 and q85 q86
+q88 select q87 1 0
+x_9 fold ad_part_predresult q88 x_8
+ret x_9
+end
+fn ad_typepart (u32,(u32,u32,u32),io) u32 u32x128 u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_type p0 p2 p3
+ret q0
+end
+fn ad_opname (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p2 44
+q2 get p2 45
+q3 get p2 46
+q4 rec q1 q2 q3
+q5 get p2 110
+q6 mul q5 14
+n call av_load q0 q4 q6 2
+row at n 1
+q7 at p0 0
+q8 eq q7 0
+q9 at n 0
+q10 at p0 0
+q11 select q8 q9 q10
+q12 at p0 1
+q13 at n 2
+q14 get row 1
+q15 eq q14 27
+q16 select q15 1 0
+q17 rec q11 q12 q13
+b fold ad_part_at q16 q17
+q18 get row 1
+q19 eq q18 28
+q20 select q19 1 0
+q21 fold ad_part_put q20 b
+ret q21
+end
+fn ad_levinit u32x128 u32 -> u32x128
+q0 mul p1 10
+q1 set p0 p1 q0
+ret q1
+end
+fn ad_levcell (u32x128,u32) u32 u32x128 u32x128 u32 -> (u32x128,u32)
+q0 get p3 p1
+q1 get p2 p1
+q2 ge p4 65
+q3 le p4 90
+q4 and q2 q3
+q5 add p4 32
+q6 select q4 q5 p4
+q7 ge q0 65
+q8 le q0 90
+q9 and q7 q8
+q10 add q0 32
+q11 select q9 q10 q0
+q12 eq q6 q11
+q13 select q12 1 20
+substitution add q1 q13
+q14 eq p4 q0
+q15 add p1 1
+q16 get p2 q15
+q17 add q16 10
+q18 at p0 1
+q19 add q18 10
+q20 lt q17 q19
+q21 select q20 q17 q19
+q22 lt q21 substitution
+q23 select q22 q21 substitution
+value select q14 q1 q23
+q24 at p0 0
+q25 add p1 1
+q26 set q24 q25 value
+q27 rec q26 value
+ret q27
+end
+fn ad_levrow u32x128 u32 u32x128 u32x128 u32 -> u32x128
+q0 add p1 1
+first mul q0 10
+q1 set p0 0 first
+q2 rec q1 first
+q3 get p2 p1
+r fold ad_levcell p4 q2 p0 p3 q3
+q4 at r 0
+ret q4
+end
+fn ad_distance u32x128 u32 u32x128 u32 -> u32
+q0 add p3 1
+q1 call arena_zero
+initial fold ad_levinit q0 q1
+row fold ad_levrow p1 initial p0 p2 p3
+q2 get row p3
+ret q2
+end
+fn ad_casebyte bool u32 u32x128 u32x128 -> bool
+q0 get p2 p1
+q1 ge q0 65
+q2 le q0 90
+q3 and q1 q2
+q4 add q0 32
+q5 select q3 q4 q0
+q6 get p3 p1
+q7 ge q6 65
+q8 le q6 90
+q9 and q7 q8
+q10 add q6 32
+q11 select q9 q10 q6
+q12 eq q5 q11
+q13 and p0 q12
+ret q13
+end
+fn ad_name_bytes io u32x128 u32 -> (u32,u32x128,u32,io)
+q0 get p1 62
+q1 get p1 63
+q2 get p1 64
+q3 rec q0 q1 q2
+q4 mul p2 5
+entry call av_load p0 q3 q4 3
+row at entry 1
+q5 at entry 0
+q6 eq q5 0
+q7 get row 2
+q8 gt q7 0
+q9 and q6 q8
+q10 get row 2
+q11 le q10 64
+valid and q9 q11
+q12 at entry 2
+q13 get row 0
+q14 get row 1
+q15 select valid q14 0
+q16 get row 2
+q17 select valid q16 0
+bytes call arena_load q12 q13 q15 q17
+q18 at entry 0
+q19 ne q18 0
+q20 at entry 0
+q21 xor valid true
+q22 at bytes 0
+q23 select q21 7 q22
+status select q19 q20 q23
+q24 at bytes 1
+q25 get row 2
+q26 at bytes 2
+q27 rec status q24 q25 q26
+ret q27
+end
+fn ad_consider (u32,u32,u32,bool,io) u32 u32x128 u32 u32x128 u32 u32 -> (u32,u32,u32,bool,io)
+distance call ad_distance p2 p3 p4 p5
+q0 at p0 1
+take lt distance q0
+q1 at p0 0
+q2 at p0 1
+q3 select take distance q2
+q4 at p0 2
+q5 select take p6 q4
+q6 at p0 3
+q7 at p0 4
+q8 rec q1 q3 q5 q6 q7
+ret q8
+end
+fn ad_candidate (u32,u32,u32,bool,io) u32 u32x128 u32 u32x128 u32 -> (u32,u32,u32,bool,io)
+q0 at p0 4
+bytes call ad_name_bytes q0 p2 p3
+m at bytes 2
+q1 gt m p5
+q2 sub m p5
+q3 sub p5 m
+difference select q1 q2 q3
+q4 mul p5 34
+maximum div q4 100
+q5 lt maximum 2
+maximum_1 select q5 2 maximum
+q6 eq p5 m
+q7 select q6 p5 0
+q8 eq p5 m
+q9 at bytes 1
+ci fold ad_casebyte q7 q8 p4 q9
+q10 at bytes 0
+q11 eq q10 0
+q12 le difference maximum_1
+q13 and q11 q12
+q14 ge m 3
+q15 or q14 ci
+eligible and q13 q15
+q16 at p0 0
+q17 eq q16 0
+q18 at bytes 0
+q19 at p0 0
+status select q17 q18 q19
+q20 select eligible 1 0
+q21 at p0 1
+q22 at p0 2
+q23 at p0 3
+q24 at bytes 3
+q25 rec status q21 q22 q23 q24
+q26 at bytes 1
+q27 fold ad_consider q20 q25 p4 p5 q26 m p3
+ret q27
+end
+fn ad_suggest_ok (u32,u32,u32,bool,io) u32 u32x128 u32 u32 u32x128 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn ad_suggest_node (u32,u32,u32,bool,io) u32 u32x128 u32 u32 u32x128 u32 u32 -> (u32,u32,u32,bool,io)
+q0 at p0 4
+q1 get p2 44
+q2 get p2 45
+q3 get p2 46
+q4 rec q1 q2 q3
+q5 add p3 p1
+q6 mul q5 14
+node call av_load q0 q4 q6 1
+row at node 1
+q7 get row 0
+same eq q7 p4
+q8 at p0 0
+q9 eq q8 0
+q10 at node 0
+q11 at p0 0
+status select q9 q10 q11
+q12 at p0 1
+q13 at p0 2
+q14 at p0 3
+q15 or q14 same
+q16 at node 2
+q17 eq status 0
+q18 add p3 p1
+q19 lt q18 p7
+q20 and q17 q19
+q21 xor same true
+q22 and q20 q21
+q23 select q22 1 0
+q24 rec status q12 q13 q15 q16
+q25 get row 0
+q26 fold ad_candidate q23 q24 p2 q25 p5 p6
+ret q26
+end
+fn ad_name_guess (u32,(u32,u32,u32),io) u32 u32x128 u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_symbol p0 p2 p3
+ret q0
+end
+fn ad_node_reference_args (u32,u32x128,io) u32 u32x128 -> (u32,u32x128,io)
+q0 at p0 2
+q1 get p2 41
+q2 get p2 42
+q3 get p2 43
+q4 rec q1 q2 q3
+q5 get p2 109
+q6 mul q5 14
+f call av_load q0 q4 q6 14
+fr at f 1
+q7 get p2 110
+q8 get fr 4
+q9 get fr 5
+q10 add q8 q9
+isnode lt q7 q10
+q11 at f 2
+q12 get p2 44
+q13 get p2 45
+q14 get p2 46
+q15 rec q12 q13 q14
+q16 get p2 110
+q17 mul q16 14
+q18 select isnode q17 0
+q19 select isnode 14 0
+node call av_load q11 q15 q18 q19
+nr at node 1
+q20 get nr 2
+q21 get p2 111
+q22 add q20 q21
+q23 get fr 6
+operand select isnode q22 q23
+q24 at node 2
+q25 get p2 47
+q26 get p2 48
+q27 get p2 49
+q28 rec q25 q26 q27
+q29 mul operand 5
+o call av_load q24 q28 q29 5
+op at o 1
+q30 at o 2
+q31 get op 1
+bytes call ad_name_bytes q30 p2 q31
+q32 at p0 0
+q33 ne q32 0
+q34 at p0 0
+q35 at f 0
+q36 ne q35 0
+q37 at f 0
+q38 at node 0
+q39 ne q38 0
+q40 at node 0
+q41 at o 0
+q42 ne q41 0
+q43 at o 0
+q44 at bytes 0
+q45 select q42 q43 q44
+q46 select q39 q40 q45
+q47 select q36 q37 q46
+status select q33 q34 q47
+q48 at bytes 2
+q49 mul q48 4
+q50 div q49 10
+q51 add q50 1
+q52 mul q51 10
+q53 at bytes 3
+q54 get fr 5
+q55 rec status q52 4294967295 false q53
+q56 get fr 4
+q57 get op 1
+q58 at bytes 1
+q59 at bytes 2
+q60 get p2 110
+found loop ad_suggest_ok ad_suggest_node q54 q55 p2 q56 q57 q58 q59 q60
+q61 at found 3
+q62 at found 2
+q63 eq q62 4294967295
+q64 select q63 0 1
+mode select q61 2 q64
+q65 at found 0
+q66 rec 0 0 0
+q67 at found 4
+q68 rec q65 q66 q67
+q69 get op 1
+name call ad_symbol q68 p2 q69
+q70 eq mode 1
+q71 select q70 1 0
+q72 at name 0
+q73 rec 0 0 0
+q74 at name 2
+q75 rec q72 q73 q74
+q76 at found 2
+guess fold ad_name_guess q71 q75 p2 q76
+q77 at guess 0
+q78 rec 0 0 0
+q79 at guess 2
+q80 rec q77 q78 q79
+q81 get fr 0
+fnname call ad_symbol q80 p2 q81
+q82 select isnode 1 0
+q83 at fnname 0
+q84 rec 0 0 0
+q85 at fnname 2
+q86 rec q83 q84 q85
+nodename fold ad_node_name q82 q86 p2
+q87 xor isnode true
+q88 select q87 1 0
+nodename_1 fold ad_part_ret q88 nodename
+q89 at p0 1
+q90 at name 1
+q91 at q90 0
+m3_a set q89 3 q91
+q92 at q90 1
+m3_b set m3_a 4 q92
+q93 at q90 2
+q94 set m3_b 5 q93
+q95 at guess 1
+q96 at q95 0
+m4_a set q94 6 q96
+q97 at q95 1
+m4_b set m4_a 7 q97
+q98 at q95 2
+q99 set m4_b 8 q98
+q100 at fnname 1
+q101 at q100 0
+m5_a set q99 9 q101
+q102 at q100 1
+m5_b set m5_a 10 q102
+q103 at q100 2
+q104 set m5_b 11 q103
+q105 at nodename_1 1
+q106 at q105 0
+m6_a set q104 12 q106
+q107 at q105 1
+m6_b set m6_a 13 q107
+q108 at q105 2
+q109 set m6_b 14 q108
+q110 eq mode 1
+q111 at found 2
+q112 select q110 q111 4294967295
+args set q109 90 q112
+args_1 set args 91 mode
+q113 at nodename_1 0
+q114 get op 1
+q115 set args_1 92 q114
+q116 at nodename_1 2
+q117 rec q113 q115 q116
+ret q117
+end
+fn ad_field_args (u32,u32x128,io) u32 u32x128 -> (u32,u32x128,io)
+q0 at p0 0
+q1 rec 0 0 0
+q2 at p0 2
+q3 rec q0 q1 q2
+q4 get p2 113
+index call ad_number q3 q4
+q5 at index 2
+q6 get p2 124
+q7 get p2 125
+q8 get p2 126
+q9 rec q6 q7 q8
+types call av_load q5 q9 0 1
+row at types 1
+q10 at index 0
+q11 eq q10 0
+q12 at types 0
+q13 at index 0
+q14 select q11 q12 q13
+q15 rec 0 0 0
+q16 at types 2
+q17 rec q14 q15 q16
+q18 get row 0
+value call ad_type q17 p2 q18
+q19 at p0 1
+q20 at index 1
+q21 at q20 0
+m1_a set q19 3 q21
+q22 at q20 1
+m1_b set m1_a 4 q22
+q23 at q20 2
+q24 set m1_b 5 q23
+q25 at value 0
+q26 at value 1
+q27 at q26 0
+m2_a set q24 6 q27
+q28 at q26 1
+m2_b set m2_a 7 q28
+q29 at q26 2
+q30 set m2_b 8 q29
+q31 at value 2
+q32 rec q25 q30 q31
+ret q32
+end
+fn ad_args io u32x128 -> (u32,u32x128,io)
+q0 get p1 1
+q1 get p1 0
+q2 eq q1 8
+q3 select q2 1 0
+q4 rec 0 0 0
+q5 rec 0 q4 p0
+where fold ad_where q3 q5 p1
+q6 get p1 0
+q7 eq q6 8
+q8 eq q0 201
+q9 and q7 q8
+q10 select q9 1 0
+label fold ad_label q10 where p1
+q11 eq q0 16
+q12 select q11 1 0
+where_1 fold ad_number_part q12 label 2097152
+q13 call arena_zero
+q14 at where_1 1
+q15 at q14 0
+m0_a set q13 0 q15
+q16 at q14 1
+m0_b set m0_a 1 q16
+q17 at q14 2
+q18 set m0_b 2 q17
+q19 eq q0 201
+q20 eq q0 203
+typepair or q19 q20
+q21 select typepair 1 0
+q22 at where_1 0
+q23 rec 0 0 0
+q24 at where_1 2
+q25 rec q22 q23 q24
+q26 get p1 112
+want fold ad_typepart q21 q25 p1 q26
+q27 eq q0 208
+q28 or typepair q27
+q29 eq q0 209
+q30 or q28 q29
+q31 eq q0 210
+q32 or q30 q31
+q33 eq q0 220
+types or q32 q33
+q34 select types 1 0
+q35 at want 0
+q36 rec 0 0 0
+q37 at want 2
+q38 rec q35 q36 q37
+q39 get p1 113
+got fold ad_typepart q34 q38 p1 q39
+q40 at want 1
+q41 at got 1
+q42 select typepair q40 q41
+q43 at q42 0
+m1_a set q18 3 q43
+q44 at q42 1
+m1_b set m1_a 4 q44
+q45 at q42 2
+q46 set m1_b 5 q45
+q47 at got 1
+q48 at q47 0
+m2_a set q46 6 q48
+q49 at q47 1
+m2_b set m2_a 7 q49
+q50 at q47 2
+q51 set m2_b 8 q50
+q52 eq q0 220
+q53 eq q0 221
+q54 or q52 q53
+q55 select q54 1 0
+q56 at got 0
+q57 rec 0 0 0
+q58 at got 2
+q59 rec q56 q57 q58
+op fold ad_opname q55 q59 p1
+q60 eq q0 220
+q61 eq q0 221
+q62 or q60 q61
+q63 at op 1
+q64 get q51 3
+q65 get q51 4
+q66 get q51 5
+q67 rec q64 q65 q66
+q68 select q62 q63 q67
+q69 at q68 0
+m4_a set q51 3 q69
+q70 at q68 1
+m4_b set m4_a 4 q70
+q71 at q68 2
+q72 set m4_b 5 q71
+q73 eq q0 101
+q74 select q73 1 0
+q75 at op 0
+q76 at op 2
+q77 rec q75 q72 q76
+names fold ad_node_reference_args q74 q77 p1
+q78 eq q0 222
+q79 select q78 1 0
+q80 fold ad_field_args q79 names p1
+ret q80
+end
+fn ad_message_prefix (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+a call ad_lit_line p0
+q0 get p2 2
+b call ad_number a q0
+q1 call ad_lit_colon b
+ret q1
+end
+fn ad_id (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+a call ad_lit_idprefix p0
+z call arena_zero
+q0 div p1 1000
+q1 rem q0 10
+q2 add 48 q1
+z_1 set z 0 q2
+q3 div p1 100
+q4 rem q3 10
+q5 add 48 q4
+z_2 set z_1 1 q5
+q6 div p1 10
+q7 rem q6 10
+q8 add 48 q7
+z_3 set z_2 2 q8
+q9 rem p1 10
+q10 add 48 q9
+q11 set z_3 3 q10
+q12 call ad_append a 4 q11
+ret q12
+end
+fn ad_nullable (u32,(u32,u32,u32),io) (u32,u32,u32) bool -> (u32,(u32,u32,u32),io)
+q0 select p2 1 0
+a fold ad_quote_part q0 p0 p1
+q1 xor p2 true
+q2 select q1 1 0
+q3 fold ad_part_null q2 a
+ret q3
+end
+fn ad_part_returnbool (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_returnbool p0
+ret q0
+end
+fn ad_part_eq (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_eq p0
+ret q0
+end
+fn ad_part_ne (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_ne p0
+ret q0
+end
+fn ad_part_true (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_true p0
+ret q0
+end
+fn ad_part_false (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_false p0
+ret q0
+end
+fn ad_part_get (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_get p0
+ret q0
+end
+fn ad_part_set (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_set p0
+ret q0
+end
+fn ad_part_space (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_space p0
+ret q0
+end
+fn ad_part_arrayatfix (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_arrayatfix p0
+ret q0
+end
+fn ad_part_arrayputfix (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_arrayputfix p0
+ret q0
+end
+fn ad_part_jsonedits (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_jsonedits p0
+ret q0
+end
+fn ad_part_maybe (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_maybe p0
+ret q0
+end
+fn ad_part_exact (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_exact p0
+ret q0
+end
+fn ad_paramfix_ok (u32,(u32,u32,u32),io) u32 u32x128 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn ad_paramfix (u32,(u32,u32,u32),io) u32 u32x128 u32 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p2 50
+q2 get p2 51
+q3 get p2 52
+q4 rec q1 q2 q3
+q5 add p3 p1
+r call av_load q0 q4 q5 1
+row at r 1
+q6 at r 0
+q7 at p0 1
+q8 at r 2
+q9 rec q6 q7 q8
+space call ad_lit_space q9
+q10 get row 0
+q11 call ad_type space p2 q10
+ret q11
+end
+fn ad_returnfix (u32,(u32,u32,u32),io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),io)
+a call ad_lit_returna p0
+q0 get p3 3
+q1 get p3 4
+q2 get p3 5
+q3 rec q0 q1 q2
+b call ad_string a q3
+c call ad_lit_returnvalue b
+q4 get p2 113
+q5 eq q4 1
+q6 get p2 112
+q7 eq q6 0
+q8 and q5 q7
+q9 select q8 1 0
+d fold ad_part_returnbool q9 c
+e call ad_lit_returnchange d
+q10 at e 2
+q11 get p2 41
+q12 get p2 42
+q13 get p2 43
+q14 rec q11 q12 q13
+q15 get p2 109
+q16 mul q15 14
+r call av_load q10 q14 q16 14
+row at r 1
+q17 at e 0
+q18 eq q17 0
+q19 at r 0
+q20 at e 0
+q21 select q18 q19 q20
+q22 at e 1
+q23 at r 2
+q24 rec q21 q22 q23
+q25 get row 0
+f call ad_symbol q24 p2 q25
+q26 get row 2
+q27 get row 1
+g loop ad_paramfix_ok ad_paramfix q26 f p2 q27
+h call ad_lit_arrow g
+q28 get p3 6
+q29 get p3 7
+q30 get p3 8
+q31 rec q28 q29 q30
+j call ad_string h q31
+q32 call ad_lit_backtick j
+ret q32
+end
+fn ad_selectfix (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_selectfix p0
+ret q0
+end
+fn ad_eqfix (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+a call ad_lit_eqfixa p0
+q0 eq p2 12
+q1 select q0 1 0
+a_1 fold ad_part_eq q1 a
+q2 eq p2 13
+q3 select q2 1 0
+a_2 fold ad_part_ne q3 a_1
+b call ad_lit_eqfixb a_2
+q4 eq p2 12
+q5 select q4 1 0
+b_1 fold ad_part_eq q5 b
+q6 eq p2 13
+q7 select q6 1 0
+b_2 fold ad_part_ne q7 b_1
+q8 call ad_lit_eqfixc b_2
+ret q8
+end
+fn ad_fix_default (u32,(u32,u32,u32),io) u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 call ad_fix p0 p2 p3
+ret q0
+end
+fn ad_exact_arrayfix (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 18
+q1 eq q0 27
+q2 select q1 1 0
+a fold ad_part_arrayatfix q2 p0
+q3 get p2 18
+q4 eq q3 28
+q5 select q4 1 0
+q6 fold ad_part_arrayputfix q5 a
+ret q6
+end
+fn ad_part_getrecfix (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_getrecfix p0
+ret q0
+end
+fn ad_part_setrecfix (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_setrecfix p0
+ret q0
+end
+fn ad_part_cgetfix (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_cgetfix p0
+ret q0
+end
+fn ad_other_typefix (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 eq p2 3
+q1 select q0 1 0
+a fold ad_part_getrecfix q1 p0
+q2 eq p2 4
+q3 select q2 1 0
+b fold ad_part_setrecfix q3 a
+q4 eq p2 5
+q5 select q4 1 0
+q6 fold ad_part_cgetfix q5 b
+ret q6
+end
+fn ad_spelling_fix (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+a call ad_lit_didmean p0
+q0 get p2 6
+q1 get p2 7
+q2 get p2 8
+q3 rec q0 q1 q2
+b call ad_string a q3
+q4 call ad_lit_didmeanend b
+ret q4
+end
+fn ad_later_node_fix (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+a call ad_lit_apostrophe p0
+q0 get p2 3
+q1 get p2 4
+q2 get p2 5
+q3 rec q0 q1 q2
+b call ad_string a q3
+c call ad_lit_nodelater b
+q4 get p2 9
+q5 get p2 10
+q6 get p2 11
+q7 rec q4 q5 q6
+d call ad_string c q7
+e call ad_lit_moveabove d
+q8 get p2 0
+q9 get p2 1
+q10 get p2 2
+q11 rec q8 q9 q10
+q12 call ad_string e q11
+ret q12
+end
+fn ad_contextfix (u32,(u32,u32,u32),io) u32x128 u32x128 u32 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p1 41
+q2 get p1 42
+q3 get p1 43
+q4 rec q1 q2 q3
+q5 get p1 1
+q6 eq q5 201
+q7 get p1 109
+q8 mul q7 14
+q9 select q6 q8 0
+q10 get p1 1
+q11 eq q10 201
+q12 select q11 14 0
+f call av_load q0 q4 q9 q12
+fr at f 1
+q13 at p0 0
+q14 eq q13 0
+q15 at f 0
+q16 at p0 0
+q17 select q14 q15 q16
+q18 at p0 1
+q19 at f 2
+q20 get p1 1
+q21 eq q20 201
+q22 get p1 110
+q23 ne q22 4294967295
+q24 and q21 q23
+q25 get p1 110
+q26 get fr 4
+q27 get fr 5
+q28 add q26 q27
+q29 ge q25 q28
+isret and q24 q29
+q30 get p1 1
+q31 eq q30 201
+q32 get p1 18
+q33 eq q32 18
+q34 and q31 q33
+q35 get p1 111
+q36 eq q35 0
+q37 and q34 q36
+q38 get p1 113
+q39 eq q38 0
+select and q37 q39
+q40 get p1 1
+q41 eq q40 201
+q42 get p1 18
+q43 eq q42 12
+q44 get p1 18
+q45 eq q44 13
+q46 or q43 q45
+q47 and q41 q46
+q48 get p1 111
+q49 eq q48 1
+q50 and q47 q49
+q51 get p1 112
+q52 eq q51 1
+q53 and q50 q52
+q54 get p1 113
+q55 eq q54 0
+eq and q53 q55
+q56 get p1 1
+q57 eq q56 101
+q58 get p2 91
+q59 ne q58 0
+namefix and q57 q59
+q60 or isret select
+q61 or q60 eq
+q62 or q61 namefix
+q63 xor q62 true
+q64 ne p3 1
+plain and q63 q64
+q65 select plain 1 0
+q66 rec q17 q18 q19
+q67 get p1 1
+a fold ad_fix_default q65 q66 q67 p2
+q68 select isret 1 0
+b fold ad_returnfix q68 a p1 p2
+q69 select select 1 0
+c fold ad_selectfix q69 b
+q70 select eq 1 0
+q71 get p1 18
+d fold ad_eqfix q70 c q71
+q72 eq p3 1
+q73 select q72 1 0
+e fold ad_exact_arrayfix q73 d p1
+q74 ge p3 3
+q75 le p3 5
+q76 and q74 q75
+q77 select q76 1 0
+f_1 fold ad_other_typefix q77 e p3
+q78 get p1 1
+q79 eq q78 101
+q80 get p2 91
+q81 eq q80 1
+q82 and q79 q81
+q83 select q82 1 0
+g fold ad_spelling_fix q83 f_1 p2
+q84 get p1 1
+q85 eq q84 101
+q86 get p2 91
+q87 eq q86 2
+q88 and q85 q87
+q89 select q88 1 0
+q90 fold ad_later_node_fix q89 g p2
+ret q90
+end
+fn ad_utf_byte (u32,u32,u32,io) u32 u32x128 u32 u32 -> (u32,u32,u32,io)
+q0 get p2 p1
+q1 lt q0 128
+q2 lt q0 192
+q3 lt q0 240
+q4 select q3 1 2
+q5 select q2 0 q4
+n select q1 1 q5
+q6 add p3 p1
+before lt q6 p4
+q7 at p0 0
+q8 at p0 1
+q9 select before n 0
+q10 add q8 q9
+q11 at p0 2
+q12 select before 0 n
+q13 add q11 q12
+q14 at p0 3
+q15 rec q7 q10 q13 q14
+ret q15
+end
+fn ad_utf_ok (u32,u32,u32,io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn ad_utf_page (u32,u32,u32,io) u32 u32 u32 u32 -> (u32,u32,u32,io)
+base mul p1 128
+rest sub p4 base
+q0 gt rest 128
+n select q0 128 rest
+q1 at p0 3
+r call arena_load q1 p2 base n
+q2 at r 0
+q3 eq q2 0
+q4 select q3 n 0
+q5 at r 0
+q6 at p0 1
+q7 at p0 2
+q8 at r 2
+q9 rec q5 q6 q7 q8
+q10 at r 1
+q11 fold ad_utf_byte q4 q9 q10 base p3
+ret q11
+end
+fn ad_utf io u32x128 -> (u32,u32,u32,io)
+q0 get p1 3
+q1 get p1 7
+q2 le q0 q1
+q3 get p1 4
+q4 get p1 7
+q5 get p1 3
+q6 sub q4 q5
+q7 le q3 q6
+valid and q2 q7
+q8 get p1 3
+q9 get p1 4
+endpos add q8 q9
+q10 div endpos 128
+q11 rem endpos 128
+q12 eq q11 0
+q13 select q12 0 1
+pages add q10 q13
+q14 select valid 0 3
+q15 rec q14 0 0 p0
+q16 get p1 6
+q17 get p1 3
+q18 loop ad_utf_ok ad_utf_page pages q15 q16 q17 endpos
+ret q18
+end
+fn ad_exact_kind io u32x128 -> (u32,u32,io)
+q0 get p1 1
+array eq q0 220
+q1 get p1 1
+q2 eq q1 209
+q3 or array q2
+q4 get p1 1
+q5 eq q4 210
+inspect or q3 q5
+q6 get p1 68
+q7 get p1 69
+q8 get p1 70
+q9 rec q6 q7 q8
+q10 get p1 113
+q11 mul q10 5
+q12 select inspect q11 0
+q13 select inspect 5 0
+ty call av_load p0 q9 q12 q13
+tr at ty 1
+q14 get p1 1
+isend eq q14 25
+q15 get p1 3
+q16 eq q15 0
+q17 get p1 4
+q18 eq q17 0
+eof and q16 q18
+q19 xor eof true
+next and isend q19
+q20 at ty 2
+q21 get p1 32
+q22 get p1 33
+q23 get p1 34
+q24 rec q21 q22 q23
+q25 get p1 20
+q26 add q25 1
+q27 mul q26 10
+q28 select next q27 0
+q29 select next 10 0
+lr call av_load q20 q24 q28 q29
+line at lr 1
+q30 at lr 2
+q31 get p1 35
+q32 get p1 36
+q33 get p1 37
+q34 rec q31 q32 q33
+q35 get line 5
+q36 mul q35 2
+q37 select next q36 0
+q38 select next 2 0
+wr call av_load q30 q34 q37 q38
+word at wr 1
+q39 get word 1
+q40 eq q39 2
+dofn and next q40
+q41 at wr 2
+q42 get p1 6
+q43 get word 0
+q44 select dofn q43 0
+q45 select dofn 2 0
+br call arena_load q41 q42 q44 q45
+bytes at br 1
+q46 get bytes 0
+q47 eq q46 102
+q48 and dofn q47
+q49 get bytes 1
+q50 eq q49 110
+isfn and q48 q50
+q51 get tr 0
+q52 eq q51 3
+q53 and array q52
+q54 or eof isfn
+q55 and isend q54
+q56 select q55 2 0
+kind select q53 1 q56
+q57 get p1 1
+q58 eq q57 209
+q59 get tr 0
+q60 eq q59 4
+q61 and q58 q60
+kind_1 select q61 3 kind
+q62 get p1 1
+q63 eq q62 210
+q64 get tr 0
+q65 eq q64 4
+q66 and q63 q65
+kind_2 select q66 4 kind_1
+q67 get p1 1
+q68 eq q67 209
+q69 get p1 18
+q70 eq q69 37
+q71 and q68 q70
+kind_3 select q71 5 kind_2
+q72 at ty 0
+q73 ne q72 0
+q74 at ty 0
+q75 at lr 0
+q76 ne q75 0
+q77 at lr 0
+q78 at wr 0
+q79 ne q78 0
+q80 at wr 0
+q81 at br 0
+q82 select q79 q80 q81
+q83 select q76 q77 q82
+status select q73 q74 q83
+q84 at br 2
+q85 rec status kind_3 q84
+ret q85
+end
+fn ad_operand_name (u32,(u32,u32,u32),io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p3 1
+q1 call ad_symbol p0 p2 q0
+ret q1
+end
+fn ad_operand_param (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 call ad_lit_p p0
+q1 get p2 1
+q2 call ad_number q0 q1
+ret q2
+end
+fn ad_operand_num (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p2 1
+q1 call ad_number p0 q0
+ret q1
+end
+fn ad_node_arg_ok (u32,(u32,u32,u32),io) u32 u32x128 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn ad_node_arg (u32,(u32,u32,u32),io) u32 u32x128 u32 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p2 47
+q2 get p2 48
+q3 get p2 49
+q4 rec q1 q2 q3
+q5 add p3 p1
+q6 mul q5 5
+r call av_load q0 q4 q6 5
+op at r 1
+q7 at r 0
+q8 at p0 1
+q9 at r 2
+q10 rec q7 q8 q9
+a call ad_lit_space q10
+q11 get op 0
+q12 eq q11 0
+q13 select q12 1 0
+b fold ad_operand_name q13 a p2 op
+q14 get op 0
+q15 eq q14 1
+q16 select q15 1 0
+c fold ad_operand_param q16 b op
+q17 get op 0
+q18 eq q17 2
+q19 select q18 1 0
+d fold ad_operand_num q19 c op
+q20 get op 0
+q21 eq q20 3
+q22 get op 1
+q23 ne q22 0
+q24 and q21 q23
+q25 select q24 1 0
+e fold ad_part_true q25 d
+q26 get op 0
+q27 eq q26 3
+q28 get op 1
+q29 eq q28 0
+q30 and q27 q29
+q31 select q30 1 0
+q32 fold ad_part_false q31 e
+ret q32
+end
+fn ad_node_line (u32,(u32,u32,u32),io) u32x128 bool -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p1 44
+q2 get p1 45
+q3 get p1 46
+q4 rec q1 q2 q3
+q5 get p1 110
+q6 mul q5 14
+r call av_load q0 q4 q6 14
+node at r 1
+q7 at r 0
+q8 at p0 1
+q9 at r 2
+q10 rec q7 q8 q9
+q11 get node 0
+name call ad_symbol q10 p1 q11
+a call ad_lit_space name
+q12 xor p2 true
+q13 get node 1
+q14 eq q13 27
+q15 and q12 q14
+q16 select q15 1 0
+b fold ad_part_at q16 a
+q17 xor p2 true
+q18 get node 1
+q19 eq q18 28
+q20 and q17 q19
+q21 select q20 1 0
+c fold ad_part_put q21 b
+q22 get node 1
+q23 eq q22 27
+q24 and p2 q23
+q25 select q24 1 0
+d fold ad_part_get q25 c
+q26 get node 1
+q27 eq q26 28
+q28 and p2 q27
+q29 select q28 1 0
+e fold ad_part_set q29 d
+q30 get node 3
+q31 get node 2
+q32 loop ad_node_arg_ok ad_node_arg q30 e p1 q31
+ret q32
+end
+fn ad_end_word_ok (u32,(u32,u32,u32),io) u32 u32x128 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn ad_end_word (u32,(u32,u32,u32),io) u32 u32x128 u32 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p2 35
+q2 get p2 36
+q3 get p2 37
+q4 rec q1 q2 q3
+q5 add p3 p1
+q6 mul q5 2
+r call av_load q0 q4 q6 2
+word at r 1
+q7 ne p1 0
+q8 select q7 1 0
+q9 at r 0
+q10 at p0 1
+q11 at r 2
+q12 rec q9 q10 q11
+a fold ad_part_space q8 q12
+q13 get p2 6
+q14 get word 0
+q15 get word 1
+q16 call ad_copy a q13 q14 q15
+ret q16
+end
+fn ad_end_line (u32,(u32,u32,u32),io) u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p1 32
+q2 get p1 33
+q3 get p1 34
+q4 rec q1 q2 q3
+q5 get p1 20
+q6 mul q5 10
+r call av_load q0 q4 q6 10
+line at r 1
+q7 get line 6
+q8 at r 0
+q9 at p0 1
+q10 at r 2
+q11 rec q8 q9 q10
+q12 get line 5
+q13 loop ad_end_word_ok ad_end_word q7 q11 p1 q12
+ret q13
+end
+fn ad_array_edits (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 0
+q1 rec 0 0 0
+q2 at p0 2
+q3 rec q0 q1 q2
+text call ad_node_line q3 p2 false
+q4 at text 0
+q5 rec 0 0 0
+q6 at text 2
+q7 rec q4 q5 q6
+to call ad_node_line q7 p2 true
+q8 at to 0
+q9 at p0 1
+q10 at to 2
+q11 rec q8 q9 q10
+a call ad_lit_jsoneditarray q11
+q12 at text 1
+b call ad_quoted a q12
+c call ad_lit_jsoneditto b
+q13 at to 1
+d call ad_quoted c q13
+q14 call ad_lit_jsoneditclose d
+ret q14
+end
+fn ad_end_edits (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 0
+q1 rec 0 0 0
+q2 at p0 2
+q3 rec q0 q1 q2
+text call ad_end_line q3 p2
+q4 at text 0
+q5 rec 0 0 0
+q6 at text 2
+q7 rec q4 q5 q6
+q8 at text 1
+to call ad_string q7 q8
+to_1 call ad_lit_newlineend to
+q9 at to_1 0
+q10 at p0 1
+q11 at to_1 2
+q12 rec q9 q10 q11
+a call ad_lit_jsoneditend q12
+q13 at text 1
+b call ad_quoted a q13
+c call ad_lit_jsoneditto b
+q14 at to_1 1
+d call ad_quoted c q14
+e call ad_lit_jsoneditline d
+q15 at e 2
+q16 get p2 32
+q17 get p2 33
+q18 get p2 34
+q19 rec q16 q17 q18
+q20 get p2 20
+q21 mul q20 10
+row call av_load q15 q19 q21 1
+line at row 1
+q22 at row 0
+q23 at e 1
+q24 at row 2
+q25 rec q22 q23 q24
+q26 get line 0
+f call ad_number q25 q26
+q27 call ad_lit_jsoneditclose f
+ret q27
+end
+fn ad_rename_edits (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+a call ad_lit_jsonrename p0
+q0 get p2 9
+q1 get p2 10
+q2 get p2 11
+q3 rec q0 q1 q2
+b call ad_quoted a q3
+c call ad_lit_jsonnode b
+q4 get p2 12
+q5 get p2 13
+q6 get p2 14
+q7 rec q4 q5 q6
+d call ad_quoted c q7
+e call ad_lit_jsonfrom d
+q8 get p2 3
+q9 get p2 4
+q10 get p2 5
+q11 rec q8 q9 q10
+f call ad_quoted e q11
+g call ad_lit_jsoneditto f
+q12 get p2 6
+q13 get p2 7
+q14 get p2 8
+q15 rec q12 q13 q14
+h call ad_quoted g q15
+q16 call ad_lit_jsoneditclose h
+ret q16
+end
+fn ad_edits (u32,(u32,u32,u32),io) u32x128 u32x128 u32 -> (u32,(u32,u32,u32),io)
+q0 ne p3 1
+q1 ne p3 2
+q2 and q0 q1
+q3 ne p3 6
+q4 and q2 q3
+q5 select q4 1 0
+a fold ad_part_jsonedits q5 p0
+q6 eq p3 1
+q7 select q6 1 0
+b fold ad_array_edits q7 a p1
+q8 eq p3 2
+q9 select q8 1 0
+c fold ad_end_edits q9 b p1
+q10 eq p3 6
+q11 select q10 1 0
+q12 fold ad_rename_edits q11 c p2
+ret q12
+end
+fn ad_render io u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p1 1
+q1 call ad_known q0
+q2 get p1 0
+q3 eq q2 6
+q4 get p1 0
+q5 eq q4 8
+q6 or q3 q5
+known and q1 q6
+a call ad_args p0 p1
+q7 get p1 0
+q8 ge q7 1
+q9 get p1 0
+q10 le q9 5
+transport and q8 q10
+q11 get p1 0
+q12 at a 0
+q13 select known q12 7
+status select transport q11 q13
+q14 get p1 0
+q15 eq q14 6
+q16 get p1 2
+q17 ne q16 0
+q18 and q15 q17
+q19 select q18 1 0
+q20 rec 0 0 0
+q21 at a 2
+q22 rec status q20 q21
+m fold ad_message_prefix q19 q22 p1
+q23 get p1 1
+q24 at a 1
+msg call ad_message m q23 q24
+q25 at msg 2
+exact call ad_exact_kind q25 p1
+q26 at msg 0
+q27 eq q26 0
+q28 at exact 0
+q29 at msg 0
+status_1 select q27 q28 q29
+arguments at a 1
+q30 get p1 1
+q31 eq q30 101
+q32 get arguments 91
+q33 eq q32 1
+q34 and q31 q33
+q35 at exact 1
+kind select q34 6 q35
+q36 rec 0 0 0
+q37 at exact 2
+q38 rec status_1 q36 q37
+q39 at a 1
+fix call ad_contextfix q38 p1 q39 kind
+q40 at fix 0
+q41 rec 0 0 0
+q42 at fix 2
+q43 rec q40 q41 q42
+q44 get p1 1
+ident call ad_id q43 q44
+q45 get p1 1
+c call ad_class q45
+q46 eq c 1
+q47 select q46 1 0
+q48 at ident 0
+q49 rec 0 0 0
+q50 at ident 2
+q51 rec q48 q49 q50
+cls fold ad_part_parse q47 q51
+q52 eq c 2
+q53 select q52 1 0
+cls_1 fold ad_part_type q53 cls
+q54 eq c 3
+q55 select q54 1 0
+cls_2 fold ad_part_structure q55 cls_1
+q56 eq c 4
+q57 select q56 1 0
+cls_3 fold ad_part_limit q57 cls_2
+q58 at cls_3 0
+q59 rec 0 0 0
+q60 at cls_3 2
+q61 rec q58 q59 q60
+j call ad_lit_json0 q61
+q62 at cls_3 1
+j_1 call ad_quoted j q62
+j_2 call ad_lit_jsonid j_1
+q63 at ident 1
+j_3 call ad_quoted j_2 q63
+j_4 call ad_lit_jsonmessage j_3
+q64 at msg 1
+j_5 call ad_quoted j_4 q64
+j_6 call ad_lit_jsonline j_5
+q65 get p1 0
+q66 eq q65 6
+q67 get p1 2
+q68 ne q67 0
+q69 and q66 q68
+q70 select q69 1 0
+q71 get p1 2
+j_7 fold ad_number_part q70 j_6 q71
+q72 get p1 0
+q73 eq q72 6
+q74 get p1 2
+q75 ne q74 0
+q76 and q73 q75
+q77 xor q76 true
+q78 select q77 1 0
+j_8 fold ad_part_null q78 j_7
+j_9 call ad_lit_jsonexpected j_8
+q79 at a 1
+q80 get q79 3
+q81 get q79 4
+q82 get q79 5
+q83 rec q80 q81 q82
+q84 get p1 1
+q85 eq q84 201
+j_10 call ad_nullable j_9 q83 q85
+j_11 call ad_lit_jsonactual j_10
+q86 at a 1
+q87 get q86 6
+q88 get q86 7
+q89 get q86 8
+q90 rec q87 q88 q89
+q91 get p1 1
+q92 eq q91 201
+j_12 call ad_nullable j_11 q90 q92
+j_13 call ad_lit_jsonfix j_12
+q93 at fix 1
+q94 get p1 1
+q95 call ad_hasfix q94
+q96 ne kind 0
+q97 or q95 q96
+j_14 call ad_nullable j_13 q93 q97
+j_15 call ad_lit_jsonapp j_14
+q98 eq kind 1
+q99 eq kind 2
+q100 or q98 q99
+q101 select q100 1 0
+q102 at j_15 0
+q103 rec 0 0 0
+q104 at j_15 2
+q105 rec q102 q103 q104
+maybe fold ad_part_exact q101 q105
+q106 ne kind 1
+q107 ne kind 2
+q108 and q106 q107
+q109 select q108 1 0
+maybe_1 fold ad_part_maybe q109 maybe
+q110 at maybe_1 0
+q111 at j_15 1
+q112 at maybe_1 2
+q113 rec q110 q111 q112
+q114 at maybe_1 1
+q115 get p1 1
+q116 call ad_hasfix q115
+q117 ne kind 0
+q118 or q116 q117
+j_16 call ad_nullable q113 q114 q118
+q119 at a 1
+j_17 call ad_edits j_16 p1 q119 kind
+facts call arena_zero
+q120 get p1 0
+facts_1 set facts 0 q120
+q121 get p1 1
+facts_2 set facts_1 1 q121
+q122 get p1 2
+facts_3 set facts_2 2 q122
+q123 get p1 3
+facts_4 set facts_3 3 q123
+q124 get p1 4
+facts_5 set facts_4 4 q124
+q125 get p1 112
+facts_6 set facts_5 5 q125
+q126 get p1 113
+facts_7 set facts_6 6 q126
+q127 get p1 109
+facts_8 set facts_7 7 q127
+q128 get p1 110
+facts_9 set facts_8 8 q128
+q129 get p1 111
+facts_10 set facts_9 9 q129
+q130 get p1 6
+facts_11 set facts_10 10 q130
+q131 get p1 7
+facts_12 set facts_11 11 q131
+q132 at j_17 2
+utf call ad_utf q132 p1
+q133 at utf 1
+facts_13 set facts_12 12 q133
+q134 at utf 2
+facts_14 set facts_13 13 q134
+q135 select known 15 0
+facts_15 set facts_14 20 q135
+q136 get p1 1
+q137 eq q136 101
+q138 get arguments 90
+q139 select q137 q138 0
+facts_16 set facts_15 21 q139
+q140 get p1 1
+q141 eq q140 101
+q142 get arguments 91
+q143 select q141 q142 0
+facts_17 set facts_16 22 q143
+q144 get p1 1
+q145 eq q144 101
+q146 get arguments 92
+q147 select q145 q146 0
+facts_18 set facts_17 23 q147
+q148 at j_17 0
+q149 eq q148 0
+q150 at utf 0
+q151 at j_17 0
+status_2 select q149 q150 q151
+q152 eq status_2 0
+q153 at j_17 1
+q154 rec 0 0 0
+q155 select q152 q153 q154
+q156 at utf 3
+q157 rec status_2 q155 facts_18 q156
+ret q157
+end
+fn arena_diagnostic io u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call ad_render p0 p1
+ret q0
+end
+fn arena_parse_diagnostic io u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+checked call arena_parse_check p0 p1 p2
+q0 at checked 2
+q1 at checked 1
+q2 call arena_diagnostic q0 q1
+ret q2
+end

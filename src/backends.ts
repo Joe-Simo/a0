@@ -2606,7 +2606,9 @@ export function emitFunction(target: Target, fn: TypedFunc, options: CompileOpti
   // when optimization removes every iteration or effect.
   if (target === 'sv' && needsSequential(fn)) {
     assertVectorSized(fn, 'SystemVerilog');
-    return emitSequential(source);
+    // Every instance must use the same interface selected for its original source module.
+    const clocked = new Set([fn, ...fn.calls.values()].filter(needsSequential).map((f) => f.name));
+    return emitSequential(source, clocked);
   }
   if (target === 'c' && options.cParallel !== undefined)
     return emitCFunction(source, options.cParallel);

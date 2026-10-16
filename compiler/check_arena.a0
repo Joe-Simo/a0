@@ -1,0 +1,1625 @@
+# Full-word arena checker. Canonical output is authoritative A0; this is a development source.
+use "parse_arena.a0"
+fn ac_error (u32x128,io) u32 u32 u32 u32 u32 -> (u32x128,io)
+p at p0 0
+q0 get p 80
+q1 mul q0 10
+r call ap_read p0 32 q1 1
+q at r 0
+line at r 1
+q2 get q 0
+q3 eq q2 0
+q4 ne p1 0
+active and q3 q4
+q5 get q 0
+q6 select active 8 q5
+a set q 0 q6
+q7 get a 1
+q8 select active p1 q7
+b set a 1 q8
+q9 get line 0
+q10 get b 2
+q11 select active q9 q10
+c set b 2 q11
+q12 get p 81
+q13 get c 3
+q14 select active q12 q13
+d set c 3 q14
+q15 get p 82
+q16 get d 4
+q17 select active q15 q16
+e set d 4 q17
+q18 get e 5
+q19 select active p5 q18
+f set e 5 q19
+q20 get p 10
+q21 get f 109
+q22 select active q20 q21
+g set f 109 q22
+q23 get p 11
+q24 get g 110
+q25 select active q23 q24
+h set g 110 q25
+q26 get h 111
+q27 select active p4 q26
+j set h 111 q27
+q28 get j 112
+q29 select active p2 q28
+k set j 112 q29
+q30 get k 113
+q31 select active p3 q30
+l set k 113 q31
+q32 get l 114
+q33 select active p5 q32
+q34 set l 114 q33
+q35 at r 2
+q36 rec q34 q35
+ret q36
+end
+fn ac_expect (u32x128,io) u32 u32 u32 u32 -> (u32x128,io)
+q0 eq p1 p2
+q1 select q0 0 p3
+q2 call ac_error p0 q1 p2 p1 p4 0
+ret q2
+end
+fn ac_storego (u32x128,io) u32 u32 u32 u32 u32x128 -> (u32x128,io)
+p at p0 0
+q0 at p0 1
+q1 get p p2
+q2 add p2 1
+q3 get p q2
+q4 add p2 2
+q5 get p q4
+q6 rec q1 q3 q5
+r call av_store q0 q6 p3 p4 p5
+q7 at r 0
+q8 set p 0 q7
+q9 at r 1
+q10 rec q8 q9
+ret q10
+end
+fn ac_store (u32x128,io) u32 u32 u32 u32x128 -> (u32x128,io)
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold ac_storego q2 p0 p1 p2 p3 p4
+ret q3
+end
+fn ac_write (u32x128,io) u32 u32 u32 -> (u32x128,io)
+z call arena_zero
+q0 set z 0 p3
+q1 call ac_store p0 p1 p2 1 q0
+ret q1
+end
+fn ac_zero_ok (u32x128,io) u32 u32 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+fn ac_zero_page (u32x128,io) u32 u32 u32 -> (u32x128,io)
+first mul p1 128
+rest sub p3 first
+z call arena_zero
+q0 gt rest 128
+q1 select q0 128 rest
+q2 call ap_append p0 p2 q1 z
+ret q2
+end
+fn ac_zeros (u32x128,io) u32 u32 -> (u32x128,io)
+q0 div p2 128
+q1 rem p2 128
+q2 eq q1 0
+q3 select q2 0 1
+q4 add q0 q3
+q5 loop ac_zero_ok ac_zero_page q4 p0 p1 p2
+ret q5
+end
+fn ac_type (u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 mul p1 5
+q1 call ap_read p0 68 q0 5
+ret q1
+end
+fn ac_arg (u32x128,io) u32 -> (u32x128,u32,io)
+p at p0 0
+q0 get p 125
+valid lt p1 q0
+q1 select valid p1 0
+q2 select valid 1 0
+r call ap_read p0 124 q1 q2
+page at r 1
+q3 at r 0
+q4 get page 0
+q5 at r 2
+q6 rec q3 q4 q5
+ret q6
+end
+fn ac_operand_param (u32x128,u32,io) u32 u32x128 -> (u32x128,u32,io)
+p at p0 0
+q0 at p0 2
+q1 rec p q0
+q2 get p2 1
+q3 get p 14
+q4 ge q2 q3
+q5 get p2 4
+q6 and q5 4
+q7 ne q6 0
+q8 or q4 q7
+q9 select q8 105 0
+q10 get p 83
+q call ac_error q1 q9 4294967295 4294967295 q10 1
+q11 get p 13
+q12 get p2 1
+q13 add q11 q12
+r call ap_read q 50 q13 1
+page at r 1
+q14 at r 0
+q15 get page 0
+q16 at r 2
+q17 rec q14 q15 q16
+ret q17
+end
+fn ac_operand_node (u32x128,u32,io) u32 u32x128 -> (u32x128,u32,io)
+q0 at p0 0
+q1 at p0 2
+q2 rec q0 q1
+q3 get p2 1
+r call ap_read q2 121 q3 1
+map at r 1
+p at r 0
+q4 get map 0
+q5 ne q4 0
+q6 get map 0
+q7 sub q6 1
+q8 get p 15
+q9 ge q7 q8
+q10 and q5 q9
+q11 get map 0
+q12 sub q11 1
+q13 get p 11
+q14 lt q12 q13
+exists and q10 q14
+q15 at r 2
+q16 rec p q15
+q17 select exists 0 101
+q18 get p 83
+q call ac_error q16 q17 4294967295 4294967295 q18 2
+q19 get map 0
+q20 sub q19 1
+t call ap_read q 97 q20 1
+page at t 1
+q21 at t 0
+q22 get page 0
+q23 at t 2
+q24 rec q21 q22 q23
+ret q24
+end
+fn ac_operand (u32x128,io) u32 -> (u32x128,u32,io)
+q0 mul p1 5
+r call ap_read p0 47 q0 5
+o at r 1
+p at r 0
+q1 get o 2
+a set p 81 q1
+q2 get o 3
+b set a 82 q2
+q3 get o 0
+q4 eq q3 3
+q5 select q4 1 0
+q6 at r 2
+q7 get b 0
+q8 eq q7 0
+q9 get o 0
+q10 eq q9 1
+q11 and q8 q10
+q12 select q11 1 0
+q13 rec b q5 q6
+q fold ac_operand_param q12 q13 o
+c at q 0
+q14 get c 0
+q15 eq q14 0
+q16 get o 0
+q17 eq q16 0
+q18 and q15 q17
+q19 select q18 1 0
+q20 fold ac_operand_node q19 q o
+ret q20
+end
+fn ac_more (u32x128,io) u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+fn ac_operands (u32x128,io) u32 -> (u32x128,io)
+p at p0 0
+q set p 83 p1
+q0 at p0 1
+q1 rec q q0
+q2 get p 19
+q3 add q2 p1
+r call ac_operand q1 q3
+z call arena_zero
+q4 at r 0
+q5 at r 2
+q6 rec q4 q5
+q7 at r 1
+q8 set z 0 q7
+q9 call ap_append q6 124 1 q8
+ret q9
+end
+fn ac_type_makego (u32x128,u32,io) u32 u32 u32 u32 u32 u32 -> (u32x128,u32,io)
+p at p0 0
+q0 at p0 2
+q1 get p 68
+q2 get p 69
+q3 get p 70
+q4 rec q1 q2 q3
+q5 get p 71
+q6 get p 72
+q7 get p 73
+q8 rec q5 q6 q7
+q9 get p 74
+q10 get p 75
+q11 get p 76
+q12 rec q9 q10 q11
+q13 get p 77
+q14 get p 78
+q15 get p 79
+q16 rec q12 q13 q14 q15
+q17 rec q4 q8 q16
+q18 get p p5
+q19 add p5 1
+q20 get p q19
+q21 add p5 2
+q22 get p q21
+q23 rec q18 q20 q22
+r call tp_intern q0 q17 p2 p3 p4 q23 p6
+q24 at r 1
+q25 at q24 0
+q26 at q25 0
+m6_a set p 68 q26
+q27 at q25 1
+m6_b set m6_a 69 q27
+q28 at q25 2
+q29 set m6_b 70 q28
+q30 at q24 1
+q31 at q30 0
+m7_a set q29 71 q31
+q32 at q30 1
+m7_b set m7_a 72 q32
+q33 at q30 2
+q34 set m7_b 73 q33
+m5_si at q24 2
+q35 at m5_si 0
+q36 at q35 0
+m8_a set q34 74 q36
+q37 at q35 1
+m8_b set m8_a 75 q37
+q38 at q35 2
+q39 set m8_b 76 q38
+q40 at m5_si 1
+m5_d set q39 77 q40
+q41 at m5_si 2
+m5_e set m5_d 78 q41
+q42 at m5_si 3
+q43 set m5_e 79 q42
+q44 at r 0
+q45 set q43 0 q44
+q46 at r 2
+q47 at r 3
+q48 rec q45 q46 q47
+ret q48
+end
+fn ac_make (u32x128,io) u32 u32 u32 u32 u32 -> (u32x128,u32,io)
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 at p0 1
+q4 rec p 0 q3
+q5 fold ac_type_makego q2 q4 p1 p2 p3 p4 p5
+ret q5
+end
+fn ac_arity u32 -> u32
+q0 eq p0 1
+q1 eq p0 29
+one or q0 q1
+q2 ge p0 2
+q3 le p0 17
+q4 and q2 q3
+q5 eq p0 25
+q6 or q4 q5
+q7 eq p0 27
+q8 or q6 q7
+q9 eq p0 30
+q10 or q8 q9
+q11 eq p0 31
+q12 or q10 q11
+q13 ge p0 32
+q14 le p0 37
+q15 and q13 q14
+two or q12 q15
+q16 eq p0 18
+q17 eq p0 26
+q18 or q16 q17
+q19 eq p0 28
+three or q18 q19
+q20 select three 3 4294967295
+q21 select two 2 q20
+q22 select one 1 q21
+ret q22
+end
+fn ac_linear (u32x128,io) u32 -> (u32x128,io)
+p at p0 0
+a call ac_arg p0 p1
+q0 at a 0
+q1 at a 2
+q2 rec q0 q1
+q3 at a 1
+tt call ac_type q2 q3
+ti at tt 1
+q4 at tt 0
+q5 at tt 2
+q6 rec q4 q5
+q7 get p 19
+q8 add q7 p1
+q9 mul q8 5
+r call ap_read q6 47 q9 5
+o at r 1
+q at r 0
+q10 at r 2
+q11 rec q q10
+q12 get o 0
+q13 eq q12 0
+q14 get o 1
+q15 select q13 q14 0
+key call ap_read q11 121 q15 1
+node at key 1
+v at key 0
+q16 get o 0
+isparam eq q16 1
+off select isparam 115 106
+q17 get o 1
+q18 get node 0
+q19 sub q18 1
+index select isparam q17 q19
+q20 at key 2
+q21 rec v q20
+q22 get ti 3
+q23 ne q22 0
+q24 mul index 2
+q25 select q23 q24 0
+q26 get ti 3
+q27 ne q26 0
+q28 select q27 2 0
+u call ap_read q21 off q25 q28
+usage at u 1
+q29 at u 0
+q30 at u 2
+q31 rec q29 q30
+q32 get p 20
+q33 gt q32 1
+q34 get p 19
+q35 add q34 1
+q36 mul q35 5
+q37 select q33 q36 0
+q38 get p 20
+q39 gt q38 1
+q40 select q39 5 0
+idxop call ap_read q31 47 q37 q40
+fieldop at idxop 1
+q41 get fieldop 0
+q42 eq q41 2
+q43 get fieldop 1
+field select q42 q43 4294967295
+q44 at idxop 0
+q45 at idxop 2
+q46 rec q44 q45
+q47 get p 18
+q48 eq q47 27
+q49 eq p1 0
+q50 and q48 q49
+q51 get ti 0
+q52 eq q51 4
+q53 and q50 q52
+q54 get ti 2
+q55 lt field q54
+q56 and q53 q55
+q57 get ti 1
+q58 add q57 field
+q59 select q56 q58 0
+q60 get p 18
+q61 eq q60 27
+q62 eq p1 0
+q63 and q61 q62
+q64 get ti 0
+q65 eq q64 4
+q66 and q63 q65
+q67 get ti 2
+q68 lt field q67
+q69 and q66 q68
+q70 select q69 1 0
+ft call ap_read q46 71 q59 q70
+child at ft 1
+q71 at ft 0
+q72 at ft 2
+q73 rec q71 q72
+q74 get child 0
+ct call ac_type q73 q74
+childtype at ct 1
+q75 get p 18
+q76 eq q75 27
+q77 eq p1 0
+take and q76 q77
+q78 xor take true
+q79 get ti 0
+q80 eq q79 4
+q81 get ti 2
+q82 lt field q81
+q83 and q80 q82
+q84 get childtype 3
+q85 ne q84 0
+q86 and q83 q85
+touches or q78 q86
+q87 get ti 3
+q88 ne q87 0
+active and q88 touches
+q89 get usage 0
+q90 ne q89 0
+badconsumed and active q90
+q91 get usage 1
+q92 ne q91 0
+q93 and active q92
+q94 get p 18
+q95 eq q94 28
+q96 eq p1 0
+q97 and q95 q96
+q98 get usage 1
+q99 sub q98 1
+q100 eq field q99
+q101 and q97 q100
+q102 xor q101 true
+q103 or take q102
+badtaken and q93 q103
+q104 select take 311 312
+q105 select badtaken q104 0
+code select badconsumed 310 q105
+q0_1 at ct 0
+q106 get o 2
+q1_1 set q0_1 81 q106
+q107 get o 3
+q2_1 set q1_1 82 q107
+q108 at ct 2
+q109 rec q2_1 q108
+err call ac_error q109 code 4294967295 4294967295 p1 3
+z call arena_zero
+q110 get usage 0
+q111 select take q110 1
+aa set z 0 q111
+q112 add field 1
+q113 get usage 1
+q114 select take q112 q113
+bb set aa 1 q114
+pp at err 0
+q115 get pp 0
+q116 eq q115 0
+q117 and q116 active
+q118 select q117 1 0
+q119 mul index 2
+q120 fold ac_storego q118 err off q119 2 bb
+ret q120
+end
+fn ac_homogeneous (u32x128,io) u32 u32 -> (u32x128,io)
+a call ac_arg p0 p1
+q0 at a 0
+q1 at a 2
+q2 rec q0 q1
+q3 at a 1
+q4 call ac_expect q2 q3 p2 201 p1
+ret q4
+end
+fn ac_iocount (u32x128,u32,io) u32 u32 u32 -> (u32x128,u32,io)
+q0 at p0 0
+q1 at p0 2
+q2 rec q0 q1
+q3 add p3 p1
+r call ap_read q2 p2 q3 1
+a at r 1
+q4 at r 0
+q5 at r 2
+q6 rec q4 q5
+q7 get a 0
+t call ac_type q6 q7
+b at t 1
+q8 at t 0
+q9 at p0 1
+q10 get b 3
+q11 ne q10 0
+q12 select q11 1 0
+q13 add q9 q12
+q14 at t 2
+q15 rec q8 q13 q14
+ret q15
+end
+fn ac_iocount_ok (u32x128,u32,io) u32 u32 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+fn ac_record_construct (u32x128,io) u32 -> (u32x128,io)
+p at p0 0
+q0 get p 20
+q1 at p0 1
+q2 rec p 0 q1
+io loop ac_iocount_ok ac_iocount q0 q2 124 0
+q3 at io 0
+q4 at io 2
+q5 rec q3 q4
+q6 at io 1
+q7 gt q6 1
+q8 select q7 207 0
+q call ac_error q5 q8 4294967295 4294967295 4294967295 0
+q9 get p 20
+r call ac_make q 4 0 q9 124 0
+q10 at r 0
+q11 at r 2
+q12 rec q10 q11
+q13 at r 1
+tt call ac_type q12 q13
+t at tt 1
+q14 at tt 0
+q15 at tt 2
+q16 rec q14 q15
+q17 get t 3
+q18 eq q17 0
+q19 get t 4
+q20 gt q19 2097152
+q21 and q18 q20
+q22 select q21 206 0
+q23 at r 1
+err call ac_error q16 q22 4294967295 q23 4294967295 0
+q24 at err 0
+q25 at r 1
+out set q24 21 q25
+q26 at err 1
+q27 rec out q26
+ret q27
+end
+fn ac_need (u32x128,io) bool u32 u32 u32 u32 -> (u32x128,io)
+q0 ne p2 p3
+q1 and p1 q0
+q2 select q1 p4 0
+q3 call ac_error p0 q2 p3 p2 p5 0
+ret q3
+end
+fn ac_homogeneous_ok (u32x128,io) u32 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+fn ac_array_construct (u32x128,io) u32 u32 -> (u32x128,io)
+p at p0 0
+q0 get p 20
+same loop ac_homogeneous_ok ac_homogeneous q0 p0 p2
+t call ac_type same p2
+a at t 1
+q1 at t 0
+q2 at t 2
+q3 rec q1 q2
+q4 get a 3
+q5 ne q4 0
+q6 select q5 205 0
+q call ac_error q3 q6 4294967295 p2 0 0
+q7 get p 20
+r call ac_make q 3 p2 q7 124 0
+q8 at r 0
+q9 at r 2
+q10 rec q8 q9
+q11 at r 1
+tt call ac_type q10 q11
+ti at tt 1
+q12 at tt 0
+q13 at tt 2
+q14 rec q12 q13
+q15 get ti 4
+q16 gt q15 2097152
+q17 select q16 206 0
+q18 at r 1
+err call ac_error q14 q17 4294967295 q18 4294967295 0
+q19 at err 0
+q20 at r 1
+out set q19 21 q20
+q21 at err 1
+q22 rec out q21
+ret q22
+end
+fn ac_pair_construct (u32x128,io) u32 u32 -> (u32x128,io)
+q0 at p0 0
+q1 set q0 85 0
+z call arena_zero
+a set z 0 0
+b set a 1 p2
+q2 at p0 1
+q3 rec q1 q2
+r call ap_append q3 84 2 b
+t call ac_make r 4 0 2 84 0
+q4 at t 0
+q5 at t 1
+out set q4 21 q5
+q6 at t 2
+q7 rec out q6
+ret q7
+end
+fn ac_op (u32x128,io) u32 -> (u32x128,io)
+p at p0 0
+q0 get p 18
+aa call ac_arg p0 0
+q1 at aa 0
+q2 at aa 2
+q3 rec q1 q2
+bb call ac_arg q3 1
+q4 at bb 0
+q5 at bb 2
+q6 rec q4 q5
+cc call ac_arg q6 2
+a at aa 1
+b at bb 1
+c at cc 1
+q7 at cc 0
+q8 at cc 2
+q9 rec q7 q8
+ta call ac_type q9 a
+at at ta 1
+q10 at ta 0
+q11 at ta 2
+q12 rec q10 q11
+tb call ac_type q12 b
+bt at tb 1
+q13 ge q0 2
+q14 le q0 17
+scalar and q13 q14
+q15 ge q0 5
+q16 le q0 7
+q17 and q15 q16
+q18 eq q0 12
+q19 or q17 q18
+q20 eq q0 13
+q21 or q19 q20
+q22 xor q21 true
+both and scalar q22
+q23 xor both true
+polym and scalar q23
+q24 eq a 1
+q25 and polym q24
+wanted select q25 1 0
+q26 at tb 0
+q27 at tb 2
+q28 rec q26 q27
+x0 call ac_need q28 scalar a wanted 201 0
+x1 call ac_need x0 scalar b wanted 201 1
+q29 eq q0 18
+x2 call ac_need x1 q29 a 1 201 0
+q30 eq q0 18
+x3 call ac_need x2 q30 c b 203 2
+q31 eq q0 18
+q32 get bt 3
+q33 ne q32 0
+q34 and q31 q33
+q35 select q34 204 0
+x4 call ac_error x3 q35 4294967295 b 1 0
+q36 eq q0 29
+q37 eq q0 30
+q38 or q36 q37
+q39 eq q0 31
+q40 or q38 q39
+x5 call ac_need x4 q40 a 2 201 0
+q41 eq q0 30
+x6 call ac_need x5 q41 b 0 201 1
+q42 eq q0 25
+q43 eq q0 26
+q44 or q42 q43
+q45 eq q0 37
+array or q44 q45
+q46 get at 0
+q47 ne q46 3
+q48 eq q0 37
+q49 get at 1
+q50 ne q49 0
+q51 and q48 q50
+q52 or q47 q51
+q53 and array q52
+q54 eq q0 26
+q55 select q54 210 209
+q56 select q53 q55 0
+x7 call ac_error x6 q56 4294967295 a 0 0
+x8 call ac_need x7 array b 0 201 1
+q57 eq q0 26
+q58 get at 1
+x9 call ac_need x8 q57 c q58 201 2
+q59 eq q0 31
+q60 get bt 0
+q61 ne q60 3
+q62 get bt 1
+q63 ne q62 0
+q64 or q61 q63
+q65 and q59 q64
+q66 select q65 208 0
+x10 call ac_error x9 q66 4294967295 b 1 0
+q67 ge q0 32
+q68 le q0 36
+checked and q67 q68
+x11 call ac_need x10 checked a 0 201 0
+x12 call ac_need x11 checked b 0 201 1
+q69 eq q0 27
+q70 eq q0 28
+record or q69 q70
+q71 get at 0
+q72 ne q71 4
+q73 and record q72
+q74 select q73 220 0
+x13 call ac_error x12 q74 4294967295 a 0 0
+q75 get p 20
+q76 gt q75 1
+q77 get p 19
+q78 add q77 1
+q79 mul q78 5
+q80 select q76 q79 0
+q81 get p 20
+q82 gt q81 1
+q83 select q82 5 0
+idx call ap_read x13 47 q80 q83
+index at idx 1
+q84 at idx 0
+q85 at idx 2
+q86 rec q84 q85
+q87 get index 0
+q88 ne q87 2
+q89 ne b 0
+q90 or q88 q89
+q91 and record q90
+q92 select q91 221 0
+x14 call ac_error q86 q92 0 b 1 0
+q93 get index 1
+q94 get at 2
+q95 ge q93 q94
+q96 and record q95
+q97 select q96 222 0
+q98 get at 2
+q99 get index 1
+x15 call ac_error x14 q97 q98 q99 1 0
+q100 get at 1
+q101 get index 1
+q102 add q100 q101
+q103 select record q102 0
+q104 select record 1 0
+field call ap_read x15 71 q103 q104
+f at field 1
+q105 at field 0
+q106 at field 2
+q107 rec q105 q106
+q108 eq q0 28
+q109 get f 0
+x16 call ac_need q107 q108 c q109 201 2
+q110 ge q0 12
+q111 le q0 17
+boolout and q110 q111
+q112 ge q0 5
+q113 le q0 7
+q114 and q112 q113
+q115 select q114 a 0
+out select boolout 1 q115
+q116 eq q0 1
+out_1 select q116 a out
+q117 eq q0 18
+out_2 select q117 b out_1
+q118 eq q0 26
+q119 eq q0 28
+q120 or q118 q119
+out_3 select q120 a out_2
+q121 eq q0 25
+q122 get at 1
+out_4 select q121 q122 out_3
+q123 eq q0 27
+q124 get f 0
+out_5 select q123 q124 out_4
+q125 eq q0 30
+q126 eq q0 31
+q127 or q125 q126
+out_6 select q127 2 out_5
+q128 at x16 0
+q set q128 21 out_6
+q129 eq q0 22
+q130 select q129 1 0
+q131 at x16 1
+q132 rec q q131
+y fold ac_array_construct q130 q132 a
+q133 eq q0 23
+q134 select q133 1 0
+z fold ac_record_construct q134 y
+q135 eq q0 29
+q136 or q135 checked
+q137 eq q0 37
+q138 or q136 q137
+q139 select q138 1 0
+q140 eq q0 29
+q141 select q140 2 1
+q142 fold ac_pair_construct q139 z q141
+ret q142
+end
+fn ac_umul u32 u32 -> (u32,u32)
+a0 and p0 65535
+a1 shr p0 16
+b0 and p1 65535
+b1 shr p1 16
+prod0 mul a0 b0
+prod1 mul a0 b1
+prod2 mul a1 b0
+prod3 mul a1 b1
+q0 shr prod0 16
+q1 and prod1 65535
+q2 add q0 q1
+q3 and prod2 65535
+mid add q2 q3
+q4 and prod0 65535
+q5 and mid 65535
+q6 shl q5 16
+q7 or q4 q6
+q8 shr prod1 16
+q9 add prod3 q8
+q10 shr prod2 16
+q11 add q9 q10
+q12 shr mid 16
+q13 add q11 q12
+q14 rec q7 q13
+ret q14
+end
+fn ac_bitlen_step u32 u32 u32 -> u32
+q0 shr p2 p1
+q1 ne q0 0
+q2 add p1 1
+q3 select q1 q2 p0
+ret q3
+end
+fn ac_bitlen u32 -> u32
+q0 fold ac_bitlen_step 32 0 p0
+ret q0
+end
+fn ac_fp_nan (u32,u32) -> bool
+q0 at p0 1
+q1 and q0 2146435072
+q2 eq q1 2146435072
+q3 at p0 1
+q4 and q3 1048575
+q5 ne q4 0
+q6 at p0 0
+q7 ne q6 0
+q8 or q5 q7
+q9 and q2 q8
+ret q9
+end
+fn ac_fp_mul (u32,u32) u32 bool -> (u32,u32)
+hi at p0 1
+q0 shr hi 20
+exp and q0 2047
+q1 and hi 1048575
+mh or q1 1048576
+ml at p0 0
+low call ac_umul ml p1
+high call ac_umul mh p1
+l0 at low 0
+q2 at low 1
+q3 at high 0
+l1 add q2 q3
+q4 at high 1
+q5 at low 1
+q6 lt l1 q5
+q7 select q6 1 0
+l2 add q4 q7
+q8 ne l2 0
+q9 call ac_bitlen l2
+q10 add 64 q9
+q11 ne l1 0
+q12 call ac_bitlen l1
+q13 add 32 q12
+q14 call ac_bitlen l0
+q15 select q11 q13 q14
+len select q8 q10 q15
+q16 ge len 53
+q17 sub len 53
+shift select q16 q17 0
+q18 eq shift 0
+q19 eq shift 32
+q20 shr l0 shift
+q21 sub 32 shift
+q22 shl l1 q21
+q23 or q20 q22
+q24 select q19 l1 q23
+lo select q18 l0 q24
+q25 eq shift 0
+q26 eq shift 32
+q27 shr l1 shift
+q28 sub 32 shift
+q29 shl l2 q28
+q30 or q27 q29
+q31 select q26 l2 q30
+hh select q25 l1 q31
+q32 eq shift 32
+q33 shl 1 shift
+q34 sub q33 1
+mask select q32 4294967295 q34
+rem and l0 mask
+q35 sub shift 1
+half shl 1 q35
+q36 ne shift 0
+q37 gt rem half
+q38 eq rem half
+q39 and lo 1
+q40 ne q39 0
+q41 and q38 q40
+q42 or q37 q41
+round and q36 q42
+q43 select round 1 0
+rounded add lo q43
+q44 lt rounded lo
+q45 select q44 1 0
+rh add hh q45
+overflow ge rh 2097152
+q46 shr rounded 1
+q47 and rh 1
+q48 shl q47 31
+q49 or q46 q48
+nlo select overflow q49 rounded
+q50 shr rh 1
+nhi select overflow q50 rh
+q51 add exp shift
+q52 select overflow 1 0
+nexp add q51 q52
+q53 add exp 32
+ex select p2 q53 nexp
+ol select p2 ml nlo
+oh select p2 mh nhi
+q54 xor p2 true
+q55 eq p1 0
+zero and q54 q55
+q56 eq exp 2047
+q57 call ac_fp_nan p0
+q58 xor q57 true
+isinf and q56 q58
+q59 call ac_fp_nan p0
+q60 and zero isinf
+nan or q59 q60
+q61 xor nan true
+q62 eq exp 2047
+q63 ge ex 2047
+q64 or q62 q63
+q65 and q61 q64
+q66 xor zero true
+inf and q65 q66
+q67 shl ex 20
+q68 and oh 1048575
+q69 or q67 q68
+q70 select zero 0 q69
+q71 select inf 2146435072 q70
+h select nan 2146959360 q71
+q72 or nan inf
+q73 or q72 zero
+l select q73 0 ol
+q74 rec l h
+ret q74
+end
+fn ac_fp_max (u32,u32) (u32,u32) -> (u32,u32)
+q0 call ac_fp_nan p0
+q1 call ac_fp_nan p1
+nan or q0 q1
+q2 at p1 1
+q3 at p0 1
+q4 gt q2 q3
+q5 at p1 1
+q6 at p0 1
+q7 eq q5 q6
+q8 at p1 0
+q9 at p0 0
+q10 gt q8 q9
+q11 and q7 q10
+higher or q4 q11
+q12 at p1 0
+q13 at p0 0
+l select higher q12 q13
+q14 at p1 1
+q15 at p0 1
+h select higher q14 q15
+q16 select nan 0 l
+q17 select nan 2146959360 h
+q18 rec q16 q17
+ret q18
+end
+fn ac_signature_ok (u32x128,io) u32 u32 bool -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+fn ac_signature (u32x128,io) u32 u32 bool -> (u32x128,io)
+a call ac_arg p0 p1
+q0 at a 0
+q1 at a 2
+q2 rec q0 q1
+q3 add p2 p1
+t call ap_read q2 50 q3 1
+param at t 1
+q4 at t 0
+q5 at t 2
+q6 rec q4 q5
+q7 xor p3 true
+q8 ge p1 2
+q9 or q7 q8
+q10 at a 1
+q11 get param 0
+q12 select p3 213 201
+q13 call ac_need q6 q9 q10 q11 q12 p1
+ret q13
+end
+fn ac_pred_signature_ok (u32x128,io) u32 u32 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+fn ac_pred_signature (u32x128,io) u32 u32 u32 -> (u32x128,io)
+q0 add p2 p1
+a call ap_read p0 50 q0 1
+av at a 1
+q1 at a 0
+q2 at a 2
+q3 rec q1 q2
+q4 add p3 p1
+b call ap_read q3 50 q4 1
+bv at b 1
+q5 at b 0
+q6 at b 2
+q7 rec q5 q6
+q8 get bv 0
+q9 get av 0
+q10 call ac_expect q7 q8 q9 217 p1
+ret q10
+end
+fn ac_predicate (u32x128,io) u32 u32x128 u32 -> (u32x128,io)
+lookup call ap_read p0 118 p3 1
+found at lookup 1
+q0 at lookup 0
+q1 at lookup 2
+q2 rec q0 q1
+q3 get found 0
+q4 eq q3 0
+q5 select q4 104 0
+q call ac_error q2 q5 4294967295 4294967295 4294967295 0
+q6 get found 0
+q7 sub q6 1
+q8 mul q7 14
+r call ap_read q 41 q8 14
+pred at r 1
+q9 at r 0
+q10 at r 2
+q11 rec q9 q10
+q12 get pred 3
+rr call ac_expect q11 q12 1 201 4294967295
+q13 get pred 2
+q14 get p2 2
+zz call ac_expect rr q13 q14 217 4294967295
+q15 at zz 0
+q16 get found 0
+q17 sub q16 1
+st set q15 23 q17
+q18 get p2 2
+q19 at zz 1
+q20 rec st q19
+q21 get p2 1
+q22 get pred 1
+q23 loop ac_pred_signature_ok ac_pred_signature q18 q20 q21 q22
+ret q23
+end
+fn ac_call (u32x128,io) u32 u32 u32 -> (u32x128,io)
+p at p0 0
+q0 get p 18
+q1 eq q0 20
+q2 get p 18
+q3 eq q2 21
+folding or q1 q3
+lookup call ap_read p0 118 p2 1
+found at lookup 1
+q4 at lookup 0
+q5 at lookup 2
+q6 rec q4 q5
+q7 get found 0
+q8 eq q7 0
+q9 select folding 103 102
+q10 select q8 q9 0
+q call ac_error q6 q10 4294967295 4294967295 4294967295 0
+q11 get found 0
+q12 sub q11 1
+q13 mul q12 14
+r call ap_read q 41 q13 14
+body at r 1
+q14 at r 0
+q15 get found 0
+q16 sub q15 1
+st set q14 22 q16
+q17 at r 2
+q18 rec st q17
+q19 xor folding true
+q20 get p 20
+q21 get body 2
+q22 ne q20 q21
+q23 and q19 q22
+q24 select q23 219 0
+q25 get body 2
+q26 get p 20
+a call ac_error q18 q24 q25 q26 4294967295 0
+q27 get p 20
+q28 lt q27 2
+q29 and folding q28
+q30 select q29 216 0
+q31 get p 20
+b call ac_error a q30 2 q31 4294967295 0
+count call ac_arg b 0
+q32 at count 0
+q33 at count 2
+q34 rec q32 q33
+q35 at count 1
+c call ac_need q34 folding q35 0 201 0
+q36 get body 2
+q37 lt q36 2
+q38 and folding q37
+q39 select q38 214 0
+q40 get body 2
+d call ac_error c q39 2 q40 4294967295 0
+q41 get body 1
+q42 select folding q41 0
+q43 select folding 2 0
+pp call ap_read d 50 q42 q43
+params at pp 1
+q44 at pp 0
+q45 at pp 2
+q46 rec q44 q45
+q47 get params 1
+e call ac_need q46 folding q47 0 213 1
+init call ac_arg e 1
+q48 at init 0
+q49 at init 2
+q50 rec q48 q49
+q51 at init 1
+q52 get params 0
+f call ac_need q50 folding q51 q52 213 1
+q53 get body 3
+q54 get params 0
+g call ac_need f folding q53 q54 213 4294967295
+q55 get p 20
+q56 get body 2
+q57 ne q55 q56
+q58 and folding q57
+q59 select q58 215 0
+q60 get body 2
+q61 get p 20
+h call ac_error g q59 q60 q61 4294967295 0
+q62 get p 20
+q63 get body 1
+sig loop ac_signature_ok ac_signature q62 h q63 folding
+q64 get p 18
+q65 eq q64 21
+q66 select q65 1 0
+pred fold ac_predicate q66 sig body p3
+q67 get found 0
+q68 sub q67 1
+q69 mul q68 3
+bound call ap_read pred 103 q69 3
+bb at bound 1
+q70 at bound 0
+q71 at bound 2
+q72 rec q70 q71
+q73 get p 19
+q74 mul q73 5
+q75 select folding q74 0
+q76 select folding 5 0
+countop call ap_read q72 47 q75 q76
+co at countop 1
+q77 get co 0
+q78 eq q77 2
+literal and folding q78
+q79 get co 1
+factor select literal q79 1
+q80 get co 1
+q81 eq q80 0
+q82 get bb 0
+q83 div 16777216 factor
+q84 gt q82 q83
+q85 get bb 0
+q86 mul q85 factor
+q87 select q84 16777217 q86
+product select q81 0 q87
+q88 get bb 0
+next select literal product q88
+q89 get p 127
+q90 gt next q89
+q91 get p 127
+it select q90 next q91
+q92 get bb 1
+q93 get bb 2
+q94 rec q92 q93
+q95 get co 0
+q96 ne q95 2
+q97 and folding q96
+static call ac_fp_mul q94 factor q97
+q98 get p 87
+q99 get p 88
+q100 rec q98 q99
+max call ac_fp_max q100 static
+q101 at countop 0
+q102 at max 0
+si set q101 87 q102
+q103 at max 1
+si_1 set si 88 q103
+q104 at countop 2
+q105 rec si_1 q104
+q106 gt it 16777216
+q107 and literal q106
+q108 select q107 218 0
+err call ac_error q105 q108 16777216 it 0 0
+q109 at err 0
+q110 get params 0
+q111 get body 3
+q112 select folding q110 q111
+out set q109 21 q112
+q113 set out 127 it
+q114 at err 1
+q115 rec q113 q114
+ret q115
+end
+fn ac_node (u32x128,io) u32 -> (u32x128,io)
+old at p0 0
+q0 get old 15
+ni add q0 p1
+q1 mul ni 14
+r call ap_read p0 44 q1 14
+n at r 1
+p at r 0
+a set p 11 ni
+b set a 12 p1
+q2 get n 1
+c set b 18 q2
+q3 get n 2
+d set c 19 q3
+q4 get n 3
+e set d 20 q4
+q5 get n 6
+f set e 80 q5
+q6 get n 7
+g set f 81 q6
+q7 get n 8
+h set g 82 q7
+j set h 22 4294967295
+k set j 23 4294967295
+q8 set k 125 0
+q9 at r 2
+q10 rec q8 q9
+q11 get n 0
+lookup call ap_read q10 121 q11 1
+key at lookup 1
+q12 get key 0
+q13 ne q12 0
+q14 get key 0
+q15 sub q14 1
+q16 get p 15
+q17 ge q15 q16
+dup and q13 q17
+q18 at lookup 0
+q19 at lookup 2
+q20 rec q18 q19
+q21 select dup 303 0
+x0 call ac_error q20 q21 4294967295 4294967295 4294967295 0
+q22 get n 1
+q23 ge q22 19
+q24 get n 1
+q25 le q24 21
+has and q23 q25
+q26 get n 4
+q27 ne q26 4294967295
+q28 ne has q27
+q29 select q28 304 0
+x1 call ac_error x0 q29 4294967295 4294967295 4294967295 0
+q30 get n 1
+q31 eq q30 21
+q32 get n 5
+q33 ne q32 4294967295
+q34 ne q31 q33
+q35 select q34 305 0
+x2 call ac_error x1 q35 4294967295 4294967295 4294967295 0
+q36 get n 1
+arity call ac_arity q36
+q37 xor has true
+q38 ne arity 4294967295
+q39 and q37 q38
+q40 get n 3
+q41 ne q40 arity
+q42 and q39 q41
+q43 select q42 306 0
+q44 get n 3
+x3 call ac_error x2 q43 arity q44 4294967295 0
+q45 xor has true
+q46 eq arity 4294967295
+q47 and q45 q46
+q48 get n 3
+q49 eq q48 0
+q50 and q47 q49
+q51 select q50 307 0
+x4 call ac_error x3 q51 1 0 4294967295 0
+q52 get n 3
+operands loop ac_more ac_operands q52 x4
+q53 get n 3
+linear loop ac_more ac_linear q53 operands
+xx at linear 0
+q54 get n 7
+xx_1 set xx 81 q54
+q55 get n 8
+xx_2 set xx_1 82 q55
+q56 xor has true
+q57 select q56 1 0
+q58 at linear 1
+q59 rec xx_2 q58
+op fold ac_op q57 q59
+q60 select has 1 0
+q61 get n 4
+q62 get n 5
+call fold ac_call q60 op q61 q62
+cp at call 0
+z call arena_zero
+q63 get cp 21
+q64 set z 0 q63
+typed call ap_append call 97 1 q64
+effects call ap_append typed 106 2 z
+q65 get cp 22
+rz set z 0 q65
+q66 get cp 23
+rz_1 set rz 1 q66
+resolved call ap_append effects 100 2 rz_1
+q67 get n 0
+q68 add ni 1
+q69 call ac_write resolved 121 q67 q68
+ret q69
+end
+fn ac_return_effect (u32x128,io) u32 u32x128 -> (u32x128,io)
+p at p0 0
+q0 get p2 0
+q1 eq q0 0
+q2 get p2 1
+q3 select q1 q2 0
+lookup call ap_read p0 121 q3 1
+node at lookup 1
+q4 get p2 0
+q5 eq q4 1
+off select q5 115 106
+q6 get p2 0
+q7 eq q6 1
+q8 get p2 1
+q9 get node 0
+q10 sub q9 1
+index select q7 q8 q10
+q11 at lookup 0
+q12 at lookup 2
+q13 rec q11 q12
+q14 mul index 2
+r call ap_read q13 off q14 2
+usage at r 1
+q15 at r 0
+q16 at r 2
+q17 rec q15 q16
+q18 get usage 0
+q19 ne q18 0
+q20 select q19 314 0
+a call ac_error q17 q20 4294967295 4294967295 4294967295 0
+q21 get usage 1
+q22 ne q21 0
+q23 select q22 313 0
+q24 call ac_error a q23 4294967295 4294967295 4294967295 0
+ret q24
+end
+fn ac_function_body (u32x128,io) u32 -> (u32x128,io)
+q0 mul p1 14
+r call ap_read p0 41 q0 14
+f at r 1
+p at r 0
+a set p 10 p1
+b set a 11 4294967295
+q1 get f 1
+c set b 13 q1
+q2 get f 2
+d set c 14 q2
+q3 get f 4
+e set d 15 q3
+q4 get f 5
+g set e 16 q4
+q5 get f 3
+h set g 17 q5
+q6 get f 7
+j set h 80 q6
+j_1 set j 81 0
+j_2 set j_1 82 0
+k set j_2 127 1
+k_1 set k 87 0
+k_2 set k_1 88 1072693248
+q7 set k_2 116 0
+q8 at r 2
+q9 rec q7 q8
+q10 get f 0
+dup call ap_read q9 118 q10 1
+dd at dup 1
+q11 at dup 0
+q12 at dup 2
+q13 rec q11 q12
+q14 get dd 0
+q15 ne q14 0
+q16 select q15 21 0
+x0 call ac_error q13 q16 4294967295 4294967295 4294967295 0
+q17 get f 2
+q18 gt q17 64
+q19 select q18 315 0
+q20 get f 2
+x1 call ac_error x0 q19 64 q20 4294967295 0
+q21 get f 5
+q22 gt q21 4096
+q23 select q22 316 0
+q24 get f 5
+x2 call ac_error x1 q23 4096 q24 4294967295 0
+q25 get f 2
+q26 at x2 0
+q27 at x2 1
+q28 rec q26 0 q27
+q29 get f 1
+ios loop ac_iocount_ok ac_iocount q25 q28 50 q29
+q30 at ios 0
+q31 at ios 2
+q32 rec q30 q31
+q33 at ios 1
+q34 gt q33 1
+q35 select q34 309 0
+q36 at ios 1
+x3 call ac_error q32 q35 1 q36 4294967295 0
+q37 get f 2
+q38 mul q37 2
+state call ac_zeros x3 115 q38
+q39 get f 5
+nodes loop ac_more ac_node q39 state
+np at nodes 0
+q40 get f 4
+q41 get f 5
+q42 add q40 q41
+rr set np 11 q42
+q43 get f 8
+rr_1 set rr 80 q43
+rr_2 set rr_1 83 4294967295
+q44 at nodes 1
+q45 rec rr_2 q44
+q46 get f 6
+returned call ac_operand q45 q46
+q47 at returned 0
+q48 at returned 2
+q49 rec q47 q48
+q50 at returned 1
+q51 get f 3
+match call ac_expect q49 q50 q51 201 4294967295
+q52 at returned 1
+rt call ac_type match q52
+typ at rt 1
+q53 at rt 0
+q54 at rt 2
+q55 rec q53 q54
+q56 get f 6
+q57 mul q56 5
+ro call ap_read q55 47 q57 5
+retop at ro 1
+q58 get typ 3
+q59 ne q58 0
+q60 select q59 1 0
+q61 at ro 0
+q62 at ro 2
+q63 rec q61 q62
+effect fold ac_return_effect q60 q63 retop
+ready at effect 0
+page call arena_zero
+q64 get ready 127
+page_1 set page 0 q64
+q65 get ready 87
+page_2 set page_1 1 q65
+q66 get ready 88
+page_3 set page_2 2 q66
+bounds call ap_append effect 103 3 page_3
+ret bounds
+end
+fn ac_publish_function (u32x128,io) u32 -> (u32x128,io)
+first mul p1 14
+r call ap_read p0 41 first 1
+row at r 1
+name get row 0
+s at r 0
+t at r 2
+state rec s t
+index add p1 1
+out call ac_write state 118 name index
+ret out
+end
+fn ac_function (u32x128,io) u32 -> (u32x128,io)
+body call ac_function_body p0 p1
+out call ac_publish_function body p1
+ret out
+end
+fn arena_check io u32x128 -> (u32,u32x128,io)
+q0 get p1 0
+q1 eq q0 0
+q2 get p1 93
+q3 ne q2 1
+q4 and q1 q3
+q5 get p1 0
+q6 select q4 3 q5
+a set p1 0 q6
+a_1 set a 96 1
+z call arena_zero
+q7 rec 0 0 0
+m0_a set a_1 84 0
+m0_b set m0_a 85 0
+q8 set m0_b 86 0
+q9 rec 0 0 0
+m1_a set q8 97 0
+m1_b set m1_a 98 0
+q10 set m1_b 99 0
+q11 rec 0 0 0
+m2_a set q10 100 0
+m2_b set m2_a 101 0
+q12 set m2_b 102 0
+q13 rec 0 0 0
+m3_a set q12 103 0
+m3_b set m3_a 104 0
+q14 set m3_b 105 0
+q15 rec 0 0 0
+m4_a set q14 106 0
+m4_b set m4_a 107 0
+q16 set m4_b 108 0
+q17 rec 0 0 0
+m5_a set q16 115 0
+m5_b set m5_a 116 0
+q18 set m5_b 117 0
+q19 rec 0 0 0
+m6_a set q18 118 0
+m6_b set m6_a 119 0
+q20 set m6_b 120 0
+q21 rec 0 0 0
+m7_a set q20 121 0
+m7_b set m7_a 122 0
+q22 set m7_b 123 0
+q23 rec 0 0 0
+m8_a set q22 124 0
+m8_b set m8_a 125 0
+q24 set m8_b 126 0
+q25 rec q24 p0
+q26 get p1 67
+init call ac_zeros q25 118 q26
+q27 get p1 67
+init_1 call ac_zeros init 121 q27
+q28 get p1 42
+q29 div q28 14
+checked loop ac_more ac_function q29 init_1
+out at checked 0
+q30 get out 0
+q31 at checked 1
+q32 rec q30 out q31
+ret q32
+end
+fn arena_parse_check io u32 u32 -> (u32,u32x128,io)
+parsed call arena_parse p0 p1 p2
+q0 at parsed 2
+q1 at parsed 1
+q2 call arena_check q0 q1
+ret q2
+end

@@ -1,0 +1,114 @@
+# Arena-backed text output, preserving all full-u32 metadata and first failures.
+use "executable_bytes.a0"
+fn sv_get (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),u32,io)
+old at p0 0
+out at p0 1
+t at p0 2
+r call arena_load t p1 p2 1
+s at r 0
+page at r 1
+t1 at r 2
+ok eq old 0
+status select ok s old
+v get page 0
+result rec status out v t1
+ret result
+end
+fn sv_append_do (u32,(u32,u32,u32),io) u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+v at p0 1
+t at p0 2
+r call av_append t v p2 p3
+ret r
+end
+fn sv_append (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+s at p0 0
+ok eq s 0
+n select ok 1 0
+r fold sv_append_do n p0 p1 p2
+ret r
+end
+fn sv_packed_byte u32x128 u32 u32x32 -> u32x128
+word shr p1 2
+v get p2 word
+lane and p1 3
+shift mul lane 8
+shifted shr v shift
+byte and shifted 255
+r set p0 p1 byte
+ret r
+end
+fn sv_packed (u32,(u32,u32,u32),io) u32 u32x32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+page fold sv_packed_byte p1 z p2
+r call sv_append p0 p1 page
+ret r
+end
+fn sv_digit_more (u32,u32,u32x128) u32 -> bool
+n at p0 0
+r ne n 0
+ret r
+end
+fn sv_digit_step (u32,u32,u32x128) u32 -> (u32,u32,u32x128)
+n at p0 0
+length at p0 1
+a at p0 2
+digit rem n 10
+byte add digit 48
+b set a length byte
+next div n 10
+len add length 1
+r rec next len b
+ret r
+end
+fn sv_digit_reverse u32x128 u32 u32x128 u32 -> u32x128
+k sub p3 p1
+idx sub k 1
+v get p2 idx
+r set p0 p1 v
+ret r
+end
+fn sv_num (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+a set z 0 48
+start rec p1 0 a
+r loop sv_digit_more sv_digit_step 10 start
+len at r 1
+rev at r 2
+zero eq len 0
+length select zero 1 len
+page fold sv_digit_reverse length z rev length
+out call sv_append p0 length page
+ret out
+end
+fn sv_span_good (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+fn sv_span_step (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+old at p0 0
+out at p0 1
+t at p0 2
+off shl p1 7
+idx add off p3
+left sub p4 off
+big gt left 128
+count select big 128 left
+r call arena_load t p2 idx count
+s at r 0
+page at r 1
+t1 at r 2
+checked fold ew_byte_check count s page
+state rec checked out t1
+result call sv_append state count page
+ret result
+end
+fn sv_span (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+whole shr p3 7
+tail and p3 127
+has ne tail 0
+extra select has 1 0
+pages add whole extra
+r loop sv_span_good sv_span_step pages p0 p1 p2 p3
+ret r
+end

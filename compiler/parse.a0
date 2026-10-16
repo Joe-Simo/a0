@@ -227,7 +227,24 @@ v10 mul v 10
 vd add v10 c
 vd2 sub vd 48
 v2 select skip v vd2
-dig1 and dig isd
+# Decimal accumulation must fit u32 before the wrapped multiply/add is used.
+# The quotient and remainder of UINT32_MAX define the last permitted digit.
+digit sub c 48
+maxprefix div 4294967295 10
+maxlast rem 4294967295 10
+small lt v maxprefix
+edge eq v maxprefix
+lastok le digit maxlast
+edgeok and edge lastok
+fits or small edgeok
+firstdigit select p5 1 0
+later gt gk firstdigit
+zero eq v 0
+leading and later zero
+notleading select leading false true
+valid0 and isd fits
+valid and valid0 notleading
+dig1 and dig valid
 dig2 select skip dig dig1
 isw call isword c
 wl2 and wl isw
@@ -1270,6 +1287,22 @@ other0 or isd isx
 other select other0 false true
 ok1 select isx okx ok
 ok2 select other false ok1
+# A dimension is a nonzero decimal spelling; it must not wrap or start with zero.
+digit sub c 48
+maxprefix div 4294967295 10
+maxlast rem 4294967295 10
+small lt v maxprefix
+edge eq v maxprefix
+lastok le digit maxlast
+edgeok and edge lastok
+fits or small edgeok
+zero eq v 0
+leading and have zero
+notleading select leading false true
+valid and fits notleading
+badnum0 select valid false true
+badnum and isd badnum0
+ok3 select badnum false ok2
 gs2 set gs ng v
 gsr select isx gs2 gs
 ng1 add ng 1
@@ -1277,7 +1310,7 @@ ngr select isx ng1 ng
 v3 select isx 0 v2
 h1 select isd true have
 h2 select isx false h1
-r rec gsr ngr v3 h2 ok2
+r rec gsr ngr v3 h2 ok3
 ret r
 end
 # intern group p1 of p2 as the array of that length of the previous type

@@ -1,0 +1,97 @@
+# Optional POSIX OS transport v1. Source and graph decisions remain in A0 clients.
+# Use after negotiated FS hello; requests16realpath/17rawread/18stat/19cwd.
+use "arena.a0"
+fn fs_hello io -> (u32,io)
+r call arena_reply p0
+status at r 0
+count at r 1
+page at r 2
+t at r 3
+code call arena_expect status count 4
+m get page 0
+v get page 1
+fm get page 2
+fv get page 3
+a ne m 1093681490
+b ne v 1
+c ne fm 1093682771
+d ne fv 1
+ab or a b
+cd or c d
+bad or ab cd
+ok eq code 0
+fail and ok bad
+outcode select fail 1 code
+out rec outcode t
+ret out
+end
+fn fs_query io u32 u32 u32 u32 -> (u32,u32x128,io)
+a write p0 p1
+b write a 3
+c write b p2
+d write c p3
+e write d p4
+r call arena_reply e
+status at r 0
+count at r 1
+page at r 2
+t at r 3
+stat eq p1 18
+need select stat 4 3
+code call arena_expect status count need
+out rec code page t
+ret out
+end
+fn fs_bytes (u32,u32x128,io) -> (u32,u32,u32,u32,io)
+status at p0 0
+page at p0 1
+t at p0 2
+os get page 0
+h get page 1
+len get page 2
+ok eq status 0
+success eq os 0
+both and ok success
+nz ne len 0
+zh eq h 0
+invalid and nz zh
+bad and both invalid
+code select bad 1 status
+out rec code os h len t
+ret out
+end
+fn fs_realpath io u32 u32 u32 -> (u32,u32,u32,u32,io)
+r call fs_query p0 16 p1 p2 p3
+out call fs_bytes r
+ret out
+end
+fn fs_readfile io u32 u32 u32 -> (u32,u32,u32,u32,io)
+r call fs_query p0 17 p1 p2 p3
+out call fs_bytes r
+ret out
+end
+fn fs_stat io u32 u32 u32 -> (u32,u32,u32,u32,u32,io)
+r call fs_query p0 18 p1 p2 p3
+code at r 0
+page at r 1
+t at r 2
+os get page 0
+mode get page 1
+lo get page 2
+hi get page 3
+out rec code os mode lo hi t
+ret out
+end
+fn fs_cwd io -> (u32,u32,u32,u32,io)
+a write p0 19
+b write a 0
+r call arena_reply b
+status at r 0
+count at r 1
+page at r 2
+t at r 3
+code call arena_expect status count 3
+s rec code page t
+out call fs_bytes s
+ret out
+end

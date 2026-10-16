@@ -1,0 +1,950 @@
+use "source_packet.a0"
+# JavaScript program emitter written in A0, private milestone.
+# Same paged checked-IR ABI as emitc. Canonical and checked semantics; strict is
+# explicitly refused by the source frontend until site metadata/runtime are ported.
+# All aggregate updates copy their outer container, including iteration bodies.
+# No uniqueness assumption, owned variant or host emission fallback is used.
+use "emit_c.a0"
+
+fn jarg u32x128x512 u32 u32 -> u32
+x mul p1 2
+y add x p2
+pg shr y 7
+page get p0 pg
+off and y 127
+r get page off
+ret r
+end
+fn jnodeword u32x128x128 u32 u32 -> u32
+x mul p1 6
+y add x p2
+pg shr y 7
+page get p0 pg
+off and y 127
+r get page off
+ret r
+end
+fn jtype u32x384x65 u32 u32 -> u32
+pg shr p1 7
+page get p0 pg
+off and p1 127
+x mul off 3
+y add x p2
+r get page y
+ret r
+end
+fn jlist u32x128x65 u32 -> u32
+pg shr p1 7
+page get p0 pg
+off and p1 127
+r get page off
+ret r
+end
+fn jntype u32x128x24 u32 -> u32
+pg shr p1 7
+page get p0 pg
+off and p1 127
+r get page off
+ret r
+end
+
+fn jwop io u32 u32 -> io
+node eq p1 1
+param eq p1 2
+number eq p1 3
+boolean eq p1 4
+has or node param
+digit or has number
+nonzero ne p2 0
+yes and boolean nonzero
+zero eq p2 0
+no and boolean zero
+
+w0 call cws6c p0 node 110 0 0 0 0 0
+w1 call cws6c w0 param 112 0 0 0 0 0
+w2 call cwdecc w1 digit p2
+w3 call cws6c w2 yes 1702195828 0 0 0 0 0
+w4 call cws6c w3 no 1936482662 101 0 0 0 0
+ret w4
+end
+
+fn jwopstep io u32 u32 u32 -> io
+r call jwop p0 p2 p3
+ret r
+end
+fn jwopc io bool u32 u32 -> io
+n select p1 1 0
+r fold jwopstep n p0 p2 p3
+ret r
+end
+
+fn jwarg io u32 u32x128x512 u32 u32 -> io
+index add p3 p1
+k call jarg p2 index 0
+v call jarg p2 index 1
+comma ne p1 0
+bools eq p4 1
+
+w0 call cws6c p0 comma 8236 0 0 0 0 0
+w1 call cws6c w0 bools 40 0 0 0 0 0
+w2 call jwopc w1 true k v
+w3 call cws6c w2 bools 824196896 807418400 41 0 0 0
+ret w3
+end
+
+fn jwliststep io u32 u32x128x512 u32 u32 u32 -> io
+r fold jwarg p4 p0 p2 p3 p5
+ret r
+end
+fn jwlistc io bool u32x128x512 u32 u32 u32 -> io
+n select p1 1 0
+r fold jwliststep n p0 p2 p3 p4 p5
+ret r
+end
+fn jname io bool u32x128x400 u32x128x16 u32 -> io
+word mul p4 2
+pg shr word 7
+page get p3 pg
+off and word 127
+start get page off
+lengthoff add off 1
+length get page lengthoff
+r call cwnm p0 p1 p2 start length
+ret r
+end
+
+fn jpre io u32 -> io
+
+w0 call cws6 p0 1193291567 1919250021 1684370529 544825888 543516788 1635148106
+w1 call cws6 w0 1769104211 1696625776 1953786221 1998615141 1953786226 1763733093
+w2 call cws6 w1 809574510 1631789102 1768845166 543973731 1970037110 1702043749
+w3 call cws6 w2 1953390957 779314025 1852793610 1428190323 1298084403 1025529921
+w4 call cws6 w3 1719152672 1717986918 996566630 1853187594 1869182051 811671662
+w5 call cws6 w4 1982345332 1634607148 539583853 1718165627 2037655584 1718576496
+w6 call cws6 w5 555775520 656424253 1651340654 539456101 555777148 1651340622
+w7 call cws6 w6 1764651621 1953384819 1919248229 539588136 1981840508 807418912
+w8 call cws6 w7 545029152 540942454 1597125461 693649741 1919448096 1847621487
+w9 call cws6 w8 1377859429 1701277281 1869771333 1634609266 723543405 540682016
+w10 call cws6 w9 1701869669 1684370531 842233120 540748071 1970562418 1981836914
+w11 call cws6 w10 175972411 1668183398 1852795252 1949327648 745941041 1835101728
+w12 call cws6 w11 2065705317 543582496 1887007784 543584101 1025581174 1646731325
+w13 call cws6 w12 1701605231 690450017 1919448096 1847621487 1411413861 1164275833
+w14 call cws6 w13 1919906418 1835101736 539697253 1696610855 1667592312 543450484
+w15 call cws6 w14 1819242338 540748071 1970562418 1981836914 175972411 1668183398
+w16 call cws6 w15 1852795252 1949327648 745941042 1835101728 2065705317 543582496
+w17 call cws6 w16 1887007784 543584101 1025581174 1864835133 1667590754 2082482036
+w18 call cws6 w17 544612476 540884285 1819047278 545029152 1920090401 1764653409
+w19 call cws6 w18 1920090483 1982364001 1886284078 539587701 555777148 1634890305
+w20 call cws6 w19 1936273017 1634890305 779495545 1886680431 539587701 1948286076
+w21 call cws6 w20 1868918905 779493478 1769172848 1852795252 1027416352 1970153248
+w22 call cws6 w21 1919246957 1948264743 2003792488 2003136032 1886999584 1920091493
+w23 call cws6 w22 1848144495 543518049 975642667 1886938400 1702126437 1869160548
+w24 call cws6 w23 1802466336 690450021 1701978171 1852994932 540767776 1969621629
+w25 call cws6 w24 1769235310 1629515375 1918983984 679043442 1847602294 744844641
+w26 call cws6 w25 539782688 1818847331 1948265572 539584353 538970747 1936617315
+w27 call cws6 w26 2037653620 543450480 544612413 1953721961 1701015137 1428186735
+w28 call cws6 w27 863268457 1920090418 2082503009 544612476 1953721961 1701015137
+w29 call cws6 w28 1428186735 947154537 1634890305 537541497 543582496 1916870952
+w30 call cws6 w29 779706738 1916892009 679043442 639641974 1948327974 1684369529
+w31 call cws6 w30 1752440873 544698226 544695662 1701869908 1869771333 1634609266
+w32 call cws6 w31 723543405 540682016 1701869669 1684370531 1920098592 171649319
+w33 call cws6 w32 1718165536 779495456 1735288172 555772020 1847606589 1752440873
+w34 call cws6 w33 544698226 544695662 1735287122 1920091493 1848144495 543518049
+w35 call cws6 w34 975642667 1886938400 1702126437 539435108 544088107 539435051
+w36 call cws6 w35 1835363429 1937010277 171649319 1718165536 1635002400 1027416167
+w37 call cws6 w36 691085373 1763736352 1982341222 1936615712 1668178292 543584101
+w38 call cws6 w37 1953392981 1916875315 695820658 1952805408 544109173 1713388406
+w39 call cws6 w38 673215087 544499052 540876905 1763719984 1981824032 1852140590
+w40 call cws6 w39 996701287 724265248 811671593 1982345332 744319323 1835101728
+w41 call cws6 w40 539697253 539450151 543760427 1562845227 540748071 1970562418
+w42 call cws6 w41 1428188786 863268457 1920090418 1714321761 678260594 540748150
+w43 call cws6 w42 538970749 673212009 543646068 540884285 2065705266 543582496
+w44 call cws6 w43 1763735080 1635021678 1868915566 1767186534 1094218862 2036429426
+w45 call cws6 w44 1701978153 1852994932 540767776 544370534 1952803880 1025534240
+w46 call cws6 w45 540749856 540811369 1701588598 1752459118 728309819 1629497643
+w47 call cws6 w46 674329648 1567185782 1634607148 723543405 660285216 1763715872
+w48 call cws6 w47 656419616 992552797 1952805408 544109173 1953392981 1920090424
+w49 call cws6 w48 1714321761 678260594 673197174 1025517944 544743486 540090431
+w50 call cws6 w49 691019834 175972411 1718165536 2037655584 694445424 1919448096
+w51 call cws6 w50 1847621487 1411413861 1164275833 1919906418 1835101736 539697253
+w52 call cws6 w51 1696610855 1667592312 543450484 1953719662 1629512805 2036429426
+w53 call cws6 w52 171649319 1868767264 544502638 540876899 1819487862 677733225
+w54 call cws6 w53 1713388329 673215087 544499052 540876905 1763719984 1663056928
+w55 call cws6 w54 1852140590 996701287 724265248 1533222953 1025531241 1768448800
+w56 call cws6 w55 1663591532 744319323 1835101728 539697253 539450151 543760427
+w57 call cws6 w56 1562845227 540748071 1970562418 1663069810 175966779 1668183398
+w58 call cws6 w57 1852795252 1597006112 1868785010 1982358642 1634607148 539780461
+w59 call cws6 w58 1818847331 1852142180 175841321 1718165536 1092692000 2036429426
+w60 call cws6 w59 1098082606 2036429426 690583080 1919448096 1847621487 1411413861
+w61 call cws6 w60 1164275833 1919906418 1835101736 539697253 1696610855 1667592312
+w62 call cws6 w61 543450484 660825458 537541417 543582496 1814984232 1952935525
+w63 call cws6 w62 1025581160 1751326781 1919183977 1814982245 1952935525 1948264808
+w64 call cws6 w63 2003792488 2003136032 1851871776 1917150567 678588274 1701667182
+w65 call cws6 w64 656419616 2019893306 1952671088 656434277 1663052576 1684826472
+w66 call cws6 w65 778986866 1735288172 723544180 1713383200 1684825449 992552819
+w67 call cws6 w66 1663049738 1953721967 1025532704 1932424736 1701013868 540748072
+w68 call cws6 w67 544370534 1952803880 1025534240 540749856 540811369 1701588579
+w69 call cws6 w68 1752459118 728309819 1663052075 542992731 1751326781 1919183977
+w70 call cws6 w69 1767599717 1533225053 539778409 1701667182 656419616 723527470
+w71 call cws6 w70 992569632 1952805408 544109173 2097822563 1853187594 1869182051
+w72 call cws6 w71 811671662 1953068895 744564840 539781408 2065705334 1852793632
+w73 call cws6 w72 1663071347 1629502752 1768715054 690513251 1533222971 1025531241
+w74 call cws6 w73 540767776 1970562418 1663069810 175972411 1668183398 1852795252
+w75 call cws6 w74 1915773216 1634557812 1767859563 1852385391 695498096 1914731296
+w76 call cws6 w75 1920300133 544940142 1970302569 1763719796 1953853550 1768715054
+w77 call cws6 w76 690513251 1869619244 1769236851 540700271 1864379440 1970304117
+w78 call cws6 w77 1528838772 998056029 1711963424 1952673397 544108393 1918840929
+w79 call cws6 w78 677667173 2065705332 1852793632 1981838451 1948269856 1936683054
+w80 call cws6 w79 1869182057 540811374 1852386932 779384176 1735288172 1059088500
+w81 call cws6 w80 1764652064 1953853550 1882092635 1953067887 728657769 975199531
+w82 call cws6 w81 540749856 1970562418 1528852082 1948265590 2099264349 1853187594
+w83 call cws6 w82 1869182051 811671662 1769109343 1948804468 695607340 1948285728
+w84 call cws6 w83 1953853230 779384176 1752397168 992572968 1952805408 544109173
+w85 call cws6 w84 2099264372 1853187594 1869182051 811671662 1953853535 745810035
+w86 call cws6 w85 539582752 779362427 1886680431 1882092661 677933941 1701588577
+w87 call cws6 w86 1752459118 1713388329 673215087 544499052 540876905 1763719984
+w88 call cws6 w87 1629502496 1852140590 996701287 724265248 779362345 1886680431
+w89 call cws6 w88 1882092661 677933941 1567185761 1914714921 1920300133 997466222
+w90 call cws6 w89 1711963424 1952673397 544108393 1667182689 677667937 1646275681
+w91 call cws6 w90 544940073 1936617315 544415860 543236157 996286507 1952805408
+w92 call cws6 w91 544109173 1042314075 807419454 544415788 1428176188 1298084403
+w93 call cws6 w92 995973185 1711963424 1952673397 544108393 1667182689 677541235
+w94 call cws6 w93 1646275681 544940073 1970562418 1528852082 757096744 539583008
+w95 call cws6 w94 540950078 1629498416 540884512 540761442 1969621629 1769235310
+w96 call cws6 w95 1629515375 1835228976 1630039157 694296620 1914731296 1920300133
+w97 call cws6 w96 1297817710 778597473 1819635049 539779368 1042295138 807419454
+w98 call cws6 w97 543236140 543301674 1428176188 1298084403 995973185 1711963424
+w99 call cws6 w98 1952673397 544108393 1667182689 678848868 1646275681 544940073
+w100 call cws6 w99 1970562418 1646292594 1027423520 1059074080 741366560 1818322464
+w101 call cws6 w100 542991731 1297817658 778597473 1869573222 543238258 694296623
+w102 call cws6 w101 1920213036 995976565 1711963424 1952673397 544108393 1667182689
+w103 call cws6 w102 678258034 1646275681 544940073 1970562418 1646292594 1027423520
+w104 call cws6 w103 1059074080 741366560 1818322464 542991731 1633361978 1646273824
+w105 call cws6 w104 1920213036 995976565 1711963424 1952673397 544108393 1667182689
+w106 call cws6 w105 678716775 1763716193 544940073 1970562418 1763733106 1629502496
+w107 call cws6 w106 1852140590 543716455 1633361983 744319323 1970435104 975199589
+w108 call cws6 w107 741366560 1818322464 995976563 687392 0 0
+ret w108
+end
+
+# Function-name collision scan: a user export wins over the convenience IO export.
+fn jnomake bool u32 u32x128x400 u32x128x16 -> bool
+word mul p1 2
+pg shr word 7
+page get p3 pg
+off and word 127
+start get page off
+lengthoff add off 1
+length get page lengthoff
+size eq length 10
+
+pos0 add start 0
+pg0 shr pos0 7
+page0 get p2 pg0
+off0 and pos0 127
+v0 get page0 off0
+same0 eq v0 97
+hit0 and size same0
+
+pos1 add start 1
+pg1 shr pos1 7
+page1 get p2 pg1
+off1 and pos1 127
+v1 get page1 off1
+same1 eq v1 48
+hit1 and hit0 same1
+
+pos2 add start 2
+pg2 shr pos2 7
+page2 get p2 pg2
+off2 and pos2 127
+v2 get page2 off2
+same2 eq v2 95
+hit2 and hit1 same2
+
+pos3 add start 3
+pg3 shr pos3 7
+page3 get p2 pg3
+off3 and pos3 127
+v3 get page3 off3
+same3 eq v3 109
+hit3 and hit2 same3
+
+pos4 add start 4
+pg4 shr pos4 7
+page4 get p2 pg4
+off4 and pos4 127
+v4 get page4 off4
+same4 eq v4 97
+hit4 and hit3 same4
+
+pos5 add start 5
+pg5 shr pos5 7
+page5 get p2 pg5
+off5 and pos5 127
+v5 get page5 off5
+same5 eq v5 107
+hit5 and hit4 same5
+
+pos6 add start 6
+pg6 shr pos6 7
+page6 get p2 pg6
+off6 and pos6 127
+v6 get page6 off6
+same6 eq v6 101
+hit6 and hit5 same6
+
+pos7 add start 7
+pg7 shr pos7 7
+page7 get p2 pg7
+off7 and pos7 127
+v7 get page7 off7
+same7 eq v7 95
+hit7 and hit6 same7
+
+pos8 add start 8
+pg8 shr pos8 7
+page8 get p2 pg8
+off8 and pos8 127
+v8 get page8 off8
+same8 eq v8 105
+hit8 and hit7 same8
+
+pos9 add start 9
+pg9 shr pos9 7
+page9 get p2 pg9
+off9 and pos9 127
+v9 get page9 off9
+same9 eq v9 111
+hit9 and hit8 same9
+
+notname eq hit9 false
+r and p0 notname
+ret r
+end
+
+fn jfieldtype io u32 u32x128x65 u32 -> io
+pos add p3 p1
+t call jlist p2 pos
+comma ne p1 0
+
+w0 call cws6c p0 comma 8236 0 0 0 0 0
+w1 call cws6 w0 7614561 0 0 0 0 0
+w2 call cwdec w1 t
+ret w2
+end
+
+fn jdecl io u32 u32x384x65 u32x128x65 u32 -> io
+t add p4 p1
+tag call jtype p2 t 0
+a call jtype p2 t 1
+b call jtype p2 t 2
+etag call jtype p2 b 0
+array eq tag 4
+record eq tag 5
+aggregate or array record
+fields select record b 0
+
+w0 call cws6c p0 aggregate 1668183398 1852795252 1949327648 0 0 0
+w1 call cwdecc w0 aggregate t
+w2 call cws6c w1 aggregate 539784744 1701667182 544940073 1970562418 2125426 0
+w3 call cws6c w2 array 1633628257 2036429426 539784744 1701667182 8236 0
+w4 call cwdecc w3 array a
+w5 call cws6c w4 array 811671596 116 0 0 0 0
+w6 call cwdecc w5 array b
+w7 call cws6c w6 array 8236 0 0 0 0 0
+w8 call cwdecc w7 array etag
+w9 call cws6c w8 array 2099264297 10 0 0 0 0
+w10 call cws6c w9 record 1918840929 1919902565 745941092 1835101728 1528835173 0
+w11 fold jfieldtype fields w10 p3 a
+w12 call cws6c w11 record 540748125 2685 0 0 0 0
+ret w12
+end
+
+fn jparam io u32 -> io
+comma ne p1 0
+
+w0 call cws6c p0 comma 8236 0 0 0 0 0
+w1 call cws6 w0 112 0 0 0 0 0
+w2 call cwdec w1 p1
+ret w2
+end
+
+fn jguard io u32 u32x128x65 u32 -> io
+pos add p3 p1
+t call jlist p2 pos
+
+w0 call cws6 p0 7348256 0 0 0 0 0
+w1 call cwdec w0 p1
+w2 call cws6 w1 1629502752 29744 0 0 0 0
+w3 call cwdec w2 t
+w4 call cws6 w3 28712 0 0 0 0 0
+w5 call cwdec w4 p1
+w6 call cws6 w5 1881612332 0 0 0 0 0
+w7 call cwdec w6 p1
+w8 call cws6 w7 171649319 0 0 0 0 0
+ret w8
+end
+
+fn jnode io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32 u32 -> io
+g add p9 p1
+op call jnodeword p2 g 1
+na call jnodeword p2 g 2
+fa call jnodeword p2 g 3
+ce call jnodeword p2 g 4
+pr call jnodeword p2 g 5
+k0 call jarg p3 fa 0
+v0 call jarg p3 fa 1
+i1 add fa 1
+k1 call jarg p3 i1 0
+v1 call jarg p3 i1 1
+i2 add fa 2
+k2 call jarg p3 i2 0
+v2 call jarg p3 i2 1
+t call jntype p4 g
+tag call jtype p5 t 0
+etype call jtype p5 t 2
+etag call jtype p5 etype 0
+o0 call cotype k0 v0 p4 p6 p9 p10
+length call jtype p5 o0 1
+boolean eq tag 2
+nonbool eq boolean false
+euint eq etag 1
+ebool eq etag 2
+flat or euint ebool
+nested eq flat false
+fa2 add fa 2
+extras sub na 2
+hasextra gt na 2
+extcount select hasextra extras 0
+
+is1 eq op 1
+
+is2 eq op 2
+
+is3 eq op 3
+
+is4 eq op 4
+
+is5 eq op 5
+
+is6 eq op 6
+
+is7 eq op 7
+
+is8 eq op 8
+
+is9 eq op 9
+
+is10 eq op 10
+
+is11 eq op 11
+
+is12 eq op 12
+
+is13 eq op 13
+
+is14 eq op 14
+
+is15 eq op 15
+
+is16 eq op 16
+
+is17 eq op 17
+
+is18 eq op 18
+
+is19 eq op 19
+
+is20 eq op 20
+
+is21 eq op 21
+
+is22 eq op 22
+
+is23 eq op 23
+
+is24 eq op 24
+
+is25 eq op 25
+
+is26 eq op 26
+
+is27 eq op 27
+
+is28 eq op 28
+
+is29 eq op 29
+
+is30 eq op 30
+
+is31 eq op 31
+
+is32 eq op 32
+
+is33 eq op 33
+
+is34 eq op 34
+
+is35 eq op 35
+
+is36 eq op 36
+
+is37 eq op 37
+
+iteration or is20 is21
+ordinary eq iteration false
+bool5 and is5 boolean
+uint5 and is5 nonbool
+bool6 and is6 boolean
+uint6 and is6 nonbool
+bool7 and is7 boolean
+uint7 and is7 nonbool
+arr0 or is22 is24
+arruint and arr0 euint
+arrbool and arr0 ebool
+arrnest and arr0 nested
+boolmode select arrbool 1 0
+getbool and is25 boolean
+setbool and is26 ebool
+
+guardextra and is21 hasextra
+bodyextra and iteration hasextra
+
+w0 call cws6c p0 ordinary 1868767264 544502638 110 0 0 0
+w1 call cwdecc w0 ordinary p1
+w2 call cws6c w1 ordinary 2112800 0 0 0 0 0
+w3 call cws6c w2 iteration 1701584928 7217268 0 0 0 0
+w4 call cwdecc w3 iteration p1
+w5 call cws6c w4 iteration 2112800 0 0 0 0 0
+w6 call jwopc w5 is1 k0 v0
+w7 call cws6c w6 is1 2619 0 0 0 0 0
+w8 call cws6c w7 is2 40 0 0 0 0 0
+w9 call jwopc w8 is2 k0 v0
+w10 call cws6c w9 is2 2108192 0 0 0 0 0
+w11 call jwopc w10 is2 k1 v1
+w12 call cws6c w11 is2 1044258857 3153982 0 0 0 0
+w13 call cws6c w12 is2 2619 0 0 0 0 0
+w14 call cws6c w13 is3 40 0 0 0 0 0
+w15 call jwopc w14 is3 k0 v0
+w16 call cws6c w15 is3 2108704 0 0 0 0 0
+w17 call jwopc w16 is3 k1 v1
+w18 call cws6c w17 is3 1044258857 3153982 0 0 0 0
+w19 call cws6c w18 is3 2619 0 0 0 0 0
+w20 call cws6c w19 is4 1752457549 1970104622 10348 0 0 0
+w21 call jwopc w20 is4 k0 v0
+w22 call cws6c w21 is4 8236 0 0 0 0 0
+w23 call jwopc w22 is4 k1 v1
+w24 call cws6c w23 is4 1044258857 3153982 0 0 0 0
+w25 call cws6c w24 is4 2619 0 0 0 0 0
+w26 call cws6c w25 bool5 40 0 0 0 0 0
+w27 call jwopc w26 bool5 k0 v0
+w28 call cws6c w27 bool5 539371040 0 0 0 0 0
+w29 call jwopc w28 bool5 k1 v1
+w30 call cws6c w29 bool5 41 0 0 0 0 0
+w31 call cws6c w30 bool5 2619 0 0 0 0 0
+w32 call cws6c w31 uint5 40 0 0 0 0 0
+w33 call jwopc w32 uint5 k0 v0
+w34 call cws6c w33 uint5 2106912 0 0 0 0 0
+w35 call jwopc w34 uint5 k1 v1
+w36 call cws6c w35 uint5 1044258857 3153982 0 0 0 0
+w37 call cws6c w36 uint5 2619 0 0 0 0 0
+w38 call cws6c w37 bool6 40 0 0 0 0 0
+w39 call jwopc w38 bool6 k0 v0
+w40 call cws6c w39 bool6 545029152 0 0 0 0 0
+w41 call jwopc w40 bool6 k1 v1
+w42 call cws6c w41 bool6 41 0 0 0 0 0
+w43 call cws6c w42 bool6 2619 0 0 0 0 0
+w44 call cws6c w43 uint6 40 0 0 0 0 0
+w45 call jwopc w44 uint6 k0 v0
+w46 call cws6c w45 uint6 2128928 0 0 0 0 0
+w47 call jwopc w46 uint6 k1 v1
+w48 call cws6c w47 uint6 1044258857 3153982 0 0 0 0
+w49 call cws6c w48 uint6 2619 0 0 0 0 0
+w50 call cws6c w49 bool7 40 0 0 0 0 0
+w51 call jwopc w50 bool7 k0 v0
+w52 call cws6c w51 bool7 1027416352 32 0 0 0 0
+w53 call jwopc w52 bool7 k1 v1
+w54 call cws6c w53 bool7 41 0 0 0 0 0
+w55 call cws6c w54 bool7 2619 0 0 0 0 0
+w56 call cws6c w55 uint7 40 0 0 0 0 0
+w57 call jwopc w56 uint7 k0 v0
+w58 call cws6c w57 uint7 2121248 0 0 0 0 0
+w59 call jwopc w58 uint7 k1 v1
+w60 call cws6c w59 uint7 1044258857 3153982 0 0 0 0
+w61 call cws6c w60 uint7 2619 0 0 0 0 0
+w62 call cws6c w61 is8 40 0 0 0 0 0
+w63 call jwopc w62 is8 k0 v0
+w64 call cws6c w63 is8 540818464 40 0 0 0 0
+w65 call jwopc w64 is8 k1 v1
+w66 call cws6c w65 is8 857744928 539568433 540950078 48 0 0
+w67 call cws6c w66 is8 2619 0 0 0 0 0
+w68 call jwopc w67 is9 k0 v0
+w69 call cws6c w68 is9 1044266528 10272 0 0 0 0
+w70 call jwopc w69 is9 k1 v1
+w71 call cws6c w70 is9 857744928 10545 0 0 0 0
+w72 call cws6c w71 is9 2619 0 0 0 0 0
+w73 call cws6c w72 is10 40 0 0 0 0 0
+w74 call jwopc w73 is10 k1 v1
+w75 call cws6c w74 is10 1027423520 1059074080 1719152672 1717986918 543581798 1632444474
+w76 call cws6c w75 is10 1714317428 1919905644 40 0 0 0
+w77 call jwopc w76 is10 k0 v0
+w78 call cws6c w77 is10 2109216 0 0 0 0 0
+w79 call jwopc w78 is10 k1 v1
+w80 call cws6c w79 is10 10537 0 0 0 0 0
+w81 call cws6c w80 is10 2619 0 0 0 0 0
+w82 call cws6c w81 is11 40 0 0 0 0 0
+w83 call jwopc w82 is11 k1 v1
+w84 call cws6c w83 is11 1027423520 1059074080 32 0 0 0
+w85 call jwopc w84 is11 k0 v0
+w86 call cws6c w85 is11 2112032 0 0 0 0 0
+w87 call jwopc w86 is11 k0 v0
+w88 call cws6c w87 is11 2106656 0 0 0 0 0
+w89 call jwopc w88 is11 k1 v1
+w90 call cws6c w89 is11 41 0 0 0 0 0
+w91 call cws6c w90 is11 2619 0 0 0 0 0
+w92 call jwopc w91 is12 k0 v0
+w93 call cws6c w92 is12 1027423520 32 0 0 0 0
+w94 call jwopc w93 is12 k1 v1
+w95 call cws6c w94 is12 2619 0 0 0 0 0
+w96 call jwopc w95 is13 k0 v0
+w97 call cws6c w96 is13 1027416352 32 0 0 0 0
+w98 call jwopc w97 is13 k1 v1
+w99 call cws6c w98 is13 2619 0 0 0 0 0
+w100 call jwopc w99 is14 k0 v0
+w101 call cws6c w100 is14 2112544 0 0 0 0 0
+w102 call jwopc w101 is14 k1 v1
+w103 call cws6c w102 is14 2619 0 0 0 0 0
+w104 call jwopc w103 is15 k0 v0
+w105 call cws6c w104 is15 540884000 0 0 0 0 0
+w106 call jwopc w105 is15 k1 v1
+w107 call cws6c w106 is15 2619 0 0 0 0 0
+w108 call jwopc w107 is16 k0 v0
+w109 call cws6c w108 is16 2113056 0 0 0 0 0
+w110 call jwopc w109 is16 k1 v1
+w111 call cws6c w110 is16 2619 0 0 0 0 0
+w112 call jwopc w111 is17 k0 v0
+w113 call cws6c w112 is17 540884512 0 0 0 0 0
+w114 call jwopc w113 is17 k1 v1
+w115 call cws6c w114 is17 2619 0 0 0 0 0
+w116 call jwopc w115 is18 k0 v0
+w117 call cws6c w116 is18 2113312 0 0 0 0 0
+w118 call jwopc w117 is18 k1 v1
+w119 call cws6c w118 is18 2112032 0 0 0 0 0
+w120 call jwopc w119 is18 k2 v2
+w121 call cws6c w120 is18 2619 0 0 0 0 0
+w122 call cws6c w121 is19 1600729185 0 0 0 0 0
+w123 call jname w122 is19 p7 p8 ce
+w124 call cws6c w123 is19 40 0 0 0 0 0
+w125 call jwlistc w124 is19 p3 fa na 0
+w126 call cws6c w125 is19 670505 0 0 0 0 0
+w127 call cws6c w126 arruint 1953392981 1916875315 779706738 2647663 0 0
+w128 call cws6c w127 arrbool 1953392981 1920090424 1865316705 10342 0 0
+w129 call cws6c w128 arrnest 91 0 0 0 0 0
+w130 call jwlistc w129 arr0 p3 fa na boolmode
+w131 call cws6c w130 arruint 670505 0 0 0 0 0
+w132 call cws6c w131 arrbool 670505 0 0 0 0 0
+w133 call cws6c w132 arrnest 670557 0 0 0 0 0
+w134 call cws6c w133 is23 91 0 0 0 0 0
+w135 call jwlistc w134 is23 p3 fa na 0
+w136 call cws6c w135 is23 670557 0 0 0 0 0
+w137 call jwopc w136 is25 k0 v0
+w138 call cws6c w137 is25 91 0 0 0 0 0
+w139 call jwopc w138 is25 k1 v1
+w140 call cws6c w139 is25 2106656 0 0 0 0 0
+w141 call cwdecc w140 is25 length
+w142 call cws6c w141 is25 93 0 0 0 0 0
+w143 call cws6c w142 getbool 1027423520 12576 0 0 0 0
+w144 call cws6c w143 is25 2619 0 0 0 0 0
+w145 call cws6c w144 is26 2002727009 677934185 0 0 0 0
+w146 call jwopc w145 is26 k0 v0
+w147 call cws6c w146 is26 8236 0 0 0 0 0
+w148 call jwopc w147 is26 k1 v1
+w149 call cws6c w148 is26 2106656 0 0 0 0 0
+w150 call cwdecc w149 is26 length
+w151 call cws6c w150 is26 8236 0 0 0 0 0
+w152 call cws6c w151 setbool 40 0 0 0 0 0
+w153 call jwopc w152 is26 k2 v2
+w154 call cws6c w153 setbool 824196896 807418400 41 0 0 0
+w155 call cws6c w154 is26 670505 0 0 0 0 0
+w156 call jwopc w155 is27 k0 v0
+w157 call cws6c w156 is27 91 0 0 0 0 0
+w158 call jwopc w157 is27 k1 v1
+w159 call cws6c w158 is27 93 0 0 0 0 0
+w160 call cws6c w159 is27 2619 0 0 0 0 0
+w161 call cws6c w160 is28 2002727009 677934185 0 0 0 0
+w162 call jwopc w161 is28 k0 v0
+w163 call cws6c w162 is28 8236 0 0 0 0 0
+w164 call jwopc w163 is28 k1 v1
+w165 call cws6c w164 is28 8236 0 0 0 0 0
+w166 call jwopc w165 is28 k2 v2
+w167 call cws6c w166 is28 41 0 0 0 0 0
+w168 call cws6c w167 is28 2619 0 0 0 0 0
+w169 call cws6c w168 is29 1918840929 677667173 0 0 0 0
+w170 call jwopc w169 is29 k0 v0
+w171 call cws6c w170 is29 41 0 0 0 0 0
+w172 call cws6c w171 is29 2619 0 0 0 0 0
+w173 call cws6c w172 is30 2002727009 1702127986 40 0 0 0
+w174 call jwopc w173 is30 k0 v0
+w175 call cws6c w174 is30 8236 0 0 0 0 0
+w176 call jwopc w175 is30 k1 v1
+w177 call cws6c w176 is30 41 0 0 0 0 0
+w178 call cws6c w177 is30 2619 0 0 0 0 0
+w179 call cws6c w178 is31 1885286497 678655093 0 0 0 0
+w180 call jwopc w179 is31 k0 v0
+w181 call cws6c w180 is31 8236 0 0 0 0 0
+w182 call jwopc w181 is31 k1 v1
+w183 call cws6c w182 is31 41 0 0 0 0 0
+w184 call cws6c w183 is31 2619 0 0 0 0 0
+w185 call cws6c w184 is32 1667182689 677667937 0 0 0 0
+w186 call jwopc w185 is32 k0 v0
+w187 call cws6c w186 is32 8236 0 0 0 0 0
+w188 call jwopc w187 is32 k1 v1
+w189 call cws6c w188 is32 41 0 0 0 0 0
+w190 call cws6c w189 is32 2619 0 0 0 0 0
+w191 call cws6c w190 is33 1667182689 677541235 0 0 0 0
+w192 call jwopc w191 is33 k0 v0
+w193 call cws6c w192 is33 8236 0 0 0 0 0
+w194 call jwopc w193 is33 k1 v1
+w195 call cws6c w194 is33 41 0 0 0 0 0
+w196 call cws6c w195 is33 2619 0 0 0 0 0
+w197 call cws6c w196 is34 1667182689 678196589 0 0 0 0
+w198 call jwopc w197 is34 k0 v0
+w199 call cws6c w198 is34 8236 0 0 0 0 0
+w200 call jwopc w199 is34 k1 v1
+w201 call cws6c w200 is34 41 0 0 0 0 0
+w202 call cws6c w201 is34 2619 0 0 0 0 0
+w203 call cws6c w202 is35 1667182689 678848868 0 0 0 0
+w204 call jwopc w203 is35 k0 v0
+w205 call cws6c w204 is35 8236 0 0 0 0 0
+w206 call jwopc w205 is35 k1 v1
+w207 call cws6c w206 is35 41 0 0 0 0 0
+w208 call cws6c w207 is35 2619 0 0 0 0 0
+w209 call cws6c w208 is36 1667182689 678258034 0 0 0 0
+w210 call jwopc w209 is36 k0 v0
+w211 call cws6c w210 is36 8236 0 0 0 0 0
+w212 call jwopc w211 is36 k1 v1
+w213 call cws6c w212 is36 41 0 0 0 0 0
+w214 call cws6c w213 is36 2619 0 0 0 0 0
+w215 call cws6c w214 is37 1667182689 678716775 0 0 0 0
+w216 call jwopc w215 is37 k0 v0
+w217 call cws6c w216 is37 8236 0 0 0 0 0
+w218 call jwopc w217 is37 k1 v1
+w219 call cws6c w218 is37 41 0 0 0 0 0
+w220 call cws6c w219 is37 2619 0 0 0 0 0
+w221 call jwopc w220 iteration k1 v1
+w222 call cws6c w221 iteration 538970683 544370534 1952803880 26912 0 0
+w223 call cwdecc w222 iteration p1
+w224 call cws6c w223 iteration 807419168 6889531 0 0 0 0
+w225 call cwdecc w224 iteration p1
+w226 call cws6c w225 iteration 2112544 0 0 0 0 0
+w227 call jwopc w226 iteration k0 v0
+w228 call cws6c w227 iteration 6889531 0 0 0 0 0
+w229 call cwdecc w228 iteration p1
+w230 call cws6c w229 iteration 539568939 123 0 0 0 0
+w231 call cws6c w230 is21 543582496 811671848 24425 0 0 0
+w232 call jname w231 is21 p7 p8 pr
+w233 call cws6c w232 is21 28200 0 0 0 0 0
+w234 call cwdecc w233 is21 p1
+w235 call cws6c w234 is21 6889516 0 0 0 0 0
+w236 call cwdecc w235 is21 p1
+w237 call cws6c w236 guardextra 8236 0 0 0 0 0
+w238 call jwlistc w237 is21 p3 fa2 extcount 0
+w239 call cws6c w238 is21 1646274857 1801545074 59 0 0 0
+w240 call cws6c w239 iteration 28192 0 0 0 0 0
+w241 call cwdecc w240 iteration p1
+w242 call cws6c w241 iteration 1629502752 6252848 0 0 0 0
+w243 call jname w242 iteration p7 p8 ce
+w244 call cws6c w243 iteration 28200 0 0 0 0 0
+w245 call cwdecc w244 iteration p1
+w246 call cws6c w245 iteration 6889516 0 0 0 0 0
+w247 call cwdecc w246 iteration p1
+w248 call cws6c w247 bodyextra 8236 0 0 0 0 0
+w249 call jwlistc w248 iteration p3 fa2 extcount 0
+w250 call cws6c w249 iteration 2099264297 10 0 0 0 0
+ret w250
+end
+
+fn jfunction io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 -> io
+func add p10 p1
+row mul func 7
+np call cfw p9 row 1
+fp call cfw p9 row 2
+first call cfw p9 row 4
+count call cfw p9 row 5
+packed call cfw p9 row 6
+rop call cretop packed p3
+rk at rop 0
+rv at rop 1
+
+w0 call cws6 p0 1668183398 1852795252 1764778272 95 0 0
+w1 call jname w0 true p7 p8 func
+w2 call cws6 w1 40 0 0 0 0 0
+w3 fold jparam np w2
+w4 call cws6 w3 175841321 0 0 0 0 0
+w5 fold jnode count w4 p2 p3 p4 p5 p6 p7 p8 first fp
+w6 call cws6 w5 1701978144 1852994932 32 0 0 0
+w7 call jwopc w6 true rk rv
+w8 call cws6 w7 175966779 1668183398 1852795252 1882218784 95 0
+w9 call jname w8 true p7 p8 func
+w10 call cws6 w9 40 0 0 0 0 0
+w11 fold jparam np w10
+w12 call cws6 w11 175841321 0 0 0 0 0
+w13 fold jguard np w12 p6 fp
+w14 call cws6 w13 1701978144 1852994932 1764778272 95 0 0
+w15 call jname w14 true p7 p8 func
+w16 call cws6 w15 40 0 0 0 0 0
+w17 fold jparam np w16
+w18 call cws6 w17 2097822505 1886938378 544502383 811671675 24432 0
+w19 call jname w18 true p7 p8 func
+w20 call cws6 w19 544432416 0 0 0 0 0
+w21 call jname w20 true p7 p8 func
+w22 call cws6 w21 171670816 10 0 0 0 0
+ret w22
+end
+
+# Checked-IR entry: identical argument order to emitc, source bytes as IO words.
+fn emitjs io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32 u32 u32 u32 u32 -> io
+head ne p13 0
+headcount select head 1 0
+a fold jpre headcount p0
+noexport fold jnomake 822 true p7 p8
+makeexport and head noexport
+
+nt sub p9 p10
+
+w0 call cws6c a makeexport 1869641829 2065724530 1915773216 1634557812 1767859563 1935745135
+w1 call cws6c w0 makeexport 1597006112 1701536109 544172383 670589 0 0
+w2 fold jdecl nt w1 p1 p2 p10
+nf sub p12 p11
+r fold jfunction nf w2 p4 p5 p6 p1 p2 p7 p8 p3 p11
+ret r
+end
+
+fn jemit io u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32 u32 u32 u32 u32 -> io
+r call emitjs p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14
+ret r
+end
+
+fn junit io u32x512x64 u32 u32x128x8 u32 bool bool -> (io,u32,u32x128x8,u32)
+lx call lexsrc p1 p2
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+s1 call pass1 p1 toks ntok
+sinfo at s1 1
+ta at s1 2
+tv at s1 3
+hdrs at s1 5
+nsym at s1 7
+umode at s1 10
+uerr at s1 11
+uetok at s1 12
+nhdr at s1 15
+uopen ne umode 0
+uerr0 eq uerr 0
+ueof and uerr0 uopen
+e1 select ueof 1 uerr
+et1 select ueof ntok uetok
+s2 call pass2 p1 sinfo nsym
+pool at s2 0
+s3 call pass3 p1 toks ta hdrs nhdr e1 et1 ntok
+types at s3 0
+tlist at s3 2
+hout at s3 4
+ntypes at s3 5
+ntlist at s3 6
+e3 at s3 11
+et3 at s3 12
+nhc at s3 18
+nhn at s3 19
+s4 call pass4 hout nhn nhc
+fns0 at s4 0
+names at s4 1
+derr at s4 2
+dtok at s4 3
+dup ne derr 0
+e4 select dup derr e3
+et4 select dup dtok et3
+s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4 0
+fns at s5 0
+nodes at s5 1
+alo at s5 2
+narg at s5 5
+args call bodyargs alo narg fns0 names p1 toks ta tv ntok e4 et4
+fcs at s1 7
+fcu at s1 8
+fcp at s2 1
+fch at s3 19
+fct at s3 5
+fcl at s3 6
+fcn at s5 4
+ovr call fecap toks ntok fcs fcp fcu fch fct fcl fcn narg
+pcode0 at s5 8
+pcode select ovr 4 pcode0
+# after a parse error the function count may be below p4: nothing is checked then
+cfrom call cumin p4 nhc
+ck call checkir types tlist fns nodes args p3 ntypes ntlist nhc cfrom
+types2 at ck 0
+tlist2 at ck 2
+ntys at ck 4
+fstat at ck 7
+ntypes2 at ck 8
+cerr at ck 10
+ns127 add nsym 127
+nsp shr ns127 7
+z64 call z64
+st0 rec z64 0
+st fold cstpg nsp st0 sinfo
+starts at st 0
+z16 call z16
+fnm fold cfnm nhc z16 fns sinfo starts
+grew ne ntypes2 ntypes
+added and grew p5
+pok eq pcode 0
+c1 select added 5 0
+cok eq cerr 0
+c2 select cok c1 cerr
+code0 select pok c2 pcode
+# JavaScript supports all six total checked operations; strict metadata/runtime is next.
+# Strict programs remain explicitly refused until their trap runtime is implemented.
+prof at s1 16
+unsup eq prof 1
+ok0 eq code0 0
+ref and ok0 unsup
+code select ref 2 code0
+ok eq code 0
+go select ok 1 0
+hw select p6 1 0
+tfrom select p6 3 ntypes2
+t fold jemit go p0 types2 tlist2 fns nodes args ntys pool fnm ntypes2 tfrom p4 nhc hw
+r rec t code fstat nhc
+ret r
+end
+
+# Whole-source entry: canonical+checked; error1 parse,2 structure/profile,3 type,4 capacity.
+fn source_packet_jsst (io,u32) u32 u32x512x64 u32 -> (io,u32)
+t at p0 0
+z call z8
+out call junit t p2 p3 z 0 false true
+io at out 0
+code at out 1
+r rec io code
+ret r
+end
+fn emitjsio io -> u32
+rs call source_packet_readio p0
+src at rs 0
+n at rs 1
+t at rs 2
+within le n 131072
+complete at rs 3
+ok and within complete
+go select ok 1 0
+inside select complete 0 2
+code select within inside 4
+st rec t code
+out fold source_packet_jsst go st src n
+result at out 1
+ret result
+end
