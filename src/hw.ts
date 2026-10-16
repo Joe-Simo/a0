@@ -119,13 +119,14 @@ interface Stage {
   readonly calleeSeq: boolean;
 }
 
-function isStage(n: Node, fn: TypedFunc): Stage['kind'] | undefined {
+function isStage(n: Node, fn: TypedFunc, clocked?: ReadonlySet<string>): Stage['kind'] | undefined {
   if (n.op === 'read' || n.op === 'write' || n.op === 'puts') return n.op;
   if (n.op === 'div' || n.op === 'rem') return 'divide';
   if (n.op === 'fold' || n.op === 'loop') return 'iterate';
   if (n.op === 'call') {
     const callee = fn.calls.get(n.callee ?? '');
-    if (callee !== undefined && needsSequential(callee)) return 'call';
+    if (callee !== undefined && (clocked?.has(callee.name) === true || needsSequential(callee)))
+      return 'call';
   }
   return undefined;
 }
@@ -172,15 +173,16 @@ function hwExpr(n: Node, fn: TypedFunc): string | undefined {
 }
 
 /** Emit one clocked module. */
-export function emitSequential(fn: TypedFunc): string {
+export function emitSequential(fn: TypedFunc, clocked?: ReadonlySet<string>): string {
+  const sequential = (f: TypedFunc): boolean => clocked?.has(f.name) === true || needsSequential(f);
   const io = hasIo(fn);
   const stages: Stage[] = [];
   for (const n of fn.nodes) {
-    const kind = isStage(n, fn);
+    const kind = isStage(n, fn, clocked);
     if (kind === undefined) continue;
     const callee = fn.calls.get(n.callee ?? '');
     const pred = n.op === 'loop' ? fn.calls.get(n.pred ?? '') : undefined;
-    if (pred !== undefined && needsSequential(pred) && hasIo(pred)) {
+    if (pred !== undefined && sequential(pred) && hasIo(pred)) {
       throw new A0Error(
         `${fn.name}.${n.id}: a clocked loop predicate must not carry an io token in hardware`,
       );
@@ -191,7 +193,7 @@ export function emitSequential(fn: TypedFunc): string {
       kind,
       callee,
       pred,
-      calleeSeq: callee !== undefined && needsSequential(callee),
+      calleeSeq: callee !== undefined && sequential(callee),
     });
   }
   const K = stages.length;
@@ -260,7 +262,7 @@ export function emitSequential(fn: TypedFunc): string {
     if (s.kind === 'iterate') {
       const [, initOp] = n.args;
       const lines = [`it_${n.id} <= 32'd0;`, `ph_${n.id} <= 1'b0;`];
-      if (s.pred !== undefined && needsSequential(s.pred)) lines.push(`pp_${n.id} <= 2'd0;`);
+      if (s.pred !== undefined && sequential(s.pred)) lines.push(`pp_${n.id} <= 2'd0;`);
       if (hwWidth(fn.types.get(n.id) ?? 'u32') > 0)
         lines.push(`acc_${n.id} <= ${svOperand(initOp as Operand)};`);
       return lines;
@@ -404,7 +406,7 @@ export function emitSequential(fn: TypedFunc): string {
       }
       L.push(`  a0_${callee.name} u_${n.id} (${bodyPorts(`bw_${n.id}`, s.calleeSeq).join(', ')});`);
       let cont = `it_${n.id} < ${svOperand(countOp as Operand)}`;
-      const predSeq = s.pred !== undefined && needsSequential(s.pred);
+      const predSeq = s.pred !== undefined && sequential(s.pred);
       if (s.pred !== undefined) {
         L.push(`  logic pr_${n.id};`);
         if (predSeq) {

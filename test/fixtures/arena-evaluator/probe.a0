@@ -1,0 +1,28 @@
+use "../../../compiler/check_arena.a0"
+use "../../../compiler/eval_arena.a0"
+fn ae_sourcego (u32x128,u32x128,io) u32 u32 (u32,u32,u32) -> (u32x128,u32x128,io)
+q0 call ae_run_begin p0 p2 p3
+ret q0
+end
+fn ae_source_begin io u32 u32 u32 (u32,u32,u32) u32 u32 bool u32 u32 -> (u32x128,u32x128,io)
+checked call arena_parse_check p0 p1 p2
+ir at checked 1
+q0 at checked 2
+s call ae_empty ir q0 p5 p6 p7 p8 p9
+m at s 0
+q1 at checked 0
+q2 set m 0 q1
+q3 at checked 0
+q4 eq q3 0
+q5 get ir 1
+q6 select q4 0 q5
+a set q2 1 q6
+q7 at checked 0
+q8 eq q7 0
+q9 select q8 1 0
+q10 at s 1
+q11 at s 2
+q12 rec a q10 q11
+q13 fold ae_sourcego q9 q12 p3 p4
+ret q13
+end

@@ -4,7 +4,7 @@
  * dynamic linking and no C library; the program talks to the kernel with system calls. It is the
  * reference for the writer in A0 (compiler/elf.a0), in the way src/macho.ts is for compiler/macho.a0.
  *
- * Layout: ELF header (64 bytes), program headers (56 bytes each), then the code at file offset 0x80;
+ * Layout: ELF header (64 bytes), program headers (56 bytes each), then the code at file offset 0x100;
  * the first segment maps the file from offset 0 at the virtual address BASE, so an address in the code
  * is BASE + file offset. The entry point is an offset inside the code.
  */
@@ -22,7 +22,7 @@ export interface ElfOptions {
 }
 
 export const ELF_BASE = 0x400000;
-export const ELF_CODE_OFFSET = 0x80;
+export const ELF_CODE_OFFSET = 0x100; // room for both optional program headers
 const PAGE = 0x1000;
 const EM: Record<ElfMachine, number> = { x86_64: 62, aarch64: 183 };
 

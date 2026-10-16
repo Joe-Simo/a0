@@ -14,7 +14,12 @@ import {
 import { CHECKED_SOURCE, checkedCases } from './fixtures/checked-ops-fixtures.js';
 
 const CLANG = findClang();
-const SKIP = CLANG.path === undefined ? 'clang is unavailable' : false;
+const SKIP =
+  process.env.A0W_TOOL !== undefined
+    ? false
+    : CLANG.path === undefined
+      ? 'clang is unavailable'
+      : false;
 const LAYOUT = { ioInputCapacity: 2, ioOutputCapacity: 4 };
 const MODES = ['tables', 'source'] as const;
 type Mode = (typeof MODES)[number];
@@ -56,14 +61,22 @@ function entry(instance: WebAssembly.Instance, name: string): (...args: number[]
   return fn as (...args: number[]) => number;
 }
 
-for (const mode of MODES) {
-  test(`A0 Wasm checked ${mode} equal the independent integer oracle`, { skip: SKIP }, async () => {
+for (const [mode, optimize] of MODES.flatMap((mode) =>
+  [false, true].map((optimize) => [mode, optimize] as const),
+)) {
+  test(`A0 Wasm checked ${mode} optimize=${optimize} equal the independent integer oracle`, {
+    skip: SKIP,
+  }, async () => {
     const program = parseAndValidate(CHECKED_SOURCE);
     const cases = checkedCases();
     assert.equal(cases.length, 2356);
-    const bytes = emit(await executable(), mode, program);
+    const bytes = emit(await executable(), mode, program, optimize);
     // Keep the existing canonical byte comparison separate from semantic oracle checks.
-    assert.deepEqual(bytes, typescriptWasm(program, LAYOUT, false), `${mode}: checked byte parity`);
+    assert.deepEqual(
+      bytes,
+      typescriptWasm(program, LAYOUT, optimize),
+      `${mode}: checked byte parity optimize=${optimize}`,
+    );
     const { instance } = await WebAssembly.instantiate(bytes as BufferSource, {});
     for (const c of cases) {
       const got = entry(instance, c.functionName)(...c.args.map(scalar));
@@ -96,12 +109,16 @@ end
 `);
 const EFFECT_INPUTS = [[], [0xffffffff], [0xffffffff, 0xffffffff], [65536, 65536], [7, 13]];
 
-for (const mode of MODES) {
-  test(`A0 Wasm checked ${mode} evaluate IO operands once`, { skip: SKIP }, async () => {
-    const bytes = emit(await executable(), mode, EFFECT);
+for (const [mode, optimize] of MODES.flatMap((mode) =>
+  [false, true].map((optimize) => [mode, optimize] as const),
+)) {
+  test(`A0 Wasm checked ${mode} optimize=${optimize} evaluate IO operands once`, {
+    skip: SKIP,
+  }, async () => {
+    const bytes = emit(await executable(), mode, EFFECT, optimize);
     assert.deepEqual(
       bytes,
-      typescriptWasm(EFFECT, LAYOUT, false),
+      typescriptWasm(EFFECT, LAYOUT, optimize),
       `${mode}: checked IO byte parity`,
     );
     const { instance } = await WebAssembly.instantiate(bytes as BufferSource, {});
@@ -157,7 +174,7 @@ end
       );
 });
 
-test('A0 Wasm explicitly refuses strict and optimized checked requests before starting a tool', () => {
+test('A0 Wasm explicitly refuses strict requests at both optimizer settings before starting a tool', () => {
   const unusable = 'unusable-tool-must-not-run';
   const unsupported = (thunk: () => unknown): void => {
     assert.throws(thunk, (error: unknown) => error instanceof A0Error && error.id === 'A0713');
@@ -167,11 +184,11 @@ test('A0 Wasm explicitly refuses strict and optimized checked requests before st
     'profile strict\nfn q u32 u32 -> u32\nr cdiv p0 p1\nv at r 0\nret v\nend\n',
   ]) {
     const strict = parseAndValidate(source);
-    for (const mode of MODES) unsupported(() => emit(unusable, mode, strict));
+    for (const mode of MODES)
+      for (const optimize of [false, true])
+        unsupported(() => emit(unusable, mode, strict, optimize));
+    unsupported(() => a0OptimizeProgram(unusable, strict));
   }
-  const checked = parseAndValidate(CHECKED_SOURCE);
-  for (const mode of MODES) unsupported(() => emit(unusable, mode, checked, true));
-  unsupported(() => a0OptimizeProgram(unusable, checked));
 });
 
 test('checked get continues to require u32 array elements', () => {

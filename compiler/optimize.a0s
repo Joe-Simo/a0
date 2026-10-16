@@ -27,8 +27,9 @@ raw # op, operand count, callee, predicate, type, the operand pairs (node refere
 raw # positions), then the ret pair and the literal iteration bound. Code 7: the functions whose
 raw # body the run needs (to inline a call or unroll a fold, or to evaluate a call or a fold with
 raw # literal operands, on the optimized body as src/optimize.ts does), then their count; the driver
-raw # supplies them and everything they reach and repeats the run. Public modes 7/8 give code 5
-raw # and write nothing on supplied checked ops. Strict metadata is not part of the table ABI.
+raw # supplies them and everything they reach and repeats the run. Canonical checked operations
+raw # keep their record results opaque; their scalar observations evaluate inside calls/folds.
+raw # Strict metadata is not part of the table ABI; the source/host boundaries refuse strict.
 raw # Code 4: a limit (4096 nodes,
 raw # 32768 operand slots, 256 stacked nodes) was reached; src/optimize.ts has none of these.
 raw #
@@ -2124,15 +2125,15 @@ def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt
   return (sqs, clR7, oaR7, nR7, rR7k2, rR7v2, li, nreq, rqR7, err)
 end
 
-# Public table modes have no checked-op optimizer support yet. Refuse every supplied
-# checked body before entering optcore. Internal ozopt1 stays guarded by shape's actual
-# producer/consumer reachable-body proof, so unrelated checked functions do not block it.
-fn ozcknode(found: u32, j: u32, nd: u32x128x132, first: u32) -> u32
+# The raw public wrappers accept the known, typed opcodes including total checked records.
+# Refuse unknown operations before any pass; opaque placeholder rows have no supplied nodes.
+fn ozbadnode(found: u32, j: u32, nd: u32x128x132, first: u32) -> u32
   let op = nd[(first + j) * 6 + 1]
-  return found | bit((op >= 32) & (op <= 37))
+  return found | bit((op == 0) | (op > 37))
 end
-fn ozckfn(found: u32, f: u32, fnt: u32x128x45, nd: u32x128x132) -> u32
-  return fold(ozcknode, fnt[f * 7 + 5], found, nd, fnt[f * 7 + 4])
+fn ozbadfn(found: u32, f: u32, fnt: u32x128x45, nd: u32x128x132) -> u32
+  let supplied = (fnt[f * 7] & 1) != 0
+  return fold(ozbadnode, supplied ? fnt[f * 7 + 5] : 0, found, nd, fnt[f * 7 + 4])
 end
 
 fn ozemit(s: (io,u32), i: u32, ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, sm: u32x128x16, g: u32, stage: u32, nty: u32, nf: u32, no: u32) -> (io,u32)
@@ -2169,8 +2170,8 @@ fn ozone(io: io) -> (io, u32)
   let (sm, i12) = warn16(i11, nf * 2)
   let (g, i13) = wardw(i12)
   let (stage, i14) = wardw(i13)
-  let checked = fold(ozckfn, nf, 0, fnt, nd)
-  return fold(ozemit, checked == 0 ? 1 : 0, (i14, checked == 0 ? 0 : 5), ty, tl, fnt, nd, nt, op, sm, g, stage, nty, nf, no)
+  let unsupported = fold(ozbadfn, nf, 0, fnt, nd)
+  return fold(ozemit, unsupported == 0 ? 1 : 0, (i14, unsupported == 0 ? 0 : 5), ty, tl, fnt, nd, nt, op, sm, g, stage, nty, nf, no)
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -2280,6 +2281,6 @@ fn ozimg(io: io) -> (io, u32)
   let (no, i10) = wardw(i9)
   let (op, i11) = warn512(i10, no * 2)
   let (g, i12) = wardw(i11)
-  let checked = fold(ozckfn, nf, 0, fnt, nd)
-  return fold(ozimemit, checked == 0 ? 1 : 0, (i12, checked == 0 ? 0 : 5), ty, tl, fnt, nd, nt, op, g, nty, nf, no)
+  let unsupported = fold(ozbadfn, nf, 0, fnt, nd)
+  return fold(ozimemit, unsupported == 0 ? 1 : 0, (i12, unsupported == 0 ? 0 : 5), ty, tl, fnt, nd, nt, op, g, nty, nf, no)
 end

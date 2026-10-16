@@ -1,0 +1,330 @@
+# Exact origin-span projection. All fields and positions are full u32.
+# Origin records4: combinedStart,length,fileID,originalStart; sorted contiguous [0,total).
+# Fragment records4: relativeToQueryStart,length,fileID,originalStart.
+# Synthetic fileID4294967295 carries an uninterpreted coordinate, never a file read.
+# The producer guarantees global coverage; this helper validates every observed boundary.
+# Input origins stay immutable. Failure returns original fragment metadata and zero count.
+use "arena_vector.a0"
+fn lc_o_extent (u32,u32,io) u32 (u32,u32,u32) -> (u32,u32,io)
+q0 at p0 2
+first call av_load q0 p2 0 4
+a at first 1
+q1 at first 2
+q2 at p2 1
+q3 sub q2 4
+q4 at first 0
+q5 eq q4 0
+q6 select q5 4 0
+last call av_load q1 p2 q3 q6
+b at last 1
+q7 at first 0
+q8 eq q7 0
+q9 at last 0
+q10 at first 0
+sourcecode select q8 q9 q10
+q11 get b 0
+q12 get b 1
+total add q11 q12
+q13 get a 0
+q14 eq q13 0
+q15 get a 1
+q16 gt q15 0
+q17 and q14 q16
+q18 get b 1
+q19 gt q18 0
+q20 and q17 q19
+q21 get b 1
+q22 get b 0
+q23 sub 4294967295 q22
+q24 le q21 q23
+q25 and q20 q24
+q26 get a 1
+q27 le q26 total
+valid and q25 q27
+q28 eq sourcecode 0
+q29 select valid 0 3
+code select q28 q29 sourcecode
+q30 at last 2
+q31 rec code total q30
+ret q31
+end
+fn lc_o_searchmore (u32,u32,u32,io) u32 (u32,u32,u32) u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 1
+q3 at p0 2
+q4 lt q2 q3
+q5 and q1 q4
+ret q5
+end
+fn lc_o_search (u32,u32,u32,io) u32 (u32,u32,u32) u32 -> (u32,u32,u32,io)
+q0 at p0 1
+q1 at p0 2
+q2 at p0 1
+q3 sub q1 q2
+q4 div q3 2
+middle add q0 q4
+q5 at p0 3
+q6 mul middle 4
+r call av_load q5 p2 q6 4
+p at r 1
+q7 get p 1
+q8 gt q7 0
+q9 get p 1
+q10 get p 0
+q11 sub 4294967295 q10
+q12 le q9 q11
+valid and q8 q12
+q13 at r 0
+q14 eq q13 0
+q15 select valid 0 3
+q16 at r 0
+code select q14 q15 q16
+q17 get p 0
+before le q17 p3
+q18 add middle 1
+q19 at p0 1
+q20 select before q18 q19
+q21 at p0 2
+q22 select before q21 middle
+q23 at r 2
+q24 rec code q20 q22 q23
+ret q24
+end
+fn lc_o_append (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 at p0 1
+q2 call av_append q0 q1 4 p2
+ret q2
+end
+fn lc_o_more (u32,(u32,u32,u32),u32,u32,u32,u32,io) u32 (u32,u32,u32) u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 3
+q3 at p0 4
+q4 lt q2 q3
+q5 and q1 q4
+ret q5
+end
+fn lc_o_piece (u32,(u32,u32,u32),u32,u32,u32,u32,io) u32 (u32,u32,u32) u32 -> (u32,(u32,u32,u32),u32,u32,u32,u32,io)
+index at p0 2
+pos at p0 3
+q0 at p0 6
+q1 mul index 4
+r call av_load q0 p2 q1 4
+p at r 1
+q2 at p0 5
+first eq q2 0
+q3 gt index 0
+q4 and first q3
+q5 at r 0
+q6 eq q5 0
+prior and q4 q6
+q7 at r 2
+q8 gt index 0
+q9 sub index 1
+q10 mul q9 4
+q11 select q8 q10 0
+q12 select prior 4 0
+previous call av_load q7 p2 q11 q12
+q at previous 1
+q13 xor prior true
+q14 get q 1
+q15 gt q14 0
+q16 get q 1
+q17 get q 0
+q18 sub 4294967295 q17
+q19 le q16 q18
+q20 and q15 q19
+q21 get q 0
+q22 get q 1
+q23 add q21 q22
+q24 get p 0
+q25 eq q23 q24
+q26 and q20 q25
+priorvalid or q13 q26
+q27 get p 1
+q28 get p 0
+q29 sub 4294967295 q28
+extent le q27 q29
+q30 get p 0
+q31 get p 1
+finishpos add q30 q31
+q32 get p 0
+q33 le q32 pos
+q34 lt pos finishpos
+contains and q33 q34
+q35 get p 0
+q36 eq q35 pos
+adjacent or first q36
+q37 at p0 4
+remaining sub q37 pos
+available sub finishpos pos
+q38 le remaining available
+take select q38 remaining available
+q39 get p 0
+delta sub pos q39
+q40 get p 3
+original add q40 delta
+q41 get p 3
+q42 sub 4294967295 q41
+q43 le delta q42
+q44 sub 4294967295 original
+q45 le take q44
+originalvalid and q43 q45
+q46 get p 1
+q47 gt q46 0
+q48 and q47 extent
+q49 and q48 contains
+q50 and q49 adjacent
+q51 and q50 priorvalid
+valid and q51 originalvalid
+q52 at r 0
+q53 eq q52 0
+q54 at previous 0
+q55 at r 0
+readcode select q53 q54 q55
+q56 eq readcode 0
+q57 select valid 0 3
+code select q56 q57 readcode
+z call arena_zero
+q58 sub pos p3
+a set z 0 q58
+b set a 1 take
+q59 get p 2
+c set b 2 q59
+page set c 3 original
+q60 eq code 0
+q61 select q60 1 0
+q62 at p0 1
+q63 at previous 2
+q64 rec code q62 q63
+appended fold lc_o_append q61 q64 page
+q65 at appended 0
+success eq q65 0
+q66 at appended 0
+q67 at appended 1
+q68 add index 1
+q69 select success q68 index
+q70 add pos take
+q71 select success q70 pos
+q72 at p0 4
+q73 at p0 5
+q74 select success 1 0
+q75 add q73 q74
+q76 at appended 2
+q77 rec q66 q67 q69 q71 q72 q75 q76
+ret q77
+end
+fn lc_o_project (u32,(u32,u32,u32),u32,u32,io) u32 (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),u32,u32,io)
+q0 at p2 1
+count div q0 4
+q1 at p0 4
+q2 rec 0 0 count q1
+searched loop lc_o_searchmore lc_o_search 32 q2 p2 p3
+q3 at searched 1
+q4 at searched 2
+q5 eq q3 q4
+q6 at searched 1
+q7 gt q6 0
+found and q5 q7
+q8 at searched 0
+q9 eq q8 0
+q10 select found 0 3
+q11 at searched 0
+code select q9 q10 q11
+q12 at searched 1
+first sub q12 1
+q13 sub count first
+q14 at p0 1
+q15 add p3 p4
+q16 at searched 3
+q17 rec code q14 first p3 q15 0 q16
+r loop lc_o_more lc_o_piece q13 q17 p2 p3
+q18 at r 0
+q19 eq q18 0
+q20 at r 3
+q21 at r 4
+q22 eq q20 q21
+q23 select q22 0 3
+q24 at r 0
+status select q19 q23 q24
+q25 eq status 0
+q26 at r 1
+q27 at p0 1
+q28 select q25 q26 q27
+q29 at p0 2
+q30 eq status 0
+q31 at r 5
+q32 select q30 q31 0
+q33 at r 6
+q34 rec status q28 q29 q32 q33
+ret q34
+end
+fn lc_o_checked (u32,(u32,u32,u32),u32,u32,io) u32 (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),u32,u32,io)
+q0 at p2 1
+count div q0 4
+q1 gt count 0
+q2 select q1 1 0
+q3 at p0 4
+q4 rec 0 0 q3
+extent fold lc_o_extent q2 q4 p2
+q5 at extent 1
+q6 le p3 q5
+q7 at extent 1
+q8 sub q7 p3
+q9 le p4 q8
+bounded and q6 q9
+q10 at extent 0
+q11 eq q10 0
+q12 select bounded 0 3
+q13 at extent 0
+code select q11 q12 q13
+q14 at p0 1
+q15 at p0 2
+q16 at extent 2
+q17 eq code 0
+q18 gt p4 0
+q19 and q17 q18
+q20 select q19 1 0
+q21 rec code q14 q15 0 q16
+q22 fold lc_o_project q20 q21 p2 p3 p4
+ret q22
+end
+fn lc_project io (u32,u32,u32) u32 u32 (u32,u32,u32) -> (u32,(u32,u32,u32),u32,u32,io)
+q0 at p1 1
+q1 rem q0 4
+q2 eq q1 0
+q3 at p4 1
+q4 rem q3 4
+q5 eq q4 0
+records and q2 q5
+q6 call av_valid p1
+q7 call av_valid p4
+vectors and q6 q7
+q8 sub 4294967295 p2
+span le p3 q8
+q9 gt p3 0
+q10 at p1 0
+q11 ne q10 0
+q12 and q9 q11
+q13 at p1 0
+q14 at p4 0
+q15 eq q13 q14
+q16 and q12 q15
+q17 at p4 1
+q18 at p1 1
+q19 lt q17 q18
+overlap and q16 q19
+q20 and records vectors
+q21 and q20 span
+q22 xor overlap true
+valid and q21 q22
+q23 select valid 1 0
+q24 select valid 0 3
+q25 at p4 1
+q26 div q25 4
+q27 rec q24 p4 q26 0 p0
+q28 fold lc_o_checked q23 q27 p1 p2 p3
+ret q28
+end

@@ -1,0 +1,227 @@
+# Generic byte vectors. A byte occupies one full u32 arena cell; offsets/counts remain u32.
+# Status1..5 is the transport;6 malformed input;7 size/address arithmetic overflow.
+# Functions preserve the first failure. Public writers clear their output view on failure.
+use "arena_vector.a0"
+fn ew_good (u32,(u32,u32,u32),io) u32 -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+fn ew_zero_page (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v at p0 1
+t at p0 2
+len at v 1
+off shl p1 7
+left sub len off
+big gt left 128
+n select big 128 left
+z call arena_zero
+r call av_store t v off n z
+s at r 0
+t1 at r 1
+out rec s v t1
+ret out
+end
+fn ew_new io u32 -> (u32,(u32,u32,u32),io)
+r call av_new p0 p1
+s at r 0
+v at r 1
+t at r 2
+h at v 0
+cap at v 2
+full rec h p1 cap
+start rec s full t
+whole shr p1 7
+tail and p1 127
+has ne tail 0
+extra select has 1 0
+pages add whole extra
+out loop ew_good ew_zero_page pages start
+ret out
+end
+fn ew_patch_do (u32,(u32,u32,u32),io) u32 u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+v at p0 1
+t at p0 2
+r call av_store t v p2 p3 p4
+s at r 0
+t1 at r 1
+out rec s v t1
+ret out
+end
+fn ew_patch (u32,(u32,u32,u32),io) u32 u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+s at p0 0
+ok eq s 0
+n select ok 1 0
+r fold ew_patch_do n p0 p2 p3 p4
+ret r
+end
+fn ew_u32 (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+a and p3 255
+b shr p3 8
+c and b 255
+d shr p3 16
+e and d 255
+f shr p3 24
+g set z 0 a
+h set g 1 c
+i set h 2 e
+j set i 3 f
+r fold ew_patch 1 p0 p2 4 j
+ret r
+end
+fn ew_u16 (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+a and p3 255
+b shr p3 8
+c and b 255
+d set z 0 a
+e set d 1 c
+r fold ew_patch 1 p0 p2 2 e
+ret r
+end
+fn ew_u64 (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+a fold ew_u32 1 p0 p2 p3
+b add p2 4
+r fold ew_u32 1 a b p4
+ret r
+end
+fn ew_byte_check u32 u32 u32x128 -> u32
+v get p2 p1
+bad gt v 255
+ok eq p0 0
+fail and ok bad
+r select fail 6 p0
+ret r
+end
+fn ew_copy_good (u32,(u32,u32,u32),io) u32 (u32,u32,u32) u32 u32 u32 -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+# Copy a byte span; range checks are performed by av_load/av_store, not by a host writer.
+fn ew_copy_page (u32,(u32,u32,u32),io) u32 (u32,u32,u32) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+t at p0 2
+off shl p1 7
+from add p3 off
+left sub p4 off
+big gt left 128
+n select big 128 left
+r call av_load t p2 from n
+s at r 0
+page at r 1
+t1 at r 2
+checked fold ew_byte_check n s page
+v at p0 1
+start rec checked v t1
+to add p5 off
+out fold ew_patch 1 start to n page
+ret out
+end
+fn ew_copy (u32,(u32,u32,u32),io) (u32,u32,u32) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+whole shr p3 7
+tail and p3 127
+has ne tail 0
+extra select has 1 0
+pages add whole extra
+old at p0 0
+v at p0 1
+t at p0 2
+sourceok call av_valid p1
+targetok call av_valid v
+srclen at p1 1
+dstlen at v 1
+srcstart le p2 srclen
+srcleft sub srclen p2
+srcfit le p3 srcleft
+dststart le p4 dstlen
+dstleft sub dstlen p4
+dstfit le p3 dstleft
+a and sourceok targetok
+b and srcstart srcfit
+c and dststart dstfit
+d and a b
+valid and d c
+bad select valid 0 3
+ok eq old 0
+status select ok bad old
+state rec status v t
+r loop ew_copy_good ew_copy_page pages state p1 p2 p3 p4
+ret r
+end
+fn ew_public (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+s at p0 0
+v at p0 1
+t at p0 2
+z rec 0 0 0
+ok eq s 0
+outv select ok v z
+r rec s outv t
+ret r
+end
+# Publishing is explicit. Caller must check returned status, FINISH status/code, and is_complete.
+fn ew_emit_good (u32,io) u32 (u32,u32,u32) -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+fn ew_emit_bytes (u32,io) u32 u32 u32x128 -> (u32,io)
+t at p0 1
+r call arena_emit t p2 p3
+ret r
+end
+fn ew_emit_loaded (u32,io) u32 u32 u32x128 -> (u32,io)
+t at p0 1
+s fold ew_byte_check p2 0 p3
+start rec s t
+ok eq s 0
+n select ok 1 0
+r fold ew_emit_bytes n start p2 p3
+ret r
+end
+fn ew_emit_page (u32,io) u32 (u32,u32,u32) -> (u32,io)
+t at p0 1
+len at p2 1
+off shl p1 7
+left sub len off
+big gt left 128
+n select big 128 left
+r call av_load t p2 off n
+s at r 0
+page at r 1
+t1 at r 2
+v rec s t1
+ok eq s 0
+go select ok 1 0
+out fold ew_emit_loaded go v n page
+ret out
+end
+fn ew_emit io (u32,u32,u32) -> (u32,io)
+valid call av_valid p1
+s select valid 0 3
+start rec s p0
+len at p1 1
+whole shr len 7
+tail and len 127
+has ne tail 0
+extra select has 1 0
+pages add whole extra
+r loop ew_emit_good ew_emit_page pages start p1
+ret r
+end
+# One full-width metadata word, deliberately without byte validation.
+fn ew_word io (u32,u32,u32) u32 -> (u32,u32,io)
+r call av_load p0 p1 p2 1
+s at r 0
+a at r 1
+t at r 2
+v get a 0
+out rec s v t
+ret out
+end
+fn ew_meta (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+a set z 0 p3
+r fold ew_patch 1 p0 p2 1 a
+ret r
+end

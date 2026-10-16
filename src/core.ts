@@ -229,8 +229,13 @@ export const STRICT_TARGETS: ReadonlySet<string> = new Set([
   'avr',
 ]);
 
-/** A0 emitters support total checked operations before their strict trapping runtime is ported. */
-export const CHECKED_TARGETS: ReadonlySet<string> = new Set([...STRICT_TARGETS, 'a0c', 'a0w']);
+/** A0 services support total checked operations before their strict trapping runtime is ported. */
+export const CHECKED_TARGETS: ReadonlySet<string> = new Set([
+  ...STRICT_TARGETS,
+  'a0c',
+  'a0w',
+  'a0w optimizer',
+]);
 
 /**
  * Refuse what a target cannot honour. A target outside `STRICT_TARGETS` implements the canonical

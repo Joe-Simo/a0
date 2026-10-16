@@ -1,0 +1,9475 @@
+use "sv_geometry.a0"
+
+fn svl0 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1768386412 99 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 5 a0
+ret r0
+end
+
+fn sv_type_bool (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl0 p0
+ret x1
+end
+
+fn svl1 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1768386412 5972067 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 7 a0
+ret r0
+end
+
+fn svl2 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6107194 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_type_bits (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl1 p0
+zero eq p5 0
+bitwidth select zero 1 p5
+x2 sub bitwidth 1
+x3 call sv_num x1 x2
+x4 call svl2 x3
+ret x4
+end
+
+fn svl3 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 24430 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_operand_node (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl3 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+ret x21
+end
+
+fn svl4 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 112 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn sv_operand_param (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl4 p0
+x2 call sv_num x1 p4
+ret x2
+end
+
+fn svl5 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1680290355 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_operand_u32 (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl5 p0
+x2 call sv_num x1 p4
+ret x2
+end
+
+fn svl6 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6432561 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_operand_bool (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl6 p0
+x2 call sv_num x1 p4
+ret x2
+end
+
+fn sv_operand (u32,(u32,u32,u32),io) u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 eq p3 1
+x2 select x1 1 0
+x3 fold sv_operand_node x2 p0 p1 p2 p4
+x4 eq p3 2
+x5 select x4 1 0
+x6 fold sv_operand_param x5 x3 p1 p2 p4
+x7 eq p3 3
+x8 select x7 1 0
+x9 fold sv_operand_u32 x8 x6 p1 p2 p4
+x10 eq p3 4
+x11 select x10 1 0
+x12 fold sv_operand_bool x11 x9 p1 p2 p4
+ret x12
+end
+
+fn sv_arg_type (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),u32,io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p5
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 eq x16 1
+x28 eq x16 2
+x29 select x27 x24 0
+x30 mul x29 8
+x31 add x30 5
+x32 get p2 3
+r33 call sv_get x26 x32 x31
+x34 at r33 0
+x35 at r33 1
+x36 at r33 2
+x37 at r33 3
+x38 rec x34 x35 x37
+x39 mul p3 10
+x40 add x39 3
+x41 get p2 2
+r42 call sv_get x38 x41 x40
+x43 at r42 0
+x44 at r42 1
+x45 at r42 2
+x46 at r42 3
+x47 rec x43 x44 x46
+x48 select x28 x24 0
+x49 add x45 x48
+x50 get p2 1
+r51 call sv_get x47 x50 x49
+x52 at r51 0
+x53 at r51 1
+x54 at r51 2
+x55 at r51 3
+x56 rec x52 x53 x55
+x57 select x28 x54 0
+x58 select x27 x36 x57
+x59 at x56 0
+x60 at x56 1
+x61 at x56 2
+x62 rec x59 x60 x58 x61
+ret x62
+end
+
+fn sv_slice_literal (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 rem p7 p5
+x2 mul x1 p6
+x3 call sv_num p0 x2
+ret x3
+end
+
+fn svl8 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 10280 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn svl9 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2106656 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl10 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 539631657 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn svl11 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 41 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn sv_slice_dynamic (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl8 p0
+x2 mul p4 8
+x3 add x2 2
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 add x8 1
+x12 mul x11 2
+x13 get p2 4
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 add x12 1
+x21 get p2 4
+r22 call sv_get x19 x21 x20
+x23 at r22 0
+x24 at r22 1
+x25 at r22 2
+x26 at r22 3
+x27 rec x23 x24 x26
+x28 call sv_operand x27 p2 p3 x17 x25
+x29 call svl9 x28
+x30 call sv_num x29 p5
+x31 call svl10 x30
+x32 call sv_num x31 p6
+x33 call svl11 x32
+ret x33
+end
+
+fn svl7 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540683040 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_slice_array (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 6
+r2 call sv_get p0 x1 p6
+x3 at r2 0
+x4 at r2 1
+x5 at r2 2
+x6 at r2 3
+x7 rec x3 x4 x6
+x8 eq p7 3
+x9 select x8 1 0
+x10 fold sv_slice_literal x9 x7 p2 p3 p4 p5 x5 p8
+x11 eq x8 false
+x12 select x11 1 0
+x13 fold sv_slice_dynamic x12 x10 p2 p3 p4 p5 x5
+x14 call svl7 x13
+x15 call sv_num x14 x5
+ret x15
+end
+
+fn sv_slice_record (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call sv_field_offset p0 p2 p5 p6
+x2 at x1 0
+x3 at x1 1
+x4 at x1 2
+x5 at x1 3
+x6 rec x2 x3 x5
+x7 call sv_num x6 x4
+x8 call svl7 x7
+x9 add p5 p6
+x10 get p2 1
+r11 call sv_get x8 x10 x9
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 get p2 6
+r18 call sv_get x16 x17 x14
+x19 at r18 0
+x20 at r18 1
+x21 at r18 2
+x22 at r18 3
+x23 rec x19 x20 x22
+x24 call sv_num x23 x21
+ret x24
+end
+
+fn sv_slice (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call sv_arg_type p0 0 p2 p3 p4 0
+x2 at x1 0
+x3 at x1 1
+x4 at x1 2
+x5 at x1 3
+x6 rec x2 x3 x5
+x7 mul x4 3
+x8 add x7 0
+x9 get p2 0
+r10 call sv_get x6 x9 x8
+x11 at r10 0
+x12 at r10 1
+x13 at r10 2
+x14 at r10 3
+x15 rec x11 x12 x14
+x16 mul x4 3
+x17 add x16 1
+x18 get p2 0
+r19 call sv_get x15 x18 x17
+x20 at r19 0
+x21 at r19 1
+x22 at r19 2
+x23 at r19 3
+x24 rec x20 x21 x23
+x25 mul x4 3
+x26 add x25 2
+x27 get p2 0
+r28 call sv_get x24 x27 x26
+x29 at r28 0
+x30 at r28 1
+x31 at r28 2
+x32 at r28 3
+x33 rec x29 x30 x32
+x34 mul p4 8
+x35 add x34 2
+x36 get p2 3
+r37 call sv_get x33 x36 x35
+x38 at r37 0
+x39 at r37 1
+x40 at r37 2
+x41 at r37 3
+x42 rec x38 x39 x41
+x43 add x40 1
+x44 mul x43 2
+x45 get p2 4
+r46 call sv_get x42 x45 x44
+x47 at r46 0
+x48 at r46 1
+x49 at r46 2
+x50 at r46 3
+x51 rec x47 x48 x50
+x52 add x44 1
+x53 get p2 4
+r54 call sv_get x51 x53 x52
+x55 at r54 0
+x56 at r54 1
+x57 at r54 2
+x58 at r54 3
+x59 rec x55 x56 x58
+x60 eq x13 4
+x61 select x60 1 0
+x62 fold sv_slice_array x61 x59 p2 p3 p4 x22 x31 x49 x57
+x63 eq x60 false
+x64 select x63 1 0
+x65 fold sv_slice_record x64 x62 p2 p3 p4 x22 x57
+ret x65
+end
+
+fn svl12 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 673657395 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn svl13 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2108192 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_expr_add (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl12 p0
+x2 mul p4 8
+x3 add x2 2
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 add x8 0
+x12 mul x11 2
+x13 get p2 4
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 add x12 1
+x21 get p2 4
+r22 call sv_get x19 x21 x20
+x23 at r22 0
+x24 at r22 1
+x25 at r22 2
+x26 at r22 3
+x27 rec x23 x24 x26
+x28 call sv_operand x27 p2 p3 x17 x25
+x29 call svl13 x28
+x30 mul p4 8
+x31 add x30 2
+x32 get p2 3
+r33 call sv_get x29 x32 x31
+x34 at r33 0
+x35 at r33 1
+x36 at r33 2
+x37 at r33 3
+x38 rec x34 x35 x37
+x39 add x36 1
+x40 mul x39 2
+x41 get p2 4
+r42 call sv_get x38 x41 x40
+x43 at r42 0
+x44 at r42 1
+x45 at r42 2
+x46 at r42 3
+x47 rec x43 x44 x46
+x48 add x40 1
+x49 get p2 4
+r50 call sv_get x47 x49 x48
+x51 at r50 0
+x52 at r50 1
+x53 at r50 2
+x54 at r50 3
+x55 rec x51 x52 x54
+x56 call sv_operand x55 p2 p3 x45 x53
+x57 call svl11 x56
+ret x57
+end
+
+fn svl14 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2108704 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_expr_sub (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl12 p0
+x2 mul p4 8
+x3 add x2 2
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 add x8 0
+x12 mul x11 2
+x13 get p2 4
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 add x12 1
+x21 get p2 4
+r22 call sv_get x19 x21 x20
+x23 at r22 0
+x24 at r22 1
+x25 at r22 2
+x26 at r22 3
+x27 rec x23 x24 x26
+x28 call sv_operand x27 p2 p3 x17 x25
+x29 call svl14 x28
+x30 mul p4 8
+x31 add x30 2
+x32 get p2 3
+r33 call sv_get x29 x32 x31
+x34 at r33 0
+x35 at r33 1
+x36 at r33 2
+x37 at r33 3
+x38 rec x34 x35 x37
+x39 add x36 1
+x40 mul x39 2
+x41 get p2 4
+r42 call sv_get x38 x41 x40
+x43 at r42 0
+x44 at r42 1
+x45 at r42 2
+x46 at r42 3
+x47 rec x43 x44 x46
+x48 add x40 1
+x49 get p2 4
+r50 call sv_get x47 x49 x48
+x51 at r50 0
+x52 at r50 1
+x53 at r50 2
+x54 at r50 3
+x55 rec x51 x52 x54
+x56 call sv_operand x55 p2 p3 x45 x53
+x57 call svl11 x56
+ret x57
+end
+
+fn svl15 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2107936 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_expr_mul (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl12 p0
+x2 mul p4 8
+x3 add x2 2
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 add x8 0
+x12 mul x11 2
+x13 get p2 4
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 add x12 1
+x21 get p2 4
+r22 call sv_get x19 x21 x20
+x23 at r22 0
+x24 at r22 1
+x25 at r22 2
+x26 at r22 3
+x27 rec x23 x24 x26
+x28 call sv_operand x27 p2 p3 x17 x25
+x29 call svl15 x28
+x30 mul p4 8
+x31 add x30 2
+x32 get p2 3
+r33 call sv_get x29 x32 x31
+x34 at r33 0
+x35 at r33 1
+x36 at r33 2
+x37 at r33 3
+x38 rec x34 x35 x37
+x39 add x36 1
+x40 mul x39 2
+x41 get p2 4
+r42 call sv_get x38 x41 x40
+x43 at r42 0
+x44 at r42 1
+x45 at r42 2
+x46 at r42 3
+x47 rec x43 x44 x46
+x48 add x40 1
+x49 get p2 4
+r50 call sv_get x47 x49 x48
+x51 at r50 0
+x52 at r50 1
+x53 at r50 2
+x54 at r50 3
+x55 rec x51 x52 x54
+x56 call sv_operand x55 p2 p3 x45 x53
+x57 call svl11 x56
+ret x57
+end
+
+fn svl16 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2106912 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_expr_and (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl16 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+ret x55
+end
+
+fn svl17 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2128928 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_expr_or (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl17 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+ret x55
+end
+
+fn svl18 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2121248 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_expr_xor (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl18 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+ret x55
+end
+
+fn svl19 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884256 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_expr_eq (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl19 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+ret x55
+end
+
+fn svl20 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540877088 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_expr_ne (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl20 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+ret x55
+end
+
+fn svl21 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2112544 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_expr_lt (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl21 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+ret x55
+end
+
+fn svl22 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_expr_le (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl22 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+ret x55
+end
+
+fn svl23 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2113056 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_expr_gt (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl23 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+ret x55
+end
+
+fn svl24 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884512 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_expr_ge (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl24 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+ret x55
+end
+
+fn svl25 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6563637 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_shift_literal (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 1
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call svl25 x26
+x28 and x24 31
+x29 call sv_num x27 x28
+ret x29
+end
+
+fn svl26 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 809120859 93 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 5 a0
+ret r0
+end
+
+fn sv_shift_dynamic (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 1
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl26 x27
+ret x28
+end
+
+fn svl27 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540818464 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_expr_shl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl12 p0
+x2 mul p4 8
+x3 add x2 2
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 add x8 0
+x12 mul x11 2
+x13 get p2 4
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 add x12 1
+x21 get p2 4
+r22 call sv_get x19 x21 x20
+x23 at r22 0
+x24 at r22 1
+x25 at r22 2
+x26 at r22 3
+x27 rec x23 x24 x26
+x28 call sv_operand x27 p2 p3 x17 x25
+x29 call svl27 x28
+x30 mul p4 8
+x31 add x30 2
+x32 get p2 3
+r33 call sv_get x29 x32 x31
+x34 at r33 0
+x35 at r33 1
+x36 at r33 2
+x37 at r33 3
+x38 rec x34 x35 x37
+x39 add x36 1
+x40 mul x39 2
+x41 get p2 4
+r42 call sv_get x38 x41 x40
+x43 at r42 0
+x44 at r42 1
+x45 at r42 2
+x46 at r42 3
+x47 rec x43 x44 x46
+x48 add x40 1
+x49 get p2 4
+r50 call sv_get x47 x49 x48
+x51 at r50 0
+x52 at r50 1
+x53 at r50 2
+x54 at r50 3
+x55 rec x51 x52 x54
+x56 eq x45 3
+x57 select x56 1 0
+x58 fold sv_shift_literal x57 x55 p2 p3 p4
+x59 eq x56 false
+x60 select x59 1 0
+x61 fold sv_shift_dynamic x60 x58 p2 p3 p4
+x62 call svl11 x61
+ret x62
+end
+
+fn svl28 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540950048 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_expr_shr (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl28 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 eq x44 3
+x56 select x55 1 0
+x57 fold sv_shift_literal x56 x54 p2 p3 p4
+x58 eq x55 false
+x59 select x58 1 0
+x60 fold sv_shift_dynamic x59 x57 p2 p3 p4
+ret x60
+end
+
+fn sv_expr_mov (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+ret x27
+end
+
+fn svl29 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2113312 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl30 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2112032 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_expr_select (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl29 x27
+x29 mul p4 8
+x30 add x29 2
+x31 get p2 3
+r32 call sv_get x28 x31 x30
+x33 at r32 0
+x34 at r32 1
+x35 at r32 2
+x36 at r32 3
+x37 rec x33 x34 x36
+x38 add x35 1
+x39 mul x38 2
+x40 get p2 4
+r41 call sv_get x37 x40 x39
+x42 at r41 0
+x43 at r41 1
+x44 at r41 2
+x45 at r41 3
+x46 rec x42 x43 x45
+x47 add x39 1
+x48 get p2 4
+r49 call sv_get x46 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 call sv_operand x54 p2 p3 x44 x52
+x56 call svl30 x55
+x57 mul p4 8
+x58 add x57 2
+x59 get p2 3
+r60 call sv_get x56 x59 x58
+x61 at r60 0
+x62 at r60 1
+x63 at r60 2
+x64 at r60 3
+x65 rec x61 x62 x64
+x66 add x63 2
+x67 mul x66 2
+x68 get p2 4
+r69 call sv_get x65 x68 x67
+x70 at r69 0
+x71 at r69 1
+x72 at r69 2
+x73 at r69 3
+x74 rec x70 x71 x73
+x75 add x67 1
+x76 get p2 4
+r77 call sv_get x74 x76 x75
+x78 at r77 0
+x79 at r77 1
+x80 at r77 2
+x81 at r77 3
+x82 rec x78 x79 x81
+x83 call sv_operand x82 p2 p3 x72 x80
+ret x83
+end
+
+fn svl31 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 91 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn svl32 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 93 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn sv_expr_slice (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 0
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+x28 call svl31 x27
+x29 fold sv_slice 1 x28 p2 p3 p4 0
+x30 call svl32 x29
+ret x30
+end
+
+fn svl33 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 8236 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_comma (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl33 p0
+ret x1
+end
+
+fn sv_expr_aggregate_value (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 ne p6 0
+x2 select x1 1 0
+x3 fold sv_comma x2 p0 p2 p3 p4
+x4 mul p4 8
+x5 add x4 2
+x6 get p2 3
+r7 call sv_get x3 x6 x5
+x8 at r7 0
+x9 at r7 1
+x10 at r7 2
+x11 at r7 3
+x12 rec x8 x9 x11
+x13 add x10 p5
+x14 mul x13 2
+x15 get p2 4
+r16 call sv_get x12 x15 x14
+x17 at r16 0
+x18 at r16 1
+x19 at r16 2
+x20 at r16 3
+x21 rec x17 x18 x20
+x22 add x14 1
+x23 get p2 4
+r24 call sv_get x21 x23 x22
+x25 at r24 0
+x26 at r24 1
+x27 at r24 2
+x28 at r24 3
+x29 rec x25 x26 x28
+x30 call sv_operand x29 p2 p3 x19 x27
+ret x30
+end
+
+fn sv_expr_aggregate_part (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 1
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 sub x7 p1
+x11 sub x10 1
+x12 call sv_arg_type x9 0 p2 p3 p4 x11
+x13 at x12 0
+x14 at x12 1
+x15 at x12 2
+x16 at x12 3
+x17 rec x13 x14 x16
+x18 get p2 6
+r19 call sv_get x17 x18 x15
+x20 at r19 0
+x21 at r19 1
+x22 at r19 2
+x23 at r19 3
+x24 rec x20 x21 x23
+x25 ne x22 0
+x26 select x25 1 0
+x27 fold sv_expr_aggregate_value x26 x24 p2 p3 p4 x11 p5
+ret x27
+end
+
+fn svl34 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 8224 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn svl35 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn svl36 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2619 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_decl_nonzero (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl34 p0
+x2 get p2 6
+r3 call sv_get x1 x2 p5
+x4 at r3 0
+x5 at r3 1
+x6 at r3 2
+x7 at r3 3
+x8 rec x4 x5 x7
+x9 eq p5 1
+x10 select x9 1 0
+x11 fold sv_type_bool x10 x8 p2 p3 p4
+x12 eq x9 false
+x13 select x12 1 0
+x14 fold sv_type_bits x13 x11 p2 p3 p4 x6
+x15 call svl35 x14
+x16 call svl3 x15
+x17 mul p4 8
+x18 add x17 6
+x19 get p2 3
+r20 call sv_get x16 x19 x18
+x21 at r20 0
+x22 at r20 1
+x23 at r20 2
+x24 at r20 3
+x25 rec x21 x22 x24
+x26 mul p4 8
+x27 add x26 7
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 get p2 5
+x36 call sv_span x34 x35 x23 x32
+x37 call svl36 x36
+ret x37
+end
+
+fn sv_decl_node (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 5
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 get p2 6
+r11 call sv_get x9 x10 x7
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 ne x14 0
+x18 select x17 1 0
+x19 fold sv_decl_nonzero x18 x16 p2 p3 p4 x7
+ret x19
+end
+
+fn svl37 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1935745056 1852270963 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 9 a0
+ret r0
+end
+
+fn svl38 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2112800 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl54 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 123 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn sv_expr_aggregate_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 mul p4 8
+x4 add x3 1
+x5 get p2 3
+r6 call sv_get x1 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 sub x9 p1
+x13 sub x12 1
+x14 call sv_arg_type x11 0 p2 p3 p4 x13
+x15 at x14 0
+x16 at x14 1
+x17 at x14 2
+x18 at x14 3
+x19 rec x15 x16 x18
+x20 get p2 6
+r21 call sv_get x19 x20 x17
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 ne x24 0
+x28 select x27 1 0
+x29 fold sv_expr_aggregate_value x28 x26 p2 p3 p4 x13 x2
+x30 select x27 1 0
+x31 add x2 x30
+x32 rec x29 x31
+ret x32
+end
+
+fn svl55 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 125 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn sv_expr_aggregate (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl54 p0
+x2 mul p4 8
+x3 add x2 1
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 rec x10 0
+x12 fold sv_expr_aggregate_step x8 x11 p2 p3 p4
+x13 at x12 0
+x14 call svl55 x13
+ret x14
+end
+
+fn sv_expr (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 0
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 eq x7 1
+x11 select x10 1 0
+x12 fold sv_expr_mov x11 x9 p2 p3 p4
+x13 eq x7 2
+x14 select x13 1 0
+x15 fold sv_expr_add x14 x12 p2 p3 p4
+x16 eq x7 3
+x17 select x16 1 0
+x18 fold sv_expr_sub x17 x15 p2 p3 p4
+x19 eq x7 4
+x20 select x19 1 0
+x21 fold sv_expr_mul x20 x18 p2 p3 p4
+x22 eq x7 5
+x23 select x22 1 0
+x24 fold sv_expr_and x23 x21 p2 p3 p4
+x25 eq x7 6
+x26 select x25 1 0
+x27 fold sv_expr_or x26 x24 p2 p3 p4
+x28 eq x7 7
+x29 select x28 1 0
+x30 fold sv_expr_xor x29 x27 p2 p3 p4
+x31 eq x7 8
+x32 select x31 1 0
+x33 fold sv_expr_shl x32 x30 p2 p3 p4
+x34 eq x7 9
+x35 select x34 1 0
+x36 fold sv_expr_shr x35 x33 p2 p3 p4
+x37 eq x7 12
+x38 select x37 1 0
+x39 fold sv_expr_eq x38 x36 p2 p3 p4
+x40 eq x7 13
+x41 select x40 1 0
+x42 fold sv_expr_ne x41 x39 p2 p3 p4
+x43 eq x7 14
+x44 select x43 1 0
+x45 fold sv_expr_lt x44 x42 p2 p3 p4
+x46 eq x7 15
+x47 select x46 1 0
+x48 fold sv_expr_le x47 x45 p2 p3 p4
+x49 eq x7 16
+x50 select x49 1 0
+x51 fold sv_expr_gt x50 x48 p2 p3 p4
+x52 eq x7 17
+x53 select x52 1 0
+x54 fold sv_expr_ge x53 x51 p2 p3 p4
+x55 eq x7 18
+x56 select x55 1 0
+x57 fold sv_expr_select x56 x54 p2 p3 p4
+x58 eq x7 25
+x59 select x58 1 0
+x60 fold sv_expr_slice x59 x57 p2 p3 p4
+x61 eq x7 27
+x62 select x61 1 0
+x63 fold sv_expr_slice x62 x60 p2 p3 p4
+x64 eq x7 22
+x65 select x64 1 0
+x66 fold sv_expr_aggregate x65 x63 p2 p3 p4
+x67 eq x7 23
+x68 select x67 1 0
+x69 fold sv_expr_aggregate x68 x66 p2 p3 p4
+x70 eq x7 24
+x71 select x70 1 0
+x72 fold sv_expr_aggregate x71 x69 p2 p3 p4
+ret x72
+end
+
+fn sv_assign_expr (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl37 p0
+x2 call svl3 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl38 x22
+x24 fold sv_expr 1 x23 p2 p3 p4
+x25 call svl36 x24
+ret x25
+end
+
+fn svl39 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1818304544 1937334647 1836016479 1700929634 544106855 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 20 a0
+ret r0
+end
+
+fn svl40 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 8251 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn svl41 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540876893 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn svl42 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1852121147 2660 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 6 a0
+ret r0
+end
+
+fn sv_assign_update (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl39 p0
+x2 call svl3 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl38 x22
+x24 mul p4 8
+x25 add x24 2
+x26 get p2 3
+r27 call sv_get x23 x26 x25
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 add x30 0
+x34 mul x33 2
+x35 get p2 4
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 add x34 1
+x43 get p2 4
+r44 call sv_get x41 x43 x42
+x45 at r44 0
+x46 at r44 1
+x47 at r44 2
+x48 at r44 3
+x49 rec x45 x46 x48
+x50 call sv_operand x49 p2 p3 x39 x47
+x51 call svl40 x50
+x52 call svl3 x51
+x53 mul p4 8
+x54 add x53 6
+x55 get p2 3
+r56 call sv_get x52 x55 x54
+x57 at r56 0
+x58 at r56 1
+x59 at r56 2
+x60 at r56 3
+x61 rec x57 x58 x60
+x62 mul p4 8
+x63 add x62 7
+x64 get p2 3
+r65 call sv_get x61 x64 x63
+x66 at r65 0
+x67 at r65 1
+x68 at r65 2
+x69 at r65 3
+x70 rec x66 x67 x69
+x71 get p2 5
+x72 call sv_span x70 x71 x59 x68
+x73 call svl31 x72
+x74 fold sv_slice 1 x73 p2 p3 p4 0
+x75 call svl41 x74
+x76 mul p4 8
+x77 add x76 2
+x78 get p2 3
+r79 call sv_get x75 x78 x77
+x80 at r79 0
+x81 at r79 1
+x82 at r79 2
+x83 at r79 3
+x84 rec x80 x81 x83
+x85 add x82 2
+x86 mul x85 2
+x87 get p2 4
+r88 call sv_get x84 x87 x86
+x89 at r88 0
+x90 at r88 1
+x91 at r88 2
+x92 at r88 3
+x93 rec x89 x90 x92
+x94 add x86 1
+x95 get p2 4
+r96 call sv_get x93 x95 x94
+x97 at r96 0
+x98 at r96 1
+x99 at r96 2
+x100 at r96 3
+x101 rec x97 x98 x100
+x102 call sv_operand x101 p2 p3 x91 x99
+x103 call svl42 x102
+ret x103
+end
+
+fn svl43 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 28718 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn svl44 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn svl45 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2108457 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_call_arg_value (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl43 p0
+x2 call sv_num x1 p5
+x3 call svl44 x2
+x4 mul p4 8
+x5 add x4 2
+x6 get p2 3
+r7 call sv_get x3 x6 x5
+x8 at r7 0
+x9 at r7 1
+x10 at r7 2
+x11 at r7 3
+x12 rec x8 x9 x11
+x13 add x10 p5
+x14 mul x13 2
+x15 get p2 4
+r16 call sv_get x12 x15 x14
+x17 at r16 0
+x18 at r16 1
+x19 at r16 2
+x20 at r16 3
+x21 rec x17 x18 x20
+x22 add x14 1
+x23 get p2 4
+r24 call sv_get x21 x23 x22
+x25 at r24 0
+x26 at r24 1
+x27 at r24 2
+x28 at r24 3
+x29 rec x25 x26 x28
+x30 call sv_operand x29 p2 p3 x19 x27
+x31 call svl45 x30
+ret x31
+end
+
+fn sv_call_arg (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call sv_arg_type p0 0 p2 p3 p4 p1
+x2 at x1 0
+x3 at x1 1
+x4 at x1 2
+x5 at x1 3
+x6 rec x2 x3 x5
+x7 get p2 6
+r8 call sv_get x6 x7 x4
+x9 at r8 0
+x10 at r8 1
+x11 at r8 2
+x12 at r8 3
+x13 rec x9 x10 x12
+x14 ne x11 0
+x15 select x14 1 0
+x16 fold sv_call_arg_value x15 x13 p2 p3 p4 p1
+ret x16
+end
+
+fn svl46 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 811671584 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 5 a0
+ret r0
+end
+
+fn svl47 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6255904 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl48 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 10272 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn svl49 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1936028206 678718581 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 8 a0
+ret r0
+end
+
+fn svl50 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 171649321 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_assign_call (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 3
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 call svl46 x9
+x11 mul x7 10
+x12 add x11 0
+x13 get p2 2
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 mul x7 10
+x21 add x20 1
+x22 get p2 2
+r23 call sv_get x19 x22 x21
+x24 at r23 0
+x25 at r23 1
+x26 at r23 2
+x27 at r23 3
+x28 rec x24 x25 x27
+x29 get p2 5
+x30 call sv_span x28 x29 x17 x26
+x31 call svl47 x30
+x32 mul p4 8
+x33 add x32 6
+x34 get p2 3
+r35 call sv_get x31 x34 x33
+x36 at r35 0
+x37 at r35 1
+x38 at r35 2
+x39 at r35 3
+x40 rec x36 x37 x39
+x41 mul p4 8
+x42 add x41 7
+x43 get p2 3
+r44 call sv_get x40 x43 x42
+x45 at r44 0
+x46 at r44 1
+x47 at r44 2
+x48 at r44 3
+x49 rec x45 x46 x48
+x50 get p2 5
+x51 call sv_span x49 x50 x38 x47
+x52 call svl48 x51
+x53 mul p4 8
+x54 add x53 1
+x55 get p2 3
+r56 call sv_get x52 x55 x54
+x57 at r56 0
+x58 at r56 1
+x59 at r56 2
+x60 at r56 3
+x61 rec x57 x58 x60
+x62 fold sv_call_arg x59 x61 p2 p3 p4
+x63 call svl49 x62
+x64 call svl3 x63
+x65 mul p4 8
+x66 add x65 6
+x67 get p2 3
+r68 call sv_get x64 x67 x66
+x69 at r68 0
+x70 at r68 1
+x71 at r68 2
+x72 at r68 3
+x73 rec x69 x70 x72
+x74 mul p4 8
+x75 add x74 7
+x76 get p2 3
+r77 call sv_get x73 x76 x75
+x78 at r77 0
+x79 at r77 1
+x80 at r77 2
+x81 at r77 3
+x82 rec x78 x79 x81
+x83 get p2 5
+x84 call sv_span x82 x83 x71 x80
+x85 call svl50 x84
+ret x85
+end
+
+fn svl51 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1852383264 544503152 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 8 a0
+ret r0
+end
+
+fn svl52 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 28704 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn svl53 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2604 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_param_nonzero (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl51 p0
+x2 get p2 6
+r3 call sv_get x1 x2 p5
+x4 at r3 0
+x5 at r3 1
+x6 at r3 2
+x7 at r3 3
+x8 rec x4 x5 x7
+x9 eq p5 1
+x10 select x9 1 0
+x11 fold sv_type_bool x10 x8 p2 p3 p4
+x12 eq x9 false
+x13 select x12 1 0
+x14 fold sv_type_bits x13 x11 p2 p3 p4 x6
+x15 call svl52 x14
+x16 call sv_num x15 p6
+x17 call svl53 x16
+ret x17
+end
+
+fn sv_param (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 3
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 get p2 1
+r12 call sv_get x9 x11 x10
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 get p2 6
+r19 call sv_get x17 x18 x15
+x20 at r19 0
+x21 at r19 1
+x22 at r19 2
+x23 at r19 3
+x24 rec x20 x21 x23
+x25 ne x22 0
+x26 select x25 1 0
+x27 fold sv_param_nonzero x26 x24 p2 p3 p4 x15 p1
+ret x27
+end
+
+fn svl56 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 29535 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_suffix_0 (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl56 p0
+ret x1
+end
+
+fn svl57 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 25439 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_suffix_1 (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl57 p0
+ret x1
+end
+
+fn svl58 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 25183 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_suffix_2 (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl58 p0
+ret x1
+end
+
+fn svl59 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 25695 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_suffix_3 (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl59 p0
+ret x1
+end
+
+fn sv_wire (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl3 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 eq p5 0
+x23 select x22 1 0
+x24 fold sv_suffix_0 x23 x21 p2 p3 p4
+x25 eq p5 1
+x26 select x25 1 0
+x27 fold sv_suffix_1 x26 x24 p2 p3 p4
+x28 eq p5 2
+x29 select x28 1 0
+x30 fold sv_suffix_2 x29 x27 p2 p3 p4
+x31 eq p5 3
+x32 select x31 1 0
+x33 fold sv_suffix_3 x32 x30 p2 p3 p4
+x34 call sv_num x33 p6
+ret x34
+end
+
+fn svl64 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 28767 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_instance_pred_suffix (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl64 p0
+ret x1
+end
+
+fn svl65 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn sv_instance_body_suffix (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl65 p0
+ret x1
+end
+
+fn svl61 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 674263086 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_prev_initial (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 1
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+ret x27
+end
+
+fn sv_prev_wire (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_wire 1 p0 p2 p3 p4 0 p5
+ret x1
+end
+
+fn sv_unroll_prev (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 eq p5 0
+x2 select x1 1 0
+x3 fold sv_prev_initial x2 p0 p2 p3 p4 p5
+x4 ne p5 0
+x5 select x4 1 0
+x6 fold sv_prev_wire x5 x3 p2 p3 p4 p5
+ret x6
+end
+
+fn svl62 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 858272112 6563634 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 11 a0
+ret r0
+end
+
+fn sv_unroll_extra (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 add p1 2
+x2 call svl43 p0
+x3 call sv_num x2 x1
+x4 call svl44 x3
+x5 mul p4 8
+x6 add x5 2
+x7 get p2 3
+r8 call sv_get x4 x7 x6
+x9 at r8 0
+x10 at r8 1
+x11 at r8 2
+x12 at r8 3
+x13 rec x9 x10 x12
+x14 add x11 x1
+x15 mul x14 2
+x16 get p2 4
+r17 call sv_get x13 x16 x15
+x18 at r17 0
+x19 at r17 1
+x20 at r17 2
+x21 at r17 3
+x22 rec x18 x19 x21
+x23 add x15 1
+x24 get p2 4
+r25 call sv_get x22 x24 x23
+x26 at r25 0
+x27 at r25 1
+x28 at r25 2
+x29 at r25 3
+x30 rec x26 x27 x29
+x31 call sv_operand x30 p2 p3 x20 x28
+x32 call svl45 x31
+ret x32
+end
+
+fn sv_unroll_ports (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl61 p0
+x2 fold sv_unroll_prev 1 x1 p2 p3 p4 p5
+x3 call svl62 x2
+x4 call sv_num x3 p5
+x5 call svl45 x4
+x6 mul p4 8
+x7 add x6 1
+x8 get p2 3
+r9 call sv_get x5 x8 x7
+x10 at r9 0
+x11 at r9 1
+x12 at r9 2
+x13 at r9 3
+x14 rec x10 x11 x13
+x15 sub x12 2
+x16 fold sv_unroll_extra x15 x14 p2 p3 p4
+x17 call svl49 x16
+x18 eq p6 1
+x19 select x18 0 1
+x20 add p5 x19
+x21 fold sv_wire 1 x17 p2 p3 p4 p6 x20
+x22 call svl11 x21
+ret x22
+end
+
+fn svl63 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 670505 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_unroll_instance (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 eq p6 1
+x2 mul p4 8
+x3 add x2 3
+x4 get p2 3
+r5 call sv_get p0 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 4
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 select x1 x17 x8
+x21 call svl46 x19
+x22 mul x20 10
+x23 add x22 0
+x24 get p2 2
+r25 call sv_get x21 x24 x23
+x26 at r25 0
+x27 at r25 1
+x28 at r25 2
+x29 at r25 3
+x30 rec x26 x27 x29
+x31 mul x20 10
+x32 add x31 1
+x33 get p2 2
+r34 call sv_get x30 x33 x32
+x35 at r34 0
+x36 at r34 1
+x37 at r34 2
+x38 at r34 3
+x39 rec x35 x36 x38
+x40 get p2 5
+x41 call sv_span x39 x40 x28 x37
+x42 call svl47 x41
+x43 mul p4 8
+x44 add x43 6
+x45 get p2 3
+r46 call sv_get x42 x45 x44
+x47 at r46 0
+x48 at r46 1
+x49 at r46 2
+x50 at r46 3
+x51 rec x47 x48 x50
+x52 mul p4 8
+x53 add x52 7
+x54 get p2 3
+r55 call sv_get x51 x54 x53
+x56 at r55 0
+x57 at r55 1
+x58 at r55 2
+x59 at r55 3
+x60 rec x56 x57 x59
+x61 get p2 5
+x62 call sv_span x60 x61 x49 x58
+x63 select x1 1 0
+x64 fold sv_instance_pred_suffix x63 x62 p2 p3 p4
+x65 eq x1 false
+x66 select x65 1 0
+x67 fold sv_instance_body_suffix x66 x64 p2 p3 p4
+x68 call sv_num x67 p5
+x69 call svl48 x68
+x70 fold sv_unroll_ports 1 x69 p2 p3 p4 p5 p6
+x71 call svl63 x70
+ret x71
+end
+
+fn sv_unroll_fold_step (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 5
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 call svl34 x9
+x11 get p2 6
+r12 call sv_get x10 x11 x7
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 eq x7 1
+x19 select x18 1 0
+x20 fold sv_type_bool x19 x17 p2 p3 p4
+x21 eq x18 false
+x22 select x21 1 0
+x23 fold sv_type_bits x22 x20 p2 p3 p4 x15
+x24 call svl35 x23
+x25 add p1 1
+x26 fold sv_wire 1 x24 p2 p3 p4 0 x25
+x27 call svl36 x26
+x28 fold sv_unroll_instance 1 x27 p2 p3 p4 p1 0
+ret x28
+end
+
+fn sv_unroll_fold (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_unroll_fold_step p5 p0 p2 p3 p4
+ret x1
+end
+
+fn svl66 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1869357088 543385959 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 8 a0
+ret r0
+end
+
+fn svl60 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 811738929 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_done_initial (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl60 p0
+ret x1
+end
+
+fn sv_done_wire (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_wire 1 p0 p2 p3 p4 3 p5
+ret x1
+end
+
+fn sv_unroll_done (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 eq p5 0
+x2 select x1 1 0
+x3 fold sv_done_initial x2 p0 p2 p3 p4 p5
+x4 ne p5 0
+x5 select x4 1 0
+x6 fold sv_done_wire x5 x3 p2 p3 p4 p5
+ret x6
+end
+
+fn svl67 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2116058144 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn svl68 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 538970683 1769173857 2125415 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 11 a0
+ret r0
+end
+
+fn sv_unroll_loop_step (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 5
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add p1 1
+x11 call svl66 x9
+x12 fold sv_wire 1 x11 p2 p3 p4 1 p1
+x13 call svl36 x12
+x14 call svl66 x13
+x15 fold sv_wire 1 x14 p2 p3 p4 3 x10
+x16 call svl36 x15
+x17 call svl34 x16
+x18 get p2 6
+r19 call sv_get x17 x18 x7
+x20 at r19 0
+x21 at r19 1
+x22 at r19 2
+x23 at r19 3
+x24 rec x20 x21 x23
+x25 eq x7 1
+x26 select x25 1 0
+x27 fold sv_type_bool x26 x24 p2 p3 p4
+x28 eq x25 false
+x29 select x28 1 0
+x30 fold sv_type_bits x29 x27 p2 p3 p4 x22
+x31 call svl35 x30
+x32 fold sv_wire 1 x31 p2 p3 p4 2 x10
+x33 call svl36 x32
+x34 call svl34 x33
+x35 get p2 6
+r36 call sv_get x34 x35 x7
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 eq x7 1
+x43 select x42 1 0
+x44 fold sv_type_bool x43 x41 p2 p3 p4
+x45 eq x42 false
+x46 select x45 1 0
+x47 fold sv_type_bits x46 x44 p2 p3 p4 x39
+x48 call svl35 x47
+x49 fold sv_wire 1 x48 p2 p3 p4 0 x10
+x50 call svl36 x49
+x51 fold sv_unroll_instance 1 x50 p2 p3 p4 p1 1
+x52 fold sv_unroll_instance 1 x51 p2 p3 p4 p1 2
+x53 call svl37 x52
+x54 fold sv_wire 1 x53 p2 p3 p4 3 x10
+x55 call svl38 x54
+x56 fold sv_unroll_done 1 x55 p2 p3 p4 p1
+x57 call svl67 x56
+x58 fold sv_wire 1 x57 p2 p3 p4 1 p1
+x59 call svl68 x58
+x60 fold sv_wire 1 x59 p2 p3 p4 0 x10
+x61 call svl38 x60
+x62 fold sv_wire 1 x61 p2 p3 p4 3 x10
+x63 call svl29 x62
+x64 fold sv_unroll_prev 1 x63 p2 p3 p4 p1
+x65 call svl30 x64
+x66 fold sv_wire 1 x65 p2 p3 p4 2 x10
+x67 call svl36 x66
+ret x67
+end
+
+fn sv_unroll_loop (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_unroll_loop_step p5 p0 p2 p3 p4
+ret x1
+end
+
+fn sv_assign_unroll (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 0
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 mul p4 8
+x11 add x10 2
+x12 get p2 3
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x16 0
+x20 mul x19 2
+x21 get p2 4
+r22 call sv_get x18 x21 x20
+x23 at r22 0
+x24 at r22 1
+x25 at r22 2
+x26 at r22 3
+x27 rec x23 x24 x26
+x28 add x20 1
+x29 get p2 4
+r30 call sv_get x27 x29 x28
+x31 at r30 0
+x32 at r30 1
+x33 at r30 2
+x34 at r30 3
+x35 rec x31 x32 x34
+x36 eq x7 21
+x37 eq x36 false
+x38 select x37 1 0
+x39 fold sv_unroll_fold x38 x35 p2 p3 p4 x33
+x40 select x36 1 0
+x41 fold sv_unroll_loop x40 x39 p2 p3 p4 x33
+x42 call svl37 x41
+x43 call svl3 x42
+x44 mul p4 8
+x45 add x44 6
+x46 get p2 3
+r47 call sv_get x43 x46 x45
+x48 at r47 0
+x49 at r47 1
+x50 at r47 2
+x51 at r47 3
+x52 rec x48 x49 x51
+x53 mul p4 8
+x54 add x53 7
+x55 get p2 3
+r56 call sv_get x52 x55 x54
+x57 at r56 0
+x58 at r56 1
+x59 at r56 2
+x60 at r56 3
+x61 rec x57 x58 x60
+x62 get p2 5
+x63 call sv_span x61 x62 x50 x59
+x64 call svl38 x63
+x65 fold sv_unroll_prev 1 x64 p2 p3 p4 x33
+x66 call svl36 x65
+ret x66
+end
+
+fn sv_comb_node (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 0
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 mul p4 8
+x11 add x10 5
+x12 get p2 3
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 get p2 6
+r20 call sv_get x18 x19 x16
+x21 at r20 0
+x22 at r20 1
+x23 at r20 2
+x24 at r20 3
+x25 rec x21 x22 x24
+x26 ne x23 0
+x27 eq x7 26
+x28 eq x7 28
+x29 or x27 x28
+x30 eq x7 19
+x31 eq x7 20
+x32 eq x7 21
+x33 or x31 x32
+x34 and x26 x29
+x35 select x34 1 0
+x36 fold sv_assign_update x35 x25 p2 p3 p4
+x37 and x26 x30
+x38 select x37 1 0
+x39 fold sv_assign_call x38 x36 p2 p3 p4
+x40 select x33 1 0
+x41 fold sv_assign_unroll x40 x39 p2 p3 p4
+x42 or x29 x30
+x43 or x42 x33
+x44 eq x43 false
+x45 and x26 x44
+x46 select x45 1 0
+x47 fold sv_assign_expr x46 x41 p2 p3 p4
+ret x47
+end
+
+fn sv_decls (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 fold sv_decl_node 1 x9 p2 p3 x10
+ret x11
+end
+
+fn sv_comb_nodes (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 fold sv_comb_node 1 x9 p2 p3 x10
+ret x11
+end
+
+fn svl69 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1969516397 1629513068 24368 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 10 a0
+ret r0
+end
+
+fn svl70 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 665632 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl71 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1970216992 1953853556 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 9 a0
+ret r0
+end
+
+fn svl72 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1936028192 175402101 670505 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 11 a0
+ret r0
+end
+
+fn svl73 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1935745056 1852270963 1936028192 544500853 8253 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 18 a0
+ret r0
+end
+
+fn svl74 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1852115515 1685024100 6646901 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 11 a0
+ret r0
+end
+
+fn sv_comb_module (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl69 p0
+x2 mul p3 10
+x3 add x2 0
+x4 get p2 2
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p3 10
+x12 add x11 1
+x13 get p2 2
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl70 x21
+x23 mul p3 10
+x24 add x23 2
+x25 get p2 2
+r26 call sv_get x22 x25 x24
+x27 at r26 0
+x28 at r26 1
+x29 at r26 2
+x30 at r26 3
+x31 rec x27 x28 x30
+x32 fold sv_param x29 x31 p2 p3 p4
+x33 mul p3 10
+x34 add x33 4
+x35 get p2 2
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 call svl71 x41
+x43 get p2 6
+r44 call sv_get x42 x43 x39
+x45 at r44 0
+x46 at r44 1
+x47 at r44 2
+x48 at r44 3
+x49 rec x45 x46 x48
+x50 eq x39 1
+x51 select x50 1 0
+x52 fold sv_type_bool x51 x49 p2 p3 p4
+x53 eq x50 false
+x54 select x53 1 0
+x55 fold sv_type_bits x54 x52 p2 p3 p4 x47
+x56 call svl72 x55
+x57 mul p3 10
+x58 add x57 6
+x59 get p2 2
+r60 call sv_get x56 x59 x58
+x61 at r60 0
+x62 at r60 1
+x63 at r60 2
+x64 at r60 3
+x65 rec x61 x62 x64
+x66 fold sv_decls x63 x65 p2 p3 p4
+x67 fold sv_comb_nodes x63 x66 p2 p3 p4
+x68 call svl73 x67
+x69 mul p3 10
+x70 add x69 7
+x71 get p2 2
+r72 call sv_get x68 x71 x70
+x73 at r72 0
+x74 at r72 1
+x75 at r72 2
+x76 at r72 3
+x77 rec x73 x74 x76
+x78 mul p3 10
+x79 add x78 8
+x80 get p2 2
+r81 call sv_get x77 x80 x79
+x82 at r81 0
+x83 at r81 1
+x84 at r81 2
+x85 at r81 3
+x86 rec x82 x83 x85
+x87 call sv_operand x86 p2 p3 x75 x84
+x88 call svl74 x87
+ret x88
+end
+
+fn sv_rec_io_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 add p5 p1
+x4 get p2 1
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 get p2 7
+r12 call sv_get x10 x11 x8
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 or x2 x15
+x19 rec x17 x18
+ret x19
+end
+
+fn sv_rec_big_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 add p5 p1
+x4 get p2 1
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 get p2 12
+x12 add x11 x8
+x13 get p2 6
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 or x2 x17
+x21 rec x19 x20
+ret x21
+end
+
+fn sv_type_plan (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p1 3
+x2 add x1 0
+x3 get p2 0
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 mul p1 3
+x11 add x10 1
+x12 get p2 0
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 mul p1 3
+x20 add x19 2
+x21 get p2 0
+r22 call sv_get x18 x21 x20
+x23 at r22 0
+x24 at r22 1
+x25 at r22 2
+x26 at r22 3
+x27 rec x23 x24 x26
+x28 eq x7 4
+x29 eq x7 5
+x30 eq x7 3
+x31 eq x7 2
+x32 eq x7 1
+x33 select x28 x25 0
+x34 get p2 6
+r35 call sv_get x27 x34 x33
+x36 at r35 0
+x37 at r35 1
+x38 at r35 2
+x39 at r35 3
+x40 rec x36 x37 x39
+x41 get p2 7
+r42 call sv_get x40 x41 x33
+x43 at r42 0
+x44 at r42 1
+x45 at r42 2
+x46 at r42 3
+x47 rec x43 x44 x46
+x48 mul x16 x38
+x49 select x29 x25 0
+x50 call sv_field_offset x47 p2 x16 x49
+x51 at x50 0
+x52 at x50 1
+x53 at x50 2
+x54 at x50 3
+x55 rec x51 x52 x54
+x56 rec x55 0
+x57 select x29 x25 0
+x58 fold sv_rec_io_step x57 x56 p2 p3 p4 x16
+x59 at x58 0
+x60 at x58 1
+x61 select x32 32 0
+x62 select x31 1 x61
+x63 select x28 x48 x62
+x64 select x29 x53 x63
+x65 select x30 1 0
+x66 select x28 x45 x65
+x67 select x29 x60 x66
+x68 gt x16 1024
+x69 and x28 x68
+x70 lt x7 1
+x71 gt x7 5
+x72 or x70 x71
+x73 select x72 6 0
+x74 at x59 0
+x75 at x59 1
+x76 at x59 2
+x77 eq x74 0
+x78 select x77 x73 x74
+x79 rec x78 x75 x76
+x80 get p2 6
+x81 call sv_store x79 x80 p1 x64
+x82 get p2 7
+x83 call sv_store x81 x82 p1 x67
+x84 get p2 12
+x85 add x84 x33
+x86 get p2 6
+r87 call sv_get x83 x86 x85
+x88 at r87 0
+x89 at r87 1
+x90 at r87 2
+x91 at r87 3
+x92 rec x88 x89 x91
+x93 select x69 1 0
+x94 or x93 x90
+x95 rec x92 0
+x96 select x29 x25 0
+x97 fold sv_rec_big_step x96 x95 p2 p3 p4 x16
+x98 at x97 0
+x99 at x97 1
+x100 select x28 x94 0
+x101 select x29 x99 x100
+x102 add x84 p1
+x103 get p2 6
+x104 call sv_store x98 x103 x102 x101
+ret x104
+end
+
+fn sv_bound_operand (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),u32,u32,io)
+x1 eq p5 1
+x2 select x1 p6 0
+x3 mul x2 20
+x4 add x3 p7
+x5 get p2 15
+r6 call sv_get p0 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 add x3 10
+x13 add x12 p7
+x14 get p2 15
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 eq p5 3
+x22 select x21 p6 4294967295
+x23 select x1 x9 x22
+x24 ne p6 0
+x25 select x24 1 0
+x26 select x21 x25 0
+x27 select x1 x18 x26
+x28 at x20 0
+x29 at x20 1
+x30 at x20 2
+x31 rec x28 x29 x23 x27 x30
+ret x31
+end
+
+fn sv_bound_node (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 0
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 sub p5 1
+x11 mul p4 8
+x12 add x11 2
+x13 get p2 3
+r14 call sv_get x9 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 add x17 0
+x21 mul x20 2
+x22 get p2 4
+r23 call sv_get x19 x22 x21
+x24 at r23 0
+x25 at r23 1
+x26 at r23 2
+x27 at r23 3
+x28 rec x24 x25 x27
+x29 add x21 1
+x30 get p2 4
+r31 call sv_get x28 x30 x29
+x32 at r31 0
+x33 at r31 1
+x34 at r31 2
+x35 at r31 3
+x36 rec x32 x33 x35
+x37 call sv_bound_operand x36 0 p2 p3 p4 x26 x34 x10
+x38 at x37 0
+x39 at x37 1
+x40 at x37 2
+x41 at x37 3
+x42 at x37 4
+x43 rec x38 x39 x42
+x44 mul p4 8
+x45 add x44 2
+x46 get p2 3
+r47 call sv_get x43 x46 x45
+x48 at r47 0
+x49 at r47 1
+x50 at r47 2
+x51 at r47 3
+x52 rec x48 x49 x51
+x53 add x50 1
+x54 mul x53 2
+x55 get p2 4
+r56 call sv_get x52 x55 x54
+x57 at r56 0
+x58 at r56 1
+x59 at r56 2
+x60 at r56 3
+x61 rec x57 x58 x60
+x62 add x54 1
+x63 get p2 4
+r64 call sv_get x61 x63 x62
+x65 at r64 0
+x66 at r64 1
+x67 at r64 2
+x68 at r64 3
+x69 rec x65 x66 x68
+x70 call sv_bound_operand x69 0 p2 p3 p4 x59 x67 x10
+x71 at x70 0
+x72 at x70 1
+x73 at x70 2
+x74 at x70 3
+x75 at x70 4
+x76 rec x71 x72 x75
+x77 mul p4 8
+x78 add x77 2
+x79 get p2 3
+r80 call sv_get x76 x79 x78
+x81 at r80 0
+x82 at r80 1
+x83 at r80 2
+x84 at r80 3
+x85 rec x81 x82 x84
+x86 add x83 2
+x87 mul x86 2
+x88 get p2 4
+r89 call sv_get x85 x88 x87
+x90 at r89 0
+x91 at r89 1
+x92 at r89 2
+x93 at r89 3
+x94 rec x90 x91 x93
+x95 add x87 1
+x96 get p2 4
+r97 call sv_get x94 x96 x95
+x98 at r97 0
+x99 at r97 1
+x100 at r97 2
+x101 at r97 3
+x102 rec x98 x99 x101
+x103 call sv_bound_operand x102 0 p2 p3 p4 x92 x100 x10
+x104 at x103 0
+x105 at x103 1
+x106 at x103 2
+x107 at x103 3
+x108 at x103 4
+x109 rec x104 x105 x108
+x110 lt x40 x73
+x111 select x110 x40 x73
+x112 gt x40 x73
+x113 select x112 x40 x73
+x114 gt x73 x106
+x115 select x114 x73 x106
+x116 eq x73 0
+x117 sub x73 1
+x118 select x116 0 x117
+x119 lt x40 x118
+x120 select x119 x40 x118
+x121 eq x59 3
+x122 ne x67 0
+x123 and x121 x122
+x124 div x40 x67
+x125 select x123 x124 x40
+x126 eq x59 3
+x127 and x67 31
+x128 shr x40 x127
+x129 select x126 x128 x40
+x130 add x40 x73
+x131 ge x130 x40
+x132 select x131 x130 4294967295
+x133 mul x40 x73
+x134 div 4294967295 x73
+x135 eq x73 0
+x136 le x40 x134
+x137 or x135 x136
+x138 select x137 x133 4294967295
+x139 shr x113 1
+x140 or x113 x139
+x141 shr x140 2
+x142 or x140 x141
+x143 shr x142 4
+x144 or x142 x143
+x145 shr x144 8
+x146 or x144 x145
+x147 shr x146 16
+x148 or x146 x147
+x149 eq x7 1
+x150 select x149 x40 4294967295
+x151 eq x7 5
+x152 select x151 x111 x150
+x153 eq x7 11
+x154 select x153 x120 x152
+x155 eq x7 10
+x156 select x155 x125 x154
+x157 eq x7 9
+x158 select x157 x129 x156
+x159 eq x7 18
+x160 select x159 x115 x158
+x161 eq x7 2
+x162 select x161 x132 x160
+x163 eq x7 4
+x164 select x163 x138 x162
+x165 eq x7 6
+x166 select x165 x148 x164
+x167 eq x7 7
+x168 select x167 x148 x166
+x169 or x41 x74
+x170 and x74 x107
+x171 select x131 x169 0
+x172 eq x7 1
+x173 select x172 x41 0
+x174 eq x7 6
+x175 select x174 x169 x173
+x176 eq x7 18
+x177 select x176 x170 x175
+x178 eq x7 2
+x179 select x178 x171 x177
+x180 mul p4 20
+x181 add x180 p5
+x182 get p2 15
+x183 call sv_store x109 x182 x181 x168
+x184 add x180 10
+x185 add x184 p5
+x186 get p2 15
+x187 call sv_store x183 x186 x185 x179
+ret x187
+end
+
+fn sv_bound_nodes (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_bound_node 1 p0 p2 p3 p1 p5
+ret x1
+end
+
+fn sv_bound_level (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 13
+x2 add p1 1
+x3 fold sv_bound_nodes x1 p0 p2 p3 p4 x2
+ret x3
+end
+
+fn sv_bound_init (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p1 20
+x2 get p2 15
+x3 call sv_store p0 x2 x1 4294967295
+ret x3
+end
+
+fn sv_plan_param ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 mul p3 10
+x4 add x3 3
+x5 get p2 2
+r6 call sv_get x1 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 add x9 p1
+x13 get p2 1
+r14 call sv_get x11 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 7
+r21 call sv_get x19 x20 x17
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 or x2 x24
+x28 rec x26 x27
+ret x28
+end
+
+fn sv_plan_node ((u32,(u32,u32,u32),io),u32,u32,u32) u32 u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32,u32,u32)
+x1 at p0 0
+x2 at p0 1
+x3 at p0 2
+x4 at p0 3
+x5 mul p3 10
+x6 add x5 5
+x7 get p2 2
+r8 call sv_get x1 x7 x6
+x9 at r8 0
+x10 at r8 1
+x11 at r8 2
+x12 at r8 3
+x13 rec x9 x10 x12
+x14 add x11 p1
+x15 mul x14 8
+x16 add x15 0
+x17 get p2 3
+r18 call sv_get x13 x17 x16
+x19 at r18 0
+x20 at r18 1
+x21 at r18 2
+x22 at r18 3
+x23 rec x19 x20 x22
+x24 mul x14 8
+x25 add x24 3
+x26 get p2 3
+r27 call sv_get x23 x26 x25
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 mul x14 8
+x34 add x33 4
+x35 get p2 3
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 get p2 8
+r43 call sv_get x41 x42 x30
+x44 at r43 0
+x45 at r43 1
+x46 at r43 2
+x47 at r43 3
+x48 rec x44 x45 x47
+x49 get p2 8
+r50 call sv_get x48 x49 x39
+x51 at r50 0
+x52 at r50 1
+x53 at r50 2
+x54 at r50 3
+x55 rec x51 x52 x54
+x56 get p2 9
+r57 call sv_get x55 x56 x39
+x58 at r57 0
+x59 at r57 1
+x60 at r57 2
+x61 at r57 3
+x62 rec x58 x59 x61
+x63 eq x21 29
+x64 select x63 1 0
+x65 eq x21 30
+x66 select x65 2 x64
+x67 eq x21 31
+x68 select x67 3 x66
+x69 eq x21 10
+x70 select x69 4 x68
+x71 eq x21 11
+x72 select x71 4 x70
+x73 eq x21 19
+x74 ne x46 0
+x75 and x73 x74
+x76 select x75 5 x72
+x77 eq x21 20
+x78 eq x21 21
+x79 or x77 x78
+x80 select x79 6 x76
+x81 mul x14 8
+x82 add x81 2
+x83 get p2 3
+r84 call sv_get x62 x83 x82
+x85 at r84 0
+x86 at r84 1
+x87 at r84 2
+x88 at r84 3
+x89 rec x85 x86 x88
+x90 add x87 0
+x91 mul x90 2
+x92 get p2 4
+r93 call sv_get x89 x92 x91
+x94 at r93 0
+x95 at r93 1
+x96 at r93 2
+x97 at r93 3
+x98 rec x94 x95 x97
+x99 add x91 1
+x100 get p2 4
+r101 call sv_get x98 x100 x99
+x102 at r101 0
+x103 at r101 1
+x104 at r101 2
+x105 at r101 3
+x106 rec x102 x103 x105
+x107 eq x96 3
+x108 le x104 256
+x109 eq x46 0
+x110 eq x53 0
+x111 or x77 x110
+x112 and x107 x108
+x113 and x109 x111
+x114 and x112 x113
+x115 eq x114 false
+x116 and x79 x115
+x117 or x75 x116
+x118 ne x80 0
+x119 eq x79 false
+x120 and x118 x119
+x121 or x117 x120
+x122 select x121 1 0
+x123 or x2 x122
+x124 ne x80 0
+x125 select x124 1 0
+x126 add x3 x125
+x127 get p2 10
+x128 call sv_store x106 x127 x14 x80
+x129 ge x21 32
+x130 le x21 37
+x131 and x129 x130
+x132 ne x53 0
+x133 ne x60 0
+x134 and x132 x133
+x135 and x78 x134
+x136 at x128 0
+x137 at x128 1
+x138 at x128 2
+x139 select x131 8 0
+x140 eq x136 0
+x141 select x140 x139 x136
+x142 rec x141 x137 x138
+x143 mul x14 8
+x144 add x143 2
+x145 get p2 3
+r146 call sv_get x142 x145 x144
+x147 at r146 0
+x148 at r146 1
+x149 at r146 2
+x150 at r146 3
+x151 rec x147 x148 x150
+x152 add x149 1
+x153 mul x152 2
+x154 get p2 4
+r155 call sv_get x151 x154 x153
+x156 at r155 0
+x157 at r155 1
+x158 at r155 2
+x159 at r155 3
+x160 rec x156 x157 x159
+x161 add x153 1
+x162 get p2 4
+r163 call sv_get x160 x162 x161
+x164 at r163 0
+x165 at r163 1
+x166 at r163 2
+x167 at r163 3
+x168 rec x164 x165 x167
+x169 call sv_bound_operand x168 0 p2 p3 p4 x158 x166 9
+x170 at x169 0
+x171 at x169 1
+x172 at x169 2
+x173 at x169 3
+x174 at x169 4
+x175 rec x170 x171 x174
+x176 call sv_arg_type x175 0 p2 p3 x14 0
+x177 at x176 0
+x178 at x176 1
+x179 at x176 2
+x180 at x176 3
+x181 rec x177 x178 x180
+x182 mul x179 3
+x183 add x182 1
+x184 get p2 0
+r185 call sv_get x181 x184 x183
+x186 at r185 0
+x187 at r185 1
+x188 at r185 2
+x189 at r185 3
+x190 rec x186 x187 x189
+x191 eq x21 25
+x192 eq x21 26
+x193 or x191 x192
+x194 ge x172 x188
+x195 and x193 x194
+x196 eq x21 10
+x197 eq x21 11
+x198 or x196 x197
+x199 eq x173 0
+x200 and x198 x199
+x201 eq x21 29
+x202 mul x30 2
+x203 add x202 1
+x204 get p2 14
+r205 call sv_get x190 x204 x203
+x206 at r205 0
+x207 at r205 1
+x208 at r205 2
+x209 at r205 3
+x210 rec x206 x207 x209
+x211 mul x39 2
+x212 add x211 1
+x213 get p2 14
+r214 call sv_get x210 x213 x212
+x215 at r214 0
+x216 at r214 1
+x217 at r214 2
+x218 at r214 3
+x219 rec x215 x216 x218
+x220 or x73 x79
+x221 ne x208 0
+x222 ne x217 0
+x223 and x78 x222
+x224 or x221 x223
+x225 and x220 x224
+x226 or x195 x200
+x227 or x201 x225
+x228 or x226 x227
+x229 mul p3 10
+x230 add x229 9
+x231 get p2 2
+r232 call sv_get x219 x231 x230
+x233 at r232 0
+x234 at r232 1
+x235 at r232 2
+x236 at r232 3
+x237 rec x233 x234 x236
+x238 and x235 1
+x239 ne x238 0
+x240 and x239 x228
+x241 select x240 1 0
+x242 or x4 x241
+ordhandle get p2 10
+ordcount get p2 13
+ordnode add ordcount x14
+ordstate call sv_store x237 ordhandle ordnode x3
+x243 rec ordstate x123 x126 x242
+ret x243
+end
+
+fn sv_plan_function (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p1 10
+x2 add x1 2
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 mul p1 10
+x11 add x10 4
+x12 get p2 2
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 get p2 7
+r20 call sv_get x18 x19 x16
+x21 at r20 0
+x22 at r20 1
+x23 at r20 2
+x24 at r20 3
+x25 rec x21 x22 x24
+x26 rec x25 0
+x27 fold sv_plan_param x7 x26 p2 p1 0
+x28 at x27 0
+x29 at x27 1
+x30 or x29 x23
+x31 mul p1 10
+x32 add x31 9
+x33 get p2 2
+r34 call sv_get x28 x33 x32
+x35 at r34 0
+x36 at r34 1
+x37 at r34 2
+x38 at r34 3
+x39 rec x35 x36 x38
+x40 and x37 2
+x41 ne x40 0
+x42 select x41 1 0
+x43 or x30 x42
+x44 get p2 9
+x45 call sv_store x39 x44 p1 x29
+x46 mul p1 10
+x47 add x46 6
+x48 get p2 2
+r49 call sv_get x45 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 rec x54 x43 0 0
+x56 fold sv_plan_node x52 x55 p2 p1 0
+x57 at x56 0
+x58 at x56 1
+x59 at x56 2
+x60 at x56 3
+x61 get p2 8
+x62 call sv_store x57 x61 p1 x58
+x63 mul p1 2
+x64 get p2 14
+x65 call sv_store x62 x64 x63 x59
+x66 add x63 1
+x67 get p2 14
+x68 call sv_store x65 x67 x66 x60
+x69 at x68 0
+x70 at x68 1
+x71 at x68 2
+x72 ne x60 0
+x73 select x72 9 0
+x74 eq x69 0
+x75 select x74 x73 x69
+x76 rec x75 x70 x71
+ret x76
+end
+
+fn sv_bits_more (u32,u32) u32 -> bool
+v at p0 0
+r ne v 0
+ret r
+end
+
+fn sv_bits_step (u32,u32) u32 -> (u32,u32)
+v at p0 0
+n at p0 1
+next shr v 1
+count add n 1
+r rec next count
+ret r
+end
+
+fn sv_bits u32 -> u32
+s rec p0 0
+r loop sv_bits_more sv_bits_step 32 s
+n at r 1
+zero eq n 0
+out select zero 1 n
+ret out
+end
+
+
+fn svl75 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 25639 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_pc (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 2
+x2 get p2 14
+r3 call sv_get p0 x2 x1
+x4 at r3 0
+x5 at r3 1
+x6 at r3 2
+x7 at r3 3
+x8 rec x4 x5 x7
+x9 call sv_bits x6
+x10 call sv_num x8 x9
+x11 call svl75 x10
+x12 call sv_num x11 p5
+ret x12
+end
+
+fn sv_find_stage_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 add p5 p1
+x4 get p2 10
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 ne x8 0
+x12 select x11 x3 x2
+x13 rec x10 x12
+ret x13
+end
+
+fn sv_find_stage_good ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 u32 -> bool
+s at p0 0
+status at s 0
+v at p0 1
+ok eq status 0
+none eq v 0
+r and ok none
+ret r
+end
+
+
+fn sv_find_stage (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),u32,io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 mul p3 10
+x11 add x10 6
+x12 get p2 2
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x7 x16
+x20 sub x19 p5
+x21 rec x18 0
+x22 loop sv_find_stage_good sv_find_stage_step x20 x21 p2 p3 p4 p5
+x23 at x22 0
+x24 at x22 1
+x25 at x23 0
+x26 at x23 1
+x27 at x23 2
+x28 rec x25 x26 x24 x27
+ret x28
+end
+
+fn svl76 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 544106854 824196412 993092135 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 12 a0
+ret r0
+end
+
+fn sv_advance_last (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl76 p0
+ret x1
+end
+
+fn svl77 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6254181 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl78 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 811738929 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 9 a0
+ret r0
+end
+
+fn sv_advance_more (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 add p4 1
+x2 call sv_find_stage p0 0 p2 p3 p4 x1
+x3 at x2 0
+x4 at x2 1
+x5 at x2 2
+x6 at x2 3
+x7 rec x3 x4 x6
+x8 call svl77 x7
+x9 mul x5 8
+x10 add x9 6
+x11 get p2 3
+r12 call sv_get x8 x11 x10
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 mul x5 8
+x19 add x18 7
+x20 get p2 3
+r21 call sv_get x17 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 get p2 5
+x28 call sv_span x26 x27 x15 x24
+x29 call svl78 x28
+ret x29
+end
+
+fn svl79 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1008755568 8253 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 6 a0
+ret r0
+end
+
+fn sv_advance (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 13
+x2 add x1 p4
+x3 get p2 10
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 1
+x11 mul p3 2
+x12 get p2 14
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 eq x10 x16
+x20 call svl79 x18
+x21 fold sv_pc 1 x20 p2 p3 p4 x10
+x22 call svl40 x21
+x23 select x19 1 0
+x24 fold sv_advance_last x23 x22 p2 p3 p4
+x25 eq x19 false
+x26 select x25 1 0
+x27 fold sv_advance_more x26 x24 p2 p3 p4
+ret x27
+end
+
+fn sv_seq_pure (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 10
+r2 call sv_get p0 x1 p4
+x3 at r2 0
+x4 at r2 1
+x5 at r2 2
+x6 at r2 3
+x7 rec x3 x4 x6
+x8 mul p4 8
+x9 add x8 5
+x10 get p2 3
+r11 call sv_get x7 x10 x9
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 get p2 6
+r18 call sv_get x16 x17 x14
+x19 at r18 0
+x20 at r18 1
+x21 at r18 2
+x22 at r18 3
+x23 rec x19 x20 x22
+x24 eq x5 0
+x25 ne x21 0
+x26 and x24 x25
+x27 mul p4 8
+x28 add x27 0
+x29 get p2 3
+r30 call sv_get x23 x29 x28
+x31 at r30 0
+x32 at r30 1
+x33 at r30 2
+x34 at r30 3
+x35 rec x31 x32 x34
+x36 eq x33 19
+x37 eq x33 26
+x38 eq x33 28
+x39 or x37 x38
+x40 and x26 x36
+x41 select x40 1 0
+x42 fold sv_assign_call x41 x35 p2 p3 p4
+x43 and x26 x39
+x44 select x43 1 0
+x45 fold sv_assign_update x44 x42 p2 p3 p4
+x46 or x36 x39
+x47 eq x46 false
+x48 and x26 x47
+x49 select x48 1 0
+x50 fold sv_assign_expr x49 x45 p2 p3 p4
+ret x50
+end
+
+fn svl80 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 24434 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_stage_value (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 5
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 get p2 6
+r11 call sv_get x9 x10 x7
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 call svl34 x16
+x18 get p2 6
+r19 call sv_get x17 x18 x7
+x20 at r19 0
+x21 at r19 1
+x22 at r19 2
+x23 at r19 3
+x24 rec x20 x21 x23
+x25 eq x7 1
+x26 select x25 1 0
+x27 fold sv_type_bool x26 x24 p2 p3 p4
+x28 eq x25 false
+x29 select x28 1 0
+x30 fold sv_type_bits x29 x27 p2 p3 p4 x22
+x31 call svl35 x30
+x32 call svl80 x31
+x33 mul p4 8
+x34 add x33 6
+x35 get p2 3
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 mul p4 8
+x43 add x42 7
+x44 get p2 3
+r45 call sv_get x41 x44 x43
+x46 at r45 0
+x47 at r45 1
+x48 at r45 2
+x49 at r45 3
+x50 rec x46 x47 x49
+x51 get p2 5
+x52 call sv_span x50 x51 x39 x48
+x53 call svl68 x52
+x54 call svl3 x53
+x55 mul p4 8
+x56 add x55 6
+x57 get p2 3
+r58 call sv_get x54 x57 x56
+x59 at r58 0
+x60 at r58 1
+x61 at r58 2
+x62 at r58 3
+x63 rec x59 x60 x62
+x64 mul p4 8
+x65 add x64 7
+x66 get p2 3
+r67 call sv_get x63 x66 x65
+x68 at r67 0
+x69 at r67 1
+x70 at r67 2
+x71 at r67 3
+x72 rec x68 x69 x71
+x73 get p2 5
+x74 call sv_span x72 x73 x61 x70
+x75 call svl38 x74
+x76 call svl80 x75
+x77 mul p4 8
+x78 add x77 6
+x79 get p2 3
+r80 call sv_get x76 x79 x78
+x81 at r80 0
+x82 at r80 1
+x83 at r80 2
+x84 at r80 3
+x85 rec x81 x82 x84
+x86 mul p4 8
+x87 add x86 7
+x88 get p2 3
+r89 call sv_get x85 x88 x87
+x90 at r89 0
+x91 at r89 1
+x92 at r89 2
+x93 at r89 3
+x94 rec x90 x91 x93
+x95 get p2 5
+x96 call sv_span x94 x95 x83 x92
+x97 call svl36 x96
+ret x97
+end
+
+fn sv_stage_common (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl66 p0
+x2 call svl77 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl36 x22
+x24 mul p4 8
+x25 add x24 5
+x26 get p2 3
+r27 call sv_get x23 x26 x25
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 get p2 6
+r34 call sv_get x32 x33 x30
+x35 at r34 0
+x36 at r34 1
+x37 at r34 2
+x38 at r34 3
+x39 rec x35 x36 x38
+x40 ne x37 0
+x41 select x40 1 0
+x42 fold sv_stage_value x41 x39 p2 p3 p4
+ret x42
+end
+
+fn svl81 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6252656 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl82 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6255731 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl83 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6254180 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl84 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1869357088 543385959 976302939 2121008 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 15 a0
+ret r0
+end
+
+fn svl85 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6254948 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl86 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6255204 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl87 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 811671584 1768191327 1601511542 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 12 a0
+ret r0
+end
+
+fn svl88 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1663969312 1663593324 740911980 1936862752 1936861300 539765108 1635021614 2651250 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 31 a0
+ret r0
+end
+
+fn svl89 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 10337 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 6 a0
+ret r0
+end
+
+fn svl90 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 10338 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 6 a0
+ret r0
+end
+
+fn svl91 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 1701736292 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 9 a0
+ret r0
+end
+
+fn svl92 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 10353 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 6 a0
+ret r0
+end
+
+fn svl93 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 10354 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 6 a0
+ret r0
+end
+
+fn sv_stage_div_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl66 p0
+x2 call svl81 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl36 x22
+x24 call svl66 x23
+x25 call svl82 x24
+x26 mul p4 8
+x27 add x26 6
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 mul p4 8
+x36 add x35 7
+x37 get p2 3
+r38 call sv_get x34 x37 x36
+x39 at r38 0
+x40 at r38 1
+x41 at r38 2
+x42 at r38 3
+x43 rec x39 x40 x42
+x44 get p2 5
+x45 call sv_span x43 x44 x32 x41
+x46 call svl36 x45
+x47 call svl66 x46
+x48 call svl83 x47
+x49 mul p4 8
+x50 add x49 6
+x51 get p2 3
+r52 call sv_get x48 x51 x50
+x53 at r52 0
+x54 at r52 1
+x55 at r52 2
+x56 at r52 3
+x57 rec x53 x54 x56
+x58 mul p4 8
+x59 add x58 7
+x60 get p2 3
+r61 call sv_get x57 x60 x59
+x62 at r61 0
+x63 at r61 1
+x64 at r61 2
+x65 at r61 3
+x66 rec x62 x63 x65
+x67 get p2 5
+x68 call sv_span x66 x67 x55 x64
+x69 call svl36 x68
+x70 call svl84 x69
+x71 call svl85 x70
+x72 mul p4 8
+x73 add x72 6
+x74 get p2 3
+r75 call sv_get x71 x74 x73
+x76 at r75 0
+x77 at r75 1
+x78 at r75 2
+x79 at r75 3
+x80 rec x76 x77 x79
+x81 mul p4 8
+x82 add x81 7
+x83 get p2 3
+r84 call sv_get x80 x83 x82
+x85 at r84 0
+x86 at r84 1
+x87 at r84 2
+x88 at r84 3
+x89 rec x85 x86 x88
+x90 get p2 5
+x91 call sv_span x89 x90 x78 x87
+x92 call svl36 x91
+x93 call svl84 x92
+x94 call svl86 x93
+x95 mul p4 8
+x96 add x95 6
+x97 get p2 3
+r98 call sv_get x94 x97 x96
+x99 at r98 0
+x100 at r98 1
+x101 at r98 2
+x102 at r98 3
+x103 rec x99 x100 x102
+x104 mul p4 8
+x105 add x104 7
+x106 get p2 3
+r107 call sv_get x103 x106 x105
+x108 at r107 0
+x109 at r107 1
+x110 at r107 2
+x111 at r107 3
+x112 rec x108 x109 x111
+x113 get p2 5
+x114 call sv_span x112 x113 x101 x110
+x115 call svl36 x114
+x116 call svl87 x115
+x117 mul p4 8
+x118 add x117 6
+x119 get p2 3
+r120 call sv_get x116 x119 x118
+x121 at r120 0
+x122 at r120 1
+x123 at r120 2
+x124 at r120 3
+x125 rec x121 x122 x124
+x126 mul p4 8
+x127 add x126 7
+x128 get p2 3
+r129 call sv_get x125 x128 x127
+x130 at r129 0
+x131 at r129 1
+x132 at r129 2
+x133 at r129 3
+x134 rec x130 x131 x133
+x135 get p2 5
+x136 call sv_span x134 x135 x123 x132
+x137 call svl88 x136
+x138 call svl82 x137
+x139 mul p4 8
+x140 add x139 6
+x141 get p2 3
+r142 call sv_get x138 x141 x140
+x143 at r142 0
+x144 at r142 1
+x145 at r142 2
+x146 at r142 3
+x147 rec x143 x144 x146
+x148 mul p4 8
+x149 add x148 7
+x150 get p2 3
+r151 call sv_get x147 x150 x149
+x152 at r151 0
+x153 at r151 1
+x154 at r151 2
+x155 at r151 3
+x156 rec x152 x153 x155
+x157 get p2 5
+x158 call sv_span x156 x157 x145 x154
+x159 call svl89 x158
+x160 mul p4 8
+x161 add x160 2
+x162 get p2 3
+r163 call sv_get x159 x162 x161
+x164 at r163 0
+x165 at r163 1
+x166 at r163 2
+x167 at r163 3
+x168 rec x164 x165 x167
+x169 add x166 0
+x170 mul x169 2
+x171 get p2 4
+r172 call sv_get x168 x171 x170
+x173 at r172 0
+x174 at r172 1
+x175 at r172 2
+x176 at r172 3
+x177 rec x173 x174 x176
+x178 add x170 1
+x179 get p2 4
+r180 call sv_get x177 x179 x178
+x181 at r180 0
+x182 at r180 1
+x183 at r180 2
+x184 at r180 3
+x185 rec x181 x182 x184
+x186 call sv_operand x185 p2 p3 x175 x183
+x187 call svl90 x186
+x188 mul p4 8
+x189 add x188 2
+x190 get p2 3
+r191 call sv_get x187 x190 x189
+x192 at r191 0
+x193 at r191 1
+x194 at r191 2
+x195 at r191 3
+x196 rec x192 x193 x195
+x197 add x194 1
+x198 mul x197 2
+x199 get p2 4
+r200 call sv_get x196 x199 x198
+x201 at r200 0
+x202 at r200 1
+x203 at r200 2
+x204 at r200 3
+x205 rec x201 x202 x204
+x206 add x198 1
+x207 get p2 4
+r208 call sv_get x205 x207 x206
+x209 at r208 0
+x210 at r208 1
+x211 at r208 2
+x212 at r208 3
+x213 rec x209 x210 x212
+x214 call sv_operand x213 p2 p3 x203 x211
+x215 call svl91 x214
+x216 call svl83 x215
+x217 mul p4 8
+x218 add x217 6
+x219 get p2 3
+r220 call sv_get x216 x219 x218
+x221 at r220 0
+x222 at r220 1
+x223 at r220 2
+x224 at r220 3
+x225 rec x221 x222 x224
+x226 mul p4 8
+x227 add x226 7
+x228 get p2 3
+r229 call sv_get x225 x228 x227
+x230 at r229 0
+x231 at r229 1
+x232 at r229 2
+x233 at r229 3
+x234 rec x230 x231 x233
+x235 get p2 5
+x236 call sv_span x234 x235 x223 x232
+x237 call svl92 x236
+x238 call svl85 x237
+x239 mul p4 8
+x240 add x239 6
+x241 get p2 3
+r242 call sv_get x238 x241 x240
+x243 at r242 0
+x244 at r242 1
+x245 at r242 2
+x246 at r242 3
+x247 rec x243 x244 x246
+x248 mul p4 8
+x249 add x248 7
+x250 get p2 3
+r251 call sv_get x247 x250 x249
+x252 at r251 0
+x253 at r251 1
+x254 at r251 2
+x255 at r251 3
+x256 rec x252 x253 x255
+x257 get p2 5
+x258 call sv_span x256 x257 x245 x254
+x259 call svl93 x258
+x260 call svl86 x259
+x261 mul p4 8
+x262 add x261 6
+x263 get p2 3
+r264 call sv_get x260 x263 x262
+x265 at r264 0
+x266 at r264 1
+x267 at r264 2
+x268 at r264 3
+x269 rec x265 x266 x268
+x270 mul p4 8
+x271 add x270 7
+x272 get p2 3
+r273 call sv_get x269 x272 x271
+x274 at r273 0
+x275 at r273 1
+x276 at r273 2
+x277 at r273 3
+x278 rec x274 x275 x277
+x279 get p2 5
+x280 call sv_span x278 x279 x267 x276
+x281 call svl50 x280
+ret x281
+end
+
+fn svl94 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6255721 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_stage_puts_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl84 p0
+x2 call svl94 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl36 x22
+ret x23
+end
+
+fn svl95 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6255209 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl96 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6256239 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl97 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6251631 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_callee_io_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl66 p0
+x2 call svl95 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl36 x22
+x24 call svl66 x23
+x25 call svl96 x24
+x26 mul p4 8
+x27 add x26 6
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 mul p4 8
+x36 add x35 7
+x37 get p2 3
+r38 call sv_get x34 x37 x36
+x39 at r38 0
+x40 at r38 1
+x41 at r38 2
+x42 at r38 3
+x43 rec x39 x40 x42
+x44 get p2 5
+x45 call sv_span x43 x44 x32 x41
+x46 call svl36 x45
+x47 call svl84 x46
+x48 call svl97 x47
+x49 mul p4 8
+x50 add x49 6
+x51 get p2 3
+r52 call sv_get x48 x51 x50
+x53 at r52 0
+x54 at r52 1
+x55 at r52 2
+x56 at r52 3
+x57 rec x53 x54 x56
+x58 mul p4 8
+x59 add x58 7
+x60 get p2 3
+r61 call sv_get x57 x60 x59
+x62 at r61 0
+x63 at r61 1
+x64 at r61 2
+x65 at r61 3
+x66 rec x62 x63 x65
+x67 get p2 5
+x68 call sv_span x66 x67 x55 x64
+x69 call svl36 x68
+ret x69
+end
+
+fn sv_handshake_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl66 p0
+x2 call svl81 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl36 x22
+x24 call svl66 x23
+x25 call svl82 x24
+x26 mul p4 8
+x27 add x26 6
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 mul p4 8
+x36 add x35 7
+x37 get p2 3
+r38 call sv_get x34 x37 x36
+x39 at r38 0
+x40 at r38 1
+x41 at r38 2
+x42 at r38 3
+x43 rec x39 x40 x42
+x44 get p2 5
+x45 call sv_span x43 x44 x32 x41
+x46 call svl36 x45
+x47 call svl66 x46
+x48 call svl83 x47
+x49 mul p4 8
+x50 add x49 6
+x51 get p2 3
+r52 call sv_get x48 x51 x50
+x53 at r52 0
+x54 at r52 1
+x55 at r52 2
+x56 at r52 3
+x57 rec x53 x54 x56
+x58 mul p4 8
+x59 add x58 7
+x60 get p2 3
+r61 call sv_get x57 x60 x59
+x62 at r61 0
+x63 at r61 1
+x64 at r61 2
+x65 at r61 3
+x66 rec x62 x63 x65
+x67 get p2 5
+x68 call sv_span x66 x67 x55 x64
+x69 call svl36 x68
+ret x69
+end
+
+fn svl98 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6255203 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_call_result_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 5
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 call svl34 x9
+x11 get p2 6
+r12 call sv_get x10 x11 x7
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 eq x7 1
+x19 select x18 1 0
+x20 fold sv_type_bool x19 x17 p2 p3 p4
+x21 eq x18 false
+x22 select x21 1 0
+x23 fold sv_type_bits x22 x20 p2 p3 p4 x15
+x24 call svl35 x23
+x25 call svl98 x24
+x26 mul p4 8
+x27 add x26 6
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 mul p4 8
+x36 add x35 7
+x37 get p2 3
+r38 call sv_get x34 x37 x36
+x39 at r38 0
+x40 at r38 1
+x41 at r38 2
+x42 at r38 3
+x43 rec x39 x40 x42
+x44 get p2 5
+x45 call sv_span x43 x44 x32 x41
+x46 call svl36 x45
+ret x46
+end
+
+fn svl99 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1764630572 1633967982 1764254068 1633967982 740909428 1852386848 1818326623 1764254825 1635147630 543451500 1881155110 1027416163 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 49 a0
+ret r0
+end
+
+fn svl100 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 1918856809 2036621669 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 13 a0
+ret r0
+end
+
+fn svl101 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 1601467759 1635017060 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 13 a0
+ret r0
+end
+
+fn svl102 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 1601467759 1768710518 10340 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 14 a0
+ret r0
+end
+
+fn svl103 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 773860393 1601467759 1684104562 1970219129 1701994356 544826465 1881155110 1027416163 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 33 a0
+ret r0
+end
+
+fn sv_io_connections (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 13
+x2 add x1 p4
+x3 get p2 10
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 call svl99 x9
+x11 fold sv_pc 1 x10 p2 p3 p4 x7
+x12 call svl100 x11
+x13 call svl95 x12
+x14 mul p4 8
+x15 add x14 6
+x16 get p2 3
+r17 call sv_get x13 x16 x15
+x18 at r17 0
+x19 at r17 1
+x20 at r17 2
+x21 at r17 3
+x22 rec x18 x19 x21
+x23 mul p4 8
+x24 add x23 7
+x25 get p2 3
+r26 call sv_get x22 x25 x24
+x27 at r26 0
+x28 at r26 1
+x29 at r26 2
+x30 at r26 3
+x31 rec x27 x28 x30
+x32 get p2 5
+x33 call sv_span x31 x32 x20 x29
+x34 call svl101 x33
+x35 call svl97 x34
+x36 mul p4 8
+x37 add x36 6
+x38 get p2 3
+r39 call sv_get x35 x38 x37
+x40 at r39 0
+x41 at r39 1
+x42 at r39 2
+x43 at r39 3
+x44 rec x40 x41 x43
+x45 mul p4 8
+x46 add x45 7
+x47 get p2 3
+r48 call sv_get x44 x47 x46
+x49 at r48 0
+x50 at r48 1
+x51 at r48 2
+x52 at r48 3
+x53 rec x49 x50 x52
+x54 get p2 5
+x55 call sv_span x53 x54 x42 x51
+x56 call svl102 x55
+x57 call svl96 x56
+x58 mul p4 8
+x59 add x58 6
+x60 get p2 3
+r61 call sv_get x57 x60 x59
+x62 at r61 0
+x63 at r61 1
+x64 at r61 2
+x65 at r61 3
+x66 rec x62 x63 x65
+x67 mul p4 8
+x68 add x67 7
+x69 get p2 3
+r70 call sv_get x66 x69 x68
+x71 at r70 0
+x72 at r70 1
+x73 at r70 2
+x74 at r70 3
+x75 rec x71 x72 x74
+x76 get p2 5
+x77 call sv_span x75 x76 x64 x73
+x78 call svl103 x77
+x79 fold sv_pc 1 x78 p2 p3 p4 x7
+x80 call svl11 x79
+ret x80
+end
+
+fn svl104 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1915625516 1819636581 10356 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 10 a0
+ret r0
+end
+
+fn sv_call_result_connection (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl104 p0
+x2 call svl98 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl11 x22
+ret x23
+end
+
+fn svl105 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1852793902 10341 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 6 a0
+ret r0
+end
+
+fn sv_stage_call_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_handshake_decl 1 p0 p2 p3 p4
+x2 mul p4 8
+x3 add x2 5
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 get p2 6
+r12 call sv_get x10 x11 x8
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 ne x15 0
+x19 select x18 1 0
+x20 fold sv_call_result_decl x19 x17 p2 p3 p4
+x21 mul p4 8
+x22 add x21 3
+x23 get p2 3
+r24 call sv_get x20 x23 x22
+x25 at r24 0
+x26 at r24 1
+x27 at r24 2
+x28 at r24 3
+x29 rec x25 x26 x28
+x30 get p2 9
+r31 call sv_get x29 x30 x27
+x32 at r31 0
+x33 at r31 1
+x34 at r31 2
+x35 at r31 3
+x36 rec x32 x33 x35
+x37 ne x34 0
+x38 select x37 1 0
+x39 fold sv_callee_io_decl x38 x36 p2 p3 p4
+x40 call svl46 x39
+x41 mul x27 10
+x42 add x41 0
+x43 get p2 2
+r44 call sv_get x40 x43 x42
+x45 at r44 0
+x46 at r44 1
+x47 at r44 2
+x48 at r44 3
+x49 rec x45 x46 x48
+x50 mul x27 10
+x51 add x50 1
+x52 get p2 2
+r53 call sv_get x49 x52 x51
+x54 at r53 0
+x55 at r53 1
+x56 at r53 2
+x57 at r53 3
+x58 rec x54 x55 x57
+x59 get p2 5
+x60 call sv_span x58 x59 x47 x56
+x61 call svl47 x60
+x62 mul p4 8
+x63 add x62 6
+x64 get p2 3
+r65 call sv_get x61 x64 x63
+x66 at r65 0
+x67 at r65 1
+x68 at r65 2
+x69 at r65 3
+x70 rec x66 x67 x69
+x71 mul p4 8
+x72 add x71 7
+x73 get p2 3
+r74 call sv_get x70 x73 x72
+x75 at r74 0
+x76 at r74 1
+x77 at r74 2
+x78 at r74 3
+x79 rec x75 x76 x78
+x80 get p2 5
+x81 call sv_span x79 x80 x68 x77
+x82 call svl88 x81
+x83 call svl82 x82
+x84 mul p4 8
+x85 add x84 6
+x86 get p2 3
+r87 call sv_get x83 x86 x85
+x88 at r87 0
+x89 at r87 1
+x90 at r87 2
+x91 at r87 3
+x92 rec x88 x89 x91
+x93 mul p4 8
+x94 add x93 7
+x95 get p2 3
+r96 call sv_get x92 x95 x94
+x97 at r96 0
+x98 at r96 1
+x99 at r96 2
+x100 at r96 3
+x101 rec x97 x98 x100
+x102 get p2 5
+x103 call sv_span x101 x102 x90 x99
+x104 call svl45 x103
+x105 mul p4 8
+x106 add x105 1
+x107 get p2 3
+r108 call sv_get x104 x107 x106
+x109 at r108 0
+x110 at r108 1
+x111 at r108 2
+x112 at r108 3
+x113 rec x109 x110 x112
+x114 fold sv_call_arg x111 x113 p2 p3 p4
+x115 call svl105 x114
+x116 call svl83 x115
+x117 mul p4 8
+x118 add x117 6
+x119 get p2 3
+r120 call sv_get x116 x119 x118
+x121 at r120 0
+x122 at r120 1
+x123 at r120 2
+x124 at r120 3
+x125 rec x121 x122 x124
+x126 mul p4 8
+x127 add x126 7
+x128 get p2 3
+r129 call sv_get x125 x128 x127
+x130 at r129 0
+x131 at r129 1
+x132 at r129 2
+x133 at r129 3
+x134 rec x130 x131 x133
+x135 get p2 5
+x136 call sv_span x134 x135 x123 x132
+x137 call svl11 x136
+x138 ne x15 0
+x139 select x138 1 0
+x140 fold sv_call_result_connection x139 x137 p2 p3 p4
+x141 ne x34 0
+x142 select x141 1 0
+x143 fold sv_io_connections x142 x140 p2 p3 p4
+x144 call svl63 x143
+ret x144
+end
+
+fn svl106 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1600349025 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn svl107 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6256482 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_iter_values (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 5
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 call svl34 x9
+x11 get p2 6
+r12 call sv_get x10 x11 x7
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 eq x7 1
+x19 select x18 1 0
+x20 fold sv_type_bool x19 x17 p2 p3 p4
+x21 eq x18 false
+x22 select x21 1 0
+x23 fold sv_type_bits x22 x20 p2 p3 p4 x15
+x24 call svl35 x23
+x25 call svl106 x24
+x26 mul p4 8
+x27 add x26 6
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 mul p4 8
+x36 add x35 7
+x37 get p2 3
+r38 call sv_get x34 x37 x36
+x39 at r38 0
+x40 at r38 1
+x41 at r38 2
+x42 at r38 3
+x43 rec x39 x40 x42
+x44 get p2 5
+x45 call sv_span x43 x44 x32 x41
+x46 call svl36 x45
+x47 call svl34 x46
+x48 get p2 6
+r49 call sv_get x47 x48 x7
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 eq x7 1
+x56 select x55 1 0
+x57 fold sv_type_bool x56 x54 p2 p3 p4
+x58 eq x55 false
+x59 select x58 1 0
+x60 fold sv_type_bits x59 x57 p2 p3 p4 x52
+x61 call svl35 x60
+x62 call svl107 x61
+x63 mul p4 8
+x64 add x63 6
+x65 get p2 3
+r66 call sv_get x62 x65 x64
+x67 at r66 0
+x68 at r66 1
+x69 at r66 2
+x70 at r66 3
+x71 rec x67 x68 x70
+x72 mul p4 8
+x73 add x72 7
+x74 get p2 3
+r75 call sv_get x71 x74 x73
+x76 at r75 0
+x77 at r75 1
+x78 at r75 2
+x79 at r75 3
+x80 rec x76 x77 x79
+x81 get p2 5
+x82 call sv_span x80 x81 x69 x78
+x83 call svl36 x82
+ret x83
+end
+
+fn sv_iter_seq_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl66 p0
+x2 call svl82 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl36 x22
+x24 call svl66 x23
+x25 call svl83 x24
+x26 mul p4 8
+x27 add x26 6
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 mul p4 8
+x36 add x35 7
+x37 get p2 3
+r38 call sv_get x34 x37 x36
+x39 at r38 0
+x40 at r38 1
+x41 at r38 2
+x42 at r38 3
+x43 rec x39 x40 x42
+x44 get p2 5
+x45 call sv_span x43 x44 x32 x41
+x46 call svl36 x45
+ret x46
+end
+
+fn svl108 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1869357088 543385959 809120091 8285 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 14 a0
+ret r0
+end
+
+fn svl109 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6254704 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn svl110 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1601467248 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn svl111 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1601070192 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_pred_seq_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl108 p0
+x2 call svl109 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl36 x22
+x24 call svl66 x23
+x25 call svl110 x24
+x26 mul p4 8
+x27 add x26 6
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 mul p4 8
+x36 add x35 7
+x37 get p2 3
+r38 call sv_get x34 x37 x36
+x39 at r38 0
+x40 at r38 1
+x41 at r38 2
+x42 at r38 3
+x43 rec x39 x40 x42
+x44 get p2 5
+x45 call sv_span x43 x44 x32 x41
+x46 call svl36 x45
+x47 call svl66 x46
+x48 call svl111 x47
+x49 mul p4 8
+x50 add x49 6
+x51 get p2 3
+r52 call sv_get x48 x51 x50
+x53 at r52 0
+x54 at r52 1
+x55 at r52 2
+x56 at r52 3
+x57 rec x53 x54 x56
+x58 mul p4 8
+x59 add x58 7
+x60 get p2 3
+r61 call sv_get x57 x60 x59
+x62 at r61 0
+x63 at r61 1
+x64 at r61 2
+x65 at r61 3
+x66 rec x62 x63 x65
+x67 get p2 5
+x68 call sv_span x66 x67 x55 x64
+x69 call svl36 x68
+ret x69
+end
+
+fn sv_iter_extra (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 add p1 2
+x2 call sv_arg_type p0 0 p2 p3 p4 x1
+x3 at x2 0
+x4 at x2 1
+x5 at x2 2
+x6 at x2 3
+x7 rec x3 x4 x6
+x8 get p2 6
+r9 call sv_get x7 x8 x5
+x10 at r9 0
+x11 at r9 1
+x12 at r9 2
+x13 at r9 3
+x14 rec x10 x11 x13
+x15 ne x12 0
+x16 select x15 1 0
+x17 fold sv_call_arg_value x16 x14 p2 p3 p4 x1
+ret x17
+end
+
+fn sv_iter_acc_connection (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl61 p0
+x2 call svl106 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl45 x22
+ret x23
+end
+
+fn svl112 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1802265390 1802265384 773860393 678720370 695497586 1932402732 1953653108 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 29 a0
+ret r0
+end
+
+fn sv_pred_start_name (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl110 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+ret x21
+end
+
+fn sv_body_start_name (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl82 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+ret x21
+end
+
+fn sv_iter_clock_connection (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl112 p0
+x2 ne p5 0
+x3 select x2 1 0
+x4 fold sv_pred_start_name x3 x1 p2 p3 p4
+x5 eq x2 false
+x6 select x5 1 0
+x7 fold sv_body_start_name x6 x4 p2 p3 p4
+x8 call svl45 x7
+ret x8
+end
+
+fn sv_pred_done_name (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl111 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+ret x21
+end
+
+fn sv_body_done_name (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl83 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+ret x21
+end
+
+fn sv_iter_done_connection (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 ne p5 0
+x2 call svl105 p0
+x3 select x1 1 0
+x4 fold sv_pred_done_name x3 x2 p2 p3 p4
+x5 eq x1 false
+x6 select x5 1 0
+x7 fold sv_body_done_name x6 x4 p2 p3 p4
+x8 call svl11 x7
+ret x8
+end
+
+fn sv_iter_body_result (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl49 p0
+x2 call svl107 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl11 x22
+ret x23
+end
+
+fn svl113 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 6255216 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 3 a0
+ret r0
+end
+
+fn sv_iter_pred_result (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl49 p0
+x2 call svl113 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl11 x22
+ret x23
+end
+
+fn svl114 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 674328622 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_iter_connections (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 ne p5 0
+x2 ne p6 0
+x3 select x1 1 0
+x4 fold sv_iter_clock_connection x3 p0 p2 p3 p4 p6
+x5 mul p4 8
+x6 add x5 5
+x7 get p2 3
+r8 call sv_get x4 x7 x6
+x9 at r8 0
+x10 at r8 1
+x11 at r8 2
+x12 at r8 3
+x13 rec x9 x10 x12
+x14 get p2 6
+r15 call sv_get x13 x14 x11
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 ne x18 0
+x22 select x21 1 0
+x23 fold sv_iter_acc_connection x22 x20 p2 p3 p4
+x24 call svl114 x23
+x25 call svl94 x24
+x26 mul p4 8
+x27 add x26 6
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 mul p4 8
+x36 add x35 7
+x37 get p2 3
+r38 call sv_get x34 x37 x36
+x39 at r38 0
+x40 at r38 1
+x41 at r38 2
+x42 at r38 3
+x43 rec x39 x40 x42
+x44 get p2 5
+x45 call sv_span x43 x44 x32 x41
+x46 call svl45 x45
+x47 mul p4 8
+x48 add x47 1
+x49 get p2 3
+r50 call sv_get x46 x49 x48
+x51 at r50 0
+x52 at r50 1
+x53 at r50 2
+x54 at r50 3
+x55 rec x51 x52 x54
+x56 sub x53 2
+x57 fold sv_iter_extra x56 x55 p2 p3 p4
+x58 select x1 1 0
+x59 fold sv_iter_done_connection x58 x57 p2 p3 p4 p6
+x60 ne x18 0
+x61 or x2 x60
+x62 and x1 x61
+x63 select x62 1 0
+x64 fold sv_comma x63 x59 p2 p3 p4
+x65 select x2 1 0
+x66 fold sv_iter_pred_result x65 x64 p2 p3 p4
+x67 eq x2 false
+x68 ne x18 0
+x69 and x67 x68
+x70 select x69 1 0
+x71 fold sv_iter_body_result x70 x66 p2 p3 p4
+x72 mul p4 8
+x73 add x72 3
+x74 get p2 3
+r75 call sv_get x71 x74 x73
+x76 at r75 0
+x77 at r75 1
+x78 at r75 2
+x79 at r75 3
+x80 rec x76 x77 x79
+x81 get p2 9
+r82 call sv_get x80 x81 x78
+x83 at r82 0
+x84 at r82 1
+x85 at r82 2
+x86 at r82 3
+x87 rec x83 x84 x86
+x88 and x1 x67
+x89 ne x85 0
+x90 and x88 x89
+x91 select x90 1 0
+x92 fold sv_io_connections x91 x87 p2 p3 p4
+ret x92
+end
+
+fn svl115 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 673214559 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_iter_pred_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl66 p0
+x2 call svl113 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl36 x22
+x24 mul p4 8
+x25 add x24 4
+x26 get p2 3
+r27 call sv_get x23 x26 x25
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 get p2 8
+r34 call sv_get x32 x33 x30
+x35 at r34 0
+x36 at r34 1
+x37 at r34 2
+x38 at r34 3
+x39 rec x35 x36 x38
+x40 ne x37 0
+x41 select x40 1 0
+x42 fold sv_pred_seq_decl x41 x39 p2 p3 p4
+x43 call svl46 x42
+x44 mul x30 10
+x45 add x44 0
+x46 get p2 2
+r47 call sv_get x43 x46 x45
+x48 at r47 0
+x49 at r47 1
+x50 at r47 2
+x51 at r47 3
+x52 rec x48 x49 x51
+x53 mul x30 10
+x54 add x53 1
+x55 get p2 2
+r56 call sv_get x52 x55 x54
+x57 at r56 0
+x58 at r56 1
+x59 at r56 2
+x60 at r56 3
+x61 rec x57 x58 x60
+x62 get p2 5
+x63 call sv_span x61 x62 x50 x59
+x64 call svl47 x63
+x65 mul p4 8
+x66 add x65 6
+x67 get p2 3
+r68 call sv_get x64 x67 x66
+x69 at r68 0
+x70 at r68 1
+x71 at r68 2
+x72 at r68 3
+x73 rec x69 x70 x72
+x74 mul p4 8
+x75 add x74 7
+x76 get p2 3
+r77 call sv_get x73 x76 x75
+x78 at r77 0
+x79 at r77 1
+x80 at r77 2
+x81 at r77 3
+x82 rec x78 x79 x81
+x83 get p2 5
+x84 call sv_span x82 x83 x71 x80
+x85 call svl115 x84
+x86 fold sv_iter_connections 1 x85 p2 p3 p4 x37 1
+x87 call svl63 x86
+ret x87
+end
+
+fn svl116 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 538970683 1768386412 8291 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 10 a0
+ret r0
+end
+
+fn sv_stage_iter_decl (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl84 p0
+x2 call svl94 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl116 x22
+x24 call svl81 x23
+x25 mul p4 8
+x26 add x25 6
+x27 get p2 3
+r28 call sv_get x24 x27 x26
+x29 at r28 0
+x30 at r28 1
+x31 at r28 2
+x32 at r28 3
+x33 rec x29 x30 x32
+x34 mul p4 8
+x35 add x34 7
+x36 get p2 3
+r37 call sv_get x33 x36 x35
+x38 at r37 0
+x39 at r37 1
+x40 at r37 2
+x41 at r37 3
+x42 rec x38 x39 x41
+x43 get p2 5
+x44 call sv_span x42 x43 x31 x40
+x45 call svl36 x44
+x46 mul p4 8
+x47 add x46 5
+x48 get p2 3
+r49 call sv_get x45 x48 x47
+x50 at r49 0
+x51 at r49 1
+x52 at r49 2
+x53 at r49 3
+x54 rec x50 x51 x53
+x55 get p2 6
+r56 call sv_get x54 x55 x52
+x57 at r56 0
+x58 at r56 1
+x59 at r56 2
+x60 at r56 3
+x61 rec x57 x58 x60
+x62 ne x59 0
+x63 select x62 1 0
+x64 fold sv_iter_values x63 x61 p2 p3 p4
+x65 mul p4 8
+x66 add x65 3
+x67 get p2 3
+r68 call sv_get x64 x67 x66
+x69 at r68 0
+x70 at r68 1
+x71 at r68 2
+x72 at r68 3
+x73 rec x69 x70 x72
+x74 get p2 8
+r75 call sv_get x73 x74 x71
+x76 at r75 0
+x77 at r75 1
+x78 at r75 2
+x79 at r75 3
+x80 rec x76 x77 x79
+x81 get p2 9
+r82 call sv_get x80 x81 x71
+x83 at r82 0
+x84 at r82 1
+x85 at r82 2
+x86 at r82 3
+x87 rec x83 x84 x86
+x88 ne x78 0
+x89 select x88 1 0
+x90 fold sv_iter_seq_decl x89 x87 p2 p3 p4
+x91 ne x78 0
+x92 ne x85 0
+x93 and x91 x92
+x94 select x93 1 0
+x95 fold sv_callee_io_decl x94 x90 p2 p3 p4
+x96 call svl46 x95
+x97 mul x71 10
+x98 add x97 0
+x99 get p2 2
+r100 call sv_get x96 x99 x98
+x101 at r100 0
+x102 at r100 1
+x103 at r100 2
+x104 at r100 3
+x105 rec x101 x102 x104
+x106 mul x71 10
+x107 add x106 1
+x108 get p2 2
+r109 call sv_get x105 x108 x107
+x110 at r109 0
+x111 at r109 1
+x112 at r109 2
+x113 at r109 3
+x114 rec x110 x111 x113
+x115 get p2 5
+x116 call sv_span x114 x115 x103 x112
+x117 call svl47 x116
+x118 mul p4 8
+x119 add x118 6
+x120 get p2 3
+r121 call sv_get x117 x120 x119
+x122 at r121 0
+x123 at r121 1
+x124 at r121 2
+x125 at r121 3
+x126 rec x122 x123 x125
+x127 mul p4 8
+x128 add x127 7
+x129 get p2 3
+r130 call sv_get x126 x129 x128
+x131 at r130 0
+x132 at r130 1
+x133 at r130 2
+x134 at r130 3
+x135 rec x131 x132 x134
+x136 get p2 5
+x137 call sv_span x135 x136 x124 x133
+x138 call svl48 x137
+x139 fold sv_iter_connections 1 x138 p2 p3 p4 x78 0
+x140 call svl63 x139
+x141 mul p4 8
+x142 add x141 0
+x143 get p2 3
+r144 call sv_get x140 x143 x142
+x145 at r144 0
+x146 at r144 1
+x147 at r144 2
+x148 at r144 3
+x149 rec x145 x146 x148
+x150 eq x147 21
+x151 select x150 1 0
+x152 fold sv_iter_pred_decl x151 x149 p2 p3 p4
+ret x152
+end
+
+fn sv_stage_decls (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 10
+r2 call sv_get p0 x1 p4
+x3 at r2 0
+x4 at r2 1
+x5 at r2 2
+x6 at r2 3
+x7 rec x3 x4 x6
+x8 ne x5 0
+x9 select x8 1 0
+x10 fold sv_stage_common x9 x7 p2 p3 p4
+x11 eq x5 3
+x12 select x11 1 0
+x13 fold sv_stage_puts_decl x12 x10 p2 p3 p4
+x14 eq x5 4
+x15 select x14 1 0
+x16 fold sv_stage_div_decl x15 x13 p2 p3 p4
+x17 eq x5 5
+x18 select x17 1 0
+x19 fold sv_stage_call_decl x18 x16 p2 p3 p4
+x20 eq x5 6
+x21 select x20 1 0
+x22 fold sv_stage_iter_decl x21 x19 p2 p3 p4
+ret x22
+end
+
+fn svl117 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 811738929 8251 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 10 a0
+ret r0
+end
+
+fn sv_init_phase (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl81 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl117 x21
+ret x22
+end
+
+fn svl118 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 1680290355 2112304 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 11 a0
+ret r0
+end
+
+fn sv_init_puts (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl94 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl118 x21
+ret x22
+end
+
+fn sv_init_acc (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl106 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl22 x21
+x23 mul p4 8
+x24 add x23 2
+x25 get p2 3
+r26 call sv_get x22 x25 x24
+x27 at r26 0
+x28 at r26 1
+x29 at r26 2
+x30 at r26 3
+x31 rec x27 x28 x30
+x32 add x29 1
+x33 mul x32 2
+x34 get p2 4
+r35 call sv_get x31 x34 x33
+x36 at r35 0
+x37 at r35 1
+x38 at r35 2
+x39 at r35 3
+x40 rec x36 x37 x39
+x41 add x33 1
+x42 get p2 4
+r43 call sv_get x40 x42 x41
+x44 at r43 0
+x45 at r43 1
+x46 at r43 2
+x47 at r43 3
+x48 rec x44 x45 x47
+x49 call sv_operand x48 p2 p3 x38 x46
+x50 call svl40 x49
+ret x50
+end
+
+fn svl119 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 811870002 8251 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 10 a0
+ret r0
+end
+
+fn sv_init_pred (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl109 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl119 x21
+ret x22
+end
+
+fn sv_init_iter (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_init_puts 1 p0 p2 p3 p4
+x2 fold sv_init_phase 1 x1 p2 p3 p4
+x3 mul p4 8
+x4 add x3 0
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 4
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 8
+r22 call sv_get x20 x21 x18
+x23 at r22 0
+x24 at r22 1
+x25 at r22 2
+x26 at r22 3
+x27 rec x23 x24 x26
+x28 eq x9 21
+x29 ne x25 0
+x30 and x28 x29
+x31 select x30 1 0
+x32 fold sv_init_pred x31 x27 p2 p3 p4
+x33 mul p4 8
+x34 add x33 5
+x35 get p2 3
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 get p2 6
+r43 call sv_get x41 x42 x39
+x44 at r43 0
+x45 at r43 1
+x46 at r43 2
+x47 at r43 3
+x48 rec x44 x45 x47
+x49 ne x46 0
+x50 select x49 1 0
+x51 fold sv_init_acc x50 x48 p2 p3 p4
+ret x51
+end
+
+fn sv_init (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 10
+r2 call sv_get p0 x1 p4
+x3 at r2 0
+x4 at r2 1
+x5 at r2 2
+x6 at r2 3
+x7 rec x3 x4 x6
+x8 eq x5 3
+x9 select x8 1 0
+x10 fold sv_init_puts x9 x7 p2 p3 p4
+x11 eq x5 4
+x12 select x11 1 0
+x13 fold sv_init_phase x12 x10 p2 p3 p4
+x14 eq x5 5
+x15 select x14 1 0
+x16 fold sv_init_phase x15 x13 p2 p3 p4
+x17 eq x5 6
+x18 select x17 1 0
+x19 fold sv_init_iter x18 x16 p2 p3 p4
+ret x19
+end
+
+fn sv_reset_handshake (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl82 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl117 x21
+x23 call svl81 x22
+x24 mul p4 8
+x25 add x24 6
+x26 get p2 3
+r27 call sv_get x23 x26 x25
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 mul p4 8
+x34 add x33 7
+x35 get p2 3
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 get p2 5
+x43 call sv_span x41 x42 x30 x39
+x44 call svl117 x43
+ret x44
+end
+
+fn sv_reset_iter_seq (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl82 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl117 x21
+ret x22
+end
+
+fn sv_reset_pred (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl109 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl119 x21
+x23 call svl110 x22
+x24 mul p4 8
+x25 add x24 6
+x26 get p2 3
+r27 call sv_get x23 x26 x25
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 mul p4 8
+x34 add x33 7
+x35 get p2 3
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 get p2 5
+x43 call sv_span x41 x42 x30 x39
+x44 call svl117 x43
+ret x44
+end
+
+fn sv_reset_iter (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl81 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl117 x21
+x23 mul p4 8
+x24 add x23 3
+x25 get p2 3
+r26 call sv_get x22 x25 x24
+x27 at r26 0
+x28 at r26 1
+x29 at r26 2
+x30 at r26 3
+x31 rec x27 x28 x30
+x32 get p2 8
+r33 call sv_get x31 x32 x29
+x34 at r33 0
+x35 at r33 1
+x36 at r33 2
+x37 at r33 3
+x38 rec x34 x35 x37
+x39 ne x36 0
+x40 select x39 1 0
+x41 fold sv_reset_iter_seq x40 x38 p2 p3 p4
+x42 mul p4 8
+x43 add x42 4
+x44 get p2 3
+r45 call sv_get x41 x44 x43
+x46 at r45 0
+x47 at r45 1
+x48 at r45 2
+x49 at r45 3
+x50 rec x46 x47 x49
+x51 get p2 8
+r52 call sv_get x50 x51 x48
+x53 at r52 0
+x54 at r52 1
+x55 at r52 2
+x56 at r52 3
+x57 rec x53 x54 x56
+x58 mul p4 8
+x59 add x58 0
+x60 get p2 3
+r61 call sv_get x57 x60 x59
+x62 at r61 0
+x63 at r61 1
+x64 at r61 2
+x65 at r61 3
+x66 rec x62 x63 x65
+x67 eq x64 21
+x68 ne x55 0
+x69 and x67 x68
+x70 select x69 1 0
+x71 fold sv_reset_pred x70 x66 p2 p3 p4
+ret x71
+end
+
+fn sv_reset_stage (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl77 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl117 x21
+x23 get p2 10
+r24 call sv_get x22 x23 p4
+x25 at r24 0
+x26 at r24 1
+x27 at r24 2
+x28 at r24 3
+x29 rec x25 x26 x28
+x30 eq x27 4
+x31 eq x27 5
+x32 or x30 x31
+x33 select x32 1 0
+x34 fold sv_reset_handshake x33 x29 p2 p3 p4
+x35 eq x27 6
+x36 select x35 1 0
+x37 fold sv_reset_iter x36 x34 p2 p3 p4
+ret x37
+end
+
+fn svl120 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 673212009 1985965673 1684630625 1700929577 544106855 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 20 a0
+ret r0
+end
+
+fn svl121 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 1683975785 996242529 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 13 a0
+ret r0
+end
+
+fn svl122 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1684956448 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_read_control (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl120 p0
+x2 call svl80 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl121 x22
+x24 fold sv_advance 1 x23 p2 p3 p4
+x25 call svl122 x24
+ret x25
+end
+
+fn svl123 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 673212009 1601467759 1684104562 1646274937 1852401509 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 21 a0
+ret r0
+end
+
+fn sv_write_control (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl123 p0
+x2 fold sv_advance 1 x1 p2 p3 p4
+x3 call svl122 x2
+ret x3
+end
+
+fn svl124 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 673212009 1601467759 1684104562 1646274937 1852401509 543582496 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 25 a0
+ret r0
+end
+
+fn svl125 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884256 1680290355 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 8 a0
+ret r0
+end
+
+fn svl126 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1700929577 544106855 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 8 a0
+ret r0
+end
+
+fn svl127 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1684956448 1936483616 1700929637 544106855 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 16 a0
+ret r0
+end
+
+fn svl128 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 857746208 828647218 1852121147 1852121188 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 17 a0
+ret r0
+end
+
+fn sv_puts_control (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call sv_arg_type p0 0 p2 p3 p4 1
+x2 at x1 0
+x3 at x1 1
+x4 at x1 2
+x5 at x1 3
+x6 rec x2 x3 x5
+x7 mul x4 3
+x8 add x7 1
+x9 get p2 0
+r10 call sv_get x6 x9 x8
+x11 at r10 0
+x12 at r10 1
+x13 at r10 2
+x14 at r10 3
+x15 rec x11 x12 x14
+x16 call svl124 x15
+x17 call svl94 x16
+x18 mul p4 8
+x19 add x18 6
+x20 get p2 3
+r21 call sv_get x17 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 mul p4 8
+x28 add x27 7
+x29 get p2 3
+r30 call sv_get x26 x29 x28
+x31 at r30 0
+x32 at r30 1
+x33 at r30 2
+x34 at r30 3
+x35 rec x31 x32 x34
+x36 get p2 5
+x37 call sv_span x35 x36 x24 x33
+x38 call svl125 x37
+x39 call sv_num x38 x13
+x40 call svl126 x39
+x41 fold sv_advance 1 x40 p2 p3 p4
+x42 call svl127 x41
+x43 call svl94 x42
+x44 mul p4 8
+x45 add x44 6
+x46 get p2 3
+r47 call sv_get x43 x46 x45
+x48 at r47 0
+x49 at r47 1
+x50 at r47 2
+x51 at r47 3
+x52 rec x48 x49 x51
+x53 mul p4 8
+x54 add x53 7
+x55 get p2 3
+r56 call sv_get x52 x55 x54
+x57 at r56 0
+x58 at r56 1
+x59 at r56 2
+x60 at r56 3
+x61 rec x57 x58 x60
+x62 get p2 5
+x63 call sv_span x61 x62 x50 x59
+x64 call svl22 x63
+x65 call svl94 x64
+x66 mul p4 8
+x67 add x66 6
+x68 get p2 3
+r69 call sv_get x65 x68 x67
+x70 at r69 0
+x71 at r69 1
+x72 at r69 2
+x73 at r69 3
+x74 rec x70 x71 x73
+x75 mul p4 8
+x76 add x75 7
+x77 get p2 3
+r78 call sv_get x74 x77 x76
+x79 at r78 0
+x80 at r78 1
+x81 at r78 2
+x82 at r78 3
+x83 rec x79 x80 x82
+x84 get p2 5
+x85 call sv_span x83 x84 x72 x81
+x86 call svl128 x85
+ret x86
+end
+
+fn sv_quotient (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl85 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+ret x21
+end
+
+fn sv_remainder (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl86 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+ret x21
+end
+
+fn sv_div_latch (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl80 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl22 x21
+x23 mul p4 8
+x24 add x23 0
+x25 get p2 3
+r26 call sv_get x22 x25 x24
+x27 at r26 0
+x28 at r26 1
+x29 at r26 2
+x30 at r26 3
+x31 rec x27 x28 x30
+x32 eq x29 10
+x33 select x32 1 0
+x34 fold sv_quotient x33 x31 p2 p3 p4
+x35 eq x29 11
+x36 select x35 1 0
+x37 fold sv_remainder x36 x34 p2 p3 p4
+x38 call svl40 x37
+ret x38
+end
+
+fn sv_call_latch (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl80 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl22 x21
+x23 call svl98 x22
+x24 mul p4 8
+x25 add x24 6
+x26 get p2 3
+r27 call sv_get x23 x26 x25
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 mul p4 8
+x34 add x33 7
+x35 get p2 3
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 get p2 5
+x43 call sv_span x41 x42 x30 x39
+x44 call svl40 x43
+ret x44
+end
+
+fn svl129 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 673212009 33 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 5 a0
+ret r0
+end
+
+fn svl130 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 828516145 8251 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 10 a0
+ret r0
+end
+
+fn svl131 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 828516145 1852121147 1818566756 1646290291 1852401509 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 25 a0
+ret r0
+end
+
+fn svl132 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 811738929 1718165563 10272 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 14 a0
+ret r0
+end
+
+fn svl133 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 539371040 33 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 5 a0
+ret r0
+end
+
+fn svl134 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1684956448 1684956448 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 8 a0
+ret r0
+end
+
+fn sv_handshake_control (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl129 p0
+x2 call svl81 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl126 x22
+x24 call svl82 x23
+x25 mul p4 8
+x26 add x25 6
+x27 get p2 3
+r28 call sv_get x24 x27 x26
+x29 at r28 0
+x30 at r28 1
+x31 at r28 2
+x32 at r28 3
+x33 rec x29 x30 x32
+x34 mul p4 8
+x35 add x34 7
+x36 get p2 3
+r37 call sv_get x33 x36 x35
+x38 at r37 0
+x39 at r37 1
+x40 at r37 2
+x41 at r37 3
+x42 rec x38 x39 x41
+x43 get p2 5
+x44 call sv_span x42 x43 x31 x40
+x45 call svl130 x44
+x46 call svl81 x45
+x47 mul p4 8
+x48 add x47 6
+x49 get p2 3
+r50 call sv_get x46 x49 x48
+x51 at r50 0
+x52 at r50 1
+x53 at r50 2
+x54 at r50 3
+x55 rec x51 x52 x54
+x56 mul p4 8
+x57 add x56 7
+x58 get p2 3
+r59 call sv_get x55 x58 x57
+x60 at r59 0
+x61 at r59 1
+x62 at r59 2
+x63 at r59 3
+x64 rec x60 x61 x63
+x65 get p2 5
+x66 call sv_span x64 x65 x53 x62
+x67 call svl131 x66
+x68 call svl82 x67
+x69 mul p4 8
+x70 add x69 6
+x71 get p2 3
+r72 call sv_get x68 x71 x70
+x73 at r72 0
+x74 at r72 1
+x75 at r72 2
+x76 at r72 3
+x77 rec x73 x74 x76
+x78 mul p4 8
+x79 add x78 7
+x80 get p2 3
+r81 call sv_get x77 x80 x79
+x82 at r81 0
+x83 at r81 1
+x84 at r81 2
+x85 at r81 3
+x86 rec x82 x83 x85
+x87 get p2 5
+x88 call sv_span x86 x87 x75 x84
+x89 call svl132 x88
+x90 call svl83 x89
+x91 mul p4 8
+x92 add x91 6
+x93 get p2 3
+r94 call sv_get x90 x93 x92
+x95 at r94 0
+x96 at r94 1
+x97 at r94 2
+x98 at r94 3
+x99 rec x95 x96 x98
+x100 mul p4 8
+x101 add x100 7
+x102 get p2 3
+r103 call sv_get x99 x102 x101
+x104 at r103 0
+x105 at r103 1
+x106 at r103 2
+x107 at r103 3
+x108 rec x104 x105 x107
+x109 get p2 5
+x110 call sv_span x108 x109 x97 x106
+x111 call svl133 x110
+x112 call svl82 x111
+x113 mul p4 8
+x114 add x113 6
+x115 get p2 3
+r116 call sv_get x112 x115 x114
+x117 at r116 0
+x118 at r116 1
+x119 at r116 2
+x120 at r116 3
+x121 rec x117 x118 x120
+x122 mul p4 8
+x123 add x122 7
+x124 get p2 3
+r125 call sv_get x121 x124 x123
+x126 at r125 0
+x127 at r125 1
+x128 at r125 2
+x129 at r125 3
+x130 rec x126 x127 x129
+x131 get p2 5
+x132 call sv_span x130 x131 x119 x128
+x133 call svl126 x132
+x134 eq p5 4
+x135 select x134 1 0
+x136 fold sv_div_latch x135 x133 p2 p3 p4
+x137 mul p4 8
+x138 add x137 5
+x139 get p2 3
+r140 call sv_get x136 x139 x138
+x141 at r140 0
+x142 at r140 1
+x143 at r140 2
+x144 at r140 3
+x145 rec x141 x142 x144
+x146 get p2 6
+r147 call sv_get x145 x146 x143
+x148 at r147 0
+x149 at r147 1
+x150 at r147 2
+x151 at r147 3
+x152 rec x148 x149 x151
+x153 eq p5 5
+x154 ne x150 0
+x155 and x153 x154
+x156 select x155 1 0
+x157 fold sv_call_latch x156 x152 p2 p3 p4
+x158 fold sv_advance 1 x157 p2 p3 p4
+x159 call svl134 x158
+ret x159
+end
+
+fn sv_finish_value (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl80 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl22 x21
+x23 call svl106 x22
+x24 mul p4 8
+x25 add x24 6
+x26 get p2 3
+r27 call sv_get x23 x26 x25
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 mul p4 8
+x34 add x33 7
+x35 get p2 3
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 get p2 5
+x43 call sv_span x41 x42 x30 x39
+x44 call svl40 x43
+ret x44
+end
+
+fn sv_iter_finish (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 5
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 get p2 6
+r11 call sv_get x9 x10 x7
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 ne x14 0
+x18 select x17 1 0
+x19 fold sv_finish_value x18 x16 p2 p3 p4
+x20 fold sv_advance 1 x19 p2 p3 p4
+ret x20
+end
+
+fn sv_step_value (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl106 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl22 x21
+x23 call svl107 x22
+x24 mul p4 8
+x25 add x24 6
+x26 get p2 3
+r27 call sv_get x23 x26 x25
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 mul p4 8
+x34 add x33 7
+x35 get p2 3
+r36 call sv_get x32 x35 x34
+x37 at r36 0
+x38 at r36 1
+x39 at r36 2
+x40 at r36 3
+x41 rec x37 x38 x40
+x42 get p2 5
+x43 call sv_span x41 x42 x30 x39
+x44 call svl40 x43
+ret x44
+end
+
+fn svl135 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 857746208 828647218 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 9 a0
+ret r0
+end
+
+fn sv_iter_step (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 5
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 get p2 6
+r11 call sv_get x9 x10 x7
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 ne x14 0
+x18 select x17 1 0
+x19 fold sv_step_value x18 x16 p2 p3 p4
+x20 call svl94 x19
+x21 mul p4 8
+x22 add x21 6
+x23 get p2 3
+r24 call sv_get x20 x23 x22
+x25 at r24 0
+x26 at r24 1
+x27 at r24 2
+x28 at r24 3
+x29 rec x25 x26 x28
+x30 mul p4 8
+x31 add x30 7
+x32 get p2 3
+r33 call sv_get x29 x32 x31
+x34 at r33 0
+x35 at r33 1
+x36 at r33 2
+x37 at r33 3
+x38 rec x34 x35 x37
+x39 get p2 5
+x40 call sv_span x38 x39 x27 x36
+x41 call svl22 x40
+x42 call svl94 x41
+x43 mul p4 8
+x44 add x43 6
+x45 get p2 3
+r46 call sv_get x42 x45 x44
+x47 at r46 0
+x48 at r46 1
+x49 at r46 2
+x50 at r46 3
+x51 rec x47 x48 x50
+x52 mul p4 8
+x53 add x52 7
+x54 get p2 3
+r55 call sv_get x51 x54 x53
+x56 at r55 0
+x57 at r55 1
+x58 at r55 2
+x59 at r55 3
+x60 rec x56 x57 x59
+x61 get p2 5
+x62 call sv_span x60 x61 x49 x58
+x63 call svl135 x62
+ret x63
+end
+
+fn sv_after_pred (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl109 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl119 x21
+ret x22
+end
+
+fn sv_body_step_comb (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_iter_step 1 p0 p2 p3 p4
+x2 call svl35 x1
+x3 ne p5 0
+x4 select x3 1 0
+x5 fold sv_after_pred x4 x2 p2 p3 p4
+ret x5
+end
+
+fn svl136 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 543452773 6581861 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 7 a0
+ret r0
+end
+
+fn sv_body_step_seq (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl129 p0
+x2 call svl81 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+x23 call svl126 x22
+x24 call svl82 x23
+x25 mul p4 8
+x26 add x25 6
+x27 get p2 3
+r28 call sv_get x24 x27 x26
+x29 at r28 0
+x30 at r28 1
+x31 at r28 2
+x32 at r28 3
+x33 rec x29 x30 x32
+x34 mul p4 8
+x35 add x34 7
+x36 get p2 3
+r37 call sv_get x33 x36 x35
+x38 at r37 0
+x39 at r37 1
+x40 at r37 2
+x41 at r37 3
+x42 rec x38 x39 x41
+x43 get p2 5
+x44 call sv_span x42 x43 x31 x40
+x45 call svl130 x44
+x46 call svl81 x45
+x47 mul p4 8
+x48 add x47 6
+x49 get p2 3
+r50 call sv_get x46 x49 x48
+x51 at r50 0
+x52 at r50 1
+x53 at r50 2
+x54 at r50 3
+x55 rec x51 x52 x54
+x56 mul p4 8
+x57 add x56 7
+x58 get p2 3
+r59 call sv_get x55 x58 x57
+x60 at r59 0
+x61 at r59 1
+x62 at r59 2
+x63 at r59 3
+x64 rec x60 x61 x63
+x65 get p2 5
+x66 call sv_span x64 x65 x53 x62
+x67 call svl131 x66
+x68 call svl82 x67
+x69 mul p4 8
+x70 add x69 6
+x71 get p2 3
+r72 call sv_get x68 x71 x70
+x73 at r72 0
+x74 at r72 1
+x75 at r72 2
+x76 at r72 3
+x77 rec x73 x74 x76
+x78 mul p4 8
+x79 add x78 7
+x80 get p2 3
+r81 call sv_get x77 x80 x79
+x82 at r81 0
+x83 at r81 1
+x84 at r81 2
+x85 at r81 3
+x86 rec x82 x83 x85
+x87 get p2 5
+x88 call sv_span x86 x87 x75 x84
+x89 call svl132 x88
+x90 call svl83 x89
+x91 mul p4 8
+x92 add x91 6
+x93 get p2 3
+r94 call sv_get x90 x93 x92
+x95 at r94 0
+x96 at r94 1
+x97 at r94 2
+x98 at r94 3
+x99 rec x95 x96 x98
+x100 mul p4 8
+x101 add x100 7
+x102 get p2 3
+r103 call sv_get x99 x102 x101
+x104 at r103 0
+x105 at r103 1
+x106 at r103 2
+x107 at r103 3
+x108 rec x104 x105 x107
+x109 get p2 5
+x110 call sv_span x108 x109 x97 x106
+x111 call svl133 x110
+x112 call svl82 x111
+x113 mul p4 8
+x114 add x113 6
+x115 get p2 3
+r116 call sv_get x112 x115 x114
+x117 at r116 0
+x118 at r116 1
+x119 at r116 2
+x120 at r116 3
+x121 rec x117 x118 x120
+x122 mul p4 8
+x123 add x122 7
+x124 get p2 3
+r125 call sv_get x121 x124 x123
+x126 at r125 0
+x127 at r125 1
+x128 at r125 2
+x129 at r125 3
+x130 rec x126 x127 x129
+x131 get p2 5
+x132 call sv_span x130 x131 x119 x128
+x133 call svl126 x132
+x134 fold sv_iter_step 1 x133 p2 p3 p4
+x135 call svl35 x134
+x136 call svl81 x135
+x137 mul p4 8
+x138 add x137 6
+x139 get p2 3
+r140 call sv_get x136 x139 x138
+x141 at r140 0
+x142 at r140 1
+x143 at r140 2
+x144 at r140 3
+x145 rec x141 x142 x144
+x146 mul p4 8
+x147 add x146 7
+x148 get p2 3
+r149 call sv_get x145 x148 x147
+x150 at r149 0
+x151 at r149 1
+x152 at r149 2
+x153 at r149 3
+x154 rec x150 x151 x153
+x155 get p2 5
+x156 call sv_span x154 x155 x143 x152
+x157 call svl117 x156
+x158 ne p5 0
+x159 select x158 1 0
+x160 fold sv_after_pred x159 x157 p2 p3 p4
+x161 call svl136 x160
+ret x161
+end
+
+fn sv_body_step (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 3
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 get p2 8
+r11 call sv_get x9 x10 x7
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 ne x14 0
+x18 select x17 1 0
+x19 fold sv_body_step_seq x18 x16 p2 p3 p4 p5
+x20 eq x14 0
+x21 select x20 1 0
+x22 fold sv_body_step_comb x21 x19 p2 p3 p4 p5
+ret x22
+end
+
+fn sv_count_condition (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl94 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+x22 call svl21 x21
+x23 mul p4 8
+x24 add x23 2
+x25 get p2 3
+r26 call sv_get x22 x25 x24
+x27 at r26 0
+x28 at r26 1
+x29 at r26 2
+x30 at r26 3
+x31 rec x27 x28 x30
+x32 add x29 0
+x33 mul x32 2
+x34 get p2 4
+r35 call sv_get x31 x34 x33
+x36 at r35 0
+x37 at r35 1
+x38 at r35 2
+x39 at r35 3
+x40 rec x36 x37 x39
+x41 add x33 1
+x42 get p2 4
+r43 call sv_get x40 x42 x41
+x44 at r43 0
+x45 at r43 1
+x46 at r43 2
+x47 at r43 3
+x48 rec x44 x45 x47
+x49 call sv_operand x48 p2 p3 x38 x46
+ret x49
+end
+
+fn svl137 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 640032809 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 5 a0
+ret r0
+end
+
+fn sv_pure_pred_condition (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl44 p0
+x2 fold sv_count_condition 1 x1 p2 p3 p4
+x3 call svl137 x2
+x4 call svl113 x3
+x5 mul p4 8
+x6 add x5 6
+x7 get p2 3
+r8 call sv_get x4 x7 x6
+x9 at r8 0
+x10 at r8 1
+x11 at r8 2
+x12 at r8 3
+x13 rec x9 x10 x12
+x14 mul p4 8
+x15 add x14 7
+x16 get p2 3
+r17 call sv_get x13 x16 x15
+x18 at r17 0
+x19 at r17 1
+x20 at r17 2
+x21 at r17 3
+x22 rec x18 x19 x21
+x23 get p2 5
+x24 call sv_span x22 x23 x11 x20
+ret x24
+end
+
+fn svl138 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 673212009 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_iter_plain_control (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl138 p0
+x2 ne p5 0
+x3 select x2 1 0
+x4 fold sv_pure_pred_condition x3 x1 p2 p3 p4
+x5 eq x2 false
+x6 select x5 1 0
+x7 fold sv_count_condition x6 x4 p2 p3 p4
+x8 call svl126 x7
+x9 fold sv_body_step 1 x8 p2 p3 p4 0
+x10 call svl127 x9
+x11 fold sv_iter_finish 1 x10 p2 p3 p4
+x12 call svl122 x11
+ret x12
+end
+
+fn svl139 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1700929577 544106855 1702060387 10272 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 14 a0
+ret r0
+end
+
+fn svl140 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 657596457 540684388 1768383842 8302 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 14 a0
+ret r0
+end
+
+fn svl141 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 828647218 1852121147 657596516 540684644 1768383842 8302 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 26 a0
+ret r0
+end
+
+fn svl142 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1700929577 544106855 673212009 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 12 a0
+ret r0
+end
+
+fn svl143 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 8233 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn svl144 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884000 845424434 1818566715 1646290291 1852401509 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 21 a0
+ret r0
+end
+
+fn svl145 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1684956448 1684956448 1684956448 1717920800 1953264993 1700929594 544106855 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 28 a0
+ret r0
+end
+
+fn svl146 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1684956448 1684956448 1702060387 1684956448 1936483616 1700929637 544106855 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 28 a0
+ret r0
+end
+
+fn sv_iter_pred_control (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl138 p0
+x2 fold sv_count_condition 1 x1 p2 p3 p4
+x3 call svl139 x2
+x4 call svl109 x3
+x5 mul p4 8
+x6 add x5 6
+x7 get p2 3
+r8 call sv_get x4 x7 x6
+x9 at r8 0
+x10 at r8 1
+x11 at r8 2
+x12 at r8 3
+x13 rec x9 x10 x12
+x14 mul p4 8
+x15 add x14 7
+x16 get p2 3
+r17 call sv_get x13 x16 x15
+x18 at r17 0
+x19 at r17 1
+x20 at r17 2
+x21 at r17 3
+x22 rec x18 x19 x21
+x23 get p2 5
+x24 call sv_span x22 x23 x11 x20
+x25 call svl140 x24
+x26 call svl110 x25
+x27 mul p4 8
+x28 add x27 6
+x29 get p2 3
+r30 call sv_get x26 x29 x28
+x31 at r30 0
+x32 at r30 1
+x33 at r30 2
+x34 at r30 3
+x35 rec x31 x32 x34
+x36 mul p4 8
+x37 add x36 7
+x38 get p2 3
+r39 call sv_get x35 x38 x37
+x40 at r39 0
+x41 at r39 1
+x42 at r39 2
+x43 at r39 3
+x44 rec x40 x41 x43
+x45 get p2 5
+x46 call sv_span x44 x45 x33 x42
+x47 call svl130 x46
+x48 call svl109 x47
+x49 mul p4 8
+x50 add x49 6
+x51 get p2 3
+r52 call sv_get x48 x51 x50
+x53 at r52 0
+x54 at r52 1
+x55 at r52 2
+x56 at r52 3
+x57 rec x53 x54 x56
+x58 mul p4 8
+x59 add x58 7
+x60 get p2 3
+r61 call sv_get x57 x60 x59
+x62 at r61 0
+x63 at r61 1
+x64 at r61 2
+x65 at r61 3
+x66 rec x62 x63 x65
+x67 get p2 5
+x68 call sv_span x66 x67 x55 x64
+x69 call svl141 x68
+x70 call svl110 x69
+x71 mul p4 8
+x72 add x71 6
+x73 get p2 3
+r74 call sv_get x70 x73 x72
+x75 at r74 0
+x76 at r74 1
+x77 at r74 2
+x78 at r74 3
+x79 rec x75 x76 x78
+x80 mul p4 8
+x81 add x80 7
+x82 get p2 3
+r83 call sv_get x79 x82 x81
+x84 at r83 0
+x85 at r83 1
+x86 at r83 2
+x87 at r83 3
+x88 rec x84 x85 x87
+x89 get p2 5
+x90 call sv_span x88 x89 x77 x86
+x91 call svl132 x90
+x92 call svl111 x91
+x93 mul p4 8
+x94 add x93 6
+x95 get p2 3
+r96 call sv_get x92 x95 x94
+x97 at r96 0
+x98 at r96 1
+x99 at r96 2
+x100 at r96 3
+x101 rec x97 x98 x100
+x102 mul p4 8
+x103 add x102 7
+x104 get p2 3
+r105 call sv_get x101 x104 x103
+x106 at r105 0
+x107 at r105 1
+x108 at r105 2
+x109 at r105 3
+x110 rec x106 x107 x109
+x111 get p2 5
+x112 call sv_span x110 x111 x99 x108
+x113 call svl133 x112
+x114 call svl110 x113
+x115 mul p4 8
+x116 add x115 6
+x117 get p2 3
+r118 call sv_get x114 x117 x116
+x119 at r118 0
+x120 at r118 1
+x121 at r118 2
+x122 at r118 3
+x123 rec x119 x120 x122
+x124 mul p4 8
+x125 add x124 7
+x126 get p2 3
+r127 call sv_get x123 x126 x125
+x128 at r127 0
+x129 at r127 1
+x130 at r127 2
+x131 at r127 3
+x132 rec x128 x129 x131
+x133 get p2 5
+x134 call sv_span x132 x133 x121 x130
+x135 call svl142 x134
+x136 call svl113 x135
+x137 mul p4 8
+x138 add x137 6
+x139 get p2 3
+r140 call sv_get x136 x139 x138
+x141 at r140 0
+x142 at r140 1
+x143 at r140 2
+x144 at r140 3
+x145 rec x141 x142 x144
+x146 mul p4 8
+x147 add x146 7
+x148 get p2 3
+r149 call sv_get x145 x148 x147
+x150 at r149 0
+x151 at r149 1
+x152 at r149 2
+x153 at r149 3
+x154 rec x150 x151 x153
+x155 get p2 5
+x156 call sv_span x154 x155 x143 x152
+x157 call svl143 x156
+x158 call svl109 x157
+x159 mul p4 8
+x160 add x159 6
+x161 get p2 3
+r162 call sv_get x158 x161 x160
+x163 at r162 0
+x164 at r162 1
+x165 at r162 2
+x166 at r162 3
+x167 rec x163 x164 x166
+x168 mul p4 8
+x169 add x168 7
+x170 get p2 3
+r171 call sv_get x167 x170 x169
+x172 at r171 0
+x173 at r171 1
+x174 at r171 2
+x175 at r171 3
+x176 rec x172 x173 x175
+x177 get p2 5
+x178 call sv_span x176 x177 x165 x174
+x179 call svl144 x178
+x180 fold sv_iter_finish 1 x179 p2 p3 p4
+x181 call svl145 x180
+x182 fold sv_body_step 1 x181 p2 p3 p4 1
+x183 call svl146 x182
+x184 fold sv_iter_finish 1 x183 p2 p3 p4
+x185 call svl122 x184
+ret x185
+end
+
+fn sv_iter_control (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 0
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 mul p4 8
+x11 add x10 4
+x12 get p2 3
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 get p2 8
+r20 call sv_get x18 x19 x16
+x21 at r20 0
+x22 at r20 1
+x23 at r20 2
+x24 at r20 3
+x25 rec x21 x22 x24
+x26 eq x7 21
+x27 ne x23 0
+x28 and x26 x27
+x29 select x28 1 0
+x30 fold sv_iter_pred_control x29 x25 p2 p3 p4
+x31 eq x23 0
+x32 and x26 x31
+x33 eq x28 false
+x34 select x32 1 0
+x35 select x33 1 0
+x36 fold sv_iter_plain_control x35 x30 p2 p3 p4 x34
+ret x36
+end
+
+fn svl147 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 538976288 538976288 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 8 a0
+ret r0
+end
+
+fn svl148 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1718165562 2172960 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 7 a0
+ret r0
+end
+
+fn svl149 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 543452773 1702063205 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 9 a0
+ret r0
+end
+
+fn svl150 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn sv_case (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 10
+r2 call sv_get p0 x1 p4
+x3 at r2 0
+x4 at r2 1
+x5 at r2 2
+x6 at r2 3
+x7 rec x3 x4 x6
+x8 get p2 13
+x9 add x8 p4
+x10 get p2 10
+r11 call sv_get x7 x10 x9
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 call svl147 x16
+x18 fold sv_pc 1 x17 p2 p3 p4 x14
+x19 call svl148 x18
+x20 call svl77 x19
+x21 mul p4 8
+x22 add x21 6
+x23 get p2 3
+r24 call sv_get x20 x23 x22
+x25 at r24 0
+x26 at r24 1
+x27 at r24 2
+x28 at r24 3
+x29 rec x25 x26 x28
+x30 mul p4 8
+x31 add x30 7
+x32 get p2 3
+r33 call sv_get x29 x32 x31
+x34 at r33 0
+x35 at r33 1
+x36 at r33 2
+x37 at r33 3
+x38 rec x34 x35 x37
+x39 get p2 5
+x40 call sv_span x38 x39 x27 x36
+x41 call svl126 x40
+x42 call svl77 x41
+x43 mul p4 8
+x44 add x43 6
+x45 get p2 3
+r46 call sv_get x42 x45 x44
+x47 at r46 0
+x48 at r46 1
+x49 at r46 2
+x50 at r46 3
+x51 rec x47 x48 x50
+x52 mul p4 8
+x53 add x52 7
+x54 get p2 3
+r55 call sv_get x51 x54 x53
+x56 at r55 0
+x57 at r55 1
+x58 at r55 2
+x59 at r55 3
+x60 rec x56 x57 x59
+x61 get p2 5
+x62 call sv_span x60 x61 x49 x58
+x63 call svl130 x62
+x64 fold sv_init 1 x63 p2 p3 p4
+x65 call svl149 x64
+x66 eq x5 1
+x67 select x66 1 0
+x68 fold sv_read_control x67 x65 p2 p3 p4
+x69 eq x5 2
+x70 select x69 1 0
+x71 fold sv_write_control x70 x68 p2 p3 p4
+x72 eq x5 3
+x73 select x72 1 0
+x74 fold sv_puts_control x73 x71 p2 p3 p4
+x75 eq x5 6
+x76 select x75 1 0
+x77 fold sv_iter_control x76 x74 p2 p3 p4
+x78 eq x5 4
+x79 eq x5 5
+x80 or x78 x79
+x81 select x80 1 0
+x82 fold sv_handshake_control x81 x77 p2 p3 p4 x5
+x83 call svl150 x82
+ret x83
+end
+
+fn svl151 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 543387688 2112829 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 7 a0
+ret r0
+end
+
+fn svl152 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 539371040 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_in_child (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl152 p0
+x2 call svl95 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+ret x22
+end
+
+fn sv_in_term (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 13
+x2 add x1 p4
+x3 get p2 10
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 call svl151 x9
+x11 fold sv_pc 1 x10 p2 p3 p4 x7
+x12 call svl152 x11
+x13 call svl77 x12
+x14 mul p4 8
+x15 add x14 6
+x16 get p2 3
+r17 call sv_get x13 x16 x15
+x18 at r17 0
+x19 at r17 1
+x20 at r17 2
+x21 at r17 3
+x22 rec x18 x19 x21
+x23 mul p4 8
+x24 add x23 7
+x25 get p2 3
+r26 call sv_get x22 x25 x24
+x27 at r26 0
+x28 at r26 1
+x29 at r26 2
+x30 at r26 3
+x31 rec x27 x28 x30
+x32 get p2 5
+x33 call sv_span x31 x32 x20 x29
+x34 ne p5 0
+x35 select x34 1 0
+x36 fold sv_in_child x35 x33 p2 p3 p4
+x37 call svl11 x36
+ret x37
+end
+
+fn svl155 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 545029152 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 4 a0
+ret r0
+end
+
+fn sv_or_separator (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl155 p0
+ret x1
+end
+
+fn sv_in_term_value (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 ne p5 0
+x2 select x1 1 0
+x3 fold sv_or_separator x2 p0 p2 p3 p4
+x4 fold sv_in_term 1 x3 p2 p3 p4 p6
+ret x4
+end
+
+fn sv_in_term_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 mul p3 10
+x4 add x3 5
+x5 get p2 2
+r6 call sv_get x1 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 add x9 p1
+x13 get p2 10
+r14 call sv_get x11 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 mul x12 8
+x21 add x20 3
+x22 get p2 3
+r23 call sv_get x19 x22 x21
+x24 at r23 0
+x25 at r23 1
+x26 at r23 2
+x27 at r23 3
+x28 rec x24 x25 x27
+x29 get p2 8
+r30 call sv_get x28 x29 x26
+x31 at r30 0
+x32 at r30 1
+x33 at r30 2
+x34 at r30 3
+x35 rec x31 x32 x34
+x36 get p2 9
+r37 call sv_get x35 x36 x26
+x38 at r37 0
+x39 at r37 1
+x40 at r37 2
+x41 at r37 3
+x42 rec x38 x39 x41
+x43 eq x17 5
+x44 eq x17 6
+x45 ne x33 0
+x46 and x44 x45
+x47 or x43 x46
+x48 ne x40 0
+x49 and x47 x48
+x50 eq x17 1
+x51 or x50 x49
+x52 select x51 1 0
+x53 select x49 1 0
+x54 fold sv_in_term_value x52 x42 p2 p3 x12 x2 x53
+x55 select x51 1 0
+x56 add x2 x55
+x57 rec x54 x56
+ret x57
+end
+
+fn svl153 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1935745056 1852270963 1601071392 1684104562 540876921 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 20 a0
+ret r0
+end
+
+fn sv_zero_bit (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl60 p0
+ret x1
+end
+
+fn sv_in_assignment (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl153 p0
+x2 mul p3 10
+x3 add x2 6
+x4 get p2 2
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 rec x10 0
+x12 fold sv_in_term_step x8 x11 p2 p3 p4
+x13 at x12 0
+x14 at x12 1
+x15 eq x14 0
+x16 select x15 1 0
+x17 fold sv_zero_bit x16 x13 p2 p3 p4
+x18 call svl36 x17
+ret x18
+end
+
+fn sv_out_child (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl152 p0
+x2 call svl96 x1
+x3 mul p4 8
+x4 add x3 6
+x5 get p2 3
+r6 call sv_get x2 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 mul p4 8
+x13 add x12 7
+x14 get p2 3
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 get p2 5
+x22 call sv_span x20 x21 x9 x18
+ret x22
+end
+
+fn sv_out_term (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 13
+x2 add x1 p4
+x3 get p2 10
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 call svl151 x9
+x11 fold sv_pc 1 x10 p2 p3 p4 x7
+x12 call svl152 x11
+x13 call svl77 x12
+x14 mul p4 8
+x15 add x14 6
+x16 get p2 3
+r17 call sv_get x13 x16 x15
+x18 at r17 0
+x19 at r17 1
+x20 at r17 2
+x21 at r17 3
+x22 rec x18 x19 x21
+x23 mul p4 8
+x24 add x23 7
+x25 get p2 3
+r26 call sv_get x22 x25 x24
+x27 at r26 0
+x28 at r26 1
+x29 at r26 2
+x30 at r26 3
+x31 rec x27 x28 x30
+x32 get p2 5
+x33 call sv_span x31 x32 x20 x29
+x34 ne p5 0
+x35 select x34 1 0
+x36 fold sv_out_child x35 x33 p2 p3 p4
+x37 call svl11 x36
+ret x37
+end
+
+fn sv_out_term_value (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 ne p5 0
+x2 select x1 1 0
+x3 fold sv_or_separator x2 p0 p2 p3 p4
+x4 fold sv_out_term 1 x3 p2 p3 p4 p6
+ret x4
+end
+
+fn sv_out_term_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 mul p3 10
+x4 add x3 5
+x5 get p2 2
+r6 call sv_get x1 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 add x9 p1
+x13 get p2 10
+r14 call sv_get x11 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 mul x12 8
+x21 add x20 3
+x22 get p2 3
+r23 call sv_get x19 x22 x21
+x24 at r23 0
+x25 at r23 1
+x26 at r23 2
+x27 at r23 3
+x28 rec x24 x25 x27
+x29 get p2 8
+r30 call sv_get x28 x29 x26
+x31 at r30 0
+x32 at r30 1
+x33 at r30 2
+x34 at r30 3
+x35 rec x31 x32 x34
+x36 get p2 9
+r37 call sv_get x35 x36 x26
+x38 at r37 0
+x39 at r37 1
+x40 at r37 2
+x41 at r37 3
+x42 rec x38 x39 x41
+x43 eq x17 5
+x44 eq x17 6
+x45 ne x33 0
+x46 and x44 x45
+x47 or x43 x46
+x48 ne x40 0
+x49 and x47 x48
+x50 eq x17 2
+x51 eq x17 3
+x52 or x50 x51
+x53 or x52 x49
+x54 select x53 1 0
+x55 select x49 1 0
+x56 fold sv_out_term_value x54 x42 p2 p3 x12 x2 x55
+x57 select x53 1 0
+x58 add x2 x57
+x59 rec x56 x58
+ret x59
+end
+
+fn svl154 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1935745056 1852270963 1953853216 1818326623 1025533033 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 21 a0
+ret r0
+end
+
+fn sv_out_assignment (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl154 p0
+x2 mul p3 10
+x3 add x2 6
+x4 get p2 2
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 rec x10 0
+x12 fold sv_out_term_step x8 x11 p2 p3 p4
+x13 at x12 0
+x14 at x12 1
+x15 eq x14 0
+x16 select x15 1 0
+x17 fold sv_zero_bit x16 x13 p2 p3 p4
+x18 call svl36 x17
+ret x18
+end
+
+fn svl156 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 540884256 1680290355 1059072304 657601312 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 17 a0
+ret r0
+end
+
+fn svl157 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 10331 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn svl158 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 857746720 828647218 539631657 723530291 842211386 93 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 21 a0
+ret r0
+end
+
+fn sv_output_puts (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call sv_arg_type p0 0 p2 p3 p4 1
+x2 at x1 0
+x3 at x1 1
+x4 at x1 2
+x5 at x1 3
+x6 rec x2 x3 x5
+x7 mul x4 3
+x8 add x7 1
+x9 get p2 0
+r10 call sv_get x6 x9 x8
+x11 at r10 0
+x12 at r10 1
+x13 at r10 2
+x14 at r10 3
+x15 rec x11 x12 x14
+x16 call svl44 x15
+x17 call svl94 x16
+x18 mul p4 8
+x19 add x18 6
+x20 get p2 3
+r21 call sv_get x17 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 mul p4 8
+x28 add x27 7
+x29 get p2 3
+r30 call sv_get x26 x29 x28
+x31 at r30 0
+x32 at r30 1
+x33 at r30 2
+x34 at r30 3
+x35 rec x31 x32 x34
+x36 get p2 5
+x37 call sv_span x35 x36 x24 x33
+x38 call svl156 x37
+x39 call sv_num x38 x13
+x40 call svl30 x39
+x41 mul p4 8
+x42 add x41 2
+x43 get p2 3
+r44 call sv_get x40 x43 x42
+x45 at r44 0
+x46 at r44 1
+x47 at r44 2
+x48 at r44 3
+x49 rec x45 x46 x48
+x50 add x47 1
+x51 mul x50 2
+x52 get p2 4
+r53 call sv_get x49 x52 x51
+x54 at r53 0
+x55 at r53 1
+x56 at r53 2
+x57 at r53 3
+x58 rec x54 x55 x57
+x59 add x51 1
+x60 get p2 4
+r61 call sv_get x58 x60 x59
+x62 at r61 0
+x63 at r61 1
+x64 at r61 2
+x65 at r61 3
+x66 rec x62 x63 x65
+x67 call sv_operand x66 p2 p3 x56 x64
+x68 call svl157 x67
+x69 call svl94 x68
+x70 mul p4 8
+x71 add x70 6
+x72 get p2 3
+r73 call sv_get x69 x72 x71
+x74 at r73 0
+x75 at r73 1
+x76 at r73 2
+x77 at r73 3
+x78 rec x74 x75 x77
+x79 mul p4 8
+x80 add x79 7
+x81 get p2 3
+r82 call sv_get x78 x81 x80
+x83 at r82 0
+x84 at r82 1
+x85 at r82 2
+x86 at r82 3
+x87 rec x83 x84 x86
+x88 get p2 5
+x89 call sv_span x87 x88 x76 x85
+x90 call svl158 x89
+ret x90
+end
+
+fn sv_output_write (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 2
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 1
+x11 mul x10 2
+x12 get p2 4
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 add x11 1
+x20 get p2 4
+r21 call sv_get x18 x20 x19
+x22 at r21 0
+x23 at r21 1
+x24 at r21 2
+x25 at r21 3
+x26 rec x22 x23 x25
+x27 call sv_operand x26 p2 p3 x16 x24
+ret x27
+end
+
+fn sv_output_child (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl97 p0
+x2 mul p4 8
+x3 add x2 6
+x4 get p2 3
+r5 call sv_get x1 x4 x3
+x6 at r5 0
+x7 at r5 1
+x8 at r5 2
+x9 at r5 3
+x10 rec x6 x7 x9
+x11 mul p4 8
+x12 add x11 7
+x13 get p2 3
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 get p2 5
+x21 call sv_span x19 x20 x8 x17
+ret x21
+end
+
+fn svl159 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 538976288 8224 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 6 a0
+ret r0
+end
+
+fn svl160 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1970217018 1633967988 1025532276 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 13 a0
+ret r0
+end
+
+fn sv_output_case_value (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 13
+x2 add x1 p4
+x3 get p2 10
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 get p2 10
+r11 call sv_get x9 x10 p4
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 mul p4 8
+x18 add x17 3
+x19 get p2 3
+r20 call sv_get x16 x19 x18
+x21 at r20 0
+x22 at r20 1
+x23 at r20 2
+x24 at r20 3
+x25 rec x21 x22 x24
+x26 get p2 8
+r27 call sv_get x25 x26 x23
+x28 at r27 0
+x29 at r27 1
+x30 at r27 2
+x31 at r27 3
+x32 rec x28 x29 x31
+x33 get p2 9
+r34 call sv_get x32 x33 x23
+x35 at r34 0
+x36 at r34 1
+x37 at r34 2
+x38 at r34 3
+x39 rec x35 x36 x38
+x40 eq x14 5
+x41 eq x14 6
+x42 ne x30 0
+x43 and x41 x42
+x44 or x40 x43
+x45 ne x37 0
+x46 and x44 x45
+x47 call svl159 x39
+x48 fold sv_pc 1 x47 p2 p3 p4 x7
+x49 call svl160 x48
+x50 eq x14 2
+x51 select x50 1 0
+x52 fold sv_output_write x51 x49 p2 p3 p4
+x53 eq x14 3
+x54 select x53 1 0
+x55 fold sv_output_puts x54 x52 p2 p3 p4
+x56 select x46 1 0
+x57 fold sv_output_child x56 x55 p2 p3 p4
+x58 call svl36 x57
+ret x58
+end
+
+fn sv_output_case (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 10
+r2 call sv_get p0 x1 p4
+x3 at r2 0
+x4 at r2 1
+x5 at r2 2
+x6 at r2 3
+x7 rec x3 x4 x6
+x8 mul p4 8
+x9 add x8 3
+x10 get p2 3
+r11 call sv_get x7 x10 x9
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 get p2 8
+r18 call sv_get x16 x17 x14
+x19 at r18 0
+x20 at r18 1
+x21 at r18 2
+x22 at r18 3
+x23 rec x19 x20 x22
+x24 get p2 9
+r25 call sv_get x23 x24 x14
+x26 at r25 0
+x27 at r25 1
+x28 at r25 2
+x29 at r25 3
+x30 rec x26 x27 x29
+x31 eq x5 5
+x32 eq x5 6
+x33 ne x21 0
+x34 and x32 x33
+x35 or x31 x34
+x36 ne x28 0
+x37 and x35 x36
+x38 eq x5 2
+x39 eq x5 3
+x40 or x38 x39
+x41 or x37 x40
+x42 select x41 1 0
+x43 fold sv_output_case_value x42 x30 p2 p3 p4
+ret x43
+end
+
+fn sv_seq_pures (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 fold sv_seq_pure 1 x9 p2 p3 x10
+ret x11
+end
+
+fn sv_all_stage_decls (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 fold sv_stage_decls 1 x9 p2 p3 x10
+ret x11
+end
+
+fn sv_resets (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 get p2 10
+r12 call sv_get x9 x11 x10
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 ne x15 0
+x19 select x18 1 0
+x20 fold sv_reset_stage x19 x17 p2 p3 x10
+ret x20
+end
+
+fn sv_cases (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 get p2 10
+r12 call sv_get x9 x11 x10
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 ne x15 0
+x19 select x18 1 0
+x20 fold sv_case x19 x17 p2 p3 x10
+ret x20
+end
+
+fn sv_out_cases (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 fold sv_output_case 1 x9 p2 p3 x10
+ret x11
+end
+
+fn svl161 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1818304544 1937334647 1836016479 1700929634 175008103 538976288 1601467759 1635017060 857750816 811870002 538970683 1633886240 673211763 170484592 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 56 a0
+ret r0
+end
+
+fn svl162 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 538976288 1701060640 1819631974 1864383092 1683977333 543257697 842211389 993027111 538976266 1684956448 1702060387 1696604170 681070 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 51 a0
+ret r0
+end
+
+fn sv_seq_io (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_in_assignment 1 p0 p2 p3 p4
+x2 fold sv_out_assignment 1 x1 p2 p3 p4
+x3 call svl161 x2
+x4 mul p3 10
+x5 add x4 6
+x6 get p2 2
+r7 call sv_get x3 x6 x5
+x8 at r7 0
+x9 at r7 1
+x10 at r7 2
+x11 at r7 3
+x12 rec x8 x9 x11
+x13 fold sv_out_cases x10 x12 p2 p3 p4
+x14 call svl162 x13
+ret x14
+end
+
+fn sv_start_stage (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 call sv_find_stage x9 0 p2 p3 p4 x7
+x11 at x10 0
+x12 at x10 1
+x13 at x10 2
+x14 at x10 3
+x15 rec x11 x12 x14
+x16 call svl77 x15
+x17 mul x13 8
+x18 add x17 6
+x19 get p2 3
+r20 call sv_get x16 x19 x18
+x21 at r20 0
+x22 at r20 1
+x23 at r20 2
+x24 at r20 3
+x25 rec x21 x22 x24
+x26 mul x13 8
+x27 add x26 7
+x28 get p2 3
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 get p2 5
+x36 call sv_span x34 x35 x23 x32
+x37 call svl78 x36
+ret x37
+end
+
+fn svl163 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 543387680 2112828 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 7 a0
+ret r0
+end
+
+fn svl164 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1768300603 1027350638 1646735648 15153 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 14 a0
+ret r0
+end
+
+fn sv_no_stage_start (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl163 p0
+x2 mul p3 2
+x3 get p2 14
+r4 call sv_get x1 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 fold sv_pc 1 x9 p2 p3 p4 x7
+x11 call svl164 x10
+ret x11
+end
+
+fn sv_nonzero_result (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 7
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 mul p3 10
+x11 add x10 8
+x12 get p2 2
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 call sv_operand x18 p2 p3 x7 x16
+ret x19
+end
+
+fn sv_result_assignment (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 4
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 get p2 6
+r11 call sv_get x9 x10 x7
+x12 at r11 0
+x13 at r11 1
+x14 at r11 2
+x15 at r11 3
+x16 rec x12 x13 x15
+x17 call svl73 x16
+x18 ne x14 0
+x19 select x18 1 0
+x20 fold sv_nonzero_result x19 x17 p2 p3 p4
+x21 eq x14 0
+x22 select x21 1 0
+x23 fold sv_zero_bit x22 x20 p2 p3 p4
+x24 call svl36 x23
+ret x24
+end
+
+fn svl165 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1852383264 544503152 1768386412 861610083 1563441713 1601071392 1635017060 538970668 1970302569 1869357172 543385959 1985965673 1684630625 538970668 1886680431 1814066293 1667852143 1601071392 1684104562 537537657 1953853216 544503152 1768386412 861610083 1563441713 1953853216 1952539743 537537633 1953853216 544503152 1768386412 1970217059
+r0 call sv_packed p0 128 a0
+a1 arr 1635147636 744778092 1763713034 1953853550 1735355424 1864393577 1918858357 2036621669 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r1 call sv_packed r0 33 a1
+ret r1
+end
+
+fn sv_seq_io_ports (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl165 p0
+ret x1
+end
+
+fn svl166 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 537536544 1886284064 1814066293 1667852143 1802265376 538970668 1970302569 1869357172 543385959 745829234 1763713034 1953853550 1735355424 1931502441 1953653108 2604 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 62 a0
+ret r0
+end
+
+fn svl167 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1970216992 1953853556 1735355424 1679844201 744844911 1864376330 1970304117 8308 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 30 a0
+ret r0
+end
+
+fn svl168 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1936028192 7629941 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 7 a0
+ret r0
+end
+
+fn svl178 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 44 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 1 a0
+ret r0
+end
+
+fn sv_port_comma (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl178 p0
+ret x1
+end
+
+fn svl169 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 537541417 1735355424 1528849257 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 12 a0
+ret r0
+end
+
+fn svl170 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 542978106 171664240 1869357088 543385959 997091686 1629495306 1734964083 1868832878 1025533294 1852401184 2619 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 42 a0
+ret r0
+end
+
+fn svl171 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1818304544 1937334647 543581791 1869621312 1734632819 1818435685 1646274923 1852401509 538976266 543582496 1953722920 1700929577 544106855 1008755568 8253 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 58 a0
+ret r0
+end
+
+fn svl172 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1768300603 1027350638 1646735648 2112304 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 15 a0
+ret r0
+end
+
+fn svl173 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 174354021 538976288 1702063205 543582496 543387688 2112829 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 23 a0
+ret r0
+end
+
+fn svl174 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1700929577 175008103 538976288 1718165536 1953703968 695497313 1734697504 1713401449 1008758377 657530941 540749922 1008755568 8253 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 50 a0
+ret r0
+end
+
+fn svl175 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1684956448 538976266 1684956448 1936483616 1700929637 175008103 538976288 1633886240 673211763 170484592 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 40 a0
+ret r0
+end
+
+fn svl176 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 538976288 538976288 1634100580 980708469 537541408 538976288 1684956448 1702060387 538976266 1684956448 1696604170 681070 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 47 a0
+ret r0
+end
+
+fn svl177 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1835298405 1819632751 101 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 9 a0
+ret r0
+end
+
+fn sv_seq_module (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 9
+r2 call sv_get p0 x1 p3
+x3 at r2 0
+x4 at r2 1
+x5 at r2 2
+x6 at r2 3
+x7 rec x3 x4 x6
+x8 mul p3 2
+x9 get p2 14
+r10 call sv_get x7 x9 x8
+x11 at r10 0
+x12 at r10 1
+x13 at r10 2
+x14 at r10 3
+x15 rec x11 x12 x14
+x16 call sv_bits x13
+x17 mul p3 10
+x18 add x17 2
+x19 get p2 2
+r20 call sv_get x15 x19 x18
+x21 at r20 0
+x22 at r20 1
+x23 at r20 2
+x24 at r20 3
+x25 rec x21 x22 x24
+x26 mul p3 10
+x27 add x26 4
+x28 get p2 2
+r29 call sv_get x25 x28 x27
+x30 at r29 0
+x31 at r29 1
+x32 at r29 2
+x33 at r29 3
+x34 rec x30 x31 x33
+x35 mul p3 10
+x36 add x35 6
+x37 get p2 2
+r38 call sv_get x34 x37 x36
+x39 at r38 0
+x40 at r38 1
+x41 at r38 2
+x42 at r38 3
+x43 rec x39 x40 x42
+x44 call svl69 x43
+x45 mul p3 10
+x46 add x45 0
+x47 get p2 2
+r48 call sv_get x44 x47 x46
+x49 at r48 0
+x50 at r48 1
+x51 at r48 2
+x52 at r48 3
+x53 rec x49 x50 x52
+x54 mul p3 10
+x55 add x54 1
+x56 get p2 2
+r57 call sv_get x53 x56 x55
+x58 at r57 0
+x59 at r57 1
+x60 at r57 2
+x61 at r57 3
+x62 rec x58 x59 x61
+x63 get p2 5
+x64 call sv_span x62 x63 x51 x60
+x65 call svl166 x64
+x66 fold sv_param x23 x65 p2 p3 p4
+x67 call svl167 x66
+x68 get p2 6
+r69 call sv_get x67 x68 x32
+x70 at r69 0
+x71 at r69 1
+x72 at r69 2
+x73 at r69 3
+x74 rec x70 x71 x73
+x75 eq x32 1
+x76 select x75 1 0
+x77 fold sv_type_bool x76 x74 p2 p3 p4
+x78 eq x75 false
+x79 select x78 1 0
+x80 fold sv_type_bits x79 x77 p2 p3 p4 x72
+x81 call svl168 x80
+x82 ne x5 0
+x83 select x82 1 0
+x84 fold sv_port_comma x83 x81 p2 p3 p4
+x85 call svl150 x84
+x86 ne x5 0
+x87 select x86 1 0
+x88 fold sv_seq_io_ports x87 x85 p2 p3 p4
+x89 call svl169 x88
+x90 sub x16 1
+x91 call sv_num x89 x90
+x92 call svl170 x91
+x93 fold sv_decls x41 x92 p2 p3 p4
+x94 fold sv_seq_pures x41 x93 p2 p3 p4
+x95 fold sv_all_stage_decls x41 x94 p2 p3 p4
+x96 ne x5 0
+x97 select x96 1 0
+x98 fold sv_seq_io x97 x95 p2 p3 p4
+x99 call svl171 x98
+x100 fold sv_pc 1 x99 p2 p3 p4 x13
+x101 call svl172 x100
+x102 fold sv_resets x41 x101 p2 p3 p4
+x103 call svl173 x102
+x104 fold sv_pc 1 x103 p2 p3 p4 x13
+x105 call svl174 x104
+x106 fold sv_pc 1 x105 p2 p3 p4 0
+x107 call svl40 x106
+x108 ne x13 0
+x109 select x108 1 0
+x110 fold sv_start_stage x109 x107 p2 p3 p4
+x111 eq x13 0
+x112 select x111 1 0
+x113 fold sv_no_stage_start x112 x110 p2 p3 p4
+x114 call svl175 x113
+x115 fold sv_cases x41 x114 p2 p3 p4
+x116 call svl176 x115
+x117 fold sv_result_assignment 1 x116 p2 p3 p4
+x118 call svl177 x117
+ret x118
+end
+
+fn sv_limit_type (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 12
+x2 add x1 p5
+x3 get p2 6
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 at x9 0
+x11 at x9 1
+x12 at x9 2
+x13 ne x7 0
+x14 select x13 10 0
+x15 eq x10 0
+x16 select x15 x14 x10
+x17 rec x16 x11 x12
+ret x17
+end
+
+fn sv_limit_param (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 3
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 get p2 1
+r12 call sv_get x9 x11 x10
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 fold sv_limit_type 1 x17 p2 p3 p4 x15
+ret x18
+end
+
+fn sv_limit_node (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 5
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 mul x10 8
+x12 add x11 5
+x13 get p2 3
+r14 call sv_get x9 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 fold sv_limit_type 1 x19 p2 p3 x10 x17
+x21 mul x10 8
+x22 add x21 0
+x23 get p2 3
+r24 call sv_get x20 x23 x22
+x25 at r24 0
+x26 at r24 1
+x27 at r24 2
+x28 at r24 3
+x29 rec x25 x26 x28
+x30 mul x10 8
+x31 add x30 4
+x32 get p2 3
+r33 call sv_get x29 x32 x31
+x34 at r33 0
+x35 at r33 1
+x36 at r33 2
+x37 at r33 3
+x38 rec x34 x35 x37
+x39 get p2 8
+r40 call sv_get x38 x39 x36
+x41 at r40 0
+x42 at r40 1
+x43 at r40 2
+x44 at r40 3
+x45 rec x41 x42 x44
+x46 get p2 9
+r47 call sv_get x45 x46 x36
+x48 at r47 0
+x49 at r47 1
+x50 at r47 2
+x51 at r47 3
+x52 rec x48 x49 x51
+x53 eq x27 21
+x54 ne x43 0
+x55 ne x50 0
+x56 and x54 x55
+x57 and x53 x56
+x58 at x52 0
+x59 at x52 1
+x60 at x52 2
+x61 select x57 11 0
+x62 eq x58 0
+x63 select x62 x61 x58
+x64 rec x63 x59 x60
+ret x64
+end
+
+fn sv_function_policy (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 2
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 mul p3 10
+x11 add x10 4
+x12 get p2 2
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 mul p3 10
+x20 add x19 6
+x21 get p2 2
+r22 call sv_get x18 x21 x20
+x23 at r22 0
+x24 at r22 1
+x25 at r22 2
+x26 at r22 3
+x27 rec x23 x24 x26
+x28 loop sv_ok sv_limit_param x7 x27 p2 p3 p4
+x29 fold sv_limit_type 1 x28 p2 p3 p4 x16
+x30 loop sv_ok sv_limit_node x25 x29 p2 p3 p4
+ret x30
+end
+
+fn svl179 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 2570 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r0 call sv_packed p0 2 a0
+ret r0
+end
+
+fn sv_module_separator (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl179 p0
+ret x1
+end
+
+fn sv_program_function (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold sv_function_policy 1 p0 p2 p1 p4
+x2 ne p1 0
+x3 select x2 1 0
+x4 fold sv_module_separator x3 x1 p2 p1 p4
+x5 get p2 8
+r6 call sv_get x4 x5 p1
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 at x11 0
+x13 eq x12 0
+x14 eq x9 0
+x15 and x13 x14
+x16 select x15 1 0
+x17 fold sv_comb_module x16 x11 p2 p1 p4
+x18 ne x9 0
+x19 and x13 x18
+x20 select x19 1 0
+x21 fold sv_seq_module x20 x17 p2 p1 p4
+ret x21
+end
+
+fn sv_div_flag_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 mul p1 8
+x4 add x3 0
+x5 get p2 3
+r6 call sv_get x1 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 eq x9 10
+x13 eq x9 11
+x14 or x12 x13
+x15 select x14 1 0
+x16 or x2 x15
+x17 rec x11 x16
+ret x17
+end
+
+fn svl180 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1969516397 1629513068 1685413680 673216105 1763713034 1953853550 1735355424 1663066985 170683244 1852383264 544503152 1768386412 1936859235 537537652 1886284064 1814066293 1667852143 1635021600 170685554 1852383264 544503152 1768386412 861610083 1563441713 170680608 1852383264 544503152 1768386412 861610083 1563441713 170680864 1970216992
+r0 call sv_packed p0 128 a0
+a1 arr 1953853556 1735355424 1679844201 744844911 1864376330 1970304117 1869357172 543385959 976302939 1897946416 538970668 1886680431 1814066293 1667852143 825449248 542978106 992545394 1814044682 1667852143 1937072672 537541497 1735355424 1528849257 1563441717 171665696 1869357088 543385959 976302939 1914723632 539782501 745502065 1685480480
+r1 call sv_packed r0 128 a1
+a2 arr 1986273324 537541491 1735355424 1528849257 809120307 1752375389 1768169516 171664998 1935745056 1852270963 543716128 1920671805 539782501 1533310564 2103259443 538970683 1769173857 1679847015 543581801 1752375357 2065706272 811738929 1986273324 171670899 1818304544 1937334647 543581791 1869621312 1734632819 1818435685 1646274923 1852401509
+r2 call sv_packed r1 128 a2
+a3 arr 538976266 543582496 1953722920 1700929577 544106855 2037609826 540884000 811738929 1868832827 1008756078 657530941 540749922 1027350641 657601312 540749924 1027350642 657601312 540749924 174354021 538976288 1702063205 543582496 1635021608 639661170 1646338086 695825269 1734697504 537554537 538976288 543582496 1025532456 842211389
+r3 call sv_packed r2 128 a3
+a4 arr 691037223 1734697504 1897950825 540884000 1747399219 1717986918 1717986918 544350267 1629502780 1868832827 1008756078 657530941 540750178 174354021 538976288 1818566688 1646290291 1852401509 1937072672 1027350649 1646735648 1679833905 543518319 824196412 993026599 1008757024 657858621 540749924 544040306 857750844 811870002 1970348091
+r4 call sv_packed r3 128 a4
+a5 arr 1027350639 657601312 540749924 543454820 1629502780 1986273339 1027350643 540762656 174354021 538976288 543452773 1702063205 543582496 1937072680 1646274937 1852401509 538976266 1763713056 556277862 1717987684 1563571035 1700929577 544106855 544040306 1679834428 1533437545 809120051 1897937757 1008758645 1903894589 861630325 1563441712
+r5 call sv_packed r4 128 a5
+a6 arr 657530924 998060386 1684956448 538976266 1696604192 543519596 1768383842 1701978222 1027350637 1533571872 809120051 1897937757 1008758645 1903894589 861630325 1563441712 657530924 998060130 1684956448 538976266 1679826976 1008755830 1986273341 1010573412 171651360 538976288 543760416 1763720508 908077856 993092647 538976266 1763713056
+r6 call sv_packed r5 128 a6
+a7 arr 1764237414 540884256 862201654 1646274865 1852401509 538976266 538976288 1937072672 1027350649 1646735648 1679833904 543518319 824196412 993092135 538976266 538976288 1008759072 1768169533 861628006 1059085618 1970371360 808672111 744304698 1646735648 975207728 1970371360 808672111 744304698 1646735648 171670833 538976288 538976288
+r7 call sv_packed r6 128 a7
+a8 arr 1027350642 1718182944 842226534 541007965 861628531 1563441713 1679833632 1533437545 809120051 537541469 538976288 1684956448 538976266 1684956448 1696604170 1695179886 1869440110 1701606756 2570 0 0 0 0 0 0 0 0 0 0 0 0 0
+r8 call sv_packed r7 74 a8
+ret r8
+end
+
+fn sv_divider (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl180 p0
+ret x1
+end
+
+fn svl181 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+a0 arr 1193291567 1919250021 1684370529 544825888 1629499457 808280880 908996910 1344286256 543519349 1668183398 1852795252 1868767347 1852400237 1869182049 996958574 745498912 1702127904 1769234802 539782767 543452769 1769367908 1852795251 1869374240 1684368227 2002001966 1953705327 543519841 1634559347 1667855470 1852383347 1684956532 170812517
+r0 call sv_packed p0 128 a0
+a1 arr 1835627616 1633907557 824206700 825193326 684912 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r1 call sv_packed r0 19 a1
+ret r1
+end
+
+fn sv_program (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call svl181 p0
+x2 get p2 13
+x3 rec x1 0
+x4 fold sv_div_flag_step x2 x3 p2 0 0
+x5 at x4 0
+x6 at x4 1
+x7 ne x6 0
+x8 select x7 1 0
+x9 fold sv_divider x8 x5 p2 p3 p4
+x10 get p2 11
+x11 fold sv_program_function x10 x9 p2 p3 p4
+x12 call svl150 x11
+ret x12
+end
+
+fn sv_checked_node (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p1 8
+x2 add x1 0
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 ge x7 32
+x11 le x7 37
+x12 and x10 x11
+x13 at x9 0
+x14 at x9 1
+x15 at x9 2
+x16 ne p1 0
+x17 lt x7 1
+x18 gt x7 37
+x19 or x17 x18
+x20 and x16 x19
+x21 select x12 8 0
+x22 select x20 6 x21
+x23 eq x13 0
+x24 select x23 x22 x13
+x25 rec x24 x14 x15
+ret x25
+end
+
+fn sv_clock_flag (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 8
+r2 call sv_get p0 x1 p1
+x3 at r2 0
+x4 at r2 1
+x5 at r2 2
+x6 at r2 3
+x7 rec x3 x4 x6
+x8 mul p1 10
+x9 add x8 9
+x10 call sv_get x7 p5 x9
+x11 at x10 0
+x12 at x10 1
+x13 at x10 2
+x14 at x10 3
+x15 rec x11 x12 x14
+x16 ne x5 0
+x17 select x16 2 0
+x18 or 0 x17
+x19 call sv_store x15 p5 x9 x18
+ret x19
+end
+
+fn sv_allocate_meta ((u32,(u32,u32,u32),io),u32x16) u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32x16)
+s at p0 0
+ctx at p0 1
+old at s 0
+out at s 1
+t at s 2
+r call ew_new t p3
+status at r 0
+v at r 1
+t1 at r 2
+h at v 0
+ok eq old 0
+code select ok status old
+s1 rec code out t1
+next set ctx p2 h
+result rec s1 next
+ret result
+end
+
+
+fn sv_clock_good (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+
+
+fn sv_clone_good (u32,(u32,u32,u32),io) u32 u32 u32 -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+
+fn sv_clone_page (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+out at p0 1
+t at p0 2
+off shl p1 7
+left sub p3 off
+big gt left 128
+count select big 128 left
+r call arena_load t p2 off count
+status at r 0
+page at r 1
+t1 at r 2
+s rec status out t1
+written fold ew_patch 1 s off count page
+ret written
+end
+
+fn sv_clone_table (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+t at p0 2
+s call ew_new t p3
+whole shr p3 7
+tail and p3 127
+has ne tail 0
+extra select has 1 0
+pages add whole extra
+r loop sv_clone_good sv_clone_page pages s p2 p3
+ret r
+end
+
+fn sv_prepare_metadata ((u32,(u32,u32,u32),io),u32x16) u32 -> ((u32,(u32,u32,u32),io),u32x16)
+ctx at p0 1
+nt get ctx 12
+nf get ctx 11
+nn get ctx 13
+typewords mul nt 2
+width call sv_allocate_meta p0 0 6 typewords
+typeio call sv_allocate_meta width 0 7 nt
+seq call sv_allocate_meta typeio 0 8 nf
+fnio call sv_allocate_meta seq 0 9 nf
+stagewords mul nn 2
+stages call sv_allocate_meta fnio 0 10 stagewords
+functionwords mul nf 2
+functions call sv_allocate_meta stages 0 14 functionwords
+boundwords mul nn 20
+bounds call sv_allocate_meta functions 0 15 boundwords
+ret bounds
+end
+# Context slots0..5 input handles;11..13 full-u32 function/type/node counts.
+# Checked-IR schema includes sentinel node0/argument records and topological type/call order.
+
+fn sv_analyze io u32x16 -> ((u32,(u32,u32,u32),io),u32x16)
+v rec 0 0 0
+nt get p1 12
+nf get p1 11
+nn get p1 13
+typefits le nt 2147483647
+fnsafe le nf 2147483647
+nodesafe le nn 214748364
+a and typefits fnsafe
+safe and a nodesafe
+status select safe 0 7
+start rec status v p0
+checked loop sv_ok sv_checked_node nn start p1 0 0
+initial rec checked p1
+code at checked 0
+okay eq code 0
+times select okay 1 0
+prepared fold sv_prepare_metadata times initial
+s at prepared 0
+ctx at prepared 1
+types loop sv_ok sv_type_plan nt s ctx 0 0
+initialized loop sv_ok sv_bound_init nn types ctx 0 0
+facts loop sv_ok sv_bound_level 9 initialized ctx 0 0
+planned loop sv_ok sv_plan_function nf facts ctx 0 0
+result rec planned ctx
+ret result
+end
+
+fn sv_emit io u32x16 -> (u32,(u32,u32,u32),io)
+phase call sv_analyze p0 p1
+planned at phase 0
+ctx at phase 1
+code at planned 0
+okay eq code 0
+times select okay 1 0
+rendered fold sv_program times planned ctx 0 0
+out call ew_public rendered
+ret out
+end
+
+fn sv_emit_target (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+t at p0 2
+r call sv_emit t p2
+ret r
+end
+
+fn sv_emit_shaped io u32x16 u32x16 -> (u32,(u32,u32,u32),io)
+phase call sv_analyze p0 p1
+s at phase 0
+ctx at phase 1
+old at s 0
+out at s 1
+t at s 2
+sourcecount get p1 11
+targetcount get p2 11
+same eq sourcecount targetcount
+fits le targetcount 429496729
+valid and same fits
+bad select fits 6 7
+code select valid 0 bad
+okay eq old 0
+status select okay code old
+start rec status out t
+go eq status 0
+times select go 1 0
+handle get p2 2
+words mul targetcount 10
+copied fold sv_clone_table times start handle words
+copyvec at copied 1
+copyhandle at copyvec 0
+marked loop sv_clock_good sv_clock_flag targetcount copied ctx 0 0 copyhandle
+status1 at marked 0
+go1 eq status1 0
+times1 select go1 1 0
+target set p2 2 copyhandle
+emitted fold sv_emit_target times1 marked target
+result call ew_public emitted
+ret result
+end

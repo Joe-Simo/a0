@@ -204,14 +204,15 @@ export function refParse(src: string): WordIr {
     const w = bytes(i);
     return kind(i) === 1 && w.length <= 6 ? irOp(String.fromCharCode(...w)) : 0;
   };
-  /** all-digit run b[s..s+n) -> value mod 2^32, or undefined when empty or not digits */
+  /** Canonical decimal u32 run; reject leading zeroes and arithmetic overflow. */
   const digits = (s: number, n: number): number | undefined => {
-    if (n === 0) return undefined;
+    if (n === 0 || (n > 1 && b[s] === 48)) return undefined;
     let v = 0;
     for (let k = 0; k < n; k += 1) {
       const c = b[s + k] as number;
       if (c < 48 || c > 57) return undefined;
-      v = (v * 10 + (c - 48)) % 2 ** 32;
+      v = v * 10 + (c - 48);
+      if (v > 0xffffffff) return undefined;
     }
     return v;
   };

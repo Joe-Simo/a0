@@ -1,0 +1,483 @@
+# PE32+ x86_64 console images, fixed image base0x140000000, KERNEL32.dll imports.
+# Names are raw Latin1 bytes (one u32 byte/cell); spans is (offset,length) pairs.
+# Prepare returns (textSize,idataRva,iatRva,idataByteVector). Code generation uses
+# pe_find_iat (last duplicate wins) before pe_build validates the final text length.
+# No host callback generates or relocates text. No table count/name length ceiling.
+use "executable_bytes.a0"
+fn pe_align u32 u32 -> u32
+a sub p1 1
+b add p0 a
+c sub 0 p1
+r and b c
+ret r
+end
+fn pe_span io (u32,u32,u32) u32 -> (u32,u32,u32,io)
+off mul p2 2
+r call av_load p0 p1 off 2
+s at r 0
+a at r 1
+t at r 2
+x get a 0
+y get a 1
+out rec s x y t
+ret out
+end
+# Compare two name spans, retaining transport failures. Equal names are byte exact.
+fn pe_equal_good (u32,bool,io) u32 (u32,u32,u32) u32 (u32,u32,u32) u32 -> bool
+s at p0 0
+same at p0 1
+ok eq s 0
+r and ok same
+ret r
+end
+fn pe_equal_step (u32,bool,io) u32 (u32,u32,u32) u32 (u32,u32,u32) u32 -> (u32,bool,io)
+t at p0 2
+a add p3 p1
+x call ew_word t p2 a
+s at x 0
+v at x 1
+t1 at x 2
+b add p5 p1
+y call ew_word t1 p4 b
+s1 at y 0
+w at y 1
+t2 at y 2
+ok eq s 0
+status select ok s1 s
+bytebad1 gt v 255
+bytebad2 gt w 255
+malformed or bytebad1 bytebad2
+range select malformed 6 0
+healthy eq status 0
+code select healthy range status
+same eq v w
+out rec code same t2
+ret out
+end
+fn pe_equal io (u32,u32,u32) u32 u32 (u32,u32,u32) u32 u32 -> (u32,bool,io)
+same eq p3 p6
+start rec 0 same p0
+r loop pe_equal_good pe_equal_step p3 start p1 p2 p4 p5
+ret r
+end
+fn pe_last_good (u32,u32,io) u32 (u32,u32,u32) (u32,u32,u32) u32 u32 -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+fn pe_last_step (u32,u32,io) u32 (u32,u32,u32) (u32,u32,u32) u32 u32 -> (u32,u32,io)
+last at p0 1
+t at p0 2
+r call pe_span t p3 p1
+s at r 0
+off at r 1
+len at r 2
+t1 at r 3
+q call pe_equal t1 p2 p4 p5 p2 off len
+s1 at q 0
+same at q 1
+t2 at q 2
+ok eq s 0
+status select ok s1 s
+value select same p1 last
+out rec status value t2
+ret out
+end
+fn pe_last io (u32,u32,u32) (u32,u32,u32) u32 u32 -> (u32,u32,io)
+len at p2 1
+n shr len 1
+start rec 0 4294967295 p0
+r loop pe_last_good pe_last_step n start p1 p2 p3 p4
+ret r
+end
+# Scan lengths and store each hint offset in full-width metadata.
+fn pe_scan_good (u32,u32,(u32,u32,u32),io) u32 (u32,u32,u32) (u32,u32,u32) -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+fn pe_scan_step (u32,u32,(u32,u32,u32),io) u32 (u32,u32,u32) (u32,u32,u32) -> (u32,u32,(u32,u32,u32),io)
+pos at p0 1
+hints at p0 2
+t at p0 3
+r call pe_span t p3 p1
+s at r 0
+off at r 1
+len at r 2
+t1 at r 3
+nameslen at p2 1
+startok le off nameslen
+left sub nameslen off
+lenok le len left
+lengthsafe le len 4294967291
+sum add len 4
+padded and sum 4294967294
+next add pos padded
+nooverflow ge next pos
+v1 and startok lenok
+v2 and v1 lengthsafe
+valid and v2 nooverflow
+bad select nooverflow 6 7
+code select valid 0 bad
+ok eq s 0
+status select ok code s
+state rec status hints t1
+written fold ew_meta 1 state p1 pos
+s1 at written 0
+t2 at written 2
+out rec s1 next hints t2
+ret out
+end
+fn pe_names_good (u32,(u32,u32,u32),io) u32 (u32,u32,u32) (u32,u32,u32) (u32,u32,u32) -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+fn pe_names_step (u32,(u32,u32,u32),io) u32 (u32,u32,u32) (u32,u32,u32) (u32,u32,u32) -> (u32,(u32,u32,u32),io)
+v at p0 1
+t at p0 2
+r call pe_span t p3 p1
+s at r 0
+off at r 1
+len at r 2
+t1 at r 3
+q call ew_word t1 p4 p1
+s1 at q 0
+hint at q 1
+t2 at q 2
+ok eq s 0
+status select ok s1 s
+state rec status v t2
+to add hint 2
+out call ew_copy state p2 off len to
+ret out
+end
+fn pe_thunks_good (u32,(u32,u32,u32),io) u32 (u32,u32,u32) (u32,u32,u32) (u32,u32,u32) u32 u32 -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+fn pe_thunks_step (u32,(u32,u32,u32),io) u32 (u32,u32,u32) (u32,u32,u32) (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),io)
+v at p0 1
+t at p0 2
+r call pe_span t p3 p1
+s at r 0
+off at r 1
+len at r 2
+t1 at r 3
+q call pe_last t1 p2 p3 off len
+s1 at q 0
+last at q 1
+t2 at q 2
+h call ew_word t2 p4 last
+s2 at h 0
+hint at h 1
+t3 at h 2
+ok eq s 0
+first select ok s1 s
+ok1 eq first 0
+status select ok1 s2 first
+state rec status v t3
+address add p5 hint
+slot mul p1 8
+ilt add slot 40
+a fold ew_u64 1 state ilt address 0
+iat add slot p6
+out fold ew_u64 1 a iat address 0
+ret out
+end
+fn pe_prepare_alloc (u32,(u32,u32,u32),io) u32 u32 (u32,u32,u32) (u32,u32,u32) (u32,u32,u32) u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+t at p0 2
+out call ew_new t p9
+ilt add p6 40
+a fold ew_u32 1 out 0 ilt
+dllrva add p6 p8
+b fold ew_u32 1 a 12 dllrva
+iatrva add p6 p7
+c fold ew_u32 1 b 16 iatrva
+d loop pe_names_good pe_names_step p10 c p3 p4 p5
+e loop pe_thunks_good pe_thunks_step p10 d p3 p4 p5 p6 p7
+f fold ew_u32 1 e p8 1314014539
+off1 add p8 4
+g fold ew_u32 1 f off1 842222661
+off2 add p8 8
+h fold ew_u32 1 g off2 1819042862
+r call ew_public h
+ret r
+end
+fn pe_prepare_emit (u32,(u32,u32,u32),io) u32 u32 (u32,u32,u32) (u32,u32,u32) (u32,u32,u32) u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+s at p0 0
+ok eq s 0
+n select ok 1 0
+out fold pe_prepare_alloc n p0 p2 p3 p4 p5 p6 p7 p8 p9 p10
+ret out
+end
+fn pe_prepare_valid (u32,(u32,u32,u32,(u32,u32,u32)),io) u32 u32 (u32,u32,u32) (u32,u32,u32) -> (u32,(u32,u32,u32,(u32,u32,u32)),io)
+t at p0 2
+spanlen at p4 1
+count shr spanlen 1
+slots add count 1
+thunks mul slots 8
+iatoff add 40 thunks
+hintoff add iatoff thunks
+h call ew_new t count
+hs at h 0
+hints at h 1
+t1 at h 2
+scanstart rec hs hintoff hints t1
+scanned loop pe_scan_good pe_scan_step count scanstart p3 p4
+s at scanned 0
+dlloff at scanned 1
+t2 at scanned 3
+size add dlloff 13
+safe ge size dlloff
+rvapad call pe_align p2 4096
+rva add rvapad 4096
+imageend add rva size
+endsafe ge imageend rva
+all and safe endsafe
+bad select all 0 7
+ok eq s 0
+status select ok bad s
+empty rec 0 0 0
+start rec status empty t2
+out fold pe_prepare_emit 1 start p2 p3 p4 hints rva iatoff dlloff size count
+os at out 0
+idata at out 1
+t3 at out 2
+iatrva add rva iatoff
+layout rec p2 rva iatrva idata
+z rec 0 0 0 empty
+success eq os 0
+view select success layout z
+result rec os view t3
+ret result
+end
+fn pe_prepare io u32 (u32,u32,u32) (u32,u32,u32) -> (u32,(u32,u32,u32,(u32,u32,u32)),io)
+namesok call av_valid p2
+spansok call av_valid p3
+len at p3 1
+odd and len 1
+even eq odd 0
+count shr len 1
+countok le count 268435451
+textok le p1 4294959104
+v1 and namesok spansok
+v2 and v1 even
+v3 and countok textok
+valid and v2 v3
+bad select v3 6 7
+status select valid 0 bad
+empty rec 0 0 0
+layout rec 0 0 0 empty
+start rec status layout p0
+n select valid 1 0
+r fold pe_prepare_valid n start p1 p2 p3
+ret r
+end
+# A query byte vector is an import name. Unknown imports return6 and RVA0.
+# A successful prepare result and its name/span/idata storage belong to this invocation
+# and must stay unchanged through querying/building. Numeric shape is checked below;
+# this internal stage API does not authenticate arbitrary foreign/mutated idata bytes.
+fn pe_layout_valid (u32,u32,u32,(u32,u32,u32)) u32 -> bool
+textsize at p0 0
+rva at p0 1
+iat at p0 2
+idata at p0 3
+size at idata 1
+textok le textsize 4294959104
+countok le p1 268435451
+v call av_valid idata
+textvirtual call pe_align textsize 4096
+expectedrva add textvirtual 4096
+rvaok eq rva expectedrva
+slots add p1 1
+thunks mul slots 8
+iatoff add thunks 40
+expectediat add rva iatoff
+iatwrap ge expectediat rva
+iatok eq iat expectediat
+hintbase add iatoff thunks
+minimum add hintbase 13
+sizeok ge size minimum
+imageend add rva size
+endok ge imageend rva
+a and textok countok
+b and v rvaok
+c and iatwrap iatok
+d and sizeok endok
+e and a b
+f and c d
+r and e f
+ret r
+end
+fn pe_query_good (u32,u32,io) u32 (u32,u32,u32) (u32,u32,u32) (u32,u32,u32) u32 -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+fn pe_query_step (u32,u32,io) u32 (u32,u32,u32) (u32,u32,u32) (u32,u32,u32) u32 -> (u32,u32,io)
+last at p0 1
+t at p0 2
+r call pe_span t p3 p1
+s at r 0
+off at r 1
+len at r 2
+t1 at r 3
+q call pe_equal t1 p4 0 p5 p2 off len
+s1 at q 0
+same at q 1
+t2 at q 2
+ok eq s 0
+status select ok s1 s
+index select same p1 last
+out rec status index t2
+ret out
+end
+fn pe_find_iat io (u32,u32,u32) (u32,u32,u32) (u32,u32,u32) (u32,u32,u32,(u32,u32,u32)) -> (u32,u32,io)
+# Find across distinct vectors; the query is first in comparisons.
+len at p3 1
+spanlen at p2 1
+count shr spanlen 1
+namesok call av_valid p1
+spansok call av_valid p2
+queryok call av_valid p3
+odd and spanlen 1
+even eq odd 0
+a and namesok spansok
+b and queryok even
+layoutok call pe_layout_valid p4 count
+c and a b
+valid and c layoutok
+status0 select valid 0 6
+start rec status0 4294967295 p0
+r loop pe_query_good pe_query_step count start p1 p2 p3 len
+s at r 0
+index at r 1
+t at r 2
+found ne index 4294967295
+bad select found 0 6
+ok eq s 0
+status select ok bad s
+base at p4 2
+off mul index 8
+value add base off
+success eq status 0
+address select success value 0
+out rec status address t
+ret out
+end
+fn pe_build_valid (u32,(u32,u32,u32),io) u32 (u32,u32,u32) u32 (u32,u32,u32,(u32,u32,u32)) -> (u32,(u32,u32,u32),io)
+t at p0 2
+textsize at p2 1
+textraw call pe_align textsize 512
+idata at p4 3
+idatasize at idata 1
+idataraw call pe_align idatasize 512
+idatarva at p4 1
+imagespan call pe_align idatasize 4096
+imagesize add idatarva imagespan
+idataptr add textraw 512
+filesize add idataptr idataraw
+entry add p3 4096
+out call ew_new t filesize
+h0 fold ew_u16 1 out 0 23117
+h1 fold ew_u32 1 h0 60 64
+h2 fold ew_u32 1 h1 64 17744
+h3 fold ew_u16 1 h2 68 34404
+h4 fold ew_u16 1 h3 70 2
+h5 fold ew_u16 1 h4 84 240
+h6 fold ew_u16 1 h5 86 34
+h7 fold ew_u16 1 h6 88 523
+h8 fold ew_u16 1 h7 90 14
+h9 fold ew_u32 1 h8 92 textraw
+h10 fold ew_u32 1 h9 96 idataraw
+h11 fold ew_u32 1 h10 104 entry
+h12 fold ew_u32 1 h11 108 4096
+h13 fold ew_u64 1 h12 112 1073741824 1
+h14 fold ew_u32 1 h13 120 4096
+h15 fold ew_u32 1 h14 124 512
+h16 fold ew_u16 1 h15 128 6
+h17 fold ew_u16 1 h16 136 6
+h18 fold ew_u32 1 h17 144 imagesize
+h19 fold ew_u32 1 h18 148 512
+h20 fold ew_u16 1 h19 156 3
+h21 fold ew_u64 1 h20 160 1048576 0
+h22 fold ew_u64 1 h21 168 4096 0
+h23 fold ew_u64 1 h22 176 1048576 0
+h24 fold ew_u64 1 h23 184 4096 0
+h25 fold ew_u32 1 h24 196 16
+h26 fold ew_u32 1 h25 208 idatarva
+h27 fold ew_u32 1 h26 212 idatasize
+h28 fold ew_u32 1 h27 328 2019914798
+h29 fold ew_u32 1 h28 332 116
+h30 fold ew_u32 1 h29 336 textsize
+h31 fold ew_u32 1 h30 340 4096
+h32 fold ew_u32 1 h31 344 textraw
+h33 fold ew_u32 1 h32 348 512
+h34 fold ew_u32 1 h33 364 1610612768
+h35 fold ew_u32 1 h34 368 1633970478
+h36 fold ew_u32 1 h35 372 24948
+h37 fold ew_u32 1 h36 376 idatasize
+h38 fold ew_u32 1 h37 380 idatarva
+h39 fold ew_u32 1 h38 384 idataraw
+h40 fold ew_u32 1 h39 388 idataptr
+h41 fold ew_u32 1 h40 404 3221225536
+copied call ew_copy h41 p2 0 textsize 512
+finished call ew_copy copied idata 0 idatasize idataptr
+r call ew_public finished
+ret r
+end
+fn pe_build io (u32,u32,u32) u32 (u32,u32,u32,(u32,u32,u32)) -> (u32,(u32,u32,u32),io)
+textok call av_valid p1
+idatavec at p3 3
+idataok call av_valid idatavec
+textsize at p1 1
+expected at p3 0
+same eq textsize expected
+empty eq textsize 0
+entrybound select empty 1 textsize
+entryok lt p2 entrybound
+textsmall le textsize 4294959104
+textraw call pe_align textsize 512
+textvirtual call pe_align textsize 4096
+rva add textvirtual 4096
+recordedrva at p3 1
+rvaok eq rva recordedrva
+idatasize at idatavec 1
+idatasmall le idatasize 4294963200
+idataraw call pe_align idatasize 512
+imagespan call pe_align idatasize 4096
+imagesize add rva imagespan
+imageok ge imagesize rva
+rawsum add textraw idataraw
+sumok ge rawsum textraw
+filesize add rawsum 512
+fileok ge filesize rawsum
+v1 and textok idataok
+v2 and v1 same
+v3 and v2 entryok
+v4 and v3 rvaok
+iat at p3 2
+iatoff sub iat recordedrva
+thunkbytes sub iatoff 40
+slots shr thunkbytes 3
+count sub slots 1
+remainder and thunkbytes 7
+aligned eq remainder 0
+layoutok call pe_layout_valid p3 count
+layoutvalid and aligned layoutok
+v5 and v4 layoutvalid
+a and textsmall idatasmall
+b and a imageok
+c and b sumok
+sizes and c fileok
+valid and v5 sizes
+bad select sizes 6 7
+status select valid 0 bad
+zero rec 0 0 0
+start rec status zero p0
+n select valid 1 0
+r fold pe_build_valid n start p1 p2 p3
+ret r
+end

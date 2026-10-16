@@ -88,3 +88,27 @@ test('elf: readelf reads the headers of both programs', {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// The optional second program header must not displace code away from e_entry.
+test('elf: Linux executes the entry with and without BSS', {
+  skip:
+    process.platform !== 'linux' || process.arch !== 'x64'
+      ? 'requires a Linux x86-64 kernel'
+      : false,
+}, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'a0-elf-entry-'));
+  try {
+    const code = Uint8Array.from([0xb8, 60, 0, 0, 0, 0xbf, 7, 0, 0, 0, 0x0f, 0x05]);
+    for (const bss of [0, 4096]) {
+      const exe = buildElf({ machine: 'x86_64', code, entry: 0, bss });
+      assert.deepEqual(exe.slice(ELF_CODE_OFFSET), code);
+      assert.equal(exe.length, ELF_CODE_OFFSET + code.length);
+      const file = join(dir, `exit7-bss${bss}`);
+      writeFileSync(file, exe, { mode: 0o700 });
+      const ran = runTool(file, []);
+      assert.equal(ran.status, 7, ran.stderr);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

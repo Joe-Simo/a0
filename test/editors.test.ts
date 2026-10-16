@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { parseAndValidate } from '../src/core.js';
 import { findClang, findGcc } from '../src/toolchain.js';
 
 // Both are CommonJS packages: loaded by require, typed by their own declarations.
@@ -66,6 +67,42 @@ test('tree-sitter grammar parses every .a0 file in the repository without errors
     .filter((line) => /\(ERROR|\(MISSING/.test(line));
   assert.deepEqual(failures, []);
   assert.equal(parsed.status, 0, parsed.stderr);
+});
+
+test('tree-sitter accepts empty and import-only modules while keeping import order and separators', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'a0-ts-modules-'));
+  try {
+    const valid = [
+      '',
+      '# module documentation',
+      'use "base.a0"',
+      'use "base.a0"\n\n# shared declarations\nuse "other.a0"\n',
+      'use "base.a0"\nfn f -> u32\nret 0\nend',
+    ];
+    for (const [index, source] of valid.entries()) {
+      assert.doesNotThrow(() => parseAndValidate(source));
+      const file = join(dir, `valid-${index}.a0`);
+      writeFileSync(file, source);
+      const parsed = treeSitter(['parse', '--quiet', file]);
+      assert.equal(parsed.status, 0, `${parsed.stdout}${parsed.stderr}`);
+    }
+    const invalid = [
+      'use',
+      'use base.a0\n',
+      'use "base.a0" use "other.a0"\n',
+      'use "base.a0" fn f -> u32\nret 0\nend\n',
+      'fn f -> u32\nret 0\nend\nuse "later.a0"\n',
+    ];
+    for (const [index, source] of invalid.entries()) {
+      assert.throws(() => parseAndValidate(source));
+      const file = join(dir, `invalid-${index}.a0`);
+      writeFileSync(file, source);
+      const parsed = treeSitter(['parse', '--quiet', file]);
+      assert.notEqual(parsed.status, 0, `unexpected grammar acceptance: ${source}`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('tree-sitter corpus tests and highlight query pass', () => {

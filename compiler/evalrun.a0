@@ -72,9 +72,53 @@ r18 select o18 v18 r17
 ret r18
 end
 
+# Total checked operations (32..37): the value and ok word (0/1). The cget
+# source block was read by evstep; its index is never reduced modulo its length.
+# Plain u32 operations keep this helper independent of checked-op compiler support.
+fn evchecked u32 u32 u32 u32 u32 -> (u32,u32)
+sum add p1 p2
+diff sub p1 p2
+product mul p1 p2
+bzero eq p2 0
+denom select bzero 1 p2
+quot div p1 denom
+remainder rem p1 denom
+addok ge sum p1
+subok ge p1 p2
+maxfactor div 4294967295 denom
+mulfit le p1 maxfactor
+mulok or bzero mulfit
+divok ne p2 0
+getok lt p2 p3
+o32 eq p0 32
+o33 eq p0 33
+o34 eq p0 34
+o35 eq p0 35
+o36 eq p0 36
+o37 eq p0 37
+quotval select divok quot 0
+remval select divok remainder 0
+getval select getok p4 0
+v32 select o32 sum 0
+v33 select o33 diff v32
+v34 select o34 product v33
+v35 select o35 quotval v34
+v36 select o36 remval v35
+value select o37 getval v36
+b32 select o32 addok false
+b33 select o33 subok b32
+b34 select o34 mulok b33
+b35 select o35 divok b34
+b36 select o36 divok b35
+ok select o37 getok b36
+word select ok 1 0
+r rec value word
+ret r
+end
+
 # ---------------------------------------------------------------------------------------------
 # The evaluator (src/core.ts `exec`). Machine table u32x128x512: scalars 0 status (0 running,
-# 1 done, 2 fuel exhausted, 3 a capacity below is full, 4 an io operation), 1 fuel, 2 frames,
+# 1 done, 2 fuel exhausted, 3 a capacity below is full, 4 an io/unsupported operation), 1 fuel, 2 frames,
 # 3 env top, 4 heap top, 5 result, 6 a frame has just returned (its value in 5), 7-14 the
 # root (op, operand count, body or callee, predicate, trip, count, state, phase: 0 start,
 # 1 awaiting the predicate, 2 the body, 3 the callee); 64-127 the root's operand values;
@@ -86,8 +130,8 @@ end
 
 # copy word p1 of a block or a parameter list to p3 + p1: mode p4 0 operand p5 + p1 of the
 # frame with env base p6 and p7 parameters, 1 root operand p1, 2 word p8 + p1 (word p9 is p10);
-# the first p13 words are p11, p12
-fn evcp u32x128x512 u32 u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+# the first p13 words are p11, p12, p14 (checked records use all three)
+fn evcp u32x128x512 u32 u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
 pi add p5 p1
 o_x mul pi 2
 o_k_p shr o_x 7
@@ -129,7 +173,9 @@ v1 select m1 rv blk
 v2 select m0 opv v1
 spc lt p1 p13
 k0 eq p1 0
-xv select k0 p11 p12
+k1 eq p1 1
+x1 select k1 p12 p14
+xv select k0 p11 x1
 val select spc xv v2
 di add p3 p1
 d_p shr di 7
@@ -396,9 +442,22 @@ agg1 or o22 o23
 isagg or agg1 o24
 isput eq op 28
 isup or isset isput
-isio ge op 29
+iofirst ge op 29
+iolast le op 31
+isiobase and iofirst iolast
+opzero eq op 0
+opbig gt op 37
+badop or opzero opbig
+isio or isiobase badop
+checkedfirst ge op 32
+checkedlast le op 37
+ischecked and checkedfirst checkedlast
 issc le op 18
-isnew or isagg isup
+isnewbase or isagg isup
+isnew or isnewbase ischecked
+checked call evchecked op av bv blen gv
+checkedvalue at checked 0
+checkedok at checked 1
 pv0 call ozop op av bv cv
 pv1 select issc pv0 gv
 pv select isnew htop pv1
@@ -468,7 +527,8 @@ nsp0 or d2c c1
 pnsp select nsp0 0 2
 px0 select pframe fst rst
 px1 select pframe fi ri
-# fuel: the node, a callee's entry, a trip and its entry, the copy of an aggregate
+# fuel: the node, a callee's entry, a trip and its entry, the copy of an aggregate.
+# Checked records allocate heap storage but cost only the node, matching exec AGGREGATE_OPS.
 lenc select isup blen 0
 nac select isagg na 0
 cc select iscall 1 0
@@ -493,7 +553,8 @@ pover gt ptop 24704
 pc1 or pfull pover
 pcap and push pc1
 alloc and isd2 isnew
-ncnt select isagg na blen
+ncntbase select isagg na blen
+ncnt select ischecked 2 ncntbase
 ncopy add ncnt 1
 htop2 add htop ncopy
 aover gt htop2 65536
@@ -597,7 +658,8 @@ g9 set g8 13 rstx
 g10 set g9 14 rpx4
 t4 set t3 0 g10
 # the copy: the pushed frame's parameters, or the new block (arr rec text: the operand
-# count, then the operands; set put: the old block with the element replaced)
+# count, then the operands; set put: the old block with the element replaced;
+# checked: the three-word block length 2, value, ok)
 pc select push pnp ncopy
 pa select alloc ncopy 0
 nc0 select push pc pa
@@ -610,15 +672,19 @@ fam sub fa 1
 aga and alloc isagg
 fa3 select aga fam fa
 ns1 select isagg 1 0
-ns select alloc ns1 pnsp
-x0 select alloc na px0
+ns2 select ischecked 3 ns1
+ns select alloc ns2 pnsp
+xbase select ischecked 2 na
+x0 select alloc xbase px0
+checkedalloc and alloc ischecked
+x1 select checkedalloc checkedvalue px1
 j1 add jidx 1
-t5 fold evcp nc t4 p4 dst md fa3 fbase fnp av j1 cv x0 px1 ns
+t5 fold evcp nc t4 p4 dst md fa3 fbase fnp av j1 cv x0 x1 ns checkedok
 ret t5
 end
 # Evaluate op p4 (19 call, 20 fold, 21 loop) of the eval function p5 (predicate p6) on the p7
 # literal operands p3 with fuel p8: (status, value), status 1 done, 2 fuel exhausted, 3 a
-# capacity is full, 4 an io operation
+# capacity is full, 4 an io/unsupported operation
 fn evrun u32x128x45 u32x128x132 u32x128x512 u32x64 u32 u32 u32 u32 u32 -> (u32,u32)
 z call z512
 c0 get p3 0

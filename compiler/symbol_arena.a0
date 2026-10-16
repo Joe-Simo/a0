@@ -1,0 +1,426 @@
+# Arena symbol interner: all growth/probes/hashes/byte comparisons are A0.
+# Entries are5 fullu32 fields: sourceHandle,start,length,hash,id. IDs start at0.
+# Source handles/bytes must stay immutable and live for the invocation; FINISH frees all.
+# Header is(vector,hashTableHandle,powerOfTwoSlots,used). Old headers are mutable views.
+use "arena_vector.a0"
+fn si_hashbyte u32 u32 u32x128 -> u32
+q0 get p2 p1
+q1 xor p0 q0
+q2 mul q1 16777619
+ret q2
+end
+fn si_hashok (u32,u32,io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn si_hashpage (u32,u32,io) u32 u32 u32 u32 -> (u32,u32,io)
+base mul p1 128
+rest sub p4 base
+q0 gt rest 128
+n select q0 128 rest
+q1 at p0 2
+q2 add p3 base
+r call arena_load q1 p2 q2 n
+q3 at r 0
+q4 eq q3 0
+count select q4 n 0
+q5 at p0 1
+q6 at r 1
+hash fold si_hashbyte count q5 q6
+q7 at r 0
+q8 at r 2
+q9 rec q7 hash q8
+ret q9
+end
+fn si_hashrun (u32,u32,io) u32 u32 u32 u32 -> (u32,u32,io)
+q0 div p4 128
+q1 rem p4 128
+q2 eq q1 0
+q3 select q2 0 1
+pages add q0 q3
+q4 at p0 2
+q5 rec 0 2166136261 q4
+q6 loop si_hashok si_hashpage pages q5 p2 p3 p4
+ret q6
+end
+fn si_hash io u32 u32 u32 -> (u32,u32,io)
+q0 sub 4294967295 p2
+valid le p3 q0
+q1 select valid 1 0
+q2 rec 3 0 p0
+q3 fold si_hashrun q1 q2 p1 p2 p3
+ret q3
+end
+fn si_eqbyte bool u32 u32x128 u32x128 -> bool
+q0 get p2 p1
+q1 get p3 p1
+q2 eq q0 q1
+q3 and p0 q2
+ret q3
+end
+fn si_eqok (u32,bool,io) u32 u32 u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 1
+q3 and q1 q2
+ret q3
+end
+fn si_eqpage (u32,bool,io) u32 u32 u32 u32 u32 u32 -> (u32,bool,io)
+base mul p1 128
+rest sub p6 base
+q0 gt rest 128
+n select q0 128 rest
+q1 at p0 2
+q2 add p3 base
+x call arena_load q1 p2 q2 n
+q3 at x 2
+q4 add p5 base
+y call arena_load q3 p4 q4 n
+q5 at x 0
+q6 eq q5 0
+q7 at y 0
+q8 at x 0
+code select q6 q7 q8
+q9 eq code 0
+q10 select q9 n 0
+q11 at x 1
+q12 at y 1
+same fold si_eqbyte q10 true q11 q12
+q13 at y 2
+q14 rec code same q13
+ret q14
+end
+fn si_compare (u32,bool,io) u32 u32 u32 u32 u32 u32 -> (u32,bool,io)
+q0 div p6 128
+q1 rem p6 128
+q2 eq q1 0
+q3 select q2 0 1
+pages add q0 q3
+q4 loop si_eqok si_eqpage pages p0 p2 p3 p4 p5 p6
+ret q4
+end
+fn si_entry (u32,u32x128,io) u32 (u32,u32,u32) u32 -> (u32,u32x128,io)
+q0 at p0 2
+q1 mul p3 5
+q2 call av_load q0 p2 q1 5
+ret q2
+end
+fn si_probeok (u32,bool,bool,u32,u32,io) u32 (u32,u32,u32) u32 u32 u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 1
+q3 xor q2 true
+q4 and q1 q3
+ret q4
+end
+fn si_probe (u32,bool,bool,u32,u32,io) u32 (u32,u32,u32) u32 u32 u32 u32 u32 u32 -> (u32,bool,bool,u32,u32,io)
+slot at p0 3
+q0 at p0 5
+q1 mul slot 2
+r call arena_load q0 p3 q1 2
+page at r 1
+q2 get page 0
+q3 get page 1
+z call arena_zero
+q4 at r 0
+q5 eq q4 0
+q6 eq q2 1
+valid and q5 q6
+q7 select valid 1 0
+q8 at r 0
+q9 at r 2
+q10 rec q8 z q9
+entry fold si_entry q7 q10 p2 q3
+e at entry 1
+q11 at entry 0
+q12 eq q11 0
+q13 eq q2 1
+q14 and q12 q13
+q15 get e 2
+q16 eq q15 p7
+q17 and q14 q16
+q18 get e 3
+q19 eq q18 p8
+same and q17 q19
+q20 select same 1 0
+q21 at entry 0
+q22 at entry 2
+q23 rec q21 true q22
+q24 get e 0
+q25 get e 1
+compared fold si_compare q20 q23 p5 p6 q24 q25 p7
+q26 at compared 1
+q27 and same q26
+q28 at compared 0
+q29 eq q28 0
+found and q27 q29
+empty eq q2 0
+corrupt gt q2 1
+q30 at compared 0
+code select corrupt 1 q30
+q31 or empty found
+q32 ne code 0
+done or q31 q32
+q33 add slot 1
+q34 and q33 p4
+next select done slot q34
+q35 at compared 2
+q36 rec code done found next q3 q35
+ret q36
+end
+fn si_emptyok (u32,bool,u32,io) u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 1
+q3 xor q2 true
+q4 and q1 q3
+ret q4
+end
+fn si_empty (u32,bool,u32,io) u32 u32 u32 -> (u32,bool,u32,io)
+q0 at p0 3
+q1 at p0 2
+q2 mul q1 2
+r call arena_load q0 p2 q2 2
+page at r 1
+q3 at r 0
+q4 ne q3 0
+q5 get page 0
+q6 eq q5 0
+done or q4 q6
+q7 at p0 2
+q8 at p0 2
+q9 add q8 1
+q10 and q9 p3
+slot select done q7 q10
+q11 at r 0
+q12 at r 2
+q13 rec q11 done slot q12
+ret q13
+end
+fn si_slotstore (u32,io) u32 u32 u32 u32x128 -> (u32,io)
+q0 at p0 1
+q1 mul p3 2
+q2 call arena_store q0 p2 q1 2 p4
+ret q2
+end
+fn si_rehashok (u32,io) u32 (u32,u32,u32) u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn si_rehash (u32,io) u32 (u32,u32,u32) u32 u32 -> (u32,io)
+q0 at p0 1
+q1 mul p1 5
+r call av_load q0 p2 q1 5
+e at r 1
+mask sub p4 1
+q2 get e 3
+slot and q2 mask
+q3 at r 0
+q4 at r 2
+q5 rec q3 false slot q4
+found loop si_emptyok si_empty p4 q5 p3 mask
+z call arena_zero
+a set z 0 1
+page set a 1 p1
+q6 at found 0
+q7 eq q6 0
+q8 at found 1
+valid and q7 q8
+q9 select valid 1 0
+q10 at found 0
+q11 eq q10 0
+q12 at found 0
+q13 select q11 3 q12
+q14 at found 3
+q15 rec q13 q14
+q16 at found 2
+x fold si_slotstore q9 q15 p3 q16 page
+ret x
+end
+fn si_grow (u32,((u32,u32,u32),u32,u32,u32),io) u32 -> (u32,((u32,u32,u32),u32,u32,u32),io)
+h at p0 1
+v at h 0
+slots at h 2
+capacity mul slots 2
+q0 at p0 2
+q1 mul capacity 2
+r call arena_alloc q0 q1
+q2 at h 3
+q3 at r 0
+q4 at r 2
+q5 rec q3 q4
+q6 at r 1
+rehashed loop si_rehashok si_rehash q2 q5 v q6 capacity
+q7 at r 1
+q8 at h 3
+q9 at rehashed 0
+q10 eq q9 0
+q11 rec v q7 capacity q8
+header select q10 q11 h
+q12 at rehashed 0
+q13 at rehashed 1
+q14 rec q12 header q13
+ret q14
+end
+fn si_doappend (u32,(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 at p0 1
+q2 call av_append q0 q1 5 p2
+ret q2
+end
+fn si_appendentry (u32,((u32,u32,u32),u32,u32,u32),u32,io) u32 u32 u32 u32 u32 -> (u32,((u32,u32,u32),u32,u32,u32),u32,io)
+h at p0 1
+v at h 0
+used at h 3
+q0 at p0 3
+q1 add used 1
+q2 mul q1 5
+reserve call av_reserve q0 v q2
+q3 at reserve 1
+q4 at h 1
+q5 at h 2
+q6 add used 1
+q7 at h 2
+q8 div q7 2
+grow gt q6 q8
+q9 at h 2
+can lt q9 1073741824
+q10 at reserve 0
+q11 eq q10 0
+q12 xor can true
+q13 and grow q12
+q14 select q13 3 0
+q15 at reserve 0
+status select q11 q14 q15
+q16 eq status 0
+q17 and q16 grow
+q18 select q17 1 0
+q19 rec q3 q4 q5 used
+q20 at reserve 2
+q21 rec status q19 q20
+grown fold si_grow q18 q21
+nh at grown 1
+z call arena_zero
+a set z 0 p2
+b set a 1 p3
+c set b 2 p4
+d set c 3 p5
+page set d 4 used
+q22 at grown 0
+q23 eq q22 0
+q24 select q23 1 0
+q25 at grown 0
+q26 at nh 0
+q27 at grown 2
+q28 rec q25 q26 q27
+appended fold si_doappend q24 q28 page
+q29 at nh 2
+mask sub q29 1
+q30 at nh 2
+q31 at appended 0
+q32 and p5 mask
+q33 at appended 2
+q34 rec q31 false q32 q33
+q35 at nh 1
+found loop si_emptyok si_empty q30 q34 q35 mask
+aa set z 0 1
+slotpage set aa 1 used
+q36 at found 0
+q37 eq q36 0
+q38 at found 1
+valid and q37 q38
+q39 select valid 1 0
+q40 at found 0
+q41 eq q40 0
+q42 at found 0
+q43 select q41 3 q42
+q44 at found 3
+q45 rec q43 q44
+q46 at nh 1
+q47 at found 2
+stored fold si_slotstore q39 q45 q46 q47 slotpage
+q48 at appended 1
+q49 at nh 1
+q50 at nh 2
+q51 add used 1
+q52 at stored 0
+q53 at stored 0
+q54 eq q53 0
+q55 rec q48 q49 q50 q51
+q56 select q54 q55 h
+q57 at stored 0
+q58 eq q57 0
+q59 select q58 used 0
+q60 at stored 1
+q61 rec q52 q56 q59 q60
+ret q61
+end
+fn si_add (u32,((u32,u32,u32),u32,u32,u32),u32,io) u32 u32 u32 u32 u32 -> (u32,((u32,u32,u32),u32,u32,u32),u32,io)
+h at p0 1
+q0 at h 3
+valid lt q0 858993459
+q1 select valid 1 0
+q2 at p0 3
+q3 rec 3 h 0 q2
+q4 fold si_appendentry q1 q3 p2 p3 p4 p5
+ret q4
+end
+fn si_find (u32,((u32,u32,u32),u32,u32,u32),u32,io) u32 u32 u32 u32 u32 -> (u32,((u32,u32,u32),u32,u32,u32),u32,io)
+h at p0 1
+slots at h 2
+mask sub slots 1
+q0 and p5 mask
+q1 at p0 3
+q2 rec 0 false false q0 0 q1
+q3 at h 0
+q4 at h 1
+r loop si_probeok si_probe slots q2 q3 q4 mask p2 p3 p4 p5
+q5 at r 0
+q6 eq q5 0
+q7 at r 1
+q8 xor q7 true
+q9 and q6 q8
+q10 at r 0
+code select q9 3 q10
+q11 at r 4
+q12 at r 5
+q13 eq code 0
+q14 at r 2
+q15 xor q14 true
+q16 and q13 q15
+n select q16 1 0
+q17 rec code h q11 q12
+q18 fold si_add n q17 p2 p3 p4 p5
+ret q18
+end
+fn si_new io -> (u32,((u32,u32,u32),u32,u32,u32),io)
+v call av_new p0 0
+q0 at v 2
+r call arena_alloc q0 32
+q1 rec 0 0 0
+q2 at v 1
+q3 at r 1
+q4 at r 0
+q5 at r 0
+q6 eq q5 0
+q7 rec q2 q3 16 0
+q8 rec q1 0 0 0
+q9 select q6 q7 q8
+q10 at r 2
+q11 rec q4 q9 q10
+ret q11
+end
+fn si_intern io ((u32,u32,u32),u32,u32,u32) u32 u32 u32 -> (u32,((u32,u32,u32),u32,u32,u32),u32,io)
+r call si_hash p0 p2 p3 p4
+q0 at r 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 at r 0
+q4 at r 2
+q5 rec q3 p1 0 q4
+q6 at r 1
+q7 fold si_find q2 q5 p2 p3 p4 q6
+ret q7
+end
