@@ -1121,10 +1121,10 @@ function cTypeDecl(t: Type): string {
  * `set`/`put` whose old value is provably dead (`mutableHere`) writes in place; the node is then
  * an alias of the updated storage (no local of its own) instead of a copy. Value semantics are
  * unchanged: any value that is still observable is copied as before.
- * Scalar-state iteration bodies and predicates that read aggregate extras (some extra is an
- * array or record, e.g. a dot product over two arrays) get a `view` variant
- * `a0v_f(p0, p1, const T *p2, ...)`: the extras are read through const pointers instead of being
- * copied into every trip (no aliasing exists, so reading the caller's value is the same value).
+ * Every internal iteration variant borrows aggregate extras through const pointers instead
+ * of copying them on each trip. Local updates still copy borrowed values. The initializer's
+ * ownership and borrow checks keep the mutable state separate from any extra observing it.
+ * Scalar-state bodies and predicates use a `view` variant `a0v_f(p0, p1, const T *p2, ...)`.
  */
 type CVariant = 'value' | 'owned' | 'ref' | 'view';
 
@@ -1145,8 +1145,8 @@ export const hasViewVariant = (fn: TypedFunc): boolean =>
   isPrimitive(fn.result) &&
   fn.params.slice(2).some((t) => !isPrimitive(t));
 
-const isViewParam = (fn: TypedFunc, variant: CVariant, i: number): boolean =>
-  variant === 'view' && i >= 2 && !isPrimitive(fn.params[i] as Type);
+const isBorrowedExtra = (fn: TypedFunc, variant: CVariant, i: number): boolean =>
+  variant !== 'value' && i >= 2 && !isPrimitive(fn.params[i] as Type);
 
 interface CContext {
   readonly fn: TypedFunc;
@@ -1197,7 +1197,7 @@ function cVal(ctx: CContext, o: Operand): string {
     ctx.variant !== 'view'
   )
     return '(*p0)';
-  if (root.kind === 'param' && isViewParam(ctx.fn, ctx.variant, root.index))
+  if (root.kind === 'param' && isBorrowedExtra(ctx.fn, ctx.variant, root.index))
     return `(*p${root.index})`;
   // Large values and borrowed reads are pointers: to a borrowed parameter, arena storage,
   // `out`, or a part of another value.
@@ -1215,15 +1215,15 @@ function cArg(ctx: CContext, o: Operand): string {
 }
 
 /**
- * In C every by-value aggregate parameter is the callee's own copy; a `ref` p0, the `view`
- * extras, and large parameters (borrowed by `const` pointer) are read-only. The `owned` p0 is
+ * In C every by-value aggregate parameter is the callee's own copy; a `ref` p0, aggregate
+ * extras of internal iteration variants, and large parameters are borrowed read-only. The `owned` p0 is
  * the caller's loop state, owned whatever its size.
  */
 const cOwned =
   (variant: CVariant, fn?: TypedFunc) =>
   (i: number): boolean =>
     !(variant === 'ref' && i === 0) &&
-    !(fn !== undefined && isViewParam(fn, variant, i)) &&
+    !(fn !== undefined && isBorrowedExtra(fn, variant, i)) &&
     !(fn !== undefined && isLargeC(fn.params[i] as Type) && !(variant === 'owned' && i === 0));
 
 /**
@@ -1418,12 +1418,16 @@ function cVariantSignature(fn: TypedFunc, variant: CVariant): string {
   if (variant === 'value') return cSignature(fn);
   if (variant === 'view') {
     const ps = fn.params.map((t, i) =>
-      isViewParam(fn, variant, i) ? `const ${cType(t)} *p${i}` : cParam(t, i),
+      isBorrowedExtra(fn, variant, i) ? `const ${cType(t)} *p${i}` : cParam(t, i),
     );
     return `static inline ${cType(fn.result)} a0v_${fn.name}(${ps.join(', ')})`;
   }
   const p0 = cType(fn.params[0] as Type);
-  const rest = fn.params.slice(1).map((t, i) => cParam(t, i + 1));
+  const rest = fn.params
+    .slice(1)
+    .map((t, i) =>
+      isBorrowedExtra(fn, variant, i + 1) ? `const ${cType(t)} *p${i + 1}` : cParam(t, i + 1),
+    );
   const params = [variant === 'owned' ? `${p0} *p0` : `const ${p0} *p0`, ...rest].join(', ');
   return variant === 'owned'
     ? `static inline void a0o_${fn.name}(${params})`
@@ -1799,9 +1803,9 @@ function cBodyWith(
       const markTrip = marked ? ' a0_idx(i);' : '';
       const markClose = marked ? ' a0_mark(0);' : '';
       const [count, init, ...extra] = n.args.map((o) => cVal(ctx, o));
-      // Extras as passed to a by-value or owned body: large ones by pointer.
-      const passed = n.args.slice(2).map((o) => cArg(ctx, o));
       if (isPrimitive(fn.types.get(n.id) ?? 'u32')) {
+        // Ordinary scalar callbacks retain their public ABI: only large extras use pointers.
+        const passed = n.args.slice(2).map((o) => cArg(ctx, o));
         // Both roles can borrow extras. A view parameter is read-only to the callee, so its
         // local set/put still copies; no trip needs a by-value snapshot at the call boundary.
         const call = (name: string): string => {
@@ -1829,7 +1833,10 @@ function cBodyWith(
       if (owned) ctx.aliases.set(n.id, cRoot(ctx, initOperand));
       const large = isLargeC(fn.types.get(n.id) ?? 'u32');
       const state = owned ? `${init}` : large ? `(*n_${n.id})` : `n_${n.id}`;
-      const call = [`&${state}`, 'i', ...passed].join(', ');
+      const borrowed = extra.map((e, k) =>
+        isPrimitive(operandTypeOf(fn, n.args[k + 2] as Operand)) ? e : `&${e}`,
+      );
+      const call = [`&${state}`, 'i', ...borrowed].join(', ');
       const guard = n.op === 'loop' ? ` if (!a0r_${n.pred ?? ''}(${call})) break;` : '';
       const loop = `${markOpen}for (uint32_t i = 0; i < ${count}; i++) {${markTrip}${tripCall(trap, fn, n)}${guard} a0o_${n.callee ?? ''}(${call}); }${markClose}`;
       const decl = owned

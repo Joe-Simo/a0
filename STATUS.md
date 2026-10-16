@@ -1,6 +1,6 @@
 # A0 status
 
-Last updated 2026-10-16, compiler `a0c-0.1.57` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
+Last updated 2026-10-16, compiler `a0c-0.1.58` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
 what exists, what is measured and where the numbers live, what is lost or unknown, how to reproduce it, and what comes next.
 Every number on this page is in the `results/` file named beside it, or is reproduced by the command shown. The long record of
 how the project got here, session by session, is in [docs/history/](docs/history/) (index at the end). Contributing rules are in
@@ -23,6 +23,13 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## Current results
 
+Readonly C iteration extras (`a0c-0.1.58`): minmax, filtering and binary search improved
+62.01×, 67.39× and 10.21× against the previous compiler; UTF-8 decoding, tokenization and
+heap operations improved 2.66×, 1.91× and 1.17×. These are quiet, interleaved Linux measurements
+of emitted C. Several still trail handwritten C; they do not establish a universal ranking.
+Evidence: `results/c-readonly-extras-linux.json`. See
+[the internal callback change](docs/history/2026-10-16-c-readonly-extras.md).
+
 JavaScript deep record state (`a0c-0.1.57`): the Linux heap comparison improved from
 3,218,934 to 17,128 ns/call (187.93×); handwritten JS measured 11,950 ns/call. One observed
 call dropped 1,651 typed-array copies (3,381,248 bytes) to zero. The generated heap module
@@ -35,17 +42,17 @@ Evidence: `results/owned-iterations-linux.json`. This comparison predates the de
 measurements above. See
 [the ownership and predicate changes](docs/history/2026-10-16-owned-iterations.md).
 
-Latest native work (`a0c-0.1.55`, 2026-10-16): hash lookup improved 10.00× for emitted C and
+Earlier native work (`a0c-0.1.55`, 2026-10-16): hash lookup improved 10.00× for emitted C and
 9.93× for direct x86 against the previous compiler in a quiet, interleaved Linux run.
 Both still trail handwritten C. Evidence: `results/native-readonly-hash-linux.json`. See
 [the native ownership change](docs/history/2026-10-16-native-readonly-ownership.md).
 
-Latest JavaScript work (`a0c-0.1.54`, 2026-10-15): hash lookup improved 93.75× against
+Earlier JavaScript work (`a0c-0.1.54`, 2026-10-15): hash lookup improved 93.75× against
 the previous compiler in a quiet, interleaved Linux run; it still trails handwritten JavaScript.
 Evidence: `results/js-readonly-hash-linux.json`. See
 [the scalar-read ownership change](docs/history/2026-10-15-js-readonly-ownership.md).
 
-Latest compiler work (`a0c-0.1.53`, 2026-10-15): WebAssembly hash lookup improved 5.55× against
+Earlier WebAssembly work (`a0c-0.1.53`, 2026-10-15): WebAssembly hash lookup improved 5.55× against
 the previous compiler in a quiet, interleaved Linux run; it still trails clang. Evidence:
 `results/wasm-readonly-hash-linux.json`, with the broader run in `results/wasm-readonly-ab-linux.json`.
 See [the ownership change](docs/history/2026-10-15-wasm-readonly-ownership.md) for scope and reproduction.
@@ -82,11 +89,13 @@ sets a to f, `c400` and `c4000` are in `tools/ai-edit-tasks-*.ts`; sets d, e and
 
 ### Loss ledger
 
-`results/loss-ledger.json` (`bun run loss-ledger`, part of `bun run lint`) records every case where a competitor beats A0 beyond
-the tie band. It holds 446 recorded losses, 21 of them unverified (recorded above load 10, or with no load recorded). By axis:
-emitted JS against hand-written JS 1, wasm ns per trip 9, wasm load time 12, wasm bytes 1, kernel tokens 377, whole-task tokens
-for conventional edits 24 and for structured edits 20, structured acceptance 2. The ledger can only shrink: a new or worsened
-loss fails lint, and growing it needs `--update --reason`.
+`results/loss-ledger.json` (`bun run loss-ledger`, part of `bun run lint`) holds 616 historical loss rows:
+337 for kernel tokens, 90 for whole-task tokens, 107 for acceptance, 41 for execution time,
+28 for startup time and 13 for artifact size. All 69 timing rows have a recorded load within
+the limit of 10; none is unverified by that criterion. Non-timing rows do not require a load.
+This corrects the earlier stale counts of 446 losses and 21 unverified timings. Newer paired
+ownership reports above supersede some older measurements; the ledger is not a current universal
+ranking. A new or worsened ledger loss fails lint, and growing it needs `--update --reason`.
 
 ## Known limits
 
@@ -134,7 +143,7 @@ Toolchains a step needs but the host lacks are reported as blocked or skipped wi
 
 ## Next actions
 
-1. Re-run the results recorded under load (`results/parallel.json`, `results/edit-loop.json`, the 21 unverified ledger entries)
+1. Re-run the results recorded under load (`results/parallel.json`, `results/edit-loop.json`)
    on a quiet host, then publish or drop each timing.
 2. Shrink the primer (measured, `results/primer-ablation.json`, `docs/history/2026-10-02-primer-ablation.md`: 25 variants, clause drops and rewrites,
    selected on set d, confirmed on the different sets e and f, fresh Haiku and Sonnet subagents, 11 to 13 tasks per cell and model, no rate
