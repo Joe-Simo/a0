@@ -1,6 +1,6 @@
 /**
  * @file Tree-sitter grammar for A0 (DESIGN.md section 4, "Grammar").
- * @license MIT
+ * @license Apache-2.0
  */
 
 /// <reference types="tree-sitter-cli/dsl" />
@@ -25,10 +25,18 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   rules: {
-    // Empty and import-only modules are valid; imports still precede every function.
-    // Each declaration owns its separator and optional successor, including a final EOF.
+    // A profile directive may occur once, before imports/functions (comments are extras).
+    // Empty, profile-only and import-only modules are valid, including a final EOF.
     source_file: ($) =>
-      seq(repeat($._newline), optional($._declarations)),
+      seq(
+        repeat($._newline),
+        optional(choice(
+          seq($.profile_declaration, optional(seq(repeat1($._newline), optional($._declarations)))),
+          $._declarations,
+        )),
+      ),
+
+    profile_declaration: (_) => seq('profile', 'strict'),
 
     _declarations: ($) =>
       choice(

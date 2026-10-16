@@ -1,0 +1,136 @@
+{
+  "scope": "Correct expectations following physical-line header stripping; production code, graph inputs, driver and existing test assertions are unchanged. The historical oracle rows are retained below.",
+  "baselineHead": "5829cb1d6a1b27b1832fe1dab269b52efe519420",
+  "failedLightGate": {
+    "result": "fail",
+    "tests": 1013,
+    "passed": 991,
+    "failed": 3,
+    "skipped": 19,
+    "testDurationMs": 1762600,
+    "lint": "pass",
+    "typecheck": "pass",
+    "build": "pass",
+    "site": "pass",
+    "cause": "Three Java tests consume one stale linked-oracle fixture; no passing gate or production cutover is claimed."
+  },
+  "independentProof": {
+    "scope": "Only stale linked-comment expectations change; production native linker, C driver, unit plan and test assertions remain identical. Expected success is independently derived from public typed linking/spec verification and direct evaluation. Old historical oracle rows remain recorded here.",
+    "programs": [
+      {
+        "name": "comment-use-survives-strip",
+        "text": "fn inc u32 -> u32\nex 0 -> 1\npre lt p0 10\npost gt r p0\nx add p0 1\nret x\nend\n\nfn entry u32 -> u32\nex 2 -> 3\nx call inc p0\nret x\nend\n",
+        "argument": 2,
+        "expected": 3,
+        "profile": "default"
+      },
+      {
+        "name": "unicode-profile-canonical-override-quirk-with-spec",
+        "text": "fn f u32 -> u32\nex 0 -> 4294967295\nx div 1 p0\nret x\nend\n",
+        "argument": 0,
+        "expected": 4294967295,
+        "profile": "canonical"
+      }
+    ],
+    "changed": [
+      {
+        "before": {
+          "name": "comment-use-survives-strip",
+          "quantum": 1,
+          "code": 6,
+          "diagnostic": 17,
+          "diagnosticStage": 1,
+          "steps": 0,
+          "bytes": 0,
+          "oldAllocationsImmutable": 0
+        },
+        "after": {
+          "name": "comment-use-survives-strip",
+          "quantum": 1,
+          "code": 0,
+          "diagnostic": 0,
+          "diagnosticStage": 0
+        }
+      },
+      {
+        "before": {
+          "name": "comment-use-survives-strip",
+          "quantum": 7,
+          "code": 6,
+          "diagnostic": 17,
+          "diagnosticStage": 1,
+          "steps": 0,
+          "bytes": 0,
+          "oldAllocationsImmutable": 0
+        },
+        "after": {
+          "name": "comment-use-survives-strip",
+          "quantum": 7,
+          "code": 0,
+          "diagnostic": 0,
+          "diagnosticStage": 0
+        }
+      },
+      {
+        "before": {
+          "name": "unicode-profile-canonical-override-quirk-with-spec",
+          "quantum": 1,
+          "code": 8,
+          "diagnostic": 715,
+          "diagnosticStage": 4,
+          "steps": 8,
+          "bytes": 0,
+          "oldAllocationsImmutable": 0
+        },
+        "after": {
+          "name": "unicode-profile-canonical-override-quirk-with-spec",
+          "quantum": 1,
+          "code": 0,
+          "diagnostic": 0,
+          "diagnosticStage": 0
+        }
+      },
+      {
+        "before": {
+          "name": "unicode-profile-canonical-override-quirk-with-spec",
+          "quantum": 7,
+          "code": 8,
+          "diagnostic": 715,
+          "diagnosticStage": 4,
+          "steps": 2,
+          "bytes": 0,
+          "oldAllocationsImmutable": 0
+        },
+        "after": {
+          "name": "unicode-profile-canonical-override-quirk-with-spec",
+          "quantum": 7,
+          "code": 0,
+          "diagnostic": 0,
+          "diagnosticStage": 0
+        }
+      }
+    ],
+    "oldOracleSHA256": "5c7398acde5e02dc5452761a32eeab8a0b5933c9deeaa5781ce4e5ad0278a654"
+  },
+  "isolatedTests": {
+    "command": "node --test <scratch>/arena-java.test.mjs",
+    "passed": 3,
+    "failed": 0,
+    "durationMs": 99890,
+    "coverage": [
+      "Native A0 source-to-link-verifier-to-A0BC-to-Java matches the unchanged fixture matrix",
+      "Installed JVM executes successful linked modules",
+      "Generated-output mutations are detected"
+    ],
+    "relocation": "Only fixture location was replaced for isolation; original repository probe source and import root were preserved. A first relocated-probe run failed the root-boundary guard; it was not bypassed."
+  },
+  "fixtureHashes": {
+    "plan": "9442117d909957854442705a9dbb0046e591bc735d7865f17f64bdf524e2e121",
+    "driver": "75fb584bd522765254e0cba9f70cbe89e3dfd90442bdea8dd4a0061e444697e2",
+    "correctedOracle": "01b836db96298ea7392650f4ecfc8ad4afd62b255f7051ce3ec015dd9b42f32b"
+  },
+  "limitations": [
+    "Whole-suite rerun is required on the corrected commit.",
+    "Historical development step, byte and immutability counters are removed only on the four corrected rows because they were never asserted and were not regenerated. All prior values remain in independentProof.changed."
+  ]
+}

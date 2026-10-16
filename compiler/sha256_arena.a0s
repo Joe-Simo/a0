@@ -1,0 +1,110 @@
+raw # FIPS180-4 SHA256 over an immutable arena of byte-valued u32 cells.
+raw # Input length is fullu32; padding is streamed, so length+padding never wraps a byte offset.
+raw # Digest words are big-endian SHA256 words. Generic transport errors return a zero digest.
+raw use "arena_vector.a0"
+extern arena_zero() -> u32x128
+extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+
+fn sha256_k() -> u32x64
+ return arr(0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2)
+end
+fn sha256_initial() -> u32x8
+ return arr(0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19)
+end
+fn sha256_zero() -> u32x8
+ return arr(0,0,0,0,0,0,0,0)
+end
+fn sha256_rotate(v:u32,n:u32) -> u32
+ return (v>>n)|(v<<(32-n))
+end
+fn sha256_word(w:u32x64,i:u32,bytes:u32x128) -> u32x64
+ let at=i*4
+ let value=(bytes[at]<<24)|(bytes[at+1]<<16)|(bytes[at+2]<<8)|bytes[at+3]
+ return set(w,i,value)
+end
+fn sha256_schedule(w:u32x64,i:u32) -> u32x64
+ let at=i+16
+ let x=w[at-15]
+ let y=w[at-2]
+ let s0=sha256_rotate(x,7)^sha256_rotate(x,18)^(x>>3)
+ let s1=sha256_rotate(y,17)^sha256_rotate(y,19)^(y>>10)
+ return set(w,at,w[at-16]+s0+w[at-7]+s1)
+end
+fn sha256_round(h:u32x8,i:u32,w:u32x64,k:u32x64) -> u32x8
+ let a=h[0]
+ let b=h[1]
+ let c=h[2]
+ let d=h[3]
+ let e=h[4]
+ let f=h[5]
+ let g=h[6]
+ let last=h[7]
+ let s1=sha256_rotate(e,6)^sha256_rotate(e,11)^sha256_rotate(e,25)
+ let choose=(e&f)^((e^4294967295)&g)
+ let t1=last+s1+choose+k[i]+w[i]
+ let s0=sha256_rotate(a,2)^sha256_rotate(a,13)^sha256_rotate(a,22)
+ let majority=(a&b)^(a&c)^(b&c)
+ return arr(t1+s0+majority,a,b,c,d+t1,e,f,g)
+end
+fn sha256_add(h:u32x8,i:u32,original:u32x8) -> u32x8
+ return set(h,i,h[i]+original[i])
+end
+fn sha256_compress(h:u32x8,bytes:u32x128) -> u32x8
+ let w=arr(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+ let initial=fold(sha256_word,16,w,bytes)
+ let expanded=fold(sha256_schedule,48,initial)
+ let result=fold(sha256_round,64,h,expanded,sha256_k())
+ return fold(sha256_add,8,result,h)
+end
+fn sha256_byte_check(status:u32,i:u32,bytes:u32x128) -> u32
+ return status!=0?status:(bytes[i]<=255?0:3)
+end
+fn sha256_read(s:(u32,u32x128,io),i:u32,handle:u32,offset:u32,count:u32) -> (u32,u32x128,io)
+ return arena_load(s#2,handle,offset,count)
+end
+fn sha256_length(bytes:u32x128,i:u32,high:u32,low:u32) -> u32x128
+ let value=i<4?high:low
+ let shift=(3-(i&3))*8
+ return set(bytes,56+i,(value>>shift)&255)
+end
+fn sha256_continue(s:(u32,u32x8,io),i:u32,handle:u32,length:u32,blocks:u32) -> bool
+ return s#0==0
+end
+fn sha256_page(t:io,handle:u32,length:u32,i:u32,blocks:u32) -> (u32,u32x128,io)
+ let whole=length>>6
+ let tail=length&63
+ let count=i<whole?64:(i==whole?tail:0)
+ let start=(0,arena_zero(),t)
+ let loaded=fold(sha256_read,bit(count!=0),start,handle,i<<6,count)
+ let status=fold(sha256_byte_check,count,loaded#0,loaded#1)
+ let bytes=loaded#1
+ let bytes=set(bytes,tail,i==whole?128:bytes[tail])
+ let bytes=fold(sha256_length,bit(i==blocks-1)*8,bytes,length>>29,length<<3)
+ return (status,bytes,loaded#2)
+end
+fn sha256_block(s:(u32,u32x8,io),i:u32,handle:u32,length:u32,blocks:u32) -> (u32,u32x8,io)
+ let page=sha256_page(s#2,handle,length,i,blocks)
+ let hash=sha256_compress(s#1,page#1)
+ return (page#0,hash,page#2)
+end
+fn arena_sha256(t:io,handle:u32,length:u32) -> (u32,u32x8,io)
+ let blocks=(length>>6)+((length&63)<=55?1:2)
+ let start=(0,sha256_initial(),t)
+ let result=loop(sha256_continue,sha256_block,blocks,start,handle,length,blocks)
+ return (result#0,result#0==0?result#1:sha256_zero(),result#2)
+end
+fn sha256_hex_byte(out:u32x128,i:u32,hash:u32x8) -> u32x128
+ let word=hash[i>>3]
+ let digit=(word>>((7-(i&7))*4))&15
+ return set(out,i,digit<10?48+digit:87+digit)
+end
+fn sha256_hex_emit(s:(u32,(u32,u32,u32),io),i:u32,hash:u32x8) -> (u32,(u32,u32,u32),io)
+ let bytes=fold(sha256_hex_byte,64,arena_zero(),hash)
+ return av_append(s#2,s#1,64,bytes)
+end
+fn arena_sha256_hex(t:io,handle:u32,length:u32) -> (u32,(u32,u32,u32),io)
+ let hash=arena_sha256(t,handle,length)
+ let start=(hash#0,(0,0,0),hash#2)
+ return fold(sha256_hex_emit,bit(hash#0==0),start,hash#1)
+end

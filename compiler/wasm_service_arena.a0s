@@ -1,0 +1,68 @@
+raw # Ordered raw-source Wasm service. Host repeats opaque continuations only.
+raw use "backend_service_arena.a0"
+raw use "emit_wasm_arena.a0"
+extern arena_zero() -> u32x128
+extern arena_backend_service_begin(io,u32,u32) -> (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))
+extern arena_backend_service_resume((u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32) -> (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))
+extern arena_backend_service_done(u32x128) -> bool
+extern arena_backend_service_status(u32x128) -> u32
+extern arena_wasm_emit_options(io,u32x16,u32x128,u32x128) -> (u32,(u32,u32,u32),u32x128,io)
+extern ew_emit(io,(u32,u32,u32)) -> (u32,io)
+fn aws_failure(s:(u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128),i:u32,code:u32) -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+ let e=set(set(s#0,0,code),1,1)
+ return (e,s#1,s#2)
+end
+fn aws_emit(s:(u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128),i:u32) -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+ let b=s#1
+ let q=b#3
+ let r=arena_wasm_emit_options(q#6,b#1,b#2,s#2)
+ let e=set(set(s#0,0,r#0),1,1)
+ let e=set(e,3,r#1#0)
+ let e=set(e,4,r#1#1)
+ let e=set(e,5,r#1#2)
+ let e=set(e,6,get(r#2,110))
+ let freshq=(q#0,q#1,q#2,q#3,q#4,q#5,r#3)
+ let freshb=(b#0,b#1,b#2,freshq)
+ return (e,freshb,s#2)
+end
+fn aws_check(s:(u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)) -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+ let e=s#0
+ let options=s#2
+ let b=s#1
+ let done=arena_backend_service_done(b#0)
+ let code=arena_backend_service_status(b#0)
+ let a=fold(aws_emit,bit(done&(code==0)),(e,b,options))
+ return fold(aws_failure,bit(done&(code!=0)),a,code)
+end
+fn arena_wasm_source_begin(t:io,source:u32,length:u32,options:u32x128) -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+ let b=arena_backend_service_begin(t,source,length)
+ return aws_check((arena_zero(),b,options))
+end
+fn aws_resume(s:(u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128),i:u32,quantum:u32) -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+ let b=arena_backend_service_resume(s#1,quantum)
+ return aws_check((s#0,b,s#2))
+end
+fn arena_wasm_source_resume(s:(u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128),quantum:u32) -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+ return fold(aws_resume,get(s#0,1)==0?1:0,s,quantum)
+end
+fn arena_wasm_source_done(e:u32x128) -> bool
+ return e[1]!=0
+end
+fn arena_wasm_source_status(e:u32x128) -> u32
+ return e[1]==0?7:e[0]
+end
+fn arena_wasm_source_result(s:(u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)) -> (u32,(u32,u32,u32),io)
+ let e=s#0
+ let b=s#1
+ let q=b#3
+ let code=arena_wasm_source_status(e)
+ let out=code==0?(e[3],e[4],e[5]):(0,0,0)
+ return (code,out,q#6)
+end
+fn aws_publish(s:(u32,io),i:u32,out:(u32,u32,u32)) -> (u32,io)
+ return ew_emit(s#1,out)
+end
+fn arena_wasm_source_publish(s:(u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)) -> (u32,io)
+ let r=arena_wasm_source_result(s)
+ return fold(aws_publish,r#0==0?1:0,(r#0,r#2),r#1)
+end

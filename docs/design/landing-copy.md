@@ -25,7 +25,7 @@ $ a0 run examples/kernels.a0 affine 3 4 5     # prints 17
 
 **Buttons:** [Install] and [See the benchmarks (including where A0 loses)]
 
-**License:** MIT, free for any use. Copyright 2026 Joe Simo (`LICENSE`).
+**License:** Apache 2.0. Copyright 2026 Joe Simo (`LICENSE`).
 
 **Scope:** Not for floating point, heap-heavy or recursive code. A0 has none of the three.
 
@@ -99,6 +99,6 @@ Speed figures come from one Apple M3 (8 cores), 2026-09-30 to 10-01. Each is a m
 | Life 240 lines, 134 cases | examples/life.a0; app.json | wc -l; cases | 240; 134 | line count yes; cases from STATUS only |
 | One-function cost vs TS | `$cmin_100$` (site/gen/sgcalc.a0): structured trials of `results/ai-edit-experiment.b.sonnet-min.json`, per trial 1.25 x primer per call + tool context + output; A0 688.5 / TS 284.4 | verified, but measured with the earlier 388-token `languagePrimer` | 2.42 | stale config: removed from the home page; the newer set-b run `results/ai-edit-b48-dense.json` `proto2.languages` (118/145-token edit primers, not the shipped guide) records A0 `a0.pooled.total` 275.4 and `a0-dense-bodies.pooled.total` 237.5 against `ts.pooled.total` 339.7; no result uses the shipped guide on one-function tasks |
 | 586 ledger entries | loss-ledger.json | entries.length | 586 | yes |
-| MIT license | LICENSE | line 1 | MIT | yes |
+| Apache 2.0 license | LICENSE | Version 2.0 | Apache-2.0 | yes |
 | `affine 3 4 5` prints 17 | run locally | n/a | 17 | yes |
 | 169x Python (not used) | exec-benchmark-full.json | geomeans.python | 163.27 (page shows 169) | mismatch; kept out of copy |

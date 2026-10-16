@@ -4,7 +4,7 @@
  * (src/backends.ts re-exports all of them, so no caller changes).
  */
 
-export const COMPILER_VERSION = 'a0c-0.1.60';
+export const COMPILER_VERSION = 'a0c-0.1.62';
 
 export type Target =
   | 'js'

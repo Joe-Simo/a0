@@ -1,5 +1,5 @@
 ; Keywords
-["fn" "end" "use" "ex" "pre" "post"] @keyword
+["fn" "end" "use" "profile" "strict" "ex" "pre" "post"] @keyword
 "ret" @keyword.return
 ["call" "fold" "loop" "text"] @keyword.operator
 "->" @punctuation.delimiter

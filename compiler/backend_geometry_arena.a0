@@ -1,0 +1,217 @@
+use "backend_text_arena.a0"
+fn bg_fail (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+old at p0 0
+out at p0 1
+t at p0 2
+q0 eq old 0
+q1 select q0 p1 old
+q2 rec q1 out t
+ret q2
+end
+fn bg_ok (u32,(u32,u32,u32),io) u32 u32x16 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn bg_read_do ((u32,(u32,u32,u32),io),u32x128) u32 u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32x128)
+s at p0 0
+q0 at s 2
+r call arena_load q0 p2 p3 p4
+q1 at r 0
+q2 at s 1
+q3 at r 2
+q4 rec q1 q2 q3
+q5 at r 1
+q6 rec q4 q5
+ret q6
+end
+fn bg_read (u32,(u32,u32,u32),io) u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32x128)
+q0 gt p3 128
+q1 sub 4294967295 p2
+q2 gt p3 q1
+bad or q0 q2
+q3 select bad 7 0
+s call bg_fail p0 q3
+q4 at s 0
+q5 eq q4 0
+q6 select q5 1 0
+q7 call arena_zero
+q8 rec s q7
+q9 fold bg_read_do q6 q8 p1 p2 p3
+ret q9
+end
+fn bg_row (u32,(u32,u32,u32),io) u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32x128)
+q0 eq p3 0
+q1 gt p3 128
+q2 or q0 q1
+q3 div 4294967295 p3
+q4 gt p2 q3
+bad or q2 q4
+q5 select bad 7 0
+s call bg_fail p0 q5
+q6 mul p2 p3
+q7 call bg_read s p1 q6 p3
+ret q7
+end
+fn bg_word (u32,(u32,u32,u32),io) u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+r call bg_read p0 p1 p2 1
+q0 at r 0
+q1 at r 1
+q2 get q1 0
+q3 rec q0 q2
+ret q3
+end
+fn bg_store_do (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 call bxtext_store p0 p2 p3 p4
+ret q0
+end
+fn bg_store (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 at p0 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold bg_store_do q2 p0 p1 p2 p3
+ret q3
+end
+fn bg_alloc_do ((u32,(u32,u32,u32),io),u32) u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+s at p0 0
+q0 at s 2
+r call arena_alloc q0 p2
+q1 at r 0
+q2 at s 1
+q3 at r 2
+q4 rec q1 q2 q3
+q5 at r 1
+q6 rec q4 q5
+ret q6
+end
+fn bg_alloc (u32,(u32,u32,u32),io) u32 -> ((u32,(u32,u32,u32),io),u32)
+q0 at p0 0
+q1 eq q0 0
+q2 ne p1 0
+q3 and q1 q2
+q4 select q3 1 0
+q5 rec p0 0
+q6 fold bg_alloc_do q4 q5 p1
+ret q6
+end
+fn bg_sum_good ((u32,(u32,u32,u32),io),u32,u32) u32 u32x16 u32 u32 -> bool
+q0 at p0 0
+q1 at q0 0
+q2 eq q1 0
+ret q2
+end
+fn bg_sum_step ((u32,(u32,u32,u32),io),u32,u32) u32 u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32,u32)
+q0 at p0 0
+q1 sub 4294967295 p1
+q2 gt p3 q1
+q3 select q2 7 0
+s call bg_fail q0 q3
+q4 get p2 1
+q5 add p3 p1
+r call bg_word s q4 q5
+child at r 1
+q6 at r 0
+q7 ge child p4
+q8 select q7 6 0
+s_1 call bg_fail q6 q8
+q9 get p2 6
+q call bg_row s_1 q9 child 2
+q10 at q 1
+q11 get q10 0
+q12 at q 1
+q13 get q12 1
+q14 at q 0
+q15 at p0 1
+q16 sub 4294967295 q15
+q17 gt q11 q16
+q18 select q17 7 0
+s_2 call bg_fail q14 q18
+q19 at p0 1
+q20 add q19 q11
+q21 at p0 2
+q22 or q21 q13
+q23 rec s_2 q20 q22
+ret q23
+end
+fn bg_type (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+r call bg_row p0 q0 p1 3
+q1 at r 1
+q2 get q1 0
+q3 at r 1
+q4 get q3 1
+q5 at r 1
+q6 get q5 2
+q7 at r 0
+q8 lt q2 1
+q9 gt q2 5
+q10 or q8 q9
+q11 select q10 6 0
+s call bg_fail q7 q11
+q12 eq q2 4
+child select q12 q6 0
+q13 eq q2 4
+q14 eq q4 0
+q15 ge child p1
+q16 or q14 q15
+q17 and q13 q16
+q18 select q17 6 0
+s_1 call bg_fail s q18
+q19 get p2 6
+q call bg_row s_1 q19 child 2
+q20 at q 1
+q21 get q20 0
+q22 at q 1
+q23 get q22 1
+q24 eq q2 4
+q25 eq q21 0
+q26 div 4294967295 q21
+q27 gt q4 q26
+q28 or q25 q27
+arrbad and q24 q28
+q29 at q 0
+q30 select arrbad 7 0
+s_2 call bg_fail q29 q30
+q31 eq q2 5
+q32 select q31 q6 0
+q33 rec s_2 0 0
+fields loop bg_sum_good bg_sum_step q32 q33 p2 q4 p1
+q34 lt q2 3
+q35 eq q2 3
+q36 eq q2 4
+q37 mul q4 q21
+q38 at fields 1
+q39 select q36 q37 q38
+q40 select q35 8 q39
+bytes select q34 4 q40
+q41 eq q2 3
+q42 eq q2 4
+q43 eq q2 5
+q44 at fields 2
+q45 select q43 q44 0
+q46 select q42 q23 q45
+containsio select q41 1 q46
+q47 at fields 0
+q48 get p2 6
+q49 mul p1 2
+s_3 call bg_store q47 q48 q49 bytes
+q50 get p2 6
+q51 mul p1 2
+q52 add q51 1
+q53 call bg_store s_3 q50 q52 containsio
+ret q53
+end
+fn bg_analyze_types (u32,(u32,u32,u32),io) u32x16 -> ((u32,(u32,u32,u32),io),u32x16)
+q0 get p1 12
+q1 gt q0 2147483647
+q2 select q1 7 0
+s call bg_fail p0 q2
+q3 mul q0 2
+r call bg_alloc s q3
+q4 at r 1
+ctx set p1 6 q4
+q5 at r 0
+s_1 loop bg_ok bg_type q0 q5 ctx
+q6 rec s_1 ctx
+ret q6
+end

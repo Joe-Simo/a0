@@ -1,0 +1,171 @@
+[
+  {
+    "id": "semicolon-comment",
+    "group": "sealed-core",
+    "instruction": "Change request for the A0 front end (lexer and parser): a semicolon `;` must also start a comment, exactly like `#`: everything from it to the end of the line is dropped, the newline itself stays a token. `#` comments keep working.",
+    "targets": [
+      "lexstep"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/core.input.a0.txt",
+    "referenceFile": "programs/semicolon-comment.reference.a0.txt",
+    "wrongFile": "programs/semicolon-comment.wrong.a0.txt",
+    "wrongWhy": "A0: the semicolon replaces `#` instead of joining it; TS: the semicolon is skipped like a space, so the rest of its line is still tokens",
+    "sealedTaskFile": "hidden/semicolon-comment.sealed.json",
+    "sealedTaskSHA256": "1cbb348ba2cf4c4ab19531fe39622c69b5435e4bb2ae04eba030fbbf932893a7"
+  },
+  {
+    "id": "tab-is-error",
+    "group": "sealed-core",
+    "instruction": "Change request for the A0 front end (lexer and parser): a tab byte (9) must no longer be skipped as whitespace. It becomes a one-byte error token (kind 9, like any other byte the lexer does not know). Spaces (32) and carriage returns (13) are still skipped.",
+    "targets": [
+      "isspace"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/core.input.a0.txt",
+    "referenceFile": "programs/tab-is-error.reference.a0.txt",
+    "wrongFile": "programs/tab-is-error.wrong.a0.txt",
+    "wrongWhy": "both: carriage returns stop being whitespace too",
+    "sealedTaskFile": "hidden/tab-is-error.sealed.json",
+    "sealedTaskSHA256": "11fc5706568b7bb48657f10ab464fb27a12319f3a29be8c1816d6525eb9e6018"
+  },
+  {
+    "id": "text-escape-r",
+    "group": "sealed-core",
+    "instruction": "Change request for the A0 front end (lexer and parser): in a `text \"...\"` literal the escape `\\r` must decode to a carriage return, byte 13, next to the existing `\\n` (10) and `\\t` (9). Any other escaped byte still stands for itself.",
+    "targets": [
+      "txtb"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/core.input.a0.txt",
+    "referenceFile": "programs/text-escape-r.reference.a0.txt",
+    "wrongFile": "programs/text-escape-r.wrong.a0.txt",
+    "wrongWhy": "both: the escape is read on an uppercase `R` (82) instead of `r` (114)",
+    "sealedTaskFile": "hidden/text-escape-r.sealed.json",
+    "sealedTaskSHA256": "1f05e3d11c38d0e8e6ee33a171d8430682160884f0adfda4adaee799816bc247"
+  },
+  {
+    "id": "param-limit",
+    "group": "sealed-core",
+    "instruction": "Change request for the A0 front end (lexer and parser): a function header may now declare at most 8 parameters. A header with more is a parse error at its arrow token `->`. The parser reports the first diagnostic as (code, token index), code 1 a parse error and 2 a structure error; token indexes count the tokens of the lexer (comments and spaces make no tokens; each newline is one).",
+    "targets": [
+      "p3tok"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/core.input.a0.txt",
+    "referenceFile": "programs/param-limit.reference.a0.txt",
+    "wrongFile": "programs/param-limit.wrong.a0.txt",
+    "wrongWhy": "both: off by one (A0 allows 9; TS counts the stack sentinel and refuses 8)",
+    "sealedTaskFile": "hidden/param-limit.sealed.json",
+    "sealedTaskSHA256": "c9b7beedc7a7595d835af8524e7c991785d3c724025fab2560f4abf418c8da01"
+  },
+  {
+    "id": "life-highlife",
+    "group": "life",
+    "instruction": "Change the cell rule to HighLife B36/S23: a dead cell is born with exactly 3 or 6 neighbours; an existing live cell survives only with 2 or 3. Keep the 32x32 torus, count/nb semantics, accumulator merge, step signature and IO/session commands unchanged. Change cell; other existing function signatures stay intact. You may add internal helpers.",
+    "targets": [
+      "cell"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/life.input.a0.txt",
+    "referenceFile": "programs/life-highlife.reference.a0.txt",
+    "wrongFile": "programs/life-highlife.wrong.a0.txt",
+    "wrongWhy": "applies birth-on-six to already-live cells too"
+  },
+  {
+    "id": "life-finite-edges",
+    "group": "life",
+    "instruction": "Change neighbour counting from a torus to a finite 32x32 board: off-board neighbours contribute zero, and a center row or column outside 0..31 has count zero. Keep the eight-neighbour rule, interior counts, grid representation, nb helper itself, cell/step signatures and other capabilities unchanged. Change count; internal helpers may be added.",
+    "targets": [
+      "count"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/life.input.a0.txt",
+    "referenceFile": "programs/life-finite-edges.reference.a0.txt",
+    "wrongFile": "programs/life-finite-edges.wrong.a0.txt",
+    "wrongWhy": "top-center neighbour still wraps and invalid-center guard is missing for up"
+  },
+  {
+    "id": "life-counted-input",
+    "group": "life",
+    "instruction": "Extend readgrid to a counted-prefix stream: first consume an unsigned row count, clamp it to 32, then consume exactly that many row words into rows 0 onward. Rows beyond the count retain the supplied initial grid. Preserve the same (grid, io) return shape and token identity; do not consume later command words. Use a state-threaded fold for row loading. Existing readrow and other function signatures/capabilities stay intact; you may add a fold helper such as readgridrow. life automatically receives this new row-count-prefixed input protocol through readgrid.",
+    "targets": [
+      "readgrid"
+    ],
+    "helperNames": [
+      "readgridrow"
+    ],
+    "inputFile": "programs/life.input.a0.txt",
+    "referenceFile": "programs/life-counted-input.reference.a0.txt",
+    "wrongFile": "programs/life-counted-input.wrong.a0.txt",
+    "wrongWhy": "off-by-one clamp reads only31 rows for oversized row counts"
+  },
+  {
+    "id": "life-cell-commands",
+    "group": "life",
+    "instruction": "Extend the life session commands without changing its 32-row input or 32-row output/population protocol: 0 steps, 1 toggles, 2 clears the whole board, new 3 sets the selected cell alive, new 4 erases only that cell. Coordinates retain wrapping modulo32. Any other command must preserve the grid. Always consume cmd,x,y, emit all32 rows and return the new population. Keep other functions/capabilities intact.",
+    "targets": [
+      "life"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/life.input.a0.txt",
+    "referenceFile": "programs/life-cell-commands.reference.a0.txt",
+    "wrongFile": "programs/life-cell-commands.wrong.a0.txt",
+    "wrongWhy": "unknown commands still clear the board"
+  },
+  {
+    "id": "frame-policy-clamps",
+    "group": "website",
+    "instruction": "Enforce the live-frame protocol ranges in its shared writers: fr_quality must clamp the unsigned requested percent to25..100; fr_cadence must clamp the requested cadence to1..8. Keep command tags3/4, IO token identity/order, signatures and all other frame helpers unchanged. Use saturating clamping, not modulo.",
+    "targets": [
+      "fr_quality",
+      "fr_cadence"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/frame.input.a0.txt",
+    "referenceFile": "programs/frame-policy-clamps.reference.a0.txt",
+    "wrongFile": "programs/frame-policy-clamps.wrong.a0.txt",
+    "wrongWhy": "only upper limits are enforced"
+  },
+  {
+    "id": "frame-rgba-bytes",
+    "group": "website",
+    "instruction": "Make fr_pack interpret each RGBA input as an independent byte: mask every channel to its low8 bits, then pack 0xRRGGBBAA. High bits from green, blue or alpha must never contaminate another channel. Preserve all32 output bits, signature and all other frame functions.",
+    "targets": [
+      "fr_pack"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/frame.input.a0.txt",
+    "referenceFile": "programs/frame-rgba-bytes.reference.a0.txt",
+    "wrongFile": "programs/frame-rgba-bytes.wrong.a0.txt",
+    "wrongWhy": "alpha alone is masked while green/blue still contaminate earlier channels"
+  },
+  {
+    "id": "ui-fill-safe-percent",
+    "group": "website",
+    "instruction": "Keep the existing fill div/class/width-SIZE/close UI component protocol, but compute width as floor(100*min(value,total)/total), with total0 giving width0. It must be correct for every u32 input, including overflowing value*100 and value>total. Keep fill signature, IO identity and other UI helpers unchanged. Internal arithmetic/fold helpers may be added; do not use floating point or a smaller input bound.",
+    "targets": [
+      "fill"
+    ],
+    "helperNames": [
+      "fillstep"
+    ],
+    "inputFile": "programs/ui.input.a0.txt",
+    "referenceFile": "programs/ui-fill-safe-percent.reference.a0.txt",
+    "wrongFile": "programs/ui-fill-safe-percent.wrong.a0.txt",
+    "wrongWhy": "clamping is added but multiplication still overflows and denominator0 still yieldsUINT_MAX"
+  },
+  {
+    "id": "ui-four-decimals",
+    "group": "website",
+    "instruction": "Change putfix to display an unsigned fixed-point value in ten-thousandths, always with exactly four fractional decimal digits: e.g.7 becomes0.0007 and215100 becomes21.5100. Preserve valid TEXT command framing, leading/trailing fractional zeros, allu32 inputs, IO token identity, signature and other UI helpers. TEXT chunks may be combined or split as long as the displayed text is exact.",
+    "targets": [
+      "putfix"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/ui.input.a0.txt",
+    "referenceFile": "programs/ui-four-decimals.reference.a0.txt",
+    "wrongFile": "programs/ui-four-decimals.wrong.a0.txt",
+    "wrongWhy": "fractional width changes but old hundredths scaling remains"
+  }
+]

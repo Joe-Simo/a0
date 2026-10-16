@@ -1,0 +1,520 @@
+You are making one requested maintenance change to A0. Work independently. Read only this prompt file. Do not read the repository, other files, references, tests or prior trials; do not run code, search, ask another agent or test your answer. Write your answer exactly once to the designated reply file using a literal patch or quoted heredoc, then reply done. Your answer file must contain only complete replacement fn blocks for the requested functions and any needed new helpers, with no handle, Markdown or explanation. Preserve all other functions and existing signatures. This is a single attempt; the runner will check it. The source view contains the target functions and their transitive callees; included callees are context and must remain unchanged unless the task requests otherwise. You may introduce internal helpers; define helpers before their callers.
+
+Syntax: fn NAME TYPE... -> TYPE; types may be omitted when all are u32 (a parameter letter A,B,... then determines arity). Parameters A,B,C,... by position. Prefix expressions have fixed arity: add mul A B C means (A*B)+C. Earlier results may be bound as ID EXPR; unnamed statement results have consecutive numeric IDs. Last statement is the function result; end and ret are optional. F args calls F (call F args is explicit); << and >> are shifts. [a b] is array, [0;32] repeat array, (a b) record, (a,) one-field record, "txt" byte array. Operations use the same names as above. A next fn header ends the previous function.
+
+Identifiers are lowercase a-z followed by a-z,0-9,_ (up to64 characters); parameters use the syntax-specific spelling. Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select mov call fold loop arr rec text get set at put read write puts. Types: u32, bool, io, arrays such as u32x32, records such as (u32,io). Arithmetic is unsigned u32 modulo 2^32; comparisons return bool; select c x y evaluates existing values and returns x if c else y. div a 0 gives4294967295, rem a 0 gives a; shifts mask count&31. get/set wrap the array index modulo its length; at/put use constant record slots. fold F n s a.. starts state=s, then state=F(state,i,a..) for i=0..n-1. loop P F n s a.. tests P before each step. IO is affine: read t returns (word,next-token); write t v and puts t array return next-token. mov copies a value. Arrays/records are immutable values. Function signatures must typecheck; all defined nodes execute in source order.
+
+Requested change:
+Change request for the A0 front end (lexer and parser): `=>` must be accepted as a second spelling of the arrow `->`: the lexer emits it as the arrow token (kind 4, length 2), so `fn f u32 => u32` is a valid header. An `=` that is not followed by `>` stays a one-byte error token (kind 9), also at the very end of the source.
+
+Source view:
+fn isalpha -> bool
+lo ge A 97
+hi le A 122
+a and lo hi
+us eq A 95
+r or a us
+
+fn isdigit -> bool
+lo ge A 48
+hi le A 57
+r and lo hi
+
+fn isword -> bool
+a isalpha A
+d isdigit A
+r or a d
+
+fn isspace -> bool
+sp eq A 32
+tb eq A 9
+cr eq A 13
+r or or sp tb cr
+
+fn srcpg u32x512x64 u32 -> u32x128
+ph >> B 4
+pk get A ph
+pl and B 15
+off mul pl 32
+i0 add off 0
+w0 get pk i0
+a0 and w0 255
+s0b >> w0 8
+b0 and s0b 255
+s0c >> w0 16
+c0 and s0c 255
+d0 >> w0 24
+i1 add off 1
+w1 get pk i1
+a1 and w1 255
+s1b >> w1 8
+b1 and s1b 255
+s1c >> w1 16
+c1 and s1c 255
+d1 >> w1 24
+i2 add off 2
+w2 get pk i2
+a2 and w2 255
+s2b >> w2 8
+b2 and s2b 255
+s2c >> w2 16
+c2 and s2c 255
+d2 >> w2 24
+i3 add off 3
+w3 get pk i3
+a3 and w3 255
+s3b >> w3 8
+b3 and s3b 255
+s3c >> w3 16
+c3 and s3c 255
+d3 >> w3 24
+i4 add off 4
+w4 get pk i4
+a4 and w4 255
+s4b >> w4 8
+b4 and s4b 255
+s4c >> w4 16
+c4 and s4c 255
+d4 >> w4 24
+i5 add off 5
+w5 get pk i5
+a5 and w5 255
+s5b >> w5 8
+b5 and s5b 255
+s5c >> w5 16
+c5 and s5c 255
+d5 >> w5 24
+i6 add off 6
+w6 get pk i6
+a6 and w6 255
+s6b >> w6 8
+b6 and s6b 255
+s6c >> w6 16
+c6 and s6c 255
+d6 >> w6 24
+i7 add off 7
+w7 get pk i7
+a7 and w7 255
+s7b >> w7 8
+b7 and s7b 255
+s7c >> w7 16
+c7 and s7c 255
+d7 >> w7 24
+i8 add off 8
+w8 get pk i8
+a8 and w8 255
+s8b >> w8 8
+b8 and s8b 255
+s8c >> w8 16
+c8 and s8c 255
+d8 >> w8 24
+i9 add off 9
+w9 get pk i9
+a9 and w9 255
+s9b >> w9 8
+b9 and s9b 255
+s9c >> w9 16
+c9 and s9c 255
+d9 >> w9 24
+i10 add off 10
+w10 get pk i10
+a10 and w10 255
+s10b >> w10 8
+b10 and s10b 255
+s10c >> w10 16
+c10 and s10c 255
+d10 >> w10 24
+i11 add off 11
+w11 get pk i11
+a11 and w11 255
+s11b >> w11 8
+b11 and s11b 255
+s11c >> w11 16
+c11 and s11c 255
+d11 >> w11 24
+i12 add off 12
+w12 get pk i12
+a12 and w12 255
+s12b >> w12 8
+b12 and s12b 255
+s12c >> w12 16
+c12 and s12c 255
+d12 >> w12 24
+i13 add off 13
+w13 get pk i13
+a13 and w13 255
+s13b >> w13 8
+b13 and s13b 255
+s13c >> w13 16
+c13 and s13c 255
+d13 >> w13 24
+i14 add off 14
+w14 get pk i14
+a14 and w14 255
+s14b >> w14 8
+b14 and s14b 255
+s14c >> w14 16
+c14 and s14c 255
+d14 >> w14 24
+i15 add off 15
+w15 get pk i15
+a15 and w15 255
+s15b >> w15 8
+b15 and s15b 255
+s15c >> w15 16
+c15 and s15c 255
+d15 >> w15 24
+i16 add off 16
+$w16 get pk i16
+a16 and $w16 255
+s16b >> $w16 8
+b16 and s16b 255
+s16c >> $w16 16
+c16 and s16c 255
+d16 >> $w16 24
+i17 add off 17
+w17 get pk i17
+a17 and w17 255
+s17b >> w17 8
+b17 and s17b 255
+s17c >> w17 16
+c17 and s17c 255
+d17 >> w17 24
+i18 add off 18
+w18 get pk i18
+a18 and w18 255
+s18b >> w18 8
+b18 and s18b 255
+s18c >> w18 16
+c18 and s18c 255
+d18 >> w18 24
+i19 add off 19
+w19 get pk i19
+a19 and w19 255
+s19b >> w19 8
+b19 and s19b 255
+s19c >> w19 16
+c19 and s19c 255
+d19 >> w19 24
+i20 add off 20
+w20 get pk i20
+a20 and w20 255
+s20b >> w20 8
+b20 and s20b 255
+s20c >> w20 16
+c20 and s20c 255
+d20 >> w20 24
+i21 add off 21
+w21 get pk i21
+a21 and w21 255
+s21b >> w21 8
+b21 and s21b 255
+s21c >> w21 16
+c21 and s21c 255
+d21 >> w21 24
+i22 add off 22
+w22 get pk i22
+a22 and w22 255
+s22b >> w22 8
+b22 and s22b 255
+s22c >> w22 16
+c22 and s22c 255
+d22 >> w22 24
+i23 add off 23
+w23 get pk i23
+a23 and w23 255
+s23b >> w23 8
+b23 and s23b 255
+s23c >> w23 16
+c23 and s23c 255
+d23 >> w23 24
+i24 add off 24
+w24 get pk i24
+a24 and w24 255
+s24b >> w24 8
+b24 and s24b 255
+s24c >> w24 16
+c24 and s24c 255
+d24 >> w24 24
+i25 add off 25
+w25 get pk i25
+a25 and w25 255
+s25b >> w25 8
+b25 and s25b 255
+s25c >> w25 16
+c25 and s25c 255
+d25 >> w25 24
+i26 add off 26
+w26 get pk i26
+a26 and w26 255
+s26b >> w26 8
+b26 and s26b 255
+s26c >> w26 16
+c26 and s26c 255
+d26 >> w26 24
+i27 add off 27
+w27 get pk i27
+a27 and w27 255
+s27b >> w27 8
+b27 and s27b 255
+s27c >> w27 16
+c27 and s27c 255
+d27 >> w27 24
+i28 add off 28
+w28 get pk i28
+a28 and w28 255
+s28b >> w28 8
+b28 and s28b 255
+s28c >> w28 16
+c28 and s28c 255
+d28 >> w28 24
+i29 add off 29
+w29 get pk i29
+a29 and w29 255
+s29b >> w29 8
+b29 and s29b 255
+s29c >> w29 16
+c29 and s29c 255
+d29 >> w29 24
+i30 add off 30
+w30 get pk i30
+a30 and w30 255
+s30b >> w30 8
+b30 and s30b 255
+s30c >> w30 16
+c30 and s30c 255
+d30 >> w30 24
+i31 add off 31
+w31 get pk i31
+a31 and w31 255
+s31b >> w31 8
+b31 and s31b 255
+s31c >> w31 16
+c31 and s31c 255
+d31 >> w31 24
+r [a0 b0 c0 d0 a1 b1 c1 d1 a2 b2 c2 d2 a3 b3 c3 d3 a4 b4 c4 d4 a5 b5 c5 d5 a6 b6 c6 d6 a7 b7 c7 d7 a8 b8 c8 d8 a9 b9 c9 d9 a10 b10 c10 d10 a11 b11 c11 d11 a12 b12 c12 d12 a13 b13 c13 d13 a14 b14 c14 d14 a15 b15 c15 d15 a16 b16 c16 d16 a17 b17 c17 d17 a18 b18 c18 d18 a19 b19 c19 d19 a20 b20 c20 d20 a21 b21 c21 d21 a22 b22 c22 d22 a23 b23 c23 d23 a24 b24 c24 d24 a25 b25 c25 d25 a26 b26 c26 d26 a27 b27 c27 d27 a28 b28 c28 d28 a29 b29 c29 d29 a30 b30 c30 d30 a31 b31 c31 d31]
+
+fn lexstep -> (bool,u32,u32,u32,u32,u32,u32)
+c mov C
+isw isword c
+isnl eq c 10
+isq eq c 34
+isbs eq c 92
+ishash eq c 35
+isminus eq c 45
+isgt eq c 62
+isat eq c 64
+issp isspace c
+k1 eq A 1
+k2 eq A 2
+k3 eq A 3
+k6 eq A 6
+k8 eq A 8
+k5 eq A 5
+k7 eq A 7
+k9 eq A 9
+inw or k1 k2
+notw select isw false true
+wclose and inw notw
+escd eq E 1
+notesc select escd false true
+sq and k3 isq
+sclose and sq notesc
+cclose and k8 isnl
+s57 or k5 k7
+single or s57 k9
+arrow and k6 isgt
+e0 or wclose sclose
+e1 or e0 single
+emit or e1 k6
+c0 or e0 cclose
+c1 or c0 single
+closed or c1 k6
+consumed or sclose arrow
+ek0 select k6 6 A
+ek1 select arrow 4 ek0
+ek select sclose 3 ek1
+s1 add B 1
+es select sclose s1 B
+wl sub D B
+sl sub wl 1
+l0 select arrow 2 1
+l1 select sclose sl l0
+el select wclose wl l1
+k0 eq A 0
+none or k0 closed
+notcons select consumed false true
+free and none notcons
+isd isdigit c
+wk select isd 2 1
+n0 select issp 0 9
+n1 select isat 7 n0
+n2 select isminus 6 n1
+n3 select isnl 5 n2
+n4 select ishash 8 n3
+n5 select isq 3 n4
+n6 select isw wk n5
+cont select closed 0 A
+nk select free n6 cont
+ns select free D B
+e2 select isbs 1 0
+e3 select escd 0 e2
+esc select k3 e3 0
+r (emit ek es el nk ns esc)
+
+fn lexbyte (u32x128x4,u32,u32,u32,u32) u32 u32x128 u32 -> (u32x128x4,u32,u32,u32,u32)
+w at A 0
+f at A 1
+pk at A 2
+ps at A 3
+esc at A 4
+c get C B
+i add D B
+d lexstep pk ps c i esc
+emit at d 0
+ek at d 1
+es at d 2
+el at d 3
+h0 >> f 7
+l0 and f 127
+g0 get w h0
+g0b set g0 l0 ek
+w1 set w h0 g0b
+f1 add f 1
+h1 >> f1 7
+l1 and f1 127
+g1 get w1 h1
+g1b set g1 l1 es
+w2 set w1 h1 g1b
+f2 add f 2
+h2 >> f2 7
+l2 and f2 127
+g2 get w2 h2
+g2b set g2 l2 el
+w3 set w2 h2 g2b
+f3 add f 3
+fn1 select emit f3 f
+nk at d 4
+ns at d 5
+$ne at d 6
+r (w3 fn1 nk ns $ne)
+
+fn lexpage (u32x128x384,u32,u32,u32,u32) u32 u32x512x64 u32 -> (u32x128x384,u32,u32,u32,u32)
+out at A 0
+nout at A 1
+pg srcpg C B
+base mul B 128
+rest sub D base
+big gt rest 128
+cnt select big 128 rest
+hi >> nout 7
+f0 and nout 127
+last get out hi
+w0 [last last last last]
+pk at A 2
+ps at A 3
+esc at A 4
+s0 (w0 f0 pk ps esc)
+s fold lexbyte cnt s0 pg base
+w at s 0
+f at s 1
+c0f gt f 0
+i0 add hi 0
+c0t lt i0 384
+c0 and c0f c0t
+v0 get w 0
+o0 get out i0
+x0 select c0 v0 o0
+out0 set out i0 x0
+c1f gt f 128
+i1 add hi 1
+c1t lt i1 384
+c1 and c1f c1t
+v1 get w 1
+o1 get out0 i1
+x1 select c1 v1 o1
+out1 set out0 i1 x1
+c2f gt f 256
+i2 add hi 2
+c2t lt i2 384
+c2 and c2f c2t
+v2 get w 2
+o2 get out1 i2
+x2 select c2 v2 o2
+out2 set out1 i2 x2
+c3f gt f 384
+i3 add hi 3
+c3t lt i3 384
+c3 and c3f c3t
+v3 get w 3
+o3 get out2 i3
+x3 select c3 v3 o3
+out3 set out2 i3 x3
+lo sub nout f0
+nout2 add lo f
+nk at s 2
+ns at s 3
+$ne at s 4
+r (out3 nout2 nk ns $ne)
+
+fn tokput3 u32x128x384 u32 u32 u32 u32 bool -> u32x128x384
+h0 >> B 7
+l0 and B 127
+g0 get A h0
+o0 get g0 l0
+v0 select F C o0
+g0b set g0 l0 v0
+t0 set A h0 g0b
+n1 add B 1
+h1 >> n1 7
+l1 and n1 127
+g1 get t0 h1
+o1 get g1 l1
+v1 select F D o1
+g1b set g1 l1 v1
+t1 set t0 h1 g1b
+n2 add B 2
+h2 >> n2 7
+l2 and n2 127
+g2 get t1 h2
+o2 get g2 l2
+v2 select F E o2
+g2b set g2 l2 v2
+t2 set t1 h2 g2b
+
+fn zpage -> u32x128
+z [0;128]
+
+fn ztok -> u32x128x384
+z zpage
+t [z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z]
+
+fn lexsrc u32x512x64 u32 -> (u32x128x384,u32)
+zero ztok
+n127 add B 127
+np >> n127 7
+s0 (zero 0 0 0 0)
+s fold lexpage np s0 A B
+out at s 0
+nout at s 1
+pk at s 2
+ps at s 3
+k1 eq pk 1
+k2 eq pk 2
+k5 eq pk 5
+k6 eq pk 6
+k7 eq pk 7
+k9 eq pk 9
+w or k1 k2
+o0 or k5 k6
+o1 or o0 k7
+one or o1 k9
+pend or w one
+wlen sub B ps
+len select w wlen 1
+c tokput3 out nout pk ps len pend
+n3 add nout 3
+nf select pend n3 nout
+r (c nf)
+
+Write only the replacement functions to: <study>/trials/t01-dense/reply.a0

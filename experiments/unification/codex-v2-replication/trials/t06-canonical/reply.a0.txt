@@ -1,0 +1,22 @@
+fn writegrid_pop_bit u32 u32 u32 -> u32
+shifted shr p2 p1
+bit and shifted 1
+n add p0 bit
+ret n
+end
+
+fn writegrid_pop_row u32 u32 u32x32 -> u32
+row get p2 p1
+bits fold writegrid_pop_bit 32 0 row
+n add p0 bits
+ret n
+end
+
+fn writegrid u32x32 io -> io
+header write p1 76
+length write header 32
+rows fold writerow 32 length p0
+population fold writegrid_pop_row 32 0 p0
+t write rows population
+ret t
+end

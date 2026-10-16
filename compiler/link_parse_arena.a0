@@ -52,7 +52,8 @@ q0 at p0 2
 q1 get p2 2
 q2 get p2 3
 q3 get p 86
-r call link_strip q0 q1 q2 q3
+snapshot get p2 4
+r call link_strip q0 q1 q2 q3 snapshot
 q4 at r 1
 q5 at q4 0
 m0_a set p 80 q5
@@ -254,8 +255,9 @@ q1 get p 41
 q2 get p 42
 r call arena_parse q0 q1 q2
 ps at r 1
-q3 at r 0
-good eq q3 0
+q3 at r 2
+ready call lv_parse_ready q3 ps
+good at ready 1
 q4 at r 0
 error eq q4 6
 q5 get p 11
@@ -265,48 +267,55 @@ pickedprofile select q6 1 q7
 q8 get ps 8
 q9 select good pickedprofile q8
 ps_1 set ps 8 q9
-q10 at r 0
+q10 at ready 0
 q set p 0 q10
 q_1 set q 120 1
-q11 get ps_1 1
-q12 get q_1 1
-q13 select error q11 q12
-q_2 set q_1 1 q13
-q14 get q_2 2
-q15 select error 4294967295 q14
-q_3 set q_2 2 q15
-q16 get q_3 3
-q17 select error 4294967295 q16
-q_4 set q_3 3 q17
-q18 get q_4 5
-q19 select error 5 q18
-q_5 set q_4 5 q19
-q20 get q_5 11
-q21 select good pickedprofile q20
-q_6 set q_5 11 q21
-q22 get ps_1 2
-q23 get q_6 95
-q24 select error q22 q23
-q_7 set q_6 95 q24
-q25 get ps_1 3
-q26 get q_7 96
-q27 select error q25 q26
-q_8 set q_7 96 q27
-q28 get ps_1 4
-q29 get q_8 97
-q30 select error q28 q29
-q_9 set q_8 97 q30
-q31 get ps_1 5
-q32 get q_9 98
-q33 select error q31 q32
-q_10 set q_9 98 q33
-q34 get ps_1 95
-q35 get q_10 99
-q36 select error q34 q35
-q_11 set q_10 99 q36
-q37 at r 2
-q38 rec q_11 ps_1 q37
-ret q38
+q11 select good 1 0
+q_2 set q_1 121 q11
+q12 get ps_1 0
+q13 eq q12 7
+q14 and good q13
+q15 select q14 1 0
+q_3 set q_2 122 q15
+q16 get ps_1 1
+q17 get q_3 1
+q18 select error q16 q17
+q_4 set q_3 1 q18
+q19 get q_4 2
+q20 select error 4294967295 q19
+q_5 set q_4 2 q20
+q21 get q_5 3
+q22 select error 4294967295 q21
+q_6 set q_5 3 q22
+q23 get q_6 5
+q24 select error 5 q23
+q_7 set q_6 5 q24
+q25 get q_7 11
+q26 select good pickedprofile q25
+q_8 set q_7 11 q26
+q27 get ps_1 2
+q28 get q_8 95
+q29 select error q27 q28
+q_9 set q_8 95 q29
+q30 get ps_1 3
+q31 get q_9 96
+q32 select error q30 q31
+q_10 set q_9 96 q32
+q33 get ps_1 4
+q34 get q_10 97
+q35 select error q33 q34
+q_11 set q_10 97 q35
+q36 get ps_1 5
+q37 get q_11 98
+q38 select error q36 q37
+q_12 set q_11 98 q38
+q39 get ps_1 95
+q40 get q_12 99
+q41 select error q39 q40
+q_13 set q_12 99 q41
+q42 at ready 2
+q43 rec q_13 ps_1 q42
+ret q43
 end
 fn lc_span (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
 p at p0 0

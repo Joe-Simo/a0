@@ -862,7 +862,7 @@ test("riscv64 and arm32: the reference host prints the interpreter's trap line a
 #include <stdlib.h>
 extern uint32_t a0_top(uint32_t);
 #define A0_TRAP_EMIT(line) printf("%s\\n", (line))
-${nativeTrapHostC()}
+${nativeTrapHostC(program)}
 int main(void) { printf("%u\\n", (unsigned)a0_top(5)); return 0; }
 `;
   const rv = findRiscv64Gcc();

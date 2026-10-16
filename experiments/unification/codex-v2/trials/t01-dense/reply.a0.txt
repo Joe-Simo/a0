@@ -1,0 +1,102 @@
+fn lexstep -> (bool,u32,u32,u32,u32,u32,u32)
+c mov C
+isw isword c
+isnl eq c 10
+isq eq c 34
+isbs eq c 92
+ishash eq c 35
+isminus eq c 45
+iseq eq c 61
+isgt eq c 62
+isat eq c 64
+issp isspace c
+k1 eq A 1
+k2 eq A 2
+k3 eq A 3
+k6 eq A 6
+k8 eq A 8
+k5 eq A 5
+k7 eq A 7
+k9 eq A 9
+k10 eq A 10
+inw or k1 k2
+notw select isw false true
+wclose and inw notw
+escd eq E 1
+notesc select escd false true
+sq and k3 isq
+sclose and sq notesc
+cclose and k8 isnl
+s57 or k5 k7
+single or s57 k9
+arrowstart or k6 k10
+arrow and arrowstart isgt
+e0 or wclose sclose
+e1 or e0 single
+emit or e1 arrowstart
+c0 or e0 cclose
+c1 or c0 single
+closed or c1 arrowstart
+consumed or sclose arrow
+ek0 select k10 9 A
+ek1 select arrow 4 ek0
+ek select sclose 3 ek1
+s1 add B 1
+es select sclose s1 B
+wl sub D B
+sl sub wl 1
+l0 select arrow 2 1
+l1 select sclose sl l0
+el select wclose wl l1
+k0 eq A 0
+none or k0 closed
+notcons select consumed false true
+free and none notcons
+isd isdigit c
+wk select isd 2 1
+n0 select issp 0 9
+n1 select isat 7 n0
+n2 select isminus 6 n1
+neq select iseq 10 n2
+n3 select isnl 5 neq
+n4 select ishash 8 n3
+n5 select isq 3 n4
+n6 select isw wk n5
+cont select closed 0 A
+nk select free n6 cont
+ns select free D B
+e2 select isbs 1 0
+e3 select escd 0 e2
+esc select k3 e3 0
+r (emit ek es el nk ns esc)
+
+fn lexsrc u32x512x64 u32 -> (u32x128x384,u32)
+zero ztok
+n127 add B 127
+np >> n127 7
+s0 (zero 0 0 0 0)
+s fold lexpage np s0 A B
+out at s 0
+nout at s 1
+pk at s 2
+ps at s 3
+k1 eq pk 1
+k2 eq pk 2
+k5 eq pk 5
+k6 eq pk 6
+k7 eq pk 7
+k9 eq pk 9
+k10 eq pk 10
+w or k1 k2
+o0 or k5 k6
+o1 or o0 k7
+o2 or o1 k9
+one or o2 k10
+pend or w one
+wlen sub B ps
+len select w wlen 1
+ek select k10 9 pk
+c tokput3 out nout ek ps len pend
+n3 add nout 3
+nf select pend n3 nout
+r (c nf)

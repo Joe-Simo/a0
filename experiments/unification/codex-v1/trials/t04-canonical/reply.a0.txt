@@ -1,0 +1,328 @@
+fn p3tok (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512x64 u32x128x3 u32x128 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+types at p0 0
+tsig at p0 1
+tlist at p0 2
+stk at p0 3
+hout at p0 4
+ntypes at p0 5
+ntlist at p0 6
+nstk at p0 7
+ls at p0 8
+depth at p0 9
+mode at p0 10
+err at p0 11
+errtok at p0 12
+name at p0 13
+res at p0 14
+haveres at p0 15
+first at p0 16
+nparams at p0 17
+nhc at p0 18
+nhn at p0 19
+cend at p0 20
+cwhere at p0 21
+j add p5 p1
+i add p6 j
+w0 mul j 3
+wh0 shr w0 7
+wl0 and w0 127
+wg0 get p3 wh0
+kind get wg0 wl0
+w1 add w0 1
+wh1 shr w1 7
+wl1 and w1 127
+wg1 get p3 wh1
+start get wg1 wl1
+w2 add w0 2
+wh2 shr w2 7
+wl2 and w2 127
+wg2 get p3 wh2
+len get wg2 wl2
+ta get p4 j
+sym shr ta 17
+wc0 shr ta 4
+wc and wc0 63
+iskw lt wc 8
+kw select iskw wc 0
+ty0 shr ta 12
+ty and ty0 3
+aw0 shr ta 14
+aw1 and aw0 1
+aw eq aw1 1
+pu0 shr ta 15
+pu and pu0 3
+k1 eq kind 1
+k4 eq kind 4
+k5 eq kind 5
+k9 eq kind 9
+m0 eq mode 0
+m1 eq mode 1
+m2 eq mode 2
+m3 eq mode 3
+inty or m1 m2
+d0 eq depth 0
+noerr eq err 0
+isfn eq kw 1
+efn and m0 isfn
+isuse eq kw 4
+kwz eq kw 0
+notres or kwz isuse
+nameok and k1 notres
+ename and m3 nameok
+enbad0 select nameok false true
+enbad and m3 enbad0
+naw select aw false true
+tw1 eq ty 1
+tw2 eq ty 2
+tw3 eq ty 3
+isu32 and tw1 naw
+isbool and tw2 naw
+isio and tw3 naw
+isxw and tw3 aw
+isbw and tw2 aw
+eid0 and inty k1
+nxw select isxw false true
+doarr0 and eid0 aw
+doarr and doarr0 nxw
+adj eq start cend
+dox0 and eid0 isxw
+dox and dox0 adj
+cwst eq cwhere 1
+stop sub nstk 1
+sth shr stop 7
+stl and stop 127
+stg get stk sth
+stv get stg stl
+xbase select cwst stv res
+xbh shr xbase 7
+xbl and xbase 127
+xbg get tsig xbh
+xbs get xbg xbl
+xbio shr xbs 31
+xnoio eq xbio 0
+anyarr or doarr dox
+an select anyarr 1 0
+askip0 select isbw 5 4
+askip select dox 1 askip0
+abase0 select isbw 1 0
+abase select dox xbase abase0
+ai0 rec ntypes false 0
+ai fold arrinfo an ai0 types p2 start len askip abase
+typesa fold arrapply an types ntypes p2 start len askip abase
+ntypesa at ai 0
+arok0 at ai 1
+arok and doarr arok0
+xok0 and dox arok0
+xok and xok0 xnoio
+arid at ai 2
+tyok0 or isu32 isbool
+tyok1 or tyok0 isio
+tyok2 or tyok1 arok
+tyok or tyok2 xok
+tyb0 select isbool 1 0
+tyb1 select isio 2 tyb0
+tyid select arok arid tyb1
+eid1 and eid0 tyok
+eid and eid1 nxw
+eidbad0 select tyok false true
+eidbad and eid0 eidbad0
+dxs and xok cwst
+cwre eq cwhere 2
+dxr and xok cwre
+isopen eq pu 1
+iscomma eq pu 2
+isclose eq pu 3
+ep0 and inty k9
+eopen and ep0 isopen
+ecomma and ep0 iscomma
+eclose0 and ep0 isclose
+notd0 select d0 false true
+eclose and eclose0 notd0
+ecbad0 and eclose0 d0
+ecbad1 and ecomma d0
+earrow0 and inty k4
+arrok and m1 d0
+earrow and earrow0 arrok
+arrbad0 select arrok false true
+eabad and earrow0 arrbad0
+enl0 and inty k5
+nlok0 and m2 d0
+hr eq haveres 1
+nlok and nlok0 hr
+enl and enl0 nlok
+nlbad0 select nlok false true
+enlbad and enl0 nlbad0
+punct0 or isopen iscomma
+punct or punct0 isclose
+k9ok and k9 punct
+hnd0 or k1 k9ok
+hnd1 or hnd0 k4
+hnd or hnd1 k5
+nothnd select hnd false true
+eoth and inty nothnd
+pos1 add ls 1
+hasf gt nstk ls
+cnt0 sub nstk pos1
+cnt1 select hasf cnt0 0
+usefr or eclose earrow
+cnt select usefr cnt1 0
+eparam0 gt cnt 8
+eparam and earrow eparam0
+fc0 rec tlist 0 0
+fc fold frcopy cnt fc0 stk pos1 ntlist tsig
+tl2 at fc 0
+hraw at fc 1
+fio at fc 2
+hs xor hraw cnt
+sig0 mul hs 16777619
+sigm and sig0 2147483647
+fiob mul fio 2147483648
+sig or sigm fiob
+rn select eclose 1 0
+ridx0 fold recone rn 4294967295 typesa tsig tl2 ntypesa ntlist cnt sig
+rfound ne ridx0 4294967295
+rnew select rfound false true
+ridx select rfound ridx0 ntypesa
+addrec and eclose rnew
+pt select eclose ridx tyid
+eprod or eid eclose
+depth2 sub depth 1
+dafter select eclose depth2 depth
+da0 eq dafter 0
+tores0 and m2 da0
+tores and eprod tores0
+dres and tores hr
+topush0 select tores0 false true
+topush and eprod topush0
+lsg0 shr ls 7
+lsg1 and ls 127
+lsg get stk lsg0
+lsv get lsg lsg1
+lsprev sub lsv 2147483648
+nstkc select eclose ls nstk
+sentl add 2147483648 ls
+sidx0 select topush nstkc 0
+sidx1 select eopen nstk sidx0
+sidx select dxs stop sidx1
+sval0 select topush pt 2147483648
+sval1 select eopen sentl sval0
+sval select dxs arid sval1
+sw0 or topush eopen
+sw01 or sw0 dxs
+sw1 or sw01 ename
+sw and sw1 noerr
+sh shr sidx 7
+sl and sidx 127
+sg get stk sh
+so get sg sl
+sx select sw sval so
+sg2 set sg sl sx
+stk2 set stk sh sg2
+nstka1 add nstkc 1
+nstka select topush nstka1 nstkc
+nstkb add nstk 1
+nstk2 select eopen nstkb nstka
+nstk3 select earrow 0 nstk2
+nstk4 select ename 1 nstk3
+ls1 select eclose lsprev ls
+ls2 select eopen nstk ls1
+ls3 select earrow 0 ls2
+ls4 select ename 0 ls3
+dplus add depth 1
+dep1 select eopen dplus dafter
+dep2 select ename 0 dep1
+usetl or addrec earrow
+ntl2 add ntlist cnt
+ntlist2 select usetl ntl2 ntlist
+tlist2 select usetl tl2 tlist
+th shr ntypesa 7
+tl and ntypesa 127
+t3 mul tl 3
+tg get typesa th
+o0 get tg t3
+t31 add t3 1
+o1 get tg t31
+t32 add t3 2
+o2 get tg t32
+v0 select addrec 5 o0
+v1 select addrec ntlist o1
+v2 select addrec cnt o2
+tg0 set tg t3 v0
+tg1 set tg0 t31 v1
+tg2 set tg1 t32 v2
+types2 set typesa th tg2
+qg get tsig th
+qo get qg tl
+qv select addrec sig qo
+qg2 set qg tl qv
+tsig2 set tsig th qg2
+nty1 add ntypesa 1
+ntypes2 select addrec nty1 ntypesa
+res1 select tores pt res
+res2 select dxr arid res1
+cst add start 1
+cend2 select eclose cst 4294967295
+cwt select tores 2 1
+cwhere2 select eclose cwt 0
+hr2 select tores 1 haveres
+hr3 select ename 0 hr2
+first2 select earrow ntlist first
+np2 select earrow cnt nparams
+name2 select ename sym name
+e5 mul nhn 5
+e51 add e5 1
+hn0 and ename noerr
+hc0 and enl noerr
+cur sub nhn 1
+c5 mul cur 5
+c52 add c5 2
+c53 add c5 3
+c54 add c5 4
+ia select hn0 e5 c52
+va select hn0 i nparams
+ca or hn0 hc0
+ah shr ia 7
+al and ia 127
+ag get hout ah
+ao get ag al
+ax select ca va ao
+ag2 set ag al ax
+hout1 set hout ah ag2
+ib select hn0 e51 c53
+vb select hn0 sym first
+bh shr ib 7
+bl and ib 127
+bg get hout1 bh
+bo get bg bl
+bx select ca vb bo
+bg2 set bg bl bx
+hout2 set hout1 bh bg2
+ch shr c54 7
+cl and c54 127
+cg get hout2 ch
+co get cg cl
+cx select hc0 res co
+cg2 set cg cl cx
+hout3 set hout2 ch cg2
+nhn1 add nhn 1
+nhn2 select hn0 nhn1 nhn
+nhc1 add nhc 1
+nhc2 select hc0 nhc1 nhc
+mo1 select efn 3 mode
+mo2 select ename 1 mo1
+mo3 select earrow 2 mo2
+mo4 select enl 0 mo3
+bad0 or enbad eidbad
+bad1 or bad0 ecbad0
+bad2 or bad1 ecbad1
+bad3 or bad2 eabad
+bad4 or bad3 enlbad
+bad5 or bad4 eoth
+bad6 or bad5 dres
+bad7 or bad6 eparam
+bad and bad7 noerr
+err2 select bad 1 err
+et2 select bad i errtok
+r rec types2 tsig2 tlist2 stk2 hout3 ntypes2 ntlist2 nstk4 ls4 dep2 mo4 err2 et2 name2 res2 hr3 first2 np2 nhc2 nhn2 cend2 cwhere2
+ret r
+end

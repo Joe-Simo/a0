@@ -1,0 +1,251 @@
+# FIPS180-4 SHA256 over an immutable arena of byte-valued u32 cells.
+# Input length is fullu32; padding is streamed, so length+padding never wraps a byte offset.
+# Digest words are big-endian SHA256 words. Generic transport errors return a zero digest.
+use "arena_vector.a0"
+fn sha256_k -> u32x64
+q0 arr 1116352408 1899447441 3049323471 3921009573 961987163 1508970993 2453635748 2870763221 3624381080 310598401 607225278 1426881987 1925078388 2162078206 2614888103 3248222580 3835390401 4022224774 264347078 604807628 770255983 1249150122 1555081692 1996064986 2554220882 2821834349 2952996808 3210313671 3336571891 3584528711 113926993 338241895 666307205 773529912 1294757372 1396182291 1695183700 1986661051 2177026350 2456956037 2730485921 2820302411 3259730800 3345764771 3516065817 3600352804 4094571909 275423344 430227734 506948616 659060556 883997877 958139571 1322822218 1537002063 1747873779 1955562222 2024104815 2227730452 2361852424 2428436474 2756734187 3204031479 3329325298
+ret q0
+end
+fn sha256_initial -> u32x8
+q0 arr 1779033703 3144134277 1013904242 2773480762 1359893119 2600822924 528734635 1541459225
+ret q0
+end
+fn sha256_zero -> u32x8
+q0 arr 0 0 0 0 0 0 0 0
+ret q0
+end
+fn sha256_rotate u32 u32 -> u32
+q0 shr p0 p1
+q1 sub 32 p1
+q2 shl p0 q1
+q3 or q0 q2
+ret q3
+end
+fn sha256_word u32x64 u32 u32x128 -> u32x64
+at mul p1 4
+q0 get p2 at
+q1 shl q0 24
+q2 add at 1
+q3 get p2 q2
+q4 shl q3 16
+q5 or q1 q4
+q6 add at 2
+q7 get p2 q6
+q8 shl q7 8
+q9 or q5 q8
+q10 add at 3
+q11 get p2 q10
+value or q9 q11
+q12 set p0 p1 value
+ret q12
+end
+fn sha256_schedule u32x64 u32 -> u32x64
+at add p1 16
+q0 sub at 15
+q1 get p0 q0
+q2 sub at 2
+q3 get p0 q2
+q4 call sha256_rotate q1 7
+q5 call sha256_rotate q1 18
+q6 xor q4 q5
+q7 shr q1 3
+s0 xor q6 q7
+q8 call sha256_rotate q3 17
+q9 call sha256_rotate q3 19
+q10 xor q8 q9
+q11 shr q3 10
+s1 xor q10 q11
+q12 sub at 16
+q13 get p0 q12
+q14 add q13 s0
+q15 sub at 7
+q16 get p0 q15
+q17 add q14 q16
+q18 add q17 s1
+q19 set p0 at q18
+ret q19
+end
+fn sha256_round u32x8 u32 u32x64 u32x64 -> u32x8
+q0 get p0 0
+q1 get p0 1
+q2 get p0 2
+q3 get p0 3
+q4 get p0 4
+q5 get p0 5
+q6 get p0 6
+q7 get p0 7
+q8 call sha256_rotate q4 6
+q9 call sha256_rotate q4 11
+q10 xor q8 q9
+q11 call sha256_rotate q4 25
+s1 xor q10 q11
+q12 and q4 q5
+q13 xor q4 4294967295
+q14 and q13 q6
+choose xor q12 q14
+q15 add q7 s1
+q16 add q15 choose
+q17 get p3 p1
+q18 add q16 q17
+q19 get p2 p1
+t1 add q18 q19
+q20 call sha256_rotate q0 2
+q21 call sha256_rotate q0 13
+q22 xor q20 q21
+q23 call sha256_rotate q0 22
+s0 xor q22 q23
+q24 and q0 q1
+q25 and q0 q2
+q26 xor q24 q25
+q27 and q1 q2
+majority xor q26 q27
+q28 add t1 s0
+q29 add q28 majority
+q30 add q3 t1
+q31 arr q29 q0 q1 q2 q30 q4 q5 q6
+ret q31
+end
+fn sha256_add u32x8 u32 u32x8 -> u32x8
+q0 get p0 p1
+q1 get p2 p1
+q2 add q0 q1
+q3 set p0 p1 q2
+ret q3
+end
+fn sha256_compress u32x8 u32x128 -> u32x8
+w arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+initial fold sha256_word 16 w p1
+expanded fold sha256_schedule 48 initial
+q0 call sha256_k
+result fold sha256_round 64 p0 expanded q0
+q1 fold sha256_add 8 result p0
+ret q1
+end
+fn sha256_byte_check u32 u32 u32x128 -> u32
+q0 ne p0 0
+q1 get p2 p1
+q2 le q1 255
+q3 select q2 0 3
+q4 select q0 p0 q3
+ret q4
+end
+fn sha256_read (u32,u32x128,io) u32 u32 u32 u32 -> (u32,u32x128,io)
+q0 at p0 2
+q1 call arena_load q0 p2 p3 p4
+ret q1
+end
+fn sha256_length u32x128 u32 u32 u32 -> u32x128
+q0 lt p1 4
+value select q0 p2 p3
+q1 and p1 3
+q2 sub 3 q1
+shift mul q2 8
+q3 add 56 p1
+q4 shr value shift
+q5 and q4 255
+q6 set p0 q3 q5
+ret q6
+end
+fn sha256_continue (u32,u32x8,io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn sha256_page io u32 u32 u32 u32 -> (u32,u32x128,io)
+whole shr p2 6
+tail and p2 63
+q0 lt p3 whole
+q1 eq p3 whole
+q2 select q1 tail 0
+count select q0 64 q2
+q3 call arena_zero
+q4 ne count 0
+q5 select q4 1 0
+q6 rec 0 q3 p0
+q7 shl p3 6
+loaded fold sha256_read q5 q6 p1 q7 count
+q8 at loaded 0
+q9 at loaded 1
+status fold sha256_byte_check count q8 q9
+bytes at loaded 1
+q10 eq p3 whole
+q11 get bytes tail
+q12 select q10 128 q11
+bytes_1 set bytes tail q12
+q13 sub p4 1
+q14 eq p3 q13
+q15 select q14 1 0
+q16 mul q15 8
+q17 shr p2 29
+q18 shl p2 3
+bytes_2 fold sha256_length q16 bytes_1 q17 q18
+q19 at loaded 2
+q20 rec status bytes_2 q19
+ret q20
+end
+fn sha256_block (u32,u32x8,io) u32 u32 u32 u32 -> (u32,u32x8,io)
+q0 at p0 2
+page call sha256_page q0 p2 p3 p1 p4
+q1 at p0 1
+q2 at page 1
+hash call sha256_compress q1 q2
+q3 at page 0
+q4 at page 2
+q5 rec q3 hash q4
+ret q5
+end
+fn arena_sha256 io u32 u32 -> (u32,u32x8,io)
+q0 shr p2 6
+q1 and p2 63
+q2 le q1 55
+q3 select q2 1 2
+blocks add q0 q3
+q4 call sha256_initial
+q5 rec 0 q4 p0
+result loop sha256_continue sha256_block blocks q5 p1 p2 blocks
+q6 at result 0
+q7 at result 0
+q8 eq q7 0
+q9 at result 1
+q10 call sha256_zero
+q11 select q8 q9 q10
+q12 at result 2
+q13 rec q6 q11 q12
+ret q13
+end
+fn sha256_hex_byte u32x128 u32 u32x8 -> u32x128
+q0 shr p1 3
+q1 get p2 q0
+q2 and p1 7
+q3 sub 7 q2
+q4 mul q3 4
+q5 shr q1 q4
+digit and q5 15
+q6 lt digit 10
+q7 add 48 digit
+q8 add 87 digit
+q9 select q6 q7 q8
+q10 set p0 p1 q9
+ret q10
+end
+fn sha256_hex_emit (u32,(u32,u32,u32),io) u32 u32x8 -> (u32,(u32,u32,u32),io)
+q0 call arena_zero
+bytes fold sha256_hex_byte 64 q0 p2
+q1 at p0 2
+q2 at p0 1
+q3 call av_append q1 q2 64 bytes
+ret q3
+end
+fn arena_sha256_hex io u32 u32 -> (u32,(u32,u32,u32),io)
+hash call arena_sha256 p0 p1 p2
+q0 at hash 0
+q1 rec 0 0 0
+q2 at hash 2
+q3 at hash 0
+q4 eq q3 0
+q5 select q4 1 0
+q6 rec q0 q1 q2
+q7 at hash 1
+q8 fold sha256_hex_emit q5 q6 q7
+ret q8
+end

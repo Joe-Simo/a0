@@ -1,0 +1,114 @@
+fn du_more (u32,u32,bool,u32,u32,u32,u32x4,u32) u32 -> (u32,u32,bool,u32,u32,u32,u32x4,u32)
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 2
+q3 and q1 q2
+q4 at p0 3
+q5 lt p1 q4
+active and q3 q5
+q6 at p0 1
+q7 at p0 7
+present lt q6 q7
+q8 at p0 6
+q9 at p0 1
+q10 get q8 q9
+q11 at p0 4
+q12 ge q10 q11
+q13 and present q12
+q14 at p0 5
+q15 le q10 q14
+accepted and q13 q15
+q16 and active present
+q17 gt q10 255
+q18 and q16 q17
+q19 at p0 0
+code select q18 6 q19
+q20 and active accepted
+q21 at p0 1
+q22 add q21 1
+q23 at p0 1
+consumed select q20 q22 q23
+q24 at p0 2
+good select active accepted q24
+q25 at p0 3
+q26 at p0 6
+q27 at p0 7
+q28 rec code consumed good q25 128 191 q26 q27
+ret q28
+end
+fn utf8_unit u32x4 u32 -> (u32,u32,u32x4,u32,u32,u32)
+q0 get p0 0
+q1 ge q0 194
+q2 le q0 223
+two and q1 q2
+q3 ge q0 224
+q4 le q0 239
+three and q3 q4
+q5 ge q0 240
+q6 le q0 244
+four and q5 q6
+q7 lt q0 128
+q8 select four 4 0
+q9 select three 3 q8
+q10 select two 2 q9
+width select q7 1 q10
+q11 gt p1 4
+q12 gt p1 0
+q13 gt q0 255
+q14 and q12 q13
+q15 or q11 q14
+code select q15 6 0
+q16 gt p1 0
+consumed select q16 1 0
+q17 eq q0 224
+q18 eq q0 240
+q19 select q18 144 128
+low select q17 160 q19
+q20 eq q0 237
+q21 eq q0 244
+q22 select q21 143 191
+high select q20 159 q22
+q23 gt width 0
+q24 sub width 1
+need select q23 q24 0
+q25 ne width 0
+q26 rec code consumed q25 need low high p0 p1
+done fold du_more 3 q26
+q27 gt p1 0
+q28 at done 0
+q29 eq q28 0
+present and q27 q29
+valid at done 2
+q30 select valid width 3
+length select present q30 0
+q31 and valid four
+q32 select q31 2 1
+units select present q32 0
+q33 gt length 0
+q34 get p0 0
+q35 select valid q34 239
+q36 select q33 q35 0
+result set p0 0 q36
+q37 gt length 1
+q38 get p0 1
+q39 select valid q38 191
+q40 select q37 q39 0
+result_1 set result 1 q40
+q41 gt length 2
+q42 get p0 2
+q43 select valid q42 189
+q44 select q41 q43 0
+result_2 set result_1 2 q44
+q45 gt length 3
+q46 get p0 3
+q47 select q45 q46 0
+result_3 set result_2 3 q47
+q48 at done 0
+q49 at done 1
+q50 select present q49 0
+q51 xor valid true
+q52 and present q51
+q53 select q52 1 0
+q54 rec q48 q50 result_3 length units q53
+ret q54
+end

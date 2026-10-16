@@ -1,0 +1,29 @@
+fn fill_step (u32,u32) u32 u32 u32 -> (u32,u32)
+r at A 0
+q at A 1
+limit sub D C
+carry ge r limit
+sum add r C
+diff sub r limit
+next_r select carry diff sum
+inc add q 1
+next_q select carry inc q
+result rec next_r next_q
+
+fn fill io u32 u32 -> io
+a open A 5
+b write a 4
+c write b 2
+cls "fill"
+d puts c cls
+e write d 12
+f write e 1
+within le B C
+value select within B C
+initial rec 0 0
+state fold fill_step 100 initial value C
+quotient at state 1
+zero eq C 0
+pct select zero 0 quotient
+g write f pct
+h close g

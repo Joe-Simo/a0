@@ -1,0 +1,576 @@
+{
+  "version": 1,
+  "frozenBeforeSubjects": "2026-10-16T16:34:48.299Z",
+  "head": "60452359f2f9faeb91a790445fb656f1c01f148b",
+  "nTasks": 12,
+  "nArms": 3,
+  "arms": [
+    "canonical",
+    "dense",
+    "unified-candidate"
+  ],
+  "protocol": "Whole function replacement with runner-owned identical AST dependency closures; first attempt plus at most one fresh independent repair using only the same prompt, raw first reply and first rejection. Arm order rotates by task; one fresh fork-none Codex agent per cell. No subject sees tests or reference. No tool/test access beyond reading assigned prompt and writing assigned reply.",
+  "selectionRule": "Candidate eligible only if total accepted count after at most one repair is no lower than each legacy arm, no application group loses accepted count, and visible payload tokens per accepted edit decrease vs canonical for each tokenizer. Report one-shot separately, all failures and per-group/arm outcomes regardless. Narrow evidence; no universal superiority or final frontend claim.",
+  "tokenAccounting": "o200k_base and cl100k_base counts of actual assigned prompt, returned source payload, and supplied repair prompt. Excludes platform/system/tool framing, hidden reasoning, billed usage and other provider overhead, which collaboration does not expose. Wall clock is orchestration elapsed, not inference-only latency. Whole-function protocol excludes potential line-edit savings.",
+  "hashes": {
+    "tasks.json": "7d9dc294fde409399e78322928ff5115ef5a73d3b7adee285b0f8515744cee4d",
+    "input-manifest.json": "cdb7f9b54068c9accbc08cd4a2d73b44e78267cb528a7715deca0e5ec8f26805",
+    "evaluator.mjs": "80e832f08253fbdebdc73e0d0d2a4ce30a3990c3604ed787a8bbbbc88fbb7051",
+    "hidden/cases.json": "3e35d32553d2f18fecdebf29e7b83d6be05121a1fc0d630ed9bd20a9ff0a16f7",
+    "selfcheck.json": "f70896e3fec6743f361e72bd87dcc94fdba05d519d030e0633769e8d53e9be80",
+    "protocol.mjs": "ab0c7b87396b0d415fdaa4ebd1d0027438ba77e55bd0acc1171b72e312243822",
+    "protocol-selfcheck.json": "450b4a82a25e32982193ef2b6201476f5d723bd8774a228bfa31d61e15bfc731",
+    "MANIFEST.json": "269e98bd618c9e52ee256bef32f49c63870ff1d01de12bdf430dfa35944563b3"
+  },
+  "limitations": [
+    "One model/configuration inherited from root; exact provider model identity and hidden usage not exposed by collaboration.",
+    "No fresh subject reuses context from another arm/task. Data author and root know answers; subjects do not.",
+    "Anchored candidate uses the existing Dense grammar with one proposed printing policy; this study does not prove a final unified frontend.",
+    "Fixed four legacy sealed tasks plus eight real application tasks; sample size12 supports bounded comparison only."
+  ],
+  "manifest": [
+    {
+      "id": "t01-canonical",
+      "task": "semicolon-comment",
+      "arm": "canonical",
+      "functionsShown": [
+        "isalpha",
+        "isdigit",
+        "isword",
+        "isspace",
+        "lexstep"
+      ],
+      "promptSHA256": "7b1d705e42d3a587f1ad57d3022c59d591c919f995aa4a6cd445a0f1afccc73c",
+      "promptBytes": 4249,
+      "replyFile": "<study>/trials/t01-canonical/reply.a0"
+    },
+    {
+      "id": "t01-dense",
+      "task": "semicolon-comment",
+      "arm": "dense",
+      "functionsShown": [
+        "isalpha",
+        "isdigit",
+        "isword",
+        "isspace",
+        "lexstep"
+      ],
+      "promptSHA256": "a03bf88f5dce5c9e2e29425bf5780c9bcd3cf84de83ef71a19d805f6ef259117",
+      "promptBytes": 4136,
+      "replyFile": "<study>/trials/t01-dense/reply.a0"
+    },
+    {
+      "id": "t01-unified-candidate",
+      "task": "semicolon-comment",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "isalpha",
+        "isdigit",
+        "isword",
+        "isspace",
+        "lexstep"
+      ],
+      "promptSHA256": "16aad5d508b2359f02e7257573d97ef04d29aab8f245523c5c702a02a9be78d4",
+      "promptBytes": 4193,
+      "replyFile": "<study>/trials/t01-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t02-dense",
+      "task": "tab-is-error",
+      "arm": "dense",
+      "functionsShown": [
+        "isspace"
+      ],
+      "promptSHA256": "7e33376a027c8119410469799a2c9091e23ce93199d182408d779373be4c11c9",
+      "promptBytes": 2799,
+      "replyFile": "<study>/trials/t02-dense/reply.a0"
+    },
+    {
+      "id": "t02-unified-candidate",
+      "task": "tab-is-error",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "isspace"
+      ],
+      "promptSHA256": "2b30dfd8768cd6aee012c98d2b6a50a6dd922e09d92d87cefd06d8a414143e26",
+      "promptBytes": 2856,
+      "replyFile": "<study>/trials/t02-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t02-canonical",
+      "task": "tab-is-error",
+      "arm": "canonical",
+      "functionsShown": [
+        "isspace"
+      ],
+      "promptSHA256": "eae78ec89c9d30a065848371427967bbaa9ac2b733fafd148b318b4981bfe7cf",
+      "promptBytes": 2787,
+      "replyFile": "<study>/trials/t02-canonical/reply.a0"
+    },
+    {
+      "id": "t03-unified-candidate",
+      "task": "text-escape-r",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "txtb"
+      ],
+      "promptSHA256": "8779b1ed3499df044645b864ad034af7351463232d45dc9ef4c2a9782236807c",
+      "promptBytes": 3475,
+      "replyFile": "<study>/trials/t03-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t03-canonical",
+      "task": "text-escape-r",
+      "arm": "canonical",
+      "functionsShown": [
+        "txtb"
+      ],
+      "promptSHA256": "25a8cb2f39db7e2951908275e13752cefd5b4df5f80b6e1bcfdd80aab3bfc448",
+      "promptBytes": 3410,
+      "replyFile": "<study>/trials/t03-canonical/reply.a0"
+    },
+    {
+      "id": "t03-dense",
+      "task": "text-escape-r",
+      "arm": "dense",
+      "functionsShown": [
+        "txtb"
+      ],
+      "promptSHA256": "af3f7c99380dab06000501bdd531d768069f3cbe9ab34ab9a60ee16ff5cd4a16",
+      "promptBytes": 3422,
+      "replyFile": "<study>/trials/t03-dense/reply.a0"
+    },
+    {
+      "id": "t04-canonical",
+      "task": "param-limit",
+      "arm": "canonical",
+      "functionsShown": [
+        "isdigit",
+        "srcpg",
+        "farst",
+        "farpage",
+        "internarr",
+        "grpb",
+        "gstep",
+        "arrseg",
+        "arrword",
+        "arrinfo",
+        "arrapply",
+        "frst",
+        "frpage",
+        "fleq",
+        "rsstep",
+        "rsok",
+        "recone",
+        "frcopy",
+        "p3tok"
+      ],
+      "promptSHA256": "8e5cf7dc3c61593143274ca4207eecf7fb03d1bba3000e0cd98c0f343b551573",
+      "promptBytes": 19311,
+      "replyFile": "<study>/trials/t04-canonical/reply.a0"
+    },
+    {
+      "id": "t04-dense",
+      "task": "param-limit",
+      "arm": "dense",
+      "functionsShown": [
+        "isdigit",
+        "srcpg",
+        "farst",
+        "farpage",
+        "internarr",
+        "grpb",
+        "gstep",
+        "arrseg",
+        "arrword",
+        "arrinfo",
+        "arrapply",
+        "frst",
+        "frpage",
+        "fleq",
+        "rsstep",
+        "rsok",
+        "recone",
+        "frcopy",
+        "p3tok"
+      ],
+      "promptSHA256": "f9de32d3bf41d34b69cd080f34db4d824de064a7531f5ade1cd7693a44e73f4c",
+      "promptBytes": 18554,
+      "replyFile": "<study>/trials/t04-dense/reply.a0"
+    },
+    {
+      "id": "t04-unified-candidate",
+      "task": "param-limit",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "isdigit",
+        "srcpg",
+        "farst",
+        "farpage",
+        "internarr",
+        "grpb",
+        "gstep",
+        "arrseg",
+        "arrword",
+        "arrinfo",
+        "arrapply",
+        "frst",
+        "frpage",
+        "fleq",
+        "rsstep",
+        "rsok",
+        "recone",
+        "frcopy",
+        "p3tok"
+      ],
+      "promptSHA256": "05faa03c4ed685be1a2494d13fb07984e0fe54e8af4a29a3a5e2ba204e6213a3",
+      "promptBytes": 18607,
+      "replyFile": "<study>/trials/t04-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t05-dense",
+      "task": "life-highlife",
+      "arm": "dense",
+      "functionsShown": [
+        "nb",
+        "count",
+        "cell"
+      ],
+      "promptSHA256": "26033abf6e9204f734a51396e195ca9dcaf8479bd8daf1cf3f387015b69aa881",
+      "promptBytes": 3398,
+      "replyFile": "<study>/trials/t05-dense/reply.a0"
+    },
+    {
+      "id": "t05-unified-candidate",
+      "task": "life-highlife",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "nb",
+        "count",
+        "cell"
+      ],
+      "promptSHA256": "d97e641c745f12ed417581cad1ace246990b5ac9a36bb7d530c0a575fe90c167",
+      "promptBytes": 3451,
+      "replyFile": "<study>/trials/t05-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t05-canonical",
+      "task": "life-highlife",
+      "arm": "canonical",
+      "functionsShown": [
+        "nb",
+        "count",
+        "cell"
+      ],
+      "promptSHA256": "b3a32e467355ab2ba5dc09796dc9e8eeffd2e28b9ab3b5763876ca8c14990f1d",
+      "promptBytes": 3479,
+      "replyFile": "<study>/trials/t05-canonical/reply.a0"
+    },
+    {
+      "id": "t06-unified-candidate",
+      "task": "life-finite-edges",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "nb",
+        "count"
+      ],
+      "promptSHA256": "a3295c30bb89e501107fd16059262da6b0c44663ab5f5ece1b37db0b9060a68c",
+      "promptBytes": 3198,
+      "replyFile": "<study>/trials/t06-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t06-canonical",
+      "task": "life-finite-edges",
+      "arm": "canonical",
+      "functionsShown": [
+        "nb",
+        "count"
+      ],
+      "promptSHA256": "e7ed1f19935d64a209914c43b33908920ceea906ac0ff73d9fcc252bec7c36b8",
+      "promptBytes": 3195,
+      "replyFile": "<study>/trials/t06-canonical/reply.a0"
+    },
+    {
+      "id": "t06-dense",
+      "task": "life-finite-edges",
+      "arm": "dense",
+      "functionsShown": [
+        "nb",
+        "count"
+      ],
+      "promptSHA256": "d9981e6391bd659e0342086c61aa56905f533cdd910b9eacd00635ca45b729f5",
+      "promptBytes": 3145,
+      "replyFile": "<study>/trials/t06-dense/reply.a0"
+    },
+    {
+      "id": "t07-canonical",
+      "task": "life-counted-input",
+      "arm": "canonical",
+      "functionsShown": [
+        "readrow",
+        "readgrid"
+      ],
+      "promptSHA256": "510815e40e385af39e855ad917091472f5edc11d7c12f83d8339f7571a5086bb",
+      "promptBytes": 4770,
+      "replyFile": "<study>/trials/t07-canonical/reply.a0"
+    },
+    {
+      "id": "t07-dense",
+      "task": "life-counted-input",
+      "arm": "dense",
+      "functionsShown": [
+        "readrow",
+        "readgrid"
+      ],
+      "promptSHA256": "99c1895f13fd0f3fce501d62f398a2d938db551b2675b8c9b00a2cbb41fa71ab",
+      "promptBytes": 4617,
+      "replyFile": "<study>/trials/t07-dense/reply.a0"
+    },
+    {
+      "id": "t07-unified-candidate",
+      "task": "life-counted-input",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "readrow",
+        "readgrid"
+      ],
+      "promptSHA256": "833c93625ebb31be6ef0cbb6214602a362b11bafdefde10130b9cb9c4c9d26b0",
+      "promptBytes": 4670,
+      "replyFile": "<study>/trials/t07-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t08-dense",
+      "task": "life-cell-commands",
+      "arm": "dense",
+      "functionsShown": [
+        "nb",
+        "count",
+        "cell",
+        "zero",
+        "step",
+        "bitstep",
+        "popcount",
+        "rowpop",
+        "population",
+        "readrow",
+        "readgrid",
+        "writerow",
+        "writegrid",
+        "life"
+      ],
+      "promptSHA256": "3d2ecc69c7e02a506c9c00f3e199ececd3b21303385cf4ecded704736d503533",
+      "promptBytes": 5819,
+      "replyFile": "<study>/trials/t08-dense/reply.a0"
+    },
+    {
+      "id": "t08-unified-candidate",
+      "task": "life-cell-commands",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "nb",
+        "count",
+        "cell",
+        "zero",
+        "step",
+        "bitstep",
+        "popcount",
+        "rowpop",
+        "population",
+        "readrow",
+        "readgrid",
+        "writerow",
+        "writegrid",
+        "life"
+      ],
+      "promptSHA256": "3b23cec526f86b71aac39d2aa85585e3c92a9a7308d918b01d1680acbc9cc6d5",
+      "promptBytes": 5872,
+      "replyFile": "<study>/trials/t08-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t08-canonical",
+      "task": "life-cell-commands",
+      "arm": "canonical",
+      "functionsShown": [
+        "nb",
+        "count",
+        "cell",
+        "zero",
+        "step",
+        "bitstep",
+        "popcount",
+        "rowpop",
+        "population",
+        "readrow",
+        "readgrid",
+        "writerow",
+        "writegrid",
+        "life"
+      ],
+      "promptSHA256": "7960027b521d9d3f0fd23cc8af7a8c4cdca982eb14a6f70c7152bb89f045e0b3",
+      "promptBytes": 6326,
+      "replyFile": "<study>/trials/t08-canonical/reply.a0"
+    },
+    {
+      "id": "t09-unified-candidate",
+      "task": "frame-policy-clamps",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "fr_quality",
+        "fr_cadence"
+      ],
+      "promptSHA256": "1f9a95aabf91de8def59a30d476f848812e348c6f18fd7d1c406d62be104ebb7",
+      "promptBytes": 2941,
+      "replyFile": "<study>/trials/t09-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t09-canonical",
+      "task": "frame-policy-clamps",
+      "arm": "canonical",
+      "functionsShown": [
+        "fr_quality",
+        "fr_cadence"
+      ],
+      "promptSHA256": "1ce65999a1ee6ec17e29ff9045a61b45bec08042936465bdfa86d49200d1c944",
+      "promptBytes": 2879,
+      "replyFile": "<study>/trials/t09-canonical/reply.a0"
+    },
+    {
+      "id": "t09-dense",
+      "task": "frame-policy-clamps",
+      "arm": "dense",
+      "functionsShown": [
+        "fr_quality",
+        "fr_cadence"
+      ],
+      "promptSHA256": "f037e8c3c3c533f33ec4d1c4759abb5f530cd5c40effbc161af7cb59a18f818c",
+      "promptBytes": 2876,
+      "replyFile": "<study>/trials/t09-dense/reply.a0"
+    },
+    {
+      "id": "t10-canonical",
+      "task": "frame-rgba-bytes",
+      "arm": "canonical",
+      "functionsShown": [
+        "fr_pack"
+      ],
+      "promptSHA256": "9fc61ecdf35631453142dd6a71d1837988ed1c17708de2ae7ca3cbf6d1f5a31c",
+      "promptBytes": 2814,
+      "replyFile": "<study>/trials/t10-canonical/reply.a0"
+    },
+    {
+      "id": "t10-dense",
+      "task": "frame-rgba-bytes",
+      "arm": "dense",
+      "functionsShown": [
+        "fr_pack"
+      ],
+      "promptSHA256": "5f33e77fb540f819beb61fbd399a24682102e6281359516ae52bffc4f797b3d6",
+      "promptBytes": 2797,
+      "replyFile": "<study>/trials/t10-dense/reply.a0"
+    },
+    {
+      "id": "t10-unified-candidate",
+      "task": "frame-rgba-bytes",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "fr_pack"
+      ],
+      "promptSHA256": "a0824859e8e5b49eb34627c14211fdff0e2b615b102c07086edac23e9380ac2f",
+      "promptBytes": 2860,
+      "replyFile": "<study>/trials/t10-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t11-dense",
+      "task": "ui-fill-safe-percent",
+      "arm": "dense",
+      "functionsShown": [
+        "open",
+        "close",
+        "fill"
+      ],
+      "promptSHA256": "e710db6f6a2f97114b436e769cff50b8da3ca28f648c4791a72588c56eaef5f4",
+      "promptBytes": 3090,
+      "replyFile": "<study>/trials/t11-dense/reply.a0"
+    },
+    {
+      "id": "t11-unified-candidate",
+      "task": "ui-fill-safe-percent",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "open",
+        "close",
+        "fill"
+      ],
+      "promptSHA256": "c635e72b37bed4cfc5f27482e6976d30fc3f75148906b0932b98d9f02d1e7e3e",
+      "promptBytes": 3173,
+      "replyFile": "<study>/trials/t11-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t11-canonical",
+      "task": "ui-fill-safe-percent",
+      "arm": "canonical",
+      "functionsShown": [
+        "open",
+        "close",
+        "fill"
+      ],
+      "promptSHA256": "28ebf4f009e1caba300878bf0bfbc156ad51a90552d45628d4820f3abd148dd7",
+      "promptBytes": 3138,
+      "replyFile": "<study>/trials/t11-canonical/reply.a0"
+    },
+    {
+      "id": "t12-unified-candidate",
+      "task": "ui-four-decimals",
+      "arm": "unified-candidate",
+      "functionsShown": [
+        "mulstep",
+        "tenpow",
+        "digitstep",
+        "morecheck",
+        "ndigits",
+        "putdigit",
+        "putnum",
+        "putfix"
+      ],
+      "promptSHA256": "ecbda72303bc2e106f01892b4e2ff289d5aab580539c25c1055d7d56b0255199",
+      "promptBytes": 3558,
+      "replyFile": "<study>/trials/t12-unified-candidate/reply.a0"
+    },
+    {
+      "id": "t12-canonical",
+      "task": "ui-four-decimals",
+      "arm": "canonical",
+      "functionsShown": [
+        "mulstep",
+        "tenpow",
+        "digitstep",
+        "morecheck",
+        "ndigits",
+        "putdigit",
+        "putnum",
+        "putfix"
+      ],
+      "promptSHA256": "fa7bca253ce1dfc4bb4fda75aab94ef54be834fc165ab7709527a36e10bc6406",
+      "promptBytes": 3630,
+      "replyFile": "<study>/trials/t12-canonical/reply.a0"
+    },
+    {
+      "id": "t12-dense",
+      "task": "ui-four-decimals",
+      "arm": "dense",
+      "functionsShown": [
+        "mulstep",
+        "tenpow",
+        "digitstep",
+        "morecheck",
+        "ndigits",
+        "putdigit",
+        "putnum",
+        "putfix"
+      ],
+      "promptSHA256": "90f006571c4c6c474a26c55dd729b7fec2ca8868ec9fb3a33c8c11e657744a1d",
+      "promptBytes": 3487,
+      "replyFile": "<study>/trials/t12-dense/reply.a0"
+    }
+  ]
+}

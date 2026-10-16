@@ -1,0 +1,1130 @@
+# Full-word structural lowering of checked arena IR into backend context16.
+use "arena_vector.a0"
+fn abc_zero16 -> u32x16
+q0 arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret q0
+end
+fn abc_code (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+q2 ne p1 0
+active and q1 q2
+q3 get d 0
+q4 select active p1 q3
+q set d 0 q4
+q5 get d 111
+q6 get d 112
+q7 select active q5 q6
+q_1 set q 112 q7
+q8 get d 113
+q9 select active p2 q8
+q_2 set q_1 113 q9
+q10 at p0 1
+q11 at p0 2
+q12 at p0 3
+q13 rec q_2 q10 q11 q12
+ret q13
+end
+fn abc_ok (u32x128,u32x16,u32x128,io) u32 -> bool
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+ret q1
+end
+fn abc_appendgo (u32x128,u32x16,u32x128,io) u32 u32 u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 at p0 3
+q1 get d p2
+q2 add p2 1
+q3 get d q2
+q4 add p2 2
+q5 get d q4
+q6 rec q1 q3 q5
+r call av_append q0 q6 p3 p4
+q7 at r 1
+q8 at q7 0
+m1_a set d p2 q8
+q9 add p2 1
+q10 at q7 1
+m1_b set m1_a q9 q10
+q11 add p2 2
+q12 at q7 2
+q13 set m1_b q11 q12
+q14 at p0 1
+q15 at p0 2
+q16 at r 2
+q17 rec q13 q14 q15 q16
+q18 at r 0
+q19 call abc_code q17 q18 0
+ret q19
+end
+fn abc_append (u32x128,u32x16,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 add p1 1
+q1 get d q0
+q2 sub 4294967295 q1
+q3 gt p2 q2
+q4 select q3 7 0
+a call abc_code p0 q4 1
+q at a 0
+q5 get q 0
+q6 eq q5 0
+q7 select q6 1 0
+q8 fold abc_appendgo q7 a p1 p2 p3
+ret q8
+end
+fn abc_readgo (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 u32 bool -> (u32x128,u32x16,u32x128,u32x128,io)
+d at p0 0
+q0 at p0 2
+source select p5 q0 d
+q1 at p0 4
+q2 get source p2
+q3 add p2 1
+q4 get source q3
+q5 add p2 2
+q6 get source q5
+q7 rec q2 q4 q6
+r call av_load q1 q7 p3 p4
+q8 at p0 1
+q9 at p0 2
+q10 at r 2
+q11 rec d q8 q9 q10
+q12 at r 0
+out call abc_code q11 q12 0
+q13 at out 0
+q14 at out 1
+q15 at out 2
+q16 at r 1
+q17 at out 3
+q18 rec q13 q14 q15 q16 q17
+ret q18
+end
+fn abc_read (u32x128,u32x16,u32x128,io) u32 u32 u32 bool -> (u32x128,u32x16,u32x128,u32x128,io)
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 at p0 1
+q4 at p0 2
+q5 call arena_zero
+q6 at p0 3
+q7 rec d q3 q4 q5 q6
+q8 fold abc_readgo q2 q7 p1 p2 p3 p4
+ret q8
+end
+fn abc_storego (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 at p0 3
+q1 get d p2
+q2 add p2 1
+q3 get d q2
+q4 add p2 2
+q5 get d q4
+q6 rec q1 q3 q5
+r call av_store q0 q6 p3 p4 p5
+q7 at p0 1
+q8 at p0 2
+q9 at r 1
+q10 rec d q7 q8 q9
+q11 at r 0
+q12 call abc_code q10 q11 0
+ret q12
+end
+fn abc_store (u32x128,u32x16,u32x128,io) u32 u32 u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold abc_storego q2 p0 p1 p2 p3 p4
+ret q3
+end
+fn abc_zero_ok (u32x128,u32x16,u32x128,io) u32 u32 u32 -> bool
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+ret q1
+end
+fn abc_zero_page (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 mul p1 128
+left sub p3 q0
+q1 gt left 128
+q2 select q1 128 left
+q3 call arena_zero
+q4 call abc_append p0 p2 q2 q3
+ret q4
+end
+fn abc_zeros (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 div p2 128
+q1 rem p2 128
+q2 eq q1 0
+q3 select q2 0 1
+pages add q0 q3
+q4 loop abc_zero_ok abc_zero_page pages p0 p1 p2
+ret q4
+end
+fn abc_copy_ok (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 u32 -> bool
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+ret q1
+end
+fn abc_copy_page (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+offset mul p1 128
+left sub p4 offset
+q0 gt left 128
+k select q0 128 left
+q1 add p3 offset
+r call abc_read p0 p2 q1 k true
+q2 at r 0
+q3 at r 1
+q4 at r 2
+q5 at r 4
+q6 rec q2 q3 q4 q5
+q7 at r 3
+q8 call abc_append q6 p5 k q7
+ret q8
+end
+fn abc_copy (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 sub 4294967295 p2
+q1 gt p3 q0
+q2 select q1 7 0
+a call abc_code p0 q2 2
+q3 div p3 128
+q4 rem p3 128
+q5 eq q4 0
+q6 select q5 0 1
+pages add q3 q6
+q7 loop abc_copy_ok abc_copy_page pages a p1 p2 p3 p4
+ret q7
+end
+fn abc_shape (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 2
+q0 get m 42
+nf div q0 14
+q1 get m 45
+nn div q1 14
+q2 get m 69
+nt div q2 5
+q3 get m 93
+q4 eq q3 1
+q5 get m 96
+q6 eq q5 1
+q7 and q4 q6
+q8 get m 42
+q9 rem q8 14
+q10 eq q9 0
+q11 and q7 q10
+q12 get m 45
+q13 rem q12 14
+q14 eq q13 0
+q15 and q11 q14
+q16 get m 48
+q17 rem q16 5
+q18 eq q17 0
+q19 and q15 q18
+q20 get m 69
+q21 rem q20 5
+q22 eq q21 0
+q23 and q19 q22
+q24 ge nt 3
+q25 and q23 q24
+q26 get m 63
+q27 rem q26 5
+q28 eq q27 0
+q29 and q25 q28
+q30 get m 63
+q31 div q30 5
+q32 get m 67
+q33 eq q31 q32
+geometry and q29 q33
+q34 get m 98
+q35 eq q34 nn
+q36 get m 101
+q37 mul nn 2
+q38 eq q36 q37
+q39 and q35 q38
+q40 get m 104
+q41 mul nf 3
+q42 eq q40 q41
+q43 and q39 q42
+q44 get m 107
+q45 mul nn 2
+q46 eq q44 q45
+counts and q43 q46
+q47 and geometry counts
+q48 select q47 0 6
+a call abc_code p0 q48 3
+q49 lt nn 306783378
+q50 get m 72
+q51 lt q50 4294967295
+q52 and q49 q51
+q53 get m 67
+q54 le q53 1431655765
+safe and q52 q54
+q55 select safe 0 7
+b call abc_code a q55 4
+d at b 0
+q56 get m 6
+d_1 set d 6 q56
+q57 get m 7
+d_2 set d_1 7 q57
+q58 get m 8
+d_3 set d_2 8 q58
+d_4 set d_3 9 nf
+q59 add nn 1
+d_5 set d_4 10 q59
+d_6 set d_5 11 nt
+q60 get m 96
+d_7 set d_6 14 q60
+q61 at b 1
+q62 at b 2
+q63 at b 3
+q64 rec d_7 q61 q62 q63
+ret q64
+end
+fn abc_initial (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 call arena_zero
+a call abc_append p0 19 1 q0
+q1 call arena_zero
+b call abc_append a 25 8 q1
+q2 call arena_zero
+args set q2 0 3
+args_1 set args 2 3
+args_2 set args_1 4 3
+c call abc_append b 28 6 args_2
+q3 call arena_zero
+nm set q3 0 4294967295
+nm_1 set nm 1 4294967295
+nm_2 set nm_1 2 4294967295
+nm_3 set nm_2 3 4294967295
+nm_4 set nm_3 4 4294967295
+e call abc_append c 40 14 nm_4
+q4 call arena_zero
+am set q4 0 4294967295
+am_1 set am 4 4294967295
+am_2 set am_1 8 4294967295
+q5 call abc_append e 43 12 am_2
+ret q5
+end
+fn abc_type (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 mul p1 5
+r call abc_read p0 68 q0 5 true
+t at r 3
+q1 at r 0
+q2 at r 1
+q3 at r 2
+q4 at r 4
+q5 rec q1 q2 q3 q4
+q6 get t 0
+q7 le q6 4
+q8 select q7 0 6
+a call abc_code q5 q8 5
+q9 get t 0
+tag add q9 1
+q10 get t 0
+q11 eq q10 3
+q12 get t 2
+q13 get t 0
+q14 eq q13 4
+q15 get t 1
+q16 add q15 1
+q17 select q14 q16 0
+ta select q11 q12 q17
+q18 get t 0
+q19 eq q18 3
+q20 get t 1
+q21 get t 0
+q22 eq q21 4
+q23 get t 2
+q24 select q22 q23 0
+tb select q19 q20 q24
+q25 call arena_zero
+row set q25 0 tag
+row_1 set row 1 ta
+row_2 set row_1 2 tb
+b call abc_append a 16 3 row_2
+q26 call arena_zero
+q27 get t 3
+meta set q26 0 q27
+q28 get t 4
+meta_1 set meta 1 q28
+q29 call abc_append b 46 2 meta_1
+ret q29
+end
+fn abc_byte (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+q0 get p2 p1
+q1 le q0 255
+q2 select q1 0 6
+q3 call abc_code p0 q2 6
+ret q3
+end
+fn abc_name_ok (u32x128,u32x16,u32x128,io) u32 u32x128 -> bool
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+ret q1
+end
+fn abc_name_page (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+offset mul p1 128
+q0 get p2 2
+left sub q0 offset
+q1 gt left 128
+n select q1 128 left
+q2 at p0 3
+q3 get p2 0
+q4 get p2 1
+q5 add q4 offset
+r call arena_load q2 q3 q5 n
+q6 at p0 0
+q7 at p0 1
+q8 at p0 2
+q9 at r 2
+q10 rec q6 q7 q8 q9
+q11 at r 0
+a call abc_code q10 q11 0
+good at a 0
+q12 get good 0
+q13 eq q12 0
+q14 select q13 n 0
+q15 at r 1
+b fold abc_byte q14 a q15
+q16 at r 1
+q17 call abc_append b 31 n q16
+ret q17
+end
+fn abc_namecopy (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get p2 2
+q1 get p2 1
+q2 sub 4294967295 q1
+q3 le q0 q2
+q4 get p2 2
+q5 get d 32
+q6 sub 4294967295 q5
+q7 le q4 q6
+safe and q3 q7
+q8 select safe 0 7
+a call abc_code p0 q8 7
+q9 call arena_zero
+q10 get d 32
+span set q9 0 q10
+q11 get p2 2
+span_1 set span 1 q11
+b call abc_append a 34 2 span_1
+q12 get p2 2
+q13 div q12 128
+q14 get p2 2
+q15 rem q14 128
+q16 eq q15 0
+q17 select q16 0 1
+pages add q13 q17
+q18 loop abc_name_ok abc_name_page pages b p2
+ret q18
+end
+fn abc_symbol (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 mul p1 5
+r call abc_read p0 62 q0 5 true
+d at r 0
+q1 get d 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 at r 1
+q5 at r 2
+q6 at r 4
+q7 rec d q4 q5 q6
+q8 at r 3
+q9 fold abc_namecopy q3 q7 q8
+ret q9
+end
+fn abc_operand_node (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 2
+q0 get m 67
+q1 lt p2 q0
+q2 select q1 0 6
+a call abc_code p0 q2 8
+q3 mul p2 3
+r call abc_read a 52 q3 3 false
+scope at r 3
+d at r 0
+q4 get scope 0
+q5 eq q4 1
+q6 get scope 1
+q7 get d 64
+q8 eq q6 q7
+q9 and q5 q8
+q10 get scope 2
+q11 ne q10 0
+good and q9 q11
+q12 at r 1
+q13 at r 2
+q14 at r 4
+q15 rec d q12 q13 q14
+q16 select good 0 6
+b call abc_code q15 q16 9
+q17 at b 0
+q18 get scope 2
+q set q17 79 q18
+q19 at b 1
+q20 at b 2
+q21 at b 3
+q22 rec q q19 q20 q21
+ret q22
+end
+fn abc_operand (u32x128,u32x16,u32x128,io) u32x128 -> (u32x128,u32x16,u32x128,io)
+q0 get p1 0
+q1 le q0 3
+q2 select q1 0 6
+a call abc_code p0 q2 10
+q3 at a 0
+q4 get p1 0
+q5 add q4 1
+d set q3 78 q5
+q6 get p1 1
+d_1 set d 79 q6
+q7 get d_1 0
+q8 eq q7 0
+q9 get p1 0
+q10 eq q9 0
+q11 and q8 q10
+q12 select q11 1 0
+q13 at a 1
+q14 at a 2
+q15 at a 3
+q16 rec d_1 q13 q14 q15
+q17 get p1 1
+q18 fold abc_operand_node q12 q16 q17
+ret q18
+end
+fn abc_savearg (u32x128,u32x16,u32x128,io) u32x128 u32 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 call arena_zero
+q1 get d 78
+pair set q0 0 q1
+q2 get d 79
+pair_1 set pair 1 q2
+a call abc_append p0 28 2 pair_1
+q3 call arena_zero
+meta set q3 0 p2
+q4 get p1 2
+meta_1 set meta 1 q4
+q5 get p1 3
+meta_2 set meta_1 2 q5
+q6 get p1 4
+meta_3 set meta_2 3 q6
+q7 call abc_append a 43 4 meta_3
+ret q7
+end
+fn abc_nodearg_store (u32x128,u32x16,u32x128,io) u32 u32x128 u32 -> (u32x128,u32x16,u32x128,io)
+a call abc_operand p0 p2
+q0 call abc_savearg a p2 p3
+ret q0
+end
+fn abc_nodearg (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 71
+original add q0 p1
+q1 mul original 5
+r call abc_read p0 47 q1 5 true
+q at r 0
+q2 get q 0
+q3 eq q2 0
+q4 select q3 1 0
+q5 at r 1
+q6 at r 2
+q7 at r 4
+q8 rec q q5 q6 q7
+q9 at r 3
+q10 fold abc_nodearg_store q4 q8 q9 original
+ret q10
+end
+fn abc_padarg (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 call arena_zero
+pair set q0 0 3
+a call abc_append p0 28 2 pair
+q1 call arena_zero
+q2 set q1 0 4294967295
+q3 call abc_append a 43 4 q2
+ret q3
+end
+fn abc_nodemeta (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 69
+q1 mul q0 2
+effect call abc_read p0 106 q1 2 true
+e at effect 3
+q2 call arena_zero
+q3 get d 69
+row set q2 0 q3
+q4 get d 64
+row_1 set row 1 q4
+q5 get d 70
+row_2 set row_1 2 q5
+q6 get p2 0
+row_3 set row_2 3 q6
+q7 get p2 6
+row_4 set row_3 4 q7
+q8 get p2 7
+row_5 set row_4 5 q8
+q9 get p2 8
+row_6 set row_5 6 q9
+q10 get p2 9
+row_7 set row_6 7 q10
+q11 get p2 10
+row_8 set row_7 8 q11
+q12 get p2 11
+row_9 set row_8 9 q12
+q13 get p2 12
+row_10 set row_9 10 q13
+q14 get p2 13
+row_11 set row_10 11 q14
+q15 get e 0
+row_12 set row_11 12 q15
+q16 get e 1
+row_13 set row_12 13 q16
+q17 at effect 0
+q18 at effect 1
+q19 at effect 2
+q20 at effect 4
+q21 rec q17 q18 q19 q20
+q22 call abc_append q21 40 14 row_13
+ret q22
+end
+fn abc_publish_node (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 call arena_zero
+row set q0 0 1
+q1 get d 64
+row_1 set row 1 q1
+q2 get d 69
+q3 add q2 1
+row_2 set row_1 2 q3
+q4 get p2 0
+q5 mul q4 3
+q6 call abc_store p0 52 q5 3 row_2
+ret q6
+end
+fn abc_noderow (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 69
+ty call abc_read p0 97 q0 1 true
+typepage at ty 3
+q1 at ty 0
+q2 at ty 1
+q3 at ty 2
+q4 at ty 4
+q5 rec q1 q2 q3 q4
+q6 get d 69
+q7 mul q6 2
+refs call abc_read q5 100 q7 2 true
+resolved at refs 3
+q8 at refs 0
+q9 at refs 1
+q10 at refs 2
+q11 at refs 4
+q12 rec q8 q9 q10 q11
+q13 get p2 0
+q14 mul q13 2
+names call abc_read q12 34 q14 2 false
+span at names 3
+q15 call arena_zero
+q16 get p2 1
+row set q15 0 q16
+q17 get p2 3
+row_1 set row 1 q17
+q18 get d 73
+row_2 set row_1 2 q18
+q19 get resolved 0
+q20 eq q19 4294967295
+q21 get resolved 0
+q22 select q20 0 q21
+row_3 set row_2 3 q22
+q23 get resolved 1
+q24 eq q23 4294967295
+q25 get resolved 1
+q26 select q24 0 q25
+row_4 set row_3 4 q26
+q27 get typepage 0
+row_5 set row_4 5 q27
+q28 get span 0
+row_6 set row_5 6 q28
+q29 get span 1
+row_7 set row_6 7 q29
+q30 at names 0
+q31 at names 1
+q32 at names 2
+q33 at names 4
+q34 rec q30 q31 q32 q33
+a call abc_append q34 25 8 row_7
+q at a 0
+q35 get q 0
+q36 eq q35 0
+q37 select q36 1 0
+b fold abc_nodemeta q37 a p2
+q_1 at b 0
+q38 get q_1 0
+q39 eq q38 0
+q40 select q39 1 0
+q41 fold abc_publish_node q40 b p2
+ret q41
+end
+fn abc_nodebody (u32x128,u32x16,u32x128,io) u32 u32x128 u32 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 65
+q1 add q0 p3
+d_1 set d 69 q1
+d_2 set d_1 70 p3
+q2 get p2 2
+d_3 set d_2 71 q2
+q3 get p2 3
+d_4 set d_3 72 q3
+q4 get d_4 29
+q5 div q4 2
+d_5 set d_4 73 q5
+q6 get p2 3
+q7 at p0 1
+q8 at p0 2
+q9 at p0 3
+q10 rec d_5 q7 q8 q9
+a loop abc_ok abc_nodearg q6 q10
+q11 get p2 3
+q12 lt q11 3
+q13 get p2 3
+q14 sub 3 q13
+pad select q12 q14 0
+b loop abc_ok abc_padarg pad a
+q at b 0
+q15 get q 0
+q16 eq q15 0
+q17 select q16 1 0
+q18 fold abc_noderow q17 b p2
+ret q18
+end
+fn abc_node (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 65
+q1 add q0 p1
+q2 mul q1 14
+r call abc_read p0 44 q2 14 true
+q at r 0
+q3 get q 0
+q4 eq q3 0
+q5 select q4 1 0
+q6 at r 1
+q7 at r 2
+q8 at r 4
+q9 rec q q6 q7 q8
+q10 at r 3
+q11 fold abc_nodebody q5 q9 q10 p1
+ret q11
+end
+fn abc_param (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 67
+q1 add q0 p1
+r call abc_read p0 50 q1 1 true
+q2 at r 0
+q3 at r 1
+q4 at r 2
+q5 at r 4
+q6 rec q2 q3 q4 q5
+q7 at r 3
+q8 call abc_append q6 19 1 q7
+ret q8
+end
+fn abc_return (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+q0 get p2 6
+q1 mul q0 5
+r call abc_read p0 47 q1 5 true
+q2 at r 0
+q3 at r 1
+q4 at r 2
+q5 at r 4
+q6 rec q2 q3 q4 q5
+q7 at r 3
+q8 call abc_operand q6 q7
+ret q8
+end
+fn abc_functionmeta (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 64
+q1 mul q0 3
+r call abc_read p0 103 q1 3 true
+bound at r 3
+q2 call arena_zero
+q3 get d 64
+row set q2 0 q3
+q4 get p2 0
+row_1 set row 1 q4
+q5 get p2 7
+row_2 set row_1 2 q5
+q6 get p2 8
+row_3 set row_2 3 q6
+q7 get p2 9
+row_4 set row_3 4 q7
+q8 get p2 6
+row_5 set row_4 5 q8
+q9 get bound 0
+row_6 set row_5 6 q9
+q10 get bound 1
+row_7 set row_6 7 q10
+q11 get bound 2
+row_8 set row_7 8 q11
+q12 get d 8
+row_9 set row_8 9 q12
+q13 get p2 12
+row_10 set row_9 10 q13
+q14 get p2 13
+row_11 set row_10 11 q14
+q15 at r 0
+q16 at r 1
+q17 at r 2
+q18 at r 4
+q19 rec q15 q16 q17 q18
+q20 call abc_append q19 37 12 row_11
+ret q20
+end
+fn abc_functionrow (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+q0 get p2 0
+q1 mul q0 2
+names call abc_read p0 34 q1 2 false
+d at names 0
+span at names 3
+q2 call arena_zero
+q3 get span 0
+row set q2 0 q3
+q4 get span 1
+row_1 set row 1 q4
+q5 get p2 2
+row_2 set row_1 2 q5
+q6 get d 74
+row_3 set row_2 3 q6
+q7 get p2 3
+row_4 set row_3 4 q7
+q8 get p2 4
+q9 add q8 1
+row_5 set row_4 5 q9
+q10 get p2 5
+row_6 set row_5 6 q10
+q11 get d 78
+row_7 set row_6 7 q11
+q12 get d 79
+row_8 set row_7 8 q12
+q13 get d 8
+row_9 set row_8 9 q13
+q14 at names 1
+q15 at names 2
+q16 at names 4
+q17 rec d q14 q15 q16
+a call abc_append q17 22 10 row_9
+q at a 0
+q18 get q 0
+q19 eq q18 0
+q20 select q19 1 0
+q21 fold abc_functionmeta q20 a p2
+ret q21
+end
+fn abc_functionbody (u32x128,u32x16,u32x128,io) u32 u32x128 u32 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+d_1 set d 64 p3
+q0 get p2 4
+d_2 set d_1 65 q0
+q1 get p2 5
+d_3 set d_2 66 q1
+q2 get p2 1
+d_4 set d_3 67 q2
+q3 get p2 2
+d_5 set d_4 68 q3
+q4 get d_5 20
+d_6 set d_5 74 q4
+d_7 set d_6 111 6
+q5 get p2 2
+q6 at p0 1
+q7 at p0 2
+q8 at p0 3
+q9 rec d_7 q6 q7 q8
+a loop abc_ok abc_param q5 q9
+q10 call arena_zero
+b call abc_append a 19 1 q10
+q11 at b 0
+q set q11 111 7
+q12 get p2 5
+q13 at b 1
+q14 at b 2
+q15 at b 3
+q16 rec q q13 q14 q15
+c loop abc_ok abc_node q12 q16
+q17 at c 0
+q_1 set q17 111 8
+q18 get q_1 0
+q19 eq q18 0
+q20 select q19 1 0
+q21 at c 1
+q22 at c 2
+q23 at c 3
+q24 rec q_1 q21 q22 q23
+e fold abc_return q20 q24 p2
+q_2 at e 0
+q25 get q_2 0
+q26 eq q25 0
+q27 select q26 1 0
+q28 fold abc_functionrow q27 e p2
+ret q28
+end
+fn abc_function (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 mul p1 14
+r call abc_read p0 41 q0 14 true
+d at r 0
+q1 get d 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 at r 1
+q5 at r 2
+q6 at r 4
+q7 rec d q4 q5 q6
+q8 at r 3
+q9 fold abc_functionbody q3 q7 q8 p1
+ret q9
+end
+fn abc_snapshot_store (u32x128,u32x16,u32x128,io) u32 u32 u32x128 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 3
+r call arena_store q0 p2 0 128 p3
+q1 at p0 0
+q2 at p0 1
+q3 at p0 2
+q4 at r 1
+q5 rec q1 q2 q3 q4
+q6 at r 0
+a call abc_code q5 q6 0
+d at a 0
+q7 get d 0
+q8 eq q7 0
+q9 get d p4
+q10 select q8 p2 q9
+q11 set d p4 q10
+q12 at a 1
+q13 at a 2
+q14 at a 3
+q15 rec q11 q12 q13 q14
+ret q15
+end
+fn abc_snapshot (u32x128,u32x16,u32x128,io) u32 u32x128 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 3
+r call arena_alloc q0 128
+q1 at p0 0
+q2 at p0 1
+q3 at p0 2
+q4 at r 2
+q5 rec q1 q2 q3 q4
+q6 at r 0
+a call abc_code q5 q6 0
+d at a 0
+q7 get d 0
+q8 eq q7 0
+q9 select q8 1 0
+q10 at r 1
+q11 fold abc_snapshot_store q9 a q10 p2 p3
+ret q11
+end
+fn abc_finish (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+d at p0 0
+q0 get d 29
+q1 div q0 2
+d_1 set d 12 q1
+q2 get d_1 32
+d_2 set d_1 13 q2
+d_3 set d_2 111 0
+c call abc_zero16
+q3 get d_3 16
+c_1 set c 0 q3
+q4 get d_3 19
+c_2 set c_1 1 q4
+q5 get d_3 22
+c_3 set c_2 2 q5
+q6 get d_3 25
+c_4 set c_3 3 q6
+q7 get d_3 28
+c_5 set c_4 4 q7
+q8 get d_3 31
+c_6 set c_5 5 q8
+q9 get d_3 9
+c_7 set c_6 11 q9
+q10 get d_3 11
+c_8 set c_7 12 q10
+q11 get d_3 10
+c_9 set c_8 13 q11
+q12 at p0 2
+q13 at p0 3
+q14 rec d_3 c_9 q12 q13
+ret q14
+end
+fn abc_failure u32x128 -> u32x128
+q0 call arena_zero
+q1 get p0 0
+q set q0 0 q1
+q_1 set q 1 1093681731
+q_2 set q_1 2 1
+q2 get p0 112
+q_3 set q_2 112 q2
+q3 get p0 113
+q4 set q_3 113 q3
+ret q4
+end
+fn abc_build io u32x128 -> (u32x128,u32x16,u32x128,io)
+q0 call arena_zero
+q1 get p1 0
+d set q0 0 q1
+d_1 set d 1 1093681731
+d_2 set d_1 2 1
+d_3 set d_2 111 1
+q2 get p1 0
+q3 eq q2 0
+q4 select q3 1 0
+q5 call abc_zero16
+q6 rec d_3 q5 p1 p0
+a fold abc_shape q4 q6
+d_4 at a 0
+q7 get d_4 0
+q8 eq q7 0
+q9 select q8 1 0
+b fold abc_initial q9 a
+q10 at b 0
+d_5 set q10 111 2
+q11 get d_5 11
+q12 at b 1
+q13 at b 2
+q14 at b 3
+q15 rec d_5 q12 q13 q14
+c loop abc_ok abc_type q11 q15
+q16 at c 0
+d_6 set q16 111 3
+q17 at c 1
+q18 at c 2
+q19 at c 3
+q20 rec d_6 q17 q18 q19
+q21 get p1 72
+e call abc_copy q20 71 0 q21 19
+q22 at e 0
+d_7 set q22 111 4
+q23 get p1 67
+q24 at e 1
+q25 at e 2
+q26 at e 3
+q27 rec d_7 q24 q25 q26
+f loop abc_ok abc_symbol q23 q27
+q28 at f 0
+d_8 set q28 111 5
+q29 at f 1
+q30 at f 2
+q31 at f 3
+q32 rec d_8 q29 q30 q31
+q33 get p1 67
+q34 mul q33 3
+g call abc_zeros q32 52 q34
+d_9 at g 0
+q35 get d_9 9
+h loop abc_ok abc_function q35 g
+q36 at h 0
+d_10 set q36 111 9
+q37 get d_10 0
+q38 eq q37 0
+q39 select q38 1 0
+q40 at h 1
+q41 at h 2
+q42 at h 3
+q43 rec d_10 q40 q41 q42
+j fold abc_snapshot q39 q43 p1 4
+d_11 at j 0
+q44 get d_11 0
+q45 eq q44 0
+q46 select q45 1 0
+q47 fold abc_finish q46 j
+ret q47
+end
+fn arena_backend_context io u32x128 -> (u32,u32x16,u32x128,io)
+r call abc_build p0 p1
+d at r 0
+q0 get d 0
+good eq q0 0
+q1 get d 0
+q2 at r 1
+q3 call abc_zero16
+q4 select good q2 q3
+q5 call abc_failure d
+q6 select good d q5
+q7 at r 3
+q8 rec q1 q4 q6 q7
+ret q8
+end
+fn abc_link_snapshot (u32x128,u32x16,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,io)
+a call abc_snapshot p0 0 p2 5
+d at a 0
+q0 get d 0
+good eq q0 0
+q1 get d 3
+q2 select good 1 q1
+d_1 set d 3 q2
+q3 get d_1 15
+q4 select good 2 q3
+d_2 set d_1 15 q4
+d_3 set d_2 111 0
+q5 at a 1
+q6 at a 2
+q7 at a 3
+q8 rec d_3 q5 q6 q7
+ret q8
+end
+fn arena_backend_attach_link io u32x16 u32x128 u32x128 -> (u32,u32x16,u32x128,io)
+d set p2 111 10
+q0 call arena_zero
+q1 rec d p1 q0 p0
+q2 get p3 0
+a call abc_code q1 q2 0
+q3 get d 1
+q4 eq q3 1093681731
+q5 get d 2
+q6 eq q5 1
+q7 and q4 q6
+q8 get p3 94
+q9 eq q8 2
+q10 and q7 q9
+q11 get p3 120
+q12 eq q11 1
+shape and q10 q12
+q13 select shape 0 3
+b call abc_code a q13 11
+q14 get p3 41
+q15 get d 6
+q16 eq q14 q15
+q17 get p3 42
+q18 get d 7
+q19 eq q17 q18
+identity and q16 q19
+q20 select identity 0 3
+e call abc_code b q20 12
+d_1 at e 0
+q21 get d_1 0
+q22 eq q21 0
+q23 select q22 1 0
+r fold abc_link_snapshot q23 e p3
+d_2 at r 0
+q24 get d_2 0
+good eq q24 0
+q25 get d_2 0
+q26 at r 1
+q27 call abc_zero16
+q28 select good q26 q27
+q29 call abc_failure d_2
+q30 select good d_2 q29
+q31 at r 3
+q32 rec q25 q28 q30 q31
+ret q32
+end
+fn arena_backend_context_linked io u32x128 u32x128 -> (u32,u32x16,u32x128,io)
+r call arena_backend_context p0 p1
+q0 at r 3
+q1 at r 1
+q2 at r 2
+q3 call arena_backend_attach_link q0 q1 q2 p2
+ret q3
+end

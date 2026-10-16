@@ -1,0 +1,203 @@
+profile strict
+fn cadd_pair u32 u32 -> (u32,bool)
+r cadd p0 p1
+ret r
+end
+fn cadd_v u32 u32 -> u32
+r call cadd_pair p0 p1
+v at r 0
+ret v
+end
+fn cadd_ok u32 u32 -> bool
+r call cadd_pair p0 p1
+v at r 1
+ret v
+end
+fn cadd_both u32 u32 -> u32
+r call cadd_pair p0 p1
+v at r 0
+ok at r 1
+mask select ok 2779096485 1515870810
+out xor v mask
+ret out
+end
+fn csub_pair u32 u32 -> (u32,bool)
+r csub p0 p1
+ret r
+end
+fn csub_v u32 u32 -> u32
+r call csub_pair p0 p1
+v at r 0
+ret v
+end
+fn csub_ok u32 u32 -> bool
+r call csub_pair p0 p1
+v at r 1
+ret v
+end
+fn csub_both u32 u32 -> u32
+r call csub_pair p0 p1
+v at r 0
+ok at r 1
+mask select ok 2779096485 1515870810
+out xor v mask
+ret out
+end
+fn cmul_pair u32 u32 -> (u32,bool)
+r cmul p0 p1
+ret r
+end
+fn cmul_v u32 u32 -> u32
+r call cmul_pair p0 p1
+v at r 0
+ret v
+end
+fn cmul_ok u32 u32 -> bool
+r call cmul_pair p0 p1
+v at r 1
+ret v
+end
+fn cmul_both u32 u32 -> u32
+r call cmul_pair p0 p1
+v at r 0
+ok at r 1
+mask select ok 2779096485 1515870810
+out xor v mask
+ret out
+end
+fn cdiv_pair u32 u32 -> (u32,bool)
+r cdiv p0 p1
+ret r
+end
+fn cdiv_v u32 u32 -> u32
+r call cdiv_pair p0 p1
+v at r 0
+ret v
+end
+fn cdiv_ok u32 u32 -> bool
+r call cdiv_pair p0 p1
+v at r 1
+ret v
+end
+fn cdiv_both u32 u32 -> u32
+r call cdiv_pair p0 p1
+v at r 0
+ok at r 1
+mask select ok 2779096485 1515870810
+out xor v mask
+ret out
+end
+fn crem_pair u32 u32 -> (u32,bool)
+r crem p0 p1
+ret r
+end
+fn crem_v u32 u32 -> u32
+r call crem_pair p0 p1
+v at r 0
+ret v
+end
+fn crem_ok u32 u32 -> bool
+r call crem_pair p0 p1
+v at r 1
+ret v
+end
+fn crem_both u32 u32 -> u32
+r call crem_pair p0 p1
+v at r 0
+ok at r 1
+mask select ok 2779096485 1515870810
+out xor v mask
+ret out
+end
+fn get_pair u32x3 u32 -> (u32,bool)
+r cget p0 p1
+ret r
+end
+fn get_v u32 -> u32
+a arr 0 4294967295 2147483648
+r call get_pair a p0
+v at r 0
+ret v
+end
+fn get_ok u32 -> bool
+a arr 0 4294967295 2147483648
+r call get_pair a p0
+v at r 1
+ret v
+end
+fn get_node_v u32 -> u32
+a arr 0 4294967295 2147483648
+r cget a p0
+v at r 0
+ret v
+end
+fn get_node_ok u32 -> bool
+a arr 0 4294967295 2147483648
+r cget a p0
+v at r 1
+ret v
+end
+fn get_literal_oob -> u32
+a arr 4 5 6
+r cget a 4294967295
+v at r 0
+ret v
+end
+fn get_literal_last -> bool
+a arr 4 5 6
+r cget a 2
+v at r 1
+ret v
+end
+fn step (u32,bool) u32 u32 -> (u32,bool)
+v at p0 0
+r cadd v p2
+ret r
+end
+fn repeated_v u32 u32 -> u32
+s rec p0 true
+r fold step 5 s p1
+v at r 0
+ret v
+end
+fn repeated_ok u32 u32 -> bool
+s rec p0 true
+r fold step 5 s p1
+v at r 1
+ret v
+end
+fn tuple_flow_v u32 u32 -> u32
+a cadd p0 p1
+b cmul p0 p1
+ok at a 1
+selected select ok a b
+c put selected 0 77
+old at selected 0
+fresh at c 0
+tail at a 0
+t xor old fresh
+out xor t tail
+ret out
+end
+fn tuple_flow_ok u32 u32 -> bool
+a csub p0 p1
+b cdiv p0 p1
+cond at a 1
+selected select cond a b
+c put selected 1 true
+old at selected 1
+fresh at c 1
+out xor old fresh
+ret out
+end
+fn get_snapshot u32 -> u32
+a arr 0 4294967295 2147483648
+r cget a p0
+b set a 0 7
+value at r 0
+old get a 0
+fresh get b 0
+t xor value old
+out xor t fresh
+ret out
+end

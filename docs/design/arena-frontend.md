@@ -66,3 +66,16 @@ Runtime resource failures remain distinct from example failures. Spec diagnostic
 phase/example/trap/value facts, but their complete public JSON renderer remains unsupported. Contract
 views and cached immutable blocks remain session-lived, with the same explicit resource-cost caveat
 as the evaluator.
+
+The diagnostic formatter now covers additional ordinary parse/name/operand errors, callee suggestions,
+function/signature/iteration checks and IO linearity. `arena_parse_diagnostic_options` and
+`arena_diagnostic_options` accept0 for suggestions disabled or1 enabled; existing entries default to1.
+Other option values and unsupported IDs return7 with no JSON. Complete public JSON is compared against
+an independent reference, including UTF16 edit coordinates, exact suggestion priority and rounded
+iteration-limit numbers. General decimal parsing is a separate component; unsupported diagnostic IDs
+remain explicit and never route to a host formatter.
+
+The shared backend table constructor consumes terminal checked/verified state and retains full-word
+operands, structural types, source names and immutable original metadata. The linked service separately
+owns grammar readiness and ordered spec authorization; grammar-only parser status7 is not a backend
+success. See [backend context](../arena-backend-context.md) and [linked verifier](../arena-linked-verifier.md).

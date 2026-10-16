@@ -1,0 +1,129 @@
+{
+  "id": "fat-arrow",
+  "summary": "`=>` is accepted as a second spelling of the arrow token",
+  "instruction": "Change request for the A0 front end (lexer and parser): `=>` must be accepted as a second spelling of the arrow `->`: the lexer emits it as the arrow token (kind 4, length 2), so `fn f u32 => u32` is a valid header. An `=` that is not followed by `>` stays a one-byte error token (kind 9), also at the very end of the source.",
+  "a0Targets": [
+    "lexstep",
+    "lexsrc"
+  ],
+  "tests": [
+    {
+      "kind": "lex",
+      "src": "fn f u32 => u32\na = b\n",
+      "expect": [
+        1,
+        0,
+        2,
+        1,
+        3,
+        1,
+        1,
+        5,
+        3,
+        4,
+        9,
+        2,
+        1,
+        12,
+        3,
+        5,
+        15,
+        1,
+        1,
+        16,
+        1,
+        9,
+        18,
+        1,
+        1,
+        20,
+        1,
+        5,
+        21,
+        1
+      ]
+    },
+    {
+      "kind": "lex",
+      "src": "x==>y -> =",
+      "expect": [
+        1,
+        0,
+        1,
+        9,
+        1,
+        1,
+        4,
+        2,
+        2,
+        1,
+        4,
+        1,
+        4,
+        6,
+        2,
+        9,
+        9,
+        1
+      ]
+    },
+    {
+      "kind": "lex",
+      "src": "=",
+      "expect": [
+        9,
+        0,
+        1
+      ]
+    },
+    {
+      "kind": "parse",
+      "src": "fn f u32 bool => u32\nret p0\nend\nfn g -> bool\nret true\nend\n",
+      "expect": {
+        "code": 0,
+        "tok": 0,
+        "fns": [
+          2,
+          2,
+          0,
+          0,
+          0,
+          0,
+          536870912,
+          8,
+          0,
+          2,
+          1,
+          0,
+          0,
+          1073741825
+        ],
+        "tlist": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "kind": "same",
+      "src": "fn sq u32 -> u32\na mul p0 p0\nret a\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "# a small program\nuse \"lib.a0\"\nfn inc u32 -> u32\na add p0 1 # one more\nret a\nend\nfn g u32x4 (u32,bool) -> u32\nb at p1 0\nc get p0 2\nd call inc c\ne div d 3\nf select true e b\nt text \"hi\\n\"\nret f\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "fn h u32x4x2 boolx3 -> (u32,u32x4)\nx get p0 1\ny get x 0\nz rec y x\nret z\nend\nfn k u32 u32 -> u32\nret sub p0 p1\nend\n"
+    }
+  ],
+  "reference": {
+    "a0": "e0\niseq eq c 61 @ isat\nk10 eq p0 10 @ k9\nk610 or k6 k10 @ k10\narrow and k610 isgt\nemit or e1 k610\nclosed or c1 k610\nek0b select k10 9 ek0 @ ek0\nek1 select arrow 4 ek0b\nn2b select iseq 10 n2 @ n2\nn3 select isnl 5 n2b\ne1\nk10 eq pk 10 @ k9\no2 or o1 k10 @ o1\none or o2 k9\nkd select k10 9 pk @ len\nc call tokput3 out nout kd ps len pend\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -80,1 +80,1 @@\n-    } else if (c === 45 && b[i + 1] === 62) {\n+    } else if ((c === 45 || c === 61) && b[i + 1] === 62) {\n"
+  },
+  "wrong": {
+    "a0": "e0\niseq eq c 61 @ isat\nk10 eq p0 10 @ k9\nk610 or k6 k10 @ k10\narrow and k610 isgt\nemit or e1 k610\nclosed or c1 k610\nek0b select k10 9 ek0 @ ek0\nek1 select arrow 4 ek0b\nn2b select iseq 10 n2 @ n2\nn3 select isnl 5 n2b\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -83,0 +83,3 @@\n+    } else if (c === 61 && b[i + 1] === 62) {\n+      out.push(4, i, 2);\n+      i += 1;\n",
+    "why": "A0: the pending `=` at the end of the source is never flushed (lexsrc unchanged); TS: the arrow advances one byte, so its `>` becomes an error token"
+  }
+}

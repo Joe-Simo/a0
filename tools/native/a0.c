@@ -852,7 +852,7 @@ static int cmd_calls(const char *file) {
  * phase) is halved, and one function over a capacity is "unsupported" (exit 65: use the
  * TypeScript checker). The first diagnostic is the one src/core.ts reports: the first parse-phase
  * error in program order, else the first checker error. Programs the chunks cannot represent
- * exactly (a `profile` line, a function defined twice across chunks) are unsupported too.
+ * exactly (a top-level `profile` directive, a function defined twice across chunks) are unsupported too.
  */
 
 #define CHUNK_BYTES 120000u
@@ -1651,13 +1651,19 @@ static int cmd_check(const char *file, bool lines) {
     jlen += files[i].len;
   }
   joined[jlen] = '\0';
+  bool inside = false;
   for (size_t p = 0; p < jlen;) {
     char *nl = memchr(joined + p, '\n', jlen - p);
     size_t pe = nl == NULL ? jlen : (size_t)(nl - joined);
     const char *b, *e;
     clean_line(joined + p, joined + pe, &b, &e);
-    Word w[1];
-    if (words_of(b, e, w, 1) == 1 && word_is(w[0], "profile")) give_up("a profile line");
+    Word w[2];
+    int k = words_of(b, e, w, 2);
+    /* Match cut_units: profile is contextual inside a function, a directive outside it. */
+    if (!inside) {
+      if (k >= 1 && word_is(w[0], "profile")) give_up("a profile line");
+      if (k >= 1 && word_is(w[0], "fn")) inside = true;
+    } else if (k == 1 && word_is(w[0], "end")) inside = false;
     p = pe + 1;
   }
   cut_units();

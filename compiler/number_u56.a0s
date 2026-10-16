@@ -1,0 +1,108 @@
+raw # Positive integer binary64 formatting for exact inputs below2^56.
+raw # This bounded interface is sufficient for the first A0218 iteration-product failure.
+raw # It rounds the exact integer to nearest/ties-even binary64, then emits JS String digits.
+raw # All decisions use u32 pairs; no host floating point or decimal formatting is used.
+raw use "arena_vector.a0"
+extern arena_zero() -> u32x128
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+
+fn num56_add(a:(u32,u32),b:(u32,u32)) -> (u32,u32)
+ let lo=a#0+b#0
+ return (lo,a#1+b#1+bit(lo<a#0))
+end
+fn num56_sub(a:(u32,u32),b:(u32,u32)) -> (u32,u32)
+ return (a#0-b#0,a#1-b#1-bit(a#0<b#0))
+end
+fn num56_less(a:(u32,u32),b:(u32,u32)) -> bool
+ return (a#1<b#1)|((a#1==b#1)&(a#0<b#0))
+end
+fn num56_same(a:(u32,u32),b:(u32,u32)) -> bool
+ return (a#0==b#0)&(a#1==b#1)
+end
+fn num56_small(a:(u32,u32),m:u32) -> (u32,u32)
+ let low=(a#0&65535)*m
+ let high=(a#0>>16)*m+(low>>16)
+ return ((low&65535)|(high<<16),a#1*m+(high>>16))
+end
+fn num56_div10(a:(u32,u32)) -> ((u32,u32),u32)
+ let top=a#1/10
+ let middle=((a#1%10)<<16)|(a#0>>16)
+ let tail=((middle%10)<<16)|(a#0&65535)
+ return ((((middle/10)<<16)|(tail/10),top),tail%10)
+end
+fn num56_bit_step(n:u32,i:u32,v:u32) -> u32
+ return (v>>i)!=0?i+1:n
+end
+fn num56_bits(a:(u32,u32)) -> u32
+ let high=fold(num56_bit_step,32,0,a#1)
+ let low=fold(num56_bit_step,32,0,a#0)
+ return a#1!=0?32+high:low
+end
+fn num56_round(a:(u32,u32)) -> (u32,u32)
+ let bits=num56_bits(a)
+ let shift=bits>53?bits-53:0
+ let unit=1<<shift
+ let rem=a#0&(unit-1)
+ let base=(a#0-rem,a#1)
+ let twice=rem*2
+ let odd=((a#0>>shift)&1)!=0
+ let up=(twice>unit)|((twice==unit)&odd)
+ return num56_add(base,(up?unit:0,0))
+end
+fn num56_search_more(s:(bool,(u32,u32),(u32,u32),(u32,u32),(u32,u32)),i:u32,n:(u32,u32),above:u32,below:u32,even:bool) -> bool
+ return s#0
+end
+fn num56_search_step(s:(bool,(u32,u32),(u32,u32),(u32,u32),(u32,u32)),i:u32,n:(u32,u32),above:u32,below:u32,even:bool) -> (bool,(u32,u32),(u32,u32),(u32,u32),(u32,u32))
+ let oldq=s#1
+ let division=num56_div10(s#2)
+ let quotient=division#0
+ let remainder=num56_add(s#3,num56_small(oldq,division#1))
+ let q=num56_small(oldq,10)
+ let twice=num56_small(remainder,2)
+ let up=num56_less(q,twice)|(num56_same(q,twice)&((quotient#0&1)!=0))
+ let candidate=num56_add(num56_sub(n,remainder),up?q:(0,0))
+ let smaller=num56_less(candidate,n)
+ let distance=smaller?num56_sub(n,candidate):num56_sub(candidate,n)
+ let boundary=(smaller?below:above,0)
+ let distance2=num56_small(distance,2)
+ let good=num56_less(distance2,boundary)|(num56_same(distance2,boundary)&even)
+ return (good,q,quotient,remainder,good?candidate:s#4)
+end
+fn num56_shortest(a:(u32,u32)) -> (u32,u32)
+ let n=num56_round(a)
+ let bits=num56_bits(n)
+ let shift=bits>53?bits-53:0
+ let step=1<<shift
+ let minus=num56_sub(n,(1,0))
+ let power=((n#0&minus#0)==0)&((n#1&minus#1)==0)&((n#0|n#1)!=0)
+ let lower=(power&(bits>53))?step>>1:step
+ let even=((n#0>>shift)&1)==0
+ let state=(true,(1,0),n,(0,0),n)
+ let found=loop(num56_search_more,num56_search_step,18,state,n,step,lower,even)
+ return found#4
+end
+fn num56_digit_more(s:((u32,u32),u32,u32x128),i:u32) -> bool
+ let n=s#0
+ return (n#0|n#1)!=0
+end
+fn num56_digit_step(s:((u32,u32),u32,u32x128),i:u32) -> ((u32,u32),u32,u32x128)
+ let r=num56_div10(s#0)
+ return (r#0,s#1+1,set(s#2,s#1,48+r#1))
+end
+fn num56_reverse(page:u32x128,i:u32,reversed:u32x128,length:u32) -> u32x128
+ return set(page,i,get(reversed,length-i-1))
+end
+fn num56_emit(s:(u32,(u32,u32,u32),io),i:u32,lo:u32,hi:u32) -> (u32,(u32,u32,u32),io)
+ let n=num56_shortest((lo,hi))
+ let zero=arena_zero()
+ let initial=(n,0,set(zero,0,48))
+ let digits=loop(num56_digit_more,num56_digit_step,20,initial)
+ let length=digits#1==0?1:digits#1
+ let bytes=fold(num56_reverse,length,zero,digits#2,length)
+ return av_append(s#2,s#1,length,bytes)
+end
+fn number_u56(t:io,lo:u32,hi:u32) -> (u32,(u32,u32,u32),io)
+ let good=hi<16777216
+ let initial=(good?0:7,(0,0,0),t)
+ return fold(num56_emit,bit(good),initial,lo,hi)
+end

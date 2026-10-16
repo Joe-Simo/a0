@@ -1,0 +1,9 @@
+# Experimental A0 C# source emitter
+
+`compiler/emit_csharp.a0` contains C# emission decisions in A0. `emitcsharpio` accepts the common source packet and requires its completion tag; `emitcsharp_profile` accepts checked paged IR. The native source-compiler test helper builds the verified repository seed, runs that seed to emit the compiler closure as C, then invokes Clang. There is no TypeScript C# fallback.
+
+The experimental implementation emits canonical operations and checked tuples, uint/bool arrays, public readonly record structs, persistent aggregate updates, calls/folds/loops, and the existing fixed C# IO ABI. Public method names use C# @ escaping. Generated method bodies explicitly use unchecked arithmetic even when a client project enables overflow checks. Strict profile and nondefault options currently refuse with an empty result. Legacy frontend and paged-IR capacities remain; this is not the full-word arena backend or complete target parity.
+
+`test/selfhost-csharp.test.ts` always runs compiler-generation and packet/refusal cases when Clang is available. Its separate target test uses an existing .NET SDK and explicitly skips when the SDK is absent. `A0_DOTNET`, `DOTNET_ROOT` and PATH discovery support developer installations and CI's existing setup-dotnet step. The test never installs a toolchain. Restore uses a local empty feed and framework packs already supplied by that SDK.
+
+The target driver prepares checked-operation expected literals from the independent shared BigInt fixture, then checks public keyword names, wrapping arithmetic under checked-project settings, clone identity and values, zero division/remainder, unsigned checked indexing, IO token identity and exhaustion, and fixed input/output capacities. Compiler generation passing does not imply the optional target compilation or execution passed; retain the test's skip result when reporting evidence.

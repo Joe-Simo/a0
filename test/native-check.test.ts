@@ -4,7 +4,17 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { findClang, findGcc } from '../src/toolchain.js';
 import { buildNativeCheck } from '../tools/native-check.js';
-import { cleanup, compare, programSet, type Row, tempDir } from '../tools/native-check-diff.js';
+import {
+  cleanup,
+  compare,
+  materialize,
+  mutants,
+  native,
+  profileDirectivePrograms,
+  programSet,
+  type Row,
+  tempDir,
+} from '../tools/native-check-diff.js';
 
 const compiler = findClang().path ?? findGcc().path;
 const skip = compiler === undefined ? 'no C compiler (clang or gcc) on this machine' : false;
@@ -47,6 +57,16 @@ test('native check: same verdict as the TypeScript checker on the corpus, the so
         label,
       );
     assert.equal(rows.filter((r) => r.label.startsWith('app-edit/')).length, 15);
+    const contextual = rows.filter((r) => r.label.startsWith('contextual-profile/'));
+    assert.equal(contextual.length, 3);
+    assert.ok(contextual.every((r) => r.outcome === 'same' && r.reference.ok));
+    for (const p of materialize(join(dir, 'profiles'), profileDirectivePrograms())) {
+      assert.deepEqual(
+        native(exe, p.path),
+        { kind: 'unsupported', why: 'a profile line' },
+        p.label,
+      );
+    }
     assert.ok(rows.filter((r) => r.label.startsWith('mutant-')).length >= 24);
     assert.ok(rows.filter((r) => r.label.startsWith('pair-')).length >= 12);
     // operands that cross the front end's 16384-operand half inside one segment (parse.a0)
@@ -59,5 +79,27 @@ test('native check: same verdict as the TypeScript checker on the corpus, the so
     assert.ok(statSync('compiler/emit_wasm.a0').size >= 200_000);
   } finally {
     cleanup(dir);
+  }
+});
+
+test('native-check mutants: return and drop edits skip nodes whose names start with ret', () => {
+  const nodes = Array.from({ length: 32 }, (_, i) => {
+    const prefix = ['retv', 'retval', 'return_value'][i % 3];
+    return `${prefix}${i} add p0 ${i}`;
+  });
+  const lines = ['fn f u32 -> u32', ...nodes, '\tret\tretv0 # actual return', 'end', ''];
+  const source = lines.join('\n');
+  const generated = mutants(source, 24, 0xc0ffee);
+  assert.equal(generated.length, 24);
+  const returns = generated.filter(([label]) => /^mutant-(ret|drop)-/.test(label));
+  assert.deepEqual(
+    returns.map(([label]) => label),
+    ['mutant-ret-3', 'mutant-drop-10', 'mutant-ret-15', 'mutant-drop-22'],
+  );
+  for (const [label, text] of returns) {
+    const expected = [...lines];
+    if (label.startsWith('mutant-ret-')) expected[nodes.length + 1] = 'ret nosuchnode';
+    else expected.splice(nodes.length + 1, 1);
+    assert.equal(text, expected.join('\n'), label);
   }
 });

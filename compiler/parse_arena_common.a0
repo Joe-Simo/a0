@@ -4,6 +4,7 @@ use "symbol_arena.a0"
 use "lex_arena.a0"
 use "types_arena.a0"
 use "lines_arena.a0"
+use "ir_builder_arena.a0"
 fn ap_fail (u32x128,io) u32 u32 u32 u32 u32 -> (u32x128,io)
 p at p0 0
 q0 get p 0
@@ -59,39 +60,6 @@ q3 at p0 1
 q4 rec p z q3
 q5 fold ap_readgo q2 q4 p1 p2 p3
 ret q5
-end
-fn ap_appendgo (u32x128,io) u32 u32 u32 u32x128 -> (u32x128,io)
-p at p0 0
-q0 at p0 1
-q1 get p p2
-q2 add p2 1
-q3 get p q2
-q4 add p2 2
-q5 get p q4
-q6 rec q1 q3 q5
-r call av_append q0 q6 p3 p4
-q7 at r 1
-q8 at q7 0
-m1_a set p p2 q8
-q9 add p2 1
-q10 at q7 1
-m1_b set m1_a q9 q10
-q11 add p2 2
-q12 at q7 2
-q13 set m1_b q11 q12
-q14 at r 0
-q15 set q13 0 q14
-q16 at r 2
-q17 rec q15 q16
-ret q17
-end
-fn ap_append (u32x128,io) u32 u32 u32x128 -> (u32x128,io)
-p at p0 0
-q0 get p 0
-q1 eq q0 0
-q2 select q1 1 0
-q3 fold ap_appendgo q2 p0 p1 p2 p3
-ret q3
 end
 fn ap_digit u32 -> bool
 q0 ge p0 48
@@ -1562,29 +1530,12 @@ q51 get rwi 13
 q52 get rwi 14
 rt call ap_type q50 q51 q52
 q0_1 at rt 0
-q1_1 set q0_1 10 1
-q53 get q0_1 42
-q54 div q53 14
-q2_1 set q1_1 11 q54
-q3_1 set q2_1 12 p2
-q55 get q0_1 45
-q56 div q55 14
-q4_1 set q3_1 13 q56
-q5_1 set q4_1 14 0
-q6_1 set q5_1 15 q40
-q7_1 set q6_1 16 n
 q57 at rt 1
-q8_1 set q7_1 17 q57
 q58 at sym 1
-q9_1 set q8_1 18 q58
-qa set q9_1 19 4294967295
-qb set qa 20 4294967295
-qc set qb 21 4294967295
-qd set qc 22 0
-q59 get q0_1 57
-q60 div q59 6
-qe set qd 23 q60
-qf set qe 31 0
+pending call ab_begin q0_1 q58 q40 n q57 p2
+q1_1 set pending 10 1
+qd set q1_1 22 0
+qf set qd 31 0
 q61 at rt 2
 q62 rec qf q61
 ret q62
@@ -1642,28 +1593,21 @@ q28 select q27 1 0
 q29 at a 1
 q30 rec q value q29
 n fold ap_operandintern q28 q30 p1
-z call arena_zero
-r set z 0 kind
 q31 at n 1
-r_1 set r 1 q31
 q32 get p1 13
-r_2 set r_1 2 q32
 q33 get p1 14
-r_3 set r_2 3 q33
 q34 get p1 7
 q35 ne q34 0
 q36 and par q35
 q37 select q36 4 0
-r_4 set r_3 4 q37
 b at n 0
-q38 get b 48
-index div q38 5
 q39 at n 2
 q40 rec b q39
-out call ap_append q40 47 5 r_4
+out call ab_operand q40 kind q31 q32 q33 q37
 c at out 0
+index at out 1
 q41 set c 90 index
-q42 at out 1
+q42 at out 2
 q43 rec q41 q42
 ret q43
 end
@@ -1912,39 +1856,16 @@ q128 at f 1
 q129 rec fp_2 q128
 args loop ap_argok ap_nodearg count q129 p1 first
 q at args 0
-z call arena_zero
 q130 get q 88
-row set z 0 q130
-row_1 set row 1 op
-row_2 set row_1 2 argsfirst
-row_3 set row_2 3 count
 q131 get q 86
-row_4 set row_3 4 q131
 q132 get q 87
-row_5 set row_4 5 q132
-row_6 set row_5 6 p2
 q133 get id 13
-row_7 set row_6 7 q133
 q134 get id 14
-row_8 set row_7 8 q134
 q135 get opinfo 13
-row_9 set row_8 9 q135
 q136 get opinfo 14
-row_10 set row_9 10 q136
 q137 select sugar 1 0
-row_11 set row_10 11 q137
-row_12 set row_11 12 0
-row_13 set row_12 13 0
-out call ap_append args 44 14 row_13
-q_1 at out 0
-q138 get q_1 14
-q139 add q138 1
-q_2 set q_1 14 q139
-q140 get q_2 88
-q_3 set q_2 21 q140
-q141 at out 1
-q142 rec q_3 q141
-ret q142
+out call ab_node args q130 op argsfirst count q131 q132 p2 q133 q134 q135 q136 q137 0 0
+ret out
 end
 fn ap_tchar (u32x128,u32,u32,u32,u32,io) u32 u32x128 u32 u32 -> (u32x128,u32,u32,u32,u32,io)
 q0 get p2 p1
@@ -2063,14 +1984,11 @@ r loop ap_tpageok ap_tpage pages q12 p2 p3
 ret r
 end
 fn ap_textemit (u32x128,io) u32 u32 u32 u32 -> (u32x128,io)
-z call arena_zero
-z_1 set z 0 2
-z_2 set z_1 1 p2
-z_3 set z_2 2 p3
-z_4 set z_3 3 p4
-z_5 set z_4 4 2
-q0 call ap_append p0 47 5 z_5
-ret q0
+out call ab_operand p0 2 p2 p3 p4 2
+q0 at out 0
+q1 at out 2
+q2 rec q0 q1
+ret q2
 end
 fn ap_tdchar (u32x128,u32,io) u32 u32x128 u32 -> (u32x128,u32,io)
 q0 get p2 p1
@@ -2167,38 +2085,17 @@ pages add q19 q22
 q23 at symbol 2
 q24 rec q 0 q23
 r loop ap_tdpageok ap_tdpage pages q24 p6 p7
-z call arena_zero
 q25 at symbol 1
-z_1 set z 0 q25
-z_2 set z_1 1 22
-z_3 set z_2 2 first
-z_4 set z_3 3 p9
-z_5 set z_4 4 4294967295
-z_6 set z_5 5 4294967295
-z_7 set z_6 6 p3
 q26 get p4 13
-z_8 set z_7 7 q26
 q27 get p4 14
-z_9 set z_8 8 q27
 q28 get p5 13
-z_10 set z_9 9 q28
 q29 get p5 14
-z_11 set z_10 10 q29
-z_12 set z_11 11 2
-z_13 set z_12 12 p6
-z_14 set z_13 13 p7
 q30 at r 0
 q31 at r 2
 q32 rec q30 q31
-out call ap_append q32 44 14 z_14
-q_1 at out 0
-q33 get q_1 14
-q34 add q33 1
-q_2 set q_1 14 q34
-q35 at symbol 1
-q_3 set q_2 21 q35
-q36 at symbol 1
-q_4 set q_3 88 q36
+out call ab_node q32 q25 22 first p9 4294967295 4294967295 p3 q26 q27 q28 q29 2 p6 p7
+q_3 at out 0
+q_4 set q_3 88 q25
 q37 at out 1
 q38 rec q_4 q37
 ret q38
@@ -2446,20 +2343,13 @@ q1 at f 1
 q2 rec p q1
 n call ap_node q2 p2 p3
 q at n 0
-z call arena_zero
-z_1 set z 0 0
 q3 get q 88
-z_2 set z_1 1 q3
 q4 get p2 3
-z_3 set z_2 2 q4
-z_4 set z_3 3 3
-z_5 set z_4 4 1
-q5 get q 48
-index div q5 5
-out call ap_append n 47 5 z_5
+out call ab_operand n 0 q3 q4 3 1
 q6 at out 0
+index at out 1
 r set q6 90 index
-q7 at out 1
+q7 at out 2
 q8 rec r q7
 ret q8
 end
@@ -2537,8 +2427,7 @@ r_1 fold ap_ret_operand q20 r p1 p2
 p at r_1 0
 p_1 set p 10 2
 q21 get p_1 90
-p_2 set p_1 19 q21
-p_3 set p_2 20 p2
+p_3 call ab_return p_1 q21 p2
 p_4 set p_3 22 0
 q22 at r_1 1
 q23 rec p_4 q22
@@ -2552,36 +2441,7 @@ q2 ge q1 65536
 q3 select q2 29 0
 a call ap_fail p0 q3 0 0 0 0
 q at a 0
-z call arena_zero
-q4 get q 18
-z_1 set z 0 q4
-q5 get q 15
-z_2 set z_1 1 q5
-q6 get q 16
-z_3 set z_2 2 q6
-q7 get q 17
-z_4 set z_3 3 q7
-q8 get q 13
-z_5 set z_4 4 q8
-q9 get q 14
-z_6 set z_5 5 q9
-q10 get q 19
-z_7 set z_6 6 q10
-q11 get q 12
-z_8 set z_7 7 q11
-q12 get q 20
-z_9 set z_8 8 q12
-z_10 set z_9 9 p3
-q13 get q 23
-z_11 set z_10 10 q13
-q14 get q 57
-q15 div q14 6
-q16 get q 23
-q17 sub q15 q16
-z_12 set z_11 11 q17
-z_13 set z_12 12 0
-z_14 set z_13 13 0
-appended call ap_append a 41 14 z_14
+appended call ab_function a p3 0 0
 q18 get q 18
 q19 get q 11
 q20 add q19 1

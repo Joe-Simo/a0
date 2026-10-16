@@ -1,0 +1,861 @@
+# Experimental Metal emission composes the A0 C stage, token mapper and scalar kernels.
+# Checked/unsafe strict/IO/vector failures are explicit; C-large ABI currently returns14.
+# This module is not a production CLI route and has no Metal device validation here.
+use "emit_c_arena.a0"
+
+fn tm_prelude (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call tcl146 p0
+ret x1
+end
+
+fn tm_uint (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call tcl147 p0
+ret x1
+end
+
+fn tm_ulong (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call tcl148 p0
+ret x1
+end
+
+fn tm_inline (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call tcl149 p0
+ret x1
+end
+
+fn tm_thread (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call tcl3 p0
+ret x1
+end
+
+fn tm_ident (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),u32,io)
+x1 ge p5 97
+x2 le p5 122
+x3 and x1 x2
+x4 ge p5 65
+x5 le p5 90
+x6 and x4 x5
+x7 ge p5 48
+x8 le p5 57
+x9 and x7 x8
+x10 or x3 x6
+x11 eq p5 95
+x12 or x9 x11
+x13 or x10 x12
+x14 select x13 1 0
+x15 at p0 0
+x16 at p0 1
+x17 at p0 2
+x18 rec x15 x16 x14 x17
+ret x18
+end
+
+fn tm_length_step ((u32,(u32,u32,u32),io),u32,u32) u32 u32x16 u32 u32 u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32,u32)
+x1 at p0 0
+x2 at p0 1
+x3 add p6 x2
+x4 call sv_get x1 p5 x3
+x5 at x4 0
+x6 at x4 1
+x7 at x4 3
+x8 rec x5 x6 x7
+x9 at x4 2
+x10 call tm_ident x8 0 p2 p3 p4 x9
+x11 at x10 0
+x12 at x10 1
+x13 at x10 2
+x14 at x10 3
+x15 rec x11 x12 x14
+x16 ne x13 0
+x17 select x16 1 0
+x18 add x2 x17
+x19 eq x13 0
+x20 select x19 1 0
+x21 rec x15 x18 x20
+ret x21
+end
+
+fn tm_length_more ((u32,(u32,u32,u32),io),u32,u32) u32 u32x16 u32 u32 u32 u32 u32 -> bool
+s at p0 0
+code at s 0
+done at p0 2
+a eq code 0
+b eq done 0
+r and a b
+ret r
+end
+
+fn tm_length (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),u32,io)
+x1 rec p0 0 0
+x2 sub p7 p6
+x3 loop tm_length_more tm_length_step x2 x1 p2 p3 p4 p5 p6 p7
+x4 at x3 0
+x5 at x3 1
+x6 at x4 0
+x7 at x4 1
+x8 at x4 2
+x9 rec x6 x7 x5 x8
+ret x9
+end
+
+fn tm_match_u32 (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),u32,io)
+x1 le p6 p7
+x2 sub p7 p6
+x3 le 8 x2
+x4 and x1 x3
+x5 select x4 1 0
+x6 add p6 0
+x7 select x4 x6 0
+x8 call sv_get p0 p5 x7
+x9 at x8 0
+x10 at x8 1
+x11 at x8 3
+x12 rec x9 x10 x11
+x13 at x8 2
+x14 eq x13 117
+x15 select x14 1 0
+x16 and x5 x15
+x17 add p6 1
+x18 select x4 x17 0
+x19 call sv_get x12 p5 x18
+x20 at x19 0
+x21 at x19 1
+x22 at x19 3
+x23 rec x20 x21 x22
+x24 at x19 2
+x25 eq x24 105
+x26 select x25 1 0
+x27 and x16 x26
+x28 add p6 2
+x29 select x4 x28 0
+x30 call sv_get x23 p5 x29
+x31 at x30 0
+x32 at x30 1
+x33 at x30 3
+x34 rec x31 x32 x33
+x35 at x30 2
+x36 eq x35 110
+x37 select x36 1 0
+x38 and x27 x37
+x39 add p6 3
+x40 select x4 x39 0
+x41 call sv_get x34 p5 x40
+x42 at x41 0
+x43 at x41 1
+x44 at x41 3
+x45 rec x42 x43 x44
+x46 at x41 2
+x47 eq x46 116
+x48 select x47 1 0
+x49 and x38 x48
+x50 add p6 4
+x51 select x4 x50 0
+x52 call sv_get x45 p5 x51
+x53 at x52 0
+x54 at x52 1
+x55 at x52 3
+x56 rec x53 x54 x55
+x57 at x52 2
+x58 eq x57 51
+x59 select x58 1 0
+x60 and x49 x59
+x61 add p6 5
+x62 select x4 x61 0
+x63 call sv_get x56 p5 x62
+x64 at x63 0
+x65 at x63 1
+x66 at x63 3
+x67 rec x64 x65 x66
+x68 at x63 2
+x69 eq x68 50
+x70 select x69 1 0
+x71 and x60 x70
+x72 add p6 6
+x73 select x4 x72 0
+x74 call sv_get x67 p5 x73
+x75 at x74 0
+x76 at x74 1
+x77 at x74 3
+x78 rec x75 x76 x77
+x79 at x74 2
+x80 eq x79 95
+x81 select x80 1 0
+x82 and x71 x81
+x83 add p6 7
+x84 select x4 x83 0
+x85 call sv_get x78 p5 x84
+x86 at x85 0
+x87 at x85 1
+x88 at x85 3
+x89 rec x86 x87 x88
+x90 at x85 2
+x91 eq x90 116
+x92 select x91 1 0
+x93 and x82 x92
+x94 at x89 0
+x95 at x89 1
+x96 at x89 2
+x97 rec x94 x95 x93 x96
+ret x97
+end
+
+fn tm_match_u64 (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),u32,io)
+x1 le p6 p7
+x2 sub p7 p6
+x3 le 8 x2
+x4 and x1 x3
+x5 select x4 1 0
+x6 add p6 0
+x7 select x4 x6 0
+x8 call sv_get p0 p5 x7
+x9 at x8 0
+x10 at x8 1
+x11 at x8 3
+x12 rec x9 x10 x11
+x13 at x8 2
+x14 eq x13 117
+x15 select x14 1 0
+x16 and x5 x15
+x17 add p6 1
+x18 select x4 x17 0
+x19 call sv_get x12 p5 x18
+x20 at x19 0
+x21 at x19 1
+x22 at x19 3
+x23 rec x20 x21 x22
+x24 at x19 2
+x25 eq x24 105
+x26 select x25 1 0
+x27 and x16 x26
+x28 add p6 2
+x29 select x4 x28 0
+x30 call sv_get x23 p5 x29
+x31 at x30 0
+x32 at x30 1
+x33 at x30 3
+x34 rec x31 x32 x33
+x35 at x30 2
+x36 eq x35 110
+x37 select x36 1 0
+x38 and x27 x37
+x39 add p6 3
+x40 select x4 x39 0
+x41 call sv_get x34 p5 x40
+x42 at x41 0
+x43 at x41 1
+x44 at x41 3
+x45 rec x42 x43 x44
+x46 at x41 2
+x47 eq x46 116
+x48 select x47 1 0
+x49 and x38 x48
+x50 add p6 4
+x51 select x4 x50 0
+x52 call sv_get x45 p5 x51
+x53 at x52 0
+x54 at x52 1
+x55 at x52 3
+x56 rec x53 x54 x55
+x57 at x52 2
+x58 eq x57 54
+x59 select x58 1 0
+x60 and x49 x59
+x61 add p6 5
+x62 select x4 x61 0
+x63 call sv_get x56 p5 x62
+x64 at x63 0
+x65 at x63 1
+x66 at x63 3
+x67 rec x64 x65 x66
+x68 at x63 2
+x69 eq x68 52
+x70 select x69 1 0
+x71 and x60 x70
+x72 add p6 6
+x73 select x4 x72 0
+x74 call sv_get x67 p5 x73
+x75 at x74 0
+x76 at x74 1
+x77 at x74 3
+x78 rec x75 x76 x77
+x79 at x74 2
+x80 eq x79 95
+x81 select x80 1 0
+x82 and x71 x81
+x83 add p6 7
+x84 select x4 x83 0
+x85 call sv_get x78 p5 x84
+x86 at x85 0
+x87 at x85 1
+x88 at x85 3
+x89 rec x86 x87 x88
+x90 at x85 2
+x91 eq x90 116
+x92 select x91 1 0
+x93 and x82 x92
+x94 at x89 0
+x95 at x89 1
+x96 at x89 2
+x97 rec x94 x95 x93 x96
+ret x97
+end
+
+fn tm_match_static (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),u32,io)
+x1 le p6 p7
+x2 sub p7 p6
+x3 le 13 x2
+x4 and x1 x3
+x5 select x4 1 0
+x6 add p6 0
+x7 select x4 x6 0
+x8 call sv_get p0 p5 x7
+x9 at x8 0
+x10 at x8 1
+x11 at x8 3
+x12 rec x9 x10 x11
+x13 at x8 2
+x14 eq x13 115
+x15 select x14 1 0
+x16 and x5 x15
+x17 add p6 1
+x18 select x4 x17 0
+x19 call sv_get x12 p5 x18
+x20 at x19 0
+x21 at x19 1
+x22 at x19 3
+x23 rec x20 x21 x22
+x24 at x19 2
+x25 eq x24 116
+x26 select x25 1 0
+x27 and x16 x26
+x28 add p6 2
+x29 select x4 x28 0
+x30 call sv_get x23 p5 x29
+x31 at x30 0
+x32 at x30 1
+x33 at x30 3
+x34 rec x31 x32 x33
+x35 at x30 2
+x36 eq x35 97
+x37 select x36 1 0
+x38 and x27 x37
+x39 add p6 3
+x40 select x4 x39 0
+x41 call sv_get x34 p5 x40
+x42 at x41 0
+x43 at x41 1
+x44 at x41 3
+x45 rec x42 x43 x44
+x46 at x41 2
+x47 eq x46 116
+x48 select x47 1 0
+x49 and x38 x48
+x50 add p6 4
+x51 select x4 x50 0
+x52 call sv_get x45 p5 x51
+x53 at x52 0
+x54 at x52 1
+x55 at x52 3
+x56 rec x53 x54 x55
+x57 at x52 2
+x58 eq x57 105
+x59 select x58 1 0
+x60 and x49 x59
+x61 add p6 5
+x62 select x4 x61 0
+x63 call sv_get x56 p5 x62
+x64 at x63 0
+x65 at x63 1
+x66 at x63 3
+x67 rec x64 x65 x66
+x68 at x63 2
+x69 eq x68 99
+x70 select x69 1 0
+x71 and x60 x70
+x72 add p6 6
+x73 select x4 x72 0
+x74 call sv_get x67 p5 x73
+x75 at x74 0
+x76 at x74 1
+x77 at x74 3
+x78 rec x75 x76 x77
+x79 at x74 2
+x80 eq x79 32
+x81 select x80 1 0
+x82 and x71 x81
+x83 add p6 7
+x84 select x4 x83 0
+x85 call sv_get x78 p5 x84
+x86 at x85 0
+x87 at x85 1
+x88 at x85 3
+x89 rec x86 x87 x88
+x90 at x85 2
+x91 eq x90 105
+x92 select x91 1 0
+x93 and x82 x92
+x94 add p6 8
+x95 select x4 x94 0
+x96 call sv_get x89 p5 x95
+x97 at x96 0
+x98 at x96 1
+x99 at x96 3
+x100 rec x97 x98 x99
+x101 at x96 2
+x102 eq x101 110
+x103 select x102 1 0
+x104 and x93 x103
+x105 add p6 9
+x106 select x4 x105 0
+x107 call sv_get x100 p5 x106
+x108 at x107 0
+x109 at x107 1
+x110 at x107 3
+x111 rec x108 x109 x110
+x112 at x107 2
+x113 eq x112 108
+x114 select x113 1 0
+x115 and x104 x114
+x116 add p6 10
+x117 select x4 x116 0
+x118 call sv_get x111 p5 x117
+x119 at x118 0
+x120 at x118 1
+x121 at x118 3
+x122 rec x119 x120 x121
+x123 at x118 2
+x124 eq x123 105
+x125 select x124 1 0
+x126 and x115 x125
+x127 add p6 11
+x128 select x4 x127 0
+x129 call sv_get x122 p5 x128
+x130 at x129 0
+x131 at x129 1
+x132 at x129 3
+x133 rec x130 x131 x132
+x134 at x129 2
+x135 eq x134 110
+x136 select x135 1 0
+x137 and x126 x136
+x138 add p6 12
+x139 select x4 x138 0
+x140 call sv_get x133 p5 x139
+x141 at x140 0
+x142 at x140 1
+x143 at x140 3
+x144 rec x141 x142 x143
+x145 at x140 2
+x146 eq x145 101
+x147 select x146 1 0
+x148 and x137 x147
+x149 at x144 0
+x150 at x144 1
+x151 at x144 2
+x152 rec x149 x150 x148 x151
+ret x152
+end
+
+fn tm_match_ptr (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),u32,io)
+x1 le p6 p7
+x2 sub p7 p6
+x3 le 4 x2
+x4 and x1 x3
+x5 select x4 1 0
+x6 add p6 0
+x7 select x4 x6 0
+x8 call sv_get p0 p5 x7
+x9 at x8 0
+x10 at x8 1
+x11 at x8 3
+x12 rec x9 x10 x11
+x13 at x8 2
+x14 eq x13 97
+x15 select x14 1 0
+x16 and x5 x15
+x17 add p6 1
+x18 select x4 x17 0
+x19 call sv_get x12 p5 x18
+x20 at x19 0
+x21 at x19 1
+x22 at x19 3
+x23 rec x20 x21 x22
+x24 at x19 2
+x25 eq x24 48
+x26 select x25 1 0
+x27 and x16 x26
+x28 add p6 2
+x29 select x4 x28 0
+x30 call sv_get x23 p5 x29
+x31 at x30 0
+x32 at x30 1
+x33 at x30 3
+x34 rec x31 x32 x33
+x35 at x30 2
+x36 eq x35 116
+x37 select x36 1 0
+x38 and x27 x37
+x39 add p6 3
+x40 select x4 x39 0
+x41 call sv_get x34 p5 x40
+x42 at x41 0
+x43 at x41 1
+x44 at x41 3
+x45 rec x42 x43 x44
+x46 at x41 2
+x47 eq x46 95
+x48 select x47 1 0
+x49 and x38 x48
+x50 at x45 0
+x51 at x45 1
+x52 at x45 2
+x53 rec x50 x51 x49 x52
+ret x53
+end
+
+fn tm_copy (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call sv_span p0 p5 p6 p7
+ret x1
+end
+
+fn tm_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 call tm_length x1 0 p2 p3 p4 p5 x2 p6
+x4 at x3 0
+x5 at x3 1
+x6 at x3 2
+x7 at x3 3
+x8 rec x4 x5 x7
+x9 ne x6 0
+x10 select x9 x6 1
+x11 call tm_match_u32 x8 0 p2 p3 p4 p5 x2 p6
+x12 at x11 0
+x13 at x11 1
+x14 at x11 2
+x15 at x11 3
+x16 rec x12 x13 x15
+x17 eq x6 8
+x18 select x17 1 0
+x19 and x14 x18
+x20 call tm_match_u64 x16 0 p2 p3 p4 p5 x2 p6
+x21 at x20 0
+x22 at x20 1
+x23 at x20 2
+x24 at x20 3
+x25 rec x21 x22 x24
+x26 eq x6 8
+x27 select x26 1 0
+x28 and x23 x27
+x29 call tm_match_static x25 0 p2 p3 p4 p5 x2 p6
+x30 at x29 0
+x31 at x29 1
+x32 at x29 2
+x33 at x29 3
+x34 rec x30 x31 x33
+x35 eq x6 6
+x36 select x35 1 0
+x37 and x32 x36
+x38 call tm_match_ptr x34 0 p2 p3 p4 p5 x2 p6
+x39 at x38 0
+x40 at x38 1
+x41 at x38 2
+x42 at x38 3
+x43 rec x39 x40 x42
+x44 ge x6 4
+x45 select x44 1 0
+x46 and x41 x45
+x47 add x2 x6
+x48 le x47 p6
+x49 sub p6 x47
+x50 ge x49 2
+x51 and x48 x50
+x52 select x51 x47 0
+x53 call sv_get x43 p5 x52
+x54 at x53 0
+x55 at x53 1
+x56 at x53 3
+x57 rec x54 x55 x56
+x58 at x53 2
+x59 add x47 1
+x60 select x51 x59 0
+x61 call sv_get x57 p5 x60
+x62 at x61 0
+x63 at x61 1
+x64 at x61 3
+x65 rec x62 x63 x64
+x66 at x61 2
+x67 eq x58 32
+x68 eq x66 42
+x69 and x67 x68
+x70 and x51 x69
+x71 select x70 1 0
+x72 and x46 x71
+x73 ne x72 0
+x74 select x73 1 0
+x75 fold tm_thread x74 x65 p2 p3 p4
+x76 ne x19 0
+x77 select x76 1 0
+x78 fold tm_uint x77 x75 p2 p3 p4
+x79 ne x28 0
+x80 select x79 1 0
+x81 fold tm_ulong x80 x78 p2 p3 p4
+x82 ne x37 0
+x83 select x82 1 0
+x84 fold tm_inline x83 x81 p2 p3 p4
+x85 or x28 x37
+x86 or x19 x85
+x87 eq x86 0
+x88 select x87 1 0
+x89 fold tm_copy x88 x84 p2 p3 p4 p5 x2 x10
+x90 ne x37 0
+x91 select x90 13 x10
+x92 add x2 x91
+x93 rec x89 x92
+ret x93
+end
+
+fn tm_bool_cast (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call tcl152 p0
+ret x1
+end
+
+fn tm_kernel_arg (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 3
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 add x7 p1
+x11 get p2 1
+r12 call sv_get x9 x11 x10
+x13 at r12 0
+x14 at r12 1
+x15 at r12 2
+x16 at r12 3
+x17 rec x13 x14 x16
+x18 ne p1 0
+x19 select x18 1 0
+x20 fold tc_comma x19 x17 p2 p3 p4
+x21 eq x15 1
+x22 select x21 1 0
+x23 fold tm_bool_cast x22 x20 p2 p3 p4
+x24 call tcl150 x23
+x25 mul p3 10
+x26 add x25 2
+x27 get p2 2
+r28 call sv_get x24 x27 x26
+x29 at r28 0
+x30 at r28 1
+x31 at r28 2
+x32 at r28 3
+x33 rec x29 x30 x32
+x34 call sv_num x33 x31
+x35 call tcl151 x34
+x36 call sv_num x35 p1
+x37 call tcl90 x36
+ret x37
+end
+
+fn tm_bool_open (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call tcl37 p0
+ret x1
+end
+
+fn tm_bool_close (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 call tcl156 p0
+ret x1
+end
+
+fn tm_kernel (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p3 10
+x2 add x1 4
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 call tcl153 x9
+x11 mul p3 10
+x12 add x11 0
+x13 get p2 2
+r14 call sv_get x10 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 mul p3 10
+x21 add x20 1
+x22 get p2 2
+r23 call sv_get x19 x22 x21
+x24 at r23 0
+x25 at r23 1
+x26 at r23 2
+x27 at r23 3
+x28 rec x24 x25 x27
+x29 get p2 5
+x30 call sv_span x28 x29 x17 x26
+x31 call tcl154 x30
+x32 eq x7 1
+x33 select x32 1 0
+x34 fold tm_bool_open x33 x31 p2 p3 p4
+x35 call tcl85 x34
+x36 mul p3 10
+x37 add x36 0
+x38 get p2 2
+r39 call sv_get x35 x38 x37
+x40 at r39 0
+x41 at r39 1
+x42 at r39 2
+x43 at r39 3
+x44 rec x40 x41 x43
+x45 mul p3 10
+x46 add x45 1
+x47 get p2 2
+r48 call sv_get x44 x47 x46
+x49 at r48 0
+x50 at r48 1
+x51 at r48 2
+x52 at r48 3
+x53 rec x49 x50 x52
+x54 get p2 5
+x55 call sv_span x53 x54 x42 x51
+x56 call tcl37 x55
+x57 mul p3 10
+x58 add x57 2
+x59 get p2 2
+r60 call sv_get x56 x59 x58
+x61 at r60 0
+x62 at r60 1
+x63 at r60 2
+x64 at r60 3
+x65 rec x61 x62 x64
+x66 fold tm_kernel_arg x63 x65 p2 p3 p4
+x67 call tcl6 x66
+x68 eq x7 1
+x69 select x68 1 0
+x70 fold tm_bool_close x69 x67 p2 p3 p4
+x71 call tcl155 x70
+ret x71
+end
+
+fn tm_scalar_param ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+x1 at p0 0
+x2 at p0 1
+x3 mul p3 10
+x4 add x3 3
+x5 get p2 2
+r6 call sv_get x1 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 add x9 p1
+x13 get p2 1
+r14 call sv_get x11 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 lt x17 2
+x21 select x20 1 0
+x22 and x2 x21
+x23 rec x19 x22
+ret x23
+end
+
+fn tm_kernel_fn (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p1 10
+x2 add x1 2
+x3 get p2 2
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 mul p1 10
+x11 add x10 4
+x12 get p2 2
+r13 call sv_get x9 x12 x11
+x14 at r13 0
+x15 at r13 1
+x16 at r13 2
+x17 at r13 3
+x18 rec x14 x15 x17
+x19 lt x16 2
+x20 select x19 1 0
+x21 rec x18 x20
+x22 fold tm_scalar_param x7 x21 p2 p1 0
+x23 at x22 0
+x24 at x22 1
+x25 ne x24 0
+x26 select x25 1 0
+x27 fold tm_kernel x26 x23 p2 p1 0
+ret x27
+end
+
+fn tm_more ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 u32 u32 u32 -> bool
+s at p0 0
+code at s 0
+idx at p0 1
+a eq code 0
+b lt idx p6
+r and a b
+ret r
+end
+
+fn metal_emit io u32x16 -> (u32,(u32,u32,u32),io)
+phase call tc_analyze p0 p1 256 1024 1 0
+s at phase 0
+ctx at phase 1
+code at s 0
+okay eq code 0
+times select okay 1 0
+rendered fold tc_program times s ctx 0 0
+v at rendered 1
+t at rendered 2
+status at rendered 0
+h at v 0
+n at v 1
+z rec 0 0 0
+start rec status z t
+pre fold tm_prelude times start ctx 0 0
+offset add 0 69
+
+position rec pre offset
+mapped loop tm_more tm_step n position ctx 0 0 h n
+body at mapped 0
+count get ctx 11
+kernels loop sv_ok tm_kernel_fn count body ctx 0 0
+result call ew_public kernels
+ret result
+end
+
+
+fn tc_forward_metal (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+t at p0 2
+r call metal_emit t p2
+ret r
+end
+
+fn metal_emit_shaped io u32x16 u32x16 -> (u32,(u32,u32,u32),io)
+phase call tc_analyze p0 p1 256 1024 1 0
+s at phase 0
+checked call tc_same_count s p1 p2
+code at checked 0
+okay eq code 0
+times select okay 1 0
+r fold tc_forward_metal times checked p2
+out call ew_public r
+ret out
+end

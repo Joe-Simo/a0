@@ -1,0 +1,27 @@
+fn count_finite_nb u32x32 u32 u32 -> u32
+v nb A B C
+r select lt B 32 v 0
+s select lt C 32 r 0
+
+fn count u32x32 u32 u32 -> u32
+ru sub B 1
+rd add B 1
+cl sub C 1
+cr add C 1
+a count_finite_nb A ru cl
+b count_finite_nb A ru C
+c count_finite_nb A ru cr
+d count_finite_nb A B cl
+e count_finite_nb A B cr
+f count_finite_nb A rd cl
+g count_finite_nb A rd C
+h count_finite_nb A rd cr
+s1 add a b
+s2 add s1 c
+s3 add s2 d
+s4 add s3 e
+s5 add s4 f
+s6 add s5 g
+s7 add s6 h
+r select lt B 32 s7 0
+s select lt C 32 r 0

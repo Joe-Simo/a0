@@ -1,0 +1,1233 @@
+# Experimental C# emitter. Runtime decisions execute in A0 on checked paged IR.
+# The imported C module supplies generic char/decimal/name writers and frontend helpers;
+# no C emission function is reachable from the C# entries.
+raw use "source_packet.a0"
+raw use "emit_c.a0"
+extern zpage() -> u32x128
+extern cws6(io,u32,u32,u32,u32,u32,u32) -> io
+extern cdecst2(io,u32,u32) -> io
+extern cwdec(io,u32) -> io
+extern cwnm(io,bool,u32x128x400,u32,u32) -> io
+
+fn cslit0(s: io, unused: u32) -> io
+  s = cws6(s, 110, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit1(s: io, unused: u32) -> io
+  s = cws6(s, 112, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit2(s: io, unused: u32) -> io
+  s = cws6(s, 117, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit3(s: io, unused: u32) -> io
+  s = cws6(s, 1936482662, 101, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit4(s: io, unused: u32) -> io
+  s = cws6(s, 1702195828, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit5(s: io, unused: u32) -> io
+  s = cws6(s, 8236, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit6(s: io, unused: u32) -> io
+  s = cws6(s, 95, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit7(s: io, unused: u32) -> io
+  s = cws6(s, 98, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit8(s: io, unused: u32) -> io
+  s = cws6(s, 28521, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit9(s: io, unused: u32) -> io
+  s = cws6(s, 97, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit10(s: io, unused: u32) -> io
+  s = cws6(s, 114, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit11(s: io, unused: u32) -> io
+  s = cws6(s, 1953393013, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit12(s: io, unused: u32) -> io
+  s = cws6(s, 1819242338, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit13(s: io, unused: u32) -> io
+  s = cws6(s, 1867067457, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit14(s: io, unused: u32) -> io
+  s = cws6(s, 24402, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit15(s: io, unused: u32) -> io
+  s = cws6(s, 23899, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit16(s: io, unused: u32) -> io
+  s = cws6(s, 26144, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit17(s: io, unused: u32) -> io
+  s = cws6(s, 1953701920, 1667855457, 32, 0, 0, 0)
+  return s
+end
+
+fn cslit18(s: io, unused: u32) -> io
+  s = cws6(s, 1633640224, 1970298672, 24436, 0, 0, 0)
+  return s
+end
+
+fn cslit19(s: io, unused: u32) -> io
+  s = cws6(s, 40, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit20(s: io, unused: u32) -> io
+  s = cws6(s, 539783712, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit21(s: io, unused: u32) -> io
+  s = cws6(s, 539588128, 1701978235, 1852994932, 1998615072, 543716457, 6692987)
+  return s
+end
+
+fn cslit22(s: io, unused: u32) -> io
+  s = cws6(s, 1981824288, 540769568, 2685, 0, 0, 0)
+  return s
+end
+
+fn cslit23(s: io, unused: u32) -> io
+  s = cws6(s, 1633640224, 1702059824, 24436, 0, 0, 0)
+  return s
+end
+
+fn cslit24(s: io, unused: u32) -> io
+  s = cws6(s, 539779360, 1953393013, 539781408, 0, 0, 0)
+  return s
+end
+
+fn cslit25(s: io, unused: u32) -> io
+  s = cws6(s, 539588128, 8315, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit26(s: io, unused: u32) -> io
+  s = cws6(s, 1025532704, 10272, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit27(s: io, unused: u32) -> io
+  s = cws6(s, 1127113001, 1701736300, 540748072, 1600084835, 1834954849, 1764254831)
+  s = cws6(s, 8236, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit28(s: io, unused: u32) -> io
+  s = cws6(s, 542976373, 997597245, 1952805408, 544109173, 2099264355, 10)
+  return s
+end
+
+fn cslit29(s: io, unused: u32) -> io
+  s = cws6(s, 1970282528, 1667853410, 1634038304, 1819176804, 1701978233, 1685221219)
+  s = cws6(s, 1920234272, 544498549, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit30(s: io, unused: u32) -> io
+  s = cws6(s, 670505, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit31(s: io, unused: u32) -> io
+  s = cws6(s, 1159737135, 1919250552, 1852140905, 543973748, 1696604995, 1953786221)
+  s = cws6(s, 1998615141, 1953786226, 1763733093, 809574510, 1699553326, 1685022836)
+  s = cws6(s, 1685021216, 544433513, 1819310181, 1953063785, 1998616940, 544235890)
+  s = cws6(s, 1953393013, 1769103648, 1701668980, 778266996, 1651863562, 543385964)
+  s = cws6(s, 1952543859, 1663066985, 1936941420, 1295008032, 1819632751, 175841381)
+  s = cws6(s, 1970282528, 1667853410, 1634038304, 1819176804, 1701978233, 1685221219)
+  s = cws6(s, 1920234272, 544498549, 846356306, 1650423135, 1852405032, 811999348)
+  s = cws6(s, 1868701740, 1713400943, 171649329, 1970282528, 1667853410, 1634038304)
+  s = cws6(s, 1819176804, 1701978233, 1685221219, 1920234272, 544498549, 846356306)
+  s = cws6(s, 1767863647, 1769285743, 1713402990, 1092627504, 544164144, 992555366)
+  s = cws6(s, 1881153546, 1768710773, 1702043747, 1684368481, 1634493216, 1092645747)
+  s = cws6(s, 544164144, 538970747, 1970282528, 1667853410, 1634038304, 1819176804)
+  s = cws6(s, 1769283705, 1566274670, 1886275872, 1025537141, 2003136032, 1852405024)
+  s = cws6(s, 892492660, 540761398, 1818391920, 1914725225, 1868849509, 544828526)
+  s = cws6(s, 544501353, 1886275918, 540767349, 1818391920, 1763730281, 1344304238)
+  s = cws6(s, 1953067887, 997093225, 1651863584, 543385964, 1684104562, 2037149295)
+  s = cws6(s, 1852405024, 542989172, 1886680399, 1025537141, 2003136032, 1852405024)
+  s = cws6(s, 808541044, 995963954, 1651863584, 543385964, 544501353, 1953845070)
+  s = cws6(s, 997487984, 538976266, 1651863584, 543385964, 1867067457, 1852405032)
+  s = cws6(s, 542989172, 1970302569, 2065705332, 1850297888, 544503152, 2035490877)
+  s = cws6(s, 1835365491, 1952533806, 1766665832, 1852385390, 779384176, 1735288140)
+  s = cws6(s, 539781236, 691418418, 2035490875, 1835365491, 1920090414, 1127119201)
+  s = cws6(s, 679047279, 1970302569, 1226845300, 1953853550, 1229856812, 1953853550)
+  s = cws6(s, 2099264297, 2099257354, 1931485194, 1769234804, 1599217763, 1969173106)
+  s = cws6(s, 544172383, 811687775, 1634038367, 809576548, 1948282697, 544940073)
+  s = cws6(s, 1953393013, 1025537568, 1345221664, 1953067887, 544108393, 779362364)
+  s = cws6(s, 1886275918, 1059091573, 1227781152, 1953853550, 1345221723, 1953067887)
+  s = cws6(s, 728657769, 975199531, 997535776, 1952805408, 544109173, 544695662)
+  s = cws6(s, 846356306, 1767863647, 745941103, 992572448, 537558304, 1635021600)
+  s = cws6(s, 543385972, 1867067457, 1633640224, 1920425776, 677737577, 1867067457)
+  s = cws6(s, 539784224, 1953393013, 539588128, 1718165627, 779364384, 1953845070)
+  s = cws6(s, 544503152, 808525884, 539571250, 1968123508, 1953853556, 1311667291)
+  s = cws6(s, 1886680399, 724268149, 540876893, 1914714998, 1920300133, 997466222)
+  s = cws6(s, 537558304, 1635021600, 543385972, 1867067457, 1633640224, 1970298672)
+  s = cws6(s, 1093170036, 544164144, 1965042804, 1534357097, 694231133, 1595964192)
+  s = cws6(s, 1597006175, 1953067639, 745810021, 1769285664, 1630106734, 1852132398)
+  s = cws6(s, 694711399, 1868963899, 1667327346, 1965564008, 544501353, 1852383350)
+  s = cws6(s, 539582752, 811687775, 1769109343, 1948804468, 695607340, 1701978171)
+  s = cws6(s, 1852994932, 540767264, 538970749, 1952543859, 1965056873, 544501353)
+  s = cws6(s, 811687775, 1685024095, 1852405032, 744562804, 1852405024, 694296692)
+  s = cws6(s, 1914731296, 1920300133, 543236206, 996286501, 537558304, 1635021600)
+  s = cws6(s, 543385972, 1953393013, 1633640224, 1768185648, 1769285750, 1629516910)
+  s = cws6(s, 1769283628, 1646294126, 544940073, 1970562418, 1646292594, 540884256)
+  s = cws6(s, 1059091760, 1852405024, 1632448116, 1818318456, 975201653, 790651168)
+  s = cws6(s, 540762656, 538970749, 1952543859, 1965056873, 544501353, 811687775)
+  s = cws6(s, 1835364959, 1852405032, 744562804, 1852405024, 694296692, 1914731296)
+  s = cws6(s, 1920300133, 543301742, 807419197, 541007989, 540680289, 539304033)
+  s = cws6(s, 2099264354, 1931485194, 1769234804, 1599217763, 1969173106, 1595957855)
+  s = cws6(s, 1597006175, 1684300131, 1852405032, 744562804, 1852405024, 694296692)
+  s = cws6(s, 1914731296, 1920300133, 1701716078, 1599217783, 1969173106, 1965580895)
+  s = cws6(s, 1701340014, 1684368227, 723542312, 740909600, 1819617312, 694644335)
+  s = cws6(s, 539697249, 1027350626, 1852405024, 1632448116, 1818318456, 992568693)
+  s = cws6(s, 537558304, 1635021600, 543385972, 846356306, 1650423135, 1633640224)
+  s = cws6(s, 1935892272, 1965580917, 544501353, 1965042785, 544501353, 2065705314)
+  s = cws6(s, 1952805408, 544109173, 544695662, 846356306, 1650423135, 1668183336)
+  s = cws6(s, 1801676136, 1630037093, 1646275872, 1629498409, 540884512, 540748130)
+  s = cws6(s, 538970749, 1952543859, 1377854313, 1597141599, 543317877, 811687775)
+  s = cws6(s, 1970103135, 1769285740, 1629516910, 1769283628, 1646294126, 544940073)
+  s = cws6(s, 1970562418, 1847619186, 1377859429, 1597141599, 677535605, 1751346805)
+  s = cws6(s, 1701536613, 543238244, 694296618, 1965563948, 1735290732, 706765097)
+  s = cws6(s, 1008755232, 1769283645, 1294890094, 1633056865, 694515052, 175972411)
+  s = cws6(s, 1953701920, 1667855457, 1918849568, 1601527602, 1600069730, 1667182689)
+  s = cws6(s, 678848868, 1953393013, 539779360, 1953393013, 539583008, 1701978235)
+  s = cws6(s, 1852994932, 1025532448, 1966088253, 1847607072, 1377859429, 1597141599)
+  s = cws6(s, 677535605, 539784496, 1936482662, 975186277, 2003136032, 1918849568)
+  s = cws6(s, 1601527602, 543238242, 744628271, 1970435104, 540748133, 538970749)
+  s = cws6(s, 1952543859, 1377854313, 1597141599, 543317877, 811687775, 1701995359)
+  s = cws6(s, 1769285741, 1629516910, 1769283628, 1646294126, 544940073, 1970562418)
+  s = cws6(s, 1646292594, 540884256, 1059091760, 2003136032, 1918849568, 1601527602)
+  s = cws6(s, 1966090338, 1634082860, 694514540, 1847605792, 1377859429, 1597141599)
+  s = cws6(s, 677535605, 539304033, 1948265570, 694515058, 175972411, 1953701920)
+  s = cws6(s, 1667855457, 1918849568, 1601527602, 1600069730, 1667182689, 678716775)
+  s = cws6(s, 1953393013, 1629511003, 1769283628, 1763734638, 544940073, 1970562418)
+  s = cws6(s, 1763733106, 673201184, 1953393013, 1278107945, 1952935525, 541007976)
+  s = cws6(s, 544695662, 846356306, 1650423135, 1767596328, 1948265565, 694515058)
+  s = cws6(s, 1847605792, 1377859429, 1597141599, 677535605, 539784496, 1936482662)
+  s = cws6(s, 540748133, 2685, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit32(s: io, unused: u32) -> io
+  s = cws6(s, 2108192, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit33(s: io, unused: u32) -> io
+  s = cws6(s, 41, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit34(s: io, unused: u32) -> io
+  s = cws6(s, 2108704, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit35(s: io, unused: u32) -> io
+  s = cws6(s, 2107936, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit36(s: io, unused: u32) -> io
+  s = cws6(s, 2106912, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit37(s: io, unused: u32) -> io
+  s = cws6(s, 2128928, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit38(s: io, unused: u32) -> io
+  s = cws6(s, 2121248, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit39(s: io, unused: u32) -> io
+  s = cws6(s, 540884256, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit40(s: io, unused: u32) -> io
+  s = cws6(s, 540877088, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit41(s: io, unused: u32) -> io
+  s = cws6(s, 2112544, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit42(s: io, unused: u32) -> io
+  s = cws6(s, 540884000, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit43(s: io, unused: u32) -> io
+  s = cws6(s, 2113056, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit44(s: io, unused: u32) -> io
+  s = cws6(s, 540884512, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit45(s: io, unused: u32) -> io
+  s = cws6(s, 540818464, 1953392936, 10281, 0, 0, 0)
+  return s
+end
+
+fn cslit46(s: io, unused: u32) -> io
+  s = cws6(s, 857744928, 690582833, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit47(s: io, unused: u32) -> io
+  s = cws6(s, 540950048, 1953392936, 10281, 0, 0, 0)
+  return s
+end
+
+fn cslit48(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1986618463, 40, 0, 0, 0)
+  return s
+end
+
+fn cslit49(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1835364959, 40, 0, 0, 0)
+  return s
+end
+
+fn cslit50(s: io, unused: u32) -> io
+  s = cws6(s, 2113312, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit51(s: io, unused: u32) -> io
+  s = cws6(s, 2112032, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit52(s: io, unused: u32) -> io
+  s = cws6(s, 544695662, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit53(s: io, unused: u32) -> io
+  s = cws6(s, 91, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit54(s: io, unused: u32) -> io
+  s = cws6(s, 93, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit55(s: io, unused: u32) -> io
+  s = cws6(s, 123, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit56(s: io, unused: u32) -> io
+  s = cws6(s, 125, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit57(s: io, unused: u32) -> io
+  s = cws6(s, 1633640283, 1869438768, 10340, 0, 0, 0)
+  return s
+end
+
+fn cslit58(s: io, unused: u32) -> io
+  s = cws6(s, 6105461, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit59(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1952805727, 95, 0, 0, 0)
+  return s
+end
+
+fn cslit60(s: io, unused: u32) -> io
+  s = cws6(s, 26158, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit61(s: io, unused: u32) -> io
+  return s
+end
+
+fn cslit62(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1953853535, 95, 0, 0, 0)
+  return s
+end
+
+fn cslit63(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1634038367, 10340, 0, 0, 0)
+  return s
+end
+
+fn cslit64(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1769109343, 2647412, 0, 0, 0)
+  return s
+end
+
+fn cslit65(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1953853535, 10355, 0, 0, 0)
+  return s
+end
+
+fn cslit66(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1684104031, 10340, 0, 0, 0)
+  return s
+end
+
+fn cslit67(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1970496351, 10338, 0, 0, 0)
+  return s
+end
+
+fn cslit68(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1970103135, 10348, 0, 0, 0)
+  return s
+end
+
+fn cslit69(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1768186719, 10358, 0, 0, 0)
+  return s
+end
+
+fn cslit70(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1701995359, 10349, 0, 0, 0)
+  return s
+end
+
+fn cslit71(s: io, unused: u32) -> io
+  s = cws6(s, 811687775, 1701274463, 10356, 0, 0, 0)
+  return s
+end
+
+fn cslit72(s: io, unused: u32) -> io
+  s = cws6(s, 28192, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit73(s: io, unused: u32) -> io
+  s = cws6(s, 2112800, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit74(s: io, unused: u32) -> io
+  s = cws6(s, 538970683, 1868963872, 1965564018, 544501353, 105, 0)
+  return s
+end
+
+fn cslit75(s: io, unused: u32) -> io
+  s = cws6(s, 807419168, 1763720053, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit76(s: io, unused: u32) -> io
+  s = cws6(s, 6889531, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit77(s: io, unused: u32) -> io
+  s = cws6(s, 539568939, 8315, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit78(s: io, unused: u32) -> io
+  s = cws6(s, 673212009, 33, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit79(s: io, unused: u32) -> io
+  s = cws6(s, 28200, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit80(s: io, unused: u32) -> io
+  s = cws6(s, 6889516, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit81(s: io, unused: u32) -> io
+  s = cws6(s, 1646274857, 1801545074, 8251, 0, 0, 0)
+  return s
+end
+
+fn cslit82(s: io, unused: u32) -> io
+  s = cws6(s, 2099264297, 10, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit83(s: io, unused: u32) -> io
+  s = cws6(s, 538976288, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit84(s: io, unused: u32) -> io
+  s = cws6(s, 2619, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit85(s: io, unused: u32) -> io
+  s = cws6(s, 28704, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit86(s: io, unused: u32) -> io
+  s = cws6(s, 1970282528, 1667853410, 1635021600, 543385972, 0, 0)
+  return s
+end
+
+fn cslit87(s: io, unused: u32) -> io
+  s = cws6(s, 32, 0, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit88(s: io, unused: u32) -> io
+  s = cws6(s, 544940073, 1751346805, 1701536613, 175841380, 0, 0)
+  return s
+end
+
+fn cslit89(s: io, unused: u32) -> io
+  s = cws6(s, 538976288, 1970562418, 2125426, 0, 0, 0)
+  return s
+end
+
+fn cslit90(s: io, unused: u32) -> io
+  s = cws6(s, 538970683, 175972477, 0, 0, 0, 0)
+  return s
+end
+
+fn cslit91(s: io, unused: u32) -> io
+  s = cws6(s, 2685, 0, 0, 0, 0, 0)
+  return s
+end
+
+def csa(t: u32x128x512, i: u32, k: u32) -> u32
+  let x = i * 2 + k
+  return t[x]
+end
+
+def csn(t: u32x128x128, i: u32, k: u32) -> u32
+  let x = i * 6 + k
+  return t[x]
+end
+
+def csf(t: u32x128x45, i: u32, k: u32) -> u32
+  let x = i * 7 + k
+  return t[x]
+end
+
+def cst(t: u32x384x65, i: u32, k: u32) -> u32
+  let page = t[i >> 7]
+  return page[(i & 127) * 3 + k]
+end
+def csl(t: u32x128x65, i: u32) -> u32
+  return t[i]
+end
+def csnt(t: u32x128x24, i: u32) -> u32
+  return t[i]
+end
+def csdigits(x: u32) -> u32
+  return 1 + bit(x >= 10) + bit(x >= 100) + bit(x >= 1000) + bit(x >= 10000) + bit(x >= 100000) + bit(x >= 1000000) + bit(x >= 10000000) + bit(x >= 100000000) + bit(x >= 1000000000)
+end
+fn cssum(s: u32, i: u32, sizes: u32x128x65, tl: u32x128x65, start: u32) -> u32
+  let n = s + sizes[tl[start + i]]
+  return n > 8193 ? 8193 : n
+end
+fn cssizes(s: (u32x128x65,u32x128x65,u32), i: u32, ty: u32x384x65, tl: u32x128x65) -> (u32x128x65,u32x128x65,u32)
+  let (sizes, dims, bad) = s
+  let kind = cst(ty, i, 0)
+  let a = cst(ty, i, 1)
+  let b = cst(ty, i, 2)
+  let recsize = fold(cssum, kind == 5 ? b : 0, 0, sizes, tl, a)
+  let size = kind <= 2 ? 1 : kind == 3 ? 2 : kind == 4 ? 2 + csdigits(a) + sizes[b] : 1 + csdigits(b) + recsize + b
+  let dim = kind == 4 ? dims[b] + 1 : 0
+  sizes[i] = size > 8193 ? 8193 : size
+  dims[i] = dim
+  return (sizes, dims, bad | bit((size > 8192) | (dim > 255) | ((kind == 5) & (b == 0))))
+end
+
+fn csop(s: io, unused: u32, kind: u32, value: u32) -> io
+  s = fold(cslit0, kind == 1 ? 1 : 0, s)
+  s = fold(cslit1, kind == 2 ? 1 : 0, s)
+  s = fold(cdecst2, ((kind == 1) | (kind == 2)) ? 1 : 0, s, value)
+  s = fold(cdecst2, kind == 3 ? 1 : 0, s, value)
+  s = fold(cslit2, kind == 3 ? 1 : 0, s)
+  s = fold(cslit3, (kind == 4) & (value == 0) ? 1 : 0, s)
+  s = fold(cslit4, (kind == 4) & (value != 0) ? 1 : 0, s)
+  return s
+end
+
+fn csarg(s: io, i: u32, oa: u32x128x512, start: u32) -> io
+  s = fold(cslit5, i != 0 ? 1 : 0, s)
+  s = csop(s, 0, csa(oa, start + i, 0), csa(oa, start + i, 1))
+  return s
+end
+
+fn csargs(s: io, unused: u32, oa: u32x128x512, start: u32, count: u32) -> io
+  return fold(csarg, count, s, oa, start)
+end
+def csname(s: io, pool: u32x128x400, fnm: u32x128x16, f: u32) -> io
+  let a = cws6(s, 64, 0, 0, 0, 0, 0)
+  return cwnm(a, true, pool, fnm[f * 2], fnm[f * 2 + 1])
+end
+fn csnameif(s: io, unused: u32, pool: u32x128x400, fnm: u32x128x16, f: u32) -> io
+  return csname(s, pool, fnm, f)
+end
+fn csmrec(stack: u32x128x128, i: u32, tl: u32x128x65, first: u32, count: u32, base: u32) -> u32x128x128
+  let k = count - i - 1
+  stack[base + i * 2] = tl[first + k] + 1
+  stack[base + i * 2 + 1] = 0 if k != 0
+  return stack
+end
+fn csmgo(s: (io,u32x128x128,u32), i: u32, ty: u32x384x65, tl: u32x128x65) -> bool
+  return s#2 != 0
+end
+
+fn csmstep(state: (io,u32x128x128,u32), unused: u32, ty: u32x384x65, tl: u32x128x65) -> (io,u32x128x128,u32)
+  let (s, stack, sp) = state
+  let top = sp - 1
+  let code = stack[top]
+  let t = code == 0 ? 0 : code - 1
+  let kind = cst(ty, t, 0)
+  let a = cst(ty, t, 1)
+  let b = cst(ty, t, 2)
+  let live = code != 0
+  s = fold(cslit6, !live ? 1 : 0, s)
+  s = fold(cslit2, live & (kind == 1) ? 1 : 0, s)
+  s = fold(cslit7, live & (kind == 2) ? 1 : 0, s)
+  s = fold(cslit8, live & (kind == 3) ? 1 : 0, s)
+  s = fold(cslit9, live & (kind == 4) ? 1 : 0, s)
+  s = fold(cdecst2, (live & (kind == 4)) ? 1 : 0, s, a)
+  s = fold(cslit6, live & (kind == 4) ? 1 : 0, s)
+  s = fold(cslit10, live & (kind == 5) ? 1 : 0, s)
+  s = fold(cdecst2, (live & (kind == 5)) ? 1 : 0, s, b)
+  s = fold(cslit6, live & (kind == 5) ? 1 : 0, s)
+  stack[top] = b + 1 if live & (kind == 4)
+  stack = fold(csmrec, (live & (kind == 5)) ? b : 0, stack, tl, a, b, top)
+  let next = !live ? top : kind == 4 ? sp : kind == 5 ? top + b * 2 - 1 : top
+  return (s, stack, next)
+end
+
+def csmangle(s: io, ty: u32x384x65, tl: u32x128x65, t: u32) -> io
+  let stack = zeros(128)
+  stack[0] = t + 1
+  let out = loop(csmgo, csmstep, 8193, (s, stack, 1), ty, tl)
+  return out#0
+end
+fn csmangleif(s: io, unused: u32, ty: u32x384x65, tl: u32x128x65, t: u32) -> io
+  return csmangle(s, ty, tl, t)
+end
+fn csbasego(s: (u32,u32), i: u32, ty: u32x384x65) -> bool
+  return cst(ty, s#0, 0) == 4
+end
+fn csbasestep(s: (u32,u32), i: u32, ty: u32x384x65) -> (u32,u32)
+  return (cst(ty, s#0, 2), s#1 + 1)
+end
+
+def csty(s: io, ty: u32x384x65, tl: u32x128x65, t: u32) -> io
+  let base = loop(csbasego, csbasestep, 256, (t, 0), ty)
+  let kind = cst(ty, base#0, 0)
+  s = fold(cslit11, kind == 1 ? 1 : 0, s)
+  s = fold(cslit12, kind == 2 ? 1 : 0, s)
+  s = fold(cslit13, kind == 3 ? 1 : 0, s)
+  s = fold(cslit14, kind == 5 ? 1 : 0, s)
+  s = fold(csmangleif, kind == 5 ? 1 : 0, s, ty, tl, base#0)
+  s = fold(cslit15, base#1, s)
+  return s
+end
+
+fn cstyif(s: io, unused: u32, ty: u32x384x65, tl: u32x128x65, t: u32) -> io
+  return csty(s, ty, tl, t)
+end
+
+fn csfield(s: io, i: u32, ty: u32x384x65, tl: u32x128x65, first: u32) -> io
+  s = fold(cslit5, i != 0 ? 1 : 0, s)
+  s = csty(s, ty, tl, tl[first + i])
+  s = fold(cslit16, true ? 1 : 0, s)
+  s = cwdec(s, i)
+  return s
+end
+
+fn csputdecl(s: io, i: u32, ty: u32x384x65, tl: u32x128x65, t: u32, first: u32, count: u32) -> io
+  s = fold(cslit17, true ? 1 : 0, s)
+  s = csty(s, ty, tl, t)
+  s = fold(cslit18, true ? 1 : 0, s)
+  s = csmangle(s, ty, tl, t)
+  s = fold(cslit6, true ? 1 : 0, s)
+  s = cwdec(s, i)
+  s = fold(cslit19, true ? 1 : 0, s)
+  s = csty(s, ty, tl, t)
+  s = fold(cslit20, true ? 1 : 0, s)
+  s = csty(s, ty, tl, tl[first + i])
+  s = fold(cslit21, true ? 1 : 0, s)
+  s = cwdec(s, i)
+  s = fold(cslit22, true ? 1 : 0, s)
+  return s
+end
+
+fn csdecl(s: io, i: u32, ty: u32x384x65, tl: u32x128x65, first: u32) -> io
+  let t = first + i
+  let kind = cst(ty, t, 0)
+  let a = cst(ty, t, 1)
+  let b = cst(ty, t, 2)
+  let arr = kind == 4
+  let rec = kind == 5
+  let builtin = rec & (b == 2) & (tl[a] == 0) & ((tl[a + 1] == 1) | (tl[a + 1] == 2))
+  let declrec = rec & !builtin
+  s = fold(cslit17, arr ? 1 : 0, s)
+  s = fold(cstyif, arr ? 1 : 0, s, ty, tl, t)
+  s = fold(cslit23, arr ? 1 : 0, s)
+  s = fold(csmangleif, arr ? 1 : 0, s, ty, tl, t)
+  s = fold(cslit19, arr ? 1 : 0, s)
+  s = fold(cstyif, arr ? 1 : 0, s, ty, tl, t)
+  s = fold(cslit24, arr ? 1 : 0, s)
+  s = fold(cstyif, arr ? 1 : 0, s, ty, tl, b)
+  s = fold(cslit25, arr ? 1 : 0, s)
+  s = fold(cstyif, arr ? 1 : 0, s, ty, tl, t)
+  s = fold(cslit26, arr ? 1 : 0, s)
+  s = fold(cstyif, arr ? 1 : 0, s, ty, tl, t)
+  s = fold(cslit27, arr ? 1 : 0, s)
+  s = fold(cdecst2, arr ? 1 : 0, s, a)
+  s = fold(cslit28, arr ? 1 : 0, s)
+  s = fold(cslit29, declrec ? 1 : 0, s)
+  s = fold(cstyif, declrec ? 1 : 0, s, ty, tl, t)
+  s = fold(cslit19, declrec ? 1 : 0, s)
+  s = fold(csfield, declrec ? b : 0, s, ty, tl, a)
+  s = fold(cslit30, declrec ? 1 : 0, s)
+  s = fold(csputdecl, rec ? b : 0, s, ty, tl, t, a, b)
+  return s
+end
+
+fn csscalar(s: io, i: u32, nd: u32x128x128, oa: u32x128x512, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65, pool: u32x128x400, fnm: u32x128x16, first: u32, fp: u32) -> io
+  let g = first + i
+  let op = csn(nd, g, 1)
+  let na = csn(nd, g, 2)
+  let start = csn(nd, g, 3)
+  let ak = csa(oa, start, 0)
+  let av = csa(oa, start, 1)
+  let bk = csa(oa, start + 1, 0)
+  let bv = csa(oa, start + 1, 1)
+  let ck = csa(oa, start + 2, 0)
+  let cv = csa(oa, start + 2, 1)
+  let atype = ak == 1 ? csnt(nt, first + av) : ak == 2 ? tl[fp + av] : ak == 4 ? 1 : 0
+  let t = csnt(nt, g)
+  s = fold(csop, op == 1 ? 1 : 0, s, ak, av)
+  s = fold(cslit19, op == 2 ? 1 : 0, s)
+  s = fold(csop, op == 2 ? 1 : 0, s, ak, av)
+  s = fold(cslit32, op == 2 ? 1 : 0, s)
+  s = fold(csop, op == 2 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 2 ? 1 : 0, s)
+  s = fold(cslit19, op == 3 ? 1 : 0, s)
+  s = fold(csop, op == 3 ? 1 : 0, s, ak, av)
+  s = fold(cslit34, op == 3 ? 1 : 0, s)
+  s = fold(csop, op == 3 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 3 ? 1 : 0, s)
+  s = fold(cslit19, op == 4 ? 1 : 0, s)
+  s = fold(csop, op == 4 ? 1 : 0, s, ak, av)
+  s = fold(cslit35, op == 4 ? 1 : 0, s)
+  s = fold(csop, op == 4 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 4 ? 1 : 0, s)
+  s = fold(cslit19, op == 5 ? 1 : 0, s)
+  s = fold(csop, op == 5 ? 1 : 0, s, ak, av)
+  s = fold(cslit36, op == 5 ? 1 : 0, s)
+  s = fold(csop, op == 5 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 5 ? 1 : 0, s)
+  s = fold(cslit19, op == 6 ? 1 : 0, s)
+  s = fold(csop, op == 6 ? 1 : 0, s, ak, av)
+  s = fold(cslit37, op == 6 ? 1 : 0, s)
+  s = fold(csop, op == 6 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 6 ? 1 : 0, s)
+  s = fold(cslit19, op == 7 ? 1 : 0, s)
+  s = fold(csop, op == 7 ? 1 : 0, s, ak, av)
+  s = fold(cslit38, op == 7 ? 1 : 0, s)
+  s = fold(csop, op == 7 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 7 ? 1 : 0, s)
+  s = fold(cslit19, op == 12 ? 1 : 0, s)
+  s = fold(csop, op == 12 ? 1 : 0, s, ak, av)
+  s = fold(cslit39, op == 12 ? 1 : 0, s)
+  s = fold(csop, op == 12 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 12 ? 1 : 0, s)
+  s = fold(cslit19, op == 13 ? 1 : 0, s)
+  s = fold(csop, op == 13 ? 1 : 0, s, ak, av)
+  s = fold(cslit40, op == 13 ? 1 : 0, s)
+  s = fold(csop, op == 13 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 13 ? 1 : 0, s)
+  s = fold(cslit19, op == 14 ? 1 : 0, s)
+  s = fold(csop, op == 14 ? 1 : 0, s, ak, av)
+  s = fold(cslit41, op == 14 ? 1 : 0, s)
+  s = fold(csop, op == 14 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 14 ? 1 : 0, s)
+  s = fold(cslit19, op == 15 ? 1 : 0, s)
+  s = fold(csop, op == 15 ? 1 : 0, s, ak, av)
+  s = fold(cslit42, op == 15 ? 1 : 0, s)
+  s = fold(csop, op == 15 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 15 ? 1 : 0, s)
+  s = fold(cslit19, op == 16 ? 1 : 0, s)
+  s = fold(csop, op == 16 ? 1 : 0, s, ak, av)
+  s = fold(cslit43, op == 16 ? 1 : 0, s)
+  s = fold(csop, op == 16 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 16 ? 1 : 0, s)
+  s = fold(cslit19, op == 17 ? 1 : 0, s)
+  s = fold(csop, op == 17 ? 1 : 0, s, ak, av)
+  s = fold(cslit44, op == 17 ? 1 : 0, s)
+  s = fold(csop, op == 17 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 17 ? 1 : 0, s)
+  s = fold(cslit19, op == 8 ? 1 : 0, s)
+  s = fold(csop, op == 8 ? 1 : 0, s, ak, av)
+  s = fold(cslit45, op == 8 ? 1 : 0, s)
+  s = fold(csop, op == 8 ? 1 : 0, s, bk, bv)
+  s = fold(cslit46, op == 8 ? 1 : 0, s)
+  s = fold(cslit19, op == 9 ? 1 : 0, s)
+  s = fold(csop, op == 9 ? 1 : 0, s, ak, av)
+  s = fold(cslit47, op == 9 ? 1 : 0, s)
+  s = fold(csop, op == 9 ? 1 : 0, s, bk, bv)
+  s = fold(cslit46, op == 9 ? 1 : 0, s)
+  s = fold(cslit48, op == 10 ? 1 : 0, s)
+  s = fold(csop, op == 10 ? 1 : 0, s, ak, av)
+  s = fold(cslit5, op == 10 ? 1 : 0, s)
+  s = fold(csop, op == 10 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 10 ? 1 : 0, s)
+  s = fold(cslit49, op == 11 ? 1 : 0, s)
+  s = fold(csop, op == 11 ? 1 : 0, s, ak, av)
+  s = fold(cslit5, op == 11 ? 1 : 0, s)
+  s = fold(csop, op == 11 ? 1 : 0, s, bk, bv)
+  s = fold(cslit33, op == 11 ? 1 : 0, s)
+  s = fold(cslit19, op == 18 ? 1 : 0, s)
+  s = fold(csop, op == 18 ? 1 : 0, s, ak, av)
+  s = fold(cslit50, op == 18 ? 1 : 0, s)
+  s = fold(csop, op == 18 ? 1 : 0, s, bk, bv)
+  s = fold(cslit51, op == 18 ? 1 : 0, s)
+  s = fold(csop, op == 18 ? 1 : 0, s, ck, cv)
+  s = fold(cslit33, op == 18 ? 1 : 0, s)
+  return s
+end
+
+fn cszero(ok: bool, i: u32, oa: u32x128x512, start: u32) -> bool
+  let k = csa(oa, start + i, 0)
+  return ok & ((k == 3) | (k == 4)) & (csa(oa, start + i, 1) == 0)
+end
+
+fn cscomplex(s: io, i: u32, nd: u32x128x128, oa: u32x128x512, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65, pool: u32x128x400, fnm: u32x128x16, first: u32, fp: u32) -> io
+  let g = first + i
+  let op = csn(nd, g, 1)
+  let na = csn(nd, g, 2)
+  let start = csn(nd, g, 3)
+  let ak = csa(oa, start, 0)
+  let av = csa(oa, start, 1)
+  let bk = csa(oa, start + 1, 0)
+  let bv = csa(oa, start + 1, 1)
+  let ck = csa(oa, start + 2, 0)
+  let cv = csa(oa, start + 2, 1)
+  let atype = ak == 1 ? csnt(nt, first + av) : ak == 2 ? tl[fp + av] : ak == 4 ? 1 : 0
+  let t = csnt(nt, g)
+  s = fold(csnameif, op == 19 ? 1 : 0, s, pool, fnm, csn(nd, g, 4))
+  s = fold(cslit19, op == 19 ? 1 : 0, s)
+  s = fold(csargs, op == 19 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 19 ? 1 : 0, s)
+  let arr = (op == 22) | (op == 24)
+  let zero = fold(cszero, arr ? na : 0, true, oa, start)
+  let elem = cst(ty, t, 2)
+  let scalarzero = arr & zero & (cst(ty, elem, 0) <= 2)
+  let aggregate = ((arr & !scalarzero) | (op == 23))
+  s = fold(cslit52, scalarzero ? 1 : 0, s)
+  s = fold(cstyif, scalarzero ? 1 : 0, s, ty, tl, elem)
+  s = fold(cslit53, scalarzero ? 1 : 0, s)
+  s = fold(cdecst2, scalarzero ? 1 : 0, s, na)
+  s = fold(cslit54, scalarzero ? 1 : 0, s)
+  s = fold(cslit52, aggregate ? 1 : 0, s)
+  s = fold(cstyif, aggregate ? 1 : 0, s, ty, tl, t)
+  s = fold(cslit55, arr & !scalarzero ? 1 : 0, s)
+  s = fold(cslit19, op == 23 ? 1 : 0, s)
+  s = fold(csargs, aggregate ? 1 : 0, s, oa, start, na)
+  s = fold(cslit56, arr & !scalarzero ? 1 : 0, s)
+  s = fold(cslit33, op == 23 ? 1 : 0, s)
+  s = fold(csop, op == 25 ? 1 : 0, s, ak, av)
+  s = fold(cslit57, op == 25 ? 1 : 0, s)
+  s = fold(csop, op == 25 ? 1 : 0, s, bk, bv)
+  s = fold(cslit5, op == 25 ? 1 : 0, s)
+  s = fold(cdecst2, op == 25 ? 1 : 0, s, cst(ty, atype, 1))
+  s = fold(cslit58, op == 25 ? 1 : 0, s)
+  s = fold(cslit59, op == 26 ? 1 : 0, s)
+  s = fold(csmangleif, op == 26 ? 1 : 0, s, ty, tl, atype)
+  s = fold(cslit19, op == 26 ? 1 : 0, s)
+  s = fold(csargs, op == 26 ? 1 : 0, s, oa, start, 3)
+  s = fold(cslit33, op == 26 ? 1 : 0, s)
+  s = fold(csop, op == 27 ? 1 : 0, s, ak, av)
+  s = fold(cslit60, op == 27 ? 1 : 0, s)
+  s = fold(cdecst2, op == 27 ? 1 : 0, s, bv)
+  s = fold(cslit61, op == 27 ? 1 : 0, s)
+  s = fold(cslit62, op == 28 ? 1 : 0, s)
+  s = fold(csmangleif, op == 28 ? 1 : 0, s, ty, tl, atype)
+  s = fold(cslit6, op == 28 ? 1 : 0, s)
+  s = fold(cdecst2, op == 28 ? 1 : 0, s, bv)
+  s = fold(cslit19, op == 28 ? 1 : 0, s)
+  s = fold(csop, op == 28 ? 1 : 0, s, ak, av)
+  s = fold(cslit5, op == 28 ? 1 : 0, s)
+  s = fold(csop, op == 28 ? 1 : 0, s, ck, cv)
+  s = fold(cslit33, op == 28 ? 1 : 0, s)
+  s = fold(cslit63, op == 29 ? 1 : 0, s)
+  s = fold(csargs, op == 29 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 29 ? 1 : 0, s)
+  s = fold(cslit64, op == 30 ? 1 : 0, s)
+  s = fold(csargs, op == 30 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 30 ? 1 : 0, s)
+  s = fold(cslit65, op == 31 ? 1 : 0, s)
+  s = fold(csargs, op == 31 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 31 ? 1 : 0, s)
+  s = fold(cslit66, op == 32 ? 1 : 0, s)
+  s = fold(csargs, op == 32 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 32 ? 1 : 0, s)
+  s = fold(cslit67, op == 33 ? 1 : 0, s)
+  s = fold(csargs, op == 33 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 33 ? 1 : 0, s)
+  s = fold(cslit68, op == 34 ? 1 : 0, s)
+  s = fold(csargs, op == 34 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 34 ? 1 : 0, s)
+  s = fold(cslit69, op == 35 ? 1 : 0, s)
+  s = fold(csargs, op == 35 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 35 ? 1 : 0, s)
+  s = fold(cslit70, op == 36 ? 1 : 0, s)
+  s = fold(csargs, op == 36 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 36 ? 1 : 0, s)
+  s = fold(cslit71, op == 37 ? 1 : 0, s)
+  s = fold(csargs, op == 37 ? 1 : 0, s, oa, start, na)
+  s = fold(cslit33, op == 37 ? 1 : 0, s)
+  return s
+end
+
+fn csiter(s: io, i: u32, nd: u32x128x128, oa: u32x128x512, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65, pool: u32x128x400, fnm: u32x128x16, first: u32, fp: u32) -> io
+  let g = first + i
+  let op = csn(nd, g, 1)
+  let na = csn(nd, g, 2)
+  let start = csn(nd, g, 3)
+  let ak = csa(oa, start, 0)
+  let av = csa(oa, start, 1)
+  let bk = csa(oa, start + 1, 0)
+  let bv = csa(oa, start + 1, 1)
+  let ck = csa(oa, start + 2, 0)
+  let cv = csa(oa, start + 2, 1)
+  let atype = ak == 1 ? csnt(nt, first + av) : ak == 2 ? tl[fp + av] : ak == 4 ? 1 : 0
+  let t = csnt(nt, g)
+  let iter = (op == 20) | (op == 21)
+  s = fold(cstyif, iter ? 1 : 0, s, ty, tl, t)
+  s = fold(cslit72, iter ? 1 : 0, s)
+  s = fold(cdecst2, iter ? 1 : 0, s, i)
+  s = fold(cslit73, iter ? 1 : 0, s)
+  s = fold(csop, iter ? 1 : 0, s, bk, bv)
+  s = fold(cslit74, iter ? 1 : 0, s)
+  s = fold(cdecst2, iter ? 1 : 0, s, i)
+  s = fold(cslit75, iter ? 1 : 0, s)
+  s = fold(cdecst2, iter ? 1 : 0, s, i)
+  s = fold(cslit41, iter ? 1 : 0, s)
+  s = fold(csop, iter ? 1 : 0, s, ak, av)
+  s = fold(cslit76, iter ? 1 : 0, s)
+  s = fold(cdecst2, iter ? 1 : 0, s, i)
+  s = fold(cslit77, iter ? 1 : 0, s)
+  s = fold(cslit78, op == 21 ? 1 : 0, s)
+  s = fold(csnameif, op == 21 ? 1 : 0, s, pool, fnm, csn(nd, g, 5))
+  s = fold(cslit79, op == 21 ? 1 : 0, s)
+  s = fold(cdecst2, op == 21 ? 1 : 0, s, i)
+  s = fold(cslit80, op == 21 ? 1 : 0, s)
+  s = fold(cdecst2, op == 21 ? 1 : 0, s, i)
+  s = fold(cslit5, (op == 21) & (na > 2) ? 1 : 0, s)
+  s = fold(csargs, (op == 21) & (na > 2) ? 1 : 0, s, oa, start + 2, na - 2)
+  s = fold(cslit81, op == 21 ? 1 : 0, s)
+  s = fold(cslit0, iter ? 1 : 0, s)
+  s = fold(cdecst2, iter ? 1 : 0, s, i)
+  s = fold(cslit73, iter ? 1 : 0, s)
+  s = fold(csnameif, iter ? 1 : 0, s, pool, fnm, csn(nd, g, 4))
+  s = fold(cslit79, iter ? 1 : 0, s)
+  s = fold(cdecst2, iter ? 1 : 0, s, i)
+  s = fold(cslit80, iter ? 1 : 0, s)
+  s = fold(cdecst2, iter ? 1 : 0, s, i)
+  s = fold(cslit5, iter & (na > 2) ? 1 : 0, s)
+  s = fold(csargs, iter & (na > 2) ? 1 : 0, s, oa, start + 2, na - 2)
+  s = fold(cslit82, iter ? 1 : 0, s)
+  return s
+end
+
+fn csnode(s: io, i: u32, nd: u32x128x128, oa: u32x128x512, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65, pool: u32x128x400, fnm: u32x128x16, first: u32, fp: u32) -> io
+  let g = first + i
+  let op = csn(nd, g, 1)
+  let na = csn(nd, g, 2)
+  let start = csn(nd, g, 3)
+  let ak = csa(oa, start, 0)
+  let av = csa(oa, start, 1)
+  let bk = csa(oa, start + 1, 0)
+  let bv = csa(oa, start + 1, 1)
+  let ck = csa(oa, start + 2, 0)
+  let cv = csa(oa, start + 2, 1)
+  let atype = ak == 1 ? csnt(nt, first + av) : ak == 2 ? tl[fp + av] : ak == 4 ? 1 : 0
+  let t = csnt(nt, g)
+  let plain = (op != 20) & (op != 21)
+  s = fold(cslit83, true ? 1 : 0, s)
+  s = fold(cslit61, plain ? 1 : 0, s)
+  s = fold(cstyif, plain ? 1 : 0, s, ty, tl, t)
+  s = fold(cslit72, plain ? 1 : 0, s)
+  s = fold(cdecst2, plain ? 1 : 0, s, i)
+  s = fold(cslit73, plain ? 1 : 0, s)
+  s = csscalar(s, i, nd, oa, nt, ty, tl, pool, fnm, first, fp)
+  s = cscomplex(s, i, nd, oa, nt, ty, tl, pool, fnm, first, fp)
+  s = fold(cslit84, plain ? 1 : 0, s)
+  s = csiter(s, i, nd, oa, nt, ty, tl, pool, fnm, first, fp)
+  return s
+end
+
+fn csparam(s: io, i: u32, ty: u32x384x65, tl: u32x128x65, first: u32) -> io
+  s = fold(cslit5, i != 0 ? 1 : 0, s)
+  s = csty(s, ty, tl, tl[first + i])
+  s = fold(cslit85, true ? 1 : 0, s)
+  s = cwdec(s, i)
+  return s
+end
+
+fn csfunction(s: io, i: u32, ty: u32x384x65, tl: u32x128x65, fns: u32x128x45, nd: u32x128x128, oa: u32x128x512, nt: u32x128x24, pool: u32x128x400, fnm: u32x128x16, from: u32) -> io
+  let func = from + i
+  let np = csf(fns, func, 1)
+  let fp = csf(fns, func, 2)
+  let result = csf(fns, func, 3)
+  let first = csf(fns, func, 4)
+  let count = csf(fns, func, 5)
+  let ret = csf(fns, func, 6)
+  let rk = ret >> 28
+  let rv = ret & 0xfffffff
+  let kind = rk == 5 ? csa(oa, rv, 0) : rk
+  let value = rk == 5 ? csa(oa, rv, 1) : rv
+  s = fold(cslit86, true ? 1 : 0, s)
+  s = csty(s, ty, tl, result)
+  s = fold(cslit87, true ? 1 : 0, s)
+  s = csname(s, pool, fnm, func)
+  s = fold(cslit19, true ? 1 : 0, s)
+  s = fold(csparam, np, s, ty, tl, fp)
+  s = fold(cslit88, true ? 1 : 0, s)
+  s = fold(csnode, count, s, nd, oa, nt, ty, tl, pool, fnm, first, fp)
+  s = fold(cslit89, true ? 1 : 0, s)
+  s = csop(s, 0, kind, value)
+  s = fold(cslit90, true ? 1 : 0, s)
+  return s
+end
+
+fn csbadnode(bad: u32, i: u32, nd: u32x128x128, oa: u32x128x512, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65, first: u32, fp: u32) -> u32
+  let g = first + i
+  let op = csn(nd, g, 1)
+  let start = csn(nd, g, 3)
+  let ak = csa(oa, start, 0)
+  let av = csa(oa, start, 1)
+  let atype = ak == 1 ? csnt(nt, first + av) : ak == 2 ? tl[fp + av] : 0
+  let empty = ((op == 25) | (op == 26)) & (cst(ty, atype, 0) == 4) & (cst(ty, atype, 1) == 0)
+  return bad | bit((op == 0) | (op > 37) | empty)
+end
+fn csbadfn(bad: u32, i: u32, fns: u32x128x45, nd: u32x128x128, oa: u32x128x512, nt: u32x128x24, ty: u32x384x65, tl: u32x128x65, from: u32) -> u32
+  let f = from + i
+  return fold(csbadnode, csf(fns, f, 5), bad, nd, oa, nt, ty, tl, csf(fns, f, 4), csf(fns, f, 2))
+end
+
+fn csnames(pool: u32x128x400, fnm: u32x128x16, from: u32, to: u32) -> u32
+  return 0
+end
+
+fn csemit(s: io, unused: u32, ty: u32x384x65, tl: u32x128x65, fns: u32x128x45, nd: u32x128x128, oa: u32x128x512, nt: u32x128x24, pool: u32x128x400, fnm: u32x128x16, nty: u32, tfrom: u32, from: u32, to: u32, head: u32, tail: u32) -> io
+  s = fold(cslit31, head != 0 ? 1 : 0, s)
+  s = fold(csdecl, nty - tfrom, s, ty, tl, tfrom)
+  s = fold(csfunction, to - from, s, ty, tl, fns, nd, oa, nt, pool, fnm, from)
+  s = fold(cslit91, tail != 0 ? 1 : 0, s)
+  return s
+end
+
+fn cssizecheck(ty: u32x384x65, tl: u32x128x65, nty: u32) -> u32
+  let sizes = fold(cssizes, nty, (zeros(65), zeros(65), 0), ty, tl)
+  return sizes#2
+end
+fn emitcsharp_profile(s: io, ty: u32x384x65, tl: u32x128x65, fns: u32x128x45, nd: u32x128x128, oa: u32x128x512, nt: u32x128x24, pool: u32x128x400, fnm: u32x128x16, nty: u32, tfrom: u32, from: u32, to: u32, head: u32, tail: u32, profile: u32, options: u32) -> (io,u32)
+  let wide = cssizecheck(ty, tl, nty)
+  let bad = fold(csbadfn, to - from, 0, fns, nd, oa, nt, ty, tl, from)
+  let names = csnames(pool, fnm, from, to)
+  let code = ((profile != 0) | (options != 0) | (names != 0)) ? 2 : wide != 0 ? 4 : bad != 0 ? 5 : 0
+  let out = fold(csemit, code == 0 ? 1 : 0, s, ty, tl, fns, nd, oa, nt, pool, fnm, nty, tfrom, from, to, head, tail)
+  return (out, code)
+end
+
+raw
+raw fn csunit io u32x512x64 u32 u32x128x8 u32 bool bool -> (io,u32,u32x128x8,u32)
+raw lx call lexsrc p1 p2
+raw toks at lx 0
+raw nw at lx 1
+raw ntok div nw 3
+raw s1 call pass1 p1 toks ntok
+raw sinfo at s1 1
+raw ta at s1 2
+raw tv at s1 3
+raw hdrs at s1 5
+raw nsym at s1 7
+raw umode at s1 10
+raw uerr at s1 11
+raw uetok at s1 12
+raw nhdr at s1 15
+raw uopen ne umode 0
+raw uerr0 eq uerr 0
+raw ueof and uerr0 uopen
+raw e1 select ueof 1 uerr
+raw et1 select ueof ntok uetok
+raw s2 call pass2 p1 sinfo nsym
+raw pool at s2 0
+raw s3 call pass3 p1 toks ta hdrs nhdr e1 et1 ntok
+raw types at s3 0
+raw tlist at s3 2
+raw hout at s3 4
+raw ntypes at s3 5
+raw ntlist at s3 6
+raw e3 at s3 11
+raw et3 at s3 12
+raw nhc at s3 18
+raw nhn at s3 19
+raw s4 call pass4 hout nhn nhc
+raw fns0 at s4 0
+raw names at s4 1
+raw derr at s4 2
+raw dtok at s4 3
+raw dup ne derr 0
+raw e4 select dup derr e3
+raw et4 select dup dtok et3
+raw s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4 0
+raw fns at s5 0
+raw nodes at s5 1
+raw alo at s5 2
+raw narg at s5 5
+raw args call bodyargs alo narg fns0 names p1 toks ta tv ntok e4 et4
+raw fcs at s1 7
+raw fcu at s1 8
+raw fcp at s2 1
+raw fch at s3 19
+raw fct at s3 5
+raw fcl at s3 6
+raw fcn at s5 4
+raw ovr call fecap toks ntok fcs fcp fcu fch fct fcl fcn narg
+raw pcode0 at s5 8
+raw pcode select ovr 4 pcode0
+raw # after a parse error the function count may be below p4: nothing is checked then
+raw cfrom call cumin p4 nhc
+raw ck call checkir types tlist fns nodes args p3 ntypes ntlist nhc cfrom
+raw types2 at ck 0
+raw tlist2 at ck 2
+raw ntys at ck 4
+raw fstat at ck 7
+raw ntypes2 at ck 8
+raw cerr at ck 10
+raw ns127 add nsym 127
+raw nsp shr ns127 7
+raw z64 call z64
+raw st0 rec z64 0
+raw st fold cstpg nsp st0 sinfo
+raw starts at st 0
+raw z16 call z16
+raw fnm fold cfnm nhc z16 fns sinfo starts
+raw grew ne ntypes2 ntypes
+raw added and grew p5
+raw pok eq pcode 0
+raw c1 select added 5 0
+raw cok eq cerr 0
+raw c2 select cok c1 cerr
+raw code0 select pok c2 pcode
+raw # C# supports all total checked operations; strict metadata/runtime remains refused.
+raw # Strict programs remain explicitly refused until their trap runtime is implemented.
+raw prof at s1 16
+raw unsup eq prof 1
+raw ok0 eq code0 0
+raw ref and ok0 unsup
+raw code1 select ref 2 code0
+raw badnames call csnames pool fnm p4 nhc
+raw badname ne badnames 0
+raw good0 eq code1 0
+raw badn and badname good0
+raw code2 select badn 2 code1
+raw wide call cssizecheck types2 tlist2 ntypes2
+raw haswide ne wide 0
+raw good eq code2 0
+raw cap and haswide good
+raw code select cap 4 code2
+raw delta sub nhc p4
+raw bad fold csbadfn delta 0 fns nodes args ntys types2 tlist2 p4
+raw unsupported ne bad 0
+raw okold eq code 0
+raw refshape and unsupported okold
+raw codefinal select refshape 5 code
+raw ok eq codefinal 0
+raw go select ok 1 0
+raw hw select p6 1 0
+raw tfrom select p6 3 ntypes2
+raw t fold csemit go p0 types2 tlist2 fns nodes args ntys pool fnm ntypes2 tfrom p4 nhc hw 1
+raw r rec t codefinal fstat nhc
+raw ret r
+raw end
+raw
+raw # Whole-source entry: canonical+checked; error1 parse,2 structure/profile,3 type,4 capacity.
+raw fn source_packet_csharpst (io,u32) u32 u32x512x64 u32 -> (io,u32)
+raw t at p0 0
+raw z call z8
+raw out call csunit t p2 p3 z 0 false true
+raw io at out 0
+raw code at out 1
+raw r rec io code
+raw ret r
+raw end
+raw fn emitcsharpio io -> u32
+raw rs call source_packet_readio p0
+raw src at rs 0
+raw n at rs 1
+raw t at rs 2
+raw within le n 131072
+raw complete at rs 3
+raw ok and within complete
+raw go select ok 1 0
+raw inside select complete 0 2
+raw code select within inside 4
+raw st rec t code
+raw out fold source_packet_csharpst go st src n
+raw result at out 1
+raw ret result
+raw end
