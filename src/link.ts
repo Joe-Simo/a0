@@ -78,13 +78,14 @@ export interface LinkOptions {
   readonly dense?: boolean;
   /**
    * Read dense files with this reader instead of the reference (`--dense=a0`): the file's text, the
-   * signatures of every function its uses reach, and its path in; canonical text out.
+   * signatures of every function its uses reach, and its path in; parsed IR or canonical text out.
+   * Returning IR avoids a source-format conversion and parse before shared validation.
    */
   readonly denseReader?: (
     text: string,
     used: ReadonlyMap<string, { readonly params: readonly Type[]; readonly result: Type }>,
     path: string,
-  ) => string;
+  ) => Program | string;
   /**
    * The profile of the whole linked program, overriding what the files declare (`--profile`).
    * The files must still agree with each other (A0624).
@@ -230,8 +231,14 @@ export async function link(
     if (parsedCanonical !== undefined) {
       parsedFile = parsedCanonical;
     } else if (options.denseReader !== undefined) {
-      text = options.denseReader(shown, usedSigs, abs);
-      parsedFile = parse(text);
+      const result = options.denseReader(shown, usedSigs, abs);
+      if (typeof result === 'string') {
+        text = result;
+        parsedFile = parse(result);
+      } else {
+        parsedFile = result;
+        text = formatSource(result);
+      }
     } else {
       // dense.ts is loaded only for a dense file: a canonical `a0 check` never pays its start-up
       const { parseDense } = await import('./dense.js');

@@ -31,7 +31,7 @@ test('link composes strict modules and retains comments from removed directives 
     'main.a0':
       '# main profile\nprofile strict # main strict\n# dependency import\nuse "dependency.a0" # import identity\n# empty import\nuse "empty.a0" # import empty\n# entry\nfn main -> u32\nx call identity 17\nret x\nend\n# main tail\n',
   };
-  for (const mode of ['canonical', 'dense', 'reader'] as const) {
+  for (const mode of ['canonical', 'dense', 'reader', 'ir-reader'] as const) {
     const sources =
       mode === 'canonical'
         ? files
@@ -45,16 +45,15 @@ test('link composes strict modules and retains comments from removed directives 
     const linked = await link(resolve(root, 'main.a0'), reader(sources), {
       root,
       ...(mode === 'canonical' ? {} : { dense: true }),
-      ...(mode !== 'reader'
+      ...(mode !== 'reader' && mode !== 'ir-reader'
         ? {}
         : {
             denseReader: (text, used) => {
               reads += 1;
-              return formatSource(
-                parseDense(text, {
-                  known: new Map([...used].map(([name, fn]) => [name, fn.params.length])),
-                }),
-              );
+              const parsed = parseDense(text, {
+                known: new Map([...used].map(([name, fn]) => [name, fn.params.length])),
+              });
+              return mode === 'ir-reader' ? parsed : formatSource(parsed);
             },
           }),
     });
@@ -83,7 +82,7 @@ test('link composes strict modules and retains comments from removed directives 
       '# main tail',
     ])
       assert.equal(formatSource(linked.program).split(comment).length, 2, `${mode}: ${comment}`);
-    assert.equal(reads, mode === 'reader' ? 3 : 0);
+    assert.equal(reads, mode === 'reader' || mode === 'ir-reader' ? 3 : 0);
   }
 });
 
@@ -161,5 +160,40 @@ test('link retains source diagnostics after direct IR composition', async () => 
       { root },
     ),
     (error: unknown) => error instanceof A0Error && error.id === 'A0017',
+  );
+});
+
+// Dense can infer a bool aggregate above the legacy signature parser's per-dimension cap.
+// The shared validator accepts it within the aggregate bit budget. A migration reader must
+// preserve that valid IR instead of routing it through a more restrictive source grammar.
+test('IR readers preserve valid inferred legacy aggregates without reparsing signatures', async () => {
+  const length = 65537;
+  const text = `fn large\n[${Array<string>(length).fill('true').join(' ')}]\n`;
+  const parsed = parseDense(text);
+  assert.throws(() => parse(formatSource(parsed)), /array length exceeds 65536/);
+  const linked = await link(resolve(root, 'large.a0d'), reader({ 'large.a0d': text }), {
+    root,
+    denseReader: () => parsed,
+  });
+  const large = linked.program.byName.get('large');
+  assert.ok(large);
+  assert.deepEqual(large.result, { kind: 'arr', length, elem: 'bool' });
+  assert.deepEqual(run(large, []), Array<boolean>(length).fill(true));
+});
+
+test('IR readers still pass through shared graph typing and source diagnostics', async () => {
+  const text = 'fn invalid -> bool\nx add 1 2\nret x\nend\n';
+  await assert.rejects(
+    link(resolve(root, 'invalid.a0d'), reader({ 'invalid.a0d': text }), {
+      root,
+      denseReader: () => parse(text),
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof A0Error);
+      assert.match(error.message, /invalid/);
+      assert.match(error.message, /bool/);
+      assert.ok(error.message.startsWith(`${resolve(root, 'invalid.a0d')}:`), error.message);
+      return true;
+    },
   );
 });
