@@ -244,6 +244,9 @@ function jsOperand(o: Operand): string {
 }
 
 const FRESH_OPS = new Set<Op>(['arr', 'rec', 'set', 'put']);
+// Iterations also own their outer result: initialization and each owned body preserve that
+// invariant. This says nothing about references held in nested fields.
+const JS_OWNED_RESULTS = new Set<Op>([...FRESH_OPS, 'fold', 'loop']);
 
 function sameOp(x: Operand, y: Operand): boolean {
   return (
@@ -542,7 +545,8 @@ function jsBody(fn: TypedFunc, owned: boolean): string[] {
   const ret = fn.ret;
   const fresh =
     (ret.kind === 'param' && ret.index === 0) ||
-    (ret.kind === 'node' && FRESH_OPS.has(fn.nodes.find((n) => n.id === ret.id)?.op ?? 'mov'));
+    (ret.kind === 'node' &&
+      JS_OWNED_RESULTS.has(fn.nodes.find((n) => n.id === ret.id)?.op ?? 'mov'));
   const retExpr =
     owned && !isPrimitive(fn.result) && !fresh ? `${jsOperand(ret)}.slice()` : jsOperand(ret);
   if (framed)

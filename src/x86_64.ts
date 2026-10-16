@@ -80,6 +80,8 @@
 import {
   A0Error,
   borrowLive,
+  containsIo,
+  formatType,
   isPrimitive,
   type Node,
   type Op,
@@ -410,6 +412,8 @@ interface Plan {
   readonly fused: ReadonlySet<string>;
   readonly shapes: ReadonlyMap<string, Shape>;
   readonly rots: ReadonlyMap<string, Rot>;
+  /** Single-use scalar comparisons/conjunctions that can branch directly at a predicate return. */
+  readonly branches: ReadonlySet<string>;
 }
 
 const PLANS = new WeakMap<TypedFunc, Plan>();
@@ -514,7 +518,39 @@ function planFor(fn: TypedFunc): Plan {
       break;
     }
   }
-  const plan: Plan = { skip, fused, shapes, rots };
+  const branches = new Set<string>();
+  const todo = [fn.ret];
+  const scalarOperand = (o: Operand): boolean =>
+    isScalar(
+      o.kind === 'node'
+        ? (fn.types.get(o.id) ?? 'io')
+        : o.kind === 'param'
+          ? (fn.params[o.index] ?? 'io')
+          : o.kind,
+    );
+  while (todo.length > 0) {
+    const o = todo.pop() as Operand;
+    if (o.kind !== 'node' || branches.has(o.id)) continue;
+    const n = defs.get(o.id);
+    if (n === undefined || fn.types.get(n.id) !== 'bool') continue;
+    if (n.op === 'and' || (shapes.has(n.id) && n.args.every(scalarOperand))) {
+      branches.add(n.id);
+      if (n.op === 'and') todo.push(...n.args);
+    }
+  }
+  // Retain shared nodes and anything read outside this cone. Keeping their descendants also
+  // keeps evaluation eager and prevents a shared DAG from expanding into a branch tree.
+  const retained = [...branches].filter((id) => {
+    const us = uses.get(id) ?? [];
+    return us.length > 1 || us.some((u) => !branches.has(u.node.id));
+  });
+  while (retained.length > 0) {
+    const id = retained.pop() as string;
+    if (!branches.delete(id)) continue;
+    for (const o of defs.get(id)?.args ?? [])
+      if (o.kind === 'node' && branches.has(o.id)) retained.push(o.id);
+  }
+  const plan: Plan = { skip, fused, shapes, rots, branches };
   PLANS.set(fn, plan);
   return plan;
 }
@@ -527,6 +563,52 @@ function sameOp(x: Operand, y: Operand): boolean {
     (x.kind === 'node' && y.kind === 'node' && x.id === y.id) ||
     (x.kind === 'param' && y.kind === 'param' && x.index === y.index)
   );
+}
+
+interface OwnedRecord {
+  readonly result: Node;
+  readonly projections: ReadonlySet<string>;
+}
+const OWNED_RECORDS = new WeakMap<TypedFunc, OwnedRecord | null>();
+
+/** Record rebuilds whose p0 storage is private; unique field borrows can own their substorage. */
+function ownedRecord(fn: TypedFunc): OwnedRecord | null {
+  const known = OWNED_RECORDS.get(fn);
+  if (known !== undefined) return known;
+  const last = fn.nodes.at(-1);
+  const p0 = fn.params[0];
+  if (
+    p0 === undefined ||
+    isPrimitive(p0) ||
+    p0.kind !== 'rec' ||
+    containsIo(p0) ||
+    last?.op !== 'rec' ||
+    fn.ret.kind !== 'node' ||
+    fn.ret.id !== last.id ||
+    formatType(fn.result) !== formatType(p0)
+  ) {
+    OWNED_RECORDS.set(fn, null);
+    return null;
+  }
+  const fields = new Map<number, string[]>();
+  let onlyFields = true;
+  for (const n of fn.nodes)
+    for (const [k, o] of n.args.entries()) {
+      if (o.kind !== 'param' || o.index !== 0) continue;
+      const field = n.args[1];
+      if (n.op !== 'at' || k !== 0 || field?.kind !== 'u32') onlyFields = false;
+      else fields.set(field.value, [...(fields.get(field.value) ?? []), n.id]);
+    }
+  const projections = new Set<string>();
+  if (onlyFields)
+    for (const ids of fields.values()) {
+      const id = ids[0] as string;
+      const t = fn.types.get(id);
+      if (ids.length === 1 && t !== undefined && !isPrimitive(t)) projections.add(id);
+    }
+  const record = { result: last, projections };
+  OWNED_RECORDS.set(fn, record);
+  return record;
 }
 
 /**
@@ -544,7 +626,11 @@ function mutableHere(
 ): boolean {
   if (o.kind === 'node') {
     const def = fn.nodes.find((n) => n.id === o.id);
-    if (def === undefined || !FRESH_OPS.has(def.op)) return false;
+    if (
+      def === undefined ||
+      !(FRESH_OPS.has(def.op) || (ownedP0 && ownedRecord(fn)?.projections.has(o.id) === true))
+    )
+      return false;
   } else if (!(o.kind === 'param' && o.index === 0 && ownedP0)) {
     return false;
   }
@@ -1128,6 +1214,87 @@ class FunctionEmitter {
     else if (!sret) this.#set(dst, (d) => this.#mov('%eax', d));
   }
 
+  /** Emit an inlined predicate's pure return cone as branches, after all other nodes run. */
+  #branchPredicate(
+    env: Env,
+    fn: TypedFunc,
+    args: readonly Val[],
+    tag: string,
+    done: string,
+  ): boolean {
+    const plan = planFor(fn);
+    if (fn.ret.kind !== 'node' || !plan.branches.has(fn.ret.id)) return false;
+    const sub: Env = {
+      fn,
+      prefix: `${env.prefix}${tag}.`,
+      params: args,
+      ownedP0: false,
+      depth: env.depth + 1,
+    };
+    for (const [i, n] of fn.nodes.entries()) {
+      if (plan.branches.has(n.id)) this.#pos += 1;
+      else this.#node(sub, n, i);
+    }
+    this.#pos += 1;
+    const defs = new Map(fn.nodes.map((n) => [n.id, n]));
+    const branch = (o: Operand): void => {
+      const n = o.kind === 'node' && plan.branches.has(o.id) ? defs.get(o.id) : undefined;
+      if (n?.op === 'and') {
+        const [a, b] = n.args as [Operand, Operand];
+        branch(a);
+        if (!sameOp(a, b)) branch(b);
+        return;
+      }
+      const shape = n === undefined ? undefined : plan.shapes.get(n.id);
+      if (shape !== undefined) {
+        for (const v of this.#shapeVals(sub, shape)) this.#use(v);
+        this.#emit(`j${NOT_CC[this.#flags(sub, shape)]} ${done}`);
+      } else {
+        const v = this.#resolve(sub, o);
+        this.#use(v);
+        const r = this.#read(v, '%eax');
+        this.#emit(`testl ${r}, ${r}`, `je ${done}`);
+      }
+    };
+    branch(fn.ret);
+    return true;
+  }
+
+  /** Store a rebuilt record into its owned state. Cross-field aliases need the original
+   * temporary: copying one field could otherwise overwrite a later field's source. */
+  #storeRecordReturn(sub: Env, result: string, type: Type, node: Node): boolean {
+    const vals = node.args.map((o) => this.#resolve(sub, o));
+    let offset = this.#offset(result);
+    for (const v of vals) {
+      if (
+        v.kind === 'key' &&
+        !isScalar(v.type) &&
+        this.#canon(v.key) === this.#canon(result) &&
+        this.#offset(v.key) !== offset
+      )
+        return false;
+      offset += 4 * words(v.type);
+    }
+    this.#pos += 1;
+    for (const v of vals) this.#use(v);
+    offset = 0;
+    for (const v of vals) {
+      if (
+        !(
+          v.kind === 'key' &&
+          !isScalar(v.type) &&
+          this.#canon(v.key) === this.#canon(result) &&
+          this.#offset(v.key) === this.#offset(result) + offset
+        )
+      )
+        this.#place(v, '%rsp', this.#slot(result) + offset);
+      offset += 4 * words(v.type);
+    }
+    this.#pos += 1;
+    this.#use({ kind: 'key', key: result, type });
+    return true;
+  }
+
   #inline(
     env: Env,
     callee: TypedFunc,
@@ -1163,7 +1330,12 @@ class FunctionEmitter {
       )
         this.#shares.set(`${sub.prefix}n_${v.id}`, carry.key);
     }
-    this.#body(sub);
+    const record = ownedP0 && sink === 'store' ? ownedRecord(callee) : null;
+    if (record !== null) {
+      for (const [i, n] of callee.nodes.entries()) if (n !== record.result) this.#node(sub, n, i);
+      if (this.#storeRecordReturn(sub, result, type, record.result)) return;
+      this.#node(sub, record.result, callee.nodes.length - 1);
+    } else this.#body(sub);
     this.#pos += 1;
     const ret = this.#resolve(sub, callee.ret);
     this.#use(ret);
@@ -1364,7 +1536,11 @@ class FunctionEmitter {
     };
     const cmp = (): void => {
       const shape = plan.shapes.get(n.id) ?? refuse(`no comparison shape for ${n.id}`);
-      const read = this.#shapeVals(env, shape).flatMap((v) => {
+      const values = this.#shapeVals(env, shape);
+      // A bit-test shape absorbs an AND node. Its underlying input must stay live even
+      // though the original comparison operands no longer name that input directly.
+      for (const v of values) this.#use(v);
+      const read = values.flatMap((v) => {
         if (v.kind !== 'key') return [];
         const h = this.#home(v.key);
         return 'reg' in h ? [h.reg] : [];
@@ -1757,7 +1933,13 @@ class FunctionEmitter {
         this.#emit(`${top}:`);
         if (marked) this.#markTrip(this.#read(cval, '%eax'));
         const args: Val[] = [state, cval, ...extras];
-        if (pred !== undefined) {
+        if (
+          pred !== undefined &&
+          !(
+            this.#inlinable(pred, env, 'loop') &&
+            this.#branchPredicate(env, pred, args, `${n.id}.p`, done)
+          )
+        ) {
           const pkey = `${env.prefix}c_${n.id}`;
           if (this.#inlinable(pred, env, 'loop'))
             this.#inline(env, pred, args, false, pkey, 'bool', `${n.id}.p`, 'bind');

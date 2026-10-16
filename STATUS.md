@@ -23,6 +23,12 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## Current results
 
+Latest iteration work (`a0c-0.1.56`, 2026-10-16): JavaScript sieve and insertion sort improved
+20.01× and 14.17× against the previous compiler; direct x86 heap operations improved 6.51×.
+Evidence: `results/owned-iterations-linux.json`. Significant losses remain against handwritten
+references, especially JavaScript heap operations. See
+[the ownership and predicate changes](docs/history/2026-10-16-owned-iterations.md).
+
 Latest native work (`a0c-0.1.55`, 2026-10-16): hash lookup improved 10.00× for emitted C and
 9.93× for direct x86 against the previous compiler in a quiet, interleaved Linux run.
 Both still trail handwritten C. Evidence: `results/native-readonly-hash-linux.json`. See
