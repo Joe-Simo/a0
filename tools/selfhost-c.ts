@@ -212,7 +212,7 @@ export function selfHostedC(
   let types = h.types;
   let tlist = h.tlist;
   let fstat: number[] = [];
-  const bytes: number[] = [];
+  const bytes: Buffer[] = [];
   const parts = chunks(fns);
   // The emitter's name table: the pool start and length of each function's name.
   const fnm = h.heads.flatMap(([name]) => [
@@ -268,10 +268,11 @@ export function selfHostedC(
       ],
       FUEL,
     );
-    bytes.push(...io.output);
+    // A chunk can exceed the engine's argument limit, independently of its byte capacity.
+    bytes.push(Buffer.from(io.output));
     tfrom = ntypes;
   }
-  return { text: Buffer.from(bytes).toString('latin1'), chunks: parts.length };
+  return { text: Buffer.concat(bytes).toString('latin1'), chunks: parts.length };
 }
 
 interface ProgramReport {
