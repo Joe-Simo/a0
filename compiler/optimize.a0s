@@ -27,7 +27,9 @@ raw # op, operand count, callee, predicate, type, the operand pairs (node refere
 raw # positions), then the ret pair and the literal iteration bound. Code 7: the functions whose
 raw # body the run needs (to inline a call or unroll a fold, or to evaluate a call or a fold with
 raw # literal operands, on the optimized body as src/optimize.ts does), then their count; the driver
-raw # supplies them and everything they reach and repeats the run. Code 4: a limit (4096 nodes,
+raw # supplies them and everything they reach and repeats the run. Public modes 7/8 give code 5
+raw # and write nothing on supplied checked ops. Strict metadata is not part of the table ABI.
+raw # Code 4: a limit (4096 nodes,
 raw # 32768 operand slots, 256 stacked nodes) was reached; src/optimize.ts has none of these.
 raw #
 raw # The work is a sequence of phases on separate tables, since no state can hold them all:
@@ -39,9 +41,11 @@ raw # so that no function is larger than the chunk limits) and then materializes
 raw # table). Table reads are written out inline in the steps (a table passed to a call is copied by
 raw # the C emitter); the macros `rdp`, `karg`, ... are expanded here by the generator.
 raw #
-raw # - expand (`edstep`): small pure scalar calls (INLINE_CALL_NODES 16) are inlined and folds of 1
-raw #   to 8 literal trips unrolled (at most 256 body nodes, 2048 nodes in all, no io, at most 64
-raw #   words a type): rename table RN, output sequence, instances (copies of a callee body).
+raw # - expand (`edstep`): weighted-cost pure scalar calls are inlined and folds of 1..8
+raw #   literal trips unrolled (ordinary nodes cost 1, call/fold/loop cost 5; thresholds 16,
+raw #   256 per body and 2048 total). Square-matrix recurrences are powered first when cheaper.
+raw #   Both fold rewrites require no io and at most 64 words a result/node type. Rename table
+raw #   RN, output sequence and instances describe copied or synthesized nodes.
 raw # - pass (`passa`..`passd`): per node, in order, operands resolved through the substitutions;
 raw #   a variable trip count that propagation would make a literal beyond the static compute bound
 raw #   (2^24 trips times the callee's literal iterations) is kept as a `mov` of that literal;
@@ -281,8 +285,190 @@ fn edunr(ed: u32x128x393, k: u32, c: u32, host: u32, ash: u32, fnt: u32x128x45, 
   return ed1
 end
 
+# Weighted cost in units of one ordinary instruction. Keep the summary ABI as raw node counts;
+# supplied bodies carry the operations needed to distinguish expensive call/fold/loop nodes.
+fn edcost(cost: u32, j: u32, nd: u32x128x132, first: u32) -> u32
+  let op = nd[(first + j) * 6 + 1]
+  return cost + (((op >= 19) & (op <= 21)) ? 5 : 1)
+end
+
+# Matrix-step recognition. The <=64-word expansion gate bounds a square dimension to 2..8.
+# For each output cell, per-node columns hold a mask of its inner-index terms and the one
+# invariant parameter. Disjoint masks implement TS terms() without recursive traversal.
+def mxelem(nd: u32x128x132, oa: u32x128x512, fnt: u32x128x45, ty: u32x384x65, tl: u32x128x65, c: u32, kind: u32, value: u32) -> (bool,u32,u32)
+  let nc = fnt[c * 7 + 5]
+  let local = ((kind == 1) & (value < nc)) ? value : 0
+  let row = (fnt[c * 7 + 4] + local) * 6
+  let ash = nd[row + 3]
+  let (sk, sv) = rdp(oa, ash)
+  let (ik, iv) = rdp(oa, ash + 1)
+  let np = fnt[c * 7 + 1]
+  let par = ((sk == 2) & (sv < np)) ? sv : 0
+  let atype = tl[fnt[c * 7 + 2] + par]
+  let ok = (kind == 1) & (value < nc) & (nd[row + 1] == 25) & (sk == 2) & (sv < np) & (ik == 3) & (tyw(ty, atype, 0) == 4) & (iv < tyw(ty, atype, 1))
+  return (ok, sv, iv)
+end
+fn mxnode(terms: u32x128x64, j: u32, nd: u32x128x132, oa: u32x128x512, fnt: u32x128x45, ty: u32x384x65, tl: u32x128x65, c: u32, n: u32, side: u32, row: u32, col: u32) -> u32x128x64
+  let g = (fnt[c * 7 + 4] + j) * 6
+  let ash = nd[g + 3]
+  let (ak, av) = rdp(oa, ash)
+  let (bk, bv) = rdp(oa, ash + 1)
+  let (aok, ap, ai) = mxelem(nd, oa, fnt, ty, tl, c, ak, av)
+  let (bok, bp, bi) = mxelem(nd, oa, fnt, ty, tl, c, bk, bv)
+  let ab = aok & bok & (ap == 0) & (bp >= 2)
+  let ba = aok & bok & (bp == 0) & (ap >= 2)
+  let si = ab ? ai : bi
+  let mi = ab ? bi : ai
+  let mp = ab ? bp : ap
+  let k = side == 0 ? si % n : si / n
+  let pattern = side == 0 ? ((si / n == row) & (mi == k * n + col)) : ((si % n == col) & (mi == row * n + k))
+  let mulok = (nd[g + 1] == 4) & (ab | ba) & (k < n) & pattern
+  let nc = fnt[c * 7 + 5]
+  let a = ((ak == 1) & (av < nc)) ? av : 0
+  let b = ((bk == 1) & (bv < nc)) ? bv : 0
+  let am = terms[a]
+  let bm = terms[b]
+  let app = terms[AN + a]
+  let bpp = terms[AN + b]
+  let addok = (nd[g + 1] == 2) & (ak == 1) & (bk == 1) & (av < j) & (bv < j) & (am != 0) & (bm != 0) & ((am & bm) == 0) & (app == bpp)
+  terms[j] = mulok ? (1 << k) : addok ? (am | bm) : 0
+  terms[AN + j] = mulok ? mp : addok ? app : 0
+  return terms
+end
+fn mxrow(s: (bool,u32), i: u32, nd: u32x128x132, oa: u32x128x512, fnt: u32x128x45, ty: u32x384x65, tl: u32x128x65, c: u32, n: u32, side: u32, ret: u32) -> (bool,u32)
+  let (ok, param) = s
+  let terms = fold(mxnode, ok ? fnt[c * 7 + 5] : 0, zeros(64), nd, oa, fnt, ty, tl, c, n, side, i / n, i % n)
+  let (kind, value) = rdp(oa, nd[(fnt[c * 7 + 4] + ret) * 6 + 3] + i)
+  let id = ((kind == 1) & (value < fnt[c * 7 + 5])) ? value : 0
+  let p = terms[AN + id]
+  let full = (kind == 1) & (value < fnt[c * 7 + 5]) & (terms[id] == ((1 << n) - 1)) & ((param == 0xffffffff) | (param == p))
+  return (ok & full, param == 0xffffffff ? p : param)
+end
+fn mxdim(n: u32, i: u32, len: u32) -> u32
+  return ((i >= 2) & (i * i == len)) ? i : n
+end
+fn mxshape(s: (u32,u32,u32), i: u32, nd: u32x128x132, oa: u32x128x512, fnt: u32x128x45, ty: u32x384x65, tl: u32x128x65, c: u32, trips: u32, products: u32) -> (u32,u32,u32)
+  let result = fnt[c * 7 + 3]
+  let len = tyw(ty, result, 1)
+  let n = fold(mxdim, 9, 0, len)
+  let packed = fnt[c * 7 + 6]
+  let pk = packed >> 28
+  let pv = packed & 0xfffffff
+  let (bigk, bigv) = rdp(oa, pv)
+  let rk = pk == 5 ? bigk : pk
+  let rv = pk == 5 ? bigv : pv
+  let retid = ((rk == 1) & (rv < fnt[c * 7 + 5])) ? rv : 0
+  let retrow = (fnt[c * 7 + 4] + retid) * 6
+  let cheaper = (products < trips) & (products * 2 * n * n * n <= 2048)
+  let shape = cheaper & (tyw(ty, result, 0) == 4) & (tyw(ty, result, 2) == 0) & (n >= 2) & (fnt[c * 7 + 1] >= 2) & (tl[fnt[c * 7 + 2]] == result) & (rk == 1) & (rv < fnt[c * 7 + 5]) & (nd[retrow + 1] == 22) & (nd[retrow + 2] == len)
+  let right = fold(mxrow, shape ? len : 0, (true, 0xffffffff), nd, oa, fnt, ty, tl, c, n, 0, retid)
+  let left = fold(mxrow, (shape & !right#0) ? len : 0, (true, 0xffffffff), nd, oa, fnt, ty, tl, c, n, 1, retid)
+  let found = shape & (right#0 | left#0)
+  return (found ? n : 0, right#0 ? 0 : 1, right#0 ? right#1 : left#1)
+end
+fn mxpcnt(s: (u32,u32), i: u32, trips: u32) -> (u32,u32)
+  let (log, ones) = s
+  return ((trips >> i) != 0 ? i : log, ones + ((trips >> i) & 1))
+end
+
+# Synthetic instances share the existing ED columns. Mode 2 is a two-operand scalar:
+# ICA=op IBS=type IHO=arg0 kind IK=arg0 value IB0K=arg1 kind IB0V=arg1 value.
+# Mode 3 is the final arr: IHO=length IK=first element node IB0V=element stride.
+const E_MACC = 10
+const E_MAS = 11
+const E_MPOW = 12
+const E_MPS = 13
+const E_MLEFT = 14
+const E_MBASE = 15
+const E_MSTRIDE = 16
+fn edsyn(ed: u32x128x393, i: u32, op: u32, type: u32, ak: u32, av: u32, bk: u32, bv: u32, na: u32) -> u32x128x393
+  let id = ed[E_SC + E_NEXT]
+  let outn = ed[E_SC + E_OUTN]
+  let ni = ed[E_SC + E_NI]
+  let slot = ed[E_SC + E_SLOT]
+  let ok = (id < AN) & (outn < AN) & (ni < AN) & (slot + na <= NSL)
+  ed[E_SC + E_ERR] = ed[E_SC + E_ERR] | (ok ? 0 : 1)
+  ed[E_OUT + outn] = id if ok
+  ed[E_INST + id] = ni if ok
+  ed[E_ASL + id] = slot if ok
+  ed[E_IMO + ni] = op == 22 ? 3 : 2 if ok
+  ed[E_ICA + ni] = op if ok
+  ed[E_IBS + ni] = type if ok
+  ed[E_IHO + ni] = op == 22 ? na : ak if ok
+  ed[E_IK + ni] = av if ok
+  ed[E_IB0K + ni] = bk if ok
+  ed[E_IB0V + ni] = bv if ok
+  ed[E_SC + E_NEXT] = id + bit(ok)
+  ed[E_SC + E_OUTN] = outn + bit(ok)
+  ed[E_SC + E_NI] = ni + bit(ok)
+  ed[E_SC + E_SLOT] = slot + (ok ? na : 0)
+  ed[E_SC + E_RK] = 1 if ok
+  ed[E_SC + E_RV] = id if ok
+  ed[E_SC + E_CHG] = 1 if ok
+  return ed
+end
+fn mxget(ed: u32x128x393, i: u32, kind: u32, value: u32) -> u32x128x393
+  return edsyn(ed, 0, 25, 0, kind, value, 3, i, 2)
+end
+fn mxterm(ed: u32x128x393, k: u32, n: u32, cell: u32, xb: u32, xs: u32, yb: u32, ys: u32) -> u32x128x393
+  let id = ed[E_SC + E_NEXT]
+  let x = xb + ((cell / n) * n + k) * xs
+  let y = yb + (k * n + cell % n) * ys
+  let ed1 = edsyn(ed, 0, 4, 0, 1, x, 1, y, 2)
+  return fold(edsyn, bit(k != 0), ed1, 2, 0, 1, id - 1, 1, id, 2)
+end
+fn mxcell(ed: u32x128x393, cell: u32, n: u32, xb: u32, xs: u32, yb: u32, ys: u32) -> u32x128x393
+  return fold(mxterm, n, ed, n, cell, xb, xs, yb, ys)
+end
+fn mxproduct(ed: u32x128x393, i: u32, n: u32, xb: u32, xs: u32, yb: u32, ys: u32) -> u32x128x393
+  let base = ed[E_SC + E_NEXT]
+  let stride = 2 * n - 1
+  let ed1 = fold(mxcell, n * n, ed, n, xb, xs, yb, ys)
+  ed1[E_SC + E_MBASE] = base + stride - 1
+  ed1[E_SC + E_MSTRIDE] = stride
+  return ed1
+end
+fn mxpowgo(ed: u32x128x393, i: u32, n: u32, side: u32) -> bool
+  return ed[E_SC + E_MLEFT] != 0
+end
+fn mxpowstep(ed: u32x128x393, i: u32, n: u32, side: u32) -> u32x128x393
+  let left = ed[E_SC + E_MLEFT]
+  let acc = ed[E_SC + E_MACC]
+  let astride = ed[E_SC + E_MAS]
+  let pow = ed[E_SC + E_MPOW]
+  let pstride = ed[E_SC + E_MPS]
+  let take = (left & 1) != 0
+  let xb = side == 0 ? acc : pow
+  let xs = side == 0 ? astride : pstride
+  let yb = side == 0 ? pow : acc
+  let ys = side == 0 ? pstride : astride
+  let ed1 = fold(mxproduct, bit(take), ed, n, xb, xs, yb, ys)
+  ed1[E_SC + E_MACC] = ed1[E_SC + E_MBASE] if take
+  ed1[E_SC + E_MAS] = ed1[E_SC + E_MSTRIDE] if take
+  let ed2 = fold(mxproduct, bit(left > 1), ed1, n, pow, pstride, pow, pstride)
+  ed2[E_SC + E_MPOW] = ed2[E_SC + E_MBASE] if left > 1
+  ed2[E_SC + E_MPS] = ed2[E_SC + E_MSTRIDE] if left > 1
+  ed2[E_SC + E_MLEFT] = left >> 1
+  return ed2
+end
+fn mxemit(ed: u32x128x393, i: u32, n: u32, side: u32, param: u32, trips: u32, type: u32, oa: u32x128x512, ash: u32) -> u32x128x393
+  let base = ed[E_SC + E_NEXT]
+  let len = n * n
+  let (sk, sv) = harg(oa, ed, ash, 1)
+  let (mk, mv) = harg(oa, ed, ash, param)
+  let ed1 = fold(mxget, len, ed, sk, sv)
+  let ed2 = fold(mxget, len, ed1, mk, mv)
+  ed2[E_SC + E_MACC] = base
+  ed2[E_SC + E_MAS] = 1
+  ed2[E_SC + E_MPOW] = base + len
+  ed2[E_SC + E_MPS] = 1
+  ed2[E_SC + E_MLEFT] = trips
+  let ed3 = loop(mxpowgo, mxpowstep, 32, ed2, n, side)
+  return edsyn(ed3, 0, 22, type, 1, ed3[E_SC + E_MACC], 1, ed3[E_SC + E_MAS], len)
+end
+
 # the node at sequence index i
-fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, sm: u32x128x16, fnt: u32x128x45, nd: u32x128x132, rqall: u32) -> u32x128x393
+fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, sm: u32x128x16, fnt: u32x128x45, nd: u32x128x132, ty: u32x384x65, tl: u32x128x65, rqall: u32) -> u32x128x393
   let x = sq[i]
   let o = cl[C_OP + x]
   let na = cl[C_NA + x]
@@ -293,22 +479,40 @@ fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x
   let has = (fnt[c * 7] & 1) != 0
   let (c0k, c0v) = harg(oa, ed, ash, 0)
   let (i1k, i1v) = harg(oa, ed, ash, 1)
-  let inl = (o == 19) & (n <= 16) & ((fl & 7) == 7)
-  let unr = (o == 20) & (c0k == 3) & (c0v >= 1) & (c0v <= 8) & (na >= 2) & (n <= 256) & ((n * c0v) <= 2048) & ((fl & 8) == 0) & ((fl & 16) != 0)
-  let want = inl | unr
-  let need = ((rqall == 1) ? ((o == 19) | (o == 20)) : want) & !has
-  let doit = want & has
+  # Raw counts are lower bounds only. Request candidate bodies before using weighted costs.
+  let inl0 = (o == 19) & (n <= 16) & ((fl & 7) == 7)
+  let foldok = (o == 20) & (c0k == 3) & (na >= 2) & ((fl & 8) == 0) & ((fl & 16) != 0)
+  let unr0 = foldok & (c0v >= 1) & (c0v <= 8) & (n <= 256) & ((n * c0v) <= 2048)
+  let pow0 = foldok & (c0v >= 3)
+  let cost = fold(edcost, (has & (inl0 | unr0)) ? fnt[c * 7 + 5] : 0, 0, nd, fnt[c * 7 + 4])
+  let count = fold(mxpcnt, pow0 ? 32 : 0, (0, 0), c0v)
+  let products = count#0 + count#1
+  let shape = fold(mxshape, bit(pow0 & has), (0, 0, 0), nd, oa, fnt, ty, tl, c, c0v, products)
+  let dim = shape#0
+  let len = dim * dim
+  let power = pow0 & has & (dim >= 2) & (products < c0v) & (products * 2 * dim * dim * dim <= 2048)
+  let added = 2 * len + products * len * (2 * dim - 1) + 1
+  let slots = 5 * len + 2 * products * len * (2 * dim - 1)
+  let space = (ed[E_SC + E_NEXT] + added <= AN) & (ed[E_SC + E_OUTN] + added <= AN) & (ed[E_SC + E_NI] + added <= AN) & (ed[E_SC + E_SLOT] + slots <= NSL)
+  ed[E_SC + E_ERR] = ed[E_SC + E_ERR] | ((power & !space) ? 1 : 0)
+  let powered = power & space
+  let inl = inl0 & has & (cost <= 16)
+  let unr = unr0 & has & (cost <= 256) & (cost * c0v <= 2048) & !power
+  let possible = inl0 | unr0 | pow0
+  let need = ((rqall == 1) ? ((o == 19) | (o == 20)) : possible) & !has
+  let doit = inl | unr | powered
   let outn = ed[E_SC + E_OUTN]
   ed[E_OUT + outn] = x if !doit
   ed[E_SC + E_OUTN] = outn + (doit ? 0 : 1)
   ed[E_RQ + c] = 1 if need
   ed[E_SC + E_B0K] = i1k if unr
   ed[E_SC + E_B0V] = i1v if unr
-  let ed1 = fold(edinst, bit(inl & has), ed, 0, 0, c, x, ash, fnt, nd, oa)
-  let ed2 = fold(edunr, (unr & has) ? c0v : 0, ed1, c, x, ash, fnt, nd, oa)
-  ed2[E_RNK + x] = unr ? ed2[E_SC + E_B0K] : ed2[E_SC + E_RK] if doit
-  ed2[E_RNV + x] = unr ? ed2[E_SC + E_B0V] : ed2[E_SC + E_RV] if doit
-  return ed2
+  let ed1 = fold(edinst, bit(inl), ed, 0, 0, c, x, ash, fnt, nd, oa)
+  let ed2 = fold(edunr, unr ? c0v : 0, ed1, c, x, ash, fnt, nd, oa)
+  let ed3 = fold(mxemit, bit(powered), ed2, dim, shape#1, shape#2, c0v, cl[C_TY + x], oa, ash)
+  ed3[E_RNK + x] = unr ? ed3[E_SC + E_B0K] : ed3[E_SC + E_RK] if doit
+  ed3[E_RNV + x] = unr ? ed3[E_SC + E_B0V] : ed3[E_SC + E_RV] if doit
+  return ed3
 end
 
 # the output sequence into the body's sequence
@@ -320,15 +524,17 @@ end
 fn clnew(cl: u32x128x193, i: u32, ed: u32x128x393, ng: u32, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24) -> u32x128x193
   let id = ng + i
   let ins = ed[E_INST + id]
-  let c = ed[E_ICA + ins]
-  let sr = fnt[c * 7 + 4] + (id - ed[E_IBS + ins])
+  let mode = ed[E_IMO + ins]
+  let syn = mode >= 2
+  let c = syn ? 0 : ed[E_ICA + ins]
+  let sr = syn ? 0 : fnt[c * 7 + 4] + (id - ed[E_IBS + ins])
   let b = sr * 6
-  cl[C_OP + id] = nd[b + 1]
-  cl[C_NA + id] = nd[b + 2]
+  cl[C_OP + id] = syn ? ed[E_ICA + ins] : nd[b + 1]
+  cl[C_NA + id] = mode == 3 ? ed[E_IHO + ins] : syn ? 2 : nd[b + 2]
   cl[C_AS + id] = ed[E_ASL + id]
-  cl[C_CA + id] = nd[b + 4]
-  cl[C_PR + id] = nd[b + 5]
-  cl[C_TY + id] = nt[sr]
+  cl[C_CA + id] = syn ? 0 : nd[b + 4]
+  cl[C_PR + id] = syn ? 0 : nd[b + 5]
+  cl[C_TY + id] = syn ? ed[E_IBS + ins] : nt[sr]
   return cl
 end
 fn oaorig(oa: u32x128x512, j: u32, ed: u32x128x393, ash: u32) -> u32x128x512
@@ -338,16 +544,19 @@ fn oaorig(oa: u32x128x512, j: u32, ed: u32x128x393, ash: u32) -> u32x128x512
 end
 fn oanew(oa: u32x128x512, j: u32, ed: u32x128x393, cl: u32x128x193, op: u32x128x512, nd: u32x128x132, fnt: u32x128x45, id: u32) -> u32x128x512
   let ins = ed[E_INST + id]
-  let c = ed[E_ICA + ins]
-  let base = ed[E_IBS + ins]
-  let sr = fnt[c * 7 + 4] + (id - base)
-  let (k, v) = rdp(op, nd[sr * 6 + 3] + j)
   let mode = ed[E_IMO + ins]
-  let host = ed[E_IHO + ins]
+  let syn = mode >= 2
+  let c = syn ? 0 : ed[E_ICA + ins]
+  let base = ed[E_IBS + ins]
+  let sr = syn ? 0 : fnt[c * 7 + 4] + (id - base)
+  let (k, v) = rdp(op, nd[sr * 6 + 3] + j)
+  let host = syn ? 0 : ed[E_IHO + ins]
   let (mk, mv) = mparam(oa, ed, mode, ed[E_IK + ins], ed[E_IB0K + ins], ed[E_IB0V + ins], cl[C_AS + host], v)
   let isp = k == 2
   let isn = k == 1
-  return wrp(oa, cl[C_AS + id] + j, isp ? mk : k, isp ? mv : isn ? base + v : v)
+  let sk = mode == 3 ? 1 : j == 0 ? ed[E_IHO + ins] : ed[E_IB0K + ins]
+  let sv = mode == 3 ? (ed[E_IK + ins] + j * ed[E_IB0V + ins]) : j == 0 ? ed[E_IK + ins] : ed[E_IB0V + ins]
+  return wrp(oa, cl[C_AS + id] + j, syn ? sk : isp ? mk : k, syn ? sv : isp ? mv : isn ? base + v : v)
 end
 # the operands of the node at output index i: renamed, or the callee's mapped
 fn oawr(oa: u32x128x512, i: u32, ed: u32x128x393, cl: u32x128x193, ng: u32, op: u32x128x512, nd: u32x128x132, fnt: u32x128x45) -> u32x128x512
@@ -1622,7 +1831,7 @@ def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt
   ed0[E_SC + E_NEXT] = nidS
   ed0[E_SC + E_SLOT] = nslotS
   let run1 = (stage == 0) | (stage >= 1)
-  let ed1 = fold(edstep, bit(run1) * nS, ed0, sqS, clS, oaS, sm, fnt, nd, rqall)
+  let ed1 = fold(edstep, bit(run1) * nS, ed0, sqS, clS, oaS, sm, fnt, nd, ty, tl, rqall)
   let chg = ed1[E_SC + E_CHG]
   let outn = ed1[E_SC + E_OUTN]
   let next = ed1[E_SC + E_NEXT]
@@ -1915,6 +2124,36 @@ def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt
   return (sqs, clR7, oaR7, nR7, rR7k2, rR7v2, li, nreq, rqR7, err)
 end
 
+# Public table modes have no checked-op optimizer support yet. Refuse every supplied
+# checked body before entering optcore. Internal ozopt1 stays guarded by shape's actual
+# producer/consumer reachable-body proof, so unrelated checked functions do not block it.
+fn ozcknode(found: u32, j: u32, nd: u32x128x132, first: u32) -> u32
+  let op = nd[(first + j) * 6 + 1]
+  return found | bit((op >= 32) & (op <= 37))
+end
+fn ozckfn(found: u32, f: u32, fnt: u32x128x45, nd: u32x128x132) -> u32
+  return fold(ozcknode, fnt[f * 7 + 5], found, nd, fnt[f * 7 + 4])
+end
+
+fn ozemit(s: (io,u32), i: u32, ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, sm: u32x128x16, g: u32, stage: u32, nty: u32, nf: u32, no: u32) -> (io,u32)
+  let io = s#0
+  let ti = fold(tistep, nty, zeros(195), ty, tl)
+  let (sqs, cl, oa, n, rk, rv, li, nreq, rq, err) = optcore(ty, tl, fnt, nd, nt, op, sm, ti, g, stage, 0, nf, no)
+  let ok = (nreq == 0) & (err == 0)
+
+  # dump
+  let pos0 = zeros(32)
+  let pos = fold(posstep, n, pos0, sqs)
+  let w0 = fold(ozwr, bit(ok), io, n)
+  let w1 = fold(ozwnode, ok ? n : 0, w0, sqs, cl, oa, pos)
+  let w2 = fold(ozwr, bit(ok), w1, rk)
+  let w3 = fold(ozwr, bit(ok), w2, rk == 1 ? pos[rv] : rv)
+  let w4 = fold(ozwr, bit(ok), w3, li)
+  let w5 = fold(rqw, nf * bit(nreq != 0), w4, rq)
+  let w6 = fold(ozwr, bit(nreq != 0), w5, nreq)
+  return (w6, err != 0 ? 4 : bit(nreq != 0) * 7)
+end
+
 fn ozone(io: io) -> (io, u32)
   let (nty, i1) = wardw(io)
   let (ty, i2) = warnty(i1, nty * 3)
@@ -1930,21 +2169,8 @@ fn ozone(io: io) -> (io, u32)
   let (sm, i12) = warn16(i11, nf * 2)
   let (g, i13) = wardw(i12)
   let (stage, i14) = wardw(i13)
-  let ti = fold(tistep, nty, zeros(195), ty, tl)
-  let (sqs, cl, oa, n, rk, rv, li, nreq, rq, err) = optcore(ty, tl, fnt, nd, nt, op, sm, ti, g, stage, 0, nf, no)
-  let ok = (nreq == 0) & (err == 0)
-
-  # dump
-  let pos0 = zeros(32)
-  let pos = fold(posstep, n, pos0, sqs)
-  let w0 = fold(ozwr, bit(ok), i14, n)
-  let w1 = fold(ozwnode, ok ? n : 0, w0, sqs, cl, oa, pos)
-  let w2 = fold(ozwr, bit(ok), w1, rk)
-  let w3 = fold(ozwr, bit(ok), w2, rk == 1 ? pos[rv] : rv)
-  let w4 = fold(ozwr, bit(ok), w3, li)
-  let w5 = fold(rqw, nf * bit(nreq != 0), w4, rq)
-  let w6 = fold(ozwr, bit(nreq != 0), w5, nreq)
-  return (w6, err != 0 ? 4 : bit(nreq != 0) * 7)
+  let checked = fold(ozckfn, nf, 0, fnt, nd)
+  return fold(ozemit, checked == 0 ? 1 : 0, (i14, checked == 0 ? 0 : 5), ty, tl, fnt, nd, nt, op, sm, g, stage, nty, nf, no)
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -2034,6 +2260,13 @@ end
 fn imw(o: io, i: u32, im: u32x128x512) -> io
   return write(o, im[i])
 end
+fn ozimemit(s: (io,u32), i: u32, ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, g: u32, nty: u32, nf: u32, no: u32) -> (io,u32)
+  let im = ozopt1(ty, tl, fnt, nd, nt, op, g, nty, nf, no)
+  let code = im[0]
+  let len = code == 0 ? 8 + im[1] * 5 + im[5] * 2 : code == 7 ? 7 + im[6] : 1
+  return (fold(imw, len, s#0, im), code)
+end
+
 fn ozimg(io: io) -> (io, u32)
   let (nty, i1) = wardw(io)
   let (ty, i2) = warnty(i1, nty * 3)
@@ -2047,8 +2280,6 @@ fn ozimg(io: io) -> (io, u32)
   let (no, i10) = wardw(i9)
   let (op, i11) = warn512(i10, no * 2)
   let (g, i12) = wardw(i11)
-  let im = ozopt1(ty, tl, fnt, nd, nt, op, g, nty, nf, no)
-  let code = im[0]
-  let len = code == 0 ? 8 + im[1] * 5 + im[5] * 2 : code == 7 ? 7 + im[6] : 1
-  return (fold(imw, len, i12, im), code)
+  let checked = fold(ozckfn, nf, 0, fnt, nd)
+  return fold(ozimemit, checked == 0 ? 1 : 0, (i12, checked == 0 ? 0 : 5), ty, tl, fnt, nd, nt, op, g, nty, nf, no)
 end

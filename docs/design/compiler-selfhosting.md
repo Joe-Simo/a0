@@ -15,6 +15,7 @@ optimization, target ABI decisions and code emission belong in A0.
 | Stage | A0 implementation | Work before dependency removal |
 | --- | --- | --- |
 | Canonical frontend | `compiler/lex.a0`, `parse.a0`, `check.a0`, `suggest.a0` | Specs (`ex`, `pre`, `post`), diagnostic detail/source locations, current accepted input limits, generic module/chunk planning and a lossless checked-IR interface. Ordinary loads still use `src/link.ts` and `src/core.ts`. |
+| Browser frontend | `compiler/front512.a0` | The playground retains a separate legacy lexer/parser/checker with a smaller language surface. Complete or replace it through the same A0 compiler interface. |
 | Dense frontend | `compiler/dense.a0` | Complete the documented syntax gaps and execute it without the TypeScript interpreter or a subsequent TypeScript parse. |
 | Evaluation | `compiler/evalrun.a0` | IO, strict traps, fuel/trip behavior and command/spec evaluation. The native driver's C evaluator is also compiler logic that must migrate. |
 | Optimization | `compiler/optimize.a0`, `shape.a0` | Preserve reference behavior, support strict/checked operations and existing input sizes, and use these stages for every target. Ordinary emits still use `src/optimize.ts`. |

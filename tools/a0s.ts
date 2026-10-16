@@ -561,7 +561,7 @@ function callExpr(
   if (d !== undefined) return expandDef(g, d, args, hint);
   const s = sigs.get(f);
   if (s === undefined) throw new Error(`unknown function ${f}`);
-  return emitv(g, sc, `call ${f} ${aop}`, s.ret, hint);
+  return emitv(g, sc, `call ${f}${aop.length === 0 ? '' : ` ${aop}`}`, s.ret, hint);
 }
 
 function expandDef(g: FnGen, d: Def, args: Val[], hint: string | undefined): Val {

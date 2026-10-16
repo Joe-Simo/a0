@@ -3,13 +3,17 @@
  * compiler/optimize.a0s by tools/a0s.ts), the shape analyses and loop fusion (compiler/shape.a0,
  * from compiler/shape.a0m by tools/a0m.ts) and the wasm emitter (compiler/emit_wasm.a0), entry
  * `emitwasmio` of compiler/boot.a0 (read its header for the modes and result codes). They port
- * src/optimize.ts and src/wasm.ts: the module must equal `compile(program, 'wasm')` byte for byte
- * with the default options (optimizer, fusion, simd) and with `{ optimize: false }`.
+ * src/optimize.ts and src/wasm.ts: supported ordinary programs must equal
+ * `compile(program, 'wasm')` byte for byte with default options and `{ optimize: false }`.
+ * Canonical checked programs can be emitted without the optimizer; fusion declines candidates
+ * whose reachable bodies contain checked operations, so those modules may differ from TypeScript
+ * while preserving behavior. Strict programs and checked optimization are explicitly refused.
  *
  * - Build (`buildWasmTool`): the checked-in, A0-generated C seed (seed/a0c-seed.c)
  *   compiles the closure of `emitwasmio` in chunks;
  *   clang builds that C into `a0w`. So the tool that runs is A0 compiled by A0.
- * - This file only encodes, orders, splits and supplies bodies; it holds no A0 semantics.
+ * - TypeScript still drives typed-IR adaptation, source formatting, chunk planning and body
+ *   requests. Moving those compiler decisions into A0 remains part of the full migration.
  * - The optimizer runs a function a time (mode 7, `a0OptimizeProgram`): a single A0 value (a
  *   fold state included) is at most 65536 words, so a run cannot loop over functions holding
  *   their tables. The functions are optimized in program order; each run gets the function and
@@ -153,15 +157,19 @@ export interface WasmTool {
 }
 
 /** The verified A0-generated C seed compiles `emitwasmio`; clang builds `a0w`. */
-export async function buildWasmTool(clang: ToolInfo, bootstrap?: BootstrapSeed): Promise<WasmTool> {
+export async function buildWasmTool(
+  clang: ToolInfo,
+  bootstrap?: BootstrapSeed,
+  buildDir = BUILD_DIR,
+): Promise<WasmTool> {
   const linked = (await link('compiler/boot.a0', (p) => readFile(p, 'utf8'))).program;
   const seed = bootstrap ?? (await readBootstrapSeed());
-  const [stage1] = await buildStage(clang, 'a0c-seed', seed.c);
+  const [stage1] = await buildStage(clang, 'a0c-seed', seed.c, 'emitchunkio', buildDir);
   const source = closure(linked.functions, 'emitwasmio');
   const e = emitChunked(source, (c, b) => runStageChunk(stage1, c, b));
   if (e.code !== 0)
     throw new Error(`a0c-seed rejected emitwasmio: code ${e.code} (${e.failed?.own.join(' ')})`);
-  const dir = join(BUILD_DIR, 'a0w');
+  const dir = join(buildDir, 'a0w');
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'emitter.c'), e.text, 'utf8');
   await writeFile(join(dir, 'main.c'), toolMain, 'utf8');
@@ -733,6 +741,9 @@ export function a0OptimizeProgram(
   fallback?: readonly Body[],
   image = false,
 ): OptimizedProgram {
+  // Emitter support does not imply optimizer support. Its table protocol has no strict
+  // profile/trap metadata, and checked-result operations are not ported in these passes yet.
+  assertTargetSupports('a0w optimizer', program);
   const plain = reference === undefined && fallback === undefined && !image;
   const known = plain ? OPTIMIZED.get(program) : undefined;
   if (known !== undefined) return known;
@@ -955,7 +966,7 @@ export function a0WasmFromTables(
   optimize = false,
   options: EmitOptions = {},
 ): ModuleRun {
-  // the A0 emitter implements the canonical profile and no checked op (as its drivers refuse)
+  // Canonical checked operations are supported; strict still needs profile/trap propagation.
   assertTargetSupports('a0w', source);
   const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
   const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
@@ -1074,7 +1085,7 @@ export function a0WasmFromSource(
   optimize = false,
   options: EmitOptions = {},
 ): { bytes?: Uint8Array; code: number; chunks: number; runs: number; failed?: Chunk } {
-  // the A0 emitter implements the canonical profile and no checked op (as its drivers refuse)
+  // Canonical checked operations are supported; strict still needs profile/trap propagation.
   assertTargetSupports('a0w', source);
   const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
   const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
@@ -1098,7 +1109,8 @@ export function a0WasmFromSource(
   /** One chunk through the A0 front end and the emitter: its output, or undefined when too big. */
   const run = (from: number, to: number): ChunkOutput | undefined => {
     const supplied = new Set<number>();
-    const whole = plan[0] !== undefined && plan[0].own.length === 0;
+    const whole =
+      plan[0] !== undefined && plan[0].own.length === 0 && from === 0 && to === fns.length;
     for (;;) {
       const chunk: SourceChunk = whole
         ? {
@@ -2563,6 +2575,7 @@ async function main(): Promise<void> {
   if (mat4 === undefined) throw new Error('exec-bench kernel mat4 is missing');
   const mat4n = mat4.a0.replace('r fold mulstep 8 a b', 'k and p1 7\nr fold mulstep k a b');
   if (mat4n === mat4.a0) throw new Error('exec-bench kernel mat4 has no fold of mulstep');
+  programs.push(['bench/mat4', parseAndValidate(mat4.a0), small]);
   programs.push(['bench/mat4n', parseAndValidate(mat4n), small]);
   programs.push(['recseed', parseAndValidate(REC_SEED_SOURCE), small]);
   programs.push(['prefix', parseAndValidate(PREFIX_SOURCE), small]);

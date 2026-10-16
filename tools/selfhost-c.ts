@@ -31,18 +31,6 @@ import { irOp } from './ref-parse.js';
 import { writeReport } from './scrub-results.js';
 import { checkNative, ioCaps, type TargetReport } from './verify.js';
 
-/** Table sizes of compiler/check.a0 and compiler/emit_c.a0 (pool and sym are the parser's). */
-const SIZES = {
-  types: 768,
-  tlist: 1024,
-  fns: 1024,
-  nodes: 4096,
-  args: 8192,
-  ntys: 1024,
-  fstat: 256,
-  pool: 512,
-  sym: 512,
-};
 const FUEL = { fuel: 1e12 };
 
 /** Page counts of the emitter's tables (the front end's: 128 words a page, types 384). */
@@ -61,12 +49,9 @@ const EMIT_PAGES = {
 const paged = (t: readonly number[], count: number, size = 128): number[][] => {
   if (t.length > count * size)
     throw new Error(`table of ${t.length} words exceeds ${count * size}`);
-  return Array.from({ length: count }, (_, p) => pad(t.slice(p * size, p * size + size), size));
-};
-
-const pad = (t: readonly number[], n: number): number[] => {
-  if (t.length > n) throw new Error(`table of ${t.length} words exceeds ${n}`);
-  return [...t, ...new Array(n - t.length).fill(0)];
+  return Array.from({ length: count }, (_, p) =>
+    Array.from({ length: size }, (_, i) => t[p * size + i] ?? 0),
+  );
 };
 
 interface Headers {
@@ -176,7 +161,11 @@ function chunks(fns: readonly Func[]): [number, number][] {
     while (to < fns.length) {
       const fn = fns[to] as Func;
       const a = fn.nodes.reduce((n, x) => n + x.args.length, 0);
-      if (nn + fn.nodes.length > SIZES.nodes / 6 || na + a + bigRets > SIZES.args / 2) break;
+      if (
+        nn + fn.nodes.length > (EMIT_PAGES.nodes * 128) / 6 ||
+        na + a + bigRets > (EMIT_PAGES.args * 128) / 2
+      )
+        break;
       nn += fn.nodes.length;
       na += a;
       to += 1;
@@ -188,19 +177,37 @@ function chunks(fns: readonly Func[]): [number, number][] {
   return out;
 }
 
-type CheckState = [number[], number[], number[], number[], number, number, number[], ...unknown[]];
+/** State of compiler/check.a0 checkir, distinct from the legacy flat front512 check entry. */
+type CheckState = [
+  number[][],
+  number[][],
+  number[][],
+  number[][],
+  number[][],
+  number[][],
+  number[],
+  number[][],
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+];
 
 /** The A0 C emitter's output for a whole program, chunk by chunk. */
 export function selfHostedC(
   emitter: TypedProgram,
   program: TypedProgram,
 ): { text: string; chunks: number } {
-  // the A0 emitter implements the canonical profile and no checked op (as its drivers refuse)
+  // Total checked ops are supported; strict trapping semantics still require a runtime port.
   assertTargetSupports('a0c', program);
-  const check = emitter.byName.get('check') as TypedFunc;
+  const check = emitter.byName.get('checkir') as TypedFunc;
   const emitc = emitter.byName.get('emitc') as TypedFunc;
   const fns = program.functions;
-  if (fns.length * 7 > SIZES.fns) throw new Error('too many functions for the fns table');
+  if (fns.length * 7 > EMIT_PAGES.fns * 128)
+    throw new Error('too many functions for the fns table');
   const h = encodeHeaders(fns);
   let types = h.types;
   let tlist = h.tlist;
@@ -219,12 +226,12 @@ export function selfHostedC(
     const s = run(
       check,
       [
-        pad(types, SIZES.types),
-        pad(tlist, SIZES.tlist),
-        pad(body.fns, SIZES.fns),
-        pad(body.nodes, SIZES.nodes),
-        pad(body.args, SIZES.args),
-        pad(fstat, SIZES.fstat),
+        paged(types, EMIT_PAGES.types, 384),
+        paged(tlist, EMIT_PAGES.tlist),
+        paged(body.fns, EMIT_PAGES.fns),
+        paged(body.nodes, EMIT_PAGES.nodes),
+        paged(body.args, EMIT_PAGES.args),
+        paged(fstat, 8),
         types.length / 3,
         tlist.length,
         to,
@@ -232,11 +239,14 @@ export function selfHostedC(
       ],
       FUEL,
     ) as CheckState;
-    if (s[10] !== 0) throw new Error(`A0 checker rejected functions ${from}..${to}: ${s[10]}`);
-    const ntypes = s[4];
-    types = s[0].slice(0, ntypes * 3);
-    tlist = s[1].slice(0, s[5]);
-    fstat = (s[9] as number[]).slice(0, to);
+    if (s[10] !== 0)
+      throw new Error(
+        `A0 checker rejected functions ${from}..${to}: ${s[10]} at function ${s[11]}, node ${s[12]}`,
+      );
+    const ntypes = s[8];
+    types = s[0].flat().slice(0, ntypes * 3);
+    tlist = s[2].flat().slice(0, s[9]);
+    fstat = s[7].flat().slice(0, to);
     const io = makeIo([]);
     run(
       emitc,
@@ -247,7 +257,7 @@ export function selfHostedC(
         paged(body.fns, EMIT_PAGES.fns),
         paged(body.nodes, EMIT_PAGES.nodes),
         paged(body.args, EMIT_PAGES.args),
-        paged(s[6], EMIT_PAGES.ntys),
+        s[4],
         paged(h.pool, EMIT_PAGES.pool),
         paged(fnm, EMIT_PAGES.fnm),
         ntypes,

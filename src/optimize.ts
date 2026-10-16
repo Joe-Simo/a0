@@ -827,7 +827,7 @@ function matrixPower(
   };
   let acc = elements(state);
   let pow = elements(matrix);
-  for (let left = trips; left > 0; left >>= 1) {
+  for (let left = trips; left > 0; left >>>= 1) {
     if ((left & 1) === 1) acc = step.side === 'right' ? product(acc, pow) : product(pow, acc);
     if (left > 1) pow = product(pow, pow);
   }

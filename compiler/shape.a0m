@@ -2603,6 +2603,191 @@ end
 # succeeds. SR = (found, BLD, INF, missing): the first body that was needed and is absent.
 
 # operand k of consumer ci (p10), first node p11, recordState p12; uses p9
+# Before fusion may run ozopt1 on a synthesized body, prove both actual candidate
+# bodies and their reachable callees are checked-free. The queue handles forward synthetic
+# edges as well as source program order. An opaque reachable body returns its existing
+# chunk-function index as a missing-body request; checked/invalid/over-capacity declines fusion.
+# State: queue, visited, queue count, head, safe (1/0), missing index (UINT_MAX when none).
+fn shfcqput (u32x128x8,u32x128x8,u32,u32,u32,u32) u32 u32 -> (u32x128x8,u32x128x8,u32,u32,u32,u32)
+q at p0 0
+seen at p0 1
+n at p0 2
+head at p0 3
+safe at p0 4
+missing at p0 5
+pi shr n 7
+wi and n 127
+pg get q pi
+pg2 set pg wi p2
+q2 set q pi pg2
+si shr p2 7
+sw and p2 127
+sp get seen si
+sp2 set sp sw 1
+seen2 set seen si sp2
+n2 add n 1
+r rec q2 seen2 n2 head safe missing
+ret r
+end
+fn shfcq (u32x128x8,u32x128x8,u32,u32,u32,u32) u32 u32 -> (u32x128x8,u32x128x8,u32,u32,u32,u32)
+q at p0 0
+seen at p0 1
+n at p0 2
+head at p0 3
+safe at p0 4
+missing at p0 5
+valid lt p2 822
+idx select valid p2 0
+pi shr idx 7
+wi and idx 127
+pg get seen pi
+old get pg wi
+fresh eq old 0
+room lt n 822
+live eq safe 1
+nv eq valid false
+nr eq room false
+full and fresh nr
+bad0 or nv full
+bad and live bad0
+safe2 select bad 0 safe
+s0 rec q seen n head safe2 missing
+a and live valid
+b and a fresh
+c and b room
+go select c 1 0
+r fold shfcqput go s0 p2
+ret r
+end
+fn shfcn (u32x128x8,u32x128x8,u32,u32,u32,u32) u32 u32x128x132 u32 -> (u32x128x8,u32x128x8,u32,u32,u32,u32)
+q at p0 0
+seen at p0 1
+n at p0 2
+head at p0 3
+safe at p0 4
+missing at p0 5
+g add p3 p1
+m mul g 6
+ow add m 1
+opi shr ow 7
+opw and ow 127
+opp get p2 opi
+op get opp opw
+lo ge op 32
+hi le op 37
+checked and lo hi
+safe2 select checked 0 safe
+s0 rec q seen n head safe2 missing
+live eq safe2 1
+callop eq op 19
+foldop eq op 20
+loopop eq op 21
+iterop or foldop loopop
+calls or callop iterop
+addcall and live calls
+cw add m 4
+ci shr cw 7
+cx and cw 127
+cp get p2 ci
+callee get cp cx
+cn select addcall 1 0
+s1 fold shfcq cn s0 callee
+pw add m 5
+pi shr pw 7
+px and pw 127
+pp get p2 pi
+pred get pp px
+addpred and live loopop
+pn select addpred 1 0
+s2 fold shfcq pn s1 pred
+ret s2
+end
+fn shfcok (u32x128x8,u32x128x8,u32,u32,u32,u32) u32 u32x128x45 u32x128x132 -> bool
+n at p0 2
+head at p0 3
+safe at p0 4
+missing at p0 5
+a lt head n
+b eq safe 1
+c eq missing 4294967295
+d and a b
+r and d c
+ret r
+end
+fn shfcstep (u32x128x8,u32x128x8,u32,u32,u32,u32) u32 u32x128x45 u32x128x132 -> (u32x128x8,u32x128x8,u32,u32,u32,u32)
+q at p0 0
+seen at p0 1
+n at p0 2
+head at p0 3
+safe at p0 4
+missing at p0 5
+qi shr head 7
+qw and head 127
+qp get q qi
+f get qp qw
+fm mul f 7
+rw add fm 6
+ri shr rw 7
+rx and rw 127
+rp get p2 ri
+retword get rp rx
+has ne retword 0
+fw add fm 4
+fi shr fw 7
+fx and fw 127
+fp get p2 fi
+first get fp fx
+nw add fm 5
+ni shr nw 7
+nx and nw 127
+np get p2 ni
+count get np nx
+walk select has count 0
+s0 fold shfcn walk p0 p3 first
+q2 at s0 0
+seen2 at s0 1
+n2 at s0 2
+safe2 at s0 4
+missing2 at s0 5
+head2 add head 1
+safe3 select has safe2 0
+missing3 select has missing2 f
+r rec q2 seen2 n2 head2 safe3 missing3
+ret r
+end
+fn shfcsafe u32x128x45 u32x128x132 u32 -> (u32,u32)
+zero call z8
+q0 get zero 0
+q1 set q0 0 p2
+q set zero 0 q1
+valid lt p2 822
+idx select valid p2 0
+pi shr idx 7
+wi and idx 127
+pg get zero pi
+pg2 set pg wi 1
+seen set zero pi pg2
+safe select valid 1 0
+s rec q seen 1 0 safe 4294967295
+r loop shfcok shfcstep 822 s p0 p1
+ok at r 4
+missing at r 5
+out rec ok missing
+ret out
+end
+fn shfcsecond (u32,u32) u32 u32x128x45 u32x128x132 u32 -> (u32,u32)
+r call shfcsafe p2 p3 p4
+ret r
+end
+fn shfcroots (u32,u32) u32 u32x128x45 u32x128x132 u32 u32 -> (u32,u32)
+a call shfcsafe p2 p3 p4
+ok at a 0
+go ne ok 0
+n select go 1 0
+r fold shfcsecond n a p2 p3 p5
+ret r
+end
+
 fn shfk (u32,u32x128x132,u32x128x2,u32) u32 u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x310 u32x128x24 u32 u32 u32 -> (u32,u32x128x132,u32x128x2,u32)
 found at p0 0
 bld at p0 1
@@ -2671,6 +2856,15 @@ d3 and d2 p1c
 d4 and d3 has1
 d5 and d4 nio1
 cond and d5 sok
+fseed rec 1 4294967295
+fgo select cond 1 0
+fscan fold shfcroots fgo fseed p4 p2 pr_ce c_ce
+fsafe at fscan 0
+fmissing at fscan 1
+fyes ne fsafe 0
+fcond and cond fyes
+fnone eq miss2v 4294967295
+fmiss select fnone fmissing miss2v
 zp call zpage
 t0 set zp 0 p11
 t1 set t0 1 pr_ce
@@ -2687,9 +2881,9 @@ t13 set t12 13 pr_af
 t14 set t13 14 pr_na
 t15 set t14 15 p12
 st set t15 16 cty
-rx call shatx p2 p3 p4 p6 p7 st cond
-rs call shats p2 p3 p4 p6 p7 st cond
-rr call shatr p2 p3 p4 p6 p7 st cond
+rx call shatx p2 p3 p4 p6 p7 st fcond
+rs call shats p2 p3 p4 p6 p7 st fcond
+rr call shatr p2 p3 p4 p6 p7 st fcond
 bx at rx 0
 ix at rx 1
 bs at rs 0
@@ -2720,7 +2914,7 @@ take and nfb any
 nbld select take bsel bld
 ninf select take isel inf
 fnn select take 1 found
-r rec fnn nbld ninf miss2v
+r rec fnn nbld ninf fmiss
 ret r
 end
 # consumer node ci
