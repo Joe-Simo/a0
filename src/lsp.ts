@@ -48,6 +48,7 @@ import type { SpecFault } from './diagnostics.js';
 import { applyEdit } from './fix.js';
 import { isDensePath, link, parseFile } from './link.js';
 import { confine } from './mcp.js';
+import { protectionPolicy } from './protection-policy.js';
 import { type SpecWord, specWordOf } from './spec.js';
 import { A0_VERSION } from './version.js';
 
@@ -224,6 +225,7 @@ function wordAt(text: string, pos: Position): string | undefined {
 /** Wire the A0 language services onto `connection` for files inside `launch`. */
 export async function startServer(connection: Connection, launch: string): Promise<void> {
   const launched = await realpath(resolve(launch));
+  protectionPolicy(launched);
   const root = (await stat(launched)).isDirectory() ? launched : dirname(launched);
   const documents = new TextDocuments(TextDocument);
   /** Real (confined) path of each open document, by URI. */

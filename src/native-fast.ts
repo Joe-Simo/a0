@@ -20,6 +20,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
+import { protectionPolicy } from './protection-policy.js';
 
 /** The native checker to use, or undefined. */
 export function nativeCheckBinary(
@@ -46,6 +47,12 @@ export function tryNativeCheck(args: readonly string[]): boolean {
   if (!isPlainCheck(args)) return false;
   const exe = nativeCheckBinary();
   if (exe === undefined) return false;
+  // A native accept must never bypass storage policy. The CLI reports the error consistently.
+  try {
+    protectionPolicy(args[1]);
+  } catch {
+    return false;
+  }
   const r = spawnSync(exe, ['check', '--lines', args[1]], {
     stdio: ['ignore', 'pipe', 'ignore'],
     maxBuffer: 1 << 28,

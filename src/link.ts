@@ -49,6 +49,11 @@ function denseUses(text: string): string[] {
   return out;
 }
 
+/** The authoritative dependency readers also serve encrypted-storage inventory. */
+export function sourceUses(text: string, path: string): readonly string[] {
+  return isDensePath(path) ? denseUses(text) : (parse(text).uses ?? []);
+}
+
 export interface LinkedSource {
   readonly path: string;
   /** 1-based first line of this file inside the combined text. */
@@ -66,6 +71,8 @@ export interface Linked {
 export type ReadSource = (path: string) => Promise<string>;
 
 export interface LinkOptions {
+  /** Host source adapter: virtual sources need no filesystem or mount. Default follows real symlinks. */
+  readonly canonicalPath?: (path: string) => Promise<string>;
   /**
    * Directory every `use` target must resolve inside (after symlinks are followed).
    * Defaults to the nearest ancestor of the entry's directory containing package.json,
@@ -114,7 +121,8 @@ export async function link(
   read: ReadSource,
   options: LinkOptions = {},
 ): Promise<Linked> {
-  const root = await canonical(options.root ?? projectRoot(entry));
+  const canonicalPath = options.canonicalPath ?? canonical;
+  const root = await canonicalPath(options.root ?? projectRoot(entry));
   const inside = (abs: string): boolean => {
     const rel = relative(root, abs);
     return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
@@ -152,7 +160,7 @@ export async function link(
     const known = new Map<string, number>();
     const usedSigs = new Map<string, Sig>();
     for (const use of uses) {
-      const target = await canonical(resolve(dirname(abs), use));
+      const target = await canonicalPath(resolve(dirname(abs), use));
       if (!(target.endsWith('.a0') || isDensePath(target)) || !inside(target))
         throw diag('A0622', [use, abs, target, root]);
       await visit(target, abs);

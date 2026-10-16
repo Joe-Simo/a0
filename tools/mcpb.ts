@@ -15,6 +15,9 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { packExtension, validateManifest } from '@anthropic-ai/mcpb';
+import { requirePackagingPolicy } from '../src/protection-policy.js';
+
+requirePackagingPolicy('.');
 
 const version = process.argv[2]?.replace(/^v/, '');
 if (!version || !/^\d+\.\d+\.\d+$/.test(version))
