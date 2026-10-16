@@ -69,34 +69,49 @@ function decode(b) {
 const flat = (rows) => rows.flat();
 const rows = (words, width) =>
   Array.from({ length: words.length / width }, (_, i) => words.slice(i * width, (i + 1) * width));
-// This oracle uses the exact public JS regular expressions, independently of A0 scans.
-function pass(input, original, regex) {
-  const s = text(input),
-    out = new Uint8Array(input.length),
-    map = new Uint32Array(input.length);
-  let at = 0,
-    from = 0;
-  for (const m of s.matchAll(regex)) {
-    const start = Buffer.byteLength(s.slice(0, m.index)),
-      end = start + Buffer.byteLength(m[0]);
-    out.set(input.subarray(from, start), at);
-    map.set(original.subarray(from, start), at);
-    at += start - from;
-    from = end;
-  }
-  out.set(input.subarray(from), at);
-  map.set(original.subarray(from), at);
-  at += input.length - from;
-  return { bytes: out.slice(0, at), map: map.slice(0, at) };
-}
+// Independent JS model of header removal and retained original byte coordinates.
 function strip(input) {
-  const a = pass(
-    input,
-    Uint32Array.from({ length: input.length }, (_, i) => i),
-    /^\s*use\s+"[^"]*"\s*$/gm,
-  );
-  return pass(a.bytes, a.map, /^[ \t]*profile[ \t]+strict[ \t]*(#.*)?$/gm);
+  const source = text(input),
+    byteAt = (i) => Buffer.byteLength(source.slice(0, i));
+  const kept = [],
+    origins = [];
+  let from = 0;
+  const copy = (lo, hi) => {
+    const a = byteAt(lo),
+      b = byteAt(hi);
+    for (let i = a; i < b; i++) {
+      kept.push(input[i]);
+      origins.push(i);
+    }
+  };
+  for (let lo = 0; lo < source.length; ) {
+    const newline = source.indexOf('\n', lo),
+      hi = newline < 0 ? source.length : newline;
+    const raw = source.slice(lo, hi);
+    // Header scanning uses physical LF; quoted path bytes can contain hashes.
+    let quoted = false,
+      hash = -1;
+    for (let i = 0; i < raw.length; i++) {
+      if (raw[i] === '"') quoted = !quoted;
+      if (raw[i] === '#' && !quoted) {
+        hash = i;
+        break;
+      }
+    }
+    const code = (hash < 0 ? raw : raw.slice(0, hash)).trim();
+    if (/^fn(?:\s|$)/.test(code)) break;
+    if (/^use\s+"[^"\\]+"$/.test(code) || /^profile\s+strict$/.test(code)) {
+      copy(from, lo);
+      if (hash >= 0) copy(lo + hash, lo + raw.trimEnd().length);
+      if (raw.endsWith('\r')) copy(hi - 1, hi);
+      from = hi;
+    }
+    lo = hi + 1;
+  }
+  copy(from, source.length);
+  return { bytes: Uint8Array.from(kept), map: Uint32Array.from(origins) };
 }
+
 function combine(files, order) {
   const parts = [],
     segments = [],

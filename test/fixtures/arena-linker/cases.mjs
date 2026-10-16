@@ -177,26 +177,26 @@ cases.push(
     },
   },
   {
-    name: 'trailing-use-comment-combined-error',
+    name: 'trailing-use-comment-preserved',
     files: {
       'lib.a0': fn('lib'),
       'main.a0': `use "lib.a0" # comment survives regex\n${fn('main')}`,
     },
   },
   {
-    name: 'unicode-profile-canonical-override-quirk',
+    name: 'unicode-profile-canonical-override',
     files: { 'main.a0': `\u00a0profile strict\n${fn('main')}` },
     override: 1,
   },
   {
-    name: 'unicode-profile-after-dependency-error',
+    name: 'unicode-profile-after-dependency',
     files: {
       'lib.a0': `profile strict\n${fn('lib')}`,
       'main.a0': `\ufeffprofile strict\nuse "lib.a0"\n${fn('main')}`,
     },
   },
   {
-    name: 'regex-unicode-comment-fragment-origin',
+    name: 'unicode-comment-kept-verbatim',
     files: {
       'main.a0': `# head\u2028use "unread.a0"\u2029tail\n${fn('main')}`,
     },
@@ -243,5 +243,25 @@ cases.push(
     files: { 'main.a0': 'fn main u32 -> u32\nex 0 -> 1\nret add p0 1\nend\n' },
     scope: 'spec-grammar',
     want: 0,
+  },
+);
+
+// Header removal preserves comments, CRLF, quoted path hashes and literal body separators.
+cases.push(
+  {
+    name: 'header-comments-crlf-and-quoted-body-separators',
+    files: {
+      'lib#λ.a0': 'profile strict\r\nfn lib u32 -> u32\r\nret p0\r\nend\r\n',
+      'main.a0':
+        '\ufeffprofile\u00a0strict # mode \t\r\nuse\u2003"lib#λ.a0"\u00a0# import \u2009\r\nfn main -> u32x22\r\nx text "a\u2028profile strict\u2029z"\r\nret x\r\nend\r\n',
+    },
+  },
+  {
+    name: 'empty-dependency-trailing-use-comment-no-lf',
+    files: { 'empty.a0': '# empty', 'main.a0': 'use "empty.a0" # last' },
+  },
+  {
+    name: 'comment-only-profile-no-lf',
+    files: { 'main.a0': 'profile strict # mode \t' },
   },
 );

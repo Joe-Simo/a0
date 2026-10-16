@@ -179,7 +179,7 @@ cases.push(
     files: { 'entry.a0': 'fn f u32 -> u32\nex 2 -> 3\nx add p0 1\nret x\nend\n' },
   },
   {
-    name: 'unicode-profile-canonical-override-quirk-with-spec',
+    name: 'unicode-profile-canonical-override-with-spec',
     override: 1,
     files: {
       'entry.a0':

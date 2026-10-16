@@ -1,0 +1,61 @@
+{
+  "recordedAt": "2026-10-16T18:52:39.465Z",
+  "basis": "e10ffb4 plus native header-stripping parity fix",
+  "change": "Read immutable per-file parser snapshots. Remove resolved header directives using parsed line rows, preserving physical LF/CRLF, trimmed directive comments, and all bytes from the first function onward. Keep original-byte copy maps. The compiler source uses no second directive grammar or body rescan.",
+  "internalABI": "link_strip is a private helper; its caller now supplies the original parsed snapshot handle. Public arena_link_parse and arena_link_verify interfaces and schema widths are unchanged.",
+  "verification": {
+    "nativeLinkAndVerifier": {
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "scope": "Native seed-built code, O0/O2 UBSan for linker and ASan/UBSan for linked verifier; source bytes, independent byte-origin model, immutable original tables, ordered specs, protocol and resource failures."
+    },
+    "addedCases": [
+      "CRLF and Unicode header whitespace with trailing comments",
+      "hash and Unicode bytes inside quoted import path",
+      "Unicode LS/PS and directive-looking content inside a quoted body literal",
+      "empty dependency and trailing import comment without final LF",
+      "profile comment without final LF"
+    ],
+    "otherFocused": {
+      "tests": 35,
+      "passed": 34,
+      "failed": 0,
+      "explicitSkip": 1
+    },
+    "bootstrap": {
+      "passed": true,
+      "stage2Equals3": true,
+      "stage3Equals4": true,
+      "bytes": 536911
+    },
+    "prereview": {
+      "findings": [],
+      "score": 0,
+      "verdict": "ok"
+    },
+    "lint": "pass, existing warnings retained",
+    "typecheck": "pass"
+  },
+  "behavior": {
+    "passed": 11,
+    "failed": 0,
+    "blocked": 8,
+    "skipped": 1,
+    "scope": "Local available targets; unavailable hardware/toolchains remain explicit blocks."
+  },
+  "changedGoldenEntries": [
+    "compiler/link_parse_arena.a0",
+    "compiler/link_strip_arena.a0"
+  ],
+  "fileHashes": {
+    "compiler/link_parse_arena.a0": "38dfcb92b832a036a016996ae503528b1353164ea376b0bd17fd8d441ba508a6",
+    "compiler/link_strip_arena.a0": "ff3ad685bce07c5a79623354ef2ea71a84517d67ed412bc508aa7b8759b44c0c",
+    "test/fixtures/arena-linker/oracle.mjs": "8cf154e3288642ed69afb7bae3ef2926407c36d406137eab8de121840244fbab",
+    "test/fixtures/arena-linker/cases.mjs": "48ba419df3ca024f7e18f3def3db2c4bd321c7b905c30f6041b341f582841976",
+    "test/fixtures/arena-linked-verifier/cases.mjs": "5965ac2b111bed06d77313c9863bf0c5005bc6ea006e42b7732459ebc01223d1",
+    "test/dense-a0.test.ts": "6f3dc5af5bddd13b9d18fa123463b9564fea3feba0863377e756a8c5c16e9e2b",
+    "test/golden/spec-free-digests.json": "49c24ca949457fe1b9e7f50df3b0600ff2bf621be31d623281663e6121de30b0"
+  },
+  "scope": "Native linking correctness and source provenance only; no performance claim or completed source/frontend unification. The old whole-suite failure and pending full gate remain recorded in results/unification-initial-gate.json."
+}

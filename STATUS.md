@@ -35,6 +35,9 @@ Raw outcomes, timing samples and conversion evidence are recorded in `results/un
 `results/unification-codex-v2.json`, `results/unification-codex-v2-replication.json`,
 `results/unification-link-header-scan.json` and
 [the refactor record and guide erratum](docs/history/2026-10-16-unified-source-refactor.md).
+The first feature gate failed native-link parity and stale corpus-count checks; the native header fix
+passes focused verification. Updated whole-suite and promotion gates remain pending. Evidence:
+`results/unification-initial-gate.json`, `results/unification-native-link-header.json`.
 
 Current integration (`a0c-0.1.62`) adds experimental arena services for Darwin arm64, RISC-V64, Wasm and Java,
 plus canonical formatting, semantic revisions and UTF-8 provenance. Native C/x86 emitters reuse private
