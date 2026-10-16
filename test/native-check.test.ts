@@ -4,7 +4,16 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { findClang, findGcc } from '../src/toolchain.js';
 import { buildNativeCheck } from '../tools/native-check.js';
-import { cleanup, compare, programSet, type Row, tempDir } from '../tools/native-check-diff.js';
+import {
+  cleanup,
+  compare,
+  materialize,
+  native,
+  profileDirectivePrograms,
+  programSet,
+  type Row,
+  tempDir,
+} from '../tools/native-check-diff.js';
 
 const compiler = findClang().path ?? findGcc().path;
 const skip = compiler === undefined ? 'no C compiler (clang or gcc) on this machine' : false;
@@ -47,6 +56,16 @@ test('native check: same verdict as the TypeScript checker on the corpus, the so
         label,
       );
     assert.equal(rows.filter((r) => r.label.startsWith('app-edit/')).length, 15);
+    const contextual = rows.filter((r) => r.label.startsWith('contextual-profile/'));
+    assert.equal(contextual.length, 3);
+    assert.ok(contextual.every((r) => r.outcome === 'same' && r.reference.ok));
+    for (const p of materialize(join(dir, 'profiles'), profileDirectivePrograms())) {
+      assert.deepEqual(
+        native(exe, p.path),
+        { kind: 'unsupported', why: 'a profile line' },
+        p.label,
+      );
+    }
     assert.ok(rows.filter((r) => r.label.startsWith('mutant-')).length >= 24);
     assert.ok(rows.filter((r) => r.label.startsWith('pair-')).length >= 12);
     // operands that cross the front end's 16384-operand half inside one segment (parse.a0)

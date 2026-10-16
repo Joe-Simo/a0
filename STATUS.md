@@ -1,6 +1,6 @@
 # A0 status
 
-Last updated 2026-10-16, compiler `a0c-0.1.60` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
+Last updated 2026-10-16, compiler `a0c-0.1.62` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
 what exists, what is measured and where the numbers live, what is lost or unknown, how to reproduce it, and what comes next.
 Every number on this page is in the `results/` file named beside it, or is reproduced by the command shown. The long record of
 how the project got here, session by session, is in [docs/history/](docs/history/) (index at the end). Contributing rules are in
@@ -25,7 +25,14 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## Current results
 
-Compiler migration (`a0c-0.1.60`): canonical checked arithmetic and array access are implemented in the A0 C,
+Current integration (`a0c-0.1.62`) adds experimental arena services for Darwin arm64, RISC-V64, Wasm and Java,
+plus canonical formatting, semantic revisions and UTF-8 provenance. Native C/x86 emitters reuse private
+intermediate record storage when lifetime and alias checks permit it. Component tests and limits are linked
+from [Entire compiler in A0](docs/design/compiler-selfhosting.md). The public compiler still uses TypeScript;
+full Dense and optimizer migration remain unfinished. The project now uses Apache-2.0, with third-party
+licenses retained in the distributed notices.
+
+Previous migration milestone (`a0c-0.1.60`): canonical checked arithmetic and array access are implemented in the A0 C,
 AArch64 and Wasm emitters. A0 optimization now uses weighted expansion costs and recognizes square-matrix recurrences;
 the reference optimizer also preserves the unsigned exponent when an earlier call exposes a large iteration count.
 The website compiler tool builds from the verified A0-generated seed. A0 optimization supports canonical checked

@@ -5,12 +5,21 @@ import { test } from 'node:test';
 import { link } from '../src/link.js';
 import { findClang, findGcc, runTool } from '../src/toolchain.js';
 import { buildNativeCheck } from '../tools/native-check.js';
-import { cleanup, compare, materialize, mutants, tempDir } from '../tools/native-check-diff.js';
+import {
+  cleanup,
+  compare,
+  contextualProfilePrograms,
+  materialize,
+  mutants,
+  native,
+  profileDirectivePrograms,
+  tempDir,
+} from '../tools/native-check-diff.js';
 
 const compiler = findClang().path ?? findGcc().path;
 const skip = compiler === undefined ? 'no C compiler (clang or gcc) on this machine' : false;
 
-/** The chunked plan under test: a byte margin far below the front end's, so every source is cut. */
+/** The usual chunked plan: small modules use a smaller margin to exercise splitting too. */
 const FORCED = '--chunk-bytes=3000';
 /** The unchunked plan: the whole program as one chunk (halved only where the front end refuses it). */
 const WHOLE = '--chunk-bytes=0';
@@ -31,6 +40,27 @@ test('chunked check: forced small chunks give the unchunked check verdict and re
   const dir = tempDir();
   try {
     const { exe } = await buildNativeCheck({ dir: join(dir, 'native') });
+    for (const p of materialize(join(dir, 'contextual'), contextualProfilePrograms())) {
+      const unchunked = await compare(exe, p, [WHOLE]);
+      const chunked = await compare(exe, p, [FORCED]);
+      assert.equal(unchunked.outcome, 'same', `${p.label} whole`);
+      assert.equal(chunked.outcome, 'same', `${p.label} chunked`);
+      assert.ok(unchunked.reference.ok, p.label);
+      assert.deepEqual(chunked.native, unchunked.native, p.label);
+      if (p.label === 'contextual-profile/cross-chunk') {
+        assert.equal(chunkCount(exe, [WHOLE], p.path), 1, p.label);
+        assert.ok(chunkCount(exe, [FORCED], p.path) > 1, p.label);
+      }
+    }
+    for (const p of materialize(join(dir, 'profiles'), profileDirectivePrograms())) {
+      for (const flag of [WHOLE, FORCED]) {
+        assert.deepEqual(
+          native(exe, p.path, [flag]),
+          { kind: 'unsupported', why: 'a profile line' },
+          `${p.label} ${flag}`,
+        );
+      }
+    }
     const sources = ['compiler', 'site'].flatMap((d) =>
       readdirSync(d)
         .filter((f) => f.endsWith('.a0'))
@@ -42,8 +72,13 @@ test('chunked check: forced small chunks give the unchunked check verdict and re
     let whole = 0;
     for (const path of sources) {
       const p = { label: path, path };
+      const linked = await link(path, (p) => Promise.resolve(readFileSync(p, 'utf8')));
+      assert.ok(linked.program.functions.length > 1, `${path}: needs functions to split`);
+      const forced = [
+        `--chunk-bytes=${Math.min(3000, Math.floor(Buffer.byteLength(linked.text) / 2))}`,
+      ];
       const unchunked = await compare(exe, p, [WHOLE]);
-      const chunked = await compare(exe, p, [FORCED]);
+      const chunked = await compare(exe, p, forced);
       assert.equal(chunked.outcome, 'same', `${path} chunked`);
       assert.equal(unchunked.outcome, 'same', `${path} whole`);
       // where the unchunked check fits (one chunk), it is the same verdict and revisions as the chunked one
@@ -56,7 +91,7 @@ test('chunked check: forced small chunks give the unchunked check verdict and re
         );
       }
       // the forced plan really cuts the source
-      if (chunkCount(exe, [FORCED], path) > 1) split += 1;
+      if (chunkCount(exe, forced, path) > 1) split += 1;
       else assert.fail(`${path}: the forced plan did not split it`);
     }
     assert.ok(whole >= 4, `${whole} sources fit one chunk`);

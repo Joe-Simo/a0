@@ -382,6 +382,43 @@ export function halfBoundaryPrograms(): [string, string][] {
   return out;
 }
 
+/** `profile` is a directive only outside a function; it remains a legal node and function name. */
+export function contextualProfilePrograms(): [string, string][] {
+  const chain = (name: string, first: string): string =>
+    [
+      `fn ${name} u32 -> u32`,
+      first,
+      ...Array.from({ length: 128 }, (_, i) => `v${i} add ${i === 0 ? 'profile' : `v${i - 1}`} 1`),
+      'ret v127',
+      'end # closes the function',
+      '',
+    ].join('\n');
+  return [
+    [
+      'contextual-profile/node',
+      '# profile strict\nfn f u32 -> u32\n# end\n  profile add p0 1 # fn ignored\nret profile\nend # closed\n',
+    ],
+    [
+      'contextual-profile/function',
+      'fn profile u32 -> u32\nret p0\nend\nfn caller u32 -> u32\nx call profile p0\nret x\nend\n',
+    ],
+    [
+      'contextual-profile/cross-chunk',
+      chain('profile', 'profile add p0 1') + chain('caller', 'profile call profile p0'),
+    ],
+  ];
+}
+
+/** Real top-level profile lines keep the legacy checker's explicit unsupported result. */
+export function profileDirectivePrograms(): [string, string][] {
+  const fn = 'fn f -> u32\nret 0\nend # closed\n';
+  return [
+    ['profile-directive/leading', `# comment\r\n  profile strict # actual directive\r\n${fn}`],
+    ['profile-directive/between', `${fn}profile strict\nfn g -> u32\nret 0\nend\n`],
+    ['profile-directive/trailing', `${fn}\n\tprofile strict # actual directive`],
+  ];
+}
+
 /** Every program of the differential; texts are written under `dir`. */
 export async function programSet(
   dir: string,
@@ -404,6 +441,7 @@ export async function programSet(
       ...KERNELS.map((k): [string, string] => [`kernel/${k.name}`, k.a0]),
       ...(await appEditPrograms()),
       ...halfBoundaryPrograms(),
+      ...contextualProfilePrograms(),
     ]),
   );
   if (mutantCount > 0) {
