@@ -1,0 +1,97 @@
+{
+  "id": "tab-is-error",
+  "summary": "a tab is no longer whitespace but a one-byte error token",
+  "instruction": "Change request for the A0 front end (lexer and parser): a tab byte (9) must no longer be skipped as whitespace. It becomes a one-byte error token (kind 9, like any other byte the lexer does not know). Spaces (32) and carriage returns (13) are still skipped.",
+  "a0Targets": [
+    "isspace"
+  ],
+  "tests": [
+    {
+      "kind": "lex",
+      "src": "a\tb c\r\n",
+      "expect": [
+        1,
+        0,
+        1,
+        9,
+        1,
+        1,
+        1,
+        2,
+        1,
+        1,
+        4,
+        1,
+        5,
+        6,
+        1
+      ]
+    },
+    {
+      "kind": "lex",
+      "src": "\t\t#\tx\n\"\t\"\n",
+      "expect": [
+        9,
+        0,
+        1,
+        9,
+        1,
+        1,
+        5,
+        5,
+        1,
+        3,
+        7,
+        1,
+        5,
+        9,
+        1
+      ]
+    },
+    {
+      "kind": "parse",
+      "src": "fn f u32 -> u32\n\ta add p0 1\nret a\nend\n",
+      "expect": {
+        "code": 1,
+        "tok": 6
+      }
+    },
+    {
+      "kind": "parse",
+      "src": "fn f u32 -> u32\r\na add p0 1\r\nret a\r\nend\r\n",
+      "expect": {
+        "code": 0,
+        "tok": 0,
+        "nodes": [
+          4,
+          2,
+          2,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "kind": "same",
+      "src": "fn sq u32 -> u32\na mul p0 p0\nret a\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "# a small program\nuse \"lib.a0\"\nfn inc u32 -> u32\na add p0 1 # one more\nret a\nend\nfn g u32x4 (u32,bool) -> u32\nb at p1 0\nc get p0 2\nd call inc c\ne div d 3\nf select true e b\nt text \"hi\\n\"\nret f\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "fn h u32x4x2 boolx3 -> (u32,u32x4)\nx get p0 1\ny get x 0\nz rec y x\nret z\nend\nfn k u32 u32 -> u32\nret sub p0 p1\nend\n"
+    }
+  ],
+  "reference": {
+    "a0": "a mov sp\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -64,1 +64,1 @@\n-    if (c === 32 || c === 9 || c === 13) i += 1;\n+    if (c === 32 || c === 13) i += 1;\n"
+  },
+  "wrong": {
+    "a0": "r mov sp\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -64,1 +64,1 @@\n-    if (c === 32 || c === 9 || c === 13) i += 1;\n+    if (c === 32) i += 1;\n",
+    "why": "both: carriage returns stop being whitespace too"
+  }
+}

@@ -1,6 +1,6 @@
 /**
  * @file Tree-sitter grammar for A0 (DESIGN.md section 4, "Grammar").
- * @license MIT
+ * @license Apache-2.0
  */
 
 /// <reference types="tree-sitter-cli/dsl" />

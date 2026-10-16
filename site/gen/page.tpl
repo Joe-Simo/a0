@@ -526,6 +526,34 @@ w $wt_pct$
 >
 >
 }
+{sec_update
+<section
++id development
+.div wrap
+.p eyebrow
+"Development update · 16 October 2026
+>
+=h2 Apache 2.0 and the path to one syntax.
+=p A0's first-party source is now licensed under Apache 2.0. We have published independent Codex edit trials comparing Canonical, Dense and an experimental unified syntax.
+=p The syntax refactor remains in development. The compiler and tools still use the existing syntax. Compilation performance, complete migration and tooling integration still block adoption.
+<a
++href /benchmarks#syntax-research
+"Read the new measurements and their limits →
+>
+<p
+<a
++href /LICENSE.txt
+"Apache 2.0 license
+>
+" · 
+<a
++href /NOTICE.txt
+"Copyright notice
+>
+>
+>
+>
+}
 {sec_what
 <section
 +id what

@@ -58,11 +58,31 @@ echo "a0 install: downloading $asset from $base"
 fetch "$base/$asset" "$tmp/$asset" || err "download failed: $base/$asset"
 fetch "$base/checksums.txt" "$tmp/checksums.txt" || err "download failed: $base/checksums.txt"
 
-expected=$(awk -v f="$asset" '$2 == f || $2 == "*" f { print $1 }' "$tmp/checksums.txt")
-[ -n "$expected" ] || err "no checksum for $asset in checksums.txt"
-actual=$(sha256 "$tmp/$asset")
-[ "$expected" = "$actual" ] || err "checksum mismatch for $asset: expected $expected, got $actual"
-echo "a0 install: sha256 verified ($actual)"
+verify_file() {
+  expected=$(awk -v f="$1" '$2 == f || $2 == "*" f { print $1 }' "$tmp/checksums.txt")
+  [ -n "$expected" ] || err "no checksum for $1 in checksums.txt"
+  actual=$(sha256 "$tmp/$1")
+  [ "$expected" = "$actual" ] || err "checksum mismatch for $1: expected $expected, got $actual"
+}
+verify_file "$asset"
+binary_sha=$actual
+echo "a0 install: sha256 verified ($binary_sha)"
+
+# Historical releases have neither entry and keep their original license. Only use files from
+# this release/mirror; fetching current main would attach the wrong license to an older binary.
+has_license=$(awk '$2 == "LICENSE" || $2 == "*LICENSE" { n++ } END { print n+0 }' "$tmp/checksums.txt")
+has_notice=$(awk '$2 == "NOTICE" || $2 == "*NOTICE" { n++ } END { print n+0 }' "$tmp/checksums.txt")
+if [ "$has_license" -gt 0 ] || [ "$has_notice" -gt 0 ]; then
+  [ "$has_license" -gt 0 ] && [ "$has_notice" -gt 0 ] || err "checksums.txt must list both LICENSE and NOTICE"
+  for name in LICENSE NOTICE; do
+    fetch "$base/$name" "$tmp/$name" || err "download failed: $base/$name"
+    verify_file "$name"
+  done
+  # Keep notices tied to the verified binary, including across upgrades and legacy downgrades.
+  notice_dir="$(dirname "$install_dir")/share/a0/$binary_sha"
+  mkdir -p "$notice_dir"
+  cp "$tmp/LICENSE" "$tmp/NOTICE" "$notice_dir/"
+fi
 
 mkdir -p "$install_dir"
 chmod 755 "$tmp/$asset"

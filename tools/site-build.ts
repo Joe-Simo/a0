@@ -278,7 +278,8 @@ async function writeAgentFiles(page: Built, docs: Built, bench: Built): Promise<
     '- [Docs](https://a0lang.com/docs.txt): the reference as plain text (also at /docs/).',
     '- [Full guide](https://a0lang.com/llms-full.txt): primer, docs, and the home page text in one file.',
     '- [Benchmarks](https://a0lang.com/benchmarks): method, charts and losses (also at /benchmarks.txt); raw numbers in https://a0lang.com/results/exec-benchmark.json.',
-    '- [Source](https://github.com/Joe-Simo/a0): MIT; `a0` binaries under Releases, no package manager needed.',
+    '- [Source](https://github.com/Joe-Simo/a0): Apache 2.0; `a0` binaries under Releases, no package manager needed.',
+    '- [License](https://a0lang.com/LICENSE.txt) and [copyright notice](https://a0lang.com/NOTICE.txt).',
     '',
     '## Rules of the language, in one line each',
     '',
@@ -321,6 +322,8 @@ async function writeAgentFiles(page: Built, docs: Built, bench: Built): Promise<
   await mkdir(join(out, 'results'), { recursive: true });
   for (const f of [
     'exec-benchmark.json',
+    'unification-codex-v2-replication.json',
+    'unification-codex-guide-erratum.json',
     'verification.json',
     'equivalence.json',
     'hardware.json',
@@ -437,8 +440,10 @@ function notFoundPage(docs: { readonly html: string; readonly css: string }): st
 async function copyFonts(): Promise<void> {
   // `geist/package.json` is not exported by the package, so resolve an exported entry and walk
   // up to its dist directory, which holds the fonts.
-  const fonts = join(dirname(createRequire(import.meta.url).resolve('geist/font')), 'fonts');
+  const geist = dirname(createRequire(import.meta.url).resolve('geist/font'));
+  const fonts = join(geist, 'fonts');
   await mkdir(join(out, 'fonts'), { recursive: true });
+  await copyFile(join(geist, '..', 'LICENSE.txt'), join(out, 'fonts', 'OFL.txt'));
   for (const f of [
     'geist-sans/Geist-Variable.woff2',
     'geist-mono/GeistMono-Variable.woff2',
@@ -535,6 +540,8 @@ async function main(): Promise<void> {
       'utf8',
     );
     await writeFile(join(out, '404.html'), notFoundPage(docs), 'utf8');
+    await copyFile('LICENSE', join(out, 'LICENSE.txt'));
+    await copyFile('NOTICE', join(out, 'NOTICE.txt'));
     await writeAgentFiles(page, docs, bench);
     await copyFonts();
     await writeFile(join(out, 'vercel.json'), `${JSON.stringify(VERCEL, null, 2)}\n`, 'utf8');

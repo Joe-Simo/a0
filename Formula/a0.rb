@@ -1,11 +1,11 @@
 # Homebrew formula, served from this repository as a tap:
 #   brew tap Joe-Simo/a0 https://github.com/Joe-Simo/a0 && brew install a0
-# The release workflow sets the version in the four URLs and the four sha256 values (tools/homebrew-formula.sh,
-# from the release's checksums.txt); everything else is edited here.
+# The release workflow updates the binary URLs/checksums and notice resources with
+# tools/homebrew-formula.sh from the release's checksums.txt; everything else is edited here.
 class A0 < Formula
   desc "Programming language built for AI, not for people"
   homepage "https://github.com/Joe-Simo/a0"
-  license "MIT"
+  license "Apache-2.0"
 
   on_macos do
     on_arm do
@@ -29,8 +29,14 @@ class A0 < Formula
     end
   end
 
+  # BEGIN RELEASE NOTICES
+  # END RELEASE NOTICES
+
   def install
     bin.install Dir["a0-*"].first => "a0"
+    resources.each do |resource|
+      resource.stage { pkgshare.install resource.name.upcase }
+    end
   end
 
   test do

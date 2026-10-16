@@ -1,0 +1,55 @@
+You are making one requested maintenance change to A0. Work independently. Read only this prompt file. Do not read the repository, other files, references, tests or prior trials; do not run code, search, ask another agent or test your answer. Write your answer exactly once to the designated reply file using a literal patch or quoted heredoc, then reply done. Your answer file must contain only complete replacement fn blocks for the requested functions and any needed new helpers, with no handle, Markdown or explanation. Preserve all other functions and existing signatures. This is a single attempt; the runner will check it. The source view contains the target functions and their transitive callees; included callees are context and must remain unchanged unless the task requests otherwise. You may introduce internal helpers; define helpers before their callers.
+
+Syntax: fn NAME TYPE... -> TYPE; types may be omitted when all are u32 (a parameter letter A,B,... then determines arity). Parameters A,B,C,... by position. Prefix expressions have fixed arity: add mul A B C means (A*B)+C. Earlier results may be bound as ID EXPR; unnamed statement results have consecutive numeric IDs. Last statement is the function result; end and ret are optional. F args calls F (call F args is explicit); << and >> are shifts. [a b] is array, [0;32] repeat array, (a b) record, (a,) one-field record, "txt" byte array. Operations use the same names as above. A next fn header ends the previous function.
+
+Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select mov call fold loop arr rec text get set at put read write puts. Types: u32, bool, io, arrays such as u32x32, records such as (u32,io). Arithmetic is unsigned u32 modulo 2^32; comparisons return bool; select c x y evaluates existing values and returns x if c else y. div a 0 gives4294967295, rem a 0 gives a; shifts mask count&31. get/set wrap the array index modulo its length; at/put use constant record slots. fold F n s a.. starts state=s, then state=F(state,i,a..) for i=0..n-1. loop P F n s a.. tests P before each step. IO is affine: read t returns (word,next-token); write t v and puts t array return next-token. mov copies a value. Arrays/records are immutable values. Function signatures must typecheck; all defined nodes execute in source order.
+
+Requested change:
+Change putfix to display an unsigned fixed-point value in ten-thousandths, always with exactly four fractional decimal digits: e.g.7 becomes0.0007 and215100 becomes21.5100. Preserve valid TEXT command framing, leading/trailing fractional zeros, allu32 inputs, IO token identity, signature and other UI helpers. TEXT chunks may be combined or split as long as the displayed text is exact.
+
+Source view:
+fn mulstep u32 u32 -> u32
+m mul A 10
+
+fn tenpow
+r fold mulstep A 1
+
+fn digitstep u32 u32 u32 -> u32
+s add A 1
+
+fn morecheck -> bool
+p tenpow A
+fits lt C p
+more select fits false true
+
+fn ndigits
+n loop morecheck digitstep 10 1 A
+
+fn putdigit io u32 u32 u32 -> io
+rest sub D B
+pos sub rest 1
+p tenpow pos
+q div C p
+d rem q 10
+ch add d 48
+t write A 2
+u write t 1
+v write u ch
+
+fn putnum io u32 -> io
+nd ndigits B
+t fold putdigit nd A B nd
+
+fn putfix io u32 -> io
+ip div B 100
+fp rem B 100
+b write putnum A ip 2
+dot "."
+c puts b dot
+tens div fp 10
+ones rem fp 10
+d0 add tens 48
+d1 add ones 48
+write write write write c 2 2 d0 d1
+
+Write only the replacement functions to: <study>/trials/t12-dense/reply.a0

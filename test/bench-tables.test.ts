@@ -34,6 +34,40 @@ const f2 = (x: number): string => x.toFixed(2);
 const ns = (x: number): string => (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2));
 const ms = (x: number): string => (x >= 100 ? x.toFixed(0) : x.toFixed(1));
 
+test('bench.tpl: syntax research rows account for every visible prompt, reply and repair', async () => {
+  const report = await results('unification-codex-v2-replication.json');
+  const tpl = await template();
+  for (const [arm, label] of [
+    ['canonical', 'Canonical'],
+    ['dense', 'Dense'],
+    ['flat-v2', 'Unified prototype'],
+  ]) {
+    const rows = report.rows.filter((row: any) => row.arm === arm);
+    const first = rows.filter((row: any) => row.first.passed).length;
+    const accepted = rows.filter((row: any) => row.accepted).length;
+    const tokens = rows.reduce(
+      (sum: number, row: any) =>
+        sum +
+        row.promptTokens.o200k_base +
+        row.replyTokens.o200k_base +
+        (row.repair === null
+          ? 0
+          : row.repair.promptTokens.o200k_base + row.repair.replyTokens.o200k_base),
+      0,
+    );
+    assert.ok(rows.length > 0 && accepted > 0);
+    assert.ok(
+      tpl.includes(
+        `<tr\n=td ${label}\n=td ${first} / ${rows.length}\n=td ${accepted} / ${rows.length}\n=td ${f2(tokens / accepted)}\n>`,
+      ),
+      `${arm} table drifted from the complete trial accounting`,
+    );
+  }
+  assert.equal(report.decision.productionEligible, false);
+  assert.ok(tpl.includes('prototype is not the shipped language'));
+  assert.ok(tpl.includes('comparative conclusions are withdrawn'));
+});
+
 test('bench.tpl: the WebAssembly tables are the rows of results/wasm-benchmark.json', async () => {
   const tpl = await template();
   const w = await results('wasm-benchmark.json');

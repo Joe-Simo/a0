@@ -1,0 +1,59 @@
+You are making one requested maintenance change to A0. Work independently. Read only this prompt file. Do not read the repository, other files, references, tests or prior trials; do not run code, search, ask another agent or test your answer. Write your answer exactly once to the designated reply file using a literal patch or quoted heredoc, then reply done. Your answer file must contain only complete replacement fn blocks for the requested functions and any needed new helpers, with no handle, Markdown or explanation. Preserve all other functions and existing signatures. This is a single attempt; the runner will check it. The source view contains the target functions and their transitive callees; included callees are context and must remain unchanged unless the task requests otherwise. You may introduce internal helpers; define helpers before their callers.
+
+Syntax: fn NAME TYPE... -> TYPE, lines ID OP ARGS..., ret VALUE, end. One operation per line; operands are earlier IDs or parameters A,B,C,... (p26 onward). A bare fn NAME header means all parameters and result are u32, with arity through the highest referenced parameter; use a full header for unused trailing parameters or other types. Type _ means u32; _x32 is an array, (_,io) is a record. [a b] makes an array; [x*N] repeats x N times. (a b) makes a record; (a,) is one field. A quoted string is a UTF8 byte array. Shifts are << and >>. ID F args directly calls F; use ID call F args for operation-named functions. Every replacement includes its full body/ret/end.
+
+Identifiers are lowercase a-z followed by a-z,0-9,_ (up to64 characters); parameters use the syntax-specific spelling. Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select mov call fold loop arr rec text get set at put read write puts. Types: u32, bool, io, arrays such as u32x32, records such as (u32,io). Arithmetic is unsigned u32 modulo 2^32; comparisons return bool; select c x y evaluates existing values and returns x if c else y. div a 0 gives4294967295, rem a 0 gives a; shifts mask count&31. get/set wrap the array index modulo its length; at/put use constant record slots. fold F n s a.. starts state=s, then state=F(state,i,a..) for i=0..n-1. loop P F n s a.. tests P before each step. IO is affine: read t returns (word,next-token); write t v and puts t array return next-token. mov copies a value. Arrays/records are immutable values. Function signatures must typecheck; all defined nodes execute in source order.
+
+Requested change:
+Make cell correct when the next-grid accumulator is reused: replace the selected cell bit with its new Conway B3/S23 value, including clearing a stale live bit when it dies. Preserve all other accumulator bits, the current grid, the 32x32 torus/neighbour rule, signatures and session behavior. Change cell; internal helpers may be added.
+
+Source view:
+fn nb _x32 _ _ -> _
+row get A B
+bit >> row C
+one and bit 1
+ret one
+end
+
+fn count _x32 _ _ -> _
+ru sub B 1
+rd add B 1
+cl sub C 1
+cr add C 1
+a nb A ru cl
+b nb A ru C
+c nb A ru cr
+d nb A B cl
+e nb A B cr
+f nb A rd cl
+g nb A rd C
+h nb A rd cr
+s1 add a b
+s2 add s1 c
+s3 add s2 d
+s4 add s3 e
+s5 add s4 f
+s6 add s5 g
+s7 add s6 h
+ret s7
+end
+
+fn cell _x32 _ _x32 -> _x32
+r >> B 5
+c and B 31
+n count C r c
+me nb C r c
+is3 eq n 3
+is2 eq n 2
+me1 eq me 1
+alive2 select me1 is2 false
+alive select is3 true alive2
+bit select alive 1 0
+mask << bit c
+old get A r
+new or old mask
+next set A r new
+ret next
+end
+
+Write only the replacement functions to: <study>/trials/t05-flat-v2/reply.a0

@@ -1,0 +1,69 @@
+{
+  "id": "text-escape-r",
+  "summary": "the text-literal escape `\\r` decodes to a carriage return (13)",
+  "instruction": "Change request for the A0 front end (lexer and parser): in a `text \"...\"` literal the escape `\\r` must decode to a carriage return, byte 13, next to the existing `\\n` (10) and `\\t` (9). Any other escaped byte still stands for itself.",
+  "a0Targets": [
+    "txtb"
+  ],
+  "tests": [
+    {
+      "kind": "parse",
+      "src": "fn f -> u32\nt text \"a\\rb\\n\\t\\\\\\\"r\"\nret 0\nend\n",
+      "expect": {
+        "code": 0,
+        "args": [
+          3,
+          97,
+          3,
+          13,
+          3,
+          98,
+          3,
+          10,
+          3,
+          9,
+          3,
+          92,
+          3,
+          34,
+          3,
+          114
+        ]
+      }
+    },
+    {
+      "kind": "parse",
+      "src": "fn f -> u32\nt text \"\\r\\R\"\nret 0\nend\n",
+      "expect": {
+        "code": 0,
+        "args": [
+          3,
+          13,
+          3,
+          82
+        ]
+      }
+    },
+    {
+      "kind": "same",
+      "src": "fn sq u32 -> u32\na mul p0 p0\nret a\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "# a small program\nuse \"lib.a0\"\nfn inc u32 -> u32\na add p0 1 # one more\nret a\nend\nfn g u32x4 (u32,bool) -> u32\nb at p1 0\nc get p0 2\nd call inc c\ne div d 3\nf select true e b\nt text \"hi\\n\"\nret f\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "fn h u32x4x2 boolx3 -> (u32,u32x4)\nx get p0 1\ny get x 0\nz rec y x\nret z\nend\nfn k u32 u32 -> u32\nret sub p0 p1\nend\n"
+    }
+  ],
+  "reference": {
+    "a0": "isr eq c 114 @ ist\nm2 select isr 13 m1 @ m1\nv select e1 m2 c\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -579,1 +579,1 @@\n-                pushArg(3, e === 110 ? 10 : e === 116 ? 9 : e);\n+                pushArg(3, e === 110 ? 10 : e === 116 ? 9 : e === 114 ? 13 : e);\n"
+  },
+  "wrong": {
+    "a0": "isr eq c 82 @ ist\nm2 select isr 13 m1 @ m1\nv select e1 m2 c\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -579,1 +579,1 @@\n-                pushArg(3, e === 110 ? 10 : e === 116 ? 9 : e);\n+                pushArg(3, e === 110 ? 10 : e === 116 ? 9 : e === 82 ? 13 : e);\n",
+    "why": "both: the escape is read on an uppercase `R` (82) instead of `r` (114)"
+  }
+}

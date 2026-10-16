@@ -1,0 +1,1416 @@
+/**
+ * Content revisions, atomic node replacement, and bounded edit sessions.
+ *
+ * Two edit paths:
+ *  1. Self-contained patch: `patch <fn> <sha256>` + replacement nodes + `end`.
+ *  2. Session-bound edit: a session retains the revision and hands out a short
+ *     handle (`e0`); the edit text is the handle line followed by replacement nodes. The
+ *     handle line may be omitted when exactly one function handle (or, with none, one
+ *     program handle) is open.
+ *
+ * Both paths replace existing nodes only. The full replacement set is validated
+ * against the whole function before anything is committed. Successful handles are
+ * consumed; unknown, consumed, or mismatched handles are rejected.
+ *
+ * A handle is a reference, not an authorization credential.
+ */
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
+import { A0Error, formatFunction, formatOperand, formatType, freshRetId, isProfileEdit, isRetNodeForm, isValidIdentifier, LIMITS, normalizeLine, parse, parseNode, parseOperand, retOperandError, stripComment, utf8Length, validate, validateFunction, } from './core.js';
+import { formatDenseFunction, formatDenseSignature, parseDenseHeader } from './dense.js';
+import { COMPACT_EDIT_STYLE, denseEditBody } from './dense-edit.js';
+import { diag } from './diagnostics.js';
+import { fixAll } from './fix.js';
+import { constructLegend, lazyDiagnostic, lazyHints } from './lazy.js';
+import { programRevision, revision } from './revision.js';
+import { applySpecEdits, withoutSpec, withSpec } from './spec.js';
+import { keyLegend } from './wordkey.js';
+export const REVISION_LENGTH = 64;
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+const HANDLE = /^e(0|[1-9][0-9]*)$/;
+const PROGRAM_HANDLE = /^g(0|[1-9][0-9]*)$/;
+export { programRevision, revision };
+/**
+ * The error for a second line defining `id` in one reply. When that line reads `id` (`m sub m 1`
+ * after `m sub p0 1`: two successive updates of one value) the reply means the sequence, and the
+ * first line gets a fresh id that the second reads instead. That rewrite is exact when the first
+ * line does not read `id` itself, no line in between reads `id`, neither line has an `@` anchor,
+ * and the fresh id is used nowhere in the reply or the function (`taken`, when the caller knows it).
+ */
+function duplicateEditError(id, lines, firstAt, secondAt, line, taken) {
+    const reads = (text) => text.split(/\s+/).slice(2).includes(id);
+    const first = normalizeLine(lines[firstAt] ?? '');
+    const second = normalizeLine(lines[secondAt] ?? '');
+    const plain = (text) => !text.includes('@') && text.split(' ')[0] === id;
+    if (!reads(second) || !plain(first) || !plain(second)) {
+        return diag('A0503', [id], {
+            line,
+            fix: `a reply edits each node once: keep the one line for '${id}' you mean, or give the other node its own id and use that id where its value is read`,
+        });
+    }
+    const words = new Set(lines.flatMap((l) => normalizeLine(l).split(' ')));
+    const candidate = (n) => isValidIdentifier(`${id}${n}`) ? `${id}${n}` : `${id}_${n}`;
+    let n = 1;
+    while (words.has(candidate(n)) || taken?.has(candidate(n)) === true)
+        n += 1;
+    const fresh = candidate(n);
+    const firstTo = [fresh, ...first.split(' ').slice(1)].join(' ');
+    const secondTo = second
+        .split(' ')
+        .map((w, k) => (k >= 2 && w === id ? fresh : w))
+        .join(' ');
+    const exact = taken !== undefined &&
+        !reads(first) &&
+        lines
+            .slice(firstAt + 1, secondAt)
+            .every((l) => !normalizeLine(l).split(' ').slice(1).includes(id));
+    return diag('A0503', [id], {
+        line,
+        fix: `a reply edits each node once; for two successive updates give the first its own id: write \`${firstTo}\`, then \`${secondTo}\``,
+        ...(exact ? { applicability: 'exact' } : {}),
+        edits: [
+            {
+                op: 'lines',
+                rule: 'sequence',
+                text: first,
+                to: firstTo,
+                line: line - (secondAt - firstAt),
+            },
+            { op: 'lines', rule: 'sequence', text: second, to: secondTo, line },
+        ],
+    });
+}
+/**
+ * The chain fix of an op with too many operands (`x add a b c`) puts fresh ids on new lines. In an edit reply a line
+ * whose id is already a node REPLACES that node, so the fix is exact only when none of the fresh ids is a node of the
+ * function (`taken`) or a word of the reply; otherwise it is left as a suggestion.
+ */
+function guardChain(e, lines, taken) {
+    if (!(e instanceof A0Error) || e.applicability !== 'exact')
+        return e;
+    const chain = e.edits.find((d) => d.op === 'lines' && d.rule === 'chain');
+    if (chain === undefined || chain.op !== 'lines')
+        return e;
+    const fresh = chain.to.split('\n').map((l) => l.split(' ')[0]);
+    const words = new Set(lines.flatMap((l) => normalizeLine(l).split(' ')));
+    const clash = fresh
+        .slice(0, -1)
+        .some((id) => words.has(id) || taken === undefined || taken.has(id));
+    return clash ? e.withEdits(e.edits, 'maybe') : e;
+}
+export function parseEditOps(lines, firstLine, taken) {
+    if (lines.length === 0)
+        throw diag('A0501');
+    if (lines.length > LIMITS.maxNodesPerFunction)
+        throw diag('A0502');
+    const seen = new Map();
+    const ops = [];
+    const textDeletes = new Map();
+    let sawRet = false;
+    lines.forEach((text, i) => {
+        const line = firstLine + i;
+        const claim = (id) => {
+            const at = seen.get(id);
+            if (at !== undefined)
+                throw duplicateEditError(id, lines, at, i, line, taken);
+            seen.set(id, i);
+        };
+        const spec = SPEC_EDIT.exec(text);
+        if (spec !== null &&
+            spec[1] === undefined &&
+            (spec[2] === '+' || (spec[4] ?? '').trim() !== '')) {
+            ops.push({ kind: 'spec', ...specEditOf(spec), line });
+            return;
+        }
+        if (text.startsWith('-')) {
+            const rest = text.slice(1).trim();
+            const id = rest;
+            if (!isValidIdentifier(id)) {
+                // `-id` followed by the old node text (`-b ne r 0`) is a delete written with its text: it is accepted only when the same
+                // reply adds `id` again (the pair is the replacement it means); otherwise it is the invalid delete target it always was.
+                const head = /^([a-z][a-z0-9_]*)\s+\S/.exec(rest)?.[1];
+                if (head === undefined || !isValidIdentifier(head))
+                    throw diag('A0504', [id], { line });
+                claim(head);
+                textDeletes.set(head, { text: rest, line, raw: text });
+                ops.push({ kind: 'delete', id: head });
+                return;
+            }
+            claim(id);
+            ops.push({ kind: 'delete', id });
+            return;
+        }
+        if (/^ret\s/.test(text)) {
+            if (sawRet)
+                throw diag('A0505', [], { line });
+            sawRet = true;
+            const parts = text.split(/\s+/);
+            if (isRetNodeForm(parts)) {
+                // `ret OP ARGS…`: a fresh node plus `ret` of it (same sugar as in source).
+                // The id is provisional: replaceNodes picks one that is free in the function.
+                let node;
+                try {
+                    node = parseNode(`retval ${parts.slice(1).join(' ')}`, line);
+                }
+                catch (e) {
+                    // The failing line is the synthesised `retval OP …`, not a line of the reply: no edits to apply.
+                    throw e instanceof A0Error && e.edits.length > 0 ? e.withEdits([], 'maybe') : e;
+                }
+                ops.push({ kind: 'node', node, fresh: true });
+                ops.push({ kind: 'ret', operand: { kind: 'node', id: 'retval' } });
+                return;
+            }
+            if (parts.length !== 2)
+                throw retOperandError(parts, line, 'edit');
+            ops.push({ kind: 'ret', operand: parseOperand(parts[1] ?? '', line) });
+            return;
+        }
+        const m = /^(.*?)\s+@\s+([a-z][a-z0-9_]*)$/.exec(text);
+        let node;
+        try {
+            node = parseNode(m ? (m[1] ?? '') : text, line);
+        }
+        catch (e) {
+            throw guardChain(e, lines, taken);
+        }
+        // `-id` followed by `id op args` (no `@`) says "replace this node": the delete is dropped and the line stands as the
+        // replacement, which is what the pair means. With `@ other` the pair is a move: unchanged (still a duplicate edit).
+        if (m === null) {
+            const prior = ops.findIndex((o) => o.kind === 'delete' && o.id === node.id);
+            if (prior >= 0) {
+                ops.splice(prior, 1);
+                seen.delete(node.id);
+                textDeletes.delete(node.id);
+            }
+        }
+        claim(node.id);
+        ops.push(m ? { kind: 'node', node, after: m[2] ?? '' } : { kind: 'node', node });
+    });
+    for (const [id, d] of textDeletes)
+        throw diag('A0504', [d.text], {
+            line: d.line,
+            fix: `a delete names the id only: write \`-${id}\` (the text after the id is not part of a delete)`,
+            applicability: 'exact',
+            edits: [
+                {
+                    op: 'lines',
+                    rule: 'delete-text',
+                    text: normalizeLine(d.raw),
+                    to: `-${id}`,
+                    line: d.line,
+                },
+            ],
+        });
+    return ops;
+}
+/** Backwards-compatible helper: replacement-only edits as EditOps. */
+function parseReplacementNodes(lines, firstLine, taken) {
+    return parseEditOps(lines, firstLine, taken);
+}
+/**
+ * Apply node replacements to one function. Each replacement must name an existing
+ * node; the node keeps its position, so dependency order is preserved and forward
+ * references remain impossible. The whole result is re-validated before returning.
+ */
+function orderByDependencies(nodes) {
+    const out = [...nodes];
+    for (let round = 0; round < out.length * out.length + 1; round += 1) {
+        const index = new Map(out.map((n, i) => [n.id, i]));
+        let moved = false;
+        for (let i = 0; i < out.length; i += 1) {
+            const n = out[i];
+            let last = -1;
+            for (const a of n.args) {
+                if (a.kind !== 'node')
+                    continue;
+                const j = index.get(a.id);
+                if (j !== undefined && j > last)
+                    last = j;
+            }
+            if (last > i) {
+                out.splice(i, 1);
+                out.splice(last, 0, n);
+                moved = true;
+                break;
+            }
+        }
+        if (!moved)
+            return out;
+    }
+    return [...nodes];
+}
+/** Whether the function `from` calls `target`, directly or through the functions it calls. */
+function reaches(program, from, target, seen = new Set()) {
+    if (seen.has(from.name))
+        return false;
+    seen.add(from.name);
+    for (const n of from.nodes)
+        for (const c of [n.callee, n.pred]) {
+            if (c === undefined)
+                continue;
+            if (c === target)
+                return true;
+            const g = program.byName.get(c);
+            if (g !== undefined && reaches(program, g, target, seen))
+                return true;
+        }
+    return false;
+}
+export function replaceNodes(program, fn, ops) {
+    let edits = ops.map((o) => ('kind' in o ? o : { kind: 'node', node: o }));
+    // A `ret OP …` node gets an id that is free in the function and in the edit.
+    const freshOp = edits.find((o) => o.kind === 'node' && o.fresh === true);
+    if (freshOp !== undefined && freshOp.kind === 'node') {
+        const id = freshRetId([
+            ...fn.nodes,
+            ...edits.flatMap((o) => (o.kind === 'node' && o.fresh !== true ? [o.node] : [])),
+        ]);
+        edits = edits.map((o) => {
+            if (o.kind === 'node' && o.fresh === true)
+                return { kind: 'node', node: { ...o.node, id } };
+            if (o.kind === 'ret' && o.operand.kind === 'node' && o.operand.id === 'retval')
+                return { kind: 'ret', operand: { kind: 'node', id } };
+            return o;
+        });
+    }
+    let nodes = [...fn.nodes];
+    let ret = fn.ret;
+    const specEdits = edits.flatMap((o) => (o.kind === 'spec' ? [o] : []));
+    // 1. deletions
+    for (const op of edits) {
+        if (op.kind !== 'delete')
+            continue;
+        const before = nodes.length;
+        nodes = nodes.filter((n) => n.id !== op.id);
+        if (nodes.length === before) {
+            // `-pre` and `-post` remove the contract line when the function has no such node.
+            if ((op.id === 'pre' && fn.spec?.pre !== undefined) ||
+                (op.id === 'post' && fn.spec?.post !== undefined)) {
+                specEdits.push({ sign: '-', word: op.id, rest: '' });
+                continue;
+            }
+            throw diag('A0506', [fn.name, op.id]);
+        }
+    }
+    // 2. replacements and insertions
+    for (const op of edits) {
+        if (op.kind !== 'node')
+            continue;
+        const at = nodes.findIndex((n) => n.id === op.node.id);
+        if (op.after !== undefined) {
+            if (at >= 0)
+                nodes.splice(at, 1);
+            const anchor = nodes.findIndex((n) => n.id === op.after);
+            if (anchor < 0)
+                throw diag('A0507', [fn.name, op.after]);
+            nodes.splice(anchor + 1, 0, op.node);
+        }
+        else if (at >= 0) {
+            // A replaced line keeps its comments unless the edit line brings its own.
+            const kept = nodes[at].comments;
+            nodes[at] =
+                op.node.comments === undefined && kept !== undefined
+                    ? { ...op.node, comments: kept }
+                    : op.node;
+        }
+        else {
+            nodes.push(op.node);
+        }
+    }
+    // 3. result
+    for (const op of edits)
+        if (op.kind === 'ret')
+            ret = op.operand;
+    // Edits may list nodes in any order that has a valid dependency order: move each node
+    // that references a later node to just after its last reference. A true cycle is left
+    // for the validator to report.
+    nodes = orderByDependencies(nodes);
+    if (nodes.length > LIMITS.maxNodesPerFunction)
+        throw diag('A0316', [fn.name]);
+    const replaced = specEdits.length === 0
+        ? { ...fn, nodes, ret }
+        : withSpec({ ...fn, nodes, ret }, applySpecEdits(fn, specEdits));
+    // Legal call targets are exactly the functions defined before this one.
+    const scope = new Map();
+    for (const f of program.functions) {
+        if (f.name === fn.name)
+            break;
+        scope.set(f.name, f);
+    }
+    let typed;
+    try {
+        typed = validateFunction(replaced, scope, undefined, program.profile);
+    }
+    catch (e) {
+        if (!(e instanceof A0Error) || !['A0102', 'A0103', 'A0104'].includes(e.id ?? ''))
+            throw e;
+        // The edit calls a function defined below this one: legal when that function does not call this one (commit moves it above).
+        const wider = new Map(scope);
+        for (const f of program.functions)
+            if (f.name !== fn.name && !reaches(program, f, fn.name))
+                wider.set(f.name, f);
+        if (wider.size === scope.size)
+            throw e;
+        try {
+            typed = validateFunction(replaced, wider, undefined, program.profile);
+        }
+        catch {
+            throw e;
+        }
+    }
+    // A node this edit adds that nothing reads is almost always a result the reply forgot to
+    // return (`ret` still names the old node). Land nothing silently wrong: reject with the fix.
+    const existing = new Set(fn.nodes.map((n) => n.id));
+    const used = new Set();
+    for (const n of nodes)
+        for (const a of n.args)
+            if (a.kind === 'node')
+                used.add(a.id);
+    if (ret.kind === 'node')
+        used.add(ret.id);
+    for (const op of edits) {
+        if (op.kind !== 'node' || existing.has(op.node.id) || used.has(op.node.id))
+            continue;
+        throw diag('A0508', [fn.name, op.node.id]);
+    }
+    return typed;
+}
+/**
+ * Semantic revision: the function's own content revision folded with the semantic
+ * revisions of every callee, transitively. Any change in a dependency changes it,
+ * so it is the correct cache key for derived artifacts (unlike `revision`, which
+ * is the editing identity of one function's text).
+ */
+export function semanticRevision(fn) {
+    // The profile changes what the function means, so it is part of every key derived from it. Spec
+    // lines (examples and contracts) do not change what it computes: the revision of the function
+    // without them keeps optimizer, cache and emission keys the same with or without a spec.
+    const own = revision(withoutSpec(fn));
+    let text = fn.profile === 'strict' ? `profile strict|${own}` : own;
+    for (const name of [...fn.calls.keys()].sort()) {
+        const callee = fn.calls.get(name);
+        if (callee !== undefined)
+            text += `|${name}=${semanticRevision(callee)}`;
+    }
+    return bytesToHex(sha256(new TextEncoder().encode(text)));
+}
+/**
+ * Functions a reply adds (absent from `before`) that its edit lines for `target` call are moved
+ * to just before `target`, in their order, so the handled function may call a function added in
+ * the same reply (callees precede callers). Other functions keep their places.
+ */
+function placeNewCallees(before, program, target, edits) {
+    const called = new Set(edits.flatMap((e) => e.kind === 'node' ? [e.node.callee, e.node.pred].filter((c) => c !== undefined) : []));
+    const at = program.functions.findIndex((f) => f.name === target);
+    const moved = program.functions.filter((f, i) => i > at && called.has(f.name) && !before.byName.has(f.name));
+    if (moved.length === 0)
+        return program;
+    const rest = program.functions.filter((f) => !moved.includes(f));
+    const k = rest.findIndex((f) => f.name === target);
+    return validateOrdered({
+        ...profileField(program),
+        functions: [...rest.slice(0, k), ...moved, ...rest.slice(k)],
+    });
+}
+/**
+ * The functions with every callee that sits below its first caller moved to just above that caller
+ * (callees first, each function's callees in the order the functions were written; everything else
+ * keeps its place). Undefined when the calls are cyclic (no order exists) or the order is already fine.
+ */
+function hoistCallees(fns) {
+    const byName = new Map(fns.map((f) => [f.name, f]));
+    const out = [];
+    const done = new Set();
+    const visiting = new Set();
+    const visit = (f) => {
+        if (done.has(f.name))
+            return true;
+        if (visiting.has(f.name))
+            return false;
+        visiting.add(f.name);
+        for (const n of f.nodes)
+            for (const c of [n.callee, n.pred]) {
+                const g = c === undefined ? undefined : byName.get(c);
+                if (g !== undefined && !visit(g))
+                    return false;
+            }
+        visiting.delete(f.name);
+        done.add(f.name);
+        out.push(f);
+        return true;
+    };
+    for (const f of fns)
+        if (!visit(f))
+            return undefined;
+    return out.every((f, i) => f === fns[i]) ? undefined : out;
+}
+/**
+ * A reply a model wrapped in a markdown code block (` ``` ` or ` ```a0 ` on a line of its own) is the
+ * reply without those lines: no A0 line starts with a backtick, so nothing else can be meant, and the
+ * edit is the same one. 13 recorded first replies were rejected at the fence (`expected 'fn', got '```'`).
+ */
+export function stripCodeFences(text) {
+    if (!text.includes('```'))
+        return text;
+    return text
+        .split(/\r?\n/)
+        .filter((l) => !/^\s*```[A-Za-z0-9_-]*\s*$/.test(l))
+        .join('\n');
+}
+/**
+ * `validate`, except that a program the checker rejects only because a function calls one defined
+ * below it (A0102, A0103, A0104) is accepted with each such callee moved to just above its first
+ * caller. The order is a function of the program alone (see `hoistCallees`), nothing else changes, and the
+ * moved program goes through the whole checker; any other error, and a cyclic program, raise the
+ * original diagnostic.
+ */
+export function validateOrdered(program) {
+    try {
+        return validate(program);
+    }
+    catch (e) {
+        if (!(e instanceof A0Error) || !['A0102', 'A0103', 'A0104'].includes(e.id ?? ''))
+            throw e;
+        const hoisted = hoistCallees(program.functions);
+        if (hoisted === undefined)
+            throw e;
+        try {
+            return validate({ ...program, functions: hoisted });
+        }
+        catch {
+            throw e;
+        }
+    }
+}
+/** `{ profile: 'strict' }` for a strict program, nothing for a canonical one (spread into `validate`). */
+function profileField(program) {
+    return program.profile === 'strict' ? { profile: 'strict' } : {};
+}
+function commit(program, updated) {
+    const functions = program.functions.map((f) => (f.name === updated.name ? updated : f));
+    return validateOrdered({ ...profileField(program), functions });
+}
+export function formatPatch(fn, nodes) {
+    const body = nodes.map((n) => `${n.id} ${n.op} ${n.args.map(formatOperand).join(' ')}`);
+    return `patch ${fn.name} ${revision(fn)}\n${body.join('\n')}\nend`;
+}
+export function parsePatch(text) {
+    if (utf8Length(text) > LIMITS.maxSourceBytes)
+        throw diag('A0606');
+    const lines = text
+        .split(/\r?\n/)
+        .map((l) => stripComment(l).trim())
+        .filter((l) => l.length > 0);
+    const head = lines[0]?.split(/\s+/) ?? [];
+    if (head[0] !== 'patch' || head.length !== 3) {
+        throw diag('A0601', [], { line: 1 });
+    }
+    const functionName = head[1] ?? '';
+    const rev = head[2] ?? '';
+    if (!SHA256_HEX.test(rev))
+        throw diag('A0602', [], { line: 1 });
+    if (lines[lines.length - 1] !== 'end')
+        throw diag('A0603');
+    const nodes = parseReplacementNodes(lines.slice(1, -1), 2);
+    return { functionName, revision: rev, nodes };
+}
+export function applyPatch(program, patch) {
+    const fn = program.byName.get(patch.functionName);
+    if (fn === undefined)
+        throw diag('A0604', [patch.functionName]);
+    const current = revision(fn);
+    if (current !== patch.revision) {
+        throw diag('A0605', [fn.name, patch.revision.slice(0, 12), current.slice(0, 12)]);
+    }
+    return commit(program, replaceNodes(program, fn, patch.nodes));
+}
+export function formatSignature(fn) {
+    const sig = fn.params.length > 0 ? ` ${fn.params.map(formatType).join(' ')}` : '';
+    return `fn ${fn.name}${sig} -> ${formatType(fn.result)}`;
+}
+/** A function's source with its body lines (instructions and `ret`) numbered from 1. */
+export function numberedFunction(fn) {
+    const lines = formatFunction(fn).split('\n');
+    const body = lines.slice(1, -1).map((l, i) => `${i + 1} ${l}`);
+    return [lines[0] ?? '', ...body, 'end'].join('\n');
+}
+/** The dependency-scoped view text of a function (without a handle line). */
+export function scopedView(fn, numbered = false, hideSpecs = false) {
+    const text = numbered ? numberedFunction(fn) : formatFunction(hideSpecs ? withoutSpec(fn) : fn);
+    const sigs = [...fn.calls.values()].map((c) => `${formatSignature(c)} end`);
+    return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
+}
+/**
+ * A callee's signature in a dense view: a comment line (`# inc u32 -> u32`), so it can never be
+ * mistaken for, or copied as, a function header (models that saw `fn inc u32 -> u32 end` wrote it
+ * back as a body-less header followed by a second `fn inc ...` line).
+ */
+function denseSignatureLine(fn) {
+    return `# ${formatDenseSignature(fn).slice(3)}`;
+}
+/** The dense view of a function: its dense text, then one dense signature per direct callee. */
+export function scopedViewDense(fn, program, scope, hideSpecs = false, compact = false) {
+    const shown = (f) => (hideSpecs ? withoutSpec(f) : f);
+    const opts = compact ? { style: COMPACT_EDIT_STYLE } : {};
+    const text = formatDenseFunction(shown(fn), program, opts);
+    if (scope === 'function')
+        return text;
+    const sigs = [...fn.calls.values()].map((c) => scope === 'bodies' ? formatDenseFunction(shown(c), program, opts) : denseSignatureLine(c));
+    return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
+}
+/**
+ * A dense function view (no handle line) whose first line is `target`'s header, rewritten so the
+ * header always carries the full typed signature (`fn fits u32 u32 -> bool ...` where the plain
+ * view prints `fn fits -> bool ...`), followed by the signature lines of the target's program
+ * neighbourhood (`programNeighbourhood`) that the view does not already show as a function.
+ * Experimental (the edit-protocol run, docs/history/2026-10-10-edit-protocol-preregistration.md);
+ * no default view uses it.
+ */
+export function typedTargetView(view, program, target) {
+    const fn = program.byName.get(target);
+    if (fn === undefined)
+        return view;
+    const lines = view.split('\n');
+    const first = lines[0] ?? '';
+    if (!first.startsWith(`fn ${target}`))
+        return view;
+    const { rest } = parseDenseHeader(first.slice(3), 0);
+    lines[0] = `${formatDenseSignature(fn)}${rest === '' ? '' : ` ${rest}`}`;
+    const shown = new Set(lines.flatMap((l) => (/^fn \S/.test(l) ? [l.slice(3).split(/\s/)[0] ?? ''] : [])));
+    const extra = programNeighbourhood(program, target)
+        .filter((f) => !shown.has(f.name))
+        .map(denseSignatureLine);
+    return [...lines, ...extra].join('\n');
+}
+/**
+ * Spec edits: `+ex ARGS -> RESULT` adds an example, `-ex ARGS -> RESULT` removes the one written
+ * so, `+pre EXPR` and `+post EXPR` set the contract line (replacing the one there), `-pre` and
+ * `-post` remove it; each optionally prefixed with `f:` (a function name), as the line edits are.
+ * Bare `-ex` is the deletion of a node named `ex`, and bare `-pre`/`-post` is a spec removal only
+ * when the function has that line (otherwise the deletion of a node of that id).
+ */
+const SPEC_EDIT = /^(?:([a-z][a-z0-9_]*):)?([+-])(ex|pre|post)(?:\s+(.*))?$/;
+/** A spec edit that names its function (`f:+ex ...`): the form a program handle takes. */
+function isSpecEdit(t, named) {
+    const m = SPEC_EDIT.exec(t);
+    if (m === null)
+        return false;
+    if (m[1] !== undefined)
+        return true;
+    return !named && (m[2] === '+' || (m[4] ?? '').trim() !== '');
+}
+function specEditOf(m) {
+    return { sign: m[2], word: m[3], rest: (m[4] ?? '').trim() };
+}
+/** `N line`, `N-`, `N+ line`, each optionally prefixed with `f:` (a function name). */
+const LINE_EDIT = /^(?:([a-z][a-z0-9_]*):)?(0|[1-9][0-9]*)([+-]?)(?:\s+(.*))?$/;
+/**
+ * Separate line-addressed edits from the rest of a reply. Only lines outside `fn` blocks are
+ * line edits; inside a block (up to `end`, the next `fn`/`-fn` line, or the end of the reply) a
+ * leading view number (`1 a add p0 p1`) is the numbered view copied back and is dropped.
+ * Unambiguous: instruction ids start with a letter.
+ */
+function splitLineEdits(lines, isSpec) {
+    const edits = [];
+    const rest = [];
+    let open = false;
+    for (const raw of lines) {
+        const t = stripComment(raw).trim();
+        if (/^-?fn\s/.test(t) || isProfileEdit(t)) {
+            open = t.startsWith('fn') && !/\send$/.test(t);
+            rest.push(raw);
+        }
+        else if (open) {
+            if (t === 'end')
+                open = false;
+            rest.push(t.replace(/^(0|[1-9][0-9]*)\s+(?=[a-z])/, ''));
+        }
+        else if (LINE_EDIT.test(t) || isSpec(t))
+            edits.push(t);
+        else
+            rest.push(raw);
+    }
+    return { edits, rest };
+}
+/**
+ * Turn line-addressed edits into whole `fn ... end` blocks. Line numbers refer to the numbered
+ * view of the function in `program` (body lines, `ret` last); a bare number addresses
+ * `defaultFn`. Several inserts after one line keep their order. Each number is replaced or
+ * deleted at most once. The blocks then go through the ordinary whole-function path, so the
+ * result is parsed and the whole program validated before anything is committed.
+ */
+export function lineEditBlocks(program, lines, defaultFn) {
+    const byFn = new Map();
+    const specByFn = new Map();
+    const expanded = [];
+    for (const raw of lines) {
+        const t = stripComment(raw).trim();
+        const sm = SPEC_EDIT.exec(t);
+        if (sm === null) {
+            expanded.push(raw);
+            continue;
+        }
+        const name = sm[1] ?? defaultFn;
+        if (name === undefined)
+            throw diag('A0510', [t]);
+        if (!program.byName.has(name))
+            throw diag('A0511', [t, name]);
+        specByFn.set(name, [...(specByFn.get(name) ?? []), specEditOf(sm)]);
+    }
+    for (const raw of expanded) {
+        const t = stripComment(raw).trim();
+        const m = LINE_EDIT.exec(t);
+        if (m === null)
+            throw diag('A0509', [t]);
+        const name = m[1] ?? defaultFn;
+        if (name === undefined)
+            throw diag('A0510', [t]);
+        const fn = program.byName.get(name);
+        if (fn === undefined)
+            throw diag('A0511', [t, name]);
+        const size = formatFunction(fn).split('\n').length - 2;
+        const n = Number(m[2]);
+        const mode = m[3] ?? '';
+        const text = (m[4] ?? '').trim();
+        const entry = byFn.get(name) ?? { at: new Map(), after: new Map() };
+        byFn.set(name, entry);
+        if (mode === '+') {
+            if (n > size || text === '')
+                throw diag('A0512', [t, size]);
+            entry.after.set(n, [...(entry.after.get(n) ?? []), text]);
+            continue;
+        }
+        if (n < 1 || n > size)
+            throw diag('A0513', [t, name, size]);
+        if (entry.at.has(n))
+            throw diag('A0514', [t, n]);
+        if (mode === '' && text === '')
+            throw diag('A0515', [t, n]);
+        entry.at.set(n, mode === '-' ? null : text);
+    }
+    const block = (name) => {
+        const edit = byFn.get(name);
+        const fn = program.byName.get(name);
+        const src = formatFunction(fn).split('\n');
+        let text = src.join('\n');
+        if (edit !== undefined) {
+            const body = src.slice(1, -1);
+            const out = [...(edit.after.get(0) ?? [])];
+            body.forEach((line, i) => {
+                const edited = edit.at.has(i + 1) ? edit.at.get(i + 1) : line;
+                if (edited !== null && edited !== undefined)
+                    out.push(edited);
+                out.push(...(edit.after.get(i + 1) ?? []));
+            });
+            text = [src[0] ?? '', ...out, 'end'].join('\n');
+        }
+        const specEdits = specByFn.get(name);
+        if (specEdits === undefined)
+            return text;
+        // Spec edits apply to the function the line edits produced, by what the lines say.
+        const edited = parse(text).functions[0];
+        return formatFunction(withSpec(edited, applySpecEdits(edited, specEdits)));
+    };
+    return [...new Set([...byFn.keys(), ...specByFn.keys()])].map(block);
+}
+/**
+ * Deletion-based minimal failing subset: drop items one at a time, keeping each drop after
+ * which `fails` still holds, and repeat passes until one pass drops nothing (the result is
+ * then 1-minimal: removing any single item makes `fails` false). `fails(items)` is assumed
+ * true. At most `budget` calls to `fails`; when the budget runs out first, `minimal` is false
+ * and `core` is the smallest failing subset found so far.
+ */
+export function minimalFailingSubset(items, fails, budget) {
+    let core = [...items];
+    let checks = 0;
+    for (let changed = true; changed;) {
+        changed = false;
+        for (let i = 0; i < core.length;) {
+            if (checks >= budget)
+                return { core, minimal: false, checks };
+            const candidate = [...core.slice(0, i), ...core.slice(i + 1)];
+            checks += 1;
+            if (fails(candidate)) {
+                core = candidate;
+                changed = true;
+            }
+            else
+                i += 1;
+        }
+    }
+    return { core, minimal: true, checks };
+}
+/** Default number of validations a rejection diagnosis may run. */
+export const DIAGNOSE_BUDGET = 64;
+const LINE_PREFIX = /^line [0-9]+: /;
+/**
+ * Same failure: code, message and fix, ignoring the line prefix (line numbers move as lines
+ * drop). The fix names the offending operands, so a second line with the same kind of error
+ * does not stand in for the first.
+ */
+function failureKey(e) {
+    return `${e.code} ${e.message.replace(LINE_PREFIX, '')} ${e.fix ?? ''}`;
+}
+/** A rejection narrowed to its lines, each with the diagnostic's fix, as sent back to a model. */
+export function formatRejection(r) {
+    const e = r.error;
+    const hint = e.fix ?? e.message.replace(LINE_PREFIX, '');
+    const head = r.lines.length === 1
+        ? `This line of ${r.of} causes the rejection`
+        : `These ${r.lines.length} of ${r.of} lines are the smallest part of the reply that still fails this way`;
+    const rest = r.restValid
+        ? 'the rest of the reply is valid on its own; keep it'
+        : 'no other line is involved in this error';
+    const budget = r.minimal ? '' : ' (check budget reached; the set may not be minimal)';
+    const listed = r.lines.map((l) => `line ${l.line}: ${l.text}`).join('\n');
+    // A spec failure is not a malformed line: the reply parses and types, and then breaks the
+    // example or contract the function carries (src/spec.ts).
+    if (e.id === 'A0715' || e.id === 'A0716' || e.id === 'A0719')
+        return `${head}; it is well formed but breaks a spec line the function carries, so nothing was applied (${rest}):\n${listed}\nfix: ${hint}`;
+    return `${head}; ${rest}${budget}:\n${listed}\nfix: ${hint}`;
+}
+/** Program-level view: one signature line per function, in definition order. */
+export function programView(program, dense = false) {
+    return [
+        ...profileLine(program),
+        ...program.functions.map((f) => (dense ? denseSignatureLine(f) : `${formatSignature(f)} end`)),
+    ].join('\n');
+}
+/** The view's first line for a strict program (nothing for a canonical one: views are unchanged). */
+function profileLine(program) {
+    return program.profile === 'strict' ? ['profile strict'] : [];
+}
+/**
+ * The functions a dependency-scoped program view lists for `target`: the target, every
+ * function it reaches through calls, folds, and loops (transitively), and every function
+ * that calls it directly; in definition order.
+ */
+export function programNeighbourhood(program, target) {
+    const fn = program.byName.get(target);
+    if (fn === undefined)
+        throw diag('A0610', [target]);
+    const keep = new Set([target]);
+    const stack = [fn];
+    while (stack.length > 0) {
+        const f = stack.pop();
+        for (const c of f.calls.values())
+            if (!keep.has(c.name)) {
+                keep.add(c.name);
+                stack.push(c);
+            }
+    }
+    for (const f of program.functions)
+        if (f.calls.has(target))
+            keep.add(f.name);
+    return program.functions.filter((f) => keep.has(f.name));
+}
+/** Dependency-scoped program view (without a handle line); see `ProgramViewOptions`. */
+export function scopedProgramView(program, target, dense = false) {
+    const shown = programNeighbourhood(program, target);
+    const head = `# ${program.functions.length} functions; shown: ${target}, its callees, its callers`;
+    return [
+        head,
+        ...profileLine(program),
+        ...shown.map((f) => (dense ? denseSignatureLine(f) : `${formatSignature(f)} end`)),
+    ].join('\n');
+}
+/**
+ * Apply a program-level edit: `fn … end` blocks replace a function of the same name in
+ * place or append a new function at the end (where it may call every existing function);
+ * `-fn name` removes a function (with a `fn name` block in the same edit, the pair replaces it
+ * in place). The whole program is re-validated; callers of a removed or
+ * re-typed function fail the edit atomically.
+ */
+/**
+ * Close every `fn` block of an edit that the reply left open: a block ends at the next `fn` or
+ * `-fn` line or at the end of the reply, so its trailing `end` is optional. Unambiguous because
+ * `fn` and `end` are reserved and never start an instruction line.
+ */
+function closeBlocks(lines) {
+    const out = [];
+    let open = false;
+    for (const raw of lines) {
+        const t = stripComment(raw).trim();
+        if (/^-?fn\s/.test(t) || isProfileEdit(t)) {
+            if (open)
+                out.push('end');
+            open = t.startsWith('fn') && !/\send$/.test(t);
+        }
+        else if (t === 'end')
+            open = false;
+        out.push(raw);
+    }
+    if (open)
+        out.push('end');
+    return out;
+}
+/** A one-line `fn NAME types -> T end` naming an existing function: the view's signature line echoed back, carrying no change. */
+function isSignatureEcho(line, program) {
+    const m = /^fn\s+([a-z][a-z0-9_]*)\b.*\send$/.exec(line);
+    return m !== null && program.byName.has(m[1] ?? '');
+}
+/** Stable topological order of functions by the calls among them (a cycle keeps the given order). */
+function orderFunctionsByCalls(fns) {
+    const names = new Set(fns.map((f) => f.name));
+    const callees = (f) => f.nodes.flatMap((n) => {
+        const c = [];
+        if (n.callee !== undefined && names.has(n.callee))
+            c.push(n.callee);
+        if (n.pred !== undefined && names.has(n.pred))
+            c.push(n.pred);
+        return c;
+    });
+    const out = [];
+    const done = new Set();
+    const pending = [...fns];
+    while (pending.length > 0) {
+        const i = pending.findIndex((f) => callees(f).every((c) => done.has(c) || c === f.name));
+        if (i < 0)
+            return [...out, ...pending];
+        const [f] = pending.splice(i, 1);
+        out.push(f);
+        done.add(f.name);
+    }
+    return out;
+}
+export function editProgram(program, text,
+/** A replaced function written without spec lines keeps the ones it had (a view that hid them). */
+keepSpecs = false) {
+    const lines = closeBlocks(text.split(/\r?\n/));
+    const removals = new Set();
+    const kept = [];
+    let profile = program.profile;
+    for (const raw of lines) {
+        const line = stripComment(raw).trim();
+        if (isProfileEdit(line)) {
+            profile = line === '-profile' ? undefined : 'strict';
+            continue;
+        }
+        // `-fn name`, optionally followed by the function's current signature as the view shows it.
+        const m = /^-fn\s+([a-z][a-z0-9_]*)(?:\s+(.*))?$/.exec(line);
+        if (m) {
+            const name = m[1] ?? '';
+            const shown = program.byName.get(name);
+            if (m[2] !== undefined &&
+                shown !== undefined &&
+                `fn ${name} ${m[2]}`.split(/\s+/).join(' ') !== formatSignature(shown))
+                throw diag('A0516', [line, formatSignature(shown), name], {
+                    applicability: 'exact',
+                    edits: [{ op: 'lines', rule: 'signature', text: normalizeLine(line), to: `-fn ${name}` }],
+                });
+            removals.add(name);
+        }
+        else if (isSignatureEcho(line, program))
+            continue;
+        else
+            kept.push(raw);
+    }
+    const incoming = orderFunctionsByCalls(parse(kept.join('\n')).functions);
+    const byName = new Map(incoming.map((f) => [f.name, f]));
+    for (const name of removals) {
+        if (!program.byName.has(name))
+            throw diag('A0517', [name]);
+        // `-fn f` with a new `fn f` block in the same reply is a replacement, in place.
+        if (byName.has(name))
+            removals.delete(name);
+    }
+    // New functions are placed where the reply put them relative to replaced ones: everything
+    // written above a replaced function is inserted just before it (so a new callee written
+    // above its caller is defined earlier); trailing new functions are appended.
+    const before = new Map();
+    let pending = [];
+    for (const f of incoming) {
+        if (program.byName.has(f.name)) {
+            before.set(f.name, pending);
+            pending = [];
+        }
+        else
+            pending.push(f);
+    }
+    const functions = [];
+    for (const f of program.functions) {
+        if (removals.has(f.name))
+            continue;
+        const written = byName.get(f.name);
+        if (written !== undefined)
+            functions.push(...(before.get(f.name) ?? []));
+        const replacement = keepSpecs && written !== undefined && written.spec === undefined && f.spec !== undefined
+            ? { ...written, spec: f.spec }
+            : written;
+        functions.push(replacement ?? f);
+    }
+    functions.push(...pending);
+    if (functions.length === 0)
+        throw diag('A0518');
+    return validateOrdered({ ...(profile === undefined ? {} : { profile }), functions });
+}
+/**
+ * A bounded, in-memory edit session. Not a network service; no authentication or
+ * multi-principal isolation exists in v0.1.
+ */
+/**
+ * A diagnostic for a dense reply that names the dense text, not canonical ids: `sumsq.a` becomes
+ * ``sumsq (`fold addel 4 0 A`)`` and `isdiv.ret` becomes `isdiv's result`, using the node texts of the
+ * functions the reply defined (the dense text never shows an unnamed node's id).
+ */
+function denseDiagnostic(e, names) {
+    if (names.size === 0)
+        return e;
+    const swap = (text) => text.replace(/\b([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)\b/g, (m, f, id) => {
+        const nodes = names.get(f);
+        if (nodes === undefined)
+            return m;
+        if (id === 'ret')
+            return `${f}'s result`;
+        const t = nodes.get(id);
+        return t === undefined ? m : `${f} (\`${t}\`)`;
+    });
+    const message = swap(e.detail);
+    const fix = e.fix === undefined ? undefined : swap(e.fix);
+    if (message === e.detail && fix === e.fix)
+        return e;
+    return e.reworded(message, e.line, fix);
+}
+/**
+ * A parameter out of range in the function a reply edits, where another function of the program
+ * has that parameter: the reply most likely wrote that other function's lines (a callee the view
+ * shows only as a signature) as bare lines, which always belong to the function the view opened.
+ * Say so, with the block that rewrites the other function.
+ */
+function stubHint(e, program) {
+    if (e.id !== 'A0105')
+        return e;
+    const m = /^([a-z][a-z0-9_]*)\.\S+: parameter p(\d+) out of range/.exec(e.detail);
+    if (m === null)
+        return e;
+    const others = program.functions.filter((f) => f.name !== m[1] && f.params.length > Number(m[2]));
+    if (others.length === 0)
+        return e;
+    const blocks = others.map((f) => `\`${formatSignature(f)}\``).join(' or ');
+    const hint = `; bare lines edit ${m[1]} only: to write the lines of another function, reply a block ${blocks} followed by its lines`;
+    return e.reworded(e.detail, e.line, `${e.fix ?? ''}${hint}`);
+}
+export class EditSession {
+    #program;
+    #handles = new Map();
+    #maxOpen;
+    #nextFn = 0;
+    #nextProgram = 0;
+    /** The last reply this session rejected, for `fix all`. */
+    #rejected;
+    constructor(program, options = {}) {
+        this.#program = program;
+        this.#maxOpen = options.maxOpenHandles ?? 64;
+    }
+    get program() {
+        return this.#program;
+    }
+    get openHandles() {
+        return this.#handles.size;
+    }
+    /**
+     * The handle a reply without a handle line edited: the one open function handle, or with none the
+     * one open program handle (the rule `#apply` follows); undefined when there is no single one.
+     */
+    get impliedHandle() {
+        const open = [...this.#handles.keys()];
+        const fnHandles = open.filter((h) => HANDLE.test(h));
+        const implied = fnHandles.length > 0 ? fnHandles : open;
+        return implied.length === 1 ? implied[0] : undefined;
+    }
+    /**
+     * Open a program-level view bound to the whole program's revision: all signatures, or
+     * with `scope: 'deps'` only those around `target` (the handle still edits any function).
+     */
+    openProgram(options = {}) {
+        const target = options.scope === 'deps' ? options.target : undefined;
+        if (options.scope === 'deps' && (target === undefined || !this.#program.byName.has(target)))
+            throw diag('A0610', [target ?? ''], {
+                fix: "openProgram({ scope: 'deps', target }) needs the name of an existing function",
+            });
+        if (this.#handles.size >= this.#maxOpen) {
+            throw diag('A0520', [this.#maxOpen]);
+        }
+        const handle = `g${this.#nextProgram}`;
+        this.#nextProgram += 1;
+        const rev = programRevision(this.#program);
+        const dense = options.dense === true;
+        this.#handles.set(handle, {
+            functionName: '*',
+            revision: rev,
+            scope: undefined,
+            ...(target === undefined ? {} : { target }),
+            ...(dense ? { dense } : {}),
+        });
+        return {
+            handle,
+            functionName: '*',
+            revision: rev,
+            text: `${handle}\n${this.#programText(target, dense)}`,
+        };
+    }
+    /** A scoped program view whose target was removed falls back to the full listing. */
+    #programText(target, dense = false) {
+        return target !== undefined && this.#program.byName.has(target)
+            ? scopedProgramView(this.#program, target, dense)
+            : programView(this.#program, dense);
+    }
+    /** Open a view of one function and return a short handle bound to its current revision. */
+    open(functionName, options = {}) {
+        const fn = this.#program.byName.get(functionName);
+        if (fn === undefined)
+            throw diag('A0610', [functionName]);
+        if (this.#handles.size >= this.#maxOpen) {
+            throw diag('A0520', [this.#maxOpen]);
+        }
+        const handle = `e${this.#nextFn}`;
+        this.#nextFn += 1;
+        const rev = revision(fn);
+        const numbered = options.numbered === true;
+        const dense = options.dense === true;
+        const compact = dense && options.compact === true;
+        const hideSpecs = options.specs === 'hide' && !numbered && fn.spec !== undefined;
+        this.#handles.set(handle, {
+            functionName,
+            revision: rev,
+            scope: options.scope,
+            ...(numbered ? { numbered } : {}),
+            ...(dense ? { dense } : {}),
+            ...(compact ? { compact } : {}),
+            ...(options.specs === 'hide' && !numbered ? { hideSpecs: true } : {}),
+        });
+        const body = this.#functionText(fn, options.scope, numbered, dense, hideSpecs, compact);
+        return { handle, functionName, revision: rev, text: `${handle}\n${body}` };
+    }
+    /** The current view under an open handle (handles are stable for the session). */
+    view(handle) {
+        const bound = this.#handles.get(handle);
+        if (bound === undefined)
+            throw diag('A0611', [handle], { line: 1 });
+        if (bound.functionName === '*')
+            return `${handle}\n${this.#programText(bound.target, bound.dense === true)}`;
+        const fn = this.#program.byName.get(bound.functionName);
+        if (fn === undefined)
+            throw diag('A0613', [handle], { line: 1 });
+        return `${handle}\n${this.#functionText(fn, bound.scope, bound.numbered === true, bound.dense === true, bound.hideSpecs === true, bound.compact === true)}`;
+    }
+    #functionText(fn, scope, numbered, dense = false, hideSpecs = false, compact = false) {
+        const text = this.#plainFunctionText(fn, scope, numbered, dense, hideSpecs, compact);
+        const shown = dense && scope === 'bodies' ? [fn, ...fn.calls.values()] : [fn];
+        const legend = process.env.A0_KEY_LEGEND === 'off' ? '' : keyLegend(shown);
+        const lazy = lazyHints() && !dense ? constructLegend(shown) : '';
+        const both = [legend, lazy].filter((l) => l !== '').join('\n');
+        return both === '' ? text : `${text}\n${both}`;
+    }
+    #plainFunctionText(fn, scope, numbered, dense, hideSpecs, compact = false) {
+        if (dense)
+            return scopedViewDense(fn, this.#program, scope ?? 'function', hideSpecs, compact);
+        if (scope === 'deps' || scope === 'bodies')
+            return scopedView(fn, numbered, hideSpecs);
+        return numbered ? numberedFunction(fn) : formatFunction(hideSpecs ? withoutSpec(fn) : fn);
+    }
+    /**
+     * After a successful edit every open handle follows the program: a session has one
+     * editor, so its handles stay valid and keep their names; a handle whose function was
+     * removed is closed. The revision check still rejects any edit written against text
+     * that is no longer current.
+     */
+    #rebind() {
+        const progRev = programRevision(this.#program);
+        for (const [handle, bound] of this.#handles) {
+            if (bound.functionName === '*') {
+                this.#handles.set(handle, { ...bound, revision: progRev });
+                continue;
+            }
+            const fn = this.#program.byName.get(bound.functionName);
+            if (fn === undefined)
+                this.#handles.delete(handle);
+            else
+                this.#handles.set(handle, { ...bound, revision: revision(fn) });
+        }
+    }
+    /**
+     * Validate `text` exactly as `apply` would, without committing: the rejection, or
+     * undefined when the reply would be accepted.
+     */
+    #attempt(text) {
+        const savedProgram = this.#program;
+        const savedHandles = new Map(this.#handles);
+        try {
+            this.apply(text);
+            return undefined;
+        }
+        catch (e) {
+            if (e instanceof A0Error)
+                return e;
+            throw e;
+        }
+        finally {
+            this.#program = savedProgram;
+            this.#handles.clear();
+            for (const [h, b] of savedHandles)
+                this.#handles.set(h, b);
+        }
+    }
+    /**
+     * Explain a rejected reply: the minimal subset of its lines (handle lines stay as context)
+     * that still fails with the same diagnostic, found by deletion within `budget` validations.
+     * Nothing is committed. Undefined when the reply would be accepted.
+     */
+    diagnose(text, budget = DIAGNOSE_BUDGET) {
+        const error = this.#attempt(text);
+        if (error === undefined)
+            return undefined;
+        const lines = text.split(/\r?\n/);
+        const items = lines
+            .map((l, i) => [stripComment(l).trim(), i])
+            .filter(([t]) => t !== '' && !HANDLE.test(t) && !PROGRAM_HANDLE.test(t))
+            .map(([, i]) => i);
+        const itemSet = new Set(items);
+        const keep = (subset) => {
+            const chosen = new Set(subset);
+            return lines.filter((_, i) => !itemSet.has(i) || chosen.has(i)).join('\n');
+        };
+        const key = failureKey(error);
+        const { core, minimal, checks } = minimalFailingSubset(items, (subset) => {
+            const e = this.#attempt(keep(subset));
+            return e !== undefined && failureKey(e) === key;
+        }, budget);
+        const inCore = new Set(core);
+        const rest = items.filter((i) => !inCore.has(i));
+        // Only a rest that still carries an edit (not just a closing `end`) counts as valid work.
+        const carries = rest.some((i) => stripComment(lines[i] ?? '').trim() !== 'end');
+        const restValid = carries && this.#attempt(keep(rest)) === undefined;
+        return {
+            error,
+            lines: core.map((i) => ({ line: i + 1, text: (lines[i] ?? '').trim() })),
+            of: items.length,
+            minimal,
+            restValid,
+            checks: checks + (carries ? 2 : 1),
+        };
+    }
+    close(handle) {
+        return this.#handles.delete(handle);
+    }
+    /**
+     * Apply a session edit: first line is the handle, remaining lines are replacement
+     * nodes. The handle must be open and bound to the function's current revision.
+     * On success the new program is committed atomically and every open handle is rebound
+     * to the new revision (handles are stable names for the session).
+     */
+    apply(text) {
+        this.#denseNames = new Map();
+        try {
+            return this.#applyOrFix(text);
+        }
+        catch (e) {
+            if (!(e instanceof A0Error))
+                throw e;
+            const hinted = stubHint(e, this.#program);
+            if (!lazyHints())
+                throw denseDiagnostic(hinted, this.#denseNames);
+            const first = !this.#ruleCardShown;
+            this.#ruleCardShown = true;
+            throw denseDiagnostic(lazyDiagnostic(hinted, text, first), this.#denseNames);
+        }
+    }
+    /** The lazy rule card (src/lazy.ts) goes out with the first rejection of the session only. */
+    #ruleCardShown = false;
+    /** Dense text of the nodes of the functions the current dense reply names (see `denseDiagnostic`). */
+    #denseNames = new Map();
+    #applyOrFix(text) {
+        if (this.#isFixAll(text))
+            return this.#fixAll();
+        try {
+            const next = this.#apply(text);
+            this.#rejected = undefined;
+            return next;
+        }
+        catch (e) {
+            if (e instanceof A0Error)
+                this.#rejected = text;
+            throw e;
+        }
+    }
+    /** `fix all`, alone or under a handle line. */
+    #isFixAll(text) {
+        const lines = text
+            .split(/\r?\n/)
+            .map((l) => stripComment(l).trim())
+            .filter((l) => l.length > 0);
+        if (lines.length === 2 && (HANDLE.test(lines[0] ?? '') || PROGRAM_HANDLE.test(lines[0] ?? '')))
+            lines.shift();
+        return lines.length === 1 && lines[0] === 'fix all';
+    }
+    /**
+     * `fix all`: replay the last rejected reply with every `exact` fix of its diagnostics applied.
+     * The edited reply goes through the ordinary path, so it is parsed and the whole program
+     * validated before anything is committed; if a diagnostic with no exact fix remains, nothing is
+     * committed and that diagnostic is the reply's rejection.
+     */
+    #fixAll() {
+        const rejected = this.#rejected;
+        if (rejected === undefined)
+            throw diag('A0521');
+        const out = fixAll(rejected, (t) => {
+            this.#apply(t);
+        });
+        if (out.error !== undefined) {
+            this.#rejected = out.text;
+            throw out.error;
+        }
+        this.#rejected = undefined;
+        return this.#program;
+    }
+    #apply(raw) {
+        const text = stripCodeFences(raw);
+        if (utf8Length(text) > LIMITS.maxSourceBytes)
+            throw diag('A0502');
+        const rawLines = text.split(/\r?\n/);
+        // The handle line may be left out when it is implied: the reply then edits the one open
+        // function handle (which also takes whole `fn` blocks and `-fn` lines), or, with no
+        // function handle open, the one open program handle.
+        const firstLine = rawLines.map((l) => stripComment(l).trim()).find((l) => l.length > 0) ?? '';
+        if (!HANDLE.test(firstLine) && !PROGRAM_HANDLE.test(firstLine)) {
+            const open = [...this.#handles.keys()];
+            const fnHandles = open.filter((h) => HANDLE.test(h));
+            const implied = fnHandles.length > 0 ? fnHandles : open;
+            if (implied.length !== 1)
+                throw diag('A0612', [firstLine], { line: 1 });
+            return this.#apply(`${implied[0]}\n${text}`);
+        }
+        // A reply may carry several sections, each headed by an open handle; they apply in
+        // order as one atomic edit (all or nothing).
+        const heads = rawLines
+            .map((l, i) => [stripComment(l).trim(), i])
+            .filter(([l]) => /^[eg][0-9]+$/.test(l) && this.#handles.has(l));
+        if (heads.length > 1) {
+            const savedProgram = this.#program;
+            const savedHandles = new Map(this.#handles);
+            try {
+                for (let k = 0; k < heads.length; k += 1) {
+                    const start = heads[k]?.[1];
+                    const end = k + 1 < heads.length ? heads[k + 1]?.[1] : rawLines.length;
+                    const section = rawLines.slice(start, end);
+                    // A section that only echoes signatures (or is empty) carries no change.
+                    const body = section
+                        .slice(1)
+                        .map((l) => stripComment(l).trim())
+                        .filter((l) => l.length > 0);
+                    if (body.every((l) => l === 'end' || isSignatureEcho(l, this.#program)))
+                        continue;
+                    this.#apply(section.join('\n'));
+                }
+            }
+            catch (e) {
+                this.#program = savedProgram;
+                this.#handles.clear();
+                for (const [h, b] of savedHandles)
+                    this.#handles.set(h, b);
+                throw e;
+            }
+            return this.#program;
+        }
+        const lines = rawLines.map((l) => stripComment(l).trim()).filter((l) => l.length > 0);
+        const handle = lines[0] ?? '';
+        if (!HANDLE.test(handle) && !PROGRAM_HANDLE.test(handle)) {
+            throw diag('A0612', [handle], { line: 1 });
+        }
+        const bound = this.#handles.get(handle);
+        if (bound === undefined)
+            throw diag('A0611', [handle], { line: 1 });
+        if (bound.functionName === '*') {
+            if (programRevision(this.#program) !== bound.revision) {
+                throw diag('A0614', [handle]);
+            }
+            let rawBody = text
+                .split(/\r?\n/)
+                .slice(text.split(/\r?\n/).findIndex((l) => stripComment(l).trim() === handle) + 1);
+            if (bound.dense === true)
+                rawBody = denseEditBody(rawBody.map((l) => stripComment(l).trim()).filter((l) => l.length > 0), this.#program, undefined, this.#denseNames);
+            const { edits, rest } = splitLineEdits(rawBody, (t) => isSpecEdit(t, false));
+            const blocks = lineEditBlocks(this.#program, edits, undefined);
+            this.#program = editProgram(this.#program, [...closeBlocks(rest), ...blocks].join('\n'));
+            this.#rebind();
+            return this.#program;
+        }
+        const fn = this.#program.byName.get(bound.functionName);
+        if (fn === undefined)
+            throw diag('A0613', [handle]);
+        if (revision(fn) !== bound.revision) {
+            throw diag('A0615', [handle, fn.name]);
+        }
+        let body = lines.slice(1);
+        // The rest of the view echoed back (another handle line followed only by signature
+        // lines) carries no change: drop it.
+        const echoAt = body.findIndex((l) => /^[eg][0-9]+$/.test(stripComment(l).trim()));
+        if (echoAt >= 0 &&
+            body.slice(echoAt + 1).every((l) => {
+                const t = stripComment(l).trim();
+                return t === '' || isSignatureEcho(t, this.#program);
+            }))
+            body = body.slice(0, echoAt);
+        // A trailing `end` mirrors the view and carries no information: accept it.
+        while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === 'end')
+            body = body.slice(0, -1);
+        while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === '')
+            body = body.slice(0, -1);
+        if (bound.dense === true)
+            body = denseEditBody(body, this.#program, fn, this.#denseNames, {
+                compact: bound.compact === true,
+            });
+        // Whole `fn ... end` blocks are program-level edits wherever they appear: the handled
+        // function sent back whole replaces itself, and any other function is added or replaced
+        // exactly as under a program handle. Edit lines before the first block apply to the
+        // handled function after the blocks, so a callee changed in the same reply type-checks.
+        // `-fn name` lines before the first block are program-level too, and so are edit lines
+        // after a block's explicit `end` (outside every block they can only edit the handled
+        // function; a block without `end` still takes the lines up to the next `fn`).
+        // Line-addressed edits (`N line`, `N-`, `N+ line`, `f:N ...`) refer to the numbered view
+        // before this reply; each edited function becomes a whole block, validated with the rest.
+        // Spec edits of the handled function (`+ex ...`, `-pre`) go with its node edits, validated as
+        // one change; only a line that names another function (`g:+ex ...`) is a block of its own.
+        const split = splitLineEdits(body, (t) => isSpecEdit(t, true));
+        const lineBlocks = lineEditBlocks(this.#program, split.edits, fn.name);
+        body = split.rest;
+        const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l).trim()));
+        const head = blockAt < 0 ? body : body.slice(0, blockAt);
+        const isRemoval = (l) => {
+            const t = stripComment(l).trim();
+            return /^-fn\s/.test(t) || isProfileEdit(t);
+        };
+        // An `end` before the first block closes the handled function's lines, as in the view.
+        const editLines = head.filter((l) => !isRemoval(l) && stripComment(l).trim() !== 'end');
+        const programLines = head.filter(isRemoval);
+        let open = false;
+        for (const l of blockAt < 0 ? [] : body.slice(blockAt)) {
+            const t = stripComment(l).trim();
+            if (/^fn\s/.test(t))
+                open = !/\send$/.test(t);
+            else if (t === 'end' || isRemoval(l))
+                open = false;
+            else if (!open && t !== '') {
+                editLines.push(l);
+                continue;
+            }
+            programLines.push(l);
+        }
+        let program = this.#program;
+        if (programLines.length > 0 || lineBlocks.length > 0) {
+            program = editProgram(program, [...closeBlocks(programLines), ...lineBlocks].join('\n'), bound.hideSpecs === true);
+        }
+        if (editLines.length > 0) {
+            const target = program.byName.get(fn.name);
+            if (target === undefined)
+                throw diag('A0519', [handle, fn.name]);
+            const nodes = parseReplacementNodes(editLines, 2, new Set(target.nodes.map((n) => n.id)));
+            program = placeNewCallees(this.#program, program, fn.name, nodes);
+            program = commit(program, replaceNodes(program, program.byName.get(fn.name) ?? target, nodes));
+        }
+        this.#program = program;
+        this.#rebind();
+        return this.#program;
+    }
+}
+//# sourceMappingURL=edit.js.map

@@ -1,0 +1,175 @@
+[
+  {
+    "id": "fat-arrow",
+    "group": "sealed-core",
+    "instruction": "Change request for the A0 front end (lexer and parser): `=>` must be accepted as a second spelling of the arrow `->`: the lexer emits it as the arrow token (kind 4, length 2), so `fn f u32 => u32` is a valid header. An `=` that is not followed by `>` stays a one-byte error token (kind 9), also at the very end of the source.",
+    "targets": [
+      "lexstep",
+      "lexsrc"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/core.input.a0.txt",
+    "referenceFile": "programs/fat-arrow.reference.a0.txt",
+    "wrongFile": "programs/fat-arrow.wrong.a0.txt",
+    "wrongWhy": "A0: the pending `=` at the end of the source is never flushed (lexsrc unchanged); TS: the arrow advances one byte, so its `>` becomes an error token",
+    "sealedTaskFile": "hidden/fat-arrow.sealed.json",
+    "sealedTaskSHA256": "ba9d4671c1d7a2b77f49463445b27956f4c9a7f688e3f0a4bcf8a9e1662656d3"
+  },
+  {
+    "id": "op-alias-mod",
+    "group": "sealed-core",
+    "instruction": "Change request for the A0 front end (lexer and parser): accept `mod` as another spelling of the operation `rem`, the way `udiv` and `urem` are accepted for `div` and `rem`: a node `a mod p0 p1` gets the op code of `rem` in the word IR.",
+    "targets": [
+      "opcode"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/core.input.a0.txt",
+    "referenceFile": "programs/op-alias-mod.reference.a0.txt",
+    "wrongFile": "programs/op-alias-mod.wrong.a0.txt",
+    "wrongWhy": "A0: `mod` gets the op code of `div`; TS: `mod` becomes a new op word with its own code (38) instead of an alias of `rem`",
+    "sealedTaskFile": "hidden/op-alias-mod.sealed.json",
+    "sealedTaskSHA256": "702fa0dbddc4f3cbfb85586fbc3e81d400ae0b5d1e6d30dac6f3f1265e3c0009"
+  },
+  {
+    "id": "drop-unsigned-aliases",
+    "group": "sealed-core",
+    "instruction": "Change request for the A0 front end (lexer and parser): withdraw the accepted spellings `udiv` and `urem`; only `div` and `rem` name those operations now. A node `a udiv p0 p1` then reads `udiv` as the name of a function it calls, which is a structure error when no earlier function has that name. The parser reports the first diagnostic as (code, token index), code 1 a parse error and 2 a structure error; token indexes count the tokens of the lexer (comments and spaces make no tokens; each newline is one).",
+    "targets": [
+      "opcode"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/core.input.a0.txt",
+    "referenceFile": "programs/drop-unsigned-aliases.reference.a0.txt",
+    "wrongFile": "programs/drop-unsigned-aliases.wrong.a0.txt",
+    "wrongWhy": "both: only `udiv` is withdrawn, `urem` is still read as `rem`",
+    "sealedTaskFile": "hidden/drop-unsigned-aliases.sealed.json",
+    "sealedTaskSHA256": "a099be6435b6be480ec02be564bc844027212350a631083e8a649096655e46f4"
+  },
+  {
+    "id": "text-escape-zero",
+    "group": "sealed-core",
+    "instruction": "Change request for the A0 front end (lexer and parser): in a `text \"...\"` literal the escape `\\0` (a backslash, then the digit zero) must decode to the byte 0. A zero digit that is not escaped is still the byte 48, and the other escapes are unchanged.",
+    "targets": [
+      "txtb"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/core.input.a0.txt",
+    "referenceFile": "programs/text-escape-zero.reference.a0.txt",
+    "wrongFile": "programs/text-escape-zero.wrong.a0.txt",
+    "wrongWhy": "A0: the zero is decoded whether or not it was escaped; TS: the mapping is written the wrong way round (byte 0 to 48)",
+    "sealedTaskFile": "hidden/text-escape-zero.sealed.json",
+    "sealedTaskSHA256": "f47e976ae104ba9457e470fed2abc20ed74b99d5bb7cc27daba4d75cf8d17e4f"
+  },
+  {
+    "id": "life-overwrite-cell",
+    "group": "life",
+    "instruction": "Make cell correct when the next-grid accumulator is reused: replace the selected cell bit with its new Conway B3/S23 value, including clearing a stale live bit when it dies. Preserve all other accumulator bits, the current grid, the 32x32 torus/neighbour rule, signatures and session behavior. Change cell; internal helpers may be added.",
+    "targets": [
+      "cell"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/life.input.a0.txt",
+    "referenceFile": "programs/life-overwrite-cell.reference.a0.txt",
+    "wrongFile": "programs/life-overwrite-cell.wrong.a0.txt",
+    "wrongWhy": "clears every other accumulator cell in the selected row"
+  },
+  {
+    "id": "life-framed-output",
+    "group": "life",
+    "instruction": "Frame the outgoing Life grid stream as [76, 32, row0, ..., row31, population]. The length32 counts grid rows only and population is the final trailer. Keep row words unchanged, preserve IO identity and input consumption, and keep life returning population as before. Other commands and existing signatures stay intact; change writegrid using existing helpers or new internal helpers.",
+    "targets": [
+      "writegrid"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/life.input.a0.txt",
+    "referenceFile": "programs/life-framed-output.reference.a0.txt",
+    "wrongFile": "programs/life-framed-output.wrong.a0.txt",
+    "wrongWhy": "writes population before the32 rows instead of after"
+  },
+  {
+    "id": "life-msb-wire",
+    "group": "life",
+    "instruction": "Change only the Life wire bit order: external row bit31 is column0 and bit0 is column31, while internal grids keep bit0 as column0. Reverse all32 bits on each row read and each row write; readgrid's directly read first row must use the same conversion. Preserve exactly32 row reads/writes, IO identity/positions, internal simulation/population and all existing signatures/session command meanings. Change readrow/readgrid/writerow; internal conversion helpers may be added.",
+    "targets": [
+      "readrow",
+      "readgrid",
+      "writerow"
+    ],
+    "helperNames": [
+      "wirebitstep",
+      "wirebits"
+    ],
+    "inputFile": "programs/life.input.a0.txt",
+    "referenceFile": "programs/life-msb-wire.reference.a0.txt",
+    "wrongFile": "programs/life-msb-wire.wrong.a0.txt",
+    "wrongWhy": "readgrid row0 bypasses conversion while rows1..31 convert"
+  },
+  {
+    "id": "life-swar-popcount",
+    "group": "life",
+    "instruction": "Replace the bit-serial popcount fold with straight-line SWAR (parallel bit-count) u32 arithmetic. For every u32 input return its count of set bits (0..32), including bit31. This is an explicit algorithm-maintenance task: popcount must contain no call, fold or loop; do not move iteration into a helper. Preserve all existing signatures and population/simulation/IO behavior. Existing bitstep may remain for other callers.",
+    "targets": [
+      "popcount"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/life.input.a0.txt",
+    "referenceFile": "programs/life-swar-popcount.reference.a0.txt",
+    "wrongFile": "programs/life-swar-popcount.wrong.a0.txt",
+    "wrongWhy": "uses OR where independent two-bit counts require addition"
+  },
+  {
+    "id": "ui-u32-decimal",
+    "group": "website",
+    "instruction": "Correct ndigits to return the decimal digit count1..10 for every u32, so the existing putnum renders all u32 words exactly, including the region where tenpow(10) wraps. Zero has one digit, no leading zeros. Preserve putnum's valid TEXT framing, IO identity, existing signatures and other UI capabilities. Change ndigits; internal helpers may be added.",
+    "targets": [
+      "ndigits"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/ui.input.a0.txt",
+    "referenceFile": "programs/ui-u32-decimal.reference.a0.txt",
+    "wrongFile": "programs/ui-u32-decimal.wrong.a0.txt",
+    "wrongWhy": "omits the tenth-digit threshold"
+  },
+  {
+    "id": "ui-round-ratios",
+    "group": "website",
+    "instruction": "Round half up instead of truncating in ratio helpers r_int and r_one. Values are hundredths: r_int outputs the nearest integer, r_one the nearest tenth with exactly one fractional digit. Handle carry and every u32 without overflow (e.g.9999 through r_one becomes100.0). Keep putratio precision selection based on the original input (>=10000 integer, >=1000 one digit, otherwise two exact digits), keep r_two/putfix unchanged and preserve signatures, TEXT framing and IO identity. Change r_int/r_one; internal helpers may be added.",
+    "targets": [
+      "r_int",
+      "r_one"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/ui.input.a0.txt",
+    "referenceFile": "programs/ui-round-ratios.reference.a0.txt",
+    "wrongFile": "programs/ui-round-ratios.wrong.a0.txt",
+    "wrongWhy": "ties round down rather than half up"
+  },
+  {
+    "id": "frame-normalize-brackets",
+    "group": "website",
+    "instruction": "Normalize the rectangle in fr_brackets so the first corner has the smaller x and y and the second the larger, treating coordinates as signed32-bit Q16 bit patterns. Reversed/mixed-sign coordinates must work; preserve their exact word bits, corner length, stroke width, RGBA, command17 layout, IO identity and all other helpers/signatures. Change fr_brackets; internal helpers may be added.",
+    "targets": [
+      "fr_brackets"
+    ],
+    "helperNames": [],
+    "inputFile": "programs/frame.input.a0.txt",
+    "referenceFile": "programs/frame-normalize-brackets.reference.a0.txt",
+    "wrongFile": "programs/frame-normalize-brackets.wrong.a0.txt",
+    "wrongWhy": "sorts unsigned instead of signed coordinate words"
+  },
+  {
+    "id": "frame-skip-empty-lines",
+    "group": "website",
+    "instruction": "Make fr_line emit no command or other IO effect when width is0 or packed RGBA alpha (the low8 bits) is0. Otherwise emit the existing exact [11,x1,y1,x2,y2,width,rgba] words in order. RGB alone must not make a transparent line visible. Return the same IO token and preserve its input position, previous output and all other helpers/signatures. Internal conditional-emission helpers may be added.",
+    "targets": [
+      "fr_line"
+    ],
+    "helperNames": [
+      "fr_line_emit"
+    ],
+    "inputFile": "programs/frame.input.a0.txt",
+    "referenceFile": "programs/frame-skip-empty-lines.reference.a0.txt",
+    "wrongFile": "programs/frame-skip-empty-lines.wrong.a0.txt",
+    "wrongWhy": "tests nonzero RGB/color instead of the alpha byte"
+  }
+]

@@ -1,0 +1,37 @@
+fn life io -> u32
+z zero
+rg readgrid z A
+grid at rg 0
+t0 at rg 1
+rc read t0
+cmd at rc 0
+t1 at rc 1
+rx read t1
+x at rx 0
+t2 at rx 1
+ry read t2
+y at ry 0
+t3 at ry 1
+stepped step grid
+is0 eq cmd 0
+is1 eq cmd 1
+is2 eq cmd 2
+is3 eq cmd 3
+is4 eq cmd 4
+bit << 1 x
+row get grid y
+flipped xor row bit
+toggled set grid y flipped
+alive or row bit
+seeded set grid y alive
+keep xor bit 4294967295
+cleared and row keep
+erased set grid y cleared
+zero2 zero
+g4 select is4 erased grid
+g3 select is3 seeded g4
+g2 select is2 zero2 g3
+g1 select is1 toggled g2
+g0 select is0 stepped g1
+t4 writegrid g0 t3
+pop population g0

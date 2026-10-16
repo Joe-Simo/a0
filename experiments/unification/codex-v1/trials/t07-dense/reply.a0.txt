@@ -1,0 +1,13 @@
+fn readgridrow (u32x32,io) u32 -> (u32x32,io)
+g at A 0
+t at A 1
+out readrow g B t
+
+fn readgrid u32x32 io -> (u32x32,io)
+r read B
+v at r 0
+t at r 1
+large gt v 32
+n select large 32 v
+s (A t)
+out fold readgridrow n s

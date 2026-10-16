@@ -1,0 +1,59 @@
+You are making one requested maintenance change to A0. Work independently. Read only this prompt file. Do not read the repository, other files, references, tests or prior trials; do not run code, search, ask another agent or test your answer. Write your answer exactly once to the designated reply file using a literal patch or quoted heredoc, then reply done. Your answer file must contain only complete replacement fn blocks for the requested functions and any needed new helpers, with no handle, Markdown or explanation. Preserve all other functions and existing signatures. This is a single attempt; the runner will check it. The source view contains the target functions and their transitive callees; included callees are context and must remain unchanged unless the task requests otherwise. You may introduce internal helpers; define helpers before their callers.
+
+Syntax: fn NAME TYPE... -> TYPE, then lines ID OP ARGS..., then ret VALUE and end. Parameters p0,p1,...; literals decimal u32,true,false. Types u32,bool,io,u32x32,(u32,io). Nodes refer only to parameters or earlier IDs. Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select; call F args; fold F n state args; loop P F n state args; arr elements; rec elements; text "bytes"; get array index; set array index value; at record slot; put record slot value; read token; write token word; puts token array. Every replacement function includes its full header/body/ret/end.
+
+Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select mov call fold loop arr rec text get set at put read write puts. Types: u32, bool, io, arrays such as u32x32, records such as (u32,io). Arithmetic is unsigned u32 modulo 2^32; comparisons return bool; select c x y evaluates existing values and returns x if c else y. div a 0 gives4294967295, rem a 0 gives a; shifts mask count&31. get/set wrap the array index modulo its length; at/put use constant record slots. fold F n s a.. starts state=s, then state=F(state,i,a..) for i=0..n-1. loop P F n s a.. tests P before each step. IO is affine: read t returns (word,next-token); write t v and puts t array return next-token. mov copies a value. Arrays/records are immutable values. Function signatures must typecheck; all defined nodes execute in source order.
+
+Requested change:
+Change the cell rule to HighLife B36/S23: a dead cell is born with exactly 3 or 6 neighbours; an existing live cell survives only with 2 or 3. Keep the 32x32 torus, count/nb semantics, accumulator merge, step signature and IO/session commands unchanged. Change cell; other existing function signatures stay intact. You may add internal helpers.
+
+Source view:
+fn nb u32x32 u32 u32 -> u32
+row get p0 p1
+bit shr row p2
+one and bit 1
+ret one
+end
+
+fn count u32x32 u32 u32 -> u32
+ru sub p1 1
+rd add p1 1
+cl sub p2 1
+cr add p2 1
+a call nb p0 ru cl
+b call nb p0 ru p2
+c call nb p0 ru cr
+d call nb p0 p1 cl
+e call nb p0 p1 cr
+f call nb p0 rd cl
+g call nb p0 rd p2
+h call nb p0 rd cr
+s1 add a b
+s2 add s1 c
+s3 add s2 d
+s4 add s3 e
+s5 add s4 f
+s6 add s5 g
+s7 add s6 h
+ret s7
+end
+
+fn cell u32x32 u32 u32x32 -> u32x32
+r shr p1 5
+c and p1 31
+n call count p2 r c
+me call nb p2 r c
+is3 eq n 3
+is2 eq n 2
+me1 eq me 1
+alive2 select me1 is2 false
+alive select is3 true alive2
+bit select alive 1 0
+mask shl bit c
+old get p0 r
+new or old mask
+next set p0 r new
+ret next
+end
+
+Write only the replacement functions to: <study>/trials/t05-canonical/reply.a0
