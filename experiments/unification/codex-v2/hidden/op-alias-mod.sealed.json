@@ -1,0 +1,90 @@
+{
+  "id": "op-alias-mod",
+  "summary": "`mod` is accepted as a spelling of the `rem` operation",
+  "instruction": "Change request for the A0 front end (lexer and parser): accept `mod` as another spelling of the operation `rem`, the way `udiv` and `urem` are accepted for `div` and `rem`: a node `a mod p0 p1` gets the op code of `rem` in the word IR.",
+  "a0Targets": [
+    "opcode"
+  ],
+  "tests": [
+    {
+      "kind": "parse",
+      "src": "fn f u32 u32 -> u32\na mod p0 p1\nb rem a 3\nret mod b 2\nend\n",
+      "expect": {
+        "code": 0,
+        "tok": 0,
+        "nodes": [
+          4,
+          11,
+          2,
+          0,
+          0,
+          0,
+          8,
+          11,
+          2,
+          2,
+          0,
+          0,
+          0,
+          11,
+          2,
+          4,
+          0,
+          0
+        ],
+        "args": [
+          2,
+          0,
+          2,
+          1,
+          1,
+          0,
+          3,
+          3,
+          1,
+          1,
+          3,
+          2
+        ],
+        "fns": [
+          2,
+          2,
+          0,
+          0,
+          0,
+          3,
+          268435458
+        ]
+      }
+    },
+    {
+      "kind": "parse",
+      "src": "fn f u32 -> u32\na mods p0 1\nret a\nend\n",
+      "expect": {
+        "code": 2,
+        "tok": 7
+      }
+    },
+    {
+      "kind": "same",
+      "src": "fn sq u32 -> u32\na mul p0 p0\nret a\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "# a small program\nuse \"lib.a0\"\nfn inc u32 -> u32\na add p0 1 # one more\nret a\nend\nfn g u32x4 (u32,bool) -> u32\nb at p1 0\nc get p0 2\nd call inc c\ne div d 3\nf select true e b\nt text \"hi\\n\"\nret f\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "fn h u32x4x2 boolx3 -> (u32,u32x4)\nx get p0 1\ny get x 0\nz rec y x\nret z\nend\nfn k u32 u32 -> u32\nret sub p0 p1\nend\n"
+    }
+  ],
+  "reference": {
+    "a0": "k40 eq p0 6044 @ r39\nr40 select k40 11 r39 @ k40\nret r40\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -149,1 +149,1 @@\n-const IR_ALIASES: Readonly<Record<string, string>> = { udiv: 'div', urem: 'rem' };\n+const IR_ALIASES: Readonly<Record<string, string>> = { udiv: 'div', urem: 'rem', mod: 'rem' };\n"
+  },
+  "wrong": {
+    "a0": "k40 eq p0 6044 @ r39\nr40 select k40 10 r39 @ k40\nret r40\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -145,1 +145,2 @@\n   'crem',\n   'cget',\n+  'mod',\n",
+    "why": "A0: `mod` gets the op code of `div`; TS: `mod` becomes a new op word with its own code (38) instead of an alias of `rem`"
+  }
+}

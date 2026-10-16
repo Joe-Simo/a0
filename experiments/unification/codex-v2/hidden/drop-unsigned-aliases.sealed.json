@@ -1,0 +1,69 @@
+{
+  "id": "drop-unsigned-aliases",
+  "summary": "the `udiv` and `urem` spellings are withdrawn",
+  "instruction": "Change request for the A0 front end (lexer and parser): withdraw the accepted spellings `udiv` and `urem`; only `div` and `rem` name those operations now. A node `a udiv p0 p1` then reads `udiv` as the name of a function it calls, which is a structure error when no earlier function has that name. The parser reports the first diagnostic as (code, token index), code 1 a parse error and 2 a structure error; token indexes count the tokens of the lexer (comments and spaces make no tokens; each newline is one).",
+  "a0Targets": [
+    "opcode"
+  ],
+  "tests": [
+    {
+      "kind": "parse",
+      "src": "fn f u32 u32 -> u32\na udiv p0 p1\nret a\nend\n",
+      "expect": {
+        "code": 2,
+        "tok": 8
+      }
+    },
+    {
+      "kind": "parse",
+      "src": "fn f u32 u32 -> u32\na div p0 p1\nret urem a p1\nend\n",
+      "expect": {
+        "code": 2,
+        "tok": 13
+      }
+    },
+    {
+      "kind": "parse",
+      "src": "fn urem u32 u32 -> u32\nret p0\nend\nfn g u32 -> u32\na urem p0 2\nb rem a 2\nret b\nend\n",
+      "expect": {
+        "code": 0,
+        "tok": 0,
+        "nodes": [
+          8,
+          19,
+          2,
+          0,
+          0,
+          0,
+          9,
+          11,
+          2,
+          2,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "kind": "same",
+      "src": "fn sq u32 -> u32\na mul p0 p0\nret a\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "# a small program\nuse \"lib.a0\"\nfn inc u32 -> u32\na add p0 1 # one more\nret a\nend\nfn g u32x4 (u32,bool) -> u32\nb at p1 0\nc get p0 2\nd call inc c\ne div d 3\nf select true e b\nt text \"hi\\n\"\nret f\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "fn h u32x4x2 boolx3 -> (u32,u32x4)\nx get p0 1\ny get x 0\nz rec y x\nret z\nend\nfn k u32 u32 -> u32\nret sub p0 p1\nend\n"
+    }
+  ],
+  "reference": {
+    "a0": "-k32\n-r32\n-k33\n-r33\nr34 select k34 32 r31\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -149,1 +149,1 @@\n-const IR_ALIASES: Readonly<Record<string, string>> = { udiv: 'div', urem: 'rem' };\n+const IR_ALIASES: Readonly<Record<string, string>> = {};\n"
+  },
+  "wrong": {
+    "a0": "-k32\n-r32\nr33 select k33 11 r31\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -149,1 +149,1 @@\n-const IR_ALIASES: Readonly<Record<string, string>> = { udiv: 'div', urem: 'rem' };\n+const IR_ALIASES: Readonly<Record<string, string>> = { urem: 'rem' };\n",
+    "why": "both: only `udiv` is withdrawn, `urem` is still read as `rem`"
+  }
+}

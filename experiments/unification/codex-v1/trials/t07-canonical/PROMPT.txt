@@ -1,0 +1,119 @@
+You are making one requested maintenance change to A0. Work independently. Read only this prompt file. Do not read the repository, other files, references, tests or prior trials; do not run code, search, ask another agent or test your answer. Write your answer exactly once to the designated reply file using a literal patch or quoted heredoc, then reply done. Your answer file must contain only complete replacement fn blocks for the requested functions and any needed new helpers, with no handle, Markdown or explanation. Preserve all other functions and existing signatures. This is a single attempt; the runner will check it. The source view contains the target functions and their transitive callees; included callees are context and must remain unchanged unless the task requests otherwise. You may introduce internal helpers; define helpers before their callers.
+
+Syntax: fn NAME TYPE... -> TYPE, then lines ID OP ARGS..., then ret VALUE and end. Parameters p0,p1,...; literals decimal u32,true,false. Types u32,bool,io,u32x32,(u32,io). Nodes refer only to parameters or earlier IDs. Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select; call F args; fold F n state args; loop P F n state args; arr elements; rec elements; text "bytes"; get array index; set array index value; at record slot; put record slot value; read token; write token word; puts token array. Every replacement function includes its full header/body/ret/end.
+
+Operations: add sub mul and or xor shl shr div rem eq ne lt le gt ge select mov call fold loop arr rec text get set at put read write puts. Types: u32, bool, io, arrays such as u32x32, records such as (u32,io). Arithmetic is unsigned u32 modulo 2^32; comparisons return bool; select c x y evaluates existing values and returns x if c else y. div a 0 gives4294967295, rem a 0 gives a; shifts mask count&31. get/set wrap the array index modulo its length; at/put use constant record slots. fold F n s a.. starts state=s, then state=F(state,i,a..) for i=0..n-1. loop P F n s a.. tests P before each step. IO is affine: read t returns (word,next-token); write t v and puts t array return next-token. mov copies a value. Arrays/records are immutable values. Function signatures must typecheck; all defined nodes execute in source order.
+
+Requested change:
+Extend readgrid to a counted-prefix stream: first consume an unsigned row count, clamp it to 32, then consume exactly that many row words into rows 0 onward. Rows beyond the count retain the supplied initial grid. Preserve the same (grid, io) return shape and token identity; do not consume later command words. Use a state-threaded fold for row loading. Existing readrow and other function signatures/capabilities stay intact; you may add a fold helper such as readgridrow. life automatically receives this new row-count-prefixed input protocol through readgrid.
+
+Source view:
+fn readrow u32x32 u32 io -> (u32x32,io)
+r read p2
+v at r 0
+t at r 1
+g set p0 p1 v
+out rec g t
+ret out
+end
+
+fn readgrid u32x32 io -> (u32x32,io)
+r read p1
+v at r 0
+t at r 1
+g set p0 0 v
+s call readrow g 1 t
+g1 at s 0
+t1 at s 1
+s2 call readrow g1 2 t1
+g2 at s2 0
+t2 at s2 1
+s3 call readrow g2 3 t2
+g3 at s3 0
+t3 at s3 1
+s4 call readrow g3 4 t3
+g4 at s4 0
+t4 at s4 1
+s5 call readrow g4 5 t4
+g5 at s5 0
+t5 at s5 1
+s6 call readrow g5 6 t5
+g6 at s6 0
+t6 at s6 1
+s7 call readrow g6 7 t6
+g7 at s7 0
+t7 at s7 1
+s8 call readrow g7 8 t7
+g8 at s8 0
+t8 at s8 1
+s9 call readrow g8 9 t8
+g9 at s9 0
+t9 at s9 1
+s10 call readrow g9 10 t9
+g10 at s10 0
+t10 at s10 1
+s11 call readrow g10 11 t10
+g11 at s11 0
+t11 at s11 1
+s12 call readrow g11 12 t11
+g12 at s12 0
+t12 at s12 1
+s13 call readrow g12 13 t12
+g13 at s13 0
+t13 at s13 1
+s14 call readrow g13 14 t13
+g14 at s14 0
+t14 at s14 1
+s15 call readrow g14 15 t14
+g15 at s15 0
+t15 at s15 1
+s16 call readrow g15 16 t15
+g16 at s16 0
+t16 at s16 1
+s17 call readrow g16 17 t16
+g17 at s17 0
+t17 at s17 1
+s18 call readrow g17 18 t17
+g18 at s18 0
+t18 at s18 1
+s19 call readrow g18 19 t18
+g19 at s19 0
+t19 at s19 1
+s20 call readrow g19 20 t19
+g20 at s20 0
+t20 at s20 1
+s21 call readrow g20 21 t20
+g21 at s21 0
+t21 at s21 1
+s22 call readrow g21 22 t21
+g22 at s22 0
+t22 at s22 1
+s23 call readrow g22 23 t22
+g23 at s23 0
+t23 at s23 1
+s24 call readrow g23 24 t23
+g24 at s24 0
+t24 at s24 1
+s25 call readrow g24 25 t24
+g25 at s25 0
+t25 at s25 1
+s26 call readrow g25 26 t25
+g26 at s26 0
+t26 at s26 1
+s27 call readrow g26 27 t26
+g27 at s27 0
+t27 at s27 1
+s28 call readrow g27 28 t27
+g28 at s28 0
+t28 at s28 1
+s29 call readrow g28 29 t28
+g29 at s29 0
+t29 at s29 1
+s30 call readrow g29 30 t29
+g30 at s30 0
+t30 at s30 1
+s31 call readrow g30 31 t30
+ret s31
+end
+
+Write only the replacement functions to: <study>/trials/t07-canonical/reply.a0

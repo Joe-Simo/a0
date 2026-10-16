@@ -1,0 +1,98 @@
+{
+  "id": "semicolon-comment",
+  "summary": "a semicolon also starts a comment that runs to the end of the line",
+  "instruction": "Change request for the A0 front end (lexer and parser): a semicolon `;` must also start a comment, exactly like `#`: everything from it to the end of the line is dropped, the newline itself stays a token. `#` comments keep working.",
+  "a0Targets": [
+    "lexstep"
+  ],
+  "tests": [
+    {
+      "kind": "lex",
+      "src": "a ;x y\nb # c ; d\n",
+      "expect": [
+        1,
+        0,
+        1,
+        5,
+        6,
+        1,
+        1,
+        7,
+        1,
+        5,
+        16,
+        1
+      ]
+    },
+    {
+      "kind": "lex",
+      "src": "x;y\n;\n\"a;b\" c\n",
+      "expect": [
+        1,
+        0,
+        1,
+        5,
+        3,
+        1,
+        5,
+        5,
+        1,
+        3,
+        7,
+        3,
+        1,
+        12,
+        1,
+        5,
+        13,
+        1
+      ]
+    },
+    {
+      "kind": "parse",
+      "src": "; header\nfn sq u32 -> u32 ; squares\na mul p0 p0 ;x\nret a\nend\n",
+      "expect": {
+        "code": 0,
+        "tok": 0,
+        "fns": [
+          2,
+          1,
+          0,
+          0,
+          0,
+          1,
+          268435456
+        ],
+        "nodes": [
+          4,
+          4,
+          2,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "kind": "same",
+      "src": "fn sq u32 -> u32\na mul p0 p0\nret a\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "# a small program\nuse \"lib.a0\"\nfn inc u32 -> u32\na add p0 1 # one more\nret a\nend\nfn g u32x4 (u32,bool) -> u32\nb at p1 0\nc get p0 2\nd call inc c\ne div d 3\nf select true e b\nt text \"hi\\n\"\nret f\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "fn h u32x4x2 boolx3 -> (u32,u32x4)\nx get p0 1\ny get x 0\nz rec y x\nret z\nend\nfn k u32 u32 -> u32\nret sub p0 p1\nend\n"
+    }
+  ],
+  "reference": {
+    "a0": "issemi eq c 59 @ isat\niscom or ishash issemi @ issemi\nn4 select iscom 8 n3\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -68,1 +68,1 @@\n-    } else if (c === 35) {\n+    } else if (c === 35 || c === 59) {\n"
+  },
+  "wrong": {
+    "a0": "ishash eq c 59\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -64,1 +64,1 @@\n-    if (c === 32 || c === 9 || c === 13) i += 1;\n+    if (c === 32 || c === 9 || c === 13 || c === 59) i += 1;\n",
+    "why": "A0: the semicolon replaces `#` instead of joining it; TS: the semicolon is skipped like a space, so the rest of its line is still tokens"
+  }
+}

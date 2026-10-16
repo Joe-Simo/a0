@@ -1,0 +1,64 @@
+{
+  "id": "param-limit",
+  "summary": "a function header may declare at most 8 parameters",
+  "instruction": "Change request for the A0 front end (lexer and parser): a function header may now declare at most 8 parameters. A header with more is a parse error at its arrow token `->`. The parser reports the first diagnostic as (code, token index), code 1 a parse error and 2 a structure error; token indexes count the tokens of the lexer (comments and spaces make no tokens; each newline is one).",
+  "a0Targets": [
+    "p3tok"
+  ],
+  "tests": [
+    {
+      "kind": "parse",
+      "src": "fn f u32 u32 u32 u32 u32 u32 u32 u32 -> u32\nret p7\nend\n",
+      "expect": {
+        "code": 0,
+        "tok": 0,
+        "fns": [
+          2,
+          8,
+          0,
+          0,
+          0,
+          0,
+          536870919
+        ]
+      }
+    },
+    {
+      "kind": "parse",
+      "src": "fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\nret p7\nend\n",
+      "expect": {
+        "code": 1,
+        "tok": 11
+      }
+    },
+    {
+      "kind": "parse",
+      "src": "fn g -> u32\nret 1\nend\nfn f (u32,u32) u32x2 bool u32 u32 u32 u32 u32 (bool,bool) -> u32\nret 0\nend\n",
+      "expect": {
+        "code": 1,
+        "tok": 29
+      }
+    },
+    {
+      "kind": "same",
+      "src": "fn sq u32 -> u32\na mul p0 p0\nret a\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "# a small program\nuse \"lib.a0\"\nfn inc u32 -> u32\na add p0 1 # one more\nret a\nend\nfn g u32x4 (u32,bool) -> u32\nb at p1 0\nc get p0 2\nd call inc c\ne div d 3\nf select true e b\nt text \"hi\\n\"\nret f\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "fn h u32x4x2 boolx3 -> (u32,u32x4)\nx get p0 1\ny get x 0\nz rec y x\nret z\nend\nfn k u32 u32 -> u32\nret sub p0 p1\nend\n"
+    }
+  ],
+  "reference": {
+    "a0": "many gt cnt 8 @ np2\neamany and earrow many @ many\nbad7 or bad6 eamany @ bad6\nbad and bad7 noerr\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -446,1 +446,2 @@\n         if (mode !== 1 || depth !== 0) fail(1, i);\n+        else if (stk.length - 1 > 8) fail(1, i);\n"
+  },
+  "wrong": {
+    "a0": "many gt cnt 9 @ np2\neamany and earrow many @ many\nbad7 or bad6 eamany @ bad6\nbad and bad7 noerr\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -446,1 +446,2 @@\n         if (mode !== 1 || depth !== 0) fail(1, i);\n+        else if (stk.length > 8) fail(1, i);\n",
+    "why": "both: off by one (A0 allows 9; TS counts the stack sentinel and refuses 8)"
+  }
+}

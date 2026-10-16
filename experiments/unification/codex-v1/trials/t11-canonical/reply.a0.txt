@@ -1,0 +1,38 @@
+fn fill_pct_step (u32,u32) u32 u32 u32 -> (u32,u32)
+r at p0 0
+q at p0 1
+gap sub p3 p2
+carry ge r gap
+lo add r p2
+hi sub r gap
+nr select carry hi lo
+inc select carry 1 0
+nq add q inc
+out rec nr nq
+ret out
+end
+
+fn fill_pct u32 u32 -> u32
+within le p0 p1
+value select within p0 p1
+initial rec 0 0
+result fold fill_pct_step 100 initial value p1
+pct at result 1
+zero eq p1 0
+out select zero 0 pct
+ret out
+end
+
+fn fill io u32 u32 -> io
+a call open p0 5
+b write a 4
+c write b 2
+cls text "fill"
+d puts c cls
+e write d 12
+f write e 1
+pct call fill_pct p1 p2
+g write f pct
+h call close g
+ret h
+end

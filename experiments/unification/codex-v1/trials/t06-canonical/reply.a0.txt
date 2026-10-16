@@ -1,0 +1,35 @@
+fn finite_nb u32x32 u32 u32 -> u32
+rowok lt p1 32
+colok lt p2 32
+raw call nb p0 p1 p2
+rowval select rowok raw 0
+value select colok rowval 0
+ret value
+end
+
+fn count u32x32 u32 u32 -> u32
+ru sub p1 1
+rd add p1 1
+cl sub p2 1
+cr add p2 1
+a call finite_nb p0 ru cl
+b call finite_nb p0 ru p2
+c call finite_nb p0 ru cr
+d call finite_nb p0 p1 cl
+e call finite_nb p0 p1 cr
+f call finite_nb p0 rd cl
+g call finite_nb p0 rd p2
+h call finite_nb p0 rd cr
+s1 add a b
+s2 add s1 c
+s3 add s2 d
+s4 add s3 e
+s5 add s4 f
+s6 add s5 g
+s7 add s6 h
+rowok lt p1 32
+colok lt p2 32
+rowval select rowok s7 0
+value select colok rowval 0
+ret value
+end

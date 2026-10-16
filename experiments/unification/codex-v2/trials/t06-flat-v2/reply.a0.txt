@@ -1,0 +1,22 @@
+fn countbit
+word shr C B
+bit and word 1
+count add A bit
+ret count
+end
+
+fn countrow _ _ _x32 -> _
+row get C B
+bits fold countbit 32 0 row
+count add A bits
+ret count
+end
+
+fn writegrid _x32 io -> io
+header write B 76
+length write header 32
+t fold writerow 32 length A
+population fold countrow 32 0 A
+trailer write t population
+ret trailer
+end

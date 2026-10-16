@@ -1,0 +1,17 @@
+fn fill_width_step (u32,u32) u32 u32 u32 -> (u32,u32)
+r at A 0
+q at A 1
+limit sub D C
+cross ge r limit
+nr select cross sub r limit add r C
+nq add q select cross 1 0
+(nr nq)
+
+fn fill io u32 u32 -> io
+c write write open A 5 4 2
+cls "fill"
+f write write puts c cls 12 1
+value select gt B C C B
+state fold fill_width_step 100 (0 0) value C
+pct select eq C 0 0 at state 1
+close write f pct

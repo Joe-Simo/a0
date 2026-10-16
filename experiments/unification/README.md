@@ -1,0 +1,17 @@
+# Frozen syntax research, 2026-10-16
+
+These are historical measurement fixtures. The production compiler does not import them. They preserve the rejected candidate as well as the later candidate, so changing the compiler cannot silently change old trial outcomes.
+
+Run `node experiments/unification/replay.mjs` after installing the repository dependencies. Replay checks the published file hashes, unchanged source replies, both reply tokenizers, all first submissions and repairs, and the independent base/reference/wrong controls. It makes no provider calls and writes no files.
+
+Each study has twelve different maintenance tasks: four sealed frontend tasks, four Life application tasks, and four website UI/frame tasks. Each task has three syntax arms with the same AST dependency closure, semantics, whole-function replacement protocol and hidden evaluator. Each first submission came from a fresh independent Codex agent with no inherited conversation; a failure received at most one fresh independent repair with the same prompt, raw previous answer and first rejection. Subjects were instructed to read only their assigned prompt; shared filesystem access was not isolated or independently audited. The author selected and froze tasks and controls before subject trials. The second packet was separate from the first.
+
+`results/unification-codex-v1.json` records Canonical, Dense and the rejected anchored printing policy. `results/unification-codex-v2.json` records Canonical, Dense and the flat parser/formatter prototype. Both include every outcome, all repair costs, group totals, Wilson intervals, original prompt/reply hashes and both visible-payload token counts. Historical Haiku/Sonnet losses elsewhere in this repository remain valid evidence.
+
+The accounting covers the actual supplied prompts, source replies and repair prompts. The platform does not expose hidden reasoning, system/tool framing, billed usage or exact provider model identity. These twelve-task samples cannot establish universal accuracy, total billing cost, production readiness or superiority over other languages. Whole-function replacement also does not measure line-edit savings.
+
+Absolute output-file paths in archived prompts and metadata have been replaced by placeholders. Original measured prompt token counts and hashes remain in the results; archived prompts have separate published hashes and may tokenize differently after relocation. Source replies are unchanged. `RELOCATION.json` records the original source hashes and file-name mapping; the original preregistration hash describes the original packet, and `published-files.json` describes this relocated export. Program and reply source files end in `.a0.txt` so repository source inventories do not treat experimental inputs as shipped A0 programs. Frozen interpreter snapshots and the private flat prototype serve only to reproduce the historical adjudication, including errors.
+
+Both studies used byte-identical frozen control runtimes. The archive stores those files once in `frozen/`; each study retains its original source hashes. The candidate parser remains separately frozen because its grammar is the experimental variable.
+
+Generated runtime declaration headers have trailing whitespace trimmed; runtime imports are relocated. These export-only changes are covered by published hashes; the original source hashes remain in each relocation record.

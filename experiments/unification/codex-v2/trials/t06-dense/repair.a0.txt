@@ -1,0 +1,15 @@
+fn framecountbit u32 u32 u32 -> u32
+bit and shr C B 1
+total add A bit
+
+fn framecountrow u32 u32 u32x32 -> u32
+row get C B
+bits fold framecountbit 32 0 row
+total add A bits
+
+fn writegrid u32x32 io -> io
+gridtrailer fold framecountrow 32 0 A
+frameheader write B 76
+framelength write frameheader 32
+framerows fold writerow 32 framelength A
+t write framerows gridtrailer
