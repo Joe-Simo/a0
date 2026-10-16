@@ -807,7 +807,7 @@ ${gpu}  const ${ctxType} ctx = { n${extraTypes.map((_, k) => `, x${k}`).join('')
     helper = `typedef struct { uint32_t n; ${st} *s; ${fields.join(' ')} } ${ctxType};
 static void a0pw_${name}(const void *v, uint32_t lo, uint32_t hi, uint32_t *out) {
   const ${ctxType} *c = (const ${ctxType} *)v;
-  for (uint32_t i = lo; i < hi; i++) a0o_${body.name}(${['c->s', 'i', ...xs].join(', ')});
+  for (uint32_t i = lo; i < hi; i++) a0o_${body.name}(${['c->s', 'i', ...extraTypes.map((_, k) => `c->x${k}`)].join(', ')});
   *out = 0u;
 }
 static void a0p_${name}(${[`${st} *s`, 'uint32_t n', ...params].join(', ')}) {
