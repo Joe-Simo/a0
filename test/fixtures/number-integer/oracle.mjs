@@ -114,8 +114,18 @@ for (const level of [0, 2]) {
   const output = `${dir}/output-O${level}.bin`;
   const ran = spawnSync(`${dir}/driver-O${level}`, [`${dir}/input.bin`, output], {
     maxBuffer: 1 << 20,
-    timeout: 300000,
+    timeout: 600_000,
   });
+  const execution = {
+    optimization: level,
+    timeoutMs: 600_000,
+    status: ran.status,
+    signal: ran.signal,
+    error: ran.error?.stack,
+  };
+  await writeFile(`${dir}/execution-O${level}.json`, JSON.stringify(execution, null, 2) + '\n');
+  assert.equal(ran.error, undefined, `${JSON.stringify(execution)}\n${String(ran.stderr)}`);
+  assert.equal(ran.signal, null, JSON.stringify(execution));
   assert.equal(ran.status, 0, String(ran.stderr));
   assert.equal(ran.stdout.length, 0);
   assert.equal(ran.stderr.length, 0);

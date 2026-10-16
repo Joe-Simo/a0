@@ -1,0 +1,3209 @@
+# Experimental full-word direct Wasm writer. Input-dependent decisions are A0.
+# (u32x128,u32x16,u32x128,u32x128,io) is expanded statically by tools/generate.mjs, not by a target-program host pass.
+use "executable_bytes.a0"
+# Geometry directory: sizes V6; function16 V9; per-node frame byte offsets V12.
+# Function16: sret,np,locals,frame,depth,bodyV[3],result,nparams,firstnode,nnodes,index,reach,export,flags.
+# Conservative immutable-slot emission. Ownership/SIMD/inline parity is separate unfinished work.
+# Current development scope is all37 plus strict with original descriptor names.
+# Export/options controllers and code-generation parity are still unfinished.
+# Strict record ABI. Layout agrees with the public C/TS decoder contract.
+# M106 chain,M107 node,M108 trips; V15 static bytes,V24 fn name addresses,V27 node names.
+# Options1: version,IN,OUT,simd,unroll,optimize,exportsPresent,nameBytesV[3],nameSpansV[3].
+# SIMD/optimizer are explicit8 until ported. Current unroll1 only; no ignored flags.
+fn aw_zero_ctx -> u32x16
+q0 arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret q0
+end
+fn aw_code (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 0
+q3 select q1 p1 q2
+q4 set m 0 q3
+q5 at p0 1
+q6 at p0 2
+q7 at p0 3
+q8 at p0 4
+q9 rec q4 q5 q6 q7 q8
+ret q9
+end
+fn aw_ok (u32x128,u32x16,u32x128,u32x128,io) u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn aw_raw_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 4
+r call arena_load q0 p2 p3 p4
+q1 at p0 0
+q2 at p0 1
+q3 at p0 2
+q4 at r 1
+q5 at r 2
+q6 rec q1 q2 q3 q4 q5
+q7 at r 0
+q8 call aw_code q6 q7
+ret q8
+end
+fn aw_raw (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 2
+q3 call arena_zero
+q4 at p0 4
+q5 at p0 0
+q6 get q5 0
+q7 eq q6 0
+q8 select q7 1 0
+q9 rec q0 q1 q2 q3 q4
+q10 fold aw_raw_do q8 q9 p1 p2 p3
+ret q10
+end
+fn aw_word (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 p1
+q2 call aw_raw p0 q1 p2 1
+ret q2
+end
+fn aw_type (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 1
+q1 get q0 0
+q2 mul p1 3
+q3 call aw_raw p0 q1 q2 3
+ret q3
+end
+fn aw_fun (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 1
+q1 get q0 2
+q2 mul p1 10
+q3 call aw_raw p0 q1 q2 10
+ret q3
+end
+fn aw_node (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 1
+q1 get q0 3
+q2 mul p1 8
+q3 call aw_raw p0 q1 q2 8
+ret q3
+end
+fn aw_arg (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 1
+q1 get q0 4
+q2 mul p1 2
+q3 call aw_raw p0 q1 q2 2
+ret q3
+end
+fn aw_put_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call arena_zero
+p set q0 0 p4
+q1 at p0 4
+q2 at p0 0
+q3 get q2 p2
+q4 add p2 1
+q5 get q2 q4
+q6 add p2 2
+q7 get q2 q6
+q8 rec q3 q5 q7
+r call av_store q1 q8 p3 1 p
+q9 at p0 0
+q10 at p0 1
+q11 at p0 2
+q12 at p0 3
+q13 at r 1
+q14 rec q9 q10 q11 q12 q13
+q15 at r 0
+q16 call aw_code q14 q15
+ret q16
+end
+fn aw_put (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 fold aw_put_do q3 p0 p1 p2 p3
+ret q4
+end
+fn aw_alloc_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 4
+r call ew_new q0 p3
+q1 at p0 0
+q2 at r 1
+q3 at q2 0
+m0_a set q1 p2 q3
+q4 add p2 1
+q5 at q2 1
+m0_b set m0_a q4 q5
+q6 add p2 2
+q7 at q2 2
+q8 set m0_b q6 q7
+q9 at p0 1
+q10 at p0 2
+q11 at p0 3
+q12 at r 2
+q13 rec q8 q9 q10 q11 q12
+q14 at r 0
+q15 call aw_code q13 q14
+ret q15
+end
+fn aw_alloc (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 fold aw_alloc_do q3 p0 p1 p2
+ret q4
+end
+fn aw_sum (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 sub 4294967295 p2
+q1 le p1 q0
+q2 select q1 0 7
+r call aw_code p0 q2
+q3 at r 0
+q4 at r 1
+q5 at r 2
+q6 call arena_zero
+q7 add p1 p2
+q8 set q6 0 q7
+q9 at r 4
+q10 rec q3 q4 q5 q8 q9
+ret q10
+end
+fn aw_target (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 set q0 60 p1
+q2 at p0 1
+q3 at p0 2
+q4 at p0 3
+q5 at p0 4
+q6 rec q1 q2 q3 q4 q5
+ret q6
+end
+fn aw_reset (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 rec 0 0 0
+m0_a set q0 p1 0
+q2 add p1 1
+m0_b set m0_a q2 0
+q3 add p1 2
+q4 set m0_b q3 0
+q5 set q4 60 p1
+q6 at p0 1
+q7 at p0 2
+q8 at p0 3
+q9 at p0 4
+q10 rec q5 q6 q7 q8 q9
+ret q10
+end
+fn aw_append_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 at p0 4
+q1 get m 60
+q2 get m q1
+q3 add q1 1
+q4 get m q3
+q5 add q1 2
+q6 get m q5
+q7 rec q2 q4 q6
+r call av_append q0 q7 p2 p3
+q8 get m 60
+q9 at r 1
+q10 at q9 0
+m1_a set m q8 q10
+q11 add q8 1
+q12 at q9 1
+m1_b set m1_a q11 q12
+q13 add q8 2
+q14 at q9 2
+q15 set m1_b q13 q14
+q16 at p0 1
+q17 at p0 2
+q18 at p0 3
+q19 at r 2
+q20 rec q15 q16 q17 q18 q19
+q21 at r 0
+q22 call aw_code q20 q21
+ret q22
+end
+fn aw_bytes (u32x128,u32x16,u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 fold aw_append_do q3 p0 p1 p2
+ret q4
+end
+fn aw_byte (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 le p1 255
+q1 select q0 0 6
+checked call aw_code p0 q1
+q2 call arena_zero
+q3 set q2 0 p1
+q4 call aw_bytes checked 1 q3
+ret q4
+end
+fn aw_uleb_step (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 bool -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 mul p1 7
+q1 shr p2 q0
+low and q1 127
+q2 eq p1 4
+q3 and q2 p4
+high select q3 112 0
+q4 or low high
+q5 add p1 1
+q6 lt q5 p3
+q7 select q6 128 0
+q8 or q4 q7
+q9 call aw_byte p0 q8
+ret q9
+end
+fn aw_uleb_ok (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 bool -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn aw_uleb (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 ge p1 128
+q1 select q0 1 0
+q2 add 1 q1
+q3 ge p1 16384
+q4 select q3 1 0
+q5 add q2 q4
+q6 ge p1 2097152
+q7 select q6 1 0
+q8 add q5 q7
+q9 ge p1 268435456
+q10 select q9 1 0
+count add q8 q10
+q11 loop aw_uleb_ok aw_uleb_step count p0 p1 count false
+ret q11
+end
+fn aw_sleb (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+negative ge p1 2147483648
+q0 xor p1 4294967295
+magnitude select negative q0 p1
+q1 ge magnitude 64
+q2 select q1 1 0
+q3 add 1 q2
+q4 ge magnitude 8192
+q5 select q4 1 0
+q6 add q3 q5
+q7 ge magnitude 1048576
+q8 select q7 1 0
+q9 add q6 q8
+q10 ge magnitude 134217728
+q11 select q10 1 0
+count add q9 q11
+q12 loop aw_uleb_ok aw_uleb_step count p0 p1 count negative
+ret q12
+end
+fn aw_op_imm (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 p1
+q1 call aw_uleb q0 p2
+ret q1
+end
+fn aw_const (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 65
+q1 call aw_sleb q0 p1
+ret q1
+end
+fn aw_getlocal (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_op_imm p0 32 p1
+ret q0
+end
+fn aw_setlocal (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_op_imm p0 33 p1
+ret q0
+end
+fn aw_mem (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 p1
+q1 call aw_uleb q0 2
+q2 call aw_uleb q1 p2
+ret q2
+end
+fn aw_copy_instruction (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_byte p0 252
+b call aw_byte a 10
+q0 call aw_byte b 0
+q1 call aw_byte q0 0
+ret q1
+end
+fn aw_copy_page (u32x128,u32x16,u32x128,u32x128,io) u32 (u32,u32,u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+offset shl p1 7
+q0 at p2 1
+left sub q0 offset
+q1 gt left 128
+count select q1 128 left
+q2 at p2 0
+a call aw_raw p0 q2 offset count
+q3 at a 3
+q4 call aw_bytes a count q3
+ret q4
+end
+fn aw_copy_ok (u32x128,u32x16,u32x128,u32x128,io) u32 (u32,u32,u32) -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn aw_copy_vector (u32x128,u32x16,u32x128,u32x128,io) (u32,u32,u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p1 1
+q1 shr q0 7
+q2 at p1 1
+q3 and q2 127
+q4 ne q3 0
+q5 select q4 1 0
+pages add q1 q5
+q6 loop aw_copy_ok aw_copy_page pages p0 p1
+ret q6
+end
+fn aw_section (u32x128,u32x16,u32x128,u32x128,io) u32 (u32,u32,u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_target p0 3
+a call aw_byte q0 p1
+q1 at p2 1
+b call aw_uleb a q1
+q2 call aw_copy_vector b p2
+ret q2
+end
+fn aw_size (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_word p0 6 p1
+ret q0
+end
+fn aw_type_child (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 1
+q1 get q0 1
+q2 add p2 p1
+a call aw_raw p0 q1 q2 1
+q3 at a 3
+q4 get q3 0
+b call aw_size a q4
+q5 at b 0
+q6 get q5 70
+q7 at b 3
+q8 get q7 0
+c call aw_sum b q6 q8
+q9 at c 0
+q10 at c 3
+q11 get q10 0
+q12 set q9 70 q11
+q13 at c 1
+q14 at c 2
+q15 at c 3
+q16 at c 4
+q17 rec q12 q13 q14 q15 q16
+ret q17
+end
+fn aw_type_child_ok (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn aw_type_geometry (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_type p0 p1
+ty at a 3
+q0 get ty 0
+q1 eq q0 4
+q2 get ty 2
+q3 select q1 q2 0
+b call aw_size a q3
+q4 at b 3
+elem get q4 0
+q5 get ty 1
+q6 eq q5 0
+q7 get ty 1
+q8 div 4294967295 q7
+q9 le elem q8
+arrayvalid or q6 q9
+q10 get ty 0
+q11 eq q10 4
+q12 xor arrayvalid true
+q13 and q11 q12
+q14 select q13 7 0
+c call aw_code b q14
+q15 at c 0
+m set q15 70 0
+q16 get ty 0
+q17 eq q16 5
+q18 get ty 2
+q19 select q17 q18 0
+q20 at c 1
+q21 at c 2
+q22 at c 3
+q23 at c 4
+q24 rec m q20 q21 q22 q23
+q25 get ty 1
+d loop aw_type_child_ok aw_type_child q19 q24 q25
+q26 lt p1 3
+q27 get ty 0
+q28 eq q27 4
+q29 get ty 1
+q30 mul q29 elem
+q31 at d 0
+q32 get q31 70
+q33 select q28 q30 q32
+bytes select q26 4 q33
+q34 call aw_put d 6 p1 bytes
+ret q34
+end
+fn aw_fnword (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 mul p1 16
+q1 add q0 p2
+q2 call aw_word p0 9 q1
+ret q2
+end
+fn aw_callee_depth (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 64
+valid lt p2 q1
+q2 select valid 0 6
+a call aw_code p0 q2
+b call aw_fnword a p2 4
+q3 at b 0
+old get q3 71
+q4 at b 3
+deep get q4 0
+q5 at b 0
+q6 gt old deep
+q7 select q6 old deep
+q8 set q5 71 q7
+q9 at b 1
+q10 at b 2
+q11 at b 3
+q12 at b 4
+q13 rec q8 q9 q10 q11 q12
+ret q13
+end
+fn aw_node_geometry (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 65
+q2 add q1 p1
+a call aw_node p0 q2
+nd at a 3
+q3 get nd 5
+b call aw_size a q3
+q4 get nd 5
+aggregate ge q4 3
+q5 get nd 0
+q6 eq q5 1
+q7 get nd 0
+q8 eq q7 18
+q9 or q6 q8
+q10 get nd 0
+q11 eq q10 25
+q12 or q9 q11
+q13 get nd 0
+q14 eq q13 27
+borrow or q12 q14
+q15 xor borrow true
+allocated and aggregate q15
+q16 at b 0
+offset get q16 70
+q17 at b 0
+q18 get q17 65
+q19 add q18 p1
+c call aw_put b 12 q19 offset
+q20 at b 3
+q21 get q20 0
+q22 select allocated q21 0
+d call aw_sum c offset q22
+q23 at d 0
+q24 at d 3
+q25 get q24 0
+m set q23 70 q25
+q26 at d 1
+q27 at d 2
+q28 at d 3
+q29 at d 4
+q30 rec m q26 q27 q28 q29
+q31 get nd 0
+q32 eq q31 0
+q33 get nd 0
+q34 gt q33 37
+q35 or q32 q34
+q36 select q35 6 0
+e call aw_code q30 q36
+q37 get nd 0
+q38 eq q37 19
+q39 get nd 0
+q40 eq q39 20
+q41 or q38 q40
+q42 get nd 0
+q43 eq q42 21
+call or q41 q43
+q44 select call 1 0
+q45 get nd 3
+f fold aw_callee_depth q44 e q45
+q46 get nd 0
+q47 eq q46 21
+q48 select q47 1 0
+q49 get nd 4
+q50 fold aw_callee_depth q48 f q49
+ret q50
+end
+fn aw_fn_geometry (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fun p0 p1
+funrow at a 3
+q0 at a 0
+m set q0 64 p1
+q1 get funrow 5
+m_1 set m 65 q1
+q2 get funrow 6
+m_2 set m_1 66 q2
+m_3 set m_2 70 0
+m_4 set m_3 71 0
+q3 get funrow 6
+q4 at a 1
+q5 at a 2
+q6 at a 3
+q7 at a 4
+q8 rec m_4 q4 q5 q6 q7
+b loop aw_ok aw_node_geometry q3 q8
+q9 at b 0
+frame get q9 70
+c call aw_sum b frame 15
+q10 at c 3
+q11 get q10 0
+aligned and q11 4294967280
+q12 at c 0
+q13 get q12 71
+d call aw_sum c aligned q13
+q14 at d 3
+depth get q14 0
+q15 get funrow 4
+q16 ge q15 3
+sret select q16 1 0
+q17 get funrow 2
+e call aw_sum d q17 sret
+q18 at e 3
+np get q18 0
+q19 get funrow 6
+f call aw_sum e q19 9
+q20 at f 3
+locals get q20 0
+g call aw_sum f np locals
+q21 mul p1 16
+a_1 call aw_put g 9 q21 sret
+q22 mul p1 16
+q23 add q22 1
+b_1 call aw_put a_1 9 q23 np
+q24 mul p1 16
+q25 add q24 2
+c_1 call aw_put b_1 9 q25 locals
+q26 mul p1 16
+q27 add q26 3
+d_1 call aw_put c_1 9 q27 aligned
+q28 mul p1 16
+q29 add q28 4
+e_1 call aw_put d_1 9 q29 depth
+q30 mul p1 16
+q31 add q30 8
+q32 get funrow 4
+f_1 call aw_put e_1 9 q31 q32
+q33 mul p1 16
+q34 add q33 9
+q35 get funrow 2
+g_1 call aw_put f_1 9 q34 q35
+q36 mul p1 16
+q37 add q36 10
+q38 get funrow 5
+h call aw_put g_1 9 q37 q38
+q39 mul p1 16
+q40 add q39 11
+q41 get funrow 6
+q42 call aw_put h 9 q40 q41
+ret q42
+end
+fn aw_geometry io u32x16 u32x128 -> (u32x128,u32x16,u32x128,u32x128,io)
+z call arena_zero
+q0 get p1 11
+q1 le q0 268435455
+q2 get p1 12
+q3 le q2 1431655765
+q4 and q1 q3
+q5 get p1 13
+q6 le q5 536870911
+valid and q4 q6
+q7 rec z p1 p2 z p0
+q8 select valid 0 7
+a call aw_code q7 q8
+q9 get p1 12
+b call aw_alloc a 6 q9
+q10 get p1 11
+q11 mul q10 16
+q12 select valid q11 0
+c call aw_alloc b 9 q12
+q13 get p1 13
+d call aw_alloc c 12 q13
+q14 get p1 12
+e loop aw_ok aw_type_geometry q14 d
+q15 get p1 11
+q16 loop aw_ok aw_fn_geometry q15 e
+ret q16
+end
+fn arena_wasm_encode_u32 io u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+q0 set z 60 3
+q1 call aw_zero_ctx
+q2 rec q0 q1 z z p0
+a call aw_uleb q2 p1
+q3 at a 0
+q4 get q3 0
+q5 at a 0
+q6 get q5 0
+q7 eq q6 0
+q8 at a 0
+q9 get q8 3
+q10 get q8 4
+q11 get q8 5
+q12 rec q9 q10 q11
+q13 rec 0 0 0
+q14 select q7 q12 q13
+q15 at a 4
+q16 rec q4 q14 q15
+ret q16
+end
+fn arena_wasm_encode_i32 io u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+q0 set z 60 3
+q1 call aw_zero_ctx
+q2 rec q0 q1 z z p0
+a call aw_sleb q2 p1
+q3 at a 0
+q4 get q3 0
+q5 at a 0
+q6 get q5 0
+q7 eq q6 0
+q8 at a 0
+q9 get q8 3
+q10 get q8 4
+q11 get q8 5
+q12 rec q9 q10 q11
+q13 rec 0 0 0
+q14 select q7 q12 q13
+q15 at a 4
+q16 rec q4 q14 q15
+ret q16
+end
+fn aw_operand_node (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 get m 67
+q1 add q0 1
+q2 add q1 p2
+q3 get m 65
+q4 sub q2 q3
+q5 call aw_getlocal p0 q4
+ret q5
+end
+fn aw_operand_param (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 69
+q2 add p2 q1
+q3 call aw_getlocal p0 q2
+ret q3
+end
+fn aw_operand_literal (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_const p0 p2
+ret q0
+end
+fn aw_operand (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 ge p1 1
+q1 le p1 4
+valid and q0 q1
+q2 select valid 0 6
+a call aw_code p0 q2
+q3 eq p1 1
+q4 select q3 1 0
+b fold aw_operand_node q4 a p2
+q5 eq p1 2
+q6 select q5 1 0
+c fold aw_operand_param q6 b p2
+q7 ge p1 3
+q8 select q7 1 0
+q9 fold aw_operand_literal q8 c p2
+ret q9
+end
+fn aw_push (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 77
+q2 add q1 p1
+a call aw_arg p0 q2
+arg at a 3
+q3 get arg 0
+q4 get arg 1
+q5 call aw_operand a q3 q4
+ret q5
+end
+fn aw_push_arg (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 add p2 p1
+q1 call aw_push p0 q0
+ret q1
+end
+fn aw_push_args_ok (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn aw_nodeget (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 75
+q2 call aw_getlocal p0 q1
+ret q2
+end
+fn aw_nodeset (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 75
+q2 call aw_setlocal p0 q1
+ret q2
+end
+fn aw_tempget (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 72
+q2 add q1 p1
+q3 call aw_getlocal p0 q2
+ret q3
+end
+fn aw_tempset (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 72
+q2 add q1 p1
+q3 call aw_setlocal p0 q2
+ret q3
+end
+fn aw_call_index (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_op_imm p0 16 p1
+ret q0
+end
+fn aw_bind (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 76
+a call aw_word p0 12 q1
+q2 at a 3
+offset get q2 0
+q3 at a 0
+q4 get q3 71
+b call aw_getlocal a q4
+q5 call aw_const b offset
+q6 call aw_byte q5 106
+q7 call aw_nodeset q6
+ret q7
+end
+fn aw_operand_type_param (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 1
+q1 get q0 1
+q2 at p0 0
+q3 get q2 73
+q4 add q3 p2
+q5 call aw_raw p0 q1 q4 1
+ret q5
+end
+fn aw_operand_type_node (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_node p0 p2
+q0 at a 0
+q1 at a 1
+q2 at a 2
+q3 call arena_zero
+q4 at a 3
+q5 get q4 5
+q6 set q3 0 q5
+q7 at a 4
+q8 rec q0 q1 q2 q6 q7
+ret q8
+end
+fn aw_operand_type (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call arena_zero
+q1 eq p1 4
+q2 select q1 1 0
+page set q0 0 q2
+q3 at p0 0
+q4 at p0 1
+q5 at p0 2
+q6 at p0 4
+q7 eq p1 1
+q8 select q7 1 0
+q9 rec q3 q4 q5 page q6
+b fold aw_operand_type_node q8 q9 p2
+q10 eq p1 2
+q11 select q10 1 0
+q12 fold aw_operand_type_param q11 b p2
+ret q12
+end
+fn aw_arg_type (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 77
+q2 add q1 p1
+a call aw_arg p0 q2
+arg at a 3
+q3 get arg 0
+q4 get arg 1
+q5 call aw_operand_type a q3 q4
+ret q5
+end
+fn aw_emit_mov (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_push p0 0
+q1 call aw_nodeset q0
+ret q1
+end
+fn aw_emit_binary (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+op get q0 80
+q1 eq op 2
+q2 eq op 3
+q3 eq op 4
+q4 eq op 5
+q5 eq op 6
+q6 eq op 7
+q7 eq op 8
+q8 eq op 9
+q9 eq op 12
+q10 eq op 13
+q11 eq op 14
+q12 eq op 15
+q13 eq op 16
+q14 select q13 75 79
+q15 select q12 77 q14
+q16 select q11 73 q15
+q17 select q10 71 q16
+q18 select q9 70 q17
+q19 select q8 118 q18
+q20 select q7 116 q19
+q21 select q6 115 q20
+q22 select q5 114 q21
+q23 select q4 113 q22
+q24 select q3 108 q23
+q25 select q2 107 q24
+ins select q1 106 q25
+q26 call aw_push p0 0
+q27 call aw_push q26 1
+q28 call aw_byte q27 ins
+q29 call aw_nodeset q28
+ret q29
+end
+fn aw_trap_call (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_const p0 p1
+q1 call aw_call_index q0 7
+ret q1
+end
+fn aw_strict_zero_check (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_push p0 1
+a call aw_byte q0 69
+q1 call aw_byte a 4
+b call aw_byte q1 64
+q2 call aw_trap_call b 1
+q3 call aw_byte q2 11
+ret q3
+end
+fn aw_emit_division (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 80
+division eq q1 10
+q2 at p0 0
+q3 get q2 74
+q4 and q3 1
+q5 ne q4 0
+q6 select q5 1 0
+start fold aw_strict_zero_check q6 p0
+q7 call aw_push start 1
+a call aw_byte q7 69
+q8 call aw_byte a 4
+b call aw_byte q8 127
+q9 select division 1 0
+c fold aw_operand_literal q9 b 4294967295
+q10 select division 0 1
+d fold aw_push_arg q10 c 0
+e call aw_byte d 5
+q11 call aw_push e 0
+f call aw_push q11 1
+q12 select division 110 112
+g call aw_byte f q12
+q13 call aw_byte g 11
+q14 call aw_nodeset q13
+ret q14
+end
+fn aw_emit_select (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_push p0 1
+q1 call aw_push q0 2
+a call aw_push q1 0
+q2 call aw_byte a 27
+q3 call aw_nodeset q2
+ret q3
+end
+fn aw_push_node (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_nodeget p0
+ret q0
+end
+fn aw_set_node (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_nodeset p0
+ret q0
+end
+fn aw_user_call (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fnword p0 p1 12
+q0 at a 3
+index get q0 0
+q1 ne index 4294967295
+q2 select q1 0 6
+b call aw_code a q2
+q3 call aw_call_index b index
+ret q3
+end
+fn aw_emit_direct_call (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 get m 79
+aggregate ge q0 3
+q1 select aggregate 1 0
+a fold aw_push_node q1 p0
+q2 get m 78
+b loop aw_push_args_ok aw_push_arg q2 a 0
+q3 get m 81
+c call aw_user_call b q3
+q4 xor aggregate true
+q5 select q4 1 0
+q6 fold aw_set_node q5 c
+ret q6
+end
+fn aw_fieldtype (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 79
+a call aw_type p0 q1
+ty at a 3
+q2 at a 0
+q3 get q2 80
+record eq q3 23
+q4 at a 1
+q5 get q4 1
+q6 get ty 1
+q7 add q6 p1
+q8 select record q7 0
+q9 select record 1 0
+b call aw_raw a q5 q8 q9
+q10 at b 3
+q11 get q10 0
+q12 get ty 2
+field select record q11 q12
+q13 at b 0
+q14 at b 1
+q15 at b 2
+q16 call arena_zero
+q17 set q16 0 field
+q18 at b 4
+q19 rec q13 q14 q15 q17 q18
+ret q19
+end
+fn aw_scalar_store (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_mem p0 54 0
+ret q0
+end
+fn aw_aggregate_copy (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_const p0 p2
+q1 call aw_copy_instruction q0
+ret q1
+end
+fn aw_emit_literal_field (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fieldtype p0 p1
+q0 at a 3
+field get q0 0
+b call aw_size a field
+q1 at b 3
+size get q1 0
+q2 at b 0
+offset get q2 84
+q3 call aw_nodeget b
+q4 call aw_const q3 offset
+c call aw_byte q4 106
+d call aw_push c p1
+q5 lt field 3
+q6 select q5 1 0
+e fold aw_scalar_store q6 d
+q7 ge field 3
+q8 select q7 1 0
+f fold aw_aggregate_copy q8 e size
+q9 at f 0
+q10 add offset size
+q11 set q9 84 q10
+q12 at f 1
+q13 at f 2
+q14 at f 3
+q15 at f 4
+q16 rec q11 q12 q13 q14 q15
+ret q16
+end
+fn aw_emit_literal (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+m set q0 84 0
+q1 get m 78
+q2 at p0 1
+q3 at p0 2
+q4 at p0 3
+q5 at p0 4
+q6 rec m q2 q3 q4 q5
+q7 loop aw_ok aw_emit_literal_field q1 q6
+ret q7
+end
+fn aw_access_record_field (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 1
+q1 get q0 1
+q2 add p2 p1
+a call aw_raw p0 q1 q2 1
+q3 at a 3
+q4 get q3 0
+b call aw_size a q4
+m at b 0
+q5 get m 96
+q6 at b 3
+q7 get q6 0
+q8 add q5 q7
+q9 set m 96 q8
+q10 at b 1
+q11 at b 2
+q12 at b 3
+q13 at b 4
+q14 rec q9 q10 q11 q12 q13
+ret q14
+end
+fn aw_access_record_ok (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn aw_access_record (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 77
+q2 add q1 1
+a call aw_arg p0 q2
+q3 at a 3
+field get q3 1
+q4 at a 0
+m set q4 96 0
+q5 at a 1
+q6 at a 2
+q7 at a 3
+q8 at a 4
+q9 rec m q5 q6 q7 q8
+b loop aw_access_record_ok aw_access_record_field field q9 p2
+q10 at b 1
+q11 get q10 1
+q12 add p2 field
+c call aw_raw b q11 q12 1
+q13 at c 0
+q14 at c 3
+q15 get q14 0
+q16 set q13 97 q15
+q17 at c 1
+q18 at c 2
+q19 at c 3
+q20 at c 4
+q21 rec q16 q17 q18 q19 q20
+ret q21
+end
+fn aw_access_geometry (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_arg_type p0 0
+q0 at a 3
+q1 get q0 0
+b call aw_type a q1
+ty at b 3
+q2 get ty 0
+array eq q2 4
+q3 get ty 2
+q4 select array q3 0
+c call aw_size b q4
+q5 at c 0
+q6 get ty 1
+q7 select array q6 0
+m set q5 94 q7
+q8 at c 3
+q9 get q8 0
+q10 select array q9 0
+m_1 set m 95 q10
+m_2 set m_1 96 0
+q11 get ty 2
+q12 select array q11 0
+m_3 set m_2 97 q12
+q13 select array 0 1
+q14 at c 1
+q15 at c 2
+q16 at c 3
+q17 at c 4
+q18 rec m_3 q14 q15 q16 q17
+q19 get ty 1
+q20 fold aw_access_record q13 q18 q19
+ret q20
+end
+fn aw_array_address (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 call aw_push p0 1
+q1 get m 94
+q2 call aw_const q0 q1
+a call aw_byte q2 112
+q3 get m 95
+q4 call aw_const a q3
+b call aw_byte q4 108
+q5 call aw_byte b 106
+ret q5
+end
+fn aw_record_address (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 96
+q2 call aw_const p0 q1
+q3 call aw_byte q2 106
+ret q3
+end
+fn aw_strict_index_check (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_push p0 1
+q1 at p0 0
+q2 get q1 94
+q3 call aw_const q0 q2
+a call aw_byte q3 79
+q4 call aw_byte a 4
+b call aw_byte q4 64
+q5 call aw_trap_call b 0
+q6 call aw_byte q5 11
+ret q6
+end
+fn aw_access_address (u32x128,u32x16,u32x128,u32x128,io) bool -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 get m 80
+q1 eq q0 25
+q2 get m 80
+q3 eq q2 26
+array or q1 q3
+q4 select p1 1 0
+a fold aw_push_node q4 p0
+q5 select p1 0 1
+b fold aw_push_arg q5 a 0
+q6 get m 74
+q7 and q6 1
+q8 ne q7 0
+q9 and array q8
+q10 select q9 1 0
+checked fold aw_strict_index_check q10 b
+q11 select array 1 0
+c fold aw_array_address q11 checked
+q12 xor array true
+q13 select q12 1 0
+q14 fold aw_record_address q13 c
+ret q14
+end
+fn aw_scalar_load (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_mem p0 40 0
+ret q0
+end
+fn aw_emit_access (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_access_geometry p0
+b call aw_access_address a false
+q0 at b 0
+q1 get q0 97
+q2 lt q1 3
+q3 select q2 1 0
+c fold aw_scalar_load q3 b
+q4 call aw_nodeset c
+ret q4
+end
+fn aw_emit_update (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 79
+a call aw_size p0 q1
+q2 at a 3
+size get q2 0
+q3 call aw_nodeget a
+q4 call aw_push q3 0
+q5 call aw_const q4 size
+b call aw_copy_instruction q5
+c call aw_access_geometry b
+q6 at c 0
+field get q6 97
+d call aw_size c field
+q7 at d 3
+fieldsize get q7 0
+q8 call aw_access_address d true
+e call aw_push q8 2
+q9 lt field 3
+q10 select q9 1 0
+f fold aw_scalar_store q10 e
+q11 ge field 3
+q12 select q11 1 0
+q13 fold aw_aggregate_copy q12 f fieldsize
+ret q13
+end
+fn aw_emit_checked_sum (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 80
+add eq q1 32
+q2 call aw_nodeget p0
+q3 call aw_push q2 0
+a call aw_push q3 1
+q4 select add 106 107
+q5 call aw_byte a q4
+b call aw_mem q5 54 0
+c call aw_nodeget b
+q6 select add 1 0
+d fold aw_push_node q6 c
+q7 select add 1 0
+e fold aw_scalar_load q7 d
+q8 select add 0 1
+f fold aw_push_arg q8 e 0
+q9 select add 0 1
+g call aw_push f q9
+q10 call aw_byte g 79
+q11 call aw_mem q10 54 4
+ret q11
+end
+fn aw_emit_checked_mul (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_nodeget p0
+q1 call aw_push q0 0
+a call aw_push q1 1
+q2 call aw_byte a 108
+b call aw_mem q2 54 0
+q3 call aw_nodeget b
+q4 call aw_push q3 0
+c call aw_byte q4 173
+q5 call aw_push c 1
+d call aw_byte q5 173
+q6 call aw_byte d 126
+q7 call aw_byte q6 66
+q8 call aw_byte q7 32
+q9 call aw_byte q8 136
+e call aw_byte q9 80
+q10 call aw_mem e 54 4
+ret q10
+end
+fn aw_emit_checked_div (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_nodeget p0
+q0 call aw_push a 1
+b call aw_byte q0 69
+q1 call aw_byte b 4
+c call aw_byte q1 127
+d call aw_const c 0
+e call aw_byte d 5
+q2 call aw_push e 0
+f call aw_push q2 1
+q3 at p0 0
+q4 get q3 80
+q5 eq q4 35
+q6 select q5 110 112
+g call aw_byte f q6
+q7 call aw_byte g 11
+h call aw_mem q7 54 0
+q8 call aw_nodeget h
+j call aw_push q8 1
+q9 call aw_byte j 69
+k call aw_byte q9 69
+q10 call aw_mem k 54 4
+ret q10
+end
+fn aw_emit_checked_get (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_access_geometry p0
+q0 at a 0
+length get q0 94
+q1 call aw_nodeget a
+q2 call aw_push q1 1
+q3 call aw_const q2 length
+b call aw_byte q3 73
+q4 call aw_byte b 4
+c call aw_byte q4 127
+q5 call aw_push c 0
+d call aw_push q5 1
+q6 call aw_const d 2
+e call aw_byte q6 116
+q7 call aw_byte e 106
+f call aw_mem q7 40 0
+q8 call aw_byte f 5
+g call aw_const q8 0
+q9 call aw_byte g 11
+h call aw_mem q9 54 0
+q10 call aw_nodeget h
+q11 call aw_push q10 1
+q12 call aw_const q11 length
+j call aw_byte q12 73
+q13 call aw_mem j 54 4
+ret q13
+end
+fn aw_emit_read (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_nodeget p0
+q1 call aw_push q0 0
+q2 at p0 0
+q3 get q2 74
+q4 and q3 1
+q5 ne q4 0
+q6 select q5 8 0
+a call aw_call_index q1 q6
+b call aw_mem a 54 0
+q7 call aw_nodeget b
+q8 call aw_push q7 0
+q9 call aw_mem q8 54 4
+ret q9
+end
+fn aw_emit_write (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_push p0 0
+q1 call aw_push q0 1
+a call aw_call_index q1 1
+q2 call aw_push a 0
+q3 call aw_nodeset q2
+ret q3
+end
+fn aw_emit_puts (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_arg_type p0 1
+q0 at a 3
+q1 get q0 0
+b call aw_type a q1
+q2 at b 3
+length get q2 1
+q3 call aw_push b 0
+q4 call aw_push q3 1
+c call aw_const q4 length
+d call aw_call_index c 2
+q5 call aw_push d 0
+q6 call aw_nodeset q5
+ret q6
+end
+fn aw_iteration_args (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_nodeget p0
+a call aw_tempget q0 0
+q1 at p0 0
+q2 get q1 78
+q3 sub q2 2
+q4 loop aw_push_args_ok aw_push_arg q3 a 2
+ret q4
+end
+fn aw_iteration_predicate (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_iteration_args p0
+q0 at a 0
+q1 get q0 82
+q2 call aw_user_call a q1
+b call aw_byte q2 69
+q3 call aw_op_imm b 13 1
+ret q3
+end
+fn aw_iteration_scalar_init (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_push p0 1
+q1 call aw_nodeset q0
+ret q1
+end
+fn aw_iteration_aggregate_init (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 79
+a call aw_size p0 q1
+q2 call aw_nodeget a
+q3 call aw_push q2 1
+q4 at a 3
+q5 get q4 0
+q6 call aw_const q3 q5
+q7 call aw_copy_instruction q6
+ret q7
+end
+fn aw_strict_mark (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 76
+a call aw_word p0 27 q1
+q2 at a 3
+q3 get q2 0
+q4 call aw_const a q3
+q5 call aw_call_index q4 5
+ret q5
+end
+fn aw_strict_index (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_tempget p0 0
+q1 call aw_call_index q0 6
+ret q1
+end
+fn aw_strict_unmark (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_const p0 0
+q1 call aw_call_index q0 5
+ret q1
+end
+fn aw_emit_iteration (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 79
+aggregate ge q1 3
+q2 xor aggregate true
+q3 select q2 1 0
+a fold aw_iteration_scalar_init q3 p0
+q4 select aggregate 1 0
+b fold aw_iteration_aggregate_init q4 a
+q5 at p0 0
+q6 get q5 88
+q7 ne q6 0
+q8 select q7 1 0
+marked fold aw_strict_mark q8 b
+q9 call aw_const marked 0
+c call aw_tempset q9 0
+q10 call aw_byte c 2
+q11 call aw_byte q10 64
+q12 call aw_byte q11 3
+d call aw_byte q12 64
+q13 call aw_tempget d 0
+q14 call aw_push q13 0
+e call aw_byte q14 79
+f call aw_op_imm e 13 1
+q15 at p0 0
+q16 get q15 88
+q17 ne q16 0
+q18 select q17 1 0
+trip fold aw_strict_index q18 f
+q19 at p0 0
+q20 get q19 80
+q21 eq q20 21
+q22 select q21 1 0
+g fold aw_iteration_predicate q22 trip
+q23 select aggregate 1 0
+h fold aw_push_node q23 g
+j call aw_iteration_args h
+q24 at j 0
+q25 get q24 81
+k call aw_user_call j q25
+q26 xor aggregate true
+q27 select q26 1 0
+l fold aw_set_node q27 k
+q28 call aw_tempget l 0
+q29 call aw_const q28 1
+q30 call aw_byte q29 106
+m call aw_tempset q30 0
+n call aw_op_imm m 12 0
+q31 call aw_byte n 11
+out call aw_byte q31 11
+q32 at p0 0
+q33 get q32 88
+q34 ne q33 0
+q35 select q34 1 0
+q36 fold aw_strict_unmark q35 out
+ret q36
+end
+fn aw_bind_node (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_bind p0
+ret q0
+end
+fn aw_emit_node (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 65
+q2 add q1 p1
+a call aw_node p0 q2
+nd at a 3
+q3 at a 0
+q4 at a 0
+q5 get q4 67
+q6 add q5 1
+q7 add q6 p1
+m set q3 75 q7
+q8 at a 0
+q9 get q8 65
+q10 add q9 p1
+m_1 set m 76 q10
+q11 get nd 2
+m_2 set m_1 77 q11
+q12 get nd 1
+m_3 set m_2 78 q12
+q13 get nd 5
+m_4 set m_3 79 q13
+q14 get nd 0
+m_5 set m_4 80 q14
+q15 get nd 3
+m_6 set m_5 81 q15
+q16 get nd 4
+m_7 set m_6 82 q16
+q17 get nd 0
+q18 get nd 5
+aggregate ge q18 3
+q19 eq q17 1
+q20 eq q17 18
+q21 or q19 q20
+q22 eq q17 25
+q23 or q21 q22
+q24 eq q17 27
+borrow or q23 q24
+q25 at a 1
+q26 at a 2
+q27 at a 3
+q28 at a 4
+q29 rec m_7 q25 q26 q27 q28
+b fold aw_push_node 0 q29
+q30 eq q17 0
+q31 gt q17 37
+q32 or q30 q31
+q33 select q32 6 0
+c call aw_code b q33
+q34 xor borrow true
+q35 and aggregate q34
+q36 select q35 1 0
+d fold aw_bind_node q36 c
+q37 eq q17 1
+q38 select q37 1 0
+e fold aw_emit_mov q38 d
+q39 ge q17 2
+q40 le q17 9
+q41 and q39 q40
+q42 ge q17 12
+q43 le q17 17
+q44 and q42 q43
+q45 or q41 q44
+q46 select q45 1 0
+f fold aw_emit_binary q46 e
+q47 eq q17 10
+q48 eq q17 11
+q49 or q47 q48
+q50 select q49 1 0
+g fold aw_emit_division q50 f
+q51 eq q17 18
+q52 select q51 1 0
+h fold aw_emit_select q52 g
+q53 eq q17 19
+q54 select q53 1 0
+j fold aw_emit_direct_call q54 h
+q55 eq q17 20
+q56 eq q17 21
+q57 or q55 q56
+q58 select q57 1 0
+k fold aw_emit_iteration q58 j
+q59 eq q17 22
+q60 eq q17 23
+q61 or q59 q60
+q62 eq q17 24
+q63 or q61 q62
+q64 select q63 1 0
+l fold aw_emit_literal q64 k
+q65 eq q17 25
+q66 eq q17 27
+q67 or q65 q66
+q68 select q67 1 0
+m_8 fold aw_emit_access q68 l
+q69 eq q17 26
+q70 eq q17 28
+q71 or q69 q70
+q72 select q71 1 0
+n fold aw_emit_update q72 m_8
+q73 eq q17 29
+q74 select q73 1 0
+p fold aw_emit_read q74 n
+q75 eq q17 30
+q76 select q75 1 0
+q fold aw_emit_write q76 p
+q77 eq q17 31
+q78 select q77 1 0
+r fold aw_emit_puts q78 q
+q79 eq q17 32
+q80 eq q17 33
+q81 or q79 q80
+q82 select q81 1 0
+u fold aw_emit_checked_sum q82 r
+q83 eq q17 34
+q84 select q83 1 0
+v fold aw_emit_checked_mul q84 u
+q85 eq q17 35
+q86 eq q17 36
+q87 or q85 q86
+q88 select q87 1 0
+w fold aw_emit_checked_div q88 v
+q89 eq q17 37
+q90 select q89 1 0
+q91 fold aw_emit_checked_get q90 w
+ret q91
+end
+fn aw_local_group (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_uleb p0 p2
+q1 call aw_byte q0 127
+ret q1
+end
+fn aw_begin_body (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_reset p0 18
+q1 eq p1 0
+q2 select q1 0 1
+a call aw_uleb q0 q2
+q3 eq p1 0
+q4 select q3 0 1
+q5 fold aw_local_group q4 a p1
+ret q5
+end
+fn aw_restore_stack (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 get m 71
+q1 call aw_getlocal p0 q0
+q2 get m 70
+q3 call aw_const q1 q2
+a call aw_byte q3 106
+q4 call aw_op_imm a 36 0
+ret q4
+end
+fn aw_return_aggregate (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 68
+a call aw_size p0 q1
+q2 at a 3
+size get q2 0
+m at a 0
+q3 call aw_getlocal a 0
+q4 get m 102
+q5 get m 103
+b call aw_operand q3 q4 q5
+q6 call aw_const b size
+q7 call aw_copy_instruction q6
+ret q7
+end
+fn aw_return_scalar (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 get m 102
+q1 get m 103
+q2 call aw_operand p0 q0 q1
+ret q2
+end
+fn aw_strict_enter (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 64
+a call aw_word p0 24 q1
+q2 at a 3
+q3 get q2 0
+q4 call aw_const a q3
+q5 call aw_call_index q4 3
+ret q5
+end
+fn aw_strict_leave (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_call_index p0 4
+ret q0
+end
+fn aw_emit_function (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fun p0 p1
+funrow at a 3
+q0 at a 0
+q1 get q0 9
+q2 mul p1 16
+b call aw_raw a q1 q2 5
+meta at b 3
+q3 at b 0
+m set q3 64 p1
+q4 get funrow 5
+m_1 set m 65 q4
+q5 get funrow 6
+m_2 set m_1 66 q5
+q6 get meta 1
+m_3 set m_2 67 q6
+q7 get funrow 4
+m_4 set m_3 68 q7
+q8 get meta 0
+m_5 set m_4 69 q8
+q9 get meta 3
+m_6 set m_5 70 q9
+q10 get meta 1
+m_7 set m_6 71 q10
+q11 get meta 1
+q12 add q11 1
+q13 get funrow 6
+q14 add q12 q13
+m_8 set m_7 72 q14
+q15 get funrow 3
+m_9 set m_8 73 q15
+q16 get funrow 9
+m_10 set m_9 74 q16
+q17 get funrow 7
+m_11 set m_10 102 q17
+q18 get funrow 8
+m_12 set m_11 103 q18
+q19 at b 1
+q20 at b 2
+q21 at b 3
+q22 at b 4
+q23 rec m_12 q19 q20 q21 q22
+q24 get meta 2
+c call aw_begin_body q23 q24
+q25 at c 0
+q26 get q25 88
+q27 ne q26 0
+q28 select q27 1 0
+entered fold aw_strict_enter q28 c
+q29 call aw_op_imm entered 35 0
+q30 get meta 3
+q31 call aw_const q29 q30
+d call aw_byte q31 107
+q32 get meta 1
+q33 call aw_op_imm d 34 q32
+e call aw_op_imm q33 36 0
+q34 get funrow 6
+f loop aw_ok aw_emit_node q34 e
+q35 get meta 0
+g fold aw_return_aggregate q35 f
+q36 at g 0
+q37 get q36 88
+q38 ne q37 0
+q39 select q38 1 0
+left fold aw_strict_leave q39 g
+h call aw_restore_stack left
+q40 get meta 0
+q41 eq q40 0
+q42 select q41 1 0
+j fold aw_return_scalar q42 h
+k call aw_byte j 11
+q43 at k 0
+q44 get q43 18
+q45 get q43 19
+q46 get q43 20
+q47 mul p1 16
+q48 add q47 5
+l call aw_put k 9 q48 q44
+q49 mul p1 16
+q50 add q49 6
+n call aw_put l 9 q50 q45
+q51 mul p1 16
+q52 add q51 7
+q53 call aw_put n 9 q52 q46
+ret q53
+end
+fn aw_program_geometry (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fun p0 p1
+q0 at a 3
+q1 get q0 9
+profile and q1 1
+q2 at a 0
+q3 at a 0
+q4 get q3 88
+q5 ne q4 0
+q6 ne profile 0
+q7 or q5 q6
+q8 select q7 1 0
+m set q2 88 q8
+q9 at a 1
+q10 at a 2
+q11 at a 3
+q12 at a 4
+q13 rec m q9 q10 q11 q12
+c call aw_fnword q13 p1 4
+q14 at c 3
+depth get q14 0
+q15 at c 0
+old get q15 87
+q16 at c 0
+q17 gt depth old
+q18 select q17 depth old
+q19 set q16 87 q18
+q20 at c 1
+q21 at c 2
+q22 at c 3
+q23 at c 4
+q24 rec q19 q20 q21 q22 q23
+ret q24
+end
+fn aw_emit_i32 (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 127
+ret q0
+end
+fn aw_signature_user (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fnword p0 p2 1
+q0 at a 3
+np get q0 0
+b call aw_fnword a p2 0
+q1 at b 0
+m set q1 104 np
+q2 at b 3
+q3 get q2 0
+q4 eq q3 0
+q5 select q4 1 0
+m_1 set m 105 q5
+q6 at b 1
+q7 at b 2
+q8 at b 3
+q9 at b 4
+q10 rec m_1 q6 q7 q8 q9
+ret q10
+end
+fn aw_signature (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 eq p1 1
+q2 eq p1 2
+q3 eq p1 4
+q4 select q3 0 1
+q5 select q2 3 q4
+q6 select q1 2 q5
+m set q0 104 q6
+q7 eq p1 0
+q8 eq p1 8
+q9 or q7 q8
+q10 select q9 1 0
+m_1 set m 105 q10
+q11 get m_1 85
+q12 ge p1 q11
+q13 select q12 1 0
+q14 at p0 1
+q15 at p0 2
+q16 at p0 3
+q17 at p0 4
+q18 rec m_1 q14 q15 q16 q17
+q19 get m_1 85
+q20 sub p1 q19
+a fold aw_signature_user q13 q18 q20
+m_2 at a 0
+q21 call aw_byte a 96
+q22 get m_2 104
+b call aw_uleb q21 q22
+q23 get m_2 104
+c loop aw_ok aw_emit_i32 q23 b
+q24 get m_2 105
+d call aw_uleb c q24
+q25 get m_2 105
+q26 fold aw_emit_i32 q25 d
+ret q26
+end
+fn aw_signature_kept_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 85
+q2 add p2 q1
+q3 call aw_signature p0 q2
+ret q3
+end
+fn aw_signature_kept (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fnword p0 p1 13
+q0 at a 3
+q1 get q0 0
+q2 ne q1 0
+q3 select q2 1 0
+q4 fold aw_signature_kept_do q3 a p1
+ret q4
+end
+fn aw_type_section (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 91
+q2 at p0 0
+q3 get q2 85
+count add q1 q3
+q4 call aw_reset p0 21
+a call aw_uleb q4 count
+q5 at p0 0
+q6 get q5 85
+b loop aw_ok aw_signature q6 a
+q7 at p0 1
+q8 get q7 11
+c loop aw_ok aw_signature_kept q8 b
+q9 at c 0
+q10 get q9 21
+q11 get q9 22
+q12 get q9 23
+q13 rec q10 q11 q12
+q14 call aw_section c 1 q13
+ret q14
+end
+fn aw_type_index (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_uleb p0 p1
+ret q0
+end
+fn aw_function_section (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 91
+q2 at p0 0
+q3 get q2 85
+count add q1 q3
+q4 call aw_reset p0 21
+a call aw_uleb q4 count
+b loop aw_ok aw_type_index count a
+q5 at b 0
+q6 get q5 21
+q7 get q5 22
+q8 get q5 23
+q9 rec q6 q7 q8
+q10 call aw_section b 3 q9
+ret q10
+end
+fn aw_memory_section (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+heap get q0 86
+q1 shr heap 16
+q2 and heap 65535
+q3 ne q2 0
+q4 select q3 1 0
+pages add q1 q4
+q5 call aw_reset p0 21
+q6 call aw_uleb q5 1
+q7 call aw_byte q6 0
+a call aw_uleb q7 pages
+q8 at a 0
+q9 get q8 21
+q10 get q8 22
+q11 get q8 23
+q12 rec q9 q10 q11
+q13 call aw_section a 5 q12
+ret q13
+end
+fn aw_global (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 127
+q1 eq p1 0
+q2 select q1 1 0
+a call aw_byte q0 q2
+q3 at a 0
+q4 get q3 86
+q5 call aw_const a q4
+q6 call aw_byte q5 11
+ret q6
+end
+fn aw_strict_global (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 lt p1 4
+q1 mul p1 4
+q2 add 1024 q1
+q3 eq p1 4
+q4 get m 106
+q5 get m 107
+q6 select q3 q4 q5
+addr select q0 q2 q6
+q7 call aw_byte p0 127
+a call aw_byte q7 0
+q8 call aw_const a addr
+q9 call aw_byte q8 11
+ret q9
+end
+fn aw_global_section (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_reset p0 21
+q1 at p0 0
+q2 get q1 88
+q3 ne q2 0
+q4 select q3 8 2
+a call aw_uleb q0 q4
+b loop aw_ok aw_global 2 a
+q5 at p0 0
+q6 get q5 88
+q7 ne q6 0
+q8 select q7 6 0
+c loop aw_ok aw_strict_global q8 b
+q9 at c 0
+q10 get q9 21
+q11 get q9 22
+q12 get q9 23
+q13 rec q10 q11 q12
+q14 call aw_section c 6 q13
+ret q14
+end
+fn aw_span_page (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+offset shl p1 7
+left sub p4 offset
+q0 gt left 128
+count select q0 128 left
+q1 add p3 offset
+a call aw_raw p0 p2 q1 count
+q2 at a 3
+q3 call aw_bytes a count q2
+ret q3
+end
+fn aw_span_ok (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn aw_span (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 shr p3 7
+q1 and p3 127
+q2 ne q1 0
+q3 select q2 1 0
+pages add q0 q3
+q4 loop aw_span_ok aw_span_page pages p0 p1 p2 p3
+ret q4
+end
+fn aw_export_function (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fun p0 p1
+funrow at a 3
+q0 get funrow 1
+b call aw_sum a q0 3
+q1 at b 3
+q2 get q1 0
+c call aw_uleb b q2
+q3 call aw_byte c 97
+q4 call aw_byte q3 48
+d call aw_byte q4 95
+q5 at d 1
+q6 get q5 5
+q7 get funrow 0
+q8 get funrow 1
+e call aw_span d q6 q7 q8
+f call aw_fnword e p1 12
+q9 call aw_byte f 0
+q10 at f 3
+q11 get q10 0
+q12 call aw_uleb q9 q11
+ret q12
+end
+fn aw_export_kept_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_export_function p0 p2
+ret q0
+end
+fn aw_export_kept (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fnword p0 p1 14
+q0 at a 3
+q1 get q0 0
+q2 ne q1 0
+q3 select q2 1 0
+q4 fold aw_export_kept_do q3 a p1
+ret q4
+end
+fn aw_trap_prefix (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 116
+q1 call aw_byte q0 114
+q2 call aw_byte q1 97
+q3 call aw_byte q2 112
+q4 call aw_byte q3 95
+ret q4
+end
+fn aw_trap_kind_suffix (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 107
+q1 call aw_byte q0 105
+q2 call aw_byte q1 110
+q3 call aw_byte q2 100
+ret q3
+end
+fn aw_trap_n_suffix (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 110
+ret q0
+end
+fn aw_trap_at_suffix (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 97
+q1 call aw_byte q0 116
+ret q1
+end
+fn aw_trap_trip_suffix (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_byte p0 116
+q1 call aw_byte q0 114
+q2 call aw_byte q1 105
+q3 call aw_byte q2 112
+ret q3
+end
+fn aw_trap_suffix (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 eq p2 0
+q1 select q0 1 0
+a fold aw_trap_kind_suffix q1 p0
+q2 eq p2 1
+q3 select q2 1 0
+b fold aw_trap_n_suffix q3 a
+q4 eq p2 2
+q5 select q4 1 0
+c fold aw_trap_at_suffix q5 b
+q6 eq p2 3
+q7 select q6 1 0
+q8 fold aw_trap_trip_suffix q7 c
+ret q8
+end
+fn aw_trap_array_name (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 eq p2 4
+q1 select q0 99 110
+a call aw_byte p0 q1
+q2 eq p2 4
+q3 select q2 104 111
+b call aw_byte a q3
+q4 eq p2 4
+q5 select q4 97 100
+c call aw_byte b q5
+q6 eq p2 4
+q7 select q6 105 101
+d call aw_byte c q7
+q8 eq p2 4
+q9 select q8 1 0
+q10 fold aw_trap_n_suffix q9 d
+ret q10
+end
+fn aw_trap_global_name (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 ge p1 4
+q1 eq p1 4
+q2 select q1 8 7
+q3 eq p1 1
+q4 eq p1 2
+q5 select q4 10 12
+q6 select q3 9 q5
+q7 select q0 q2 q6
+a call aw_uleb p0 q7
+q8 call aw_byte a 97
+q9 call aw_byte q8 48
+b call aw_byte q9 95
+q10 lt p1 4
+q11 select q10 1 0
+c fold aw_trap_prefix q11 b
+q12 lt p1 4
+q13 select q12 1 0
+d fold aw_trap_suffix q13 c p1
+q14 ge p1 4
+q15 select q14 1 0
+e fold aw_trap_array_name q15 d p1
+q16 call aw_byte e 3
+q17 add p1 2
+q18 call aw_uleb q16 q17
+ret q18
+end
+fn aw_strict_export (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_trap_global_name p0 p1
+ret q0
+end
+fn aw_export_section (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_reset p0 21
+q1 at p0 0
+q2 get q1 92
+q3 add q2 2
+q4 at p0 0
+q5 get q4 88
+q6 ne q5 0
+q7 select q6 6 0
+q8 add q3 q7
+a call aw_uleb q0 q8
+q9 call aw_uleb a 6
+q10 call aw_byte q9 109
+q11 call aw_byte q10 101
+q12 call aw_byte q11 109
+q13 call aw_byte q12 111
+q14 call aw_byte q13 114
+b call aw_byte q14 121
+q15 call aw_byte b 2
+c call aw_uleb q15 0
+q16 call aw_uleb c 11
+q17 call aw_byte q16 95
+q18 call aw_byte q17 95
+q19 call aw_byte q18 104
+q20 call aw_byte q19 101
+q21 call aw_byte q20 97
+q22 call aw_byte q21 112
+q23 call aw_byte q22 95
+q24 call aw_byte q23 98
+q25 call aw_byte q24 97
+q26 call aw_byte q25 115
+d call aw_byte q26 101
+q27 call aw_byte d 3
+e call aw_uleb q27 1
+q28 at p0 0
+q29 get q28 88
+q30 ne q29 0
+q31 select q30 6 0
+traps loop aw_ok aw_strict_export q31 e
+q32 at p0 1
+q33 get q32 11
+f loop aw_ok aw_export_kept q33 traps
+q34 at f 0
+q35 get q34 21
+q36 get q34 22
+q37 get q34 23
+q38 rec q35 q36 q37
+q39 call aw_section f 7 q38
+ret q39
+end
+fn aw_write_body (u32x128,u32x16,u32x128,u32x128,io) (u32,u32,u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_target p0 21
+q1 at p1 1
+a call aw_uleb q0 q1
+q2 call aw_copy_vector a p1
+ret q2
+end
+fn aw_rt_read_exhausted (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_trap_call p0 2
+ret q0
+end
+fn aw_io_read_common (u32x128,u32x16,u32x128,u32x128,io) bool -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 89
+input mul q1 4
+position add input 4
+a call aw_begin_body p0 0
+q2 call aw_getlocal a 0
+b call aw_mem q2 40 position
+q3 call aw_getlocal b 0
+c call aw_mem q3 40 input
+d call aw_byte c 73
+q4 call aw_getlocal d 0
+e call aw_mem q4 40 position
+q5 at p0 0
+q6 get q5 89
+q7 call aw_const e q6
+f call aw_byte q7 73
+q8 call aw_byte f 113
+q9 call aw_byte q8 4
+g call aw_byte q9 127
+q10 call aw_getlocal g 0
+h call aw_getlocal q10 0
+j call aw_mem h 40 position
+q11 call aw_const j 4
+q12 call aw_byte q11 108
+k call aw_byte q12 106
+l call aw_mem k 40 0
+q13 call aw_getlocal l 0
+m call aw_getlocal q13 0
+n call aw_mem m 40 position
+q14 call aw_const n 1
+p call aw_byte q14 106
+q call aw_mem p 54 position
+q15 select p1 1 0
+q16 call aw_byte q 5
+exhausted fold aw_rt_read_exhausted q15 q16
+r call aw_const exhausted 0
+q17 call aw_byte r 11
+u call aw_byte q17 11
+q18 at u 0
+q19 get q18 18
+q20 get q18 19
+q21 get q18 20
+q22 rec q19 q20 q21
+q23 call aw_write_body u q22
+ret q23
+end
+fn aw_io_read_body (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_io_read_common p0 false
+ret q0
+end
+fn aw_io_sread_body (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_io_read_common p0 true
+ret q0
+end
+fn aw_io_write_body (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 89
+q2 add q1 2
+output mul q2 4
+q3 at p0 0
+q4 get q3 90
+q5 mul q4 4
+noutput add output q5
+a call aw_begin_body p0 0
+q6 call aw_getlocal a 0
+b call aw_mem q6 40 noutput
+q7 at p0 0
+q8 get q7 90
+q9 call aw_const b q8
+c call aw_byte q9 73
+q10 call aw_byte c 4
+d call aw_byte q10 64
+q11 call aw_getlocal d 0
+q12 call aw_getlocal q11 0
+e call aw_mem q12 40 noutput
+q13 call aw_const e 4
+q14 call aw_byte q13 108
+f call aw_byte q14 106
+q15 call aw_getlocal f 1
+g call aw_mem q15 54 output
+q16 call aw_getlocal g 0
+q17 call aw_getlocal q16 0
+h call aw_mem q17 40 noutput
+q18 call aw_const h 1
+q19 call aw_byte q18 106
+j call aw_mem q19 54 noutput
+q20 call aw_byte j 11
+k call aw_byte q20 11
+q21 at k 0
+q22 get q21 18
+q23 get q21 19
+q24 get q21 20
+q25 rec q22 q23 q24
+q26 call aw_write_body k q25
+ret q26
+end
+fn aw_io_puts_body (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_begin_body p0 1
+q0 call aw_getlocal a 0
+q1 call aw_getlocal q0 2
+b call aw_call_index q1 1
+q2 call aw_const b 0
+c call aw_setlocal q2 3
+q3 call aw_byte c 2
+q4 call aw_byte q3 64
+q5 call aw_byte q4 3
+d call aw_byte q5 64
+q6 call aw_getlocal d 3
+q7 call aw_getlocal q6 2
+q8 call aw_byte q7 79
+e call aw_op_imm q8 13 1
+q9 call aw_getlocal e 0
+q10 call aw_getlocal q9 1
+f call aw_getlocal q10 3
+q11 call aw_const f 4
+q12 call aw_byte q11 108
+q13 call aw_byte q12 106
+g call aw_mem q13 40 0
+h call aw_call_index g 1
+q14 call aw_getlocal h 3
+q15 call aw_const q14 1
+q16 call aw_byte q15 106
+j call aw_setlocal q16 3
+k call aw_op_imm j 12 0
+q17 call aw_byte k 11
+q18 call aw_byte q17 11
+l call aw_byte q18 11
+q19 at l 0
+q20 get q19 18
+q21 get q19 19
+q22 get q19 20
+q23 rec q20 q21 q22
+q24 call aw_write_body l q23
+ret q24
+end
+fn aw_code_user (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 9
+q2 mul p1 16
+q3 add q2 5
+a call aw_raw p0 q1 q3 3
+body at a 3
+q4 get body 0
+q5 get body 1
+q6 get body 2
+q7 rec q4 q5 q6
+q8 call aw_write_body a q7
+ret q8
+end
+fn aw_code_kept_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_code_user p0 p2
+ret q0
+end
+fn aw_code_kept (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fnword p0 p1 13
+q0 at a 3
+q1 get q0 0
+q2 ne q1 0
+q3 select q2 1 0
+q4 fold aw_code_kept_do q3 a p1
+ret q4
+end
+fn aw_rt_word (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_getlocal p0 p1
+q1 call aw_const q0 2
+q2 call aw_byte q1 116
+ret q2
+end
+fn aw_rt_enter (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+chain get q0 106
+q1 at p0 0
+node get q1 107
+a call aw_begin_body p0 1
+q2 call aw_const a 0
+q3 call aw_mem q2 40 1040
+b call aw_setlocal q3 1
+q4 call aw_rt_word b 1
+q5 call aw_getlocal q4 0
+c call aw_mem q5 54 chain
+q6 call aw_rt_word c 1
+q7 call aw_const q6 0
+d call aw_mem q7 54 node
+q8 call aw_const d 0
+e call aw_getlocal q8 1
+q9 call aw_const e 1
+q10 call aw_byte q9 106
+f call aw_mem q10 54 1040
+g call aw_byte f 11
+q11 at g 0
+q12 get q11 18
+q13 get q11 19
+q14 get q11 20
+q15 rec q12 q13 q14
+q16 call aw_write_body g q15
+ret q16
+end
+fn aw_rt_leave (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_begin_body p0 0
+q0 call aw_const a 0
+q1 call aw_const q0 0
+b call aw_mem q1 40 1040
+q2 call aw_const b 1
+q3 call aw_byte q2 107
+c call aw_mem q3 54 1040
+d call aw_byte c 11
+q4 at d 0
+q5 get q4 18
+q6 get q4 19
+q7 get q4 20
+q8 rec q5 q6 q7
+q9 call aw_write_body d q8
+ret q9
+end
+fn aw_rt_frame_store (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_begin_body p0 0
+q0 call aw_const a 0
+b call aw_mem q0 40 1040
+q1 call aw_const b 1
+c call aw_byte q1 107
+q2 call aw_const c 2
+d call aw_byte q2 116
+q3 call aw_getlocal d 0
+e call aw_mem q3 54 p1
+f call aw_byte e 11
+q4 at f 0
+q5 get q4 18
+q6 get q4 19
+q7 get q4 20
+q8 rec q5 q6 q7
+q9 call aw_write_body f q8
+ret q9
+end
+fn aw_rt_trap (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+node get q0 107
+q1 at p0 0
+trips get q1 108
+a call aw_begin_body p0 4
+q2 call aw_const a 0
+q3 call aw_mem q2 40 1040
+b call aw_setlocal q3 1
+q4 call aw_const b 4294967295
+c call aw_setlocal q4 2
+q5 call aw_const c 0
+d call aw_setlocal q5 3
+q6 call aw_getlocal d 1
+e call aw_setlocal q6 4
+q7 call aw_byte e 2
+q8 call aw_byte q7 64
+q9 call aw_byte q8 3
+f call aw_byte q9 64
+q10 call aw_getlocal f 4
+q11 call aw_byte q10 69
+g call aw_op_imm q11 13 1
+q12 call aw_getlocal g 4
+q13 call aw_const q12 1
+q14 call aw_byte q13 107
+h call aw_setlocal q14 4
+q15 call aw_rt_word h 4
+q16 call aw_mem q15 40 node
+q17 call aw_byte q16 4
+j call aw_byte q17 64
+q18 call aw_getlocal j 4
+k call aw_setlocal q18 2
+q19 call aw_rt_word k 4
+q20 call aw_mem q19 40 trips
+l call aw_setlocal q20 3
+m call aw_op_imm l 12 2
+q21 call aw_byte m 11
+n call aw_op_imm q21 12 0
+q22 call aw_byte n 11
+p call aw_byte q22 11
+q23 call aw_const p 0
+q24 call aw_getlocal q23 0
+q25 call aw_const q24 8
+q call aw_byte q25 108
+q26 call aw_const q 1044
+q27 call aw_byte q26 106
+r call aw_mem q27 54 1024
+q28 call aw_const r 0
+q29 call aw_getlocal q28 1
+u call aw_mem q29 54 1028
+q30 call aw_const u 0
+q31 call aw_getlocal q30 2
+v call aw_mem q31 54 1032
+q32 call aw_const v 0
+q33 call aw_getlocal q32 3
+w call aw_mem q33 54 1036
+q34 call aw_const w 0
+q35 call aw_const q34 0
+x call aw_mem q35 54 1040
+q36 call aw_byte x 0
+y call aw_byte q36 11
+q37 at y 0
+q38 get q37 18
+q39 get q37 19
+q40 get q37 20
+q41 rec q38 q39 q40
+q42 call aw_write_body y q41
+ret q42
+end
+fn aw_strict_bodies (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_rt_enter p0
+b call aw_rt_leave a
+q0 at b 0
+q1 get q0 107
+c call aw_rt_frame_store b q1
+q2 at c 0
+q3 get q2 108
+d call aw_rt_frame_store c q3
+e call aw_rt_trap d
+q4 call aw_io_sread_body e
+ret q4
+end
+fn aw_code_section (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_reset p0 21
+q1 at p0 0
+q2 get q1 91
+q3 at p0 0
+q4 get q3 85
+q5 add q2 q4
+a call aw_uleb q0 q5
+b call aw_io_read_body a
+c call aw_io_write_body b
+d call aw_io_puts_body c
+q6 at p0 0
+q7 get q6 88
+q8 ne q7 0
+q9 select q8 1 0
+runtime fold aw_strict_bodies q9 d
+q10 at p0 1
+q11 get q10 11
+e loop aw_ok aw_code_kept q11 runtime
+q12 at e 0
+q13 get q12 21
+q14 get q12 22
+q15 get q12 23
+q16 rec q13 q14 q15
+q17 call aw_section e 10 q16
+ret q17
+end
+fn aw_custom_section (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_reset p0 21
+v0 call aw_uleb q0 2
+v1 call aw_byte v0 97
+v2 call aw_byte v1 48
+v3 call aw_byte v2 97
+v4 call aw_byte v3 48
+v5 call aw_byte v4 99
+v6 call aw_byte v5 45
+v7 call aw_byte v6 48
+v8 call aw_byte v7 46
+v9 call aw_byte v8 49
+v10 call aw_byte v9 46
+v11 call aw_byte v10 54
+v12 call aw_byte v11 50
+q1 at v12 0
+q2 get q1 21
+q3 get q1 22
+q4 get q1 23
+q5 rec q2 q3 q4
+q6 call aw_section v12 0 q5
+ret q6
+end
+fn aw_strict_data_section (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 15
+q2 get q0 16
+q3 get q0 17
+q4 call aw_reset p0 21
+q5 call aw_uleb q4 1
+a call aw_byte q5 0
+q6 call aw_const a 1024
+q7 call aw_byte q6 11
+b call aw_uleb q7 q2
+q8 rec q1 q2 q3
+c call aw_copy_vector b q8
+q9 at c 0
+q10 get q9 21
+q11 get q9 22
+q12 get q9 23
+q13 rec q10 q11 q12
+q14 call aw_section c 11 q13
+ret q14
+end
+fn aw_module (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_reset p0 3
+q0 call arena_zero
+q1 set q0 1 97
+q2 set q1 2 115
+q3 set q2 3 109
+q4 set q3 4 1
+page set q4 0 0
+b call aw_bytes a 8 page
+versioned call aw_custom_section b
+c call aw_type_section versioned
+d call aw_function_section c
+e call aw_memory_section d
+f call aw_global_section e
+g call aw_export_section f
+h call aw_code_section g
+q5 at p0 0
+q6 get q5 88
+q7 ne q6 0
+q8 select q7 1 0
+q9 fold aw_strict_data_section q8 h
+ret q9
+end
+fn aw_emit_function_kept_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_emit_function p0 p2
+ret q0
+end
+fn aw_emit_function_kept (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fnword p0 p1 13
+q0 at a 3
+q1 get q0 0
+q2 ne q1 0
+q3 select q2 1 0
+q4 fold aw_emit_function_kept_do q3 a p1
+ret q4
+end
+fn aw_options (u32x128,u32x16,u32x128,u32x128,io) u32x128 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 get p1 0
+q1 eq q0 1
+q2 get p1 3
+q3 le q2 1
+q4 and q1 q3
+q5 get p1 4
+q6 eq q5 1
+q7 get p1 4
+q8 eq q7 2
+q9 or q6 q8
+q10 get p1 4
+q11 eq q10 4
+q12 or q9 q11
+q13 and q4 q12
+q14 get p1 5
+q15 le q14 1
+q16 and q13 q15
+q17 get p1 6
+q18 le q17 1
+valid and q16 q18
+q19 select valid 0 6
+a call aw_code p0 q19
+q20 get p1 3
+q21 eq q20 0
+q22 get p1 4
+q23 eq q22 1
+q24 and q21 q23
+q25 get p1 5
+q26 eq q25 0
+supported and q24 q26
+q27 select supported 0 8
+b call aw_code a q27
+q28 at b 0
+q29 get p1 1
+m set q28 89 q29
+q30 get p1 2
+m_1 set m 90 q30
+q31 get p1 6
+m_2 set m_1 93 q31
+q32 get p1 7
+q33 get p1 8
+q34 get p1 9
+q35 rec q32 q33 q34
+m0_a set m_2 30 q32
+m0_b set m0_a 31 q33
+q36 set m0_b 32 q34
+q37 get p1 10
+q38 get p1 11
+q39 get p1 12
+q40 rec q37 q38 q39
+m1_a set q36 33 q37
+m1_b set m1_a 34 q38
+q41 set m1_b 35 q39
+q42 at b 1
+q43 at b 2
+q44 at b 3
+q45 at b 4
+q46 rec q41 q42 q43 q44 q45
+q47 get p1 1
+q48 get p1 2
+c call aw_sum q46 q47 q48
+q49 at c 3
+q50 get q49 0
+d call aw_sum c q50 3
+q51 at d 3
+q52 get q51 0
+q53 le q52 1073741823
+q54 select q53 0 7
+q55 call aw_code d q54
+ret q55
+end
+fn aw_strict_kinds (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_put p0 15 20 98
+b call aw_put a 15 21 111
+c call aw_put b 15 22 117
+d call aw_put c 15 23 110
+e call aw_put d 15 24 100
+f call aw_put e 15 25 115
+g call aw_put f 15 28 100
+h call aw_put g 15 29 105
+j call aw_put h 15 30 118
+k call aw_put j 15 31 122
+l call aw_put k 15 32 101
+m call aw_put l 15 33 114
+n call aw_put m 15 34 111
+p call aw_put n 15 36 105
+q call aw_put p 15 37 110
+r call aw_put q 15 38 112
+u call aw_put r 15 39 117
+q0 call aw_put u 15 40 116
+ret q0
+end
+fn aw_strict_name (u32x128,u32x16,u32x128,u32x128,io) u32 bool -> (u32x128,u32x16,u32x128,u32x128,io)
+desc at p0 2
+q0 get desc 40
+q1 get desc 37
+h select p2 q0 q1
+q2 select p2 14 12
+q3 mul p1 q2
+q4 select p2 3 1
+q5 add q3 q4
+a call aw_raw p0 h q5 1
+q6 at a 3
+symbol get q6 0
+q7 get desc 34
+q8 mul symbol 2
+b call aw_raw a q7 q8 2
+span at b 3
+q9 at b 0
+q10 get q9 16
+c call aw_sum b 1024 q10
+q11 at c 3
+pointer get q11 0
+q12 select p2 27 24
+d call aw_put c q12 p1 pointer
+q13 call aw_target d 15
+q14 get desc 31
+q15 get span 0
+q16 get span 1
+e call aw_span q13 q14 q15 q16
+q17 call aw_byte e 0
+ret q17
+end
+fn aw_strict_fn_name (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_strict_name p0 p1 false
+ret q0
+end
+fn aw_strict_node_name_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 call aw_strict_name p0 p2 true
+ret q0
+end
+fn aw_strict_node_name (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 eq p1 0
+q1 select q0 0 1
+q2 fold aw_strict_node_name_do q1 p0 p1
+ret q2
+end
+fn aw_strict_area (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+ctx at p0 1
+desc at p0 2
+q0 get desc 1
+q1 eq q0 1093681731
+q2 get desc 2
+q3 eq q2 1
+q4 and q1 q3
+q5 get desc 9
+q6 get ctx 11
+q7 eq q5 q6
+q8 and q4 q7
+q9 get desc 10
+q10 get ctx 13
+q11 eq q9 q10
+valid and q8 q11
+q12 select valid 0 6
+a call aw_code p0 q12
+q13 get ctx 11
+frames add q13 1
+q14 le frames 357913937
+q15 select q14 0 7
+b call aw_code a q15
+q16 mul 12 frames
+q17 add 48 q16
+c call aw_alloc b 15 q17
+q18 get ctx 11
+d call aw_alloc c 24 q18
+q19 get ctx 13
+e call aw_alloc d 27 q19
+q20 at e 0
+m set q20 106 1072
+q21 mul 4 frames
+q22 add 1072 q21
+m_1 set m 107 q22
+q23 mul 8 frames
+q24 add 1072 q23
+m_2 set m_1 108 q24
+q25 at e 1
+q26 at e 2
+q27 at e 3
+q28 at e 4
+q29 rec m_2 q25 q26 q27 q28
+f call aw_strict_kinds q29
+q30 get ctx 11
+g loop aw_ok aw_strict_fn_name q30 f
+q31 get ctx 13
+q32 loop aw_ok aw_strict_node_name q31 g
+ret q32
+end
+fn aw_seed_function (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 93
+all eq q1 0
+q2 mul p1 16
+q3 add q2 13
+q4 select all 1 0
+a call aw_put p0 9 q3 q4
+q5 mul p1 16
+q6 add q5 14
+q7 select all 1 0
+q8 call aw_put a 9 q6 q7
+ret q8
+end
+fn aw_find_more (u32x128,u32x16,u32x128,u32x128,io) u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 113
+q3 eq q2 4294967295
+q4 and q1 q3
+ret q4
+end
+fn aw_name_equal_ok (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 114
+q3 ne q2 0
+q4 and q1 q3
+ret q4
+end
+fn aw_name_equal_word (u32x128,u32x16,u32x128,u32x128,io) u32 u32x128 u32x128 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 get m 114
+q1 ne q0 0
+q2 get p2 p1
+q3 get p3 p1
+q4 eq q2 q3
+q5 and q1 q4
+q6 select q5 1 0
+q7 set m 114 q6
+q8 at p0 1
+q9 at p0 2
+q10 at p0 3
+q11 at p0 4
+q12 rec q7 q8 q9 q10 q11
+ret q12
+end
+fn aw_name_equal_page (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+off shl p1 7
+q0 get m 112
+left sub q0 off
+q1 gt left 128
+count select q1 128 left
+q2 get m 30
+q3 get m 111
+q4 add q3 off
+a call aw_raw p0 q2 q4 count
+page at a 3
+q5 at a 1
+q6 get q5 5
+q7 add p2 off
+b call aw_raw a q6 q7 count
+q8 at b 3
+q9 fold aw_name_equal_word count b page q8
+ret q9
+end
+fn aw_match_name (u32x128,u32x16,u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+m set q0 114 1
+q1 get m 112
+q2 shr q1 7
+q3 and q1 127
+q4 ne q3 0
+q5 select q4 1 0
+pages add q2 q5
+q6 at p0 1
+q7 at p0 2
+q8 at p0 3
+q9 at p0 4
+q10 rec m q6 q7 q8 q9
+a loop aw_name_equal_ok aw_name_equal_page pages q10 p3
+q at a 0
+q11 get q 114
+q12 ne q11 0
+q13 get q 113
+q14 select q12 p2 q13
+q15 set q 113 q14
+q16 at a 1
+q17 at a 2
+q18 at a 3
+q19 at a 4
+q20 rec q15 q16 q17 q18 q19
+ret q20
+end
+fn aw_find_function (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fun p0 p1
+funrow at a 3
+q0 get funrow 1
+q1 at a 0
+q2 get q1 112
+same eq q0 q2
+q3 select same 1 0
+q4 get funrow 0
+q5 fold aw_match_name q3 a p1 q4
+ret q5
+end
+fn aw_root_found (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 mul p2 16
+q1 add q0 13
+a call aw_put p0 9 q1 1
+q2 mul p2 16
+q3 add q2 14
+q4 call aw_put a 9 q3 1
+ret q4
+end
+fn aw_resolve_root (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+q1 get q0 33
+q2 mul p1 2
+a call aw_raw p0 q1 q2 2
+span at a 3
+q3 at a 0
+m set q3 110 p1
+q4 get span 0
+m_1 set m 111 q4
+q5 get span 1
+m_2 set m_1 112 q5
+m_3 set m_2 113 4294967295
+q6 get span 0
+q7 get m_3 31
+q8 le q6 q7
+q9 get span 1
+q10 get m_3 31
+q11 get span 0
+q12 sub q10 q11
+q13 le q9 q12
+valid and q8 q13
+q14 at a 1
+q15 at a 2
+q16 at a 3
+q17 at a 4
+q18 rec m_3 q14 q15 q16 q17
+q19 select valid 0 6
+b call aw_code q18 q19
+q20 at p0 1
+q21 get q20 11
+c loop aw_find_more aw_find_function q21 b
+q22 at c 0
+id get q22 113
+q23 ne id 4294967295
+q24 select q23 0 6
+d call aw_code c q24
+q25 ne id 4294967295
+q26 select q25 1 0
+q27 fold aw_root_found q26 d id
+ret q27
+end
+fn aw_resolve_roots (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+m at p0 0
+q0 get m 34
+q1 and q0 1
+q2 eq q1 0
+q3 select q2 0 6
+a call aw_code p0 q3
+q4 get m 34
+q5 shr q4 1
+q6 loop aw_ok aw_resolve_root q5 a
+ret q6
+end
+fn aw_reach_more (u32x128,u32x16,u32x128,u32x128,io) u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 117
+q3 ne q2 0
+q4 and q1 q3
+ret q4
+end
+fn aw_reach_node_ok (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn aw_reach_mark (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fnword p0 p2 13
+q0 at a 3
+q1 get q0 0
+fresh eq q1 0
+q2 at a 0
+q3 at a 0
+q4 get q3 117
+q5 select fresh 1 0
+q6 or q4 q5
+m set q2 117 q6
+q7 at a 1
+q8 at a 2
+q9 at a 3
+q10 at a 4
+q11 rec m q7 q8 q9 q10
+q12 mul p2 16
+q13 add q12 13
+q14 call aw_put q11 9 q13 1
+ret q14
+end
+fn aw_reach_node (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 add p2 p1
+a call aw_node p0 q0
+node at a 3
+q1 get node 0
+q2 eq q1 19
+q3 get node 0
+q4 eq q3 20
+q5 or q2 q4
+q6 get node 0
+q7 eq q6 21
+call or q5 q7
+q8 select call 1 0
+q9 get node 3
+b fold aw_reach_mark q8 a q9
+q10 get node 0
+q11 eq q10 21
+q12 select q11 1 0
+q13 get node 4
+q14 fold aw_reach_mark q12 b q13
+ret q14
+end
+fn aw_reach_function_do (u32x128,u32x16,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fun p0 p2
+funrow at a 3
+q0 get funrow 6
+q1 get funrow 5
+q2 loop aw_reach_node_ok aw_reach_node q0 a q1
+ret q2
+end
+fn aw_reach_function (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 1
+q1 get q0 11
+q2 sub q1 1
+id sub q2 p1
+a call aw_fnword p0 id 13
+q3 at a 3
+q4 get q3 0
+q5 ne q4 0
+q6 select q5 1 0
+q7 fold aw_reach_function_do q6 a id
+ret q7
+end
+fn aw_reach_round (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 0
+m set q0 117 0
+q1 at p0 1
+q2 get q1 11
+q3 at p0 1
+q4 at p0 2
+q5 at p0 3
+q6 at p0 4
+q7 rec m q3 q4 q5 q6
+q8 loop aw_ok aw_reach_function q2 q7
+ret q8
+end
+fn aw_map_function (u32x128,u32x16,u32x128,u32x128,io) u32 -> (u32x128,u32x16,u32x128,u32x128,io)
+a call aw_fnword p0 p1 13
+q0 at a 3
+q1 get q0 0
+kept ne q1 0
+b call aw_fnword a p1 14
+q2 at b 3
+q3 get q2 0
+exported ne q3 0
+m at b 0
+q4 get m 85
+q5 get m 91
+index add q4 q5
+q6 get m 91
+q7 select kept 1 0
+q8 add q6 q7
+m_1 set m 91 q8
+q9 get m_1 92
+q10 select exported 1 0
+q11 add q9 q10
+m_2 set m_1 92 q11
+q12 at b 1
+q13 at b 2
+q14 at b 3
+q15 at b 4
+q16 rec m_2 q12 q13 q14 q15
+q17 mul p1 16
+q18 add q17 12
+q19 select kept index 4294967295
+q20 call aw_put q16 9 q18 q19
+ret q20
+end
+fn aw_exports (u32x128,u32x16,u32x128,u32x128,io) -> (u32x128,u32x16,u32x128,u32x128,io)
+q0 at p0 1
+q1 get q0 11
+a loop aw_ok aw_seed_function q1 p0
+q2 at p0 0
+q3 get q2 93
+q4 ne q3 0
+q5 select q4 1 0
+b fold aw_resolve_roots q5 a
+q6 at b 0
+m set q6 117 1
+q7 at p0 1
+q8 get q7 11
+q9 at b 1
+q10 at b 2
+q11 at b 3
+q12 at b 4
+q13 rec m q9 q10 q11 q12
+c loop aw_reach_more aw_reach_round q8 q13
+q14 at c 0
+m_1 set q14 91 0
+m_2 set m_1 92 0
+q15 at p0 1
+q16 get q15 11
+q17 at c 1
+q18 at c 2
+q19 at c 3
+q20 at c 4
+q21 rec m_2 q17 q18 q19 q20
+q22 loop aw_ok aw_map_function q16 q21
+ret q22
+end
+fn arena_wasm_emit_options io u32x16 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+a call aw_geometry p0 p1 p2
+d call aw_options a p3
+q0 at d 0
+m set q0 85 3
+m_1 set m 87 16
+q1 get p1 11
+q2 at d 1
+q3 at d 2
+q4 at d 3
+q5 at d 4
+q6 rec m_1 q2 q3 q4 q5
+e loop aw_ok aw_program_geometry q1 q6
+q7 at e 0
+q8 get q7 88
+q9 ne q8 0
+q10 select q9 1 0
+area fold aw_strict_area q10 e
+q11 at area 0
+q12 get q11 88
+q13 ne q12 0
+q14 at area 0
+q15 get q14 16
+q16 select q13 q15 0
+f call aw_sum area q16 1024
+q17 at f 3
+q18 get q17 0
+padded call aw_sum f q18 15
+q19 at padded 3
+q20 get q19 0
+stack and q20 4294967280
+q21 at padded 0
+q22 get q21 87
+heap call aw_sum padded stack q22
+q23 at heap 0
+q24 at heap 0
+q25 get q24 88
+q26 ne q25 0
+q27 select q26 9 3
+m_2 set q23 85 q27
+q28 at heap 3
+q29 get q28 0
+m_3 set m_2 86 q29
+q30 at heap 1
+q31 at heap 2
+q32 at heap 3
+q33 at heap 4
+q34 rec m_3 q30 q31 q32 q33
+reachable call aw_exports q34
+q35 get p1 11
+g loop aw_ok aw_emit_function_kept q35 reachable
+h call aw_module g
+q36 at h 0
+code get q36 0
+q37 eq code 0
+q38 at h 0
+q39 get q38 3
+q40 get q38 4
+q41 get q38 5
+q42 rec q39 q40 q41
+q43 rec 0 0 0
+q44 select q37 q42 q43
+q45 at h 0
+q46 at h 4
+q47 rec code q44 q45 q46
+ret q47
+end
+fn arena_wasm_options -> u32x128
+q0 call arena_zero
+a set q0 0 1
+b set a 1 256
+c set b 2 1024
+q1 set c 4 1
+ret q1
+end
+fn arena_wasm_emit io u32x16 u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call arena_wasm_options
+a set q0 1 p3
+b set a 2 p4
+q1 call arena_wasm_emit_options p0 p1 p2 b
+ret q1
+end

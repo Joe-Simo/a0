@@ -58,7 +58,8 @@ test('seed-built A0 decimal conversion preserves binary64 bits, shortest strings
       assert.ok(built.ok, built.stderr);
     }
     const checked = runTool(process.execPath, [join(fixtures, 'oracle.mjs'), dir], {
-      timeoutMs: 660_000,
+      // Two complete O0/O2 batches, with a minute for input/oracle processing.
+      timeoutMs: 1_260_000,
     });
     assert.ok(checked.ok, `${checked.stdout}${checked.stderr}`);
   } finally {

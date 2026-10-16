@@ -1,0 +1,289 @@
+# Original-source Java service: all semantic/stage decisions remain A0.
+# Terminal7 is a refusal; pending means E0==0 and E1!=3, not status7 alone.
+use "verify_arena.a0"
+use "backend_context_arena.a0"
+use "emit_java_arena.a0"
+fn arena_java_status u32x128 -> u32
+q0 get p0 0
+q1 ne q0 0
+q2 get p0 0
+q3 get p0 1
+q4 eq q3 3
+q5 select q4 0 7
+q6 select q1 q2 q5
+ret q6
+end
+fn javas_verify (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+q0 at p0 1
+q call arena_verify_resume q0 1
+v at q 0
+status call arena_verify_status v
+q1 get v 0
+q2 ne q1 0
+q3 get v 1
+q4 eq q3 11
+terminal or q2 q4
+q5 at p0 0
+q6 select terminal status 0
+e set q5 0 q6
+q7 eq status 0
+q8 select q7 1 3
+q9 select terminal q8 0
+e_1 set e 1 q9
+q10 ne status 0
+q11 and terminal q10
+q12 select q11 1 0
+e_2 set e_1 5 q12
+q13 at p0 2
+q14 at p0 3
+q15 at p0 4
+q16 rec e_2 q q13 q14 q15
+ret q16
+end
+fn javas_unit_adapt (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+q at p0 1
+q0 at q 6
+q1 at q 1
+r call arena_backend_context q0 q1
+q2 at p0 0
+q3 at r 0
+e set q2 0 q3
+q4 at r 0
+q5 eq q4 0
+q6 select q5 2 3
+e_1 set e 1 q6
+q7 at r 0
+q8 eq q7 0
+q9 select q8 0 2
+e_2 set e_1 5 q9
+q10 at r 3
+q11 at q 0
+q12 at q 1
+q13 at q 2
+q14 at q 3
+q15 at q 4
+q16 at q 5
+q17 rec q11 q12 q13 q14 q15 q16 q10
+q18 at r 1
+q19 at r 2
+q20 at p0 4
+q21 rec e_2 q17 q18 q19 q20
+ret q21
+end
+fn javas_link_adapt (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+q at p0 1
+q0 at q 6
+q1 at q 1
+q2 at p0 4
+r call arena_backend_context_linked q0 q1 q2
+q3 at p0 0
+q4 at r 0
+e set q3 0 q4
+q5 at r 0
+q6 eq q5 0
+q7 select q6 2 3
+e_1 set e 1 q7
+q8 at r 0
+q9 eq q8 0
+q10 select q9 0 2
+e_2 set e_1 5 q10
+q11 at r 3
+q12 at q 0
+q13 at q 1
+q14 at q 2
+q15 at q 3
+q16 at q 4
+q17 at q 5
+q18 rec q12 q13 q14 q15 q16 q17 q11
+q19 at r 1
+q20 at r 2
+q21 at p0 4
+q22 rec e_2 q18 q19 q20 q21
+ret q22
+end
+fn javas_adapt (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+q0 at p0 0
+q1 get q0 8
+linked eq q1 1
+q2 select linked 0 1
+a fold javas_unit_adapt q2 p0
+q3 select linked 1 0
+q4 fold javas_link_adapt q3 a
+ret q4
+end
+fn javas_emit (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+q at p0 1
+q0 at q 6
+q1 at p0 2
+q2 at p0 3
+q3 at p0 0
+q4 get q3 9
+q5 at p0 0
+q6 get q5 10
+r call java_emit_options q0 q1 q2 q4 q6
+q7 at p0 0
+q8 at r 0
+e set q7 0 q8
+e_1 set e 1 3
+q9 at r 0
+q10 eq q9 0
+q11 select q10 0 3
+e_2 set e_1 5 q11
+q12 at r 1
+q13 at q12 0
+m0_a set e_2 16 q13
+q14 at q12 1
+m0_b set m0_a 17 q14
+q15 at q12 2
+q16 set m0_b 18 q15
+q17 at r 2
+q18 at q 0
+q19 at q 1
+q20 at q 2
+q21 at q 3
+q22 at q 4
+q23 at q 5
+q24 rec q18 q19 q20 q21 q22 q23 q17
+q25 at p0 2
+q26 at p0 3
+q27 at p0 4
+q28 rec q16 q24 q25 q26 q27
+ret q28
+end
+fn javas_step (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+e at p0 0
+q0 get e 0
+q1 eq q0 0
+q2 get e 1
+phase select q1 q2 3
+q3 eq phase 0
+q4 select q3 1 0
+a fold javas_verify q4 p0
+q5 eq phase 1
+q6 select q5 1 0
+b fold javas_adapt q6 a
+q7 eq phase 2
+q8 select q7 1 0
+q9 fold javas_emit q8 b
+ret q9
+end
+fn javas_more (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) u32 -> bool
+e at p0 0
+q0 get e 0
+q1 eq q0 0
+q2 get e 1
+q3 ne q2 3
+q4 and q1 q3
+ret q4
+end
+fn arena_java_resume (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+q0 loop javas_more javas_step p1 p0
+ret q0
+end
+fn arena_java_begin io u32 u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+q call arena_parse_verify_begin p0 p1 p2
+z call arena_zero
+v at q 0
+m at q 1
+q0 get v 0
+q1 eq q0 0
+q2 get m 54
+q3 ne q2 0
+imports and q1 q3
+q4 get v 0
+q5 ne q4 0
+q6 get v 0
+q7 select imports 7 0
+code select q5 q6 q7
+e set z 0 code
+q8 eq code 0
+q9 select q8 0 3
+e_1 set e 1 q9
+e_2 set e_1 2 1
+e_3 set e_2 3 p1
+e_4 set e_3 4 p2
+q10 ne code 0
+q11 select q10 1 0
+q12 select imports 4 q11
+e_5 set e_4 5 q12
+q13 set e_5 9 256
+e_6 set q13 10 1024
+ctx arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+q14 rec e_6 q ctx z z
+ret q14
+end
+fn javas_linked_verify_begin (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+q at p0 1
+parsed at q 1
+q0 at q 6
+fresh call arena_verify_begin q0 parsed
+v at fresh 0
+q1 get v 0
+q2 at p0 0
+e set q2 0 q1
+q3 eq q1 0
+q4 select q3 0 3
+e_1 set e 1 q4
+q5 ne q1 0
+q6 select q5 1 0
+e_2 set e_1 5 q6
+q7 at p0 2
+q8 at p0 3
+q9 at p0 4
+q10 rec e_2 fresh q7 q8 q9
+ret q10
+end
+fn arena_java_linked_begin io u32x128 u32x128 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+z call arena_zero
+q0 get p2 0
+e set z 0 q0
+q1 eq q0 0
+q2 select q1 0 3
+e_1 set e 1 q2
+e_2 set e_1 2 1
+q3 get p1 6
+e_3 set e_2 3 q3
+q4 get p1 7
+e_4 set e_3 4 q4
+q5 ne q0 0
+q6 select q5 5 0
+e_5 set e_4 5 q6
+e_6 set e_5 8 1
+q7 set e_6 9 256
+e_7 set q7 10 1024
+ctx arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+q8 rec z p1 z z z z p0
+q9 eq q0 0
+q10 select q9 1 0
+q11 rec e_7 q8 ctx z p2
+q12 fold javas_linked_verify_begin q10 q11
+ret q12
+end
+fn arena_java_result (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128) -> (u32,(u32,u32,u32),io)
+q0 at p0 0
+status call arena_java_status q0
+q1 at p0 0
+q2 get q1 16
+q3 get q1 17
+q4 get q1 18
+q5 eq status 0
+q6 rec q2 q3 q4
+q7 rec 0 0 0
+view select q5 q6 q7
+q8 at p0 1
+q9 at q8 6
+q10 rec status view q9
+ret q10
+end
+fn arena_java_begin_options io u32 u32 u32 u32 -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+j call arena_java_begin p0 p1 p2
+q0 at j 0
+q1 set q0 9 p3
+e set q1 10 p4
+q2 at j 1
+q3 at j 2
+q4 at j 3
+q5 at j 4
+q6 rec e q2 q3 q4 q5
+ret q6
+end

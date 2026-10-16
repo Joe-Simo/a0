@@ -1,0 +1,229 @@
+raw # Canonical content and transitive semantic revisions; no source-only hash substitute.
+raw use "format_arena.a0"
+extern arena_zero() -> u32x128
+extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+extern av_store(io,(u32,u32,u32),u32,u32,u32x128) -> (u32,io)
+extern ad_append((u32,(u32,u32,u32),io),u32,u32x128) -> (u32,(u32,u32,u32),io)
+extern ad_string((u32,(u32,u32,u32),io),(u32,u32,u32)) -> (u32,(u32,u32,u32),io)
+extern ad_copy((u32,(u32,u32,u32),io),u32,u32,u32) -> (u32,(u32,u32,u32),io)
+extern af_k((u32,(u32,u32,u32),io),u32x128) -> (u32,(u32,u32,u32),u32x128,io)
+extern af_fail((u32,(u32,u32,u32),u32x128,io),u32) -> (u32,(u32,u32,u32),u32x128,io)
+extern af_byte((u32,(u32,u32,u32),u32x128,io),u32) -> (u32,(u32,u32,u32),u32x128,io)
+extern af_row((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),u32,u32) -> ((u32,(u32,u32,u32),u32x128,io),u32x128)
+extern af_symbol((u32,(u32,u32,u32),u32x128,io),u32x128,u32) -> (u32,(u32,u32,u32),u32x128,io)
+extern af_schema((u32,(u32,u32,u32),u32x128,io),u32x128,u32x128,u32,u32) -> (u32,(u32,u32,u32),u32x128,io)
+extern arena_format(io,u32x128,u32x128,u32,u32,bool) -> (u32,(u32,u32,u32),io)
+extern arena_sha256_hex(io,u32,u32) -> (u32,(u32,u32,u32),io)
+def arev_vec(m:u32x128,o:u32) -> (u32,u32,u32)
+ return (m[o],m[o+1],m[o+2])
+end
+def arev_setvec(m:u32x128,o:u32,v:(u32,u32,u32)) -> u32x128
+ let a=set(m,o,v#0)
+ let b=set(a,o+1,v#1)
+ return set(b,o+2,v#2)
+end
+def arev_s(k:(u32,(u32,u32,u32),u32x128,io)) -> (u32,(u32,u32,u32),io)
+ return (k#0,k#1,k#3)
+end
+fn arev_string(k:(u32,(u32,u32,u32),u32x128,io),v:(u32,u32,u32)) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=k#2
+ return af_k(ad_string(arev_s(k),v),d)
+end
+fn arev_copy(k:(u32,(u32,u32,u32),u32x128,io),h:u32,start:u32,length:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=k#2
+ return af_k(ad_copy(arev_s(k),h,start,length),d)
+end
+fn arev_content(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=k#2
+ let r=arena_format(k#3,m,ps,mode,id,skip)
+ return (r#0,r#1,d,r#2)
+end
+fn arev_hash(k:(u32,(u32,u32,u32),u32x128,io),i:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=k#2
+ let view=k#1
+ let r=arena_sha256_hex(k#3,view#0,view#1)
+ return (r#0,r#1,d,r#2)
+end
+fn arev_content_hash(k:(u32,(u32,u32,u32),u32x128,io),m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool) -> (u32,(u32,u32,u32),u32x128,io)
+ let a=fold(arev_content,k#0==0?1:0,k,m,ps,mode,id,skip)
+ return fold(arev_hash,a#0==0?1:0,a)
+end
+fn arev_read_do(r:((u32,(u32,u32,u32),u32x128,io),u32),i:u32,h:u32,off:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32)
+ let k=r#0
+ let d=k#2
+ let out=k#1
+ let a=arena_load(k#3,h,off,1)
+ return ((a#0,out,d,a#2),get(a#1,0))
+end
+fn arev_read(k:(u32,(u32,u32,u32),u32x128,io),h:u32,off:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32)
+ return fold(arev_read_do,k#0==0?1:0,(k,0),h,off)
+end
+fn arev_cmp_more(r:((u32,(u32,u32,u32),u32x128,io),u32),i:u32,lh:u32,ls:u32,rh:u32,rs:u32) -> bool
+ return (r#0#0==0)&(r#1==0)
+end
+fn arev_cmp_step(r:((u32,(u32,u32,u32),u32x128,io),u32),i:u32,lh:u32,ls:u32,rh:u32,rs:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32)
+ let a=arev_read(r#0,lh,ls+i)
+ let left=a#1
+ let b=arev_read(a#0,rh,rs+i)
+ let right=b#1
+ return (b#0,left==right?0:(left<right?1:2))
+end
+fn arev_compare(k:(u32,(u32,u32,u32),u32x128,io),m:u32x128,left:u32,right:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32)
+ let a=af_row(k,arev_vec(m,62),left,5)
+ let lr=a#1
+ let b=af_row(a#0,arev_vec(m,62),right,5)
+ let rr=b#1
+ let spans=(lr[1]<=4294967295-lr[2])&(rr[1]<=4294967295-rr[2])
+ let c=af_fail(b#0,spans?0:7)
+ let count=lr[2]<rr[2]?lr[2]:rr[2]
+ let d=loop(arev_cmp_more,arev_cmp_step,count,(c,0),lr[0],lr[1],rr[0],rr[1])
+ let order=d#1
+ let length=lr[2]==rr[2]?0:(lr[2]<rr[2]?1:2)
+ return (d#0,order==0?length:order)
+end
+fn arev_dep_more(r:((u32,(u32,u32,u32),u32x128,io),u32,u32,bool),i:u32,m:u32x128,symbol:u32) -> bool
+ return (r#0#0==0)&(r#1<r#2)&!r#3
+end
+fn arev_dep_step(r:((u32,(u32,u32,u32),u32x128,io),u32,u32,bool),i:u32,m:u32x128,symbol:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32,u32,bool)
+ let mid=r#1+(r#2-r#1)/2
+ let k=r#0
+ let a=af_row(k,arev_vec(k#2,19),mid,1)
+ let b=af_row(a#0,arev_vec(m,41),get(a#1,0),14)
+ let compared=arev_compare(b#0,m,get(b#1,0),symbol)
+ let order=compared#1
+ return (compared#0,order==1?mid+1:r#1,order==1?r#2:mid,order==0)
+end
+fn arev_dep_append(k:(u32,(u32,u32,u32),u32x128,io),i:u32,value:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=k#2
+ let out=k#1
+ let page=set(arena_zero(),0,value)
+ let a=av_append(k#3,arev_vec(d,19),1,page)
+ return (a#0,out,arev_setvec(d,19,a#1),a#2)
+end
+fn arev_dep_shift_more(k:(u32,(u32,u32,u32),u32x128,io),i:u32,length:u32) -> bool
+ return k#0==0
+end
+fn arev_dep_shift(k:(u32,(u32,u32,u32),u32x128,io),i:u32,length:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let from=length-1-i
+ let a=af_row(k,arev_vec(k#2,19),from,1)
+ let next=a#0
+ let d=next#2
+ let out=next#1
+ let stored=av_store(next#3,arev_vec(d,19),from+1,1,a#1)
+ return (stored#0,out,d,stored#1)
+end
+fn arev_dep_write(k:(u32,(u32,u32,u32),u32x128,io),i:u32,pos:u32,value:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=k#2
+ let out=k#1
+ let page=set(arena_zero(),0,value)
+ let r=av_store(k#3,arev_vec(d,19),pos,1,page)
+ return (r#0,out,d,r#1)
+end
+fn arev_dep_insert(k:(u32,(u32,u32,u32),u32x128,io),i:u32,pos:u32,value:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let length=get(k#2,20)
+ let a=fold(arev_dep_append,k#0==0?1:0,k,value)
+ let b=loop(arev_dep_shift_more,arev_dep_shift,length-pos,a,length)
+ return fold(arev_dep_write,b#0==0?1:0,b,pos,value)
+end
+fn arev_dep_add(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,id:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=k#2
+ let valid=id<d[22]
+ let a=af_fail(k,valid?0:6)
+ let b=af_row(a,arev_vec(m,41),id,14)
+ let symbol=get(b#1,0)
+ let next=b#0
+ let length=get(next#2,20)
+ let c=loop(arev_dep_more,arev_dep_step,33,(next,0,length,false),m,symbol)
+ return fold(arev_dep_insert,!c#3?1:0,c#0,c#1,id)
+end
+fn arev_calls_more(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,first:u32) -> bool
+ return k#0==0
+end
+fn arev_calls(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,first:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let r=af_row(k,arev_vec(m,100),first+i,2)
+ let row=r#1
+ let a=fold(arev_dep_add,row[0]!=4294967295?1:0,r#0,m,row[0])
+ return fold(arev_dep_add,row[1]!=4294967295?1:0,a,m,row[1])
+end
+fn arev_dependency_more(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128) -> bool
+ return k#0==0
+end
+fn arev_dependency(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
+ let r=af_row(k,arev_vec(k#2,19),i,1)
+ let id=get(r#1,0)
+ let name=af_row(r#0,arev_vec(m,41),id,14)
+ let a=af_byte(name#0,124)
+ let b=af_symbol(a,m,get(name#1,0))
+ let c=af_byte(b,61)
+ let d=c#2
+ return arev_copy(c,d[16],id*64,64)
+end
+fn arev_semantic_prefix(k:(u32,(u32,u32,u32),u32x128,io),i:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let page=arena_zero()
+ let page=set(page,0,112)
+ let page=set(page,1,114)
+ let page=set(page,2,111)
+ let page=set(page,3,102)
+ let page=set(page,4,105)
+ let page=set(page,5,108)
+ let page=set(page,6,101)
+ let page=set(page,7,32)
+ let page=set(page,8,115)
+ let page=set(page,9,116)
+ let page=set(page,10,114)
+ let page=set(page,11,105)
+ let page=set(page,12,99)
+ let page=set(page,13,116)
+ let page=set(page,14,124)
+ let d=k#2
+ let s=ad_append(arev_s(k),15,page)
+ return af_k(s,d)
+end
+fn arev_memo_store(k:(u32,(u32,u32,u32),u32x128,io),i:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let view=k#1
+ let r=af_row(k,view,0,64)
+ let next=r#0
+ let d=next#2
+ let out=next#1
+ let stored=av_append(next#3,arev_vec(d,16),64,r#1)
+ return (stored#0,out,arev_setvec(d,16,stored#1),stored#2)
+end
+fn arev_sem_function(k:(u32,(u32,u32,u32),u32x128,io),id:u32,m:u32x128,ps:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=arev_setvec(k#2,19,(0,0,0))
+ let d=set(d,22,id)
+ let initialized=(k#0,k#1,d,k#3)
+ let own=arev_content_hash(initialized,m,ps,0,id,true)
+ let ownhash=own#1
+ let empty=(own#0,(0,0,0),own#2,own#3)
+ let prefixed=fold(arev_semantic_prefix,m[8]==1?1:0,empty)
+ let text=arev_string(prefixed,ownhash)
+ let r=af_row(text,arev_vec(m,41),id,14)
+ let row=r#1
+ let a=loop(arev_calls_more,arev_calls,row[5],r#0,m,row[4])
+ let b=loop(arev_dependency_more,arev_dependency,get(a#2,20),a,m)
+ let c=fold(arev_hash,b#0==0?1:0,b)
+ return fold(arev_memo_store,c#0==0?1:0,c)
+end
+fn arev_sem_more(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,ps:u32x128) -> bool
+ return k#0==0
+end
+fn arev_semantics(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,ps:u32x128,id:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let nodes=m[45]/14
+ let checked=(m[0]==0)&(m[96]==1)&(nodes<=2147483647)&(m[101]==nodes*2)
+ let a=af_fail(k,checked?0:7)
+ let b=af_fail(a,id<67108863?0:3)
+ return loop(arev_sem_more,arev_sem_function,id+1,b,m,ps)
+end
+fn arev_content_entry(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,ps:u32x128,mode:u32,id:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ return arev_content_hash(k,m,ps,mode,id,false)
+end
+fn arena_revision(t:io,m:u32x128,ps:u32x128,mode:u32,id:u32) -> (u32,(u32,u32,u32),io)
+ let d=set(set(arena_zero(),1,0x41305256),2,1)
+ let start=(0,(0,0,0),d,t)
+ let a=af_fail(start,mode<=2?0:6)
+ let b=af_schema(a,m,ps,mode==1?1:0,id)
+ let c=fold(arev_content_entry,mode<2?1:0,b,m,ps,mode,id)
+ let out=fold(arev_semantics,mode==2?1:0,c,m,ps,id)
+ return (out#0,out#0==0?out#1:(0,0,0),out#3)
+end

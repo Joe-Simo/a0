@@ -1,0 +1,46 @@
+fn step (u32x2,u32) u32 u32 -> (u32x2,u32)
+h at p0 0
+old get h p1
+v add old p2
+a set h p1 v
+c at p0 1
+d add c old
+s rec a d
+ret s
+end
+fn pred (u32x2,u32) u32 u32 -> bool
+b lt p1 3
+ret b
+end
+fn probe u32 u32 -> u32
+a arr p0 p1
+s rec a 0
+old at s 0
+holder arr old old
+r loop pred step 17 s p1
+h at r 0
+c at r 1
+old_again get holder 1
+x get old_again 0
+y get h 0
+z mul x 31
+v add z y
+out add v c
+ret out
+end
+fn copy u32x2 -> u32x2
+ret p0
+end
+fn nested u32 u32 -> u32
+a arr p0 p1
+b arr p1 p0
+r arr a b
+t set r 0 b
+old get r 0
+now get t 0
+x get old 0
+y get now 0
+z mul x 31
+out add z y
+ret out
+end

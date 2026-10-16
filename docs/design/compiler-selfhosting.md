@@ -20,15 +20,22 @@ optimization, target ABI decisions and code emission belong in A0.
 | Evaluation | `compiler/evalrun.a0`, experimental `eval_arena.a0` with full-word frames and continuations | Connect command/spec evaluation and full diagnostics; address allocation retention and production resource/performance behavior. The native driver's C evaluator is also compiler logic that must migrate. |
 | Optimization | `compiler/optimize.a0`, `shape.a0`, including canonical checked operations | Preserve reference behavior, support strict metadata and existing input sizes, and use these stages for every target. Checked bodies conservatively decline fusion. Ordinary emits still use `src/optimize.ts`. |
 | C | `compiler/emit_c.a0`, experimental arena-table `emit_c_arena.a0` | Full strict metadata; current aggregate ABI, arena, ownership, parallel and option behavior. |
-| Darwin arm64 | `compiler/emit_arm64.a0` | Strict traps and metadata; current backend ABI, ownership and option behavior. |
-| Direct Wasm | `compiler/emit_wasm.a0`, `wasm_code.a0` | Strict traps and metadata; full optimizer/frontend parity and authoritative command routing. |
-| Other code generators | `compiler/emit_js.a0`, `emit_java.a0`, `emit_sv.a0`, `emit_x86_64.a0`, `emit_riscv64.a0`, `emit_arm32.a0`; experimental AVR/C#/Metal modules and arena JS/x86/C# source services | Complete their documented frontend/strict/option and optimizer interfaces, original ownership/resource behavior and production routing. AVR and the legacy source ports retain fixed frontend limits; target execution evidence differs by platform. `compiler/asm_x86_64.a0` assembles instructions; it does not generate a program from A0 IR. |
+| Darwin arm64 | `compiler/emit_arm64.a0`, experimental `emit_arm64_arena.a0` and source/linked services | Arena strict traps and original metadata are tested in an independent instruction model. Complete current ownership, optimizer and option behavior, hardware execution and public routing. |
+| Direct Wasm | `compiler/emit_wasm.a0`, `wasm_code.a0`, experimental `emit_wasm_arena.a0` and source service | Arena canonical/strict modules execute in the Wasm runtime. Complete optimizer, SIMD/unroll/packing and linked frontend parity, and authoritative command routing. |
+| Other code generators | Legacy JS/Java/SystemVerilog/x86/RISC-V/ARM32 ports; experimental AVR/C#/Metal modules and arena JS/x86/C#/RISC-V/Java services | Complete their documented option and optimizer interfaces, original ownership/resource behavior and production routing. Arena RISC-V uses an independent instruction model; Java has selected JVM execution. AVR and the legacy source ports retain fixed frontend limits; target execution evidence differs by platform. `compiler/asm_x86_64.a0` assembles instructions; it does not generate a program from A0 IR. |
 | Assembly and executable writing | `compiler/asm_arm64.a0`, `asm_x86_64.a0`, `macho.a0` | Connect arena-based ELF/PE writers and existing ports to the full A0 pipeline; preserve platform and ABI validation. |
-| Formatting and revisions | Arena SHA-256 and unsigned-decimal binary64/shortest-text components | Canonical function/program/source formatting, semantic revisions and edit/session operations still use TypeScript. |
+| Formatting and revisions | Arena canonical formatter, semantic revisions, SHA-256, UTF-8 decoding/provenance and unsigned-decimal binary64/shortest-text components | Connect the experimental formatter/revision APIs to production, complete dense formatting and arbitrary interior UTF-16 mappings, and migrate edit/session policy. Ordinary formatting and edits still use TypeScript. |
 | Production entrypoints | A0 plain-check acceleration and the website's A0 optimizer/Wasm emitter | Route CLI, MCP and editor semantic operations through the complete A0 service. Replace semantic parts of `tools/native/a0.c`; update release packaging and smoke tests. |
 | Authoring/bootstrap | Checked-in self-reproducing C seed | Retain seed verification, port semantic source/chunk planning, and remove TypeScript generation dependencies from normal compiler builds. A0S/A0M generators also need an explicit bootstrap/authoring boundary. |
 
 Experimental interfaces and current limits are documented in [Arena frontend](arena-frontend.md) and [Compiler ports](compiler-ports.md). The public CLI still uses the reference frontend/backends. The arena source services share [full-word checked tables](../arena-backend-context.md); [linked verification](../arena-linked-verifier.md), [JavaScript](../arena-js.md), [C#](../arena-csharp.md), [number conversion](compiler-numbers.md) and [hashing](compiler-revisions.md) have separate native tests and explicit integration limits.
+
+Additional experimental APIs and their limits are documented for [arm64](../arena-arm64.md),
+[Wasm](../arena-wasm.md), [formatting](arena-format.md) and [UTF-8](../arena-utf8.md).
+[Java](arena-java.md) retains explicit JVM artifact-planning limits and selected target execution.
+[RISC-V](../arena-riscv64.md) retains explicit option limits and source/table/platform distinctions.
+Native fixtures establish the tested behavior; they do not establish
+whole-compiler parity or a runtime, compile-time or token-cost advantage.
 
 ## Migration rules
 

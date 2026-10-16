@@ -1,0 +1,139 @@
+raw # Original-source Java service: all semantic/stage decisions remain A0.
+raw # Terminal7 is a refusal; pending means E0==0 and E1!=3, not status7 alone.
+raw use "verify_arena.a0"
+raw use "backend_context_arena.a0"
+raw use "emit_java_arena.a0"
+extern arena_zero() -> u32x128
+extern arena_parse_verify_begin(io,u32,u32) -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+extern arena_verify_begin(io,u32x128) -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+extern arena_verify_resume((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32) -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+extern arena_verify_status(u32x128) -> u32
+extern arena_backend_context(io,u32x128) -> (u32,u32x16,u32x128,io)
+extern arena_backend_context_linked(io,u32x128,u32x128) -> (u32,u32x16,u32x128,io)
+extern java_emit_options(io,u32x16,u32x128,u32,u32) -> (u32,(u32,u32,u32),io)
+def javas_qio(q:(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),t:io) -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+ return (q#0,q#1,q#2,q#3,q#4,q#5,t)
+end
+def javas_getio(q:(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)) -> io
+ return q#6
+end
+def javas_vec(p:u32x128,o:u32) -> (u32,u32,u32)
+ return (p[o],p[o+1],p[o+2])
+end
+def javas_setvec(p:u32x128,o:u32,v:(u32,u32,u32)) -> u32x128
+ let a=set(p,o,v#0)
+ let b=set(a,o+1,v#1)
+ return set(b,o+2,v#2)
+end
+fn arena_java_status(e:u32x128) -> u32
+ return e[0]!=0?e[0]:(e[1]==3?0:7)
+end
+fn javas_verify(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128),i:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let q=arena_verify_resume(j#1,1)
+ let v=q#0
+ let status=arena_verify_status(v)
+ let terminal=(v[0]!=0)|(v[1]==11)
+ let e=set(j#0,0,terminal?status:0)
+ let e=set(e,1,terminal?(status==0?1:3):0)
+ let e=set(e,5,terminal&(status!=0)?1:0)
+ return (e,q,j#2,j#3,j#4)
+end
+fn javas_unit_adapt(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128),i:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let q=j#1
+ let r=arena_backend_context(q#6,q#1)
+ let e=set(j#0,0,r#0)
+ let e=set(e,1,r#0==0?2:3)
+ let e=set(e,5,r#0==0?0:2)
+ return (e,javas_qio(q,r#3),r#1,r#2,j#4)
+end
+fn javas_link_adapt(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128),i:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let q=j#1
+ let r=arena_backend_context_linked(q#6,q#1,j#4)
+ let e=set(j#0,0,r#0)
+ let e=set(e,1,r#0==0?2:3)
+ let e=set(e,5,r#0==0?0:2)
+ return (e,javas_qio(q,r#3),r#1,r#2,j#4)
+end
+fn javas_adapt(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128),i:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let linked=j#0[8]==1
+ let a=fold(javas_unit_adapt,linked?0:1,j)
+ return fold(javas_link_adapt,linked?1:0,a)
+end
+fn javas_emit(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128),i:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let q=j#1
+ let r=java_emit_options(q#6,j#2,j#3,j#0[9],j#0[10])
+ let e=set(j#0,0,r#0)
+ let e=set(e,1,3)
+ let e=set(e,5,r#0==0?0:3)
+ let e=javas_setvec(e,16,r#1)
+ return (e,javas_qio(q,r#2),j#2,j#3,j#4)
+end
+fn javas_step(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128),i:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let e=j#0
+ let phase=e[0]==0?e[1]:3
+ let a=fold(javas_verify,phase==0?1:0,j)
+ let b=fold(javas_adapt,phase==1?1:0,a)
+ return fold(javas_emit,phase==2?1:0,b)
+end
+fn javas_more(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128),i:u32) -> bool
+ let e=j#0
+ return (e[0]==0)&(e[1]!=3)
+end
+fn arena_java_resume(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128),quantum:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ return loop(javas_more,javas_step,quantum,j)
+end
+fn arena_java_begin(t:io,source:u32,length:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let q=arena_parse_verify_begin(t,source,length)
+ let z=arena_zero()
+ let v=q#0
+ let m=q#1
+ let imports=(v[0]==0)&(m[54]!=0)
+ let code=v[0]!=0?v[0]:(imports?7:0)
+ let e=set(z,0,code)
+ let e=set(e,1,code==0?0:3)
+ let e=set(e,2,1)
+ let e=set(e,3,source)
+ let e=set(e,4,length)
+ let e=set(e,5,imports?4:(code!=0?1:0))
+ let e=set(set(e,9,256),10,1024)
+ let ctx=arr(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+ return (e,q,ctx,z,z)
+end
+fn javas_linked_verify_begin(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128),i:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let q=j#1
+ let parsed=q#1
+ let fresh=arena_verify_begin(q#6,parsed)
+ let v=fresh#0
+ let code=v[0]
+ let e=set(j#0,0,code)
+ let e=set(e,1,code==0?0:3)
+ let e=set(e,5,code!=0?1:0)
+ return (e,fresh,j#2,j#3,j#4)
+end
+fn arena_java_linked_begin(t:io,parsed:u32x128,linkstate:u32x128) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let z=arena_zero()
+ let code=linkstate[0]
+ let e=set(z,0,code)
+ let e=set(e,1,code==0?0:3)
+ let e=set(e,2,1)
+ let e=set(e,3,parsed[6])
+ let e=set(e,4,parsed[7])
+ let e=set(e,5,code!=0?5:0)
+ let e=set(e,8,1)
+ let e=set(set(e,9,256),10,1024)
+ let q=(z,parsed,z,z,z,z,t)
+ let ctx=arr(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+ let j=(e,q,ctx,z,linkstate)
+ return fold(javas_linked_verify_begin,code==0?1:0,j)
+end
+fn arena_java_result(j:(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)) -> (u32,(u32,u32,u32),io)
+ let status=arena_java_status(j#0)
+ let out=javas_vec(j#0,16)
+ let view=status==0?out:(0,0,0)
+ return (status,view,javas_getio(j#1))
+end
+fn arena_java_begin_options(t:io,source:u32,length:u32,inputCapacity:u32,outputCapacity:u32) -> (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,u32x128)
+ let j=arena_java_begin(t,source,length)
+ let e=set(set(j#0,9,inputCapacity),10,outputCapacity)
+ return (e,j#1,j#2,j#3,j#4)
+end

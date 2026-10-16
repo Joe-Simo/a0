@@ -3,7 +3,18 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { after, test } from 'node:test';
-import { normalizeLine, parse, stripComment, validate, validateFunction } from '../src/core.js';
+import {
+  ALL_OPS,
+  isDirectCallee,
+  isRetNodeForm,
+  normalizeLine,
+  OP_ARITY,
+  opOf,
+  parse,
+  stripComment,
+  validate,
+  validateFunction,
+} from '../src/core.js';
 import { A0Error } from '../src/diagnostics.js';
 import { link } from '../src/link.js';
 import { findClang, runTool } from '../src/toolchain.js';
@@ -204,9 +215,9 @@ const functionCases = [
 ];
 cases.push(...functionCases);
 const unsupported = [
-  f(`${String.raw`a text "\q"`}\nret 0`),
-  f('ret 0', 'u32', 'bol'),
   'fn f -> u32\nex -> 1\nret 1\nend\n',
+  'fn f -> u32\nex ? -> 1\nret 0\nend\n',
+  'fn f -> u32\nex -> []\nret 0\nend\n',
 ];
 
 // A0218 formats the exact original trip×accepted callee bound as JS Number text.
@@ -652,6 +663,489 @@ parameterCases.push(empty.replace('p1', `p1${'0'.repeat(2097152 - Buffer.byteLen
 
 cases.push(...parameterCases);
 
+// A0008 reports the first escaped UTF16 code unit, including a lone high surrogate.
+const text = (raw: string, id = 'a') => f(`${id} text "${raw}"\nret 0`);
+const unknowns = [
+  ...Array.from({ length: 128 }, (_, i) => i).filter(
+    (cp) => ![10, 13, 34, 92, 110, 116].includes(cp),
+  ),
+  0x80,
+  0x85,
+  0xa0,
+  0x130,
+  0x131,
+  0x212a,
+  0x2027,
+  0x202a,
+  0x202f,
+  0xfeff,
+  0xd7ff,
+  0xe000,
+  0xffff,
+  0x10000,
+  0x10400,
+  0x1f600,
+  0x10ffff,
+];
+const textEscapeCases = [
+  ...unknowns.map((cp) => text(`\\${String.fromCodePoint(cp)}`)),
+  ...['\\n', '\\t', '\\"', '\\\\', 'hello', '🙂'].map((prefix) => text(`${prefix}\\q`)),
+  text('\\q\\🙂'),
+  text('\\🙂\\q'),
+  text('🙂\\🙂'),
+  text('\\𐐀🙂'),
+  ...[0, 1, 126, 127, 128].map((padding) => text(`${'x'.repeat(padding)}\\🙂`)),
+  ...[0, 1, 126, 127, 128].map((padding) => text(`${'x'.repeat(padding)}\\K`)),
+  f('ret text "\\q"'),
+  f('retval mov p0\nret text "\\🙂"'),
+  `#🙂 escapes\n${text('hello\\🙂').replaceAll('\n', '\r\n')}`,
+  `profile strict\n${text('hello\\🙂')}`,
+  text('\\q', 'Bad'),
+  text('\\🙂', 'value:'), // ID validation wins before decode.
+  f('a mov 1,2\nret a'), // Operand grammar does not enter text decoding.
+  text(''), // Empty text remains A0006.
+];
+// Additional same-binary coverage: decode errors precede the text byte limit.
+textEscapeCases.push(
+  text(`${'x'.repeat(65537)}\\q`),
+  text(`${'🙂'.repeat(20000)}\\q`),
+  text(`${'x'.repeat(127)}\\\\\\🙂`),
+  text(`${'x'.repeat(65537)}\\🙂`),
+);
+
+cases.push(...textEscapeCases);
+
+// A0013 retains case fixes and removes edits on synthetic inline-return failures.
+const names = [
+  'BAD',
+  'SomeName',
+  'HTTPServer',
+  'P0',
+  'P4294967296',
+  'ADD',
+  'CALL',
+  'FOLD',
+  'TRUE',
+  'FN',
+  'RET',
+  'END',
+  'PATCH',
+  'FALSE',
+  'bad-name',
+  '_bad',
+  '0bad',
+  'name:',
+  'a.b',
+  'K',
+  'aKB',
+  'İ',
+  'aİB',
+  'Σ',
+  '𐐀',
+  '🙂',
+  'K'.repeat(64),
+  'K'.repeat(65),
+  'A'.repeat(64),
+  'A'.repeat(65),
+  'A'.repeat(8193),
+  '0x10',
+  'name,',
+  '"BAD"',
+];
+const invalidCalleeCases = [
+  ...['call', 'fold'].flatMap((op) => names.map((name) => f(`a ${op} ${name} p0\nret a`))),
+  f('a call\nret 0'),
+  f('a fold\nret 0'),
+  f('ret call'),
+  f('ret fold'),
+  f('ret call BAD p0'),
+  f('ret fold BAD 3 p0'),
+  f('retval mov p0\nret call BAD p0'),
+  f('retval mov p0\nretval1 mov p0\nret fold K 3 p0'),
+  f('ret call TRUE'),
+  f('ret fold "BAD" 3 p0'),
+  `#🙂 callee\n${f('  a   call   aKB   p0 #🙂\nret a').replaceAll('\n', '\r\n')}`,
+  `profile strict\n${f('a call BAD p0\nret a')}`,
+  `fn before -> u32\nret true\nend\n${f('a call BAD p0\nret a')}`, // Whole-source parse wins before earlier type error.
+  f('a mov 1,2\nb call BAD p0\nret b'),
+  ...Array.from({ length: 3 }, (_, i) => f(`a call ${'A'.repeat(125 + i)}K p0\nret a`)),
+];
+
+cases.push(...invalidCalleeCases);
+
+// A0011 selects symbol, assignment, case and default hints in A0.
+const symbols = [
+  '==',
+  '!=',
+  '<',
+  '<=',
+  '>',
+  '>=',
+  '+',
+  '-',
+  '*',
+  '/',
+  '%',
+  '&',
+  '&&',
+  '|',
+  '||',
+  '^',
+  '<<',
+  '>>',
+];
+const operationNames = [...ALL_OPS, 'udiv', 'urem']
+  .map((s) => s.toUpperCase())
+  .concat([
+    'F',
+    'F1',
+    'FOO_BAR',
+    'K',
+    'aKB',
+    'P0',
+    'P4294967296',
+    'TEXT',
+    'TRUE',
+    'FN',
+    'RET',
+    'PATCH',
+    'END',
+    'FALSE',
+    'PRE',
+    'POST',
+    'EX',
+    'PROFILE',
+    'IO',
+    'BOOL',
+    'U32',
+    'İ',
+    'aİB',
+    'Σ',
+    '𐐀',
+    '🙂',
+    'A'.repeat(64),
+    'A'.repeat(65),
+    'A'.repeat(8193),
+    'K'.repeat(64),
+    'K'.repeat(65),
+  ]);
+const operationCases = [
+  f('a = mov 0\nret a'), // Former unsupported control becomes an exact positive.
+  ...symbols.flatMap((op) =>
+    [0, 1, 2, 3].map((n) => f(`a ${op}${n ? ` ${Array(n).fill('p0').join(' ')}` : ''}\nret a`)),
+  ),
+  ...operationNames.map((op) => f(`a ${op} p0 p0\nret a`)),
+  f('a =\nret 0'),
+  f('a = p0\nret a'),
+  f('a = add p0 1\nret a'),
+  f('value = add p0 1 #comment\nret value'),
+  ...[
+    '???',
+    '!',
+    '===',
+    '+=',
+    '&&&',
+    'text',
+    'fn',
+    'ret',
+    'end',
+    'patch',
+    'true',
+    'false',
+    '0x10',
+    '0X10',
+    'name:',
+    '"BAD"',
+  ].map((op) => f(`a ${op} p0\nret a`)),
+  f('a text "unfinished\nret 0'),
+  f('a text "ok" extra\nret 0'),
+  f('ret ADD p0 1'),
+  f('Bad ADD p0 1\nret 0'),
+  `#🙂 operation\n${f('  value   ==   p0   p0 #🙂\nret value').replaceAll('\n', '\r\n')}`,
+  `#🙂 assign\n${f('  value   =   add   p0   1 #🙂\nret value').replaceAll('\n', '\r\n')}`,
+  `#🙂 case\n${f('  value   aKB   p0 #🙂\nret value').replaceAll('\n', '\r\n')}`,
+  `profile strict\n${f('a + p0 p0\nret a')}`,
+  `fn before -> u32\nret true\nend\n${f('a ADD p0 1\nret a')}`,
+  f('a mov 1,2\nb ADD p0 1\nret b'),
+];
+
+cases.push(...operationCases);
+
+// A0014 formats full counts and exact left-to-right associative chain edits in A0.
+const fixedOps = [...ALL_OPS, 'udiv', 'urem'].filter(
+  (op) =>
+    OP_ARITY[(op === 'udiv' ? 'div' : op === 'urem' ? 'rem' : op) as keyof typeof OP_ARITY] >= 0,
+);
+const long = (op: string, n: number, id = 'a') =>
+  f(`${id} ${op} ${Array(n).fill('p0').join(' ')}\nret ${id}`);
+const arityCases = [
+  f('a add p0\nret a'), // Former unsupported control becomes positive.
+  ...fixedOps.flatMap((op) =>
+    [0, 1, 2, 3, 4]
+      .filter(
+        (n) =>
+          n !==
+          OP_ARITY[(op === 'udiv' ? 'div' : op === 'urem' ? 'rem' : op) as keyof typeof OP_ARITY],
+      )
+      .map((n) => f(`a ${op}${n ? ` ${Array(n).fill('p0').join(' ')}` : ''}\nret a`)),
+  ),
+  ...['add', 'mul', 'and', 'or', 'xor'].flatMap((op) => [5, 10].map((n) => long(op, n))),
+  ...['add', 'mul', 'and', 'or', 'xor'].map((op) => f(`ret ${op} p0 p0 p0 p0`)),
+  f('ret mov p0 p0'),
+  f('ret udiv p0'),
+  f('ret select true p0'),
+  f('ret cadd p0 p0 p0'),
+  f('retval mov p0\nretval2 mov p0\nret add p0 1 2'),
+  f(
+    `${Array.from({ length: 501 }, (_, i) => `${i === 0 ? 'retval' : `retval${i + 1}`} mov p0`).join('\n')}\nret add p0 1 2`,
+  ),
+  f('at0 mov p0\na add p0 p0 p0\nret a'),
+  long('add', 4, 'a'.repeat(64)),
+  long('add', 257),
+  long('xor', 1002),
+  long('div', 65537),
+  `#🙂 body\n${f('  value\tadd   p0  1  2 #🙂\nret value').replaceAll('\n', '\r\n')}`,
+  `#🙂 inline\n${f('  ret   add  p0  1  2 #🙂').replaceAll('\n', '\r\n')}`,
+  `profile strict\n${f('a add p0 1 2\nret a')}`,
+  f('a add TRUE 0x10 -1 1,2\nret a'),
+  f('a add "🙂" p0 p0\nret a'),
+  f('a add p4294967296000000 p0 p0\nret a'),
+  `fn earlier -> u32\nret true\nend\n${f('a add p0\nret a')}`,
+  `fn earlier -> u32\nret true\nend\n${f('ret add p0 1 2')}`,
+  f('a mov 1,2\nb add p0\nret b'),
+  f('Bad add p0\nret 0'),
+  f('a arr\nret 0'),
+  f('a call\nret 0'),
+  f('ret mov'),
+];
+
+cases.push(...arityCases);
+
+// A0001 formats all seven type grammar reasons and primitive spelling/header edits in A0.
+const invalidTypes = [
+  'bol',
+  'Bool',
+  'BOOL',
+  'boool',
+  'boll',
+  'booll',
+  'b0ol',
+  'boolean',
+  'bool_',
+  'U32',
+  'u_32',
+  'u33',
+  'u3',
+  'U3',
+  'u322',
+  'u3_2',
+  'I0',
+  'IO',
+  'Io',
+  'iO',
+  'ii',
+  'i',
+  'end',
+  'Boolx2',
+  'booolx',
+  'U32x2',
+  '()',
+  '(',
+  '(u32',
+  '(u32,',
+  '(u32,bool',
+  '((u32,bool)',
+  '(u32;bool)',
+  'u32)',
+  'u32x',
+  'u32x0',
+  'u32x01',
+  'u32x-1',
+  'u32x+1',
+  'u32xx2',
+  'u32x1x',
+  'u32x1x0',
+  'u32x65537',
+  'u32x4294967295',
+  `u32x${'9'.repeat(8193)}`,
+  'u32x65536x2',
+  'boolx65536x32x2',
+  '(u32x65536,u32)',
+  '(u32x65536,u32x65536)',
+  '(u32x65536x2,io)',
+  'iox1',
+  'iox65537',
+  '(io,u32)x1',
+  '(u32,io)x2',
+  '(u32,io)x0',
+  'u32x65536x2x',
+  'u32x1x2z',
+  'u32X2',
+  'boolx65536x32x',
+  'u32x65536x2🙂',
+  ...['🙂', '𐐀', '𝄞', 'é', 'K', 'İ', 'Σ', '`', "'", '"', '\\', '\0', '\x7f', '\x01', ':'].flatMap(
+    (char) => [char, `u32${char}`, `(${char})`],
+  ),
+  '(bol)',
+  '(u32,bol)',
+  'bolx4',
+  `${'('.repeat(1537)}bol${')'.repeat(1537)}`,
+  `(${'bool,'.repeat(70017)}bol)`,
+  `u32${'🙂'.repeat(32769)}`,
+];
+const typeGrammarCases = [
+  f('ret 0', 'u32', 'bol'), // Former unsupported type diagnostic becomes positive.
+  ...invalidTypes.map((type) => f('ret 0', 'u32', type)),
+  ...[
+    'bol',
+    'BOOL',
+    'IO',
+    'U32x2',
+    '(u32,bol)',
+    '(u32',
+    'u32x65537',
+    'iox1',
+    'u32x65536x2',
+    'u32🙂',
+  ].map((type) => f('ret 0', type)),
+  'fn bol bol -> bool\nret true\nend\n',
+  'fn boo boo -> booo\nret 0\nend\n',
+  'fn f bool bol bol -> u32\nret 0\nend\n',
+  'fn f bol -> bol\nret 0\nend\n',
+  `#🙂 header\n${f('ret 0', 'u32', 'bol').replace('fn f bol -> u32', '  fn\tf   bol  ->   u32 #🙂').replaceAll('\n', '\r\n')}`,
+  `profile strict\n${f('ret 0', 'u32', 'BOOL')}`,
+  f('ret 0', 'u32', Array(64).fill('u32').concat('bol').join(' ')),
+  `fn earlier -> u32\nret true\nend\n${f('ret 0', 'u32', 'bol')}`,
+  `fn earlier -> u32\na mov 1,2\nret 0\nend\n${f('ret 0', 'u32', 'bol')}`,
+  'fn BAD bol -> u32\nret 0\nend\n',
+];
+
+cases.push(...typeGrammarCases);
+
+// A0010 preserves nestedFix string rewrites, UTF16 slices and inline-return suppression in A0.
+const innerOps = [
+  ...ALL_OPS,
+  'udiv',
+  'urem',
+  'text',
+  'TEXT',
+  'F',
+  'foo',
+  'p0',
+  'true',
+  'false',
+  'fn',
+  'ret',
+  'end',
+  'patch',
+  'x'.repeat(64),
+  'x'.repeat(65),
+  '🙂',
+  'é',
+  'K',
+];
+const forms = [
+  '(a)',
+  '(a b)',
+  '(a,b)',
+  '(add p0 1)',
+  '(foo p0)',
+  'p0)',
+  'p0) é',
+  'p0) 🙂',
+  'p0) 𐐀',
+  'p0) x,',
+  'add p0) x,',
+  'add,p0) x,',
+  'p0) x(',
+  'p0) (add 1 2',
+  '((add p0 1))',
+  '(a) (b)',
+  'x(p0)',
+  'x(p0)y)',
+  'x(p0)y',
+  'p0)🙂',
+  '( )',
+  '(,)',
+  '(add)',
+  '(text p0)',
+  '(ADD p0 1)',
+  '(p0',
+  '(add p0 1',
+  '(a,b',
+  '((a)',
+  '(a))',
+  ')(a b',
+  ') (a b',
+  '(a)b c',
+  '(a,b)c',
+  '(a,🙂)',
+  '(foo,p0)',
+  '("a)🙂")',
+];
+const nestedCases = [
+  f('a mov (p0)\nret a'),
+  f('a add (p0 1 2\nret a'), // Both previous unsupported A0010 sources become positives.
+  ...ALL_OPS.map((op) => f(`a ${op} (p0) p0\nret a`)),
+  ...innerOps.map((op) => f(`a mov (${op} p0 1)\nret a`)),
+  ...forms.map((rest) => f(`a mov ${rest}\nret a`)),
+  ...[
+    '(a, b)',
+    '(a b)',
+    '(add p0 1)',
+    '(foo p0)',
+    '(a) tail',
+    'prefix(a b',
+    'BAD (p0)',
+    '+ (p0)',
+    'text "("',
+    '( )',
+    '(add )',
+    'p0) tail',
+    '(a,b)',
+    'p0)',
+  ].map((rest) => f(`ret ${rest}`)),
+  ...[
+    'add (mul p0 2) 1',
+    'mov (p0)',
+    'call (foo) p0',
+    'fold (foo) 2 p0',
+    'loop (foo) step 2 p0',
+    'foo (p0)',
+    'not (p0)',
+    'udiv p0) 🙂',
+  ].map((rest) => f(`ret ${rest}`)),
+  f('retval mov p0\nretval2 mov p0\nret add (mul p0 2) 1'),
+  f(
+    `${Array.from({ length: 501 }, (_, i) => `${i === 0 ? 'retval' : `retval${i + 1}`} mov p0`).join('\n')}\nret add (mul p0 2) 1`,
+  ),
+  f('a1 mov p0\na add (mul p0 2) 1\nret a'),
+  f(`${'a'.repeat(64)} mov (p0)\nret 0`),
+  f('a ADD (p0) p0\nret a'),
+  f('a = add (p0) 1\nret a'),
+  f('a text (p0)\nret 0'),
+  f('Bad add (p0) p0\nret 0'),
+  f('a text "(p0)"\nret true'),
+  `#🙂 nested\n${f('  value\tadd  ( mul\tp0\u20031 )   p0 #🙂\nret value').replaceAll('\n', '\r\n')}`,
+  `#🙂 ret\n${f('  ret  ( p0,\u20031 ) #🙂').replaceAll('\n', '\r\n')}`,
+  `profile strict\n${f('a add (mul p0 2) 1\nret a')}`,
+  `fn earlier -> u32\nret true\nend\n${f('a add (mul p0 2) 1\nret a')}`,
+  f('a mov 1,2\nb add (mul p0 2) 1\nret b'),
+  f(`a mov (${'p0 '.repeat(1002)}p0)\nret a`),
+  f(`a mov ${'('.repeat(257)}p0${')'.repeat(257)}\nret a`),
+  f(`a mov p0) ${'🙂'.repeat(32769)}\nret a`),
+];
+
+const capacityCases = [
+  f(`a mov (${Array(65537).fill('p0').join(' ')})\nret a`),
+  Array.from({ length: 10000 }, (_, i) => `fn prev${i} -> u32\nret 0\nend\n`).join('') +
+    f('a add (mul p0 2) 1\nret a'),
+];
+
+nestedCases.push(...capacityCases);
+
+cases.push(...nestedCases);
+
 const clang = findClang();
 const skip = clang.path === undefined ? 'clang is unavailable' : false;
 const fixtures = resolve('test/fixtures/arena-diagnostics');
@@ -765,7 +1259,14 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
   skip,
 }, async () => {
   const dir = await prepare();
-  assert.equal(cases.length, 558);
+  assert.equal(cases.length, 1460);
+  assert.equal(nestedCases.length, 170);
+  assert.equal(capacityCases.length, 2);
+  assert.equal(typeGrammarCases.length, 132);
+  assert.equal(arityCases.length, 172);
+  assert.equal(operationCases.length, 172);
+  assert.equal(invalidCalleeCases.length, 85);
+  assert.equal(textEscapeCases.length, 171);
   assert.equal(parameterCases.length, 64);
   assert.equal(nodeNameCases.length, 75);
   assert.equal(nameCases.length, 49);
@@ -774,13 +1275,23 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
   for (const level of [0, 2]) {
     for (const { index, source, options } of [
       ...cases.map((source, index) => ({ index, source, options: 1 })),
-      ...[...callCases, ...operandCases, ...nameCases, ...nodeNameCases, ...parameterCases].map(
-        (source, index) => ({
-          index: cases.length + index,
-          source,
-          options: 0,
-        }),
-      ),
+      ...[
+        ...callCases,
+        ...operandCases,
+        ...nameCases,
+        ...nodeNameCases,
+        ...parameterCases,
+        ...textEscapeCases,
+        ...invalidCalleeCases,
+        ...operationCases,
+        ...arityCases,
+        ...typeGrammarCases,
+        ...nestedCases,
+      ].map((source, index) => ({
+        index: cases.length + index,
+        source,
+        options: 0,
+      })),
     ]) {
       const expected = reference(source, options);
       assert.ok(expected.id);
@@ -968,6 +1479,242 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
         );
         assert.equal(expected.applicability, 'maybe');
         assert.equal(expected.edits.length, 0);
+      }
+      if (expected.id === 'A0008') {
+        const scalar = raw.subarray(start).toString('utf8').codePointAt(0);
+        assert.ok(scalar !== undefined);
+        const character = String.fromCodePoint(scalar);
+        const width = Buffer.byteLength(character);
+        assert.equal(length, 1, `${label}: original parser byte length`);
+        assert.equal(raw[start - 1], 92, `${label}: original escape slash`);
+        assert.equal(facts[63], scalar, `${label}: original source scalar`);
+        assert.equal(facts[64], character.charCodeAt(0), `${label}: decoded UTF16 unit`);
+        assert.equal(facts[65], start);
+        assert.equal(facts[66], width, `${label}: full scalar byte length`);
+        assert.equal(facts[67], start - 1);
+        assert.equal(facts[68], length);
+        assert.equal(facts[69], 1, `${label}: semantic unit UTF16 length`);
+        assert.equal(facts[70], scalar > 0xffff ? 1 : 0);
+        assert.equal(facts[71], raw.subarray(0, start).toString('utf8').length);
+        assert.equal(facts[72], character.length, `${label}: full scalar UTF16 length`);
+        assert.ok(expected.message.endsWith(`unknown escape \\${character[0]} in text literal`));
+        assert.equal(expected.fix, null);
+        assert.equal(expected.edits.length, 0);
+      }
+      if (expected.id === 'A0013') {
+        const words = normalizeLine(source.split('\n')[(expected.line ?? 1) - 1] ?? '').split(' ');
+        const inline = words[0] === 'ret';
+        const word = raw.subarray(start, start + length).toString('utf8');
+        const fix = expected.fix !== null;
+        assert.ok(expected.message.endsWith(`expects a function name, got '${word}'`));
+        assert.equal(facts[73], fix ? 1 : 0, `${label}: case repair mode`);
+        assert.equal(facts[74], inline ? 1 : 0, `${label}: synthetic inline return`);
+        assert.equal(facts[75], fix ? word.toLowerCase().length : 0, `${label}: lowercase length`);
+        assert.equal(facts[78], words[1] === 'fold' ? 20 : 19, `${label}: original op`);
+        assert.equal(
+          facts[76],
+          source
+            .split('\n')
+            .slice(0, (expected.line ?? 1) - 1)
+            .filter((row) => normalizeLine(row).length > 0).length,
+          `${label}: growing line-table index`,
+        );
+        if (inline) assert.notEqual(facts[77], 0xffffffff, `${label}: exact fresh symbol`);
+        else assert.equal(facts[77], 0xffffffff);
+        assert.equal(expected.edits.length, fix && !inline ? 1 : 0);
+        assert.equal(expected.applicability, fix ? (inline ? 'maybe' : 'exact') : null);
+      }
+      if (expected.id === 'A0011') {
+        const words = normalizeLine(source.split('\n')[(expected.line ?? 1) - 1] ?? '').split(' ');
+        const word = raw.subarray(start, start + length).toString('utf8');
+        const rule = expected.edits[0]?.rule;
+        const mode = rule === 'symbol' ? 1 : rule === 'assign' ? 2 : rule === 'case' ? 3 : 0;
+        assert.equal(word, words[1], `${label}: original operation span`);
+        assert.equal(facts[79], mode, `${label}: symbol/assign/case/default mode`);
+        assert.equal(facts[81], words.length - 2, `${label}: original rest arity`);
+        assert.equal(
+          facts[82],
+          source
+            .split('\n')
+            .slice(0, (expected.line ?? 1) - 1)
+            .filter((row) => normalizeLine(row).length > 0).length,
+          `${label}: growing line-table index`,
+        );
+        assert.equal(facts[83], mode === 3 ? word.toLowerCase().length : 0);
+        const idStart = facts[84],
+          idLength = facts[85];
+        assert.ok(idStart !== undefined && idLength !== undefined);
+        assert.equal(raw.subarray(idStart, idStart + idLength).toString('utf8'), words[0]);
+        assert.equal(expected.applicability, mode === 0 ? 'maybe' : 'exact');
+        assert.equal(expected.edits.length, mode === 0 ? 0 : 1);
+        if (mode === 1) assert.notEqual(facts[80], 0xffffffff, `${label}: fixed op-word candidate`);
+      }
+      if (expected.id === 'A0014') {
+        const words = normalizeLine(source.split('\n')[(expected.line ?? 1) - 1] ?? '').split(' ');
+        const word = raw.subarray(start, start + length).toString('utf8');
+        const op = words[1] === 'udiv' ? 'div' : words[1] === 'urem' ? 'rem' : words[1];
+        assert.ok(op);
+        const inline = words[0] === 'ret';
+        const actual = words.length - 2;
+        const want = Number(expected.expected);
+        const chain = ['add', 'mul', 'and', 'or', 'xor'].includes(op) && actual > 2;
+        assert.equal(word, words[1], `${label}: original operation span`);
+        assert.ok(expected.message.endsWith(`${op} expects ${want} operands, got ${actual}`));
+        assert.equal(facts[87], want, `${label}: fixed expected arity`);
+        assert.equal(facts[88], actual, `${label}: full original operand count`);
+        assert.equal(facts[89], chain ? 1 : 0, `${label}: associative chain hint`);
+        assert.equal(facts[90], inline ? 1 : 0, `${label}: synthetic inline return`);
+        const prefix = source
+          .split('\n')
+          .slice(0, (expected.line ?? 1) - 1)
+          .map(normalizeLine)
+          .filter((row) => row.length > 0);
+        assert.equal(facts[91], prefix.length, `${label}: growing line-table index`);
+        assert.equal(
+          facts[93],
+          prefix.reduce((n, row) => n + row.split(' ').length, 0) + 2,
+          `${label}: first operand source-word index`,
+        );
+        const idStart = facts[94],
+          idLength = facts[95];
+        assert.ok(idStart !== undefined && idLength !== undefined);
+        assert.equal(raw.subarray(idStart, idStart + idLength).toString('utf8'), words[0]);
+        const publicEdit = chain && !inline && options === 1;
+        assert.equal(facts[96], publicEdit ? 1 : 0, `${label}: exact public edit eligibility`);
+        assert.equal(expected.edits.length, publicEdit ? 1 : 0);
+        assert.equal(expected.applicability, publicEdit ? 'exact' : 'maybe');
+        if (inline) assert.notEqual(facts[92], 0xffffffff, `${label}: retained fresh symbol`);
+        else assert.equal(facts[92], 0xffffffff);
+        assert.ok(expected.fix);
+        assert.equal(expected.actual, String(actual));
+      }
+      if (expected.id === 'A0001') {
+        const type = raw.subarray(start, start + length).toString('utf8');
+        const pos = facts[98],
+          reason = facts[97];
+        assert.ok(pos !== undefined && pos >= start && pos <= start + length);
+        assert.ok(reason !== undefined && reason >= 1 && reason <= 7);
+        const detail = expected.message.slice(`line ${expected.line}: type '${type}': `.length);
+        const tail = raw.subarray(pos, start + length).toString('utf8');
+        const template =
+          reason === 1
+            ? `unexpected '${tail.length ? tail[0] : 'end'}'`
+            : reason === 2
+              ? "expected ')'"
+              : reason === 3
+                ? 'expected array length after x'
+                : reason === 4
+                  ? 'array length exceeds 65536'
+                  : reason === 5
+                    ? 'arrays cannot hold io tokens'
+                    : reason === 6
+                      ? 'type exceeds 2097152 bits'
+                      : `trailing '${tail}'`;
+        assert.equal(detail, template, `${label}: parser reason/position detail`);
+        assert.equal(
+          facts[99],
+          raw.subarray(0, pos).toString('utf8').length,
+          `${label}: error global UTF16 position`,
+        );
+        assert.equal(
+          facts[100],
+          raw.subarray(start, pos).toString('utf8').length,
+          `${label}: error relative UTF16 position`,
+        );
+        assert.equal(facts[107], pos - start, `${label}: original error byte offset`);
+        const scalar = reason === 1 && tail.length ? tail.codePointAt(0) : 0;
+        assert.ok(scalar !== undefined);
+        const character = reason === 1 && tail.length ? String.fromCodePoint(scalar) : '';
+        assert.equal(facts[101], scalar);
+        assert.equal(facts[102], character.length ? character.charCodeAt(0) : 0);
+        assert.equal(
+          facts[103],
+          Buffer.byteLength(character),
+          `${label}: full original unexpected scalar bytes`,
+        );
+        const guess = /^did you mean '([^']+)'/.exec(expected.fix ?? '')?.[1];
+        const candidate = guess ? ['u32', 'bool', 'io'].indexOf(guess) : 0xffffffff;
+        assert.equal(facts[104], candidate, `${label}: ordered fixed spelling candidate`);
+        assert.equal(facts[108], guess ? 1 : 0);
+        const prefix = source
+          .split('\n')
+          .slice(0, (expected.line ?? 1) - 1)
+          .map(normalizeLine)
+          .filter((row) => row.length > 0);
+        assert.equal(facts[105], prefix.length, `${label}: original header line-table index`);
+        if (guess) {
+          const before = normalizeLine(source.split('\n')[(expected.line ?? 1) - 1] ?? '').split(
+            ' ',
+          );
+          const at = before.findIndex((word, i) => i > 0 && word === type);
+          assert.ok(at > 0);
+          assert.equal(
+            facts[106],
+            prefix.reduce((n, row) => n + row.split(' ').length, 0) + at,
+            `${label}: reference first-equal header replacement`,
+          );
+          assert.equal(expected.edits.length, 1);
+        } else {
+          assert.equal(facts[106], 0xffffffff);
+          assert.equal(expected.edits.length, 0);
+        }
+        assert.equal(expected.expected, null);
+        assert.equal(expected.actual, null);
+        assert.equal(expected.applicability, 'maybe');
+      }
+      if (expected.id === 'A0010') {
+        const words = normalizeLine(source.split('\n')[(expected.line ?? 1) - 1] ?? '').split(' '),
+          sugar = words[0] === 'ret' && isRetNodeForm(words),
+          direct = words[0] === 'ret' && !sugar;
+        const rest = words.slice(direct ? 1 : 2).join(' '),
+          open = rest.indexOf('('),
+          close = rest.indexOf(')', open),
+          opens = rest.split('(').length - 1,
+          closes = rest.split(')').length - 1;
+        const inner = (close < 0 ? rest.slice(open + 1) : rest.slice(open + 1, close))
+            .replaceAll(',', ' ')
+            .trim()
+            .split(/\s+/)
+            .filter((word) => word.length > 0),
+          innerOp = inner[0] ?? '';
+        const tuple =
+          rest.slice(open, close < 0 ? undefined : close).includes(',') ||
+          (opOf(innerOp) === undefined && !(isDirectCallee(innerOp) && inner.length > 1));
+        const exact = opens === 1 && closes === 1 && close >= 0,
+          shortcut = direct && rest.startsWith('(') && (close < 0 || close === rest.length - 1);
+        assert.equal(facts[109], exact ? 1 : 0, label);
+        assert.equal(facts[110], sugar ? 1 : 0, label);
+        assert.equal(facts[111], shortcut ? 1 : 0, label);
+        assert.equal(facts[112], tuple ? 1 : 0, label);
+        assert.equal(
+          facts[113],
+          open < 0 ? 4294967295 : Buffer.byteLength(rest.slice(0, open)),
+          label,
+        );
+        assert.equal(
+          facts[114],
+          close < 0 ? 4294967295 : Buffer.byteLength(rest.slice(0, close)),
+          label,
+        );
+        assert.equal(facts[115], opens, label);
+        assert.equal(facts[116], closes, label);
+        const prefix = source
+          .split('\n')
+          .slice(0, (expected.line ?? 1) - 1)
+          .map(normalizeLine)
+          .filter((row) => row.length > 0);
+        assert.equal(facts[117], prefix.length, label);
+        assert.equal(
+          facts[118],
+          prefix.reduce((n, row) => n + row.split(' ').length, 0) + (direct ? 1 : 2),
+          label,
+        );
+        assert.equal(facts[119], words.length - (direct ? 1 : 2), label);
+        assert.equal(facts[120], Buffer.byteLength(rest), label);
+        assert.equal(expected.edits.length, sugar ? 0 : 1, label);
+        assert.equal(expected.applicability, exact && !sugar ? 'exact' : 'maybe', label);
+        assert.equal(expected.expected, null, label);
+        assert.equal(expected.actual, null, label);
       }
       if (expected.id === 'A0218') {
         const program = parse(source);

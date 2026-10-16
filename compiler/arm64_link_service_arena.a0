@@ -1,0 +1,65 @@
+use "arm64_service_arena.a0"
+use "link_verify_arena.a0"
+fn a64_link_select (u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128) u32 u32 -> (((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32),u32x128)
+service at p0 0
+q at p0 1
+links at p0 2
+done call arena_link_verify_done service
+code call arena_link_verify_status service
+q0 eq code 0
+q1 and done q0
+q2 get service 18
+q3 eq q2 1
+q4 and q1 q3
+q5 at q 0
+q6 get q5 0
+q7 eq q6 0
+q8 and q4 q7
+q9 at q 0
+q10 get q9 1
+q11 eq q10 11
+success and q8 q11
+q12 eq code 0
+q13 and done q12
+q14 xor success true
+invalid and q13 q14
+code_1 select invalid 6 code
+z call arena_zero
+ctx arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+q15 rec 0 0 0
+q16 xor success true
+q17 and done q16
+q18 select q17 2 0
+q19 select success 1 0
+q20 rec q ctx z q15 0 0 0 p1 p2 q18 code_1 links 1
+final fold a64_controller_lower q19 q20
+q21 rec final service
+ret q21
+end
+fn arena_arm64_link_begin io u32 u32 u32 u32 bool u32 bool u32 u32 u32 -> (((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32),u32x128)
+r call arena_link_verify_begin p0 p1 p2 p3 p4 p5 p6 p7 p8
+q0 call a64_link_select r p9 p10
+ret q0
+end
+fn a64_link_pump (((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32),u32x128) u32 u32 -> (((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32),u32x128)
+x at p0 0
+q0 at p0 1
+q1 at x 0
+q2 at x 11
+q3 rec q0 q1 q2
+next call arena_link_verify_resume q3 p2
+q4 at x 7
+q5 at x 8
+q6 call a64_link_select next q4 q5
+ret q6
+end
+fn arena_arm64_link_pump (((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32),u32x128) u32 -> (((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32),u32x128)
+service at p0 1
+x at p0 0
+phase at x 9
+q0 eq phase 0
+q1 select q0 1 0
+q2 rec x service
+q3 fold a64_link_pump q1 q2 p1
+ret q3
+end

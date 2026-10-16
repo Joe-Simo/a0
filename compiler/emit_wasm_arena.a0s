@@ -1,0 +1,1461 @@
+raw # Experimental full-word direct Wasm writer. Input-dependent decisions are A0.
+raw # (u32x128,u32x16,u32x128,u32x128,io) is expanded statically by tools/generate.mjs, not by a target-program host pass.
+raw use "executable_bytes.a0"
+extern arena_zero() -> u32x128
+extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
+extern av_load(io,(u32,u32,u32),u32,u32) -> (u32,u32x128,io)
+extern av_store(io,(u32,u32,u32),u32,u32,u32x128) -> (u32,io)
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+extern ew_new(io,u32) -> (u32,(u32,u32,u32),io)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+raw # Geometry directory: sizes V6; function16 V9; per-node frame byte offsets V12.
+raw # Function16: sret,np,locals,frame,depth,bodyV[3],result,nparams,firstnode,nnodes,index,reach,export,flags.
+
+
+
+
+
+
+
+
+
+
+
+raw # Conservative immutable-slot emission. Ownership/SIMD/inline parity is separate unfinished work.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+raw # Current development scope is all37 plus strict with original descriptor names.
+raw # Export/options controllers and code-generation parity are still unfinished.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+raw # Strict record ABI. Layout agrees with the public C/TS decoder contract.
+raw # M106 chain,M107 node,M108 trips; V15 static bytes,V24 fn name addresses,V27 node names.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+raw # Options1: version,IN,OUT,simd,unroll,optimize,exportsPresent,nameBytesV[3],nameSpansV[3].
+raw # SIMD/optimizer are explicit8 until ported. Current unroll1 only; no ignored flags.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def aw_vec(m:u32x128,off:u32) -> (u32,u32,u32)
+ return (m[off],m[off+1],m[off+2])
+end
+def aw_setvec(m:u32x128,off:u32,v:(u32,u32,u32)) -> u32x128
+ let a=set(m,off,v#0)
+ let b=set(a,off+1,v#1)
+ return set(b,off+2,v#2)
+end
+fn aw_zero_ctx() -> u32x16
+ return arr(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+end
+fn aw_code(s:(u32x128,u32x16,u32x128,u32x128,io),code:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ return (set(m,0,m[0]==0?code:m[0]),s#1,s#2,s#3,s#4)
+end
+fn aw_ok(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> bool
+ return get(s#0,0)==0
+end
+fn aw_raw_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,h:u32,off:u32,count:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let r=arena_load(s#4,h,off,count)
+ return aw_code((s#0,s#1,s#2,r#1,r#2),r#0)
+end
+fn aw_raw(s:(u32x128,u32x16,u32x128,u32x128,io),h:u32,off:u32,count:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let start=(s#0,s#1,s#2,arena_zero(),s#4)
+ return fold(aw_raw_do,get(s#0,0)==0?1:0,start,h,off,count)
+end
+fn aw_word(s:(u32x128,u32x16,u32x128,u32x128,io),slot:u32,index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_raw(s,get(s#0,slot),index,1)
+end
+fn aw_type(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_raw(s,get(s#1,0),id*3,3)
+end
+fn aw_fun(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_raw(s,get(s#1,2),id*10,10)
+end
+fn aw_node(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_raw(s,get(s#1,3),id*8,8)
+end
+fn aw_arg(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_raw(s,get(s#1,4),index*2,2)
+end
+fn aw_put_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,slot:u32,index:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let p=set(arena_zero(),0,value)
+ let r=av_store(s#4,aw_vec(s#0,slot),index,1,p)
+ return aw_code((s#0,s#1,s#2,s#3,r#1),r#0)
+end
+fn aw_put(s:(u32x128,u32x16,u32x128,u32x128,io),slot:u32,index:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return fold(aw_put_do,get(s#0,0)==0?1:0,s,slot,index,value)
+end
+fn aw_alloc_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,slot:u32,count:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let r=ew_new(s#4,count)
+ return aw_code((aw_setvec(s#0,slot,r#1),s#1,s#2,s#3,r#2),r#0)
+end
+fn aw_alloc(s:(u32x128,u32x16,u32x128,u32x128,io),slot:u32,count:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return fold(aw_alloc_do,get(s#0,0)==0?1:0,s,slot,count)
+end
+fn aw_sum(s:(u32x128,u32x16,u32x128,u32x128,io),a:u32,b:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let r=aw_code(s,a<=4294967295-b?0:7)
+ return (r#0,r#1,r#2,set(arena_zero(),0,a+b),r#4)
+end
+fn aw_target(s:(u32x128,u32x16,u32x128,u32x128,io),slot:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return (set(s#0,60,slot),s#1,s#2,s#3,s#4)
+end
+fn aw_reset(s:(u32x128,u32x16,u32x128,u32x128,io),slot:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=aw_setvec(s#0,slot,(0,0,0))
+ return (set(m,60,slot),s#1,s#2,s#3,s#4)
+end
+fn aw_append_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,count:u32,page:u32x128) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ let r=av_append(s#4,aw_vec(m,m[60]),count,page)
+ return aw_code((aw_setvec(m,m[60],r#1),s#1,s#2,s#3,r#2),r#0)
+end
+fn aw_bytes(s:(u32x128,u32x16,u32x128,u32x128,io),count:u32,page:u32x128) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return fold(aw_append_do,get(s#0,0)==0?1:0,s,count,page)
+end
+fn aw_byte(s:(u32x128,u32x16,u32x128,u32x128,io),value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let checked=aw_code(s,value<=255?0:6)
+ return aw_bytes(checked,1,set(arena_zero(),0,value))
+end
+fn aw_uleb_step(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,value:u32,count:u32,negative:bool) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let low=(value>>(i*7))&127
+ let high=(i==4)&negative?112:0
+ return aw_byte(s,low|high|(i+1<count?128:0))
+end
+fn aw_uleb_ok(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,value:u32,count:u32,negative:bool) -> bool
+ return get(s#0,0)==0
+end
+fn aw_uleb(s:(u32x128,u32x16,u32x128,u32x128,io),value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let count=1+bit(value>=128)+bit(value>=16384)+bit(value>=2097152)+bit(value>=268435456)
+ return loop(aw_uleb_ok,aw_uleb_step,count,s,value,count,false)
+end
+fn aw_sleb(s:(u32x128,u32x16,u32x128,u32x128,io),value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let negative=value>=2147483648
+ let magnitude=negative?value^4294967295:value
+ let count=1+bit(magnitude>=64)+bit(magnitude>=8192)+bit(magnitude>=1048576)+bit(magnitude>=134217728)
+ return loop(aw_uleb_ok,aw_uleb_step,count,s,value,count,negative)
+end
+fn aw_op_imm(s:(u32x128,u32x16,u32x128,u32x128,io),op:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_uleb(aw_byte(s,op),value)
+end
+fn aw_const(s:(u32x128,u32x16,u32x128,u32x128,io),value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_sleb(aw_byte(s,65),value)
+end
+fn aw_getlocal(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_op_imm(s,32,index)
+end
+fn aw_setlocal(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_op_imm(s,33,index)
+end
+fn aw_mem(s:(u32x128,u32x16,u32x128,u32x128,io),op:u32,offset:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_uleb(aw_uleb(aw_byte(s,op),2),offset)
+end
+fn aw_copy_instruction(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_byte(s,252)
+ let b=aw_byte(a,10)
+ return aw_byte(aw_byte(b,0),0)
+end
+fn aw_copy_page(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,source:(u32,u32,u32)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let offset=i<<7
+ let left=source#1-offset
+ let count=left>128?128:left
+ let a=aw_raw(s,source#0,offset,count)
+ return aw_bytes(a,count,a#3)
+end
+fn aw_copy_ok(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,source:(u32,u32,u32)) -> bool
+ return get(s#0,0)==0
+end
+fn aw_copy_vector(s:(u32x128,u32x16,u32x128,u32x128,io),source:(u32,u32,u32)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let pages=(source#1>>7)+bit((source#1&127)!=0)
+ return loop(aw_copy_ok,aw_copy_page,pages,s,source)
+end
+fn aw_section(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32,source:(u32,u32,u32)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_byte(aw_target(s,3),id)
+ let b=aw_uleb(a,source#1)
+ return aw_copy_vector(b,source)
+end
+
+fn aw_size(s:(u32x128,u32x16,u32x128,u32x128,io),type:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_word(s,6,type)
+end
+fn aw_type_child(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_raw(s,get(s#1,1),first+i,1)
+ let b=aw_size(a,get(a#3,0))
+ let c=aw_sum(b,get(b#0,70),get(b#3,0))
+ return (set(c#0,70,get(c#3,0)),c#1,c#2,c#3,c#4)
+end
+fn aw_type_child_ok(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> bool
+ return get(s#0,0)==0
+end
+fn aw_type_geometry(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_type(s,id)
+ let ty=a#3
+ let b=aw_size(a,ty[0]==4?ty[2]:0)
+ let elem=get(b#3,0)
+ let arrayvalid=(ty[1]==0)|(elem<=4294967295/ty[1])
+ let c=aw_code(b,(ty[0]==4)&!arrayvalid?7:0)
+ let m=set(c#0,70,0)
+ let d=loop(aw_type_child_ok,aw_type_child,ty[0]==5?ty[2]:0,(m,c#1,c#2,c#3,c#4),ty[1])
+ let bytes=id<3?4:(ty[0]==4?ty[1]*elem:get(d#0,70))
+ return aw_put(d,6,id,bytes)
+end
+fn aw_fnword(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32,field:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_word(s,9,id*16+field)
+end
+fn aw_callee_depth(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let valid=id<get(s#0,64)
+ let a=aw_code(s,valid?0:6)
+ let b=aw_fnword(a,id,4)
+ let old=get(b#0,71)
+ let deep=get(b#3,0)
+ return (set(b#0,71,old>deep?old:deep),b#1,b#2,b#3,b#4)
+end
+fn aw_node_geometry(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_node(s,get(s#0,65)+i)
+ let nd=a#3
+ let b=aw_size(a,nd[5])
+ let aggregate=nd[5]>=3
+ let borrow=(nd[0]==1)|(nd[0]==18)|(nd[0]==25)|(nd[0]==27)
+ let allocated=aggregate&!borrow
+ let offset=get(b#0,70)
+ let c=aw_put(b,12,get(b#0,65)+i,offset)
+ let d=aw_sum(c,offset,allocated?get(b#3,0):0)
+ let m=set(d#0,70,get(d#3,0))
+ let e=aw_code((m,d#1,d#2,d#3,d#4),(nd[0]==0)|(nd[0]>37)?6:0)
+ let call=(nd[0]==19)|(nd[0]==20)|(nd[0]==21)
+ let f=fold(aw_callee_depth,bit(call),e,nd[3])
+ return fold(aw_callee_depth,nd[0]==21?1:0,f,nd[4])
+end
+fn aw_fn_geometry(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fun(s,id)
+ let funrow=a#3
+ let m=set(a#0,64,id)
+ let m=set(m,65,funrow[5])
+ let m=set(m,66,funrow[6])
+ let m=set(m,70,0)
+ let m=set(m,71,0)
+ let b=loop(aw_ok,aw_node_geometry,funrow[6],(m,a#1,a#2,a#3,a#4))
+ let frame=get(b#0,70)
+ let c=aw_sum(b,frame,15)
+ let aligned=get(c#3,0)&4294967280
+ let d=aw_sum(c,aligned,get(c#0,71))
+ let depth=get(d#3,0)
+ let sret=funrow[4]>=3?1:0
+ let e=aw_sum(d,funrow[2],sret)
+ let np=get(e#3,0)
+ let f=aw_sum(e,funrow[6],9)
+ let locals=get(f#3,0)
+ let g=aw_sum(f,np,locals)
+ let a=aw_put(g,9,id*16,sret)
+ let b=aw_put(a,9,id*16+1,np)
+ let c=aw_put(b,9,id*16+2,locals)
+ let d=aw_put(c,9,id*16+3,aligned)
+ let e=aw_put(d,9,id*16+4,depth)
+ let f=aw_put(e,9,id*16+8,funrow[4])
+ let g=aw_put(f,9,id*16+9,funrow[2])
+ let h=aw_put(g,9,id*16+10,funrow[5])
+ return aw_put(h,9,id*16+11,funrow[6])
+end
+fn aw_geometry(t:io,ctx:u32x16,desc:u32x128) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let z=arena_zero()
+ let s=(z,ctx,desc,z,t)
+ let valid=(ctx[11]<=268435455)&(ctx[12]<=1431655765)&(ctx[13]<=536870911)
+ let a=aw_code(s,valid?0:7)
+ let b=aw_alloc(a,6,ctx[12])
+ let c=aw_alloc(b,9,valid?ctx[11]*16:0)
+ let d=aw_alloc(c,12,ctx[13])
+ let e=loop(aw_ok,aw_type_geometry,ctx[12],d)
+ return loop(aw_ok,aw_fn_geometry,ctx[11],e)
+end
+fn arena_wasm_encode_u32(t:io,value:u32) -> (u32,(u32,u32,u32),io)
+ let z=arena_zero()
+ let s=(set(z,60,3),aw_zero_ctx(),z,z,t)
+ let a=aw_uleb(s,value)
+ return (get(a#0,0),get(a#0,0)==0?aw_vec(a#0,3):(0,0,0),a#4)
+end
+fn arena_wasm_encode_i32(t:io,value:u32) -> (u32,(u32,u32,u32),io)
+ let z=arena_zero()
+ let s=(set(z,60,3),aw_zero_ctx(),z,z,t)
+ let a=aw_sleb(s,value)
+ return (get(a#0,0),get(a#0,0)==0?aw_vec(a#0,3):(0,0,0),a#4)
+end
+
+fn aw_operand_node(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ return aw_getlocal(s,m[67]+1+value-m[65])
+end
+fn aw_operand_param(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_getlocal(s,value+get(s#0,69))
+end
+fn aw_operand_literal(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_const(s,value)
+end
+fn aw_operand(s:(u32x128,u32x16,u32x128,u32x128,io),kind:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let valid=(kind>=1)&(kind<=4)
+ let a=aw_code(s,valid?0:6)
+ let b=fold(aw_operand_node,kind==1?1:0,a,value)
+ let c=fold(aw_operand_param,kind==2?1:0,b,value)
+ return fold(aw_operand_literal,kind>=3?1:0,c,value)
+end
+fn aw_push(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_arg(s,get(s#0,77)+index)
+ let arg=a#3
+ return aw_operand(a,arg[0],arg[1])
+end
+fn aw_push_arg(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_push(s,first+i)
+end
+fn aw_push_args_ok(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> bool
+ return get(s#0,0)==0
+end
+fn aw_nodeget(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_getlocal(s,get(s#0,75))
+end
+fn aw_nodeset(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_setlocal(s,get(s#0,75))
+end
+fn aw_tempget(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_getlocal(s,get(s#0,72)+index)
+end
+fn aw_tempset(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_setlocal(s,get(s#0,72)+index)
+end
+fn aw_call_index(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_op_imm(s,16,index)
+end
+fn aw_bind(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_word(s,12,get(s#0,76))
+ let offset=get(a#3,0)
+ let b=aw_getlocal(a,get(a#0,71))
+ return aw_nodeset(aw_byte(aw_const(b,offset),106))
+end
+fn aw_operand_type_param(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_raw(s,get(s#1,1),get(s#0,73)+value,1)
+end
+fn aw_operand_type_node(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_node(s,value)
+ return (a#0,a#1,a#2,set(arena_zero(),0,get(a#3,5)),a#4)
+end
+fn aw_operand_type(s:(u32x128,u32x16,u32x128,u32x128,io),kind:u32,value:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let page=set(arena_zero(),0,kind==4?1:0)
+ let a=(s#0,s#1,s#2,page,s#4)
+ let b=fold(aw_operand_type_node,kind==1?1:0,a,value)
+ return fold(aw_operand_type_param,kind==2?1:0,b,value)
+end
+fn aw_arg_type(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_arg(s,get(s#0,77)+index)
+ let arg=a#3
+ return aw_operand_type(a,arg[0],arg[1])
+end
+fn aw_emit_mov(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_nodeset(aw_push(s,0))
+end
+fn aw_emit_binary(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let op=get(s#0,80)
+ let ins=op==2?106:(op==3?107:(op==4?108:(op==5?113:(op==6?114:(op==7?115:(op==8?116:(op==9?118:(op==12?70:(op==13?71:(op==14?73:(op==15?77:(op==16?75:79))))))))))))
+ return aw_nodeset(aw_byte(aw_push(aw_push(s,0),1),ins))
+end
+fn aw_trap_call(s:(u32x128,u32x16,u32x128,u32x128,io),kind:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_call_index(aw_const(s,kind),7)
+end
+fn aw_strict_zero_check(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_byte(aw_push(s,1),69)
+ let b=aw_byte(aw_byte(a,4),64)
+ return aw_byte(aw_trap_call(b,1),11)
+end
+fn aw_emit_division(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let division=get(s#0,80)==10
+ let start=fold(aw_strict_zero_check,(get(s#0,74)&1)!=0?1:0,s)
+ let a=aw_byte(aw_push(start,1),69)
+ let b=aw_byte(aw_byte(a,4),127)
+ let c=fold(aw_operand_literal,division?1:0,b,4294967295)
+ let d=fold(aw_push_arg,division?0:1,c,0)
+ let e=aw_byte(d,5)
+ let f=aw_push(aw_push(e,0),1)
+ let g=aw_byte(f,division?110:112)
+ return aw_nodeset(aw_byte(g,11))
+end
+fn aw_emit_select(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_push(aw_push(aw_push(s,1),2),0)
+ return aw_nodeset(aw_byte(a,27))
+end
+fn aw_push_node(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_nodeget(s)
+end
+fn aw_set_node(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_nodeset(s)
+end
+fn aw_user_call(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fnword(s,id,12)
+ let index=get(a#3,0)
+ let b=aw_code(a,index!=4294967295?0:6)
+ return aw_call_index(b,index)
+end
+
+fn aw_emit_direct_call(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ let aggregate=m[79]>=3
+ let a=fold(aw_push_node,bit(aggregate),s)
+ let b=loop(aw_push_args_ok,aw_push_arg,m[78],a,0)
+ let c=aw_user_call(b,m[81])
+ return fold(aw_set_node,bit(!aggregate),c)
+end
+fn aw_fieldtype(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_type(s,get(s#0,79))
+ let ty=a#3
+ let record=get(a#0,80)==23
+ let b=aw_raw(a,get(a#1,1),record?ty[1]+index:0,record?1:0)
+ let field=record?get(b#3,0):ty[2]
+ return (b#0,b#1,b#2,set(arena_zero(),0,field),b#4)
+end
+fn aw_scalar_store(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_mem(s,54,0)
+end
+fn aw_aggregate_copy(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,size:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_copy_instruction(aw_const(s,size))
+end
+fn aw_emit_literal_field(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fieldtype(s,i)
+ let field=get(a#3,0)
+ let b=aw_size(a,field)
+ let size=get(b#3,0)
+ let offset=get(b#0,84)
+ let c=aw_byte(aw_const(aw_nodeget(b),offset),106)
+ let d=aw_push(c,i)
+ let e=fold(aw_scalar_store,field<3?1:0,d)
+ let f=fold(aw_aggregate_copy,field>=3?1:0,e,size)
+ return (set(f#0,84,offset+size),f#1,f#2,f#3,f#4)
+end
+fn aw_emit_literal(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=set(s#0,84,0)
+ return loop(aw_ok,aw_emit_literal_field,m[78],(m,s#1,s#2,s#3,s#4))
+end
+fn aw_access_record_field(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_raw(s,get(s#1,1),first+i,1)
+ let b=aw_size(a,get(a#3,0))
+ let m=b#0
+ return (set(m,96,m[96]+get(b#3,0)),b#1,b#2,b#3,b#4)
+end
+fn aw_access_record_ok(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> bool
+ return get(s#0,0)==0
+end
+fn aw_access_record(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_arg(s,get(s#0,77)+1)
+ let field=get(a#3,1)
+ let m=set(a#0,96,0)
+ let b=loop(aw_access_record_ok,aw_access_record_field,field,(m,a#1,a#2,a#3,a#4),first)
+ let c=aw_raw(b,get(b#1,1),first+field,1)
+ return (set(c#0,97,get(c#3,0)),c#1,c#2,c#3,c#4)
+end
+fn aw_access_geometry(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_arg_type(s,0)
+ let b=aw_type(a,get(a#3,0))
+ let ty=b#3
+ let array=ty[0]==4
+ let c=aw_size(b,array?ty[2]:0)
+ let m=set(c#0,94,array?ty[1]:0)
+ let m=set(m,95,array?get(c#3,0):0)
+ let m=set(m,96,0)
+ let m=set(m,97,array?ty[2]:0)
+ return fold(aw_access_record,array?0:1,(m,c#1,c#2,c#3,c#4),ty[1])
+end
+fn aw_array_address(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ let a=aw_byte(aw_const(aw_push(s,1),m[94]),112)
+ let b=aw_byte(aw_const(a,m[95]),108)
+ return aw_byte(b,106)
+end
+fn aw_record_address(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_byte(aw_const(s,get(s#0,96)),106)
+end
+fn aw_strict_index_check(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_byte(aw_const(aw_push(s,1),get(s#0,94)),79)
+ let b=aw_byte(aw_byte(a,4),64)
+ return aw_byte(aw_trap_call(b,0),11)
+end
+fn aw_access_address(s:(u32x128,u32x16,u32x128,u32x128,io),write:bool) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ let array=(m[80]==25)|(m[80]==26)
+ let a=fold(aw_push_node,bit(write),s)
+ let b=fold(aw_push_arg,write?0:1,a,0)
+ let checked=fold(aw_strict_index_check,array&((m[74]&1)!=0)?1:0,b)
+ let c=fold(aw_array_address,bit(array),checked)
+ return fold(aw_record_address,bit(!array),c)
+end
+fn aw_scalar_load(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_mem(s,40,0)
+end
+fn aw_emit_access(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_access_geometry(s)
+ let b=aw_access_address(a,false)
+ let c=fold(aw_scalar_load,get(b#0,97)<3?1:0,b)
+ return aw_nodeset(c)
+end
+fn aw_emit_update(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_size(s,get(s#0,79))
+ let size=get(a#3,0)
+ let b=aw_copy_instruction(aw_const(aw_push(aw_nodeget(a),0),size))
+ let c=aw_access_geometry(b)
+ let field=get(c#0,97)
+ let d=aw_size(c,field)
+ let fieldsize=get(d#3,0)
+ let e=aw_push(aw_access_address(d,true),2)
+ let f=fold(aw_scalar_store,field<3?1:0,e)
+ return fold(aw_aggregate_copy,field>=3?1:0,f,fieldsize)
+end
+fn aw_emit_checked_sum(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let add=get(s#0,80)==32
+ let a=aw_push(aw_push(aw_nodeget(s),0),1)
+ let b=aw_mem(aw_byte(a,add?106:107),54,0)
+ let c=aw_nodeget(b)
+ let d=fold(aw_push_node,add?1:0,c)
+ let e=fold(aw_scalar_load,add?1:0,d)
+ let f=fold(aw_push_arg,add?0:1,e,0)
+ let g=aw_push(f,add?0:1)
+ return aw_mem(aw_byte(g,79),54,4)
+end
+fn aw_emit_checked_mul(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_push(aw_push(aw_nodeget(s),0),1)
+ let b=aw_mem(aw_byte(a,108),54,0)
+ let c=aw_byte(aw_push(aw_nodeget(b),0),173)
+ let d=aw_byte(aw_push(c,1),173)
+ let e=aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(d,126),66),32),136),80)
+ return aw_mem(e,54,4)
+end
+fn aw_emit_checked_div(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_nodeget(s)
+ let b=aw_byte(aw_push(a,1),69)
+ let c=aw_byte(aw_byte(b,4),127)
+ let d=aw_const(c,0)
+ let e=aw_byte(d,5)
+ let f=aw_push(aw_push(e,0),1)
+ let g=aw_byte(f,get(s#0,80)==35?110:112)
+ let h=aw_mem(aw_byte(g,11),54,0)
+ let j=aw_push(aw_nodeget(h),1)
+ let k=aw_byte(aw_byte(j,69),69)
+ return aw_mem(k,54,4)
+end
+fn aw_emit_checked_get(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_access_geometry(s)
+ let length=get(a#0,94)
+ let b=aw_byte(aw_const(aw_push(aw_nodeget(a),1),length),73)
+ let c=aw_byte(aw_byte(b,4),127)
+ let d=aw_push(aw_push(c,0),1)
+ let e=aw_byte(aw_const(d,2),116)
+ let f=aw_mem(aw_byte(e,106),40,0)
+ let g=aw_const(aw_byte(f,5),0)
+ let h=aw_mem(aw_byte(g,11),54,0)
+ let j=aw_byte(aw_const(aw_push(aw_nodeget(h),1),length),73)
+ return aw_mem(j,54,4)
+end
+fn aw_emit_read(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_call_index(aw_push(aw_nodeget(s),0),(get(s#0,74)&1)!=0?8:0)
+ let b=aw_mem(a,54,0)
+ return aw_mem(aw_push(aw_nodeget(b),0),54,4)
+end
+fn aw_emit_write(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_call_index(aw_push(aw_push(s,0),1),1)
+ return aw_nodeset(aw_push(a,0))
+end
+fn aw_emit_puts(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_arg_type(s,1)
+ let b=aw_type(a,get(a#3,0))
+ let length=get(b#3,1)
+ let c=aw_const(aw_push(aw_push(b,0),1),length)
+ let d=aw_call_index(c,2)
+ return aw_nodeset(aw_push(d,0))
+end
+fn aw_iteration_args(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_tempget(aw_nodeget(s),0)
+ return loop(aw_push_args_ok,aw_push_arg,get(s#0,78)-2,a,2)
+end
+fn aw_iteration_predicate(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_iteration_args(s)
+ let b=aw_byte(aw_user_call(a,get(a#0,82)),69)
+ return aw_op_imm(b,13,1)
+end
+fn aw_iteration_scalar_init(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_nodeset(aw_push(s,1))
+end
+fn aw_iteration_aggregate_init(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_size(s,get(s#0,79))
+ return aw_copy_instruction(aw_const(aw_push(aw_nodeget(a),1),get(a#3,0)))
+end
+fn aw_strict_mark(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_word(s,27,get(s#0,76))
+ return aw_call_index(aw_const(a,get(a#3,0)),5)
+end
+fn aw_strict_index(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_call_index(aw_tempget(s,0),6)
+end
+fn aw_strict_unmark(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_call_index(aw_const(s,0),5)
+end
+fn aw_emit_iteration(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let aggregate=get(s#0,79)>=3
+ let a=fold(aw_iteration_scalar_init,bit(!aggregate),s)
+ let b=fold(aw_iteration_aggregate_init,bit(aggregate),a)
+ let marked=fold(aw_strict_mark,get(s#0,88)!=0?1:0,b)
+ let c=aw_tempset(aw_const(marked,0),0)
+ let d=aw_byte(aw_byte(aw_byte(aw_byte(c,2),64),3),64)
+ let e=aw_byte(aw_push(aw_tempget(d,0),0),79)
+ let f=aw_op_imm(e,13,1)
+ let trip=fold(aw_strict_index,get(s#0,88)!=0?1:0,f)
+ let g=fold(aw_iteration_predicate,get(s#0,80)==21?1:0,trip)
+ let h=fold(aw_push_node,bit(aggregate),g)
+ let j=aw_iteration_args(h)
+ let k=aw_user_call(j,get(j#0,81))
+ let l=fold(aw_set_node,bit(!aggregate),k)
+ let m=aw_tempset(aw_byte(aw_const(aw_tempget(l,0),1),106),0)
+ let n=aw_op_imm(m,12,0)
+ let out=aw_byte(aw_byte(n,11),11)
+ return fold(aw_strict_unmark,get(s#0,88)!=0?1:0,out)
+end
+fn aw_bind_node(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_bind(s)
+end
+fn aw_emit_node(s:(u32x128,u32x16,u32x128,u32x128,io),local:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_node(s,get(s#0,65)+local)
+ let nd=a#3
+ let m=set(a#0,75,get(a#0,67)+1+local)
+ let m=set(m,76,get(a#0,65)+local)
+ let m=set(m,77,nd[2])
+ let m=set(m,78,nd[1])
+ let m=set(m,79,nd[5])
+ let m=set(m,80,nd[0])
+ let m=set(m,81,nd[3])
+ let m=set(m,82,nd[4])
+ let op=nd[0]
+ let aggregate=nd[5]>=3
+ let borrow=(op==1)|(op==18)|(op==25)|(op==27)
+ let b=fold(aw_push_node,0,(m,a#1,a#2,a#3,a#4))
+ let c=aw_code(b,(op==0)|(op>37)?6:0)
+ let d=fold(aw_bind_node,aggregate&!borrow?1:0,c)
+ let e=fold(aw_emit_mov,op==1?1:0,d)
+ let f=fold(aw_emit_binary,((op>=2)&(op<=9))|((op>=12)&(op<=17))?1:0,e)
+ let g=fold(aw_emit_division,(op==10)|(op==11)?1:0,f)
+ let h=fold(aw_emit_select,op==18?1:0,g)
+ let j=fold(aw_emit_direct_call,op==19?1:0,h)
+ let k=fold(aw_emit_iteration,(op==20)|(op==21)?1:0,j)
+ let l=fold(aw_emit_literal,(op==22)|(op==23)|(op==24)?1:0,k)
+ let m=fold(aw_emit_access,(op==25)|(op==27)?1:0,l)
+ let n=fold(aw_emit_update,(op==26)|(op==28)?1:0,m)
+ let p=fold(aw_emit_read,op==29?1:0,n)
+ let q=fold(aw_emit_write,op==30?1:0,p)
+ let r=fold(aw_emit_puts,op==31?1:0,q)
+ let u=fold(aw_emit_checked_sum,(op==32)|(op==33)?1:0,r)
+ let v=fold(aw_emit_checked_mul,op==34?1:0,u)
+ let w=fold(aw_emit_checked_div,(op==35)|(op==36)?1:0,v)
+ return fold(aw_emit_checked_get,op==37?1:0,w)
+end
+
+fn aw_local_group(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,locals:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_byte(aw_uleb(s,locals),127)
+end
+fn aw_begin_body(s:(u32x128,u32x16,u32x128,u32x128,io),locals:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_uleb(aw_reset(s,18),locals==0?0:1)
+ return fold(aw_local_group,locals==0?0:1,a,locals)
+end
+fn aw_restore_stack(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ let a=aw_byte(aw_const(aw_getlocal(s,m[71]),m[70]),106)
+ return aw_op_imm(a,36,0)
+end
+fn aw_return_aggregate(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_size(s,get(s#0,68))
+ let size=get(a#3,0)
+ let m=a#0
+ let b=aw_operand(aw_getlocal(a,0),m[102],m[103])
+ return aw_copy_instruction(aw_const(b,size))
+end
+fn aw_return_scalar(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ return aw_operand(s,m[102],m[103])
+end
+fn aw_strict_enter(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_word(s,24,get(s#0,64))
+ return aw_call_index(aw_const(a,get(a#3,0)),3)
+end
+fn aw_strict_leave(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_call_index(s,4)
+end
+fn aw_emit_function(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fun(s,id)
+ let funrow=a#3
+ let b=aw_raw(a,get(a#0,9),id*16,5)
+ let meta=b#3
+ let m=set(b#0,64,id)
+ let m=set(m,65,funrow[5])
+ let m=set(m,66,funrow[6])
+ let m=set(m,67,meta[1])
+ let m=set(m,68,funrow[4])
+ let m=set(m,69,meta[0])
+ let m=set(m,70,meta[3])
+ let m=set(m,71,meta[1])
+ let m=set(m,72,meta[1]+1+funrow[6])
+ let m=set(m,73,funrow[3])
+ let m=set(m,74,funrow[9])
+ let m=set(m,102,funrow[7])
+ let m=set(m,103,funrow[8])
+ let c=aw_begin_body((m,b#1,b#2,b#3,b#4),meta[2])
+ let entered=fold(aw_strict_enter,get(c#0,88)!=0?1:0,c)
+ let d=aw_byte(aw_const(aw_op_imm(entered,35,0),meta[3]),107)
+ let e=aw_op_imm(aw_op_imm(d,34,meta[1]),36,0)
+ let f=loop(aw_ok,aw_emit_node,funrow[6],e)
+ let g=fold(aw_return_aggregate,meta[0],f)
+ let left=fold(aw_strict_leave,get(g#0,88)!=0?1:0,g)
+ let h=aw_restore_stack(left)
+ let j=fold(aw_return_scalar,meta[0]==0?1:0,h)
+ let k=aw_byte(j,11)
+ let body=aw_vec(k#0,18)
+ let l=aw_put(k,9,id*16+5,body#0)
+ let n=aw_put(l,9,id*16+6,body#1)
+ return aw_put(n,9,id*16+7,body#2)
+end
+fn aw_program_geometry(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fun(s,id)
+ let profile=get(a#3,9)&1
+ let m=set(a#0,88,(get(a#0,88)!=0)|(profile!=0)?1:0)
+ let b=(m,a#1,a#2,a#3,a#4)
+ let c=aw_fnword(b,id,4)
+ let depth=get(c#3,0)
+ let old=get(c#0,87)
+ return (set(c#0,87,depth>old?depth:old),c#1,c#2,c#3,c#4)
+end
+fn aw_emit_i32(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_byte(s,127)
+end
+fn aw_signature_user(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fnword(s,id,1)
+ let np=get(a#3,0)
+ let b=aw_fnword(a,id,0)
+ let m=set(b#0,104,np)
+ let m=set(m,105,get(b#3,0)==0?1:0)
+ return (m,b#1,b#2,b#3,b#4)
+end
+fn aw_signature(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=set(s#0,104,id==1?2:(id==2?3:(id==4?0:1)))
+ let m=set(m,105,(id==0)|(id==8)?1:0)
+ let a=fold(aw_signature_user,id>=m[85]?1:0,(m,s#1,s#2,s#3,s#4),id-m[85])
+ let m=a#0
+ let b=aw_uleb(aw_byte(a,96),m[104])
+ let c=loop(aw_ok,aw_emit_i32,m[104],b)
+ let d=aw_uleb(c,m[105])
+ return fold(aw_emit_i32,m[105],d)
+end
+fn aw_signature_kept_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_signature(s,id+get(s#0,85))
+end
+fn aw_signature_kept(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fnword(s,id,13)
+ return fold(aw_signature_kept_do,get(a#3,0)!=0?1:0,a,id)
+end
+fn aw_type_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let count=get(s#0,91)+get(s#0,85)
+ let a=aw_uleb(aw_reset(s,21),count)
+ let b=loop(aw_ok,aw_signature,get(s#0,85),a)
+ let c=loop(aw_ok,aw_signature_kept,get(s#1,11),b)
+ return aw_section(c,1,aw_vec(c#0,21))
+end
+fn aw_type_index(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_uleb(s,i)
+end
+fn aw_function_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let count=get(s#0,91)+get(s#0,85)
+ let a=aw_uleb(aw_reset(s,21),count)
+ let b=loop(aw_ok,aw_type_index,count,a)
+ return aw_section(b,3,aw_vec(b#0,21))
+end
+fn aw_memory_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let heap=get(s#0,86)
+ let pages=(heap>>16)+bit((heap&65535)!=0)
+ let a=aw_uleb(aw_byte(aw_uleb(aw_reset(s,21),1),0),pages)
+ return aw_section(a,5,aw_vec(a#0,21))
+end
+fn aw_global(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_byte(aw_byte(s,127),i==0?1:0)
+ return aw_byte(aw_const(a,get(a#0,86)),11)
+end
+fn aw_strict_global(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ let addr=i<4?1024+i*4:(i==4?m[106]:m[107])
+ let a=aw_byte(aw_byte(s,127),0)
+ return aw_byte(aw_const(a,addr),11)
+end
+fn aw_global_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_uleb(aw_reset(s,21),get(s#0,88)!=0?8:2)
+ let b=loop(aw_ok,aw_global,2,a)
+ let c=loop(aw_ok,aw_strict_global,get(s#0,88)!=0?6:0,b)
+ return aw_section(c,6,aw_vec(c#0,21))
+end
+fn aw_span_page(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,h:u32,first:u32,length:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let offset=i<<7
+ let left=length-offset
+ let count=left>128?128:left
+ let a=aw_raw(s,h,first+offset,count)
+ return aw_bytes(a,count,a#3)
+end
+fn aw_span_ok(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,h:u32,first:u32,length:u32) -> bool
+ return get(s#0,0)==0
+end
+fn aw_span(s:(u32x128,u32x16,u32x128,u32x128,io),h:u32,first:u32,length:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let pages=(length>>7)+bit((length&127)!=0)
+ return loop(aw_span_ok,aw_span_page,pages,s,h,first,length)
+end
+fn aw_export_function(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fun(s,id)
+ let funrow=a#3
+ let b=aw_sum(a,funrow[1],3)
+ let c=aw_uleb(b,get(b#3,0))
+ let d=aw_byte(aw_byte(aw_byte(c,97),48),95)
+ let e=aw_span(d,get(d#1,5),funrow[0],funrow[1])
+ let f=aw_fnword(e,id,12)
+ return aw_uleb(aw_byte(f,0),get(f#3,0))
+end
+fn aw_export_kept_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_export_function(s,id)
+end
+fn aw_export_kept(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fnword(s,id,14)
+ return fold(aw_export_kept_do,get(a#3,0)!=0?1:0,a,id)
+end
+fn aw_trap_prefix(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(s,116),114),97),112),95)
+end
+fn aw_trap_kind_suffix(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_byte(aw_byte(aw_byte(aw_byte(s,107),105),110),100)
+end
+fn aw_trap_n_suffix(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_byte(s,110)
+end
+fn aw_trap_at_suffix(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_byte(aw_byte(s,97),116)
+end
+fn aw_trap_trip_suffix(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_byte(aw_byte(aw_byte(aw_byte(s,116),114),105),112)
+end
+fn aw_trap_suffix(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=fold(aw_trap_kind_suffix,index==0?1:0,s)
+ let b=fold(aw_trap_n_suffix,index==1?1:0,a)
+ let c=fold(aw_trap_at_suffix,index==2?1:0,b)
+ return fold(aw_trap_trip_suffix,index==3?1:0,c)
+end
+fn aw_trap_array_name(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_byte(s,index==4?99:110)
+ let b=aw_byte(a,index==4?104:111)
+ let c=aw_byte(b,index==4?97:100)
+ let d=aw_byte(c,index==4?105:101)
+ return fold(aw_trap_n_suffix,index==4?1:0,d)
+end
+fn aw_trap_global_name(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_uleb(s,index>=4?(index==4?8:7):(index==1?9:(index==2?10:12)))
+ let b=aw_byte(aw_byte(aw_byte(a,97),48),95)
+ let c=fold(aw_trap_prefix,index<4?1:0,b)
+ let d=fold(aw_trap_suffix,index<4?1:0,c,index)
+ let e=fold(aw_trap_array_name,index>=4?1:0,d,index)
+ return aw_uleb(aw_byte(e,3),index+2)
+end
+fn aw_strict_export(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_trap_global_name(s,index)
+end
+fn aw_export_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_uleb(aw_reset(s,21),get(s#0,92)+2+(get(s#0,88)!=0?6:0))
+ let b=aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(aw_uleb(a,6),109),101),109),111),114),121)
+ let c=aw_uleb(aw_byte(b,2),0)
+ let d=aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(aw_byte(aw_uleb(c,11),95),95),104),101),97),112),95),98),97),115),101)
+ let e=aw_uleb(aw_byte(d,3),1)
+ let traps=loop(aw_ok,aw_strict_export,get(s#0,88)!=0?6:0,e)
+ let f=loop(aw_ok,aw_export_kept,get(s#1,11),traps)
+ return aw_section(f,7,aw_vec(f#0,21))
+end
+fn aw_write_body(s:(u32x128,u32x16,u32x128,u32x128,io),body:(u32,u32,u32)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_uleb(aw_target(s,21),body#1)
+ return aw_copy_vector(a,body)
+end
+fn aw_rt_read_exhausted(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_trap_call(s,2)
+end
+fn aw_io_read_common(s:(u32x128,u32x16,u32x128,u32x128,io),strict:bool) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let input=get(s#0,89)*4
+ let position=input+4
+ let a=aw_begin_body(s,0)
+ let b=aw_mem(aw_getlocal(a,0),40,position)
+ let c=aw_mem(aw_getlocal(b,0),40,input)
+ let d=aw_byte(c,73)
+ let e=aw_mem(aw_getlocal(d,0),40,position)
+ let f=aw_byte(aw_const(e,get(s#0,89)),73)
+ let g=aw_byte(aw_byte(aw_byte(f,113),4),127)
+ let h=aw_getlocal(aw_getlocal(g,0),0)
+ let j=aw_mem(h,40,position)
+ let k=aw_byte(aw_byte(aw_const(j,4),108),106)
+ let l=aw_mem(k,40,0)
+ let m=aw_getlocal(aw_getlocal(l,0),0)
+ let n=aw_mem(m,40,position)
+ let p=aw_byte(aw_const(n,1),106)
+ let q=aw_mem(p,54,position)
+ let exhausted=fold(aw_rt_read_exhausted,bit(strict),aw_byte(q,5))
+ let r=aw_const(exhausted,0)
+ let u=aw_byte(aw_byte(r,11),11)
+ return aw_write_body(u,aw_vec(u#0,18))
+end
+fn aw_io_read_body(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_io_read_common(s,false)
+end
+fn aw_io_sread_body(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_io_read_common(s,true)
+end
+fn aw_io_write_body(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let output=(get(s#0,89)+2)*4
+ let noutput=output+get(s#0,90)*4
+ let a=aw_begin_body(s,0)
+ let b=aw_mem(aw_getlocal(a,0),40,noutput)
+ let c=aw_byte(aw_const(b,get(s#0,90)),73)
+ let d=aw_byte(aw_byte(c,4),64)
+ let e=aw_mem(aw_getlocal(aw_getlocal(d,0),0),40,noutput)
+ let f=aw_byte(aw_byte(aw_const(e,4),108),106)
+ let g=aw_mem(aw_getlocal(f,1),54,output)
+ let h=aw_mem(aw_getlocal(aw_getlocal(g,0),0),40,noutput)
+ let j=aw_mem(aw_byte(aw_const(h,1),106),54,noutput)
+ let k=aw_byte(aw_byte(j,11),11)
+ return aw_write_body(k,aw_vec(k#0,18))
+end
+fn aw_io_puts_body(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_begin_body(s,1)
+ let b=aw_call_index(aw_getlocal(aw_getlocal(a,0),2),1)
+ let c=aw_setlocal(aw_const(b,0),3)
+ let d=aw_byte(aw_byte(aw_byte(aw_byte(c,2),64),3),64)
+ let e=aw_op_imm(aw_byte(aw_getlocal(aw_getlocal(d,3),2),79),13,1)
+ let f=aw_getlocal(aw_getlocal(aw_getlocal(e,0),1),3)
+ let g=aw_mem(aw_byte(aw_byte(aw_const(f,4),108),106),40,0)
+ let h=aw_call_index(g,1)
+ let j=aw_setlocal(aw_byte(aw_const(aw_getlocal(h,3),1),106),3)
+ let k=aw_op_imm(j,12,0)
+ let l=aw_byte(aw_byte(aw_byte(k,11),11),11)
+ return aw_write_body(l,aw_vec(l#0,18))
+end
+fn aw_code_user(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_raw(s,get(s#0,9),id*16+5,3)
+ let body=a#3
+ return aw_write_body(a,(body[0],body[1],body[2]))
+end
+fn aw_code_kept_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_code_user(s,id)
+end
+fn aw_code_kept(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fnword(s,id,13)
+ return fold(aw_code_kept_do,get(a#3,0)!=0?1:0,a,id)
+end
+fn aw_rt_word(s:(u32x128,u32x16,u32x128,u32x128,io),local:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_byte(aw_const(aw_getlocal(s,local),2),116)
+end
+fn aw_rt_enter(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let chain=get(s#0,106)
+ let node=get(s#0,107)
+ let a=aw_begin_body(s,1)
+ let b=aw_setlocal(aw_mem(aw_const(a,0),40,1040),1)
+ let c=aw_mem(aw_getlocal(aw_rt_word(b,1),0),54,chain)
+ let d=aw_mem(aw_const(aw_rt_word(c,1),0),54,node)
+ let e=aw_getlocal(aw_const(d,0),1)
+ let f=aw_mem(aw_byte(aw_const(e,1),106),54,1040)
+ let g=aw_byte(f,11)
+ return aw_write_body(g,aw_vec(g#0,18))
+end
+fn aw_rt_leave(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_begin_body(s,0)
+ let b=aw_mem(aw_const(aw_const(a,0),0),40,1040)
+ let c=aw_mem(aw_byte(aw_const(b,1),107),54,1040)
+ let d=aw_byte(c,11)
+ return aw_write_body(d,aw_vec(d#0,18))
+end
+fn aw_rt_frame_store(s:(u32x128,u32x16,u32x128,u32x128,io),offset:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_begin_body(s,0)
+ let b=aw_mem(aw_const(a,0),40,1040)
+ let c=aw_byte(aw_const(b,1),107)
+ let d=aw_byte(aw_const(c,2),116)
+ let e=aw_mem(aw_getlocal(d,0),54,offset)
+ let f=aw_byte(e,11)
+ return aw_write_body(f,aw_vec(f#0,18))
+end
+fn aw_rt_trap(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let node=get(s#0,107)
+ let trips=get(s#0,108)
+ let a=aw_begin_body(s,4)
+ let b=aw_setlocal(aw_mem(aw_const(a,0),40,1040),1)
+ let c=aw_setlocal(aw_const(b,4294967295),2)
+ let d=aw_setlocal(aw_const(c,0),3)
+ let e=aw_setlocal(aw_getlocal(d,1),4)
+ let f=aw_byte(aw_byte(aw_byte(aw_byte(e,2),64),3),64)
+ let g=aw_op_imm(aw_byte(aw_getlocal(f,4),69),13,1)
+ let h=aw_setlocal(aw_byte(aw_const(aw_getlocal(g,4),1),107),4)
+ let j=aw_byte(aw_byte(aw_mem(aw_rt_word(h,4),40,node),4),64)
+ let k=aw_setlocal(aw_getlocal(j,4),2)
+ let l=aw_setlocal(aw_mem(aw_rt_word(k,4),40,trips),3)
+ let m=aw_op_imm(l,12,2)
+ let n=aw_op_imm(aw_byte(m,11),12,0)
+ let p=aw_byte(aw_byte(n,11),11)
+ let q=aw_byte(aw_const(aw_getlocal(aw_const(p,0),0),8),108)
+ let r=aw_mem(aw_byte(aw_const(q,1044),106),54,1024)
+ let u=aw_mem(aw_getlocal(aw_const(r,0),1),54,1028)
+ let v=aw_mem(aw_getlocal(aw_const(u,0),2),54,1032)
+ let w=aw_mem(aw_getlocal(aw_const(v,0),3),54,1036)
+ let x=aw_mem(aw_const(aw_const(w,0),0),54,1040)
+ let y=aw_byte(aw_byte(x,0),11)
+ return aw_write_body(y,aw_vec(y#0,18))
+end
+fn aw_strict_bodies(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_rt_enter(s)
+ let b=aw_rt_leave(a)
+ let c=aw_rt_frame_store(b,get(b#0,107))
+ let d=aw_rt_frame_store(c,get(c#0,108))
+ let e=aw_rt_trap(d)
+ return aw_io_sread_body(e)
+end
+fn aw_code_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_uleb(aw_reset(s,21),get(s#0,91)+get(s#0,85))
+ let b=aw_io_read_body(a)
+ let c=aw_io_write_body(b)
+ let d=aw_io_puts_body(c)
+ let runtime=fold(aw_strict_bodies,get(s#0,88)!=0?1:0,d)
+ let e=loop(aw_ok,aw_code_kept,get(s#1,11),runtime)
+ return aw_section(e,10,aw_vec(e#0,21))
+end
+fn aw_custom_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let v0=aw_uleb(aw_reset(s,21),2)
+ let v1=aw_byte(v0,97)
+ let v2=aw_byte(v1,48)
+ let v3=aw_byte(v2,97)
+ let v4=aw_byte(v3,48)
+ let v5=aw_byte(v4,99)
+ let v6=aw_byte(v5,45)
+ let v7=aw_byte(v6,48)
+ let v8=aw_byte(v7,46)
+ let v9=aw_byte(v8,49)
+ let v10=aw_byte(v9,46)
+ let v11=aw_byte(v10,54)
+ let v12=aw_byte(v11,50)
+ return aw_section(v12,0,aw_vec(v12#0,21))
+end
+
+fn aw_strict_data_section(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let data=aw_vec(s#0,15)
+ let a=aw_byte(aw_uleb(aw_reset(s,21),1),0)
+ let b=aw_uleb(aw_byte(aw_const(a,1024),11),data#1)
+ let c=aw_copy_vector(b,data)
+ return aw_section(c,11,aw_vec(c#0,21))
+end
+
+fn aw_module(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_reset(s,3)
+ let page=set(set(set(set(set(arena_zero(),1,97),2,115),3,109),4,1),0,0)
+ let b=aw_bytes(a,8,page)
+ let versioned=aw_custom_section(b)
+ let c=aw_type_section(versioned)
+ let d=aw_function_section(c)
+ let e=aw_memory_section(d)
+ let f=aw_global_section(e)
+ let g=aw_export_section(f)
+ let h=aw_code_section(g)
+ return fold(aw_strict_data_section,get(s#0,88)!=0?1:0,h)
+end
+fn aw_emit_function_kept_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_emit_function(s,id)
+end
+fn aw_emit_function_kept(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fnword(s,id,13)
+ return fold(aw_emit_function_kept_do,get(a#3,0)!=0?1:0,a,id)
+end
+fn aw_options(s:(u32x128,u32x16,u32x128,u32x128,io),options:u32x128) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let valid=(options[0]==1)&(options[3]<=1)&((options[4]==1)|(options[4]==2)|(options[4]==4))&(options[5]<=1)&(options[6]<=1)
+ let a=aw_code(s,valid?0:6)
+ let supported=(options[3]==0)&(options[4]==1)&(options[5]==0)
+ let b=aw_code(a,supported?0:8)
+ let m=set(b#0,89,options[1])
+ let m=set(m,90,options[2])
+ let m=set(m,93,options[6])
+ let m=aw_setvec(m,30,(options[7],options[8],options[9]))
+ let m=aw_setvec(m,33,(options[10],options[11],options[12]))
+ let c=aw_sum((m,b#1,b#2,b#3,b#4),options[1],options[2])
+ let d=aw_sum(c,get(c#3,0),3)
+ return aw_code(d,get(d#3,0)<=1073741823?0:7)
+end
+fn aw_strict_kinds(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_put(s,15,20,98)
+ let b=aw_put(a,15,21,111)
+ let c=aw_put(b,15,22,117)
+ let d=aw_put(c,15,23,110)
+ let e=aw_put(d,15,24,100)
+ let f=aw_put(e,15,25,115)
+ let g=aw_put(f,15,28,100)
+ let h=aw_put(g,15,29,105)
+ let j=aw_put(h,15,30,118)
+ let k=aw_put(j,15,31,122)
+ let l=aw_put(k,15,32,101)
+ let m=aw_put(l,15,33,114)
+ let n=aw_put(m,15,34,111)
+ let p=aw_put(n,15,36,105)
+ let q=aw_put(p,15,37,110)
+ let r=aw_put(q,15,38,112)
+ let u=aw_put(r,15,39,117)
+ return aw_put(u,15,40,116)
+end
+fn aw_strict_name(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32,node:bool) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let desc=s#2
+ let h=node?desc[40]:desc[37]
+ let a=aw_raw(s,h,id*(node?14:12)+(node?3:1),1)
+ let symbol=get(a#3,0)
+ let b=aw_raw(a,desc[34],symbol*2,2)
+ let span=b#3
+ let c=aw_sum(b,1024,get(b#0,16))
+ let pointer=get(c#3,0)
+ let d=aw_put(c,node?27:24,id,pointer)
+ let e=aw_span(aw_target(d,15),desc[31],span[0],span[1])
+ return aw_byte(e,0)
+end
+fn aw_strict_fn_name(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_strict_name(s,id,false)
+end
+fn aw_strict_node_name_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return aw_strict_name(s,id,true)
+end
+fn aw_strict_node_name(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ return fold(aw_strict_node_name_do,id==0?0:1,s,id)
+end
+fn aw_strict_area(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let ctx=s#1
+ let desc=s#2
+ let valid=(desc[1]==1093681731)&(desc[2]==1)&(desc[9]==ctx[11])&(desc[10]==ctx[13])
+ let a=aw_code(s,valid?0:6)
+ let frames=ctx[11]+1
+ let b=aw_code(a,frames<=357913937?0:7)
+ let c=aw_alloc(b,15,48+12*frames)
+ let d=aw_alloc(c,24,ctx[11])
+ let e=aw_alloc(d,27,ctx[13])
+ let m=set(e#0,106,1072)
+ let m=set(m,107,1072+4*frames)
+ let m=set(m,108,1072+8*frames)
+ let f=aw_strict_kinds((m,e#1,e#2,e#3,e#4))
+ let g=loop(aw_ok,aw_strict_fn_name,ctx[11],f)
+ return loop(aw_ok,aw_strict_node_name,ctx[13],g)
+end
+fn aw_seed_function(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let all=get(s#0,93)==0
+ let a=aw_put(s,9,id*16+13,all?1:0)
+ return aw_put(a,9,id*16+14,all?1:0)
+end
+fn aw_find_more(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> bool
+ let m=s#0
+ return (m[0]==0)&(m[113]==4294967295)
+end
+fn aw_name_equal_ok(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> bool
+ let m=s#0
+ return (m[0]==0)&(m[114]!=0)
+end
+fn aw_name_equal_word(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,left:u32x128,right:u32x128) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ return (set(m,114,(m[114]!=0)&(left[i]==right[i])?1:0),s#1,s#2,s#3,s#4)
+end
+fn aw_name_equal_page(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ let off=i<<7
+ let left=m[112]-off
+ let count=left>128?128:left
+ let a=aw_raw(s,m[30],m[111]+off,count)
+ let page=a#3
+ let b=aw_raw(a,get(a#1,5),first+off,count)
+ return fold(aw_name_equal_word,count,b,page,b#3)
+end
+fn aw_match_name(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32,first:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=set(s#0,114,1)
+ let length=m[112]
+ let pages=(length>>7)+bit((length&127)!=0)
+ let a=loop(aw_name_equal_ok,aw_name_equal_page,pages,(m,s#1,s#2,s#3,s#4),first)
+ let q=a#0
+ return (set(q,113,q[114]!=0?id:q[113]),a#1,a#2,a#3,a#4)
+end
+fn aw_find_function(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fun(s,id)
+ let funrow=a#3
+ let same=funrow[1]==get(a#0,112)
+ return fold(aw_match_name,bit(same),a,id,funrow[0])
+end
+fn aw_root_found(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_put(s,9,id*16+13,1)
+ return aw_put(a,9,id*16+14,1)
+end
+fn aw_resolve_root(s:(u32x128,u32x16,u32x128,u32x128,io),index:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_raw(s,get(s#0,33),index*2,2)
+ let span=a#3
+ let m=set(a#0,110,index)
+ let m=set(m,111,span[0])
+ let m=set(m,112,span[1])
+ let m=set(m,113,4294967295)
+ let valid=(span[0]<=m[31])&(span[1]<=m[31]-span[0])
+ let b=aw_code((m,a#1,a#2,a#3,a#4),valid?0:6)
+ let c=loop(aw_find_more,aw_find_function,get(s#1,11),b)
+ let id=get(c#0,113)
+ let d=aw_code(c,id!=4294967295?0:6)
+ return fold(aw_root_found,id!=4294967295?1:0,d,id)
+end
+fn aw_resolve_roots(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=s#0
+ let a=aw_code(s,(m[34]&1)==0?0:6)
+ return loop(aw_ok,aw_resolve_root,m[34]>>1,a)
+end
+fn aw_reach_more(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> bool
+ let m=s#0
+ return (m[0]==0)&(m[117]!=0)
+end
+fn aw_reach_node_ok(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> bool
+ return get(s#0,0)==0
+end
+fn aw_reach_mark(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fnword(s,id,13)
+ let fresh=get(a#3,0)==0
+ let m=set(a#0,117,get(a#0,117)|bit(fresh))
+ return aw_put((m,a#1,a#2,a#3,a#4),9,id*16+13,1)
+end
+fn aw_reach_node(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,first:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_node(s,first+i)
+ let node=a#3
+ let call=(node[0]==19)|(node[0]==20)|(node[0]==21)
+ let b=fold(aw_reach_mark,bit(call),a,node[3])
+ return fold(aw_reach_mark,node[0]==21?1:0,b,node[4])
+end
+fn aw_reach_function_do(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32,id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fun(s,id)
+ let funrow=a#3
+ return loop(aw_reach_node_ok,aw_reach_node,funrow[6],a,funrow[5])
+end
+fn aw_reach_function(s:(u32x128,u32x16,u32x128,u32x128,io),reverse:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let id=get(s#1,11)-1-reverse
+ let a=aw_fnword(s,id,13)
+ return fold(aw_reach_function_do,get(a#3,0)!=0?1:0,a,id)
+end
+fn aw_reach_round(s:(u32x128,u32x16,u32x128,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let m=set(s#0,117,0)
+ return loop(aw_ok,aw_reach_function,get(s#1,11),(m,s#1,s#2,s#3,s#4))
+end
+fn aw_map_function(s:(u32x128,u32x16,u32x128,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=aw_fnword(s,id,13)
+ let kept=get(a#3,0)!=0
+ let b=aw_fnword(a,id,14)
+ let exported=get(b#3,0)!=0
+ let m=b#0
+ let index=m[85]+m[91]
+ let m=set(m,91,m[91]+bit(kept))
+ let m=set(m,92,m[92]+bit(exported))
+ return aw_put((m,b#1,b#2,b#3,b#4),9,id*16+12,kept?index:4294967295)
+end
+fn aw_exports(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
+ let a=loop(aw_ok,aw_seed_function,get(s#1,11),s)
+ let b=fold(aw_resolve_roots,get(s#0,93)!=0?1:0,a)
+ let m=set(b#0,117,1)
+ let c=loop(aw_reach_more,aw_reach_round,get(s#1,11),(m,b#1,b#2,b#3,b#4))
+ let m=set(c#0,91,0)
+ let m=set(m,92,0)
+ return loop(aw_ok,aw_map_function,get(s#1,11),(m,c#1,c#2,c#3,c#4))
+end
+fn arena_wasm_emit_options(t:io,ctx:u32x16,desc:u32x128,options:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
+ let a=aw_geometry(t,ctx,desc)
+ let d=aw_options(a,options)
+ let m=set(d#0,85,3)
+ let m=set(m,87,16)
+ let e=loop(aw_ok,aw_program_geometry,ctx[11],(m,d#1,d#2,d#3,d#4))
+ let area=fold(aw_strict_area,get(e#0,88)!=0?1:0,e)
+ let f=aw_sum(area,get(area#0,88)!=0?get(area#0,16):0,1024)
+ let padded=aw_sum(f,get(f#3,0),15)
+ let stack=get(padded#3,0)&4294967280
+ let heap=aw_sum(padded,stack,get(padded#0,87))
+ let m=set(heap#0,85,get(heap#0,88)!=0?9:3)
+ let m=set(m,86,get(heap#3,0))
+ let reachable=aw_exports((m,heap#1,heap#2,heap#3,heap#4))
+ let g=loop(aw_ok,aw_emit_function_kept,ctx[11],reachable)
+ let h=aw_module(g)
+ let code=get(h#0,0)
+ return (code,code==0?aw_vec(h#0,3):(0,0,0),h#0,h#4)
+end
+fn arena_wasm_options() -> u32x128
+ let a=set(arena_zero(),0,1)
+ let b=set(a,1,256)
+ let c=set(b,2,1024)
+ return set(c,4,1)
+end
+fn arena_wasm_emit(t:io,ctx:u32x16,desc:u32x128,input:u32,output:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let a=set(arena_wasm_options(),1,input)
+ let b=set(a,2,output)
+ return arena_wasm_emit_options(t,ctx,desc,b)
+end

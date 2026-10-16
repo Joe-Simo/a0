@@ -1146,7 +1146,7 @@ export async function checkRiscv64(
     '#include <stdbool.h>',
     ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
     // A strict program's traps reach the host's A0_trap: the reference host formats the line.
-    ...(subset.profile === 'strict' ? [nativeTrapHostC()] : []),
+    ...(subset.profile === 'strict' ? [nativeTrapHostC(subset)] : []),
   ].join('\n');
   const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({
     status: 'failed',
@@ -1341,7 +1341,7 @@ export async function checkArm32(
     '#include <stdbool.h>',
     ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
     ARM32_CASES,
-    ...(subset.profile === 'strict' ? [nativeTrapHostC()] : []),
+    ...(subset.profile === 'strict' ? [nativeTrapHostC(subset)] : []),
   ].join('\n');
   const tools = `${gcc.version}; ${qemu.version}`;
   const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({

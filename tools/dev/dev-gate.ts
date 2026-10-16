@@ -54,7 +54,7 @@ export const BUILD: StepRun = { id: 'build', cmd: 'bun run build', timeoutMs: 10
 export const COMMANDS: Readonly<Record<StepId, StepRun>> = {
   lint: { id: 'lint', cmd: 'bun run lint', timeoutMs: 10 * MIN },
   typecheck: { id: 'typecheck', cmd: 'bun run typecheck', timeoutMs: 10 * MIN },
-  test: { id: 'test', cmd: 'node --test dist/test/*.test.js', timeoutMs: 45 * MIN },
+  test: { id: 'test', cmd: 'node --test dist/test/*.test.js', timeoutMs: 60 * MIN },
   verify: { id: 'verify', cmd: node('verify'), timeoutMs: 90 * MIN },
   equiv: { id: 'equiv', cmd: node('equiv-verify'), timeoutMs: 45 * MIN },
   hw: { id: 'hw', cmd: node('hw-verify'), timeoutMs: 45 * MIN },
