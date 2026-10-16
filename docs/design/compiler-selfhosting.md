@@ -14,11 +14,11 @@ optimization, target ABI decisions and code emission belong in A0.
 
 | Stage | A0 implementation | Work before dependency removal |
 | --- | --- | --- |
-| Canonical frontend | `compiler/lex.a0`, `parse.a0`, `check.a0`, `suggest.a0` | Specs (`ex`, `pre`, `post`), diagnostic detail/source locations, current accepted input limits, generic module/chunk planning and a lossless checked-IR interface. Ordinary loads still use `src/link.ts` and `src/core.ts`. |
+| Canonical frontend | `compiler/lex.a0`, `parse.a0`, `check.a0`, `suggest.a0`; arena lexer, vectors and symbols | Connect the arena tables to a complete parser/checker. Specs (`ex`, `pre`, `post`), diagnostic detail/source locations, current accepted input limits, generic module/chunk planning and a lossless checked-IR interface remain. Ordinary loads still use `src/link.ts` and `src/core.ts`. |
 | Browser frontend | `compiler/front512.a0` | The playground retains a separate legacy lexer/parser/checker with a smaller language surface. Complete or replace it through the same A0 compiler interface. |
 | Dense frontend | `compiler/dense.a0` | Complete the documented syntax gaps and execute it without the TypeScript interpreter or a subsequent TypeScript parse. |
 | Evaluation | `compiler/evalrun.a0` | IO, strict traps, fuel/trip behavior and command/spec evaluation. The native driver's C evaluator is also compiler logic that must migrate. |
-| Optimization | `compiler/optimize.a0`, `shape.a0` | Preserve reference behavior, support strict/checked operations and existing input sizes, and use these stages for every target. Ordinary emits still use `src/optimize.ts`. |
+| Optimization | `compiler/optimize.a0`, `shape.a0`, including canonical checked operations | Preserve reference behavior, support strict metadata and existing input sizes, and use these stages for every target. Checked bodies conservatively decline fusion. Ordinary emits still use `src/optimize.ts`. |
 | C | `compiler/emit_c.a0` | Strict traps and metadata; current aggregate ABI, arena, ownership, parallel and option behavior. |
 | Darwin arm64 | `compiler/emit_arm64.a0` | Strict traps and metadata; current backend ABI, ownership and option behavior. |
 | Direct Wasm | `compiler/emit_wasm.a0`, `wasm_code.a0` | Strict traps and metadata; full optimizer/frontend parity and authoritative command routing. |
@@ -44,6 +44,27 @@ TypeScript oracle. Its frontend, chunk planner and prerendering still depend on 
 The Wasm tool's bootstrap now builds the verified A0-generated C seed directly; it must fail if that
 seed is missing or stale. This removes a TypeScript code-generation step, not the remaining frontend
 or driver dependencies.
+
+## Frontend storage
+
+`compiler/arena.a0` implements the compiler's internal storage protocol; `arena_vector.a0`,
+`lex_arena.a0` and `symbol_arena.a0` implement growth, lexical decisions and symbol interning in A0.
+Token spans, symbol IDs, source offsets and vector fields retain full u32 words. The lexer accepts
+up to the existing source-byte limit and reports allocation errors explicitly. This storage is
+available for the frontend migration; the shipped parser has not yet switched to it.
+
+`tools/native/arena_runtime.c` supplies generic word allocation, bounded transfers and output.
+It contains no grammar, typing, module policy or chunk planning. Generated C opts into this
+transport with explicit read/write macros; ordinary programs keep their buffered IO behavior.
+Each invocation owns a session and must check both its entry status and `a0_arena_is_complete()`
+before publishing output. Handles live only for that invocation. A concurrent wrapper must map
+each invocation to its own session. The runtime ABI and adapter bytes must be recorded in
+provenance before it becomes part of a packaged compiler.
+
+`test/arena-frontend.test.ts` builds the verified native A0 seed and uses it to emit the storage,
+lexer and symbol code. Its independent host model, byte scanner and symbol map check capacity
+boundaries, collisions, resource rollback, cleanup and both IO transports. These checks establish
+the storage layer; they do not establish complete parser, checker or diagnostic parity.
 
 ## Completion evidence
 

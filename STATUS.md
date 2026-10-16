@@ -1,6 +1,6 @@
 # A0 status
 
-Last updated 2026-10-16, compiler `a0c-0.1.59` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
+Last updated 2026-10-16, compiler `a0c-0.1.60` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
 what exists, what is measured and where the numbers live, what is lost or unknown, how to reproduce it, and what comes next.
 Every number on this page is in the `results/` file named beside it, or is reproduced by the command shown. The long record of
 how the project got here, session by session, is in [docs/history/](docs/history/) (index at the end). Contributing rules are in
@@ -25,12 +25,14 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## Current results
 
-Compiler migration (`a0c-0.1.59`): canonical checked arithmetic and array access are implemented in the A0 C,
+Compiler migration (`a0c-0.1.60`): canonical checked arithmetic and array access are implemented in the A0 C,
 AArch64 and Wasm emitters. A0 optimization now uses weighted expansion costs and recognizes square-matrix recurrences;
 the reference optimizer also preserves the unsigned exponent when an earlier call exposes a large iteration count.
-The website compiler tool builds from the verified A0-generated seed. Strict trapping semantics and checked optimization
-remain explicitly unsupported in these A0 paths; the complete compiler migration is still in progress.
-Reproduce the focused coverage with `node --test dist/test/selfhost-*.test.js dist/test/matrix-u32-exponent.test.js`
+The website compiler tool builds from the verified A0-generated seed. A0 optimization supports canonical checked
+operations; strict trapping semantics remain explicitly unsupported in these A0 paths.
+Arena storage, full-width lexer spans, vectors and symbol interning are available for frontend migration.
+The shipped frontend still needs the complete arena-backed parser and checker; the entire compiler migration is in progress.
+Reproduce the focused coverage with `node --test dist/test/selfhost-*.test.js dist/test/matrix-u32-exponent.test.js dist/test/arena-frontend.test.js`
 after `bun run build`; the bootstrap reproduction check is `bun run seed`.
 
 Readonly C iteration extras (`a0c-0.1.58`): minmax, filtering and binary search improved

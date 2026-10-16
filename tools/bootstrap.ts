@@ -228,6 +228,10 @@ export function planChunks(src: string): Chunk[] {
   // chunks so the C emitter can name its typedef even when every public result is scalar.
   if (fns.some((f) => f.nodes.some((n) => CHECKED_OPS.has(n.op))) && !types.includes('(u32,bool)'))
     types.push('(u32,bool)');
+  // A read also constructs a builtin tuple that need not appear in any signature.
+  // Every chunk must intern it before checking bodies so typedef IDs stay identical.
+  if (fns.some((f) => f.nodes.some((n) => n.op === 'read')) && !types.includes('(u32,io)'))
+    types.push('(u32,io)');
   const prelude = `fn ${PRELUDE} ${types.join(' ')} -> u32\nret 0\nend\n`;
   const index = new Map(fns.map((f, i) => [f.name, i] as const));
   const text = fns.map((f) => `${formatFunction(f)}\n`);

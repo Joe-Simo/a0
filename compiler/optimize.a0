@@ -27,8 +27,9 @@
 # positions), then the ret pair and the literal iteration bound. Code 7: the functions whose
 # body the run needs (to inline a call or unroll a fold, or to evaluate a call or a fold with
 # literal operands, on the optimized body as src/optimize.ts does), then their count; the driver
-# supplies them and everything they reach and repeats the run. Public modes 7/8 give code 5
-# and write nothing on supplied checked ops. Strict metadata is not part of the table ABI.
+# supplies them and everything they reach and repeats the run. Canonical checked operations
+# keep their record results opaque; their scalar observations evaluate inside calls/folds.
+# Strict metadata is not part of the table ABI; the source/host boundaries refuse strict.
 # Code 4: a limit (4096 nodes,
 # 32768 operand slots, 256 stacked nodes) was reached; src/optimize.ts has none of these.
 #
@@ -9415,7 +9416,7 @@ sq_h set sq_g q6 q4
 sq set p0 q5 sq_h
 ret sq
 end
-fn ozcknode u32 u32 u32x128x132 u32 -> u32
+fn ozbadnode u32 u32 u32x128x132 u32 -> u32
 q0 add p3 p1
 q1 mul q0 6
 q2 add q1 1
@@ -9423,28 +9424,36 @@ q3 shr q2 7
 q4 and q2 127
 q5 get p2 q3
 q6 get q5 q4
-q7 ge q6 32
-q8 le q6 37
-q9 and q7 q8
+q7 eq q6 0
+q8 gt q6 37
+q9 or q7 q8
 q10 select q9 1 0
 q11 or p0 q10
 ret q11
 end
-fn ozckfn u32 u32 u32x128x45 u32x128x132 -> u32
+fn ozbadfn u32 u32 u32x128x45 u32x128x132 -> u32
 q0 mul p1 7
-q1 add q0 5
-q2 shr q1 7
-q3 and q1 127
-q4 get p2 q2
-q5 get q4 q3
+q1 shr q0 7
+q2 and q0 127
+q3 get p2 q1
+q4 get q3 q2
+q5 and q4 1
+supplied ne q5 0
 q6 mul p1 7
-q7 add q6 4
+q7 add q6 5
 q8 shr q7 7
 q9 and q7 127
 q10 get p2 q8
 q11 get q10 q9
-q12 fold ozcknode q5 p0 p3 q11
-ret q12
+q12 select supplied q11 0
+q13 mul p1 7
+q14 add q13 4
+q15 shr q14 7
+q16 and q14 127
+q17 get p2 q15
+q18 get q17 q16
+q19 fold ozbadnode q12 p0 p3 q18
+ret q19
 end
 fn ozemit (io,u32) u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x24 u32x128x512 u32x128x16 u32 u32 u32 u32 u32 -> (io,u32)
 io at p0 0
@@ -10445,10 +10454,10 @@ i13 at q17 1
 q18 call wardw i13
 stage at q18 0
 i14 at q18 1
-checked fold ozckfn nf 0 fnt nd
-q19 eq checked 0
+unsupported fold ozbadfn nf 0 fnt nd
+q19 eq unsupported 0
 q20 select q19 1 0
-q21 eq checked 0
+q21 eq unsupported 0
 q22 select q21 0 5
 q23 rec i14 q22
 q24 fold ozemit q20 q23 ty tl fnt nd nt op sm g stage nty nf no
@@ -11731,10 +11740,10 @@ i11 at q14 1
 q15 call wardw i11
 g at q15 0
 i12 at q15 1
-checked fold ozckfn nf 0 fnt nd
-q16 eq checked 0
+unsupported fold ozbadfn nf 0 fnt nd
+q16 eq unsupported 0
 q17 select q16 1 0
-q18 eq checked 0
+q18 eq unsupported 0
 q19 select q18 0 5
 q20 rec i12 q19
 q21 fold ozimemit q17 q20 ty tl fnt nd nt op g nty nf no

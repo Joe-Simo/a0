@@ -7,7 +7,8 @@
  * `compile(program, 'wasm')` byte for byte with default options and `{ optimize: false }`.
  * Canonical checked programs can be emitted without the optimizer; fusion declines candidates
  * whose reachable bodies contain checked operations, so those modules may differ from TypeScript
- * while preserving behavior. Strict programs and checked optimization are explicitly refused.
+ * while preserving behavior. Strict programs are explicitly refused; canonical checked
+ * operations are supported by both emission and optimization.
  *
  * - Build (`buildWasmTool`): the checked-in, A0-generated C seed (seed/a0c-seed.c)
  *   compiles the closure of `emitwasmio` in chunks;
@@ -741,8 +742,8 @@ export function a0OptimizeProgram(
   fallback?: readonly Body[],
   image = false,
 ): OptimizedProgram {
-  // Emitter support does not imply optimizer support. Its table protocol has no strict
-  // profile/trap metadata, and checked-result operations are not ported in these passes yet.
+  // Canonical checked operations are total. The table protocol has no strict profile/trap
+  // metadata, so strict programs remain explicitly unsupported before any cache lookup.
   assertTargetSupports('a0w optimizer', program);
   const plain = reference === undefined && fallback === undefined && !image;
   const known = plain ? OPTIMIZED.get(program) : undefined;

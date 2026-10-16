@@ -22,7 +22,12 @@ import {
 
 // The production path has no reference/fallback argument. A0W_TOOL lets a gate reuse its
 // already-built tool; otherwise the test builds one once through the verified bootstrap seed.
-const SKIP = findClang().path === undefined ? 'clang not found' : false;
+const SKIP =
+  process.env.A0W_TOOL !== undefined
+    ? false
+    : findClang().path === undefined
+      ? 'clang not found'
+      : false;
 let buildRoot: string | undefined;
 let tool: Promise<string> | undefined;
 after(async () => {
@@ -308,11 +313,8 @@ for (const trips of [0x8000_0000, 0x8000_0001, 0xffff_ffff]) {
   });
 }
 
-test('A0 optimization refuses strict and checked input before starting a tool', () => {
-  for (const source of [
-    'profile strict\nfn f u32 -> u32\nret p0\nend\n',
-    'fn f u32 u32 -> (u32,bool)\nr cadd p0 p1\nret r\nend\n',
-  ]) {
+test('A0 optimization refuses strict input before starting a tool', () => {
+  for (const source of ['profile strict\nfn f u32 -> u32\nret p0\nend\n']) {
     const p = parseAndValidate(source);
     assert.throws(
       () => a0OptimizeProgram('unusable-tool-must-not-run', p),
@@ -351,20 +353,32 @@ function checkedTableWords(mode: 7 | 8, op: number): number[] {
   ];
 }
 
-test('raw optimizer modes reject every checked opcode with code5 and no output', {
+test('raw optimizer modes retain every typed checked opcode and reject unknown opcodes', {
   skip: SKIP,
 }, async () => {
   const exe = await executable();
   for (const mode of [7, 8] as const) {
-    for (let op = 32; op <= 37; op += 1) {
+    for (const op of [32, 33, 34, 35, 36, 37, 0, 38, 0xffff_ffff]) {
       const words = checkedTableWords(mode, op);
       const input = Buffer.alloc(words.length * 4);
       words.forEach((word, i) => {
         input.writeUInt32LE(word >>> 0, i * 4);
       });
       const r = spawnWithInput(exe, input, { timeout: 60_000, maxBuffer: 1 << 20 });
-      assert.equal(r.status, 5, `mode${mode}, op${op}: unsupported`);
-      assert.equal(r.stdout.length, 0, `mode${mode}, op${op}: writes no partial body`);
+      const known = op >= 32 && op <= 37;
+      assert.equal(r.status, known ? 0 : 5, `mode${mode}, op${op}: admission`);
+      if (!known) assert.equal(r.stdout.length, 0, 'unknown ops write no partial body');
+      else {
+        assert.equal(r.stdout.length % 4, 0);
+        const out = Array.from({ length: r.stdout.length / 4 }, (_, i) =>
+          r.stdout.readUInt32LE(i * 4),
+        );
+        const expected =
+          mode === 7
+            ? [1, op, 2, 0, 0, 3, 2, 0, 2, 1, 1, 0, 1]
+            : [0, 1, 1, 0, 1, 2, 0, 0, op, 2, 0, 0, 3, 2, 0, 2, 1];
+        assert.deepEqual(out, expected, 'record result remains a typed checked node');
+      }
     }
   }
 });
