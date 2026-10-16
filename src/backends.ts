@@ -1604,8 +1604,54 @@ function cBorrow(ctx: CContext, n: Node): string | undefined {
   return `  ${kind}${cType(t)} *const n_${n.id} = &${a}${part};`;
 }
 
+/** A single-use intermediate rebuild can consume private state before a nested iteration. */
+function cIntermediateRecord(ctx: CContext, node: Node, index: number): boolean {
+  const { fn, variant } = ctx;
+  const p0 = fn.params[0];
+  const type = fn.types.get(node.id);
+  const flatArray = (t: Type): boolean =>
+    !isPrimitive(t) && t.kind === 'arr' && (t.elem === 'u32' || t.elem === 'bool');
+  if (
+    variant !== 'owned' ||
+    node.op !== 'rec' ||
+    index === fn.nodes.length - 1 ||
+    p0 === undefined ||
+    type === undefined ||
+    isPrimitive(p0) ||
+    p0.kind !== 'rec' ||
+    fn.params.some(containsIo) ||
+    !p0.fields.some(flatArray) ||
+    !p0.fields.every((t) => t === 'u32' || t === 'bool' || flatArray(t)) ||
+    formatType(type) !== formatType(p0) ||
+    ![...ctx.projections.of.values()].some(
+      (p) => p.container.kind === 'param' && p.container.index === 0,
+    )
+  )
+    return false;
+  const uses = fn.nodes.flatMap((n) =>
+    n.args.flatMap((o, k) => (o.kind === 'node' && o.id === node.id ? [{ n, k }] : [])),
+  );
+  if (
+    uses.length !== 1 ||
+    uses[0]?.k !== 1 ||
+    !['fold', 'loop'].includes(uses[0]?.n.op ?? '') ||
+    sameOp(fn.ret, { kind: 'node', id: node.id }) ||
+    sameOp(fn.ret, { kind: 'param', index: 0 })
+  )
+    return false;
+  for (const [j, n] of fn.nodes.entries()) {
+    if (j > index && n.args.some((o) => o.kind === 'param' && o.index === 0)) return false;
+  }
+  if (borrowLive(fn, { kind: 'param', index: 0 }, index, true)) return false;
+  return node.args.every(
+    (o) =>
+      isPrimitive(operandTypeOf(fn, o)) ||
+      cMutableHere(fn, o, index, cOwned(variant, fn), true, ctx.projections),
+  );
+}
+
 /**
- * The final `rec` of an owned body with state projections, written into the state itself: a
+ * A `rec` of an owned body with state projections, written into the state itself: a
  * field whose new value is its own projection (updated in place or unchanged) is not stored.
  * Stores run in field order and must read no other field's storage, so a value that is, or as a
  * `mov`/`select` pointer may be, another field's projection keeps the copying form.
@@ -1615,7 +1661,8 @@ function cStateStores(ctx: CContext, rec: Node): string | undefined {
   const projectionOf = (x: Operand): number | undefined => {
     const r = cRoot(ctx, x);
     const p = r.kind === 'node' ? ctx.projections.of.get(r.id) : undefined;
-    return p !== undefined && p.container.kind === 'param' ? p.field : undefined;
+    const parent = p === undefined ? undefined : cRoot(ctx, p.container);
+    return parent?.kind === 'param' && parent.index === 0 ? p?.field : undefined;
   };
   for (const [m, o] of rec.args.entries()) {
     const roots: Operand[] = [];
@@ -1631,7 +1678,11 @@ function cStateStores(ctx: CContext, rec: Node): string | undefined {
     };
     reach(o);
     const fields = roots.map(projectionOf);
-    if (fields.every((f) => f === m)) continue;
+    if (fields.every((f) => f === m)) {
+      // A skipped store still consumes its projection, whose local pointer may be declared.
+      stores.push(`(void)${cArg(ctx, o)};`);
+      continue;
+    }
     if (fields.some((f) => f !== undefined && f !== m)) return undefined;
     const self = fields.includes(m) ? `if (${cArg(ctx, o)} != &(*p0).f${m}) ` : '';
     stores.push(`${self}(*p0).f${m} = ${cVal(ctx, o)};`);
@@ -1851,6 +1902,10 @@ function cBodyWith(
     if (nested.skipped.has(n.id)) return cSkipped(ctx, n);
     const borrow = cBorrow(ctx, n);
     if (borrow !== undefined) return borrow;
+    if (cIntermediateRecord(ctx, n, index)) {
+      const stores = cStateStores(ctx, n);
+      if (stores !== undefined) return stores;
+    }
     if (
       variant === 'owned' &&
       index === fn.nodes.length - 1 &&
