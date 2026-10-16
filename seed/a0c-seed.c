@@ -6048,43 +6048,6 @@ static inline bool a0r_fecap(const a0t9 *p0, uint32_t p1, uint32_t p2, uint32_t 
   return n23;
 }
 
-uint32_t a0_chkslot(uint32_t p0, uint32_t p1, a0t5 p2, uint32_t p3, uint32_t p4) {
-  uint32_t n0 = a0_add(p3, 4u); (void)n0;
-  uint32_t n1 = a0_div(n0, 6u); (void)n1;
-  uint32_t n2 = a0_add(n1, p1); (void)n2;
-  uint32_t n3 = a0_mul(n2, 6u); (void)n3;
-  uint32_t n4 = a0_add(n3, 1u); (void)n4;
-  uint32_t n5 = a0_sub(n4, p3); (void)n5;
-  bool n6 = a0_lt(n5, 128u); (void)n6;
-  bool n7 = a0_lt(n4, p4); (void)n7;
-  bool n8 = (n6 && n7); (void)n8;
-  uint32_t n9 = p2.e[n5 % 128u]; (void)n9;
-  bool n10 = a0_ge(n9, 32u); (void)n10;
-  bool n11 = a0_le(n9, 37u); (void)n11;
-  bool n12 = (n10 && n11); (void)n12;
-  bool n13 = (n8 && n12); (void)n13;
-  uint32_t n14 = (n13 ? 1u : p0); (void)n14;
-  return n14;
-}
-
-uint32_t a0_chkpage(uint32_t p0, uint32_t p1, a0t11 p2, uint32_t p3) {
-  uint32_t n0 = a0_mul(p1, 128u); (void)n0;
-  const a0t5 *const n1 = &p2.e[p1 % 128u]; (void)n1;
-  uint32_t n2 = p0; for (uint32_t a0i = 0; a0i < 22u; a0i++) { n2 = a0_chkslot(n2, a0i, (*n1), n0, p3); } (void)n2;
-  return n2;
-}
-
-bool a0_refuse(uint32_t p0, a0t11 p1, uint32_t p2) {
-  uint32_t n0 = a0_mul(p2, 6u); (void)n0;
-  uint32_t n1 = a0_add(n0, 127u); (void)n1;
-  uint32_t n2 = a0_shr(n1, 7u); (void)n2;
-  uint32_t n3 = 0u; for (uint32_t a0i = 0; a0i < n2; a0i++) { n3 = a0_chkpage(n3, a0i, p1, n0); } (void)n3;
-  bool n4 = a0_ne(n3, 0u); (void)n4;
-  bool n5 = a0_eq(p0, 1u); (void)n5;
-  bool n6 = (n4 || n5); (void)n6;
-  return n6;
-}
-
 a0t51 a0_z8(void) {
   a0t5 n0 = a0_zpage(); (void)n0;
   a0t51 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; (void)n1;
@@ -8649,6 +8612,28 @@ bool a0_czpg(bool p0, uint32_t p1, a0t50 p2, uint32_t p3, uint32_t p4, uint32_t 
   return n7;
 }
 
+a0_io * a0_cchecked(a0_io * p0, uint32_t p1, a0t58 p2) {
+  bool n0 = a0_eq(p1, 32u); (void)n0;
+  bool n1 = a0_eq(p1, 33u); (void)n1;
+  bool n2 = a0_eq(p1, 34u); (void)n2;
+  bool n3 = a0_eq(p1, 35u); (void)n3;
+  bool n4 = a0_eq(p1, 36u); (void)n4;
+  bool n5 = a0_eq(p1, 37u); (void)n5;
+  a0_io * n6 = a0_cwt(p0, n0, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 1684300127u, 40u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n6;
+  a0_io * n7 = a0_cwt(n6, n0, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 677734239u, 0u, 0u, 0u, 4u, 741369390u, 32u, 0u, 0u, 0u, 0u, 1u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n7;
+  a0_io * n8 = a0_cwt(n7, n1, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 1651864415u, 40u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n8;
+  a0_io * n9 = a0_cwt(n8, n1, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 677734239u, 0u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n9;
+  a0_io * n10 = a0_cwt(n9, n2, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 1819635039u, 40u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n10;
+  a0_io * n11 = a0_cwt(n10, n2, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 1965563965u, 913600105u, 695492404u, 0u, 0u, 1u, 673196576u, 1953393013u, 1952396342u, 41u, 0u, 0u, 2u, 540884000u, 1717991472u, 1717986918u, 997549670u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n11;
+  a0_io * n12 = a0_cwt(n11, n3, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 678520159u, 0u, 0u, 0u, 2u, 1966088236u, 541007913u, 975205680u, 1597006112u, 678848868u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n12;
+  a0_io * n13 = a0_cwt(n12, n3, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 677736031u, 0u, 0u, 0u, 2u, 1966088236u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n13;
+  a0_io * n14 = a0_cwt(n13, n4, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 678520159u, 0u, 0u, 0u, 2u, 1966088236u, 541007913u, 975205680u, 1597006112u, 678258034u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n14;
+  a0_io * n15 = a0_cwt(n14, n4, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 677736031u, 0u, 0u, 0u, 2u, 1966088236u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n15;
+  a0_io * n16 = a0_cwt(n15, n5, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 678718559u, 0u, 0u, 0u, 2u, 8236u, 0u, 0u, 0u, 0u, 0u, 5u, 540748149u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n16;
+  a0_io * n17 = a0_cwt(n16, n5, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 8253u, 0u, 0u, 0u, 0u, 4u, 540108334u, 8255u, 0u, 0u, 0u, 0u, 1u, 1633379630u, 1701994288u, 10349u, 0u, 0u, 0u, 2u, 8236u, 0u, 0u, 0u, 0u, 0u, 5u, 542976373u, 1966088250u, 59u, 0u, 0u, 0u); (void)n17;
+  return n17;
+}
+
 a0_io * a0_cnode(a0_io * p0, uint32_t p1, a0t11 p2, a0t50 p3, a0t52 p4, a0t26 p5, a0t22 p6, a0t23 p7, a0t17 p8, uint32_t p9, uint32_t p10, a0t52 p11, uint32_t p12) {
   uint32_t n0 = a0_add(p9, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 6u); (void)n1;
@@ -8911,11 +8896,12 @@ a0_io * a0_cnode(a0_io * p0, uint32_t p1, a0t11 p2, a0t50 p3, a0t52 p4, a0t26 p5
   a0_io * n258 = a0_cwt(n257, n156, n120, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 8253u, 0u, 0u, 0u, 0u, 1u, 59u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n258;
   a0_io * n259 = a0_cwt(n258, n157, n120, 1629502752u, 1920425776u, 677737577u, 0u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n259;
   a0_io * n260 = a0_cwt(n259, n158, n120, 1629502752u, 1970298672u, 2650996u, 0u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 539780398u, 0u, 0u, 0u, 0u, 0u, 6u, 3877237u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n260;
-  a0_io * n261 = a0_cws6c(n260, n119, 1870014496u, 1848206441u, 0u, 0u, 0u, 0u); (void)n261;
-  a0_io * n262 = a0_cwdecc(n261, n119, p1); (void)n262;
-  a0_io * n263 = a0_cws6c(n262, n119, 59u, 0u, 0u, 0u, 0u, 0u); (void)n263;
-  a0_io * n264 = a0_cws6(n263, 10u, 0u, 0u, 0u, 0u, 0u); (void)n264;
-  return n264;
+  a0_io * n261 = a0_cchecked(n260, n6, n120); (void)n261;
+  a0_io * n262 = a0_cws6c(n261, n119, 1870014496u, 1848206441u, 0u, 0u, 0u, 0u); (void)n262;
+  a0_io * n263 = a0_cwdecc(n262, n119, p1); (void)n263;
+  a0_io * n264 = a0_cws6c(n263, n119, 59u, 0u, 0u, 0u, 0u, 0u); (void)n264;
+  a0_io * n265 = a0_cws6(n264, 10u, 0u, 0u, 0u, 0u, 0u); (void)n265;
+  return n265;
 }
 
 a0_io * a0_cprm(a0_io * p0, uint32_t p1, a0t22 p2, a0t26 p3, uint32_t p4) {
@@ -10066,7 +10052,7 @@ a0t62 a0_cunit(a0_io * p0, a0t4 p1, uint32_t p2, a0t51 p3, uint32_t p4, bool p5,
   uint32_t n76 = (n75 ? n74 : n62); (void)n76;
   uint32_t n77 = (n73 ? n76 : n54); (void)n77;
   uint32_t n78 = n4.f16; (void)n78;
-  bool n79 = a0_refuse(n78, (*n41), n51); (void)n79;
+  bool n79 = a0_eq(n78, 1u); (void)n79;
   bool n80 = a0_eq(n77, 0u); (void)n80;
   bool n81 = (n80 && n79); (void)n81;
   uint32_t n82 = (n81 ? 2u : n77); (void)n82;

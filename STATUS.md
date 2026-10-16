@@ -1,6 +1,6 @@
 # A0 status
 
-Last updated 2026-10-16, compiler `a0c-0.1.58` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
+Last updated 2026-10-16, compiler `a0c-0.1.59` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
 what exists, what is measured and where the numbers live, what is lost or unknown, how to reproduce it, and what comes next.
 Every number on this page is in the `results/` file named beside it, or is reproduced by the command shown. The long record of
 how the project got here, session by session, is in [docs/history/](docs/history/) (index at the end). Contributing rules are in
@@ -16,12 +16,22 @@ how the project got here, session by session, is in [docs/history/](docs/history
   (`src/diagnostics.ts`) with stable codes, fixes and `a0 explain`. A dense surface syntax (`src/dense.ts`) is opt-in.
 - **Targets.** JavaScript, C (also valid C++), Java, C#/.NET, SystemVerilog, Metal, direct AArch64, x86-64, RISC-V RV64, AVR and
   ARM32 assembly, direct wasm32, and parallel C. One program, one oracle (`tools/corpus.ts`, independent BigInt arithmetic).
-- **Self-hosting.** The compiler front end, the C, AArch64 and wasm32 emitters and the optimizer are written in A0
-  (`compiler/*.a0`). The C and AArch64 bootstraps reach a byte-identical fixed point; a text-only bootstrap seed is in `seed/`.
+- **Self-hosting in progress.** A0 implementations of the lexer, parser, checker, optimizer and C, AArch64 and wasm32
+  emitters exist in `compiler/`. The shipped CLI still depends on TypeScript for compiler logic and other targets.
+  The C and AArch64 bootstraps reach a byte-identical fixed point; a text-only bootstrap seed is in `seed/`.
+  The remaining work and completion criteria are in [Entire compiler in A0](docs/design/compiler-selfhosting.md).
 - **Tools.** The `a0` CLI, an MCP server (`a0 mcp`), an LSP server (`a0 lsp`), editor grammars, an agent skill and plugin, and the
   development loop in `tools/dev/` (`a0-dev`). The site a0lang.com is two A0 programs (`site/page.a0`, `site/docs.a0`).
 
 ## Current results
+
+Compiler migration (`a0c-0.1.59`): canonical checked arithmetic and array access are implemented in the A0 C,
+AArch64 and Wasm emitters. A0 optimization now uses weighted expansion costs and recognizes square-matrix recurrences;
+the reference optimizer also preserves the unsigned exponent when an earlier call exposes a large iteration count.
+The website compiler tool builds from the verified A0-generated seed. Strict trapping semantics and checked optimization
+remain explicitly unsupported in these A0 paths; the complete compiler migration is still in progress.
+Reproduce the focused coverage with `node --test dist/test/selfhost-*.test.js dist/test/matrix-u32-exponent.test.js`
+after `bun run build`; the bootstrap reproduction check is `bun run seed`.
 
 Readonly C iteration extras (`a0c-0.1.58`): minmax, filtering and binary search improved
 62.01×, 67.39× and 10.21× against the previous compiler; UTF-8 decoding, tokenization and

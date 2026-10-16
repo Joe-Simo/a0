@@ -201,9 +201,10 @@ export const OPS: readonly Op[] = [
 /**
  * The total (checked) operations, valid in both profiles: each yields the `(value, ok)` record
  * `(u32,bool)` and never traps. The reference interpreter and every target in
- * `STRICT_TARGETS` evaluate them; every target outside `STRICT_TARGETS` refuses a program that uses one (A0713, `assertTargetSupports`). They are not in
- * `OPS`, the 30 operations the self-hosted front end (compiler/*.a0) knows by number and name;
- * `ALL_OPS` is what the TypeScript parser, the dense form and the editor tools accept.
+ * `CHECKED_TARGETS` evaluate them; every target outside that set refuses a program that
+ * uses one (A0713, `assertTargetSupports`). The A0 front end also parses and checks them, with
+ * word IR codes 32 through 37. `ALL_OPS` is what the TypeScript parser, the dense form and the
+ * editor tools accept.
  */
 export const CHECKED_OP_NAMES = ['cadd', 'csub', 'cmul', 'cdiv', 'crem', 'cget'] as const;
 export const CHECKED_OPS: ReadonlySet<Op> = new Set<Op>(CHECKED_OP_NAMES);
@@ -228,9 +229,12 @@ export const STRICT_TARGETS: ReadonlySet<string> = new Set([
   'avr',
 ]);
 
+/** A0 emitters support total checked operations before their strict trapping runtime is ported. */
+export const CHECKED_TARGETS: ReadonlySet<string> = new Set([...STRICT_TARGETS, 'a0c', 'a0w']);
+
 /**
  * Refuse what a target cannot honour. A target outside `STRICT_TARGETS` implements the canonical
- * profile and none of the checked ops, and none may silently run the canonical semantics for a
+ * profile, and one outside `CHECKED_TARGETS` implements none of the checked ops. None may silently run the canonical semantics for a
  * program that depends on a trap or an `(u32,bool)` record: a program with a checked op, or a
  * `profile strict` program with a site that can trap, is a `structure` error (A0713) naming the
  * target and the construct. A strict program whose every index is proved below its length and
@@ -244,11 +248,12 @@ export function assertTargetSupports(
   trapSite?: (fn: TypedFunc) => string | undefined,
 ): void {
   if (STRICT_TARGETS.has(target)) return;
-  for (const fn of p.functions) {
-    const node = fn.nodes.find((n) => CHECKED_OPS.has(n.op));
-    if (node !== undefined)
-      throw diag('A0713', [target, `the checked op ${node.op} (${fn.name}.${node.id})`]);
-  }
+  if (!CHECKED_TARGETS.has(target))
+    for (const fn of p.functions) {
+      const node = fn.nodes.find((n) => CHECKED_OPS.has(n.op));
+      if (node !== undefined)
+        throw diag('A0713', [target, `the checked op ${node.op} (${fn.name}.${node.id})`]);
+    }
   if (p.profile !== 'strict') return;
   if (trapSite === undefined) throw diag('A0713', [target, 'a `profile strict` program']);
   for (const fn of p.functions) {

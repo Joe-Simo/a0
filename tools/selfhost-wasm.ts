@@ -3,13 +3,17 @@
  * compiler/optimize.a0s by tools/a0s.ts), the shape analyses and loop fusion (compiler/shape.a0,
  * from compiler/shape.a0m by tools/a0m.ts) and the wasm emitter (compiler/emit_wasm.a0), entry
  * `emitwasmio` of compiler/boot.a0 (read its header for the modes and result codes). They port
- * src/optimize.ts and src/wasm.ts: the module must equal `compile(program, 'wasm')` byte for byte
- * with the default options (optimizer, fusion, simd) and with `{ optimize: false }`.
+ * src/optimize.ts and src/wasm.ts: supported ordinary programs must equal
+ * `compile(program, 'wasm')` byte for byte with default options and `{ optimize: false }`.
+ * Canonical checked programs can be emitted without the optimizer; fusion declines candidates
+ * whose reachable bodies contain checked operations, so those modules may differ from TypeScript
+ * while preserving behavior. Strict programs and checked optimization are explicitly refused.
  *
- * - Build (`buildWasmTool`): the bootstrap's C seed a0c-stage1 (tools/bootstrap.ts: the A0
- *   compiler through the TypeScript C backend) compiles the closure of `emitwasmio` in chunks;
+ * - Build (`buildWasmTool`): the checked-in, A0-generated C seed (seed/a0c-seed.c)
+ *   compiles the closure of `emitwasmio` in chunks;
  *   clang builds that C into `a0w`. So the tool that runs is A0 compiled by A0.
- * - This file only encodes, orders, splits and supplies bodies; it holds no A0 semantics.
+ * - TypeScript still drives typed-IR adaptation, source formatting, chunk planning and body
+ *   requests. Moving those compiler decisions into A0 remains part of the full migration.
  * - The optimizer runs a function a time (mode 7, `a0OptimizeProgram`): a single A0 value (a
  *   fold state included) is at most 65536 words, so a run cannot loop over functions holding
  *   their tables. The functions are optimized in program order; each run gets the function and
@@ -71,13 +75,12 @@ import {
   PRELUDE,
   planChunks,
   runStageChunk,
-  STAGE_INPUT,
-  STAGE_OUTPUT,
 } from './bootstrap.js';
 import { generateCorpus } from './corpus.js';
 import { KERNELS } from './exec-bench-kernels.js';
 import { frontEndFits, IR_OPS, irOp } from './ref-parse.js';
 import { writeReport } from './scrub-results.js';
+import { type BootstrapSeed, readBootstrapSeed } from './seed.js';
 
 /** io capacities of `a0w` in words (a chunk's tables, the linker's whole input; the module). */
 export const WASM_TOOL_INPUT = 1 << 21;
@@ -153,20 +156,20 @@ export interface WasmTool {
   readonly buildMs: number;
 }
 
-/** a0c-stage1 (the C seed of tools/bootstrap.ts) compiles `emitwasmio`; clang builds `a0w`. */
-export async function buildWasmTool(clang: ToolInfo): Promise<WasmTool> {
+/** The verified A0-generated C seed compiles `emitwasmio`; clang builds `a0w`. */
+export async function buildWasmTool(
+  clang: ToolInfo,
+  bootstrap?: BootstrapSeed,
+  buildDir = BUILD_DIR,
+): Promise<WasmTool> {
   const linked = (await link('compiler/boot.a0', (p) => readFile(p, 'utf8'))).program;
-  const seed = parseAndValidate(closure(linked.functions, 'emitchunkio'));
-  const seedC = compile(seed, 'c', {
-    ioInputCapacity: STAGE_INPUT,
-    ioOutputCapacity: STAGE_OUTPUT,
-  }).text;
-  const [stage1] = await buildStage(clang, 'a0c-stage1', seedC);
+  const seed = bootstrap ?? (await readBootstrapSeed());
+  const [stage1] = await buildStage(clang, 'a0c-seed', seed.c, 'emitchunkio', buildDir);
   const source = closure(linked.functions, 'emitwasmio');
   const e = emitChunked(source, (c, b) => runStageChunk(stage1, c, b));
   if (e.code !== 0)
-    throw new Error(`a0c-stage1 rejected emitwasmio: code ${e.code} (${e.failed?.own.join(' ')})`);
-  const dir = join(BUILD_DIR, 'a0w');
+    throw new Error(`a0c-seed rejected emitwasmio: code ${e.code} (${e.failed?.own.join(' ')})`);
+  const dir = join(buildDir, 'a0w');
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'emitter.c'), e.text, 'utf8');
   await writeFile(join(dir, 'main.c'), toolMain, 'utf8');
@@ -738,6 +741,9 @@ export function a0OptimizeProgram(
   fallback?: readonly Body[],
   image = false,
 ): OptimizedProgram {
+  // Emitter support does not imply optimizer support. Its table protocol has no strict
+  // profile/trap metadata, and checked-result operations are not ported in these passes yet.
+  assertTargetSupports('a0w optimizer', program);
   const plain = reference === undefined && fallback === undefined && !image;
   const known = plain ? OPTIMIZED.get(program) : undefined;
   if (known !== undefined) return known;
@@ -960,7 +966,7 @@ export function a0WasmFromTables(
   optimize = false,
   options: EmitOptions = {},
 ): ModuleRun {
-  // the A0 emitter implements the canonical profile and no checked op (as its drivers refuse)
+  // Canonical checked operations are supported; strict still needs profile/trap propagation.
   assertTargetSupports('a0w', source);
   const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
   const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
@@ -1079,7 +1085,7 @@ export function a0WasmFromSource(
   optimize = false,
   options: EmitOptions = {},
 ): { bytes?: Uint8Array; code: number; chunks: number; runs: number; failed?: Chunk } {
-  // the A0 emitter implements the canonical profile and no checked op (as its drivers refuse)
+  // Canonical checked operations are supported; strict still needs profile/trap propagation.
   assertTargetSupports('a0w', source);
   const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
   const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
@@ -1103,7 +1109,8 @@ export function a0WasmFromSource(
   /** One chunk through the A0 front end and the emitter: its output, or undefined when too big. */
   const run = (from: number, to: number): ChunkOutput | undefined => {
     const supplied = new Set<number>();
-    const whole = plan[0] !== undefined && plan[0].own.length === 0;
+    const whole =
+      plan[0] !== undefined && plan[0].own.length === 0 && from === 0 && to === fns.length;
     for (;;) {
       const chunk: SourceChunk = whole
         ? {
@@ -1209,7 +1216,7 @@ interface PathReport {
     readonly ms: number;
     readonly identical: boolean;
     readonly code: number;
-    /** A chunk the A0 front end rejects: `emitchunkio` (a0c-stage1) gives the same code. */
+    /** A chunk the A0 front end rejects: the seed's `emitchunkio` gives the same code. */
     readonly sameCodeAsEmitchunkio?: boolean;
   };
   readonly sourceSkipped?: string;
@@ -2518,7 +2525,7 @@ async function main(): Promise<void> {
   if (clang.path === undefined) throw new Error('clang not found');
   const tool = await buildWasmTool(clang);
   process.stdout.write(
-    `a0w: emitwasmio closure ${tool.functions} functions (${tool.sourceBytes} source bytes), a0c-stage1 wrote ${tool.cBytes} C bytes in ${tool.chunks} chunks (${tool.emitMs} ms), clang -O2 ${tool.buildMs} ms\n`,
+    `a0w: emitwasmio closure ${tool.functions} functions (${tool.sourceBytes} source bytes), a0c-seed wrote ${tool.cBytes} C bytes in ${tool.chunks} chunks (${tool.emitMs} ms), clang -O2 ${tool.buildMs} ms\n`,
   );
   const small: WasmLayout = {
     ioInputCapacity: C_IO_INPUT_CAPACITY,
@@ -2568,6 +2575,7 @@ async function main(): Promise<void> {
   if (mat4 === undefined) throw new Error('exec-bench kernel mat4 is missing');
   const mat4n = mat4.a0.replace('r fold mulstep 8 a b', 'k and p1 7\nr fold mulstep k a b');
   if (mat4n === mat4.a0) throw new Error('exec-bench kernel mat4 has no fold of mulstep');
+  programs.push(['bench/mat4', parseAndValidate(mat4.a0), small]);
   programs.push(['bench/mat4n', parseAndValidate(mat4n), small]);
   programs.push(['recseed', parseAndValidate(REC_SEED_SOURCE), small]);
   programs.push(['prefix', parseAndValidate(PREFIX_SOURCE), small]);
@@ -2632,7 +2640,7 @@ async function main(): Promise<void> {
     stage:
       'wasm32 emitter written in A0 (compiler/emit_wasm.a0; entry emitwasmio in compiler/boot.a0), the port of src/wasm.ts, with the optimizer written in A0 (compiler/optimize.a0, generated from compiler/optimize.a0s by tools/a0s.ts), the port of src/optimize.ts',
     method:
-      'a0c-stage1 (the bootstrap C seed) compiles the closure of emitwasmio in chunks; clang builds that C into a0w. The optimizer runs one function a run (mode 7), in program order, each run given the optimized bodies of the callees it asks for (code 7, then rerun); its output is compared function by function with optimizeFunction (nodes in order, ops, operands, callee, predicate, node type, ret, literal iterations). Each program is then emitted a chunk of functions at a time from the optimized (or the original) program, as the checked tables of the TypeScript front end in the A0 front end layout (mode 2) and, where every chunk fits the A0 front end (131072 source bytes a chunk), as formatted source through the A0 lexer, parser and checker (mode 1); a0w links the chunks into the module (mode 3). Unoptimized modules are compared byte for byte with src/wasm.ts on the unoptimized program, optimized ones with compile(program, wasm) (default options: src/optimize.ts).',
+      'The verified checked-in A0-generated C seed compiles the closure of emitwasmio in chunks; clang builds that C into a0w. The optimizer runs one function a run (mode 7), in program order, each run given the optimized bodies of the callees it asks for (code 7, then rerun); its output is compared function by function with optimizeFunction (nodes in order, ops, operands, callee, predicate, node type, ret, literal iterations). Each program is then emitted a chunk of functions at a time from the optimized (or the original) program, as the checked tables of the TypeScript front end in the A0 front end layout (mode 2) and, where every chunk fits the A0 front end (131072 source bytes a chunk), as formatted source through the A0 lexer, parser and checker (mode 1); a0w links the chunks into the module (mode 3). Unoptimized modules are compared byte for byte with src/wasm.ts on the unoptimized program, optimized ones with compile(program, wasm) (default options: src/optimize.ts).',
     tool,
     programs: reports,
     failed: failed.length,

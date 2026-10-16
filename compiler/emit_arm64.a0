@@ -4135,6 +4135,62 @@ f fold qmovw npu e 1 pn
 g call cws6c f pu 543973897 1915773279 1970298740 684916 0 0
 ret g
 end
+# checked operations (32-37): an owned (u32,bool) record, both fields one word.
+# Operands are loaded once. The arithmetic value wraps; zero divisors and out-of-range
+# checked reads return (0,false). A checked read clamps its address before the load.
+fn qgchecked io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
+np at p2 1
+op at p2 2
+k0 at p2 10
+v0 at p2 11
+k1 at p2 12
+v1 at p2 13
+off at p2 18
+is32 eq op 32
+is33 eq op 33
+is34 eq op 34
+is35 eq op 35
+is36 eq op 36
+is37 eq op 37
+n37 select is37 1 0
+a call qalloc p0 0 8
+b call qld a 0 9 k0 v0 np
+c call qld b 0 10 k1 v1 np
+# t d32 c is32 "\tadds w14, w9, w10\n\tcset w15, lo\n"
+d32_1 call cws6c c is32 1684300041 829890675 1998597172 1998597177 151662641 1952805731
+d32 call cws6c d32_1 is32 892434208 1869357100 10 0 0 0
+# t d33 d32 is33 "\tsubs w14, w9, w10\n\tcset w15, hs\n"
+d33_1 call cws6c d32 is33 1651864329 829890675 1998597172 1998597177 151662641 1952805731
+d33 call cws6c d33_1 is33 892434208 1936203820 10 0 0 0
+# t d34 d33 is34 "\tumaddl x14, w9, w10, xzr\n\tlsr x15, x14, #32\n\tcmp x15, #0\n\tcset w15, eq\n"
+d34_1 call cws6c d33 is34 1634563337 543974500 741618040 741963552 808548128 2054692908
+d34_2 call cws6c d34_1 is34 1812531826 2015392371 539768113 741618040 842212128 1835206922
+d34 call cws6c d34_2 is34 829956208 589311029 1661536816 544499059 741683575 175203616
+# t d35 d34 is35 "\tudiv w14, w9, w10\n\tcmp w10, #0\n\tcset w15, ne\n"
+d35_1 call cws6c d34 is35 1768191241 829890678 1998597172 1998597177 151662641 544238947
+d35 call cws6c d35_1 is35 741355895 170926880 1702060809 829890676 1847602229 2661
+# t d36 d35 is36 "\tudiv w14, w9, w10\n\tmsub w14, w14, w10, w9\n\tcmp w10, #0\n\tcsel w14, w14, wzr, ne\n\tcset w15, ne\n"
+d36_1 call cws6c d35 is36 1768191241 829890678 1998597172 1998597177 151662641 1651864429
+d36_2 call cws6c d36_1 is36 875656992 829890604 1998597172 539766833 151665015 544238947
+d36_3 call cws6c d36_2 is36 741355895 170926880 1702060809 829890668 1998597172 539767857
+d36 call cws6c d36_3 is36 745699959 174419488 1702060809 829890676 1847602229 2661
+ct call cotype k0 v0 p4 p6 p11 p12
+n call qtw p5 ct 1
+e fold qmovw n37 d36 11 n
+# t f e is37 "\tcmp w10, w11\n\tcsel w14, w10, wzr, lo\n\tldr w14, [x9, w14, uxtw #2]\n\tcsel w14, w14, wzr, lo\n\tcset w15, lo\n"
+f_1 call cws6c e is37 1886216969 808548128 829890604 1661536817 543974771 741618039
+f_2 call cws6c f_1 is37 808548128 2054627372 1814047858 1812531823 1998615140 539767857
+f_3 call cws6c f_2 is37 741963867 875656992 2020941868 589330292 151674162 1818588003
+f_4 call cws6c f_3 is37 875656992 829890604 1998597172 539783802 151678828 1952805731
+f call cws6c f_4 is37 892434208 1869357100 10 0 0 0
+# t g f - "\tstp w14, w15, [x12]\n\tstr x12, [x21, #"
+g_1 call cws6 f 1886679817 875656992 829890604 1528835125 1563570552 1953696010
+g call cws6 g_1 829956210 1528835122 741421688 8992 0 0
+h call cwdec g off
+# t r h - "]\n"
+r call cws6 h 2653 0 0 0 0 0
+ret r
+end
 # node p1 of the function with first node p11, first parameter p12, p13 parameters and the
 # name (p14 p15); tables nodes args ntys types tlist szt fns fnm pool
 fn qnode io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 u32 u32 u32 -> io
@@ -4196,8 +4252,14 @@ o27 eq op 27
 nat select o27 1 0
 o28 eq op 28
 nput select o28 1 0
-oio ge op 29
+iolo ge op 29
+iohi le op 31
+oio and iolo iohi
 nio select oio 1 0
+cklo ge op 32
+ckhi le op 37
+ock and cklo ckhi
+nck select ock 1 0
 a fold qgmov nms p0 nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
 b fold qgalu nalu a nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
 c fold qgcall ncall b nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
@@ -4209,7 +4271,8 @@ i fold qgset nset h nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
 l fold qgat nat i nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
 m fold qgput nput l nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
 o fold qgio nio m nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
-ret o
+q fold qgchecked nck o nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+ret q
 end
 # parameter p1 (list tlist p2 from p4) from its register or stack slot into its cell
 fn qprm io u32 u32x128x65 u32x384x65 u32 -> io
@@ -4437,9 +4500,10 @@ c1 select added 5 0
 cok eq cerr 0
 c2 select cok c1 cerr
 code0 select pok c2 pcode
-# a strict program or a checked op: no emitter implements them (structure, A0713)
+# Strict trapping semantics remain unsupported (structure, A0713).
+# Checked operations are total in the canonical profile and are emitted above.
 prof at s1 16
-unsup call refuse prof nodes fcn
+unsup eq prof 1
 ok0 eq code0 0
 ref and ok0 unsup
 code select ref 2 code0

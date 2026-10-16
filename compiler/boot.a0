@@ -534,6 +534,31 @@ d get b c
 e fold wsw1 7 p0 p1 d
 ret e
 end
+# Source rows use a name symbol in word 0; the Wasm fusion optimizer instead reads the
+# checked-table flags (has-body bit, then literal iteration bound). Names were consumed by
+# cfnm before this fold, and wsstub has already cleared the opaque rows' packed returns.
+fn wsnorm u32x128x45 u32 u32x128x8 -> u32x128x45
+bp shr p1 7
+bi and p1 127
+bounds get p2 bp
+bound get bounds bi
+row mul p1 7
+rp shr row 7
+ri and row 127
+retword add row 6
+retp shr retword 7
+reti and retword 127
+retpage get p0 retp
+packed get retpage reti
+present ne packed 0
+body select present 1 0
+limit shl bound 1
+flags or limit body
+page get p0 rp
+updated set page ri flags
+r set p0 rp updated
+ret r
+end
 # page p1 of the nodes table p2 (128 pages) into the 132-page table
 fn wxcvn u32x128x132 u32 u32x128x128 -> u32x128x132
 a get p2 p1
@@ -632,15 +657,17 @@ bi call z16
 bj fold cfnm ad bi ao f bh
 bk eq a3 0
 rf0 select bk bb a3
-# a strict program or a checked op: no emitter implements them (structure, A0713)
+# Canonical checked ops are emitted by the Wasm backend. Strict still needs profile/trap
+# propagation through the table and module pipeline, so refuse it explicitly (A0713).
 rfp at e 16
-rfu call refuse rfp ap a0
+rfu ne rfp 0
 rfz eq rf0 0
 rfr and rfz rfu
 bl select rfr 2 rf0
 bm eq bl 0
 bn select bm 1 0
-afix fold wsstub p7 ao p8
+afix0 fold wsstub p7 ao p8
+afix fold wsnorm ad afix0 a9
 st0 rec p0 0
 bo fold wsorch bn st0 a6 a7 afix ap as a8 u bj p5 a9 ba p4 ad p6 ar
 bio at bo 0

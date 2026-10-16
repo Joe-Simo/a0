@@ -1449,40 +1449,6 @@ b7 or b6 d0
 r or b7 a0
 ret r
 end
-fn chkslot u32 u32 u32x128 u32 u32 -> u32
-k0a add p3 4
-k0 div k0a 6
-k add k0 p1
-a0 mul k 6
-a add a0 1
-loc sub a p3
-inpg lt loc 128
-inlim lt a p4
-ok and inpg inlim
-op get p2 loc
-ge32 ge op 32
-le37 le op 37
-c0 and ge32 le37
-c and ok c0
-f select c 1 p0
-ret f
-end
-fn chkpage u32 u32 u32x128x128 u32 -> u32
-base mul p1 128
-pg get p2 p1
-r fold chkslot 22 p0 pg base p3
-ret r
-end
-fn refuse u32 u32x128x128 u32 -> bool
-w mul p2 6
-w127 add w 127
-np shr w127 7
-r fold chkpage np 0 p1 w
-chk ne r 0
-st eq p0 1
-res or chk st
-ret res
-end
 fn z8 -> u32x128x8
 z call zpage
 t arr z z z z z z z z
@@ -2695,5 +2661,39 @@ end
 fn cwdecc io bool u32 -> io
 n select p1 1 0
 r fold cdecst2 n p0 p2
+ret r
+end
+fn cwop io u32 u32 -> io
+k1 eq p1 1
+k2 eq p1 2
+k3 eq p1 3
+k4 eq p1 4
+k6 eq p1 6
+a call cws6c p0 k1 110 0 0 0 0 0
+b0 call cws6c a k2 112 0 0 0 0 0
+b call cws6c b0 k6 7219752 0 0 0 0 0
+x or k1 k2
+x6 or x k6
+num or x6 k3
+c call cwdecc b num p2
+d call cws6c c k3 117 0 0 0 0 0
+nz ne p2 0
+tr and k4 nz
+z eq p2 0
+fa and k4 z
+e call cws6c d tr 1702195828 0 0 0 0 0
+f call cws6c e fa 1936482662 101 0 0 0 0
+k5 eq p1 5
+f0 call cws6c f k5 812657192 41 0 0 0 0
+f1 call cws6c f0 k6 41 0 0 0 0 0
+ret f1
+end
+fn cwopst io u32 u32 u32 -> io
+r call cwop p0 p2 p3
+ret r
+end
+fn cwopc io bool u32 u32 -> io
+n select p1 1 0
+r fold cwopst n p0 p2 p3
 ret r
 end
