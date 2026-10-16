@@ -89,7 +89,22 @@ const sh = spawnSync('sh', ['-c', 'command -v awk && command -v curl && command 
 });
 const haveSh = sh.status === 0;
 
-async function install(uname: { s: string; m: string }, tamper: boolean) {
+type NoticeFixture =
+  | 'valid'
+  | 'legacy'
+  | 'license-only'
+  | 'notice-only'
+  | 'missing-notice'
+  | 'tampered-license'
+  | 'tampered-notice';
+
+async function install(
+  uname: { s: string; m: string },
+  tamper: boolean,
+  notices: NoticeFixture = 'valid',
+  previous = false,
+  starred = false,
+) {
   const work = mkdtempSync(join(tmpdir(), 'a0-dist-inst-'));
   const assets = [
     'a0-darwin-arm64',
@@ -99,12 +114,36 @@ async function install(uname: { s: string; m: string }, tamper: boolean) {
     'a0-windows-x64.exe',
   ];
   const body = (a: string) => Buffer.from(`#!/bin/sh\necho fixture ${a}\n`);
-  const sums = assets
-    .map((a) => `${createHash('sha256').update(body(a)).digest('hex')}  ${a}\n`)
-    .join('');
+  const texts: Record<string, string> = {
+    LICENSE: 'fixture release license\n',
+    NOTICE: 'fixture release attribution\n',
+  };
+  const names =
+    notices === 'legacy'
+      ? []
+      : notices === 'license-only'
+        ? ['LICENSE']
+        : notices === 'notice-only'
+          ? ['NOTICE']
+          : ['LICENSE', 'NOTICE'];
+  const sums =
+    assets.map((a) => `${createHash('sha256').update(body(a)).digest('hex')}  ${a}\n`).join('') +
+    names
+      .map(
+        (name) =>
+          `${createHash('sha256')
+            .update(texts[name] ?? '')
+            .digest('hex')} ${starred ? '*' : ' '}${name}\n`,
+      )
+      .join('');
+  const requests: string[] = [];
   const server = createServer((req, res) => {
     const name = (req.url ?? '').slice(1);
+    requests.push(name);
     if (name === 'checksums.txt') return void res.end(sums);
+    if (names.includes(name) && !(name === 'NOTICE' && notices === 'missing-notice')) {
+      return void res.end(notices === `tampered-${name.toLowerCase()}` ? 'tampered' : texts[name]);
+    }
     const a = assets.find((x) => x === name);
     if (!a) {
       res.statusCode = 404;
@@ -123,6 +162,10 @@ async function install(uname: { s: string; m: string }, tamper: boolean) {
   );
   chmodSync(fake, 0o755);
   const dest = join(work, 'dest');
+  if (previous) {
+    mkdirSync(dest);
+    writeFileSync(join(dest, 'a0'), 'previous binary');
+  }
   const portable = (p: string) => p.replace(/\\/g, '/');
   try {
     const r = await new Promise<{ status: number | null; out: string }>((resolve) => {
@@ -144,7 +187,21 @@ async function install(uname: { s: string; m: string }, tamper: boolean) {
       });
       c.on('close', (status) => resolve({ status, out }));
     });
-    return { ...r, installed: existsSync(join(dest, 'a0')), dest };
+    const selected = `a0-${uname.s.toLowerCase()}-${['arm64', 'aarch64'].includes(uname.m) ? 'arm64' : 'x64'}`;
+    const hash = createHash('sha256').update(body(selected)).digest('hex');
+    const noticeDir = join(work, 'share', 'a0', hash);
+    const installed = existsSync(join(dest, 'a0'));
+    const text = (name: string) =>
+      existsSync(join(noticeDir, name)) ? readFileSync(join(noticeDir, name), 'utf8') : null;
+    return {
+      ...r,
+      installed,
+      dest,
+      requests,
+      license: text('LICENSE'),
+      notice: text('NOTICE'),
+      binary: installed ? readFileSync(join(dest, 'a0'), 'utf8') : null,
+    };
   } finally {
     server.close();
     rmSync(work, { recursive: true, force: true });
@@ -163,6 +220,9 @@ test('install.sh: platform to asset name, SHA-256 verified', { skip: !haveSh }, 
     assert.match(r.out, new RegExp(`downloading ${asset} from`));
     assert.match(r.out, /sha256 verified/);
     assert.ok(r.installed);
+    assert.equal(r.license, 'fixture release license\n');
+    assert.equal(r.notice, 'fixture release attribution\n');
+    assert.deepEqual(r.requests, [asset, 'checksums.txt', 'LICENSE', 'NOTICE']);
   }
 });
 
@@ -176,6 +236,47 @@ test('install.sh: a checksum mismatch installs nothing; unsupported OS is refuse
   const os = await install({ s: 'FreeBSD', m: 'x86_64' }, false);
   assert.notEqual(os.status, 0);
   assert.match(os.out, /unsupported OS/);
+});
+
+test('install.sh: legacy manifests remain quiet and never request a current license', {
+  skip: !haveSh,
+}, async () => {
+  const r = await install({ s: 'Linux', m: 'x86_64' }, false, 'legacy');
+  assert.equal(r.status, 0, r.out);
+  assert.ok(r.installed);
+  assert.equal(r.license, null);
+  assert.equal(r.notice, null);
+  assert.deepEqual(r.requests, ['a0-linux-x64', 'checksums.txt']);
+  assert.doesNotMatch(r.out, /license|notice|warning/i);
+});
+
+test('install.sh: incomplete, unavailable, or corrupt notices preserve the installed binary', {
+  skip: !haveSh,
+}, async () => {
+  for (const mode of [
+    'license-only',
+    'notice-only',
+    'missing-notice',
+    'tampered-license',
+    'tampered-notice',
+  ] as const) {
+    const r = await install({ s: 'Linux', m: 'x86_64' }, false, mode, true);
+    assert.notEqual(r.status, 0, `${mode}: ${r.out}`);
+    assert.equal(r.binary, 'previous binary', mode);
+    assert.equal(r.license, null, mode);
+    assert.equal(r.notice, null, mode);
+    assert.match(r.out, /must list both LICENSE and NOTICE|download failed|checksum mismatch/);
+    if (mode.endsWith('-only')) assert.deepEqual(r.requests, ['a0-linux-x64', 'checksums.txt']);
+  }
+});
+
+test('install.sh: binary-mode checksum entries also authenticate both notice files', {
+  skip: !haveSh,
+}, async () => {
+  const r = await install({ s: 'Linux', m: 'x86_64' }, false, 'valid', false, true);
+  assert.equal(r.status, 0, r.out);
+  assert.equal(r.license, 'fixture release license\n');
+  assert.equal(r.notice, 'fixture release attribution\n');
 });
 
 test('install.ps1: fixed Windows asset, verifies against checksums.txt', () => {

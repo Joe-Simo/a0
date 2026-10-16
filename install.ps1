@@ -26,12 +26,34 @@ try {
   Invoke-WebRequest -UseBasicParsing -Uri "$base/$asset" -OutFile (Join-Path $tmp $asset)
   Invoke-WebRequest -UseBasicParsing -Uri "$base/checksums.txt" -OutFile (Join-Path $tmp 'checksums.txt')
 
-  $line = Get-Content (Join-Path $tmp 'checksums.txt') | Where-Object { ($_ -split '\s+')[1] -in @($asset, "*$asset") } | Select-Object -First 1
-  if (-not $line) { throw "a0 install: no checksum for $asset in checksums.txt" }
-  $expected = ($line -split '\s+')[0].ToLowerInvariant()
-  $actual = (Get-FileHash -Algorithm SHA256 (Join-Path $tmp $asset)).Hash.ToLowerInvariant()
-  if ($expected -ne $actual) { throw "a0 install: checksum mismatch for ${asset}: expected $expected, got $actual" }
-  Write-Host "a0 install: sha256 verified ($actual)"
+  $checksumLines = @(Get-Content (Join-Path $tmp 'checksums.txt'))
+  function Get-VerifiedReleaseHash([string] $name) {
+    $line = $checksumLines | Where-Object { ($_ -split '\s+')[1] -in @($name, "*$name") } | Select-Object -First 1
+    if (-not $line) { throw "a0 install: no checksum for $name in checksums.txt" }
+    $expected = ($line -split '\s+')[0].ToLowerInvariant()
+    $actual = (Get-FileHash -Algorithm SHA256 (Join-Path $tmp $name)).Hash.ToLowerInvariant()
+    if ($expected -ne $actual) { throw "a0 install: checksum mismatch for ${name}: expected $expected, got $actual" }
+    return $actual
+  }
+  $binaryHash = Get-VerifiedReleaseHash $asset
+  Write-Host "a0 install: sha256 verified ($binaryHash)"
+
+  # Older manifests have neither entry: keep their original license, without a current-main fallback.
+  $hasLicense = @($checksumLines | Where-Object { ($_ -split '\s+')[1] -in @('LICENSE', '*LICENSE') }).Count -gt 0
+  $hasNotice = @($checksumLines | Where-Object { ($_ -split '\s+')[1] -in @('NOTICE', '*NOTICE') }).Count -gt 0
+  if ($hasLicense -or $hasNotice) {
+    if (-not ($hasLicense -and $hasNotice)) { throw 'a0 install: checksums.txt must list both LICENSE and NOTICE' }
+    foreach ($name in @('LICENSE', 'NOTICE')) {
+      Invoke-WebRequest -UseBasicParsing -Uri "$base/$name" -OutFile (Join-Path $tmp $name)
+      $null = Get-VerifiedReleaseHash $name
+    }
+    # The checksum directory keeps notices associated with their binary across upgrades/downgrades.
+    $noticeDir = Join-Path (Join-Path $installDir 'share\a0') $binaryHash
+    New-Item -ItemType Directory -Force -Path $noticeDir | Out-Null
+    foreach ($name in @('LICENSE', 'NOTICE')) {
+      Copy-Item -Force (Join-Path $tmp $name) (Join-Path $noticeDir $name)
+    }
+  }
 
   New-Item -ItemType Directory -Force -Path $installDir | Out-Null
   Move-Item -Force (Join-Path $tmp $asset) (Join-Path $installDir 'a0.exe')

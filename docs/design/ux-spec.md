@@ -17,7 +17,7 @@ Principle: each element states its purpose (its job for one reader) and place (w
 | Header (brand, Docs, Benchmarks, Sponsor, X, GitHub) | Orient and let all three readers jump | Fixed top, 56 px | Change | Cut X and Sponsor (in the footer). Keep brand, Docs, Benchmarks, GitHub: fits 390 px (live clips the GitHub icon). |
 | Wordmark "A0 for AI" (54-190 px) | Name the product | Currently the LAST thing in a 800 px hero | Change | Drop it; the header brand does that job and the hero opens with the h1. |
 | Headline (today h2 at y=896) | Say what A0 is for | Must be first text, y<=160 | Change | Becomes h1 (see section 4). Hero height 800 to content height (about 520 desktop, 62svh mobile). |
-| Subline | Say how, in one sentence, and what it is not for | Under h1 | Merge | Absorb the MIT/limits paragraph (y~570 in sample block); one subline, 2 lines max. |
+| Subline | Say how, in one sentence, and what it is not for | Under h1 | Merge | Absorb the license/limits paragraph (y~570 in sample block); one subline, 2 lines max. |
 | Code sample + sentinel | Prove "small and readable" | Right under the subline; sentinel overlaps it (screenshot: mesh drawn over `a mul p0 p1`) | Change | Sentinel never paints over `pre`; sample gets a copy button. |
 | CTAs (Install, Benchmarks pill) | Next step | Today after the sample, 40 px high, ghost 280 px wide | Change | See section 3. |
 | Sec "Is it as fast as C?" | Skeptic: speed, with losses | After "Connect your agent" | Keep, retitle | "Where A0 is slower than C". Lead sentence names the loss first. |

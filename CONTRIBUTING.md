@@ -232,4 +232,4 @@ state, or scratch output.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). By contributing you agree your contribution is licensed the same way.
+Apache 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). By contributing you agree your contribution is licensed the same way.
