@@ -43,6 +43,10 @@ and `experiments/unification/frontend-a0/README.md`.
 The first feature gate failed native-link parity and stale corpus-count checks; the native header fix
 passes focused verification. Updated whole-suite and promotion gates remain pending. Evidence:
 `results/unification-initial-gate.json`, `results/unification-native-link-header.json`.
+The next feature gate passed those fixes but failed Java checks against stale linked-graph
+expectations. Independent linking and evaluation confirm the corrected expectations, and the
+isolated Java checks pass. The whole-suite rerun is pending. The original and corrected rows
+are preserved in `results/unification-java-oracle-correction.json`.
 
 Current integration (`a0c-0.1.62`) adds experimental arena services for Darwin arm64, RISC-V64, Wasm and Java,
 plus canonical formatting, semantic revisions and UTF-8 provenance. Native C/x86 emitters reuse private

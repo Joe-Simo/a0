@@ -100,3 +100,15 @@ Rebuild instructions, frozen source/reference controls and the matched benchmark
 in `experiments/unification/frontend-a0/README.md`. Raw samples, source/artifact hashes,
 dependency provenance, exploratory phase profiles, scope corrections and the decision
 are recorded in `results/unification-portable-frontend.json`.
+
+## Linked Java oracle correction
+
+The subsequent feature light gate passed lint, typecheck, build and site generation,
+but failed three Java tests that share stale linked-graph expectations. Import comments
+now survive physical-line stripping, and a Unicode-spaced strict directive respects the
+canonical profile override. Independent public linking, Spec verification and evaluation
+establish success for both unchanged graphs. The isolated native/Java tests, JVM execution
+and generated-output mutation controls pass with the corrected oracle. Production code,
+graph inputs, the driver and test assertions are unchanged. Historical rows and the failed
+gate counts remain in `results/unification-java-oracle-correction.json`; this correction
+does not establish a passing whole-suite gate.
