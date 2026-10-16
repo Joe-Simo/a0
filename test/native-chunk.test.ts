@@ -9,6 +9,7 @@ import {
   cleanup,
   compare,
   contextualProfilePrograms,
+  malformedTextPrograms,
   materialize,
   mutants,
   native,
@@ -51,6 +52,14 @@ test('chunked check: forced small chunks give the unchunked check verdict and re
         assert.equal(chunkCount(exe, [WHOLE], p.path), 1, p.label);
         assert.ok(chunkCount(exe, [FORCED], p.path) > 1, p.label);
       }
+    }
+    for (const p of materialize(join(dir, 'malformed-text'), malformedTextPrograms())) {
+      const unchunked = await compare(exe, p, [WHOLE]);
+      const chunked = await compare(exe, p, [FORCED]);
+      assert.equal(unchunked.outcome, 'same', `${p.label} whole`);
+      assert.equal(chunked.outcome, 'same', `${p.label} chunked`);
+      assert.equal(unchunked.reference.ok, false, p.label);
+      assert.deepEqual(chunked.native, unchunked.native, p.label);
     }
     for (const p of materialize(join(dir, 'profiles'), profileDirectivePrograms())) {
       for (const flag of [WHOLE, FORCED]) {
@@ -104,7 +113,7 @@ test('chunked check: forced small chunks give the unchunked check verdict and re
       const text = (await link(path, (p) => Promise.resolve(readFileSync(p, 'utf8')))).text;
       for (const m of materialize(join(dir, `mutant-${i}`), mutants(text, 2, 0x5eed + i))) {
         const row = await compare(exe, m, [FORCED]);
-        assert.equal(row.outcome, 'same', `${m.label} chunked`);
+        assert.equal(row.outcome, 'same', `${path}/${m.label} chunked`);
         if (!row.reference.ok) rejected += 1;
       }
     }

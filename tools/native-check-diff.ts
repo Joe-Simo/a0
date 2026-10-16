@@ -301,7 +301,7 @@ export function mutants(text: string, count: number, seed: number): [string, str
         break;
       case 'ret': {
         let j = i;
-        while (!(copy[j] as string).trim().startsWith('ret')) j += 1;
+        while (!/^ret(?:\s|$)/.test((copy[j] as string).trim())) j += 1;
         copy[j] = 'ret nosuchnode';
         break;
       }
@@ -337,7 +337,7 @@ export function mutants(text: string, count: number, seed: number): [string, str
       }
       case 'drop': {
         let j = i;
-        while (!(copy[j] as string).trim().startsWith('ret')) j += 1;
+        while (!/^ret(?:\s|$)/.test((copy[j] as string).trim())) j += 1;
         copy.splice(j, 1);
         break;
       }
@@ -419,6 +419,23 @@ export function profileDirectivePrograms(): [string, string][] {
   ];
 }
 
+/** Unterminated text is rejected at its opening quote, without consuming later source lines. */
+export function malformedTextPrograms(): [string, string][] {
+  const prefix = 'fn f -> u32\nx text ';
+  const tail = 'y text "later"\nret 0\nend\n';
+  const quoteAt = (offset: number): string =>
+    `${prefix}${' '.repeat(offset - Buffer.byteLength(prefix))}"`;
+  return [
+    ['malformed-text/lf-later-quote', `${prefix}"open\n${tail}`],
+    ['malformed-text/eof', `${prefix}"open`],
+    ['malformed-text/backslash-lf', `${prefix}"open\\\n${tail}`],
+    ['malformed-text/backslash-eof', `${prefix}"open\\`],
+    ['malformed-text/page-lf', `${quoteAt(126)}a\n${tail}`],
+    ['malformed-text/page-backslash-lf', `${quoteAt(126)}\\\n${tail}`],
+    ['malformed-text/page-eof', `${quoteAt(127)}\\`],
+  ];
+}
+
 /** Every program of the differential; texts are written under `dir`. */
 export async function programSet(
   dir: string,
@@ -442,6 +459,7 @@ export async function programSet(
       ...(await appEditPrograms()),
       ...halfBoundaryPrograms(),
       ...contextualProfilePrograms(),
+      ...malformedTextPrograms(),
     ]),
   );
   if (mutantCount > 0) {

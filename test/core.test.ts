@@ -3070,11 +3070,15 @@ test('self-hosted lexer (compiler/lex.a0) agrees with a reference tokenizer on A
         while (i < b.length && word(b[i] as number)) i += 1;
         out.push([c >= 48 && c <= 57 ? 2 : 1, s, i - s]);
       } else if (c === 34) {
-        const s = i + 1;
+        const s = i;
         i += 1;
-        while (i < b.length && b[i] !== 34) i += b[i] === 92 ? 2 : 1;
-        if (i < b.length) out.push([3, s, i - s]);
-        i += 1;
+        while (i < b.length && b[i] !== 34 && b[i] !== 10) {
+          i += b[i] === 92 && i + 1 < b.length && b[i + 1] !== 10 ? 2 : 1;
+        }
+        if (i < b.length && b[i] === 34) {
+          out.push([3, s + 1, i - s - 1]);
+          i += 1;
+        } else out.push([9, s, 1]);
       } else if (c === 45 && b[i + 1] === 62) {
         out.push([4, i, 2]);
         i += 2;
@@ -3090,6 +3094,75 @@ test('self-hosted lexer (compiler/lex.a0) agrees with a reference tokenizer on A
     '# c\nfn f u32x4 -> (u32,bool)\nt text "a\\"b\\\\c"\n-a\nb add p0 1 @ a\ng0\n-fn f\n  x  mov 4294967295\t\r\n?',
     '- > ->-"x\\"y" "open',
   ];
+  // Invalid strings produce a one-byte error at the opening quote. LF is still the next token.
+  const rawStrings: [string, number[][]][] = [
+    [
+      '"a\nx"',
+      [
+        [9, 0, 1],
+        [5, 2, 1],
+        [1, 3, 1],
+        [9, 4, 1],
+      ],
+    ],
+    [
+      '"a\\\nb"',
+      [
+        [9, 0, 1],
+        [5, 3, 1],
+        [1, 4, 1],
+        [9, 5, 1],
+      ],
+    ],
+    ['"abc', [[9, 0, 1]]],
+    ['"abc\\', [[9, 0, 1]]],
+    [
+      'a"b\nc',
+      [
+        [1, 0, 1],
+        [9, 1, 1],
+        [5, 3, 1],
+        [1, 4, 1],
+      ],
+    ],
+    ['"a\rb"', [[3, 1, 3]]],
+    ['"a\u2028b\u2029c"', [[3, 1, 9]]],
+    ['"a\\n\\t\\"\\\\z"', [[3, 1, 10]]],
+    [
+      '"x"y',
+      [
+        [3, 1, 1],
+        [1, 3, 1],
+      ],
+    ],
+  ];
+  for (const offset of [126, 127, 128, 254, 255, 256]) {
+    const pad = ' '.repeat(offset);
+    rawStrings.push(
+      [
+        `${pad}"a\nz`,
+        [
+          [9, offset, 1],
+          [5, offset + 2, 1],
+          [1, offset + 3, 1],
+        ],
+      ],
+      [`${pad}"\\`, [[9, offset, 1]]],
+      [`${pad}"a"`, [[3, offset + 1, 1]]],
+    );
+  }
+  rawStrings.push([
+    `${' '.repeat(126)}"\\\nx`,
+    [
+      [9, 126, 1],
+      [5, 128, 1],
+      [1, 129, 1],
+    ],
+  ]);
+  for (const [src, expected] of rawStrings) {
+    assert.deepEqual(reference(src), expected, JSON.stringify(src));
+    sources.push(src);
+  }
   // whole files: the examples, the site's UI program and the lexer's own source
   for (const f of await readdir('examples'))
     if (f.endsWith('.a0')) sources.push(await readFile(`examples/${f}`, 'utf8'));

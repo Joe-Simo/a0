@@ -8,6 +8,7 @@ import {
   cleanup,
   compare,
   materialize,
+  mutants,
   native,
   profileDirectivePrograms,
   programSet,
@@ -78,5 +79,27 @@ test('native check: same verdict as the TypeScript checker on the corpus, the so
     assert.ok(statSync('compiler/emit_wasm.a0').size >= 200_000);
   } finally {
     cleanup(dir);
+  }
+});
+
+test('native-check mutants: return and drop edits skip nodes whose names start with ret', () => {
+  const nodes = Array.from({ length: 32 }, (_, i) => {
+    const prefix = ['retv', 'retval', 'return_value'][i % 3];
+    return `${prefix}${i} add p0 ${i}`;
+  });
+  const lines = ['fn f u32 -> u32', ...nodes, '\tret\tretv0 # actual return', 'end', ''];
+  const source = lines.join('\n');
+  const generated = mutants(source, 24, 0xc0ffee);
+  assert.equal(generated.length, 24);
+  const returns = generated.filter(([label]) => /^mutant-(ret|drop)-/.test(label));
+  assert.deepEqual(
+    returns.map(([label]) => label),
+    ['mutant-ret-3', 'mutant-drop-10', 'mutant-ret-15', 'mutant-drop-22'],
+  );
+  for (const [label, text] of returns) {
+    const expected = [...lines];
+    if (label.startsWith('mutant-ret-')) expected[nodes.length + 1] = 'ret nosuchnode';
+    else expected.splice(nodes.length + 1, 1);
+    assert.equal(text, expected.join('\n'), label);
   }
 });
