@@ -25,15 +25,19 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   rules: {
-    // file = use* function+
+    // Empty and import-only modules are valid; imports still precede every function.
+    // Each declaration owns its separator and optional successor, including a final EOF.
     source_file: ($) =>
-      seq(
-        repeat($._newline),
-        repeat(seq($.use_declaration, repeat1($._newline))),
-        $.function_definition,
-        repeat(seq(repeat1($._newline), $.function_definition)),
-        repeat($._newline),
+      seq(repeat($._newline), optional($._declarations)),
+
+    _declarations: ($) =>
+      choice(
+        seq($.use_declaration, optional(seq(repeat1($._newline), optional($._declarations)))),
+        $._functions,
       ),
+
+    _functions: ($) =>
+      seq($.function_definition, optional(seq(repeat1($._newline), optional($._functions)))),
 
     // use = "use" quoted_relative_path NEWLINE
     use_declaration: ($) => seq('use', field('path', $.string)),

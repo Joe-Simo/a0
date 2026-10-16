@@ -4,8 +4,8 @@
  * A0 front end, lexer and parser: compiler/parse.a0 linked with compiler/lex.a0 (106 functions) on the
  * A0 side, its TypeScript reference tools/ref-parse.ts (refLex, refParse: the same token grammar and the
  * same word IR, test/core.test.ts checks they agree) on the TypeScript side. The 14 sealed tasks are in
- * tools/app-edit-tasks.ts (tools/app-edit-tasks.sha256). The A0 start program is the sealed copy of
- * parse.a0 and lex.a0 in tools/app-edit-start/, so a later fix to compiler/parse.a0 leaves the set as sealed.
+ * tools/app-edit-tasks.ts (tools/app-edit-tasks.sha256). Both start programs are sealed copies in
+ * tools/app-edit-start/, so later production parser fixes leave the original exercises unchanged.
  *
  * A0 side: the shipped MODEL_GUIDE.min.txt plus the structured protocol paragraph of
  * tools/ai-edit-experiment.ts; the view is each target function under an e handle (dependency scope)
@@ -68,8 +68,6 @@ export const A0_PROTOCOL =
 export const TS_PROTOCOL =
   'Reply with only a unified diff of front.ts (`--- a/front.ts`, `+++ b/front.ts`, then `@@` hunks whose context and removed lines match the file exactly), bare: no code fence.';
 export const TS_FILE = 'front.ts';
-/** Where the TypeScript program ends in tools/ref-parse.ts: the lexer and parser, not the suggestions after them. */
-const TS_CUT = '// --- Self-hosted spelling suggestions reference';
 
 const sha = (s: string): string => createHash('sha256').update(s).digest('hex');
 
@@ -83,10 +81,9 @@ export interface Programs {
 export async function startPrograms(): Promise<Programs> {
   const linked = await link('tools/app-edit-start/parse.a0', (p) => readFile(p, 'utf8'));
   const a0 = formatProgram(parseAndValidate(linked.text));
-  const full = await readFile('tools/ref-parse.ts', 'utf8');
-  const cut = full.indexOf(TS_CUT);
-  if (cut < 0) throw new Error('tools/ref-parse.ts: suggestions section not found');
-  const ts = `${full.slice(0, cut).trimEnd()}\n`;
+  // Keep the historical sealed TS starter independent of production parser changes,
+  // matching the frozen A0 lexer/parser beside it.
+  const ts = await readFile('tools/app-edit-start/front.ts', 'utf8');
   return { a0, ts };
 }
 

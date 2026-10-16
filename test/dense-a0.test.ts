@@ -739,6 +739,21 @@ function chunkInvariance(t: TestContext, label: string, caps: Caps): number {
   return members.length;
 }
 
+test('the dense reader ignores an empty line after exactly 4096 tokens and still checks use lines', () => {
+  const read = loadReader();
+  // The stub is not emitted. Its 820 parameters keep canonical output small while
+  // the final virtual empty line starts at the end of the 4096-token table.
+  const params = [...Array.from({ length: 816 }, () => '(u32,u32)'), 'u32', 'u32', 'u32', 'u32'];
+  const text = `use fn unused ${params.join(' ')} -> u32\nfn f u32 -> u32\nret A\n`;
+  const tokens = text.match(/[^\s()[\],;{}]+|[()[\],;{}]/g) ?? [];
+  assert.equal(tokens.length, 4096);
+  assert.ok(Buffer.byteLength(text) < READER_CAPS.bytes);
+  const got = read(text);
+  assert.equal(got.err, false);
+  assert.equal(got.text, formatProgram(parse('fn f u32 -> u32\nret p0\nend\n')));
+  assert.equal(read('use\nfn f u32 -> u32\nret A\n').err, true);
+});
+
 test('chunks: a program cut at 16 KB reads to the text of the whole program', (t) => {
   const n = chunkInvariance(t, '16 KB', READER_CAPS);
   assert.equal(n, 112, `${n} programs`);
