@@ -78,3 +78,25 @@ The static token comparison uses the same frozen source units for each represent
 The revised research migrator requires an explicit source version per file and validates the complete original graph, including typing, contracts, profile agreement, roots and cycles, before printing the flat candidate. It then verifies per-file IR, comments/imports, a formatting fixed point, linked IR and identical C output. Mixed legacy graphs rewrite imports deterministically when `.a0d` files acquire `.a0` extensions. Invalid original programs and absent version declarations are refused. Strict first-failure/fold identity and affine IO have separate controls. Data: `results/unification-graph-migration.json`.
 
 This is not production migration proof. Canonicalized symlinks, all resource limits, complete literal/spec coverage, provenance, every backend and native frontend behavior still need verification. The candidate also needs performance work. Only after those checks can the official grammar/formatter change, repository programs migrate, and redundant source modes and Dense edit translation be removed from the CLI, MCP, editor, authoring tools and documentation. Internal semantic serialization may remain versioned without being another public source language.
+
+## Integrated A0 frontend prototype
+
+The candidate source and executable-Spec aggregate grammar now share A0 scanning and
+construction helpers. A frozen integrated A0 parser/checker/resumable verifier can be
+rebuilt into a portable artifact through the existing C backend. The host reconstructs
+typed IR and Specs without reparsing source or running another checker. A generic,
+opt-in C host-I/O interface supplies storage transport; the default C ABI and emitted
+output remain unchanged. The interface has native reference-interpreter checks for
+unsigned words, stream length, token identity, UTF-8 text and strict input traps.
+
+Whole-program IR/fact/output comparisons and independent Spec success/failure controls
+pass for the prototype. These component proofs do not complete source migration,
+resource limits, formatting, graph loading or tool integration. The public frontend
+remains unchanged. The current cost matrices retain substantial compilation-time and
+memory losses. A private aggregate-storage threshold experiment also retains its
+tradeoffs and is not promoted. No official cutover is justified by these results.
+
+Rebuild instructions, frozen source/reference controls and the matched benchmark are
+in `experiments/unification/frontend-a0/README.md`. Raw samples, source/artifact hashes,
+dependency provenance, exploratory phase profiles, scope corrections and the decision
+are recorded in `results/unification-portable-frontend.json`.

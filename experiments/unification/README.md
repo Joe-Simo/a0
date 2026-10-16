@@ -17,3 +17,5 @@ Absolute output-file paths in archived prompts and metadata have been replaced b
 Both studies used byte-identical frozen control runtimes. The archive stores those files once in `frozen/`; each study retains its original source hashes. The candidate parser remains separately frozen because its grammar is the experimental variable.
 
 Generated runtime declaration headers have trailing whitespace trimmed; runtime imports are relocated. These export-only changes are covered by published hashes; the original source hashes remain in each relocation record.
+
+The [integrated A0 frontend snapshot](frontend-a0/README.md) adds reproducible native-language grammar/checker/verifier and portable host-schema experiments. It remains research only: recorded compilation-time and memory regressions block the public cutover. See `results/unification-portable-frontend.json`.

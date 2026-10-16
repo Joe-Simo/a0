@@ -882,6 +882,7 @@ const cFrameRuntime = (
   program: TypedProgram,
   inputCapacity: number,
   maxTrips: number | undefined,
+  hostIo = false,
 ): string => {
   const strict = program.profile === 'strict';
   const depth = program.functions.length + 1;
@@ -969,7 +970,9 @@ const cFrameRuntime = (
     );
     if (usesIo(program))
       lines.push(
-        `static inline a0t_r2_u_io a0_sread(a0_io *t) { a0t_r2_u_io r; if (t->position >= t->ninput || t->position >= ${inputCapacity}u) a0_strap(2); r.f0 = t->input[t->position++]; r.f1 = t; return r; }`,
+        hostIo
+          ? 'static inline a0t_r2_u_io a0_sread(a0_io *t) { a0t_r2_u_io r; if (!A0_IO_READ(t, &r.f0)) a0_strap(2); r.f1 = t; return r; }'
+          : `static inline a0t_r2_u_io a0_sread(a0_io *t) { a0t_r2_u_io r; if (t->position >= t->ninput || t->position >= ${inputCapacity}u) a0_strap(2); r.f0 = t->input[t->position++]; r.f1 = t; return r; }`,
       );
   }
   return lines.join('\n');
@@ -982,6 +985,14 @@ const cIoRuntime = (inCap: number, outCap: number): string =>
   `struct a0_io { uint32_t input[${inCap}]; uint32_t ninput; uint32_t position; uint32_t output[${outCap}]; uint32_t noutput; };
 static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; r.f0 = t->position < t->ninput && t->position < ${inCap}u ? t->input[t->position++] : 0u; r.f1 = t; return r; }
 static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < ${outCap}u) t->output[t->noutput++] = v; return t; }
+static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
+
+/** Host streams retain token identity; a false read denotes end of input. */
+const C_HOST_IO = `#if !defined(A0_IO_READ) || !defined(A0_IO_WRITE)
+#error "host I/O requires A0_IO_READ(token, out) and A0_IO_WRITE(token, word)"
+#endif
+static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; uint32_t v = 0u; bool present = A0_IO_READ(t, &v); r.f0 = present ? v : 0u; r.f1 = t; return r; }
+static inline a0_io *a0_write(a0_io *t, uint32_t v) { A0_IO_WRITE(t, v); return t; }
 static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
 
 export const cType = (t: Type): string =>
@@ -2552,10 +2563,12 @@ export function assemble(
       const decls = types.map(cTypeDecl).filter((d) => d.length > 0);
       if (io)
         decls.push(
-          cIoRuntime(
-            options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
-            options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
-          ),
+          options.cIo === 'host'
+            ? C_HOST_IO
+            : cIoRuntime(
+                options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
+                options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
+              ),
         );
       const arena = cArenaRuntime(program);
       if (arena !== undefined) decls.push(arena);
@@ -2574,6 +2587,7 @@ export function assemble(
             program,
             options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
             options.cTrap?.maxTrips,
+            options.cIo === 'host',
           ),
         );
       else if (options.cTrap !== undefined && program.profile !== 'strict')
@@ -2606,6 +2620,15 @@ export interface CompileOptions {
   /** C/wasm/x86_64/Java/C# io capacities in words (defaults C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY); prelude only, bodies are unaffected. */
   readonly ioInputCapacity?: number;
   readonly ioOutputCapacity?: number;
+  /**
+   * C target only: host word streams instead of fixed input/output arrays. The caller
+   * defines struct a0_io and A0_IO_READ(token, out)/A0_IO_WRITE(token, word) before
+   * including the module. READ returns false at end of input (zero in canonical,
+   * an input trap in strict); WRITE receives every word, including puts' length prefix.
+   * The token and host context remain live for the call; hooks must not reenter the module.
+   * Absent, the existing fixed-capacity ABI and emitted bytes are unchanged.
+   */
+  readonly cIo?: 'host';
   /** C target only: automatic parallel folds (src/parallel.ts `parallelC`); absent = sequential. */
   readonly cParallel?: CParallel;
   /**

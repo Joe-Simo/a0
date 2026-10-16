@@ -35,6 +35,11 @@ Raw outcomes, timing samples and conversion evidence are recorded in `results/un
 `results/unification-codex-v2.json`, `results/unification-codex-v2-replication.json`,
 `results/unification-link-header-scan.json` and
 [the refactor record and guide erratum](docs/history/2026-10-16-unified-source-refactor.md).
+An integrated A0 grammar/checker/verifier prototype now rebuilds to a portable artifact and preserves
+whole-program typed IR, Specs and emitted output in component comparisons. Its measured compilation
+time and memory regressions block cutover; the existing public frontend remains authoritative.
+The raw matrices and reproducible snapshot are recorded in `results/unification-portable-frontend.json`
+and `experiments/unification/frontend-a0/README.md`.
 The first feature gate failed native-link parity and stale corpus-count checks; the native header fix
 passes focused verification. Updated whole-suite and promotion gates remain pending. Evidence:
 `results/unification-initial-gate.json`, `results/unification-native-link-header.json`.
