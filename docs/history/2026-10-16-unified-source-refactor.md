@@ -2,7 +2,7 @@
 
 The source unification is in progress. The public compiler still accepts Canonical and Dense; no candidate has completed the native frontend, migration, tooling and performance requirements needed to replace them. This record separates the implemented infrastructure from the research candidates.
 
-The A0 arena parser now calls a grammar-independent builder for operand, node and function records. The shared builder retains full-width identities and source spans, the existing resource-failure behavior and affine IO. Its native ABI checks run at both optimization levels in `test/arena-program.test.ts`. The linker now composes parsed modules and validates their combined IR directly, avoiding the combined-text parse. It retains comments from resolved directives, physical source lines and diagnostic ownership; `test/link-ir.test.ts` covers strict graphs, imports, empty modules, Unicode separators, comments and diagnostic locations. Canonical and strict remain **semantic profiles**, independent of source notation.
+The A0 arena parser now calls a grammar-independent builder for operand, node and function records. The shared builder retains full-width identities and source spans, the existing resource-failure behavior and affine IO. Its native ABI checks run at both optimization levels in `test/arena-program.test.ts`. The linker now composes parsed modules and validates their combined IR directly, avoiding the combined-text parse. Migration readers can return parsed IR directly, while existing native readers returning text retain their API. The shared validator still checks returned IR; an inferred legacy bool aggregate beyond the old signature parser cap is preserved without reparsing. It retains comments from resolved directives, physical source lines and diagnostic ownership; `test/link-ir.test.ts` covers strict graphs, imports, empty modules, Unicode separators, comments and diagnostic locations. Canonical and strict remain **semantic profiles**, independent of source notation.
 
 ## Independent Codex edit studies
 
@@ -29,6 +29,18 @@ The second candidate extends the line parser with short parameter operands, comp
 Both tokenizers, every first failure and repair, group totals and Wilson intervals are in the results. Accounting covers actual supplied prompts, replies and repair prompts. It excludes hidden reasoning, system/tool framing and billed usage, which the platform does not expose. The exact provider model identity is also unavailable. These small samples cannot establish universal accuracy or total computational cost. The historical Haiku/Sonnet Dense losses remain evidence; the new trials do not supersede them.
 
 `node experiments/unification/replay.mjs` reproduces all recorded adjudications and independent base/reference/wrong controls without provider calls. The frozen historical runtimes are research fixtures, never imported by the compiler. Archived prompt paths are relocated; original measured prompt hashes/counts and separate published-file hashes are retained. Replies are unchanged. See `experiments/unification/README.md`.
+
+## Corrected-guidance matched replication
+
+The replication retained the same frozen second-study tasks, views, references, evaluator and selection rule. Only the Dense guide changed; every arm used fresh independent subjects. The preregistration and grading-file hashes were frozen before subjects began. This is a replication on reused tasks, not a new held-out set. Data, first failures, the sole repair, both tokenizers and Wilson intervals: `results/unification-codex-v2-replication.json`.
+
+| Arm | First attempt | Accepted after repair | Visible o200k tokens per accepted edit |
+| --- | ---: | ---: | ---: |
+| Canonical | 12/12 | 12/12 | 1855.00 |
+| Dense | 11/12 | 12/12 | 1884.08 |
+| Flat candidate | 12/12 | 12/12 | 1763.92 |
+
+The flat candidate passes the frozen bounded AI-cost criterion in the corrected replication (`results/unification-codex-v2-replication.json`). Dense again first failed on the function/value collision, then passed its single fresh repair. The original flawed studies remain archived and their comparative conclusions remain withdrawn. Visible payload accounting still excludes hidden reasoning, provider framing and billing. These results do not resolve compiler/memory losses, incomplete native syntax support or migration/tooling readiness.
 
 ## Compiler and memory measurements
 

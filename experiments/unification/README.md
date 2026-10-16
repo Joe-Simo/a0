@@ -2,7 +2,7 @@
 
 These are historical measurement fixtures. The production compiler does not import them. They preserve the rejected candidate as well as the later candidate, so changing the compiler cannot silently change old trial outcomes.
 
-**Guide erratum:** the original Dense primers misdescribe generated IDs and omit the `$ID` escape for operation/function-name collisions. Raw outcomes remain unchanged; comparative AI-cost conclusions are withdrawn pending corrected-guidance replication. See `results/unification-codex-guide-erratum.json` and the source-unification history record. Replay reproduces the original adjudications, including this experimental flaw.
+**Guide erratum:** the original Dense primers misdescribe generated IDs and omit the `$ID` escape for operation/function-name collisions. Raw outcomes remain unchanged; the original comparative AI-cost conclusions are withdrawn. A corrected-guidance matched replication is recorded in `results/unification-codex-v2-replication.json`; it uses fresh subjects in all arms and the same frozen second-study task packet, not new held-out tasks. See `results/unification-codex-guide-erratum.json` and the source-unification history record. Replay reproduces the original adjudications, including this experimental flaw.
 
 Run `node experiments/unification/replay.mjs` after installing the repository dependencies. Replay checks the published file hashes, unchanged source replies, both reply tokenizers, all first submissions and repairs, and the independent base/reference/wrong controls. It makes no provider calls and writes no files.
 

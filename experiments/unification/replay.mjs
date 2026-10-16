@@ -11,8 +11,9 @@ for (const [path, hash] of Object.entries(manifest)) assert.equal(sha(read(path)
 const encoders = Object.fromEntries(['o200k_base', 'cl100k_base'].map((key) => [key, getEncoding(key)]));
 let firsts = 0;
 let repairs = 0;
-for (const study of ['codex-v1', 'codex-v2']) {
-  const { TASKS, selfCheck } = await import(`./${study}/evaluator.mjs`);
+for (const study of ['codex-v1', 'codex-v2', 'codex-v2-replication']) {
+  const packet = study === 'codex-v2-replication' ? 'codex-v2' : study;
+  const { TASKS, selfCheck } = await import(`./${packet}/evaluator.mjs`);
   const { judge } = await import(`./${study}/protocol.mjs`);
   const self = selfCheck();
   assert.equal(self.status, 'pass', study);
