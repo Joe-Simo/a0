@@ -92,29 +92,52 @@ export function seedFiles(source: string, seedC: string): Map<string, string> {
   return files;
 }
 
-/** Cheap staleness check against the working tree: everything but the seed C is recomputed. */
-export async function staleness(): Promise<string[]> {
+export interface BootstrapSeed {
+  readonly c: string;
+  readonly manifest: string;
+}
+
+/** Validate one snapshot; callers compile and cache these exact bytes. */
+async function inspectSeed(seedDir: string): Promise<{
+  readonly problems: string[];
+  readonly seed?: BootstrapSeed;
+}> {
   const problems: string[] = [];
   const source = await compilerSource();
   let seedC: string;
   try {
-    seedC = await readFile(join(SEED_DIR, 'a0c-seed.c'), 'utf8');
+    seedC = await readFile(join(seedDir, 'a0c-seed.c'), 'utf8');
   } catch {
-    return [`${SEED_DIR}/a0c-seed.c is missing: run \`bun run seed\``];
+    return { problems: [`${seedDir}/a0c-seed.c is missing: run \`bun run seed\``] };
   }
+  let manifest = '';
   for (const [name, text] of seedFiles(source, seedC)) {
     let have: string | undefined;
     try {
-      have = await readFile(join(SEED_DIR, name), 'utf8');
+      have = name === 'a0c-seed.c' ? seedC : await readFile(join(seedDir, name), 'utf8');
     } catch {
       have = undefined;
     }
     if (have !== text)
       problems.push(
-        `${SEED_DIR}/${name} ${have === undefined ? 'is missing' : name === 'a0c-seed.c' ? 'differs' : 'is out of date'} for the current compiler source (the compiler source changed: run \`bun run seed\`)`,
+        `${seedDir}/${name} ${have === undefined ? 'is missing' : name === 'a0c-seed.c' ? 'differs' : 'is out of date'} for the current compiler source (the compiler source changed: run \`bun run seed\`)`,
       );
+    if (name === 'MANIFEST' && have !== undefined) manifest = have;
   }
-  return problems;
+  return { problems, seed: { c: seedC, manifest } };
+}
+
+/** Cheap staleness check against the working tree: everything but the seed C is recomputed. */
+export async function staleness(seedDir = SEED_DIR): Promise<string[]> {
+  return (await inspectSeed(seedDir)).problems;
+}
+
+/** The checked-in, A0-generated bootstrap, verified before use; never regenerate implicitly. */
+export async function readBootstrapSeed(seedDir = SEED_DIR): Promise<BootstrapSeed> {
+  const { problems, seed } = await inspectSeed(seedDir);
+  if (problems.length !== 0 || seed === undefined)
+    throw new Error(`bootstrap seed is unavailable or stale:\n${problems.join('\n')}`);
+  return seed;
 }
 
 /** Rebuild the seed from the compiler source: stage 1 by the TypeScript C backend, then its output. */

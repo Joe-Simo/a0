@@ -16,6 +16,7 @@ import { link } from '../src/link.js';
 import { findClang, runTool, type ToolInfo } from '../src/toolchain.js';
 import { BUILD_DIR } from './bootstrap.js';
 import { LIVE_PROGRAMS, type LiveProgramSpec } from './live-programs.js';
+import { readBootstrapSeed } from './seed.js';
 import { a0WasmFromTables, buildWasmTool, typescriptWasm } from './selfhost-wasm.js';
 import {
   codeDigest,
@@ -188,6 +189,7 @@ export async function wasmTool(
   note: Note,
 ): Promise<{ exe: string; digest: string }> {
   const boot = await link('compiler/boot.a0', (p) => readFile(p, 'utf8'));
+  const seed = await readBootstrapSeed();
   const key = keyOf(
     'wasmtool',
     COMPILER_VERSION,
@@ -195,6 +197,8 @@ export async function wasmTool(
     HOST,
     clang.version ?? '',
     boot.text,
+    seed.manifest,
+    sha256(seed.c),
   );
   const exe = join(BUILD_DIR, 'a0w', 'a0w');
   const hit = cache.dir === undefined ? undefined : await readEntry(cache, 'wasmtool', key);
@@ -204,7 +208,7 @@ export async function wasmTool(
     await writeTool(bytes, exe);
     return { exe, digest: sha256(bytes) };
   }
-  const built = await buildWasmTool(clang);
+  const built = await buildWasmTool(clang, seed);
   const exeBytes = await readFile(toolFile(built.exe));
   await writeEntry(cache, 'wasmtool', key, { a0w: exeBytes });
   return { exe: built.exe, digest: sha256(exeBytes) };

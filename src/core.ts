@@ -201,9 +201,10 @@ export const OPS: readonly Op[] = [
 /**
  * The total (checked) operations, valid in both profiles: each yields the `(value, ok)` record
  * `(u32,bool)` and never traps. The reference interpreter and every target in
- * `STRICT_TARGETS` evaluate them; every target outside `STRICT_TARGETS` refuses a program that uses one (A0713, `assertTargetSupports`). They are not in
- * `OPS`, the 30 operations the self-hosted front end (compiler/*.a0) knows by number and name;
- * `ALL_OPS` is what the TypeScript parser, the dense form and the editor tools accept.
+ * `STRICT_TARGETS` evaluate them; every target outside `STRICT_TARGETS` refuses a program that
+ * uses one (A0713, `assertTargetSupports`). The A0 front end also parses and checks them, with
+ * word IR codes 32 through 37. `ALL_OPS` is what the TypeScript parser, the dense form and the
+ * editor tools accept.
  */
 export const CHECKED_OP_NAMES = ['cadd', 'csub', 'cmul', 'cdiv', 'crem', 'cget'] as const;
 export const CHECKED_OPS: ReadonlySet<Op> = new Set<Op>(CHECKED_OP_NAMES);

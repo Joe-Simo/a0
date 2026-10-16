@@ -14,6 +14,12 @@ round reproduces it (stage 4 equals stage 3). `stage-main.c` is the shim: the st
 turns a stage's C into an executable (`a0c` reads source chunks on stdin and writes C; see
 `compiler/boot.a0` and `tools/bootstrap.ts`).
 
+The website's A0 optimizer/Wasm tool is bootstrapped from this checked-in A0-generated C too.
+Its build verifies the seed source, manifest, chunks and plan before compiling it, and refuses a
+missing or stale seed. Updating it is the explicit regeneration command below; a normal website
+build does not recreate the bootstrap with the TypeScript C backend. The remaining compiler
+dependencies are tracked in [Entire compiler in A0](../docs/design/compiler-selfhosting.md).
+
 The seed is C text, about 0.56 MB in all. Regenerate it after any change to `compiler/*.a0`:
 
 ```sh
