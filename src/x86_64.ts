@@ -532,7 +532,8 @@ function sameOp(x: Operand, y: Operand): boolean {
 /**
  * May the aggregate operand `o` be updated in place by the node at `index`? Sound when the
  * value is provably unshared (a fresh allocation or the owned state parameter p0), every
- * other use is a `get`/`at` read before `index`, and it is not returned.
+ * other use finishes before `index` without retaining the container, and it is not returned.
+ * Besides get/at, scalar-result calls and iteration extras cannot retain an input reference.
  */
 function mutableHere(
   fn: TypedFunc,
@@ -558,7 +559,14 @@ function mutableHere(
         continue;
       }
       if (j > index) return false;
-      if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
+      if ((n.op === 'get' || n.op === 'at') && k === 0) continue;
+      const result = fn.types.get(n.id);
+      if (
+        (result === 'u32' || result === 'bool') &&
+        (n.op === 'call' || ((n.op === 'fold' || n.op === 'loop') && k >= 2))
+      )
+        continue;
+      return false;
     }
   }
   // A borrowed read (`at`, or `get` at a literal index) names part of `o`'s storage.

@@ -908,7 +908,7 @@ function cTypeDecl(t: Type): string {
  * `set`/`put` whose old value is provably dead (`mutableHere`) writes in place; the node is then
  * an alias of the updated storage (no local of its own) instead of a copy. Value semantics are
  * unchanged: any value that is still observable is copied as before.
- * Scalar-state bodies that read aggregate extras (`(u32, u32, T...) -> u32` with some T an
+ * Scalar-state iteration bodies and predicates that read aggregate extras (some extra is an
  * array or record, e.g. a dot product over two arrays) get a `view` variant
  * `a0v_f(p0, p1, const T *p2, ...)`: the extras are read through const pointers instead of being
  * copied into every trip (no aliasing exists, so reading the caller's value is the same value).
@@ -1589,15 +1589,19 @@ function cBodyWith(
       // Extras as passed to a by-value or owned body: large ones by pointer.
       const passed = n.args.slice(2).map((o) => cArg(ctx, o));
       if (isPrimitive(fn.types.get(n.id) ?? 'u32')) {
-        const call = [`n_${n.id}`, 'i', ...passed].join(', ');
-        const guard = n.op === 'loop' ? ` if (!a0_${n.pred ?? ''}(${call})) break;` : '';
+        // Both roles can borrow extras. A view parameter is read-only to the callee, so its
+        // local set/put still copies; no trip needs a by-value snapshot at the call boundary.
+        const call = (name: string): string => {
+          const callee = fn.calls.get(name);
+          const view = callee !== undefined && hasViewVariant(callee);
+          const extras = view
+            ? extra.map((e, k) => (isPrimitive(callee.params[k + 2] as Type) ? e : `&${e}`))
+            : passed;
+          return `${view ? 'a0v' : 'a0'}_${name}(${[`n_${n.id}`, 'i', ...extras].join(', ')})`;
+        };
+        const guard = n.op === 'loop' ? ` if (!${call(n.pred ?? '')}) break;` : '';
         const decl = `${t} n_${n.id} = ${init};`;
-        const body = fn.calls.get(n.callee ?? '');
-        // A fold body reading aggregate extras takes them by const pointer (no per-trip copy).
-        const view = n.op === 'fold' && body !== undefined && hasViewVariant(body);
-        const step = view
-          ? `a0v_${n.callee ?? ''}(${[`n_${n.id}`, 'i', ...extra.map((e, k) => (isPrimitive(body.params[k + 2] as Type) ? e : `&${e}`))].join(', ')})`
-          : `a0_${n.callee ?? ''}(${call})`;
+        const step = call(n.callee ?? '');
         const loop = `${markOpen}for (uint32_t i = 0; i < ${count}; i++) {${markTrip}${tripCall(trap, fn, n)}${guard} n_${n.id} = ${step}; }${markClose}`;
         return hooked({ fn, node: n, count: `${count}`, extra, state: `n_${n.id}`, decl, loop });
       }
