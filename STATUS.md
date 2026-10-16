@@ -23,6 +23,11 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## Current results
 
+Latest native work (`a0c-0.1.55`, 2026-10-16): hash lookup improved 10.00× for emitted C and
+9.93× for direct x86 against the previous compiler in a quiet, interleaved Linux run.
+Both still trail handwritten C. Evidence: `results/native-readonly-hash-linux.json`. See
+[the native ownership change](docs/history/2026-10-16-native-readonly-ownership.md).
+
 Latest JavaScript work (`a0c-0.1.54`, 2026-10-15): hash lookup improved 93.75× against
 the previous compiler in a quiet, interleaved Linux run; it still trails handwritten JavaScript.
 Evidence: `results/js-readonly-hash-linux.json`. See
