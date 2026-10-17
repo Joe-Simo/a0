@@ -11,6 +11,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getEncoding } from 'js-tiktoken';
 import { formatProgram, parse } from '../src/core.js';
+import { formatSource as printCandidate } from '../src/source.js';
 import { planned, READER_CAPS, refusedUpFront, usedSignatures } from './dense-chunk.js';
 import { denseForms, isReject, listSources } from './dense-loader.js';
 import { committedTree } from './measurement-checkout.js';
@@ -24,6 +25,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const hash = (text: string): string => createHash('sha256').update(text).digest('hex');
 const read = (path: string): Promise<string> => readFile(path, 'utf8');
 async function main(): Promise<void> {
+  const includeCandidate = args.includes('--include-candidate-source');
   const baseline = option('baseline');
   if (baseline === undefined) throw new Error('--baseline=<built checkout> is required');
   const baselineIdentity = committedTree(resolve(baseline));
@@ -46,6 +48,8 @@ async function main(): Promise<void> {
       const head = program.profile === 'strict' ? 'profile strict\n\n' : '';
       return `${head}${uses}${formatProgram(program).slice(head.length)}`;
     });
+    const candidateSource = canonical.map((text) => printCandidate(parse(text)));
+    const candidateInputs = snapshots.map(([path], index) => [path, candidateSource[index]]);
     const canonicalInputs = snapshots.map(([path], index) => [path, canonical[index]]);
     const tokens = Object.fromEntries(
       tokenizers.map(([encoding, tokenizer]) => [
@@ -53,14 +57,30 @@ async function main(): Promise<void> {
         {
           canonical: canonical.reduce((sum, text) => sum + tokenizer.encode(text).length, 0),
           dense: [...forms.values()].reduce((sum, text) => sum + tokenizer.encode(text).length, 0),
+          ...(includeCandidate
+            ? {
+                candidateSource: candidateSource.reduce(
+                  (sum, text) => sum + tokenizer.encode(text).length,
+                  0,
+                ),
+              }
+            : {}),
         },
       ]),
     );
     const measurements: Record<string, unknown>[] = [];
     // Rotate implementation order between surfaces to reduce fixed ordering bias.
-    for (const surface of ['canonical', 'dense']) {
+    for (const surface of [
+      'canonical',
+      'dense',
+      ...(includeCandidate ? ['candidate-source'] : []),
+    ]) {
       const subjects =
-        surface === 'canonical' ? ['baseline', 'candidate'] : ['candidate', 'baseline'];
+        surface === 'candidate-source'
+          ? ['candidate']
+          : surface === 'canonical'
+            ? ['baseline', 'candidate']
+            : ['candidate', 'baseline'];
       for (const subject of subjects) {
         const child = spawnSync(
           process.execPath,
@@ -72,7 +92,13 @@ async function main(): Promise<void> {
           ],
           {
             encoding: 'utf8',
-            input: JSON.stringify({ root, entry, canonical: canonicalInputs, dense: [...forms] }),
+            input: JSON.stringify({
+              root,
+              entry,
+              canonical: canonicalInputs,
+              dense: [...forms],
+              ...(includeCandidate ? { candidateSource: candidateInputs } : {}),
+            }),
             maxBuffer: 8 * 1024 * 1024,
             timeout: 180_000,
           },
@@ -142,14 +168,15 @@ async function main(): Promise<void> {
     candidateTree: candidateIdentity.tree,
     loadSource: loadSource(),
     method:
-      'Isolated workers; six warmups, fifteen warm in-memory links per cell. Both source inputs are printer-normalized and comment-free. Output hashes use optimized JS, C and direct wasm. Worker RSS includes input snapshots and frontend warmups, sampled before importing backends or emitting. Token counts exclude comments and include imports, summed per file. Cells run sequentially; timings are exploratory, not a paired interleaved performance claim.',
+      'Isolated workers; six warmups, fifteen warm in-memory links per cell. Source inputs are printer-normalized and comment-free. Output hashes use optimized JS, C and direct wasm. Worker RSS includes input snapshots and frontend warmups, sampled before importing backends or emitting. Token counts exclude comments and include imports, summed per file. Cells run sequentially; timings are exploratory, not a paired interleaved performance claim.',
     ai: {
       status: 'not-run',
       reason: 'No fresh model acceptance or tokens-per-accepted-edit measurement.',
     },
     unified: {
-      status: 'not-implemented',
-      reason: 'Canonical and Dense compatibility readers still exist.',
+      status: includeCandidate ? 'candidate-only' : 'not-measured',
+      reason:
+        'Canonical and Dense remain public; candidate frontend and migration are internal. Native and tool cutover are incomplete.',
     },
     selfhostCapacity: {
       method:

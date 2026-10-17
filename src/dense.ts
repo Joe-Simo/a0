@@ -19,7 +19,6 @@
 
 import {
   A0Error,
-  ALL_OPS,
   type Comments,
   type Func,
   formatTextLiteral,
@@ -40,6 +39,10 @@ import {
   type Type,
   typeEquals,
 } from './core.js';
+import { defaultNames, RESERVED_BINDINGS as KEYWORDS } from './names.js';
+
+export { defaultNames } from './names.js';
+
 import { SpecBuilder, specLinesWithComments, specWordOf } from './spec.js';
 
 // ---------------------------------------------------------------------------
@@ -67,21 +70,6 @@ const SYMBOL_OPS: Readonly<Record<string, Op>> = {
   '>': 'gt',
   '>=': 'ge',
 };
-
-/** Words that are never an unescaped id: ops, aliases, structure words and type names. */
-const KEYWORDS = new Set<string>([
-  ...ALL_OPS,
-  'udiv',
-  'urem',
-  'text',
-  'fn',
-  'ret',
-  'end',
-  'use',
-  'patch',
-  'true',
-  'false',
-]);
 
 /** Words that start a spec line (`pre`, `post`) where a statement may: never a bare first id or callee. */
 const SPEC_NAMES: ReadonlySet<string> = new Set(['pre', 'post']);
@@ -119,25 +107,6 @@ class NameSeq {
   advance(): void {
     this.#cur = this.#it.next().value as string;
   }
-}
-
-/** The i-th default id: a..z, aa..zz, aaa.. (skipping words that would be ambiguous). */
-export function* defaultNames(taken: ReadonlySet<string>): Generator<string> {
-  for (let len = 1; len <= 4; len += 1) {
-    const idx = new Array<number>(len).fill(0);
-    for (;;) {
-      const name = idx.map((c) => String.fromCharCode(97 + c)).join('');
-      if (!taken.has(name) && isValidIdentifier(name) && !KEYWORDS.has(name)) yield name;
-      let k = len - 1;
-      while (k >= 0 && idx[k] === 25) {
-        idx[k] = 0;
-        k -= 1;
-      }
-      if (k < 0) break;
-      idx[k] = (idx[k] as number) + 1;
-    }
-  }
-  throw new A0Error('too many nodes for default names', undefined, { code: 'limit' });
 }
 
 function fail(message: string, line: number | undefined, fix?: string): never {

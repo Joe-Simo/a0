@@ -3,11 +3,13 @@ import { isUtf8 } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, realpath, rename, rm, rmdir, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { formatProgram, formatSource } from './core.js';
-import { formatDense, parseDense } from './dense.js';
+import { formatProgram, formatSource, type Program } from './core.js';
+import { type Arities, formatDense, parseDense } from './dense.js';
 import { programRevision } from './edit.js';
 import { link, physicalPath } from './link.js';
 import { protectionPolicy } from './protection-policy.js';
+import { parseSource, formatSource as printSource } from './source.js';
+import { linkSource } from './source-link.js';
 
 export interface MigrationFile {
   readonly source: string;
@@ -25,8 +27,33 @@ export interface MigrationManifest {
 
 const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex');
 const portable = (path: string): string => path.split(sep).join('/');
-const outputPath = (path: string): string =>
-  /\.a0d?$/.test(path) ? path.replace(/\.a0d?$/, '.a0d') : `${path}.a0d`;
+interface MigrationCodec {
+  readonly extension: '.a0' | '.a0d';
+  print(program: Program, known: Arities): string;
+  parse(text: string, known: Arities): Program;
+  readonly link: typeof linkSource;
+}
+const denseCodec: MigrationCodec = {
+  extension: '.a0d',
+  print: (program, known) => formatDense(program, { known, comments: true }),
+  parse: (text, known) => parseDense(text, { known }),
+  link,
+};
+const sourceCodec: MigrationCodec = {
+  extension: '.a0',
+  print: printSource,
+  parse: parseSource,
+  link: linkSource,
+};
+
+/** Convert either historical spelling to the candidate grammar. */
+export function migrateSourceProject(
+  entry: string,
+  destination: string,
+  root = dirname(resolve(entry)),
+): Promise<MigrationManifest> {
+  return migrate(entry, destination, root, false, sourceCodec);
+}
 
 /**
  * Convert an entry and its complete dependency closure to a new directory. The original project
@@ -39,6 +66,16 @@ export async function migrateProject(
   destination: string,
   root = dirname(resolve(entry)),
   legacyDense = false,
+): Promise<MigrationManifest> {
+  return migrate(entry, destination, root, legacyDense, denseCodec);
+}
+
+async function migrate(
+  entry: string,
+  destination: string,
+  root: string,
+  legacyDense: boolean,
+  codec: MigrationCodec,
 ): Promise<MigrationManifest> {
   protectionPolicy(root);
   protectionPolicy(entry);
@@ -70,7 +107,9 @@ export async function migrateProject(
     const rel = relative(sourceRoot, path);
     if (isAbsolute(rel) || rel === '..' || rel.startsWith(`..${sep}`))
       throw new Error('migration entry and dependencies must be inside the source root');
-    const target = outputPath(rel);
+    const target = /\.a0d?$/.test(rel)
+      ? rel.replace(/\.a0d?$/, codec.extension)
+      : `${rel}${codec.extension}`;
     if (destinations.has(target)) throw new Error(`migration destination collision: ${target}`);
     destinations.add(target);
     mapped.set(path, target);
@@ -88,11 +127,11 @@ export async function migrateProject(
       }),
     );
     const rewritten = { ...program, uses };
-    const text = formatDense(rewritten, { known, comments: true });
-    const back = parseDense(text, { known });
+    const text = codec.print(rewritten, known);
+    const back = codec.parse(text, known);
     if (formatSource(back) !== formatSource(rewritten))
       throw new Error(`migration changed source or comments: ${relative(sourceRoot, path)}`);
-    if (formatDense(back, { known, comments: true }) !== text)
+    if (codec.print(back, known) !== text)
       throw new Error(`migration is not a formatter fixed point: ${relative(sourceRoot, path)}`);
     converted.set(path, text);
   }
@@ -122,7 +161,7 @@ export async function migrateProject(
       await mkdir(dirname(target), { recursive: true });
       await writeFile(target, text, { flag: 'wx' });
     }
-    const after = await link(join(staging, migratedEntry), (p) => readFile(p, 'utf8'), {
+    const after = await codec.link(join(staging, migratedEntry), (p) => readFile(p, 'utf8'), {
       root: staging,
     });
     if (

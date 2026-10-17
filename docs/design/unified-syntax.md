@@ -2,11 +2,12 @@
 
 The objective is one source syntax and one authoritative frontend, with the existing semantic
 program and target backends retained. This refactor is **in progress**. Canonical and Dense are
-still supported; neither has been silently reinterpreted. No third source syntax is introduced.
+still supported; neither has been silently reinterpreted. The candidate frontend is internal and
+is not exposed as another CLI mode or file extension.
 
 ## Implemented foundation
 
-`src/link.ts` now joins the programs returned by the source readers and calls the shared validator.
+`src/linker.ts` now joins the programs returned by the source readers and calls the shared validator.
 It no longer reparses their concatenated printed source. Combined source text remains available
 to existing consumers. Removing import and profile directives preserves their line positions,
 including directives with trailing comments. Whole-program resource limits, dependency ordering,
@@ -60,6 +61,34 @@ concurrent writers. Directory replacement behavior has been exercised on Linux a
 integration gate; Windows host execution still needs verification. An unsupported rename fails without modifying the
 original sources. Do not delete old source trees based on an unverified migration.
 
+## Candidate frontend and staged cutover
+
+`src/source.ts` contains the candidate parser and default formatter, moved from the Surface v2
+experiment rather than reimplemented in parallel. `tools/surface-v2.ts` retains research exports;
+its conversion to historical text is not part of compilation. The candidate parser builds the
+shared IR directly. Explicit `name=expression` bindings and delimited calls remove the old
+callee-versus-binding ambiguity. Mixed operators require parentheses. Scalar `u32` annotations
+are elided; other parameter and result types remain explicit. The formatter preserves node IDs,
+node order, signatures, contracts, profiles, imports and comments. Parsing and printing nested
+expressions use iterative traversal within the shared resource limits.
+
+`src/source-link.ts` connects this parser to the same dependency resolver, IR composition and
+validator as the historical readers. Parser origins map validation errors in nested expressions
+to their physical source line. `migrateSourceProject` in `src/migrate.ts` converts historical
+Canonical or `.a0d` dependency closures into candidate `.a0` files using the existing guarded
+staging engine. The public `a0 migrate` command still targets historical Dense until cutover;
+there is no new public syntax flag. The candidate migration verifies each file's complete source
+metadata and formatter fixed point, then links and compares the staged program and revision
+before publication.
+
+These entry points are implementation work, not a release declaration. `test/source.test.ts`
+checks repository round trips, independent ambiguous-name cases, operator grouping, text and
+resource boundaries. `test/source-link.test.ts` checks linked origins, dependency handling and
+migration from both historical spellings against every registered backend's emitted output.
+These correctness checks do not establish an AI accuracy, compilation speed or memory advantage.
+The native/self-hosted parser, compiler entry points, editing tools, MCP integration and source
+corpus must still cut over before historical readers and public modes can be removed.
+
 ## Measurements
 
 `tools/frontend-baseline.ts` compares built checkouts on identical input snapshots:
@@ -68,6 +97,11 @@ original sources. Do not delete old source trees based on an unverified migratio
 bun run build
 node dist/tools/frontend-baseline.js --baseline=/path/to/built/baseline-checkout
 ```
+
+`--include-candidate-source` adds an internal candidate-frontend cell on the candidate checkout
+and candidate token counts. The baseline has no such frontend; it is compared on the two
+historical spellings only. Every cell must match the same semantic program and emitted artifacts.
+The report retains the explicit incomplete-cutover status. It is not evidence of model accuracy.
 
 It uses Life, the linked self-hosted compiler and the website application. It records Canonical
 and Dense token counts with both repository tokenizers, warm frontend samples and observed load,

@@ -602,7 +602,7 @@ function isParamWord(s: string): boolean {
 }
 
 /** Whether `c` is a char code `\s` matches. */
-function isSpaceCode(c: number): boolean {
+export function isSpaceCode(c: number): boolean {
   return (
     c === 32 ||
     (c >= 9 && c <= 13) ||
@@ -1000,6 +1000,20 @@ export function parseNode(lineText: string, line?: number): Node {
   return parseNodeOf(lineText, line, undefined);
 }
 
+/** Construct a text literal directly in the shared IR; raw excludes its surrounding quotes. */
+export function textNode(id: string, raw: string, line?: number): Node {
+  if (!isValidIdentifier(id)) {
+    throw diag('A0005', [id], lineAt(line));
+  }
+  const text = decodeText(raw, line);
+  const bytes = new TextEncoder().encode(text);
+  if (bytes.length === 0) throw diag('A0006', [], lineAt(line));
+  if (bytes.length > LIMITS.maxArrayLength) {
+    throw diag('A0007', [LIMITS.maxArrayLength], lineAt(line));
+  }
+  return { id, op: 'arr', args: [...bytes].map((value) => ({ kind: 'u32', value })), text };
+}
+
 /**
  * `parseNode`, given the line's words (`lineText.trim().split(/\s+/)`) when the parser has them
  * already; only for a line without a `"`, as a text literal is matched on the whole line.
@@ -1013,18 +1027,8 @@ function parseNodeOf(
   const textMatch =
     words === undefined && lineText.includes('"') ? TEXT_LINE.exec(lineText.trim()) : null;
   if (textMatch !== null) {
-    // `id text "..."` desugars to `arr` of UTF-8 byte words; the source form is retained.
     const [, id, raw] = textMatch;
-    if (id === undefined || !isValidIdentifier(id)) {
-      throw diag('A0005', [id ?? ''], lineAt(line));
-    }
-    const text = decodeText(raw ?? '', line);
-    const bytes = new TextEncoder().encode(text);
-    if (bytes.length === 0) throw diag('A0006', [], lineAt(line));
-    if (bytes.length > LIMITS.maxArrayLength) {
-      throw diag('A0007', [LIMITS.maxArrayLength], lineAt(line));
-    }
-    return { id, op: 'arr', args: [...bytes].map((value) => ({ kind: 'u32', value })), text };
+    return textNode(id ?? '', raw ?? '', line);
   }
   const parts = words ?? splitWords(lineText);
   const id = parts[0];
@@ -2299,7 +2303,7 @@ export function formatProgram(program: Program): string {
 }
 
 /** One source line with its comments: leading lines above it, trailing after one space. */
-function withComments(line: string, comments: Comments | undefined): string {
+export function withComments(line: string, comments: Comments | undefined): string {
   if (comments === undefined) return line;
   const above = (comments.leading ?? []).map((c) => `${c}\n`).join('');
   return `${above}${line}${comments.trailing === undefined ? '' : ` ${comments.trailing}`}`;
