@@ -14,8 +14,10 @@
  */
 
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -23,7 +25,7 @@ import { pathToFileURL } from 'node:url';
 
 /** The largest an og image may be, in bytes. */
 export const OG_BUDGET = 120_000;
-export const PITCH = 'A small language AI models can edit without breaking your build.';
+export const PITCH = 'A typed programming language for AI.';
 
 export interface Stat {
   readonly big: string;
@@ -105,12 +107,12 @@ export async function computeCards(root = '.'): Promise<readonly Card[]> {
     },
     {
       file: 'benchmarks.png',
-      kicker: 'a0lang.com/benchmarks  /  losses included',
-      alt: `A0 benchmarks, losses included: ${fmt(ledger.entries.length)} losses recorded in the ledger, and ${wins} of ${edits.length} edit-check comparisons won.`,
+      kicker: 'a0lang.com/benchmarks  /  methods and results',
+      alt: `A0 benchmarks: ${fmt(ledger.entries.length)} losses recorded in the ledger, and ${wins} of ${edits.length} edit-check comparisons won.`,
       stats: [
         {
           big: fmt(ledger.entries.length),
-          label: 'losses recorded in the open',
+          label: 'recorded benchmark losses',
           source: 'results/loss-ledger.json',
         },
         {
@@ -188,7 +190,6 @@ class Shooter {
         '--headless=new',
         '--disable-gpu',
         '--hide-scrollbars',
-        '--allow-file-access-from-files',
         `--user-data-dir=${join(dir, 'profile')}`,
         'about:blank',
       ],
@@ -221,7 +222,7 @@ class Shooter {
     });
   }
   /** Load `url` at w x h and return the PNG. */
-  async shoot(url: string, w: number, h: number): Promise<Buffer> {
+  async shoot(url: string, w: number, h: number, expectedText?: string): Promise<Buffer> {
     await this.send('Page.enable');
     await this.send('Emulation.setDeviceMetricsOverride', {
       width: w,
@@ -233,12 +234,21 @@ class Shooter {
     await new Promise((r) => setTimeout(r, 400));
     await this.send('Runtime.evaluate', { expression: 'document.fonts.ready', awaitPromise: true });
     await new Promise((r) => setTimeout(r, 300));
+    const content = await this.send('Runtime.evaluate', {
+      expression:
+        expectedText === undefined
+          ? 'Boolean(document.querySelector("svg"))'
+          : `document.body.innerText.includes(${JSON.stringify(expectedText)})`,
+      returnByValue: true,
+    });
+    if (!(content.result as { result?: { value?: boolean } })?.result?.value)
+      throw new Error('Preview content did not load; refusing to save the screenshot');
     const r = await this.send('Page.captureScreenshot', { format: 'png' });
     return Buffer.from(r.result?.data ?? '', 'base64');
   }
   close(): void {
-    this.ws.close();
-    this.proc.kill();
+    this.ws?.close();
+    this.proc?.kill();
   }
 }
 
@@ -247,18 +257,36 @@ const ICON_SVG = (rx: number, size: number): string =>
 
 export async function main(root = '.'): Promise<void> {
   const cards = await computeCards(root);
-  const fontsUrl = `${
-    pathToFileURL(join(dirname(createRequire(import.meta.url).resolve('geist/font')), 'fonts')).href
-  }`;
+  const fonts = join(dirname(createRequire(import.meta.url).resolve('geist/font')), 'fonts');
+  const assets = new Map<string, { type: string; body: string | Buffer }>();
+  const server = createServer((request, response) => {
+    const asset = assets.get((request.url ?? '/').split('?')[0] ?? '/');
+    response.writeHead(asset === undefined ? 404 : 200, {
+      'Content-Type': asset?.type ?? 'text/plain',
+    });
+    response.end(asset?.body ?? 'Not found');
+  });
+  const listening = once(server, 'listening');
+  server.listen(0, '127.0.0.1');
+  await listening;
+  const address = server.address();
+  if (address === null || typeof address === 'string') throw new Error('No preview server address');
+  const base = `http://127.0.0.1:${address.port}`;
   const tmp = await mkdtemp(join(tmpdir(), 'a0-og-'));
   const shooter = new Shooter();
   try {
+    for (const file of [
+      'geist-sans/Geist-Variable.woff2',
+      'geist-mono/GeistMono-Variable.woff2',
+      'geist-pixel/GeistPixel-Square.woff2',
+    ])
+      assets.set(`/fonts/${file}`, { type: 'font/woff2', body: await readFile(join(fonts, file)) });
     await shooter.open(tmp);
     await mkdir(join(root, 'site', 'og'), { recursive: true });
     for (const card of cards) {
-      const html = join(tmp, card.file.replace('.png', '.html'));
-      await writeFile(html, cardHtml(card, fontsUrl), 'utf8');
-      const png = await shooter.shoot(pathToFileURL(html).href, 1200, 630);
+      const path = `/${card.file.replace('.png', '.html')}`;
+      assets.set(path, { type: 'text/html', body: cardHtml(card, `${base}/fonts`) });
+      const png = await shooter.shoot(`${base}${path}`, 1200, 630, PITCH);
       await writeFile(join(root, 'site', 'og', card.file), png);
       process.stdout.write(`site/og/${card.file}: ${png.length} bytes\n`);
     }
@@ -266,18 +294,19 @@ export async function main(root = '.'): Promise<void> {
       ['apple-touch-icon.png', 180],
       ['favicon-32.png', 32],
     ] as const) {
-      const svg = join(tmp, `${name}.html`);
-      await writeFile(
-        svg,
-        `<!doctype html><body style="margin:0;background:#000">${ICON_SVG(0, size)}</body>`,
-        'utf8',
-      );
-      const png = await shooter.shoot(pathToFileURL(svg).href, size, size);
+      const path = `/${name}.html`;
+      assets.set(path, {
+        type: 'text/html',
+        body: `<!doctype html><body style="margin:0;background:#000">${ICON_SVG(0, size)}</body>`,
+      });
+      const png = await shooter.shoot(`${base}${path}`, size, size);
       await writeFile(join(root, 'site', name), png);
       process.stdout.write(`site/${name}: ${png.length} bytes\n`);
     }
   } finally {
     shooter.close();
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
     await rm(tmp, { recursive: true, force: true }).catch(() => undefined);
   }
 }

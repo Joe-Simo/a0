@@ -1,6 +1,6 @@
 fn let match ret u32 end check A0
-MEASURED Every number links to its results file A typed language AI edits one function at a time.
-A model changes one function; A0 checks it against the whole program and compiles to C, native arm64 and WebAssembly.
+A typed programming language for AI.
+Edit individual functions with revision-checked patches. Compile to native code, WebAssembly, C and other targets.
 > curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
 PS> irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex
 macOS & Linux Windows
@@ -246,174 +246,52 @@ Per program: 7 faster, 7 tied, 5 slower
 − Larger module on 1 of 19 programs
 Source: results/wasm-benchmark.json · method →
 
-Development update · 16 October 2026
-Apache 2.0 and the path to one syntax.
-A0's first-party source is now licensed under Apache 2.0. We have published independent Codex edit trials comparing Canonical, Dense and an experimental unified syntax.
-The syntax refactor remains in development. The compiler and tools still use the existing syntax. Compilation performance, complete migration and tooling integration still block adoption.
-Read the new measurements and their limits → Apache 2.0 license · Copyright notice
-
-01 / What A0 is
-A typed language built for model edits.
-Language Typed, explicit, short
+01 / Language and tools
+Write, check and compile.
+Language Typed functions
 Every function states its types. One operation per line.
 a0 check sq.a0
 
-Edits One function, checked
-A patch replaces one function; A0 re-validates the program or rejects the patch with a diagnostic.
+Edits Revision-checked patches
+Change instructions or replace a function. A0 checks the patch before applying it.
 a0 patch sq.a0 edit.patch
 
 Targets C, arm64, WebAssembly
-One front end; the same behaviour table runs on every target.
+Compile the same source to different targets. See the benchmarks for verification coverage.
 a0 emit arm64 sq.a0
 
 Agents MCP server
-Models read, edit and check A0 through tools instead of raw text.
+Open function views, apply patches, run checks and save changes through MCP.
 a0 mcp.
 
-02 / A minute with A0
-From install to a checked edit.
+02 / Quick start
+Run your first function.
 printf 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n' > sq.a0
 One typed function.
 
 a0 run sq.a0 sq 12
-Prints the square.
+Prints 144.
 
 a0 check sq.a0
-Reports type and bounds errors. --fix applies the exact fixes.
+Reports type and bounds errors. --fix applies supported diagnostic fixes.
 
 a0 emit arm64 sq.a0
-A0's own machine code; also c, js, java, sv.
+Emits ARM64 machine code. Other targets include C, JavaScript, Java and SystemVerilog.
 
 a0 mcp.
 Serves the folder to an agent over MCP.
 
 Full list in the CLI reference.
 
-03 / Against other languages
-Edit cost and speed against other languages.
-Full tables and methods on Benchmarks.
-The same 10 programs, written by hand
-o200k tokens · sum over the programs · lower is better
-A0 (dense)
-
-193
-Forth
-
-323
-OCaml
-
-364
-C#
-
-384
-Ruby
-
-386
-Go
-
-389
-Lua
-
-408
-Python
-
-417
-Java
-
-427
-JavaScript
-
-454
-C++
-
-479
-Zig
-
-499
-TypeScript
-
-507
-C
-
-512
-A0 (canonical)
-
-541
-PHP
-
-549
-Rust
-
-558
-
-+ A0 dense: 193 against Forth 323
-− A0 canonical: 541, place 38 of 49
-Source: results/lang-axes.json · results/dense-tokens.json · method →
-
-Small programs, compiled
-Time per call as a multiple of A0's · geometric mean · log scale · shorter is faster
-C
-
-0.86x
-Rust
-
-0.93x
-C++
-
-0.94x
-A0
-
-1.00x
-Zig
-
-1.11x
-Java
-
-1.30x
-TypeScript
-
-1.40x
-Go
-
-1.53x
-C#
-
-1.57x
-OCaml
-
-2.72x
-JavaScript
-
-5.77x
-Forth
-
-15.3x
-PHP
-
-19.6x
-Lua
-
-19.6x
-Ruby
-
-73.9x
-Python
-
-169x
-
-3 of 48 languages within 5% of A0; 8 faster
-− Slower than the best of C, Rust and Zig on 8 of 19 programs, worst 4.31x (mat4)
-Source: results/exec-benchmark-full.json · method →
-
-04 / Where A0 loses
-Measured losses.
+03 / Limits
+Limits and benchmark results.
 Loss — Measured — Source
 Native speed against the best of C, Rust and Zig — slower on 8 of 19 programs, worst 4.31x — exec-benchmark-full.json
 Sessions of 10 AI edits — place 12 of 49 — ai-edit-b48-dense.json
 Canonical source size — 541 tokens, place 38 of 49 — lang-axes.json
 What the language lacks — floats, heap, recursion — STATUS.md
 
-05 / Install
+04 / Install
 Install
 > curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
 Quick start Source on GitHub ↗
