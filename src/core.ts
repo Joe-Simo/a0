@@ -701,7 +701,12 @@ const TYPE_WORDS: readonly string[] = ['u32', 'bool', 'io'];
  * Parse a type. `header` (the whole `fn` line) lets a misspelt type word carry a did-you-mean
  * edit that rewrites it.
  */
-export function parseType(text: string, line?: number, header?: string): Type {
+export function parseType(
+  text: string,
+  line?: number,
+  header?: string,
+  widePureArrays = false,
+): Type {
   let pos = 0;
   const fail = (msg: string, word?: string): never => {
     let fix: string | undefined;
@@ -751,7 +756,11 @@ export function parseType(text: string, line?: number, header?: string): Type {
       const m = /^x([1-9][0-9]*)/.exec(text.slice(pos));
       if (!m) fail('expected array length after x');
       const length = Number(m?.[1]);
-      if (length > LIMITS.maxArrayLength) fail(`array length exceeds ${LIMITS.maxArrayLength}`);
+      const maxLength =
+        widePureArrays && !containsIo(base)
+          ? Math.max(LIMITS.maxArrayLength, Math.floor(LIMITS.maxAggregateBits / bitWidth(base)))
+          : LIMITS.maxArrayLength;
+      if (length > maxLength) fail(`array length exceeds ${maxLength}`);
       pos += (m?.[0] ?? '').length;
       if (containsIo(base)) fail('arrays cannot hold io tokens');
       base = { kind: 'arr', length, elem: base };
@@ -983,10 +992,11 @@ function operandsOf(
   words: readonly string[],
   line: number | undefined,
   lineText: string,
+  readOperand = parseOperand,
 ): Operand[] {
   const out: Operand[] = [];
   for (let k = 0; k < words.length; k += 1)
-    out.push(parseOperand(words[k] as string, line, lineText));
+    out.push(readOperand(words[k] as string, line, lineText));
   return out;
 }
 
@@ -1018,10 +1028,11 @@ export function textNode(id: string, raw: string, line?: number): Node {
  * `parseNode`, given the line's words (`lineText.trim().split(/\s+/)`) when the parser has them
  * already; only for a line without a `"`, as a text literal is matched on the whole line.
  */
-function parseNodeOf(
+export function parseNodeOf(
   lineText: string,
   line: number | undefined,
   words: readonly string[] | undefined,
+  readOperand = parseOperand,
 ): Node {
   // TEXT_LINE needs a quote: a line without one skips the regular expression.
   const textMatch =
@@ -1065,7 +1076,7 @@ function parseNodeOf(
   // `id F args…` with F a function name (not an op) is the direct form of `id call F args…`.
   const op = opOf(word);
   if (op === undefined && isDirectCallee(word))
-    return { id, op: 'call', callee: word, args: operandsOf(rest, line, lineText) };
+    return { id, op: 'call', callee: word, args: operandsOf(rest, line, lineText, readOperand) };
   if (op === undefined) {
     const lower = word.toLowerCase();
     const assign = word === '=' && rest.length > 0;
@@ -1107,7 +1118,7 @@ function parseNodeOf(
     ) {
       throw diag('A0012', [], lineAt(line));
     }
-    return { id, op, pred, callee, args: operandsOf(args, line, lineText) };
+    return { id, op, pred, callee, args: operandsOf(args, line, lineText, readOperand) };
   }
   if (op === 'call' || op === 'fold') {
     const [callee, ...args] = rest;
@@ -1125,7 +1136,7 @@ function parseNodeOf(
           : {}),
       });
     }
-    return { id, op, callee, args: operandsOf(args, line, lineText) };
+    return { id, op, callee, args: operandsOf(args, line, lineText, readOperand) };
   }
   if (OP_ARITY[op] >= 0 && rest.length !== OP_ARITY[op]) {
     // an associative binary op written with more operands: show the chain that says it
@@ -1163,7 +1174,7 @@ function parseNodeOf(
     });
   }
   if (OP_ARITY[op] < 0 && rest.length === 0) throw diag('A0015', [op], lineAt(line));
-  return { id, op, args: operandsOf(rest, line, lineText) };
+  return { id, op, args: operandsOf(rest, line, lineText, readOperand) };
 }
 
 // ---------------------------------------------------------------------------
@@ -1216,7 +1227,22 @@ interface SourceLine {
   readonly comments?: Comments;
 }
 
+/** Shared line scanner, module boundaries, limits and comment ownership. Readers construct IR. */
+export interface ProgramReader {
+  header(words: readonly string[], line: number, text: string): { params: Type[]; result: Type };
+  node(text: string, line: number, words?: readonly string[]): Node;
+  operand(text: string, line: number, lineText: string): Operand;
+  specs(name: string): SpecBuilder;
+  finish(fn: Func): Func;
+  origin(fn: string, node: string | undefined, line: number): void;
+}
+
 export function parse(source: string): Program {
+  return parseProgram(source);
+}
+
+/** Internal migration integration; the public compiler has no candidate syntax flag. */
+export function parseProgram(source: string, reader?: ProgramReader): Program {
   // A UTF-16 unit is at most 3 UTF-8 bytes: a source that short cannot be over, and is not encoded to measure it.
   if (source.length * 3 > LIMITS.maxSourceBytes && utf8Length(source) > LIMITS.maxSourceBytes) {
     throw diag('A0016', [LIMITS.maxSourceBytes]);
@@ -1332,13 +1358,20 @@ export function parse(source: string): Program {
       });
     }
     if (names.has(name)) throw diag('A0020', [name], { line: cur.line });
-    const arrow = head.indexOf('->');
-    if (arrow < 2 || arrow !== head.length - 2) {
-      throw diag('A0023', [], { line: cur.line });
+    let params: Type[];
+    let result: Type;
+    if (reader !== undefined) {
+      ({ params, result } = reader.header(head, cur.line, cur.text));
+      reader.origin(name, undefined, cur.line);
+    } else {
+      const arrow = head.indexOf('->');
+      if (arrow < 2 || arrow !== head.length - 2) {
+        throw diag('A0023', [], { line: cur.line });
+      }
+      params = head.slice(2, arrow).map((t) => parseType(t, cur.line, cur.text));
+      if (params.length > LIMITS.maxParams) throw diag('A0024', [], { line: cur.line });
+      result = parseType(head[arrow + 1] ?? '', cur.line, cur.text);
     }
-    const params = head.slice(2, arrow).map((t) => parseType(t, cur.line, cur.text));
-    if (params.length > LIMITS.maxParams) throw diag('A0024', [], { line: cur.line });
-    const result = parseType(head[arrow + 1] ?? '', cur.line, cur.text);
 
     const header = cur.comments;
     const nodes: Node[] = [];
@@ -1346,7 +1379,7 @@ export function parse(source: string): Program {
     let retComments: Comments | undefined;
     let endComments: Comments | undefined;
     let closed = false;
-    const specs = new SpecBuilder(name);
+    const specs = reader?.specs(name) ?? new SpecBuilder(name);
     for (let body = next(); body !== undefined; body = next()) {
       const parts = body.words;
       const first = parts[0];
@@ -1365,11 +1398,16 @@ export function parse(source: string): Program {
       }
       if (first === 'ret') {
         retComments = body.comments;
+        reader?.origin(name, 'ret', body.line);
         if (isRetNodeForm(parts)) {
           // `ret OP ARGS…` is sugar for a fresh node followed by `ret` of it.
           const id = freshRetId(nodes);
           try {
-            nodes.push(parseNode(`${id} ${parts.slice(1).join(' ')}`, body.line));
+            const text = `${id} ${parts.slice(1).join(' ')}`;
+            nodes.push(
+              reader === undefined ? parseNode(text, body.line) : reader.node(text, body.line),
+            );
+            reader?.origin(name, id, body.line);
           } catch (e) {
             // The failing line is the synthesised `retval OP …`, not the source line: no edits.
             throw e instanceof A0Error && e.edits.length > 0 ? e.withEdits([], 'maybe') : e;
@@ -1377,7 +1415,7 @@ export function parse(source: string): Program {
           ret = { kind: 'node', id };
         } else {
           if (parts.length !== 2) throw retOperandError(parts, body.line, 'parse');
-          ret = parseOperand(parts[1] ?? '', body.line, body.text);
+          ret = (reader?.operand ?? parseOperand)(parts[1] ?? '', body.line, body.text);
         }
         const endLine = next();
         if (endLine === undefined || endLine.text !== 'end') {
@@ -1414,14 +1452,18 @@ export function parse(source: string): Program {
       if (nodes.length >= LIMITS.maxNodesPerFunction) {
         throw diag('A0027', [], { line: body.line });
       }
-      const node = parseNodeOf(body.text, body.line, body.quote ? undefined : parts);
+      const node =
+        reader === undefined
+          ? parseNodeOf(body.text, body.line, body.quote ? undefined : parts)
+          : reader.node(body.text, body.line, body.quote ? undefined : parts);
+      reader?.origin(name, node.id, body.line);
       nodes.push(body.comments === undefined ? node : { ...node, comments: body.comments });
     }
     if (!closed || ret === undefined) throw diag('A0028', [name]);
     if (functions.length >= LIMITS.maxFunctions) throw diag('A0029');
     names.add(name);
     const spec = specs.build();
-    functions.push({
+    const fn: Func = {
       name,
       params,
       result,
@@ -1431,7 +1473,8 @@ export function parse(source: string): Program {
       ...(header === undefined ? {} : { comments: header }),
       ...(retComments === undefined ? {} : { retComments }),
       ...(endComments === undefined ? {} : { endComments }),
-    });
+    };
+    functions.push(reader === undefined ? fn : reader.finish(fn));
   }
   // Comments after the last `end` travel with the last function, so edits that rebuild the
   // program keep them.

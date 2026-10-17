@@ -8,7 +8,7 @@ import {
   type TypedFunc,
   validateFunction,
 } from '../src/core.js';
-import { parseSource } from '../src/source.js';
+import { parseSource } from './surface-v2-frontend.js';
 
 export {
   formatStudySource as formatV2,
@@ -17,7 +17,7 @@ export {
   normalizeV2,
   paramName,
   type V2Style,
-} from '../src/source.js';
+} from './surface-v2-frontend.js';
 
 /** Legacy research output only; no compiler frontend consumes this text. */
 export function canonicalOfV2(text: string): string {

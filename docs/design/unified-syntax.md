@@ -63,31 +63,37 @@ original sources. Do not delete old source trees based on an unverified migratio
 
 ## Candidate frontend and staged cutover
 
-`src/source.ts` contains the candidate parser and default formatter, moved from the Surface v2
-experiment rather than reimplemented in parallel. `tools/surface-v2.ts` retains research exports;
-its conversion to historical text is not part of compilation. The candidate parser builds the
-shared IR directly. Explicit `name=expression` bindings and delimited calls remove the old
-callee-versus-binding ambiguity. Mixed operators require parentheses. Scalar `u32` annotations
-are elided; other parameter and result types remain explicit. The formatter preserves node IDs,
-node order, signatures, contracts, profiles, imports and comments. Parsing and printing nested
-expressions use iterative traversal within the shared resource limits.
+The integration candidate is the flat grammar from the corrected study and the existing A0
+frontend experiment, not the older Surface v2 expression prototype. The latter remains in
+`tools/surface-v2-frontend.ts` for research; it is not a public mode. The flat candidate retains
+explicit node bindings, uses short positional parameter operands, compact array/record/text
+literals, abbreviated scalar types and unambiguous inferred scalar signatures. See the corrected
+study and retained native performance losses in
+[the refactor record](../history/2026-10-16-unified-source-refactor.md).
 
-`src/source-link.ts` connects this parser to the same dependency resolver, IR composition and
-validator as the historical readers. Parser origins map validation errors in nested expressions
-to their physical source line. `migrateSourceProject` in `src/migrate.ts` converts historical
-Canonical or `.a0d` dependency closures into candidate `.a0` files using the existing guarded
-staging engine. The public `a0 migrate` command still targets historical Dense until cutover;
-there is no new public syntax flag. The candidate migration verifies each file's complete source
-metadata and formatter fixed point, then links and compares the staged program and revision
-before publication.
+`src/source.ts` supplies the candidate grammar and one default formatter. It uses the existing
+line scanner and instruction parser in `src/core.ts`, with direct IR construction. Source bodies
+and executable examples use the same aggregate grammar in `src/aggregate.ts`, recovered from the
+frozen experiment. Historical input remains available for migration; no new CLI flag or source
+extension exposes the candidate. The formatter preserves IDs, order, signatures, contracts,
+profiles, imports and comments. Explicit signatures retain unused parameters. Inferred signatures
+include references from executable contracts. Valid large boolean arrays remain representable.
 
-These entry points are implementation work, not a release declaration. `test/source.test.ts`
-checks repository round trips, independent ambiguous-name cases, operator grouping, text and
-resource boundaries. `test/source-link.test.ts` checks linked origins, dependency handling and
-migration from both historical spellings against every registered backend's emitted output.
+`src/source-link.ts` connects the candidate to the same dependency resolver, IR composition and
+validator as the historical readers. Parser origins map validation errors to physical source
+lines. `migrateSourceProject` in `src/migrate.ts` converts historical Canonical or `.a0d` dependency
+closures into candidate `.a0` files using the existing guarded staging engine. The public
+`a0 migrate` command still targets historical Dense until cutover. Candidate migration checks
+complete per-file metadata and formatter fixed points, then links and compares the staged program
+and revision before publication.
+
+`test/source.test.ts` checks repository round trips and independent binding/callee, parameter,
+contract and aggregate cases. `test/source-link.test.ts` checks linked origins, dependency handling
+and migration from both historical spellings against every registered backend's emitted output.
 These correctness checks do not establish an AI accuracy, compilation speed or memory advantage.
-The native/self-hosted parser, compiler entry points, editing tools, MCP integration and source
-corpus must still cut over before historical readers and public modes can be removed.
+The native A0 frontend experiment is reusable, but its recorded performance/resource limitations
+must be resolved and the compiler, editor and MCP entry points must cut over before the historical
+readers and public modes can be removed. This is still an incomplete migration.
 
 ## Measurements
 

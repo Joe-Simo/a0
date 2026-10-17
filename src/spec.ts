@@ -1,3 +1,4 @@
+import { aggregate } from './aggregate.js';
 /**
  * Spec lines: opt-in one-line contracts and executable examples that sit between a `fn` header and
  * its first node.
@@ -27,6 +28,7 @@ import {
   formatNode,
   formatType,
   isPrimitive,
+  LIMITS,
   type Node,
   parseNode,
   run,
@@ -156,6 +158,7 @@ class Scanner {
     readonly text: string,
     readonly fn: string,
     readonly line: number | undefined,
+    readonly compact = false,
   ) {}
 
   fail(what: string, fix?: string): never {
@@ -211,6 +214,12 @@ class Scanner {
   }
 
   private aggregate(open: '[' | '('): Lit {
+    if (this.compact)
+      return aggregate(this, {
+        maxElements: LIMITS.maxAggregateBits,
+        atom: () => this.literal(),
+        fail: (message) => this.fail(message),
+      });
     const close = open === '[' ? ']' : ')';
     this.pos += 1;
     const items: Lit[] = [];
@@ -290,8 +299,9 @@ export function parseExample(
   fn: string,
   line?: number,
   comments?: Comments,
+  compact = false,
 ): SpecExample {
-  const s = new Scanner(rest, fn, line);
+  const s = new Scanner(rest, fn, line, compact);
   const args: Lit[] = [];
   for (;;) {
     if (s.atArrow()) break;
@@ -319,6 +329,7 @@ export function parseExpression(
   fn: string,
   line?: number,
   comments?: Comments,
+  readNode = parseNode,
 ): Node {
   if (rest.trim() === '')
     throw specError(
@@ -328,7 +339,7 @@ export function parseExpression(
       `write \`${word} lt p0 100\`: one operation over the parameters${word === 'post' ? ' and r (the result)' : ''}`,
     );
   try {
-    const node = parseNode(`${word} ${rest}`, line);
+    const node = readNode(`${word} ${rest}`, line);
     return comments === undefined ? node : { ...node, comments };
   } catch (e) {
     if (!(e instanceof A0Error)) throw e;
@@ -368,7 +379,10 @@ export class SpecBuilder {
   #pre: Node | undefined;
   #post: Node | undefined;
 
-  constructor(readonly fn: string) {}
+  constructor(
+    readonly fn: string,
+    readonly reader?: { readonly node: typeof parseNode; readonly compact: boolean },
+  ) {}
 
   get empty(): boolean {
     return this.#examples.length === 0 && this.#pre === undefined && this.#post === undefined;
@@ -383,11 +397,11 @@ export class SpecBuilder {
           line,
           'keep the examples that pin the behavior down and remove the others',
         );
-      this.#examples.push(parseExample(rest, this.fn, line, comments));
+      this.#examples.push(parseExample(rest, this.fn, line, comments, this.reader?.compact));
     } else if (this.#get(word) !== undefined) {
       throw specError(this.fn, `a second ${word} line`, line, `a function has one ${word} line`);
     } else {
-      const node = parseExpression(word, rest, this.fn, line, comments);
+      const node = parseExpression(word, rest, this.fn, line, comments, this.reader?.node);
       if (word === 'pre') this.#pre = node;
       else this.#post = node;
     }

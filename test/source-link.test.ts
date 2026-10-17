@@ -15,8 +15,8 @@ const read = (path: string): Promise<string> => readFile(path, 'utf8');
 test('source linking resolves imports once and maps nested validation failures to physical origins', async () => {
   const root = resolve('test/source-virtual');
   const files: Record<string, string> = {
-    'inc.a0': 'profile strict\nfn inc(A)\nA+1\n',
-    'main.a0': 'profile strict\nuse "inc.a0"\nfn main()\ninc(41)\n',
+    'inc.a0': 'profile strict\nfn inc\nret add A 1\nend\n',
+    'main.a0': 'profile strict\nuse "inc.a0"\nfn main\na inc 41\nret a\nend\n',
   };
   const reads: string[] = [];
   const load = async (path: string): Promise<string> => {
@@ -31,9 +31,9 @@ test('source linking resolves imports once and maps nested validation failures t
   const main = linked.program.byName.get('main');
   assert.ok(main);
   assert.equal(run(main, []), 42);
-  files['main.a0'] = 'profile strict\nuse "inc.a0"\nfn main()\nmov(inc(true))\n';
+  files['main.a0'] = 'profile strict\nuse "inc.a0"\nfn main\na inc true\nret a\nend\n';
   await assert.rejects(linkSource(join(root, 'main.a0'), load, options), /main\.a0:4:/);
-  files['main.a0'] = 'profile strict\nuse "main.a0"\nfn main()\n0\n';
+  files['main.a0'] = 'profile strict\nuse "main.a0"\nfn main\nret 0\nend\n';
   await assert.rejects(linkSource(join(root, 'main.a0'), load, options), /cycle/);
 });
 
