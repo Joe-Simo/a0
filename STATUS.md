@@ -3,11 +3,13 @@
 2026-10-16 publication update: first-party A0 source, editor and plugin packages use Apache 2.0 with copyright notices; third-party notices retain their original licenses. The website now includes the corrected independent Codex syntax study and its complete replay archive (`results/unification-codex-v2-replication.json`, `experiments/unification/README.md`). Earlier Dense-guide comparative conclusions are withdrawn (`results/unification-codex-guide-erratum.json`). This publication keeps the current compiler: unified syntax, native frontend performance, migration and the tool cutover remain unfinished. Historical language benchmarks retain their dates and scope.
 
 
-Last updated 2026-10-16, compiler `a0c-0.1.62` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
+Last updated 2026-10-17, compiler `a0c-0.1.63` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
 what exists, what is measured and where the numbers live, what is lost or unknown, how to reproduce it, and what comes next.
 Every number on this page is in the `results/` file named beside it, or is reproduced by the command shown. The long record of
 how the project got here, session by session, is in [docs/history/](docs/history/) (index at the end). Contributing rules are in
 [CONTRIBUTING.md](CONTRIBUTING.md); the design and semantics are in [DESIGN.md](DESIGN.md).
+
+2026-10-17 path-conformance repair: the public and native linkers resolve missing paths through their nearest existing ancestor, preserving lexical entry identity and rejecting escapes through directory symlinks. This corrects aliased-root diagnostics. The standard emission matrix differs only by compiler version tags (`results/native-path-alias-conformance.json`, `results/compiler-0.1.63-emission-parity.json`).
 
 ## What exists
 
@@ -51,7 +53,7 @@ expectations. Independent linking and evaluation confirm the corrected expectati
 isolated Java checks pass. The whole-suite rerun is pending. The original and corrected rows
 are preserved in `results/unification-java-oracle-correction.json`.
 
-Current integration (`a0c-0.1.62`) adds experimental arena services for Darwin arm64, RISC-V64, Wasm and Java,
+Current integration (`a0c-0.1.63`) adds experimental arena services for Darwin arm64, RISC-V64, Wasm and Java,
 plus canonical formatting, semantic revisions and UTF-8 provenance. Native C/x86 emitters reuse private
 intermediate record storage when lifetime and alias checks permit it. Component tests and limits are linked
 from [Entire compiler in A0](docs/design/compiler-selfhosting.md). The public compiler still uses TypeScript;

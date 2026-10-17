@@ -8,7 +8,7 @@
  * Validator diagnostics are mapped back to the function's original `file:line`.
  */
 
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import {
   A0Error,
   type Func,
@@ -101,12 +101,17 @@ function projectRoot(entry: string): string {
   }
 }
 
-/** Follow symlinks; a path that does not exist yet cannot be a link and stays as resolved. */
+/** Resolve existing ancestors of missing paths, preserving lexical entry identities. */
 async function canonical(path: string): Promise<string> {
   try {
     return await realpath(path);
   } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return resolve(path);
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+      const absolute = resolve(path);
+      const parent = dirname(absolute);
+      if (parent === absolute) return absolute;
+      return join(await canonical(parent), basename(absolute));
+    }
     throw e;
   }
 }

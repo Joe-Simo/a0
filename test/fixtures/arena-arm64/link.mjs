@@ -1,11 +1,59 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
 import { Arm64Model, machoObject } from './arm64-model.mjs';
 import { emitLink, ROOT } from './transport.mjs';
 
 const F = `${ROOT}/project`,
   reports = [];
+const physical = `${ROOT}/physical`,
+  alias = `${ROOT}/alias`;
+await mkdir(physical, { recursive: true });
+await writeFile(`${physical}/main.a0`, 'use "missing.a0"\nfn f -> u32\nret 0\nend\n');
+await symlink(physical, alias, 'dir');
+const missingThroughAlias = emitLink(`${alias}/main.a0`, alias);
+assert.equal(
+  missingThroughAlias.status,
+  8,
+  'an aliased project root must preserve a missing-import error',
+);
+assert.equal(missingThroughAlias.text, '');
+reports.push({ name: 'aliased-root-missing-import', code: missingThroughAlias.status });
+await mkdir(`${physical}/sub`, { recursive: true });
+await writeFile(`${physical}/dep.a0`, 'fn dep -> u32\nret 17\nend\n');
+await writeFile(`${physical}/sub/dep.a0`, 'fn dep -> u32\nret 23\nend\n');
+await writeFile(
+  `${physical}/sub/main.a0`,
+  'use "dep.a0"\nfn entry -> u32\nr call dep\nret r\nend\n',
+);
+await symlink(`${physical}/sub/main.a0`, `${physical}/entry-link.a0`, 'file');
+const fileAlias = emitLink(`${alias}/entry-link.a0`, alias);
+assert.equal(fileAlias.status, 0, fileAlias.stderr);
+const aliasModel = await model('aliased-entry', fileAlias.text);
+assert.equal(aliasModel.call('entry', [], []), 17);
+await writeFile(`${ROOT}/outside.a0`, 'fn outside -> u32\nret 23\nend\n');
+await writeFile(
+  `${physical}/sub/main.a0`,
+  'use "../../outside.a0"\nfn entry -> u32\nr call outside\nret r\nend\n',
+);
+const escapedImport = emitLink(`${alias}/entry-link.a0`, alias);
+assert.equal(
+  escapedImport.status,
+  6,
+  'canonicalizing missing paths must retain project-root confinement',
+);
+assert.equal(escapedImport.text, '');
+reports.push({ name: 'aliased-entry-lexical-parent-and-confinement', code: fileAlias.status });
+await mkdir(`${ROOT}/outside-directory`);
+await symlink(`${ROOT}/outside-directory`, `${physical}/escape`, 'dir');
+await writeFile(`${physical}/main.a0`, 'use "escape/new/missing.a0"\nfn f -> u32\nret 0\nend\n');
+const missingEscape = emitLink(`${physical}/main.a0`, physical);
+assert.equal(
+  missingEscape.status,
+  6,
+  'missing descendants of outside symlinks must remain outside the root',
+);
+assert.equal(missingEscape.text, '');
 await mkdir(F, { recursive: true });
 await writeFile(`${F}/dep.a0`, 'fn plus u32 -> u32\nex 0 -> 13\nr add p0 13\nret r\nend\n');
 await writeFile(
