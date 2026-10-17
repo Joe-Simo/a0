@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-10-17T16:26:04.665Z",
+  "stage": "Self-hosting stage 4b: C emitter written in A0 (compiler/emit_c.a0, linked with check.a0, parse.a0, lex.a0)",
+  "method": "Word IR built per checker chunk; compiler/check.a0 types each chunk and compiler/emit_c.a0 `emitc` writes its C, both in the reference interpreter; the C is compiled by clang (-std=c11 -O1 -Wall -Wextra -Werror, UBSan) with the standard driver of tools/verify.ts and compared with the independent BigInt oracle of tools/corpus.ts.",
+  "scope": "The generated verification corpus and every example program (all within the front end table sizes). Byte equality with the TypeScript emitter is not required; observable results are.",
+  "programs": [
+    {
+      "label": "corpus",
+      "functions": 48,
+      "chunks": 4,
+      "cases": 5262,
+      "cBytes": 114698,
+      "typescriptCBytes": 31496,
+      "emitMs": 2334,
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 5262,
+        "detail": "C from compiler/emit_c.a0 (reference interpreter) via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 748.080387,
+        "tool": "Debian clang version 19.1.7 (3+b1)"
+      }
+    },
+    {
+      "label": "kernels.a0",
+      "functions": 5,
+      "chunks": 1,
+      "cases": 763,
+      "cBytes": 2706,
+      "typescriptCBytes": 925,
+      "emitMs": 32,
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 763,
+        "detail": "C from compiler/emit_c.a0 (reference interpreter) via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 138.78614900000002,
+        "tool": "Debian clang version 19.1.7 (3+b1)"
+      }
+    },
+    {
+      "label": "life.a0",
+      "functions": 14,
+      "chunks": 1,
+      "cases": 346,
+      "cBytes": 11622,
+      "typescriptCBytes": 13530,
+      "emitMs": 206,
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 346,
+        "detail": "C from compiler/emit_c.a0 (reference interpreter) via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 264.3859229999998,
+        "tool": "Debian clang version 19.1.7 (3+b1)"
+      }
+    }
+  ],
+  "totalCases": 6371,
+  "passedCases": 6371
+}

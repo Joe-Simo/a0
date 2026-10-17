@@ -29,8 +29,8 @@
 # also after a record ((u32,u32)x128x32), in a header (the lexer checks a type word, tvtok the whole type and
 # its width of at most 2097152 bits), the literal `[a b c]`, and the operations get (2 operands) and set (3).
 # The mask of a node (see below) tells an array of u32 or bool of one or two dimensions from any other type
-# (get and set of it are typed; any other array is the mask 8, and its get is any type), so a function whose
-# result is not written and ends in an array, or in a value of an unknown type, sets the error flag.
+# (get and set of it are typed; any other array is the mask 8, and its get is any type). An unwritten
+# result can use this scalar array descriptor; a result of an unknown type sets the error flag.
 # Stage B3.2 adds the repeat form `[x;n]` (n copies of the first element; elements may follow it, as in the
 # reference), the escape `$name` (the lexer reads it as the word `name` with the flag 128, so the reader
 # takes it for a name of a node defined above, or for the name of a statement, never a keyword or a function),
@@ -71,7 +71,7 @@
 # arrow is an error here).
 # Not yet read (the error flag is set): spec lines, hex
 # literals, profile lines, commas used as blanks, the `rec` and `arr` words, record and array states and
-# extra operands of inline bodies, and records and arrays as an unwritten result.
+# extra operands of inline bodies, and records and non-scalar arrays as an unwritten result.
 #
 # Input: the dense bytes src[0..n) as 128-byte pages (n <= 16384). Output: the canonical bytes as
 # pages of 128 (at most 16384 bytes) and the error flag, set when the input or the output is over
@@ -2622,8 +2622,8 @@ end
 
 # The end of the current function: the mask of its result, kept for its callers and its header. A
 # written result is the mask of its type; an unwritten one is u32 when the result value is u32 or an
-# error (the reference reader takes u32 then) and bool when it is a bool; any other mask cannot be
-# written and sets the error flag.
+# error (the reference reader takes u32 then), bool when it is a bool, or the scalar array type
+# encoded by its descriptor. Other masks cannot be written and set the error flag.
 fn fin ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool) (u32,u32,u32,u32,u32,u32,u32,u32)x128x32 -> ((u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40,u32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4,u32,(u32,u32)x128x16,u32,bool)
 gnt at p0 0
 gnn at p0 1
@@ -2658,7 +2658,10 @@ rtb eq rt 2
 nub and rt 10
 nuz eq nub 0
 inf0 select nuz 1 0
-inf select rtb 2 inf0
+inf1 select rtb 2 inf0
+arrbit and rt 16
+arrknown ne arrbit 0
+inf select arrknown rt inf1
 imp eq ex false
 infz eq inf 0
 bad4 and imp infz
@@ -5027,6 +5030,31 @@ b call putc a p2 113 n2
 ret b
 end
 
+# An inferred scalar array descriptor as a type (one or two dimensions). Called only for a
+# descriptor: bit 5 is bool, bit 6 a second dimension, then lengths minus one at bits 7 and 19.
+# A single dimension has 16 length bits; two dimensions have 12 each.
+fn ptarr (u32x128x128,u32) u32 u32 u32x256 -> (u32x128x128,u32)
+bb and p2 32
+isb ne bb 0
+base select isb 2 1
+a call ptm p0 base p3
+b call ob a 120
+db and p2 64
+two ne db 0
+mask select two 4095 65535
+sh shr p2 7
+len0 and sh mask
+len add len0 1
+c call putnum b len true
+count select two 1 0
+d fold obf count c 120
+outer0 shr p2 19
+outer1 and outer0 4095
+outer add outer1 1
+e call putnum d outer two
+ret e
+end
+
 # Parameter j of a lifted function (the fold or loop node has its operands from pool argument p3): a space
 # and its type. It is the mask of the state operand (j = 0), u32 (j = 1), or the mask of the operand j.
 fn plpar (u32x128x128,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x40 u32 u32x128x16 u32 ((u32,u32)x128x16,u32,u32,(u32,u32,u32,u32,u32,u32,u32,u32)x128x32,(u32,u32,u32,u32,u32,u32,u32,u32,u32)x128x4) u32x256 -> (u32x128x128,u32)
@@ -5191,13 +5219,20 @@ rty at fr 8
 isbo eq rty 2
 imp eq expl2 false
 nbo eq isbo false
-ru0 and imp nbo
+arrbit and rty 16
+isarr ne arrbit 0
+notarr eq isarr false
+scalar and nbo notarr
+ru0 and imp scalar
 ru select ru0 3 0
 rbb and imp isbo
 rb select rbb 4 0
 h7 call putc h6 p7 8 ru
 h7b call putc h7 p7 113 rb
-h8 call putc h7b p7 11 1
+arrimp and imp isarr
+arrn select arrimp 1 0
+ha fold ptarr arrn h7b rty p7
+h8 call putc ha p7 11 1
 sepn select lastf 1 2
 sepo select lastf 11 12
 r call plines h8 p2 ctx nfi nl rk rv sepn sepo p7

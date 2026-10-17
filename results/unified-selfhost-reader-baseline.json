@@ -1,0 +1,830 @@
+{
+  "tool": "tools/dense-migrate.ts",
+  "preregistration": "docs/history/2026-10-09-dense-migration-tokens-preregistration.md",
+  "meaning": "Dense files on disk under dense/ (formatDense with the known arities of the used files; kernels without normalizeProgram), each checked from the file: parseDense formats back to the file text, and the A0 reader (compiler/dense.a0 canonfn via readChunked at READER_CAPS) reads it to formatProgram of the original. Tokens: o200k_base (js-tiktoken) of the migrated kernel files, kernel = text without trailing newlines, program = text plus one newline (tools/lang-axes.ts rules). Competitors: results/lang-axes.json unchanged. Rule: tools/loss-ledger.ts (noise 0; loss gap > 0, tie gap = 0, win gap < 0). The loss ledger is not updated.",
+  "tokenizer": "o200k_base",
+  "files": {
+    "total": 86,
+    "migrated": 79,
+    "not-migrated": 7,
+    "reasons": {
+      "AN reader: refused up front (...)": 7
+    },
+    "rows": [
+      {
+        "path": "compiler/asm_arm64.a0",
+        "canonicalBytes": 62154,
+        "denseBytes": 56514,
+        "outcome": "migrated",
+        "chunks": 6
+      },
+      {
+        "path": "compiler/asm_x86_64.a0",
+        "canonicalBytes": 68964,
+        "denseBytes": 63254,
+        "outcome": "migrated",
+        "chunks": 7
+      },
+      {
+        "path": "compiler/boot.a0",
+        "canonicalBytes": 10579,
+        "denseBytes": 9124,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "compiler/check.a0",
+        "canonicalBytes": 26741,
+        "denseBytes": 25875,
+        "outcome": "migrated",
+        "chunks": 3
+      },
+      {
+        "path": "compiler/dense.a0",
+        "canonicalBytes": 113324,
+        "denseBytes": 108377,
+        "outcome": "migrated",
+        "chunks": 11
+      },
+      {
+        "path": "compiler/emit_arm64.a0",
+        "canonicalBytes": 89268,
+        "denseBytes": 83425,
+        "outcome": "not-migrated",
+        "reason": "A0 reader: refused up front (flush256: over the capacity of one input: bytes 42157 > 16384)"
+      },
+      {
+        "path": "compiler/emit_c.a0",
+        "canonicalBytes": 37251,
+        "denseBytes": 34160,
+        "outcome": "migrated",
+        "chunks": 4
+      },
+      {
+        "path": "compiler/emit_wasm.a0",
+        "canonicalBytes": 311270,
+        "denseBytes": 278062,
+        "outcome": "not-migrated",
+        "reason": "A0 reader: refused up front (wyb0: over the capacity of one input: bytes 17263 > 16384)"
+      },
+      {
+        "path": "compiler/evalrun.a0",
+        "canonicalBytes": 10788,
+        "denseBytes": 10518,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "compiler/front512.a0",
+        "canonicalBytes": 69362,
+        "denseBytes": 37745,
+        "outcome": "not-migrated",
+        "reason": "A0 reader: refused up front (zeros4096: over the capacity of one input: arrayElems 4096 > 2112; zeros8192: over the capacity of one input: arrayElems 8192 > 2112)"
+      },
+      {
+        "path": "compiler/lex.a0",
+        "canonicalBytes": 12774,
+        "denseBytes": 10896,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "compiler/macho.a0",
+        "canonicalBytes": 11529,
+        "denseBytes": 9422,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "compiler/native.a0",
+        "canonicalBytes": 3686,
+        "denseBytes": 3501,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "compiler/optimize.a0",
+        "canonicalBytes": 214654,
+        "denseBytes": 208985,
+        "outcome": "not-migrated",
+        "reason": "A0 reader: refused up front (reas: over the capacity of one input: bytes 34528 > 16384; ozone: over the capacity of one input: bytes 31233 > 16384; ozopt1: over the capacity of one input: bytes 30721 > 16384)"
+      },
+      {
+        "path": "compiler/parse.a0",
+        "canonicalBytes": 66428,
+        "denseBytes": 62614,
+        "outcome": "migrated",
+        "chunks": 6
+      },
+      {
+        "path": "compiler/shape.a0",
+        "canonicalBytes": 232617,
+        "denseBytes": 225191,
+        "outcome": "not-migrated",
+        "reason": "A0 reader: refused up front (shfuse: over the capacity of one input: bytes 53082 > 16384; shfargs: over the capacity of one input: bytes 52859 > 16384)"
+      },
+      {
+        "path": "compiler/suggest.a0",
+        "canonicalBytes": 11904,
+        "denseBytes": 10495,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "compiler/wasm_code.a0",
+        "canonicalBytes": 17558,
+        "denseBytes": 14315,
+        "outcome": "migrated",
+        "chunks": 2
+      },
+      {
+        "path": "corpus/reject/array-at.fixed.a0",
+        "canonicalBytes": 44,
+        "denseBytes": 33,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/bases/sq-twice.a0",
+        "canonicalBytes": 93,
+        "denseBytes": 42,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/callee-below.fixed.a0",
+        "canonicalBytes": 76,
+        "denseBytes": 26,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/callee-case.fixed.a0",
+        "canonicalBytes": 79,
+        "denseBytes": 28,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/duplicate-node.fixed.a0",
+        "canonicalBytes": 48,
+        "denseBytes": 22,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/fold-extra-arg.fixed.a0",
+        "canonicalBytes": 88,
+        "denseBytes": 50,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/id-colon.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/infix-op.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/io-twice.fixed.a0",
+        "canonicalBytes": 49,
+        "denseBytes": 33,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/missing-end-before-fn.fixed.a0",
+        "canonicalBytes": 75,
+        "denseBytes": 30,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/missing-end.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/negative-literal.fixed.a0",
+        "canonicalBytes": 46,
+        "denseBytes": 23,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/nested-op.fixed.a0",
+        "canonicalBytes": 69,
+        "denseBytes": 55,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/nested-ret.fixed.a0",
+        "canonicalBytes": 74,
+        "denseBytes": 41,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/node-below.fixed.a0",
+        "canonicalBytes": 47,
+        "denseBytes": 24,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/op-assign.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/op-case.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/op-chain.fixed.a0",
+        "canonicalBytes": 61,
+        "denseBytes": 28,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/op-max.fixed.a0",
+        "canonicalBytes": 62,
+        "denseBytes": 32,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/op-min.fixed.a0",
+        "canonicalBytes": 62,
+        "denseBytes": 32,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/op-mod.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/op-not.fixed.a0",
+        "canonicalBytes": 42,
+        "denseBytes": 30,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/op-sel.fixed.a0",
+        "canonicalBytes": 58,
+        "denseBytes": 28,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/op-symbol.fixed.a0",
+        "canonicalBytes": 42,
+        "denseBytes": 21,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/operand-case.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/operand-comma.fixed.a0",
+        "canonicalBytes": 42,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/operand-hex.fixed.a0",
+        "canonicalBytes": 39,
+        "denseBytes": 16,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/param-range.fixed.a0",
+        "canonicalBytes": 42,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/ret-bool-for-u32.fixed.a0",
+        "canonicalBytes": 38,
+        "denseBytes": 22,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/several-exact.fixed.a0",
+        "canonicalBytes": 65,
+        "denseBytes": 37,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/too-few-operands.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/typo-callee.fixed.a0",
+        "canonicalBytes": 87,
+        "denseBytes": 36,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/typo-direct-callee.fixed.a0",
+        "canonicalBytes": 87,
+        "denseBytes": 36,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/typo-fold-body.fixed.a0",
+        "canonicalBytes": 84,
+        "denseBytes": 39,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/typo-loop-pred.fixed.a0",
+        "canonicalBytes": 136,
+        "denseBytes": 96,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/typo-node.fixed.a0",
+        "canonicalBytes": 55,
+        "denseBytes": 34,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/typo-op.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/typo-type.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 25,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "corpus/reject/unterminated.fixed.a0",
+        "canonicalBytes": 37,
+        "denseBytes": 14,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "examples/kernels.a0",
+        "canonicalBytes": 327,
+        "denseBytes": 202,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "examples/life.a0",
+        "canonicalBytes": 3477,
+        "denseBytes": 2938,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/bench.a0",
+        "canonicalBytes": 610057,
+        "denseBytes": 552332,
+        "outcome": "not-migrated",
+        "reason": "A0 reader: refused up front (rank_table: over the capacity of one input: bytes 17996 > 16384; chart_langs: over the capacity of one input: bytes 52507 > 16384; chart_start: over the capacity of one input: bytes 50665 > 16384; chart_wasm: over the capacity of one input: bytes 17130 > 16384; chart_tk2: over the capacity of one input: bytes 42840 > 16384; chart_ec: over the capacity of one input: bytes 16473 > 16384; chart_ec2: over the capacity of one input: bytes 56339 > 16384; cost_1: over the capacity of one input: bytes 22331 > 16384; cost_400: over the capacity of one input: bytes 22387 > 16384; chart_ck: over the capacity of one input: bytes 44989 > 16384; chart_par2: over the capacity of one input: bytes 57611 > 16384)"
+      },
+      {
+        "path": "site/docs.a0",
+        "canonicalBytes": 43257,
+        "denseBytes": 40489,
+        "outcome": "migrated",
+        "chunks": 3
+      },
+      {
+        "path": "site/gen/sgcalc.a0",
+        "canonicalBytes": 51565,
+        "denseBytes": 44786,
+        "outcome": "migrated",
+        "chunks": 4
+      },
+      {
+        "path": "site/gen/sgcss.a0",
+        "canonicalBytes": 3949,
+        "denseBytes": 3472,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/gen/sgio.a0",
+        "canonicalBytes": 5819,
+        "denseBytes": 4791,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/gen/sgjson.a0",
+        "canonicalBytes": 26094,
+        "denseBytes": 23519,
+        "outcome": "migrated",
+        "chunks": 2
+      },
+      {
+        "path": "site/gen/sgphase.a0",
+        "canonicalBytes": 2126,
+        "denseBytes": 1873,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/gen/sgread.a0",
+        "canonicalBytes": 2714,
+        "denseBytes": 2386,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/gen/sgstore.a0",
+        "canonicalBytes": 2209,
+        "denseBytes": 1987,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/gen/sgtables.a0",
+        "canonicalBytes": 15431,
+        "denseBytes": 15408,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/gen/sgvars.a0",
+        "canonicalBytes": 3836,
+        "denseBytes": 3140,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/gen/sgwords.a0",
+        "canonicalBytes": 5034,
+        "denseBytes": 5020,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/gen/sitegen.a0",
+        "canonicalBytes": 27829,
+        "denseBytes": 24858,
+        "outcome": "migrated",
+        "chunks": 3
+      },
+      {
+        "path": "site/lib/frame.a0",
+        "canonicalBytes": 1617,
+        "denseBytes": 1134,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/lib/fx.a0",
+        "canonicalBytes": 5025,
+        "denseBytes": 3838,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/page.a0",
+        "canonicalBytes": 134933,
+        "denseBytes": 122379,
+        "outcome": "not-migrated",
+        "reason": "A0 reader: refused up front (sec_vs: over the capacity of one input: outBytes 17539 > 16384)"
+      },
+      {
+        "path": "site/sentinel/anchor.a0",
+        "canonicalBytes": 5581,
+        "denseBytes": 4798,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/sentinel/body.a0",
+        "canonicalBytes": 10170,
+        "denseBytes": 8768,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/sentinel/env.a0",
+        "canonicalBytes": 1571,
+        "denseBytes": 1240,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/sentinel/layout.a0",
+        "canonicalBytes": 763,
+        "denseBytes": 603,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/sentinel/life.a0",
+        "canonicalBytes": 3584,
+        "denseBytes": 3090,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/sentinel/locomotion.a0",
+        "canonicalBytes": 9903,
+        "denseBytes": 8290,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/sentinel/main.a0",
+        "canonicalBytes": 5637,
+        "denseBytes": 4651,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/sentinel/render.a0",
+        "canonicalBytes": 12717,
+        "denseBytes": 10517,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/sentinel/tentacle.a0",
+        "canonicalBytes": 8227,
+        "denseBytes": 6653,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/sentinel/zeros.a0",
+        "canonicalBytes": 3468,
+        "denseBytes": 66,
+        "outcome": "migrated",
+        "chunks": 1
+      },
+      {
+        "path": "site/ui.a0",
+        "canonicalBytes": 4959,
+        "denseBytes": 4139,
+        "outcome": "migrated",
+        "chunks": 1
+      }
+    ]
+  },
+  "kernels": [
+    {
+      "name": "affine",
+      "readBack": "migrated",
+      "canonicalTokens": 29,
+      "denseTokens": 7,
+      "denseProgramTokens": 8,
+      "bestOther": 15,
+      "bestLanguage": "ocaml",
+      "denseOverBest": 0.467,
+      "atLeastTwiceFewer": true
+    },
+    {
+      "name": "rotl",
+      "readBack": "migrated",
+      "canonicalTokens": 41,
+      "denseTokens": 24,
+      "denseProgramTokens": 25,
+      "bestOther": 31,
+      "bestLanguage": "r",
+      "denseOverBest": 0.774,
+      "atLeastTwiceFewer": false
+    },
+    {
+      "name": "clamp",
+      "readBack": "migrated",
+      "canonicalTokens": 44,
+      "denseTokens": 24,
+      "denseProgramTokens": 25,
+      "bestOther": 22,
+      "bestLanguage": "nim",
+      "denseOverBest": 1.091,
+      "atLeastTwiceFewer": false
+    },
+    {
+      "name": "mix",
+      "readBack": "migrated",
+      "canonicalTokens": 65,
+      "denseTokens": 33,
+      "denseProgramTokens": 34,
+      "bestOther": 39,
+      "bestLanguage": "forth",
+      "denseOverBest": 0.846,
+      "atLeastTwiceFewer": false
+    },
+    {
+      "name": "ident",
+      "readBack": "migrated",
+      "canonicalTokens": 13,
+      "denseTokens": 3,
+      "denseProgramTokens": 4,
+      "bestOther": 5,
+      "bestLanguage": "ocaml",
+      "denseOverBest": 0.6,
+      "atLeastTwiceFewer": false
+    },
+    {
+      "name": "noop",
+      "readBack": "migrated",
+      "canonicalTokens": 31,
+      "denseTokens": 12,
+      "denseProgramTokens": 13,
+      "bestOther": 5,
+      "bestLanguage": "ocaml",
+      "denseOverBest": 2.4,
+      "atLeastTwiceFewer": false
+    },
+    {
+      "name": "chain3",
+      "readBack": "migrated",
+      "canonicalTokens": 80,
+      "denseTokens": 25,
+      "denseProgramTokens": 26,
+      "bestOther": 45,
+      "bestLanguage": "forth",
+      "denseOverBest": 0.556,
+      "atLeastTwiceFewer": false
+    },
+    {
+      "name": "branchy",
+      "readBack": "migrated",
+      "canonicalTokens": 81,
+      "denseTokens": 60,
+      "denseProgramTokens": 61,
+      "bestOther": 49,
+      "bestLanguage": "forth",
+      "denseOverBest": 1.224,
+      "atLeastTwiceFewer": false
+    },
+    {
+      "name": "arrfill",
+      "readBack": "migrated",
+      "canonicalTokens": 98,
+      "denseTokens": 62,
+      "denseProgramTokens": 63,
+      "bestOther": 48,
+      "bestLanguage": "d",
+      "denseOverBest": 1.292,
+      "atLeastTwiceFewer": false
+    },
+    {
+      "name": "loop64",
+      "readBack": "migrated",
+      "canonicalTokens": 77,
+      "denseTokens": 36,
+      "denseProgramTokens": 37,
+      "bestOther": 41,
+      "bestLanguage": "forth",
+      "denseOverBest": 0.878,
+      "atLeastTwiceFewer": false
+    }
+  ],
+  "sums": {
+    "denseKernelTokens": 286,
+    "canonicalKernelTokens": 559,
+    "bestSingleLanguage": "forth",
+    "bestSingleLanguageSum": 323,
+    "denseOverBestSingleLanguage": 0.885,
+    "sumOfPerKernelBests": 300,
+    "denseOverPerKernelBests": 0.953,
+    "atLeastTwiceFewerThanBestSingleLanguage": false,
+    "atLeastTwiceFewerThanPerKernelBests": false,
+    "kernelsAtLeastTwiceFewer": 1
+  },
+  "axes": {
+    "tokens-kernel": {
+      "comparisons": 480,
+      "win": 414,
+      "tie": 10,
+      "loss": 56,
+      "recordedLosses": 337,
+      "recordedLossesWould": {
+        "win": 271,
+        "tie": 10,
+        "loss": 56
+      },
+      "stillLost": [
+        "noop|js",
+        "noop|java",
+        "arrfill|java",
+        "noop|kotlin",
+        "arrfill|kotlin",
+        "clamp|go",
+        "arrfill|go",
+        "noop|python",
+        "arrfill|python",
+        "noop|ruby",
+        "branchy|ruby",
+        "arrfill|ruby",
+        "noop|lua",
+        "arrfill|lua",
+        "noop|tcl",
+        "clamp|csharp",
+        "noop|csharp",
+        "branchy|csharp",
+        "noop|fsharp",
+        "noop|dart",
+        "noop|scala",
+        "noop|groovy",
+        "arrfill|groovy",
+        "noop|elixir",
+        "arrfill|elixir",
+        "noop|erlang",
+        "arrfill|erlang",
+        "branchy|haskell",
+        "noop|ocaml",
+        "branchy|ocaml",
+        "arrfill|ocaml",
+        "noop|julia",
+        "noop|r",
+        "arrfill|r",
+        "clamp|nim",
+        "noop|nim",
+        "arrfill|nim",
+        "clamp|d",
+        "noop|d",
+        "branchy|d",
+        "arrfill|d",
+        "noop|racket",
+        "noop|cobol",
+        "noop|prolog",
+        "noop|guile",
+        "noop|chicken",
+        "noop|smalltalk",
+        "noop|forth",
+        "branchy|forth",
+        "arrfill|forth",
+        "branchy|haxe",
+        "arrfill|haxe",
+        "arrfill|v",
+        "branchy|odin",
+        "arrfill|odin",
+        "arrfill|vala"
+      ]
+    },
+    "tokens-program": {
+      "comparisons": 480,
+      "win": 480,
+      "tie": 0,
+      "loss": 0,
+      "recordedLosses": 0,
+      "recordedLossesWould": {
+        "win": 0,
+        "tie": 0,
+        "loss": 0
+      },
+      "stillLost": []
+    }
+  },
+  "readerSourceSha256": "f168c18b9f1163f1bf27c81b88e78dd4cf5c3b7e50851378b89eb1440295a300",
+  "sourceMode": "in-memory-formatDense",
+  "measurementNote": "Baseline reader loaded before inferred-array changes. This run did not use --write; sources were checked in memory, despite the older tool meaning field referring to on-disk files. Existing competitor token results are historical controls."
+}

@@ -8,6 +8,11 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## What exists
 
+Syntax unification is in progress: the linker now connects parsed programs directly to the shared
+validator, and `a0 migrate` creates a verified source-dependency copy using the existing Dense
+printer. Both source readers still exist; the language has not yet met the single-syntax goal.
+Scope, migration instructions and outstanding gates: [unified syntax](docs/design/unified-syntax.md).
+
 - **Language.** Types `u32`, `bool`, fixed-size arrays and records, and the linear `io` token; pure, total, exactly specified
   operations (wrapping unsigned arithmetic, logical shifts, total `div`/`rem`); `call`, bounded `fold`, early-exit `loop`, `text`.
   No recursion, no heap, no floating point. Reference: `DESIGN.md`, `MODEL_GUIDE.txt`.

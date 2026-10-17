@@ -1,0 +1,253 @@
+{
+  "schema": 1,
+  "status": "incomplete",
+  "fullGate": "blocked",
+  "method": "Current implementation verified by the full unit run and focused reruns after test-data-only corrections. Gate command outcomes are retained verbatim; none is relabeled as a full gate pass. Direct target reruns with locally installed JDK, .NET, Icarus and Yosys supersede earlier tool-availability blockers. Historical reference reports are preserved.",
+  "finalSourceHashes": {
+    "compiler/dense.a0": "2c0619bacdaf7b814632e51b54a6814319f761c00c67d14ed6b13ce65c9440d4",
+    "src/dense-a0.ts": "2814679fcff2dffe55971251a2c026b3054dddcfeddc75acf975dfb9415976c9",
+    "src/dense.ts": "12fb385649c0926a70bdafc15affe5cafa94609e2094a518d0bbf34a7e01055a",
+    "src/link.ts": "b60d5f24970d2e5fb6d1b0f13b7abebee30c6f5db40ddfc17f916c5fea34002f",
+    "src/migrate.ts": "249472863e022b4b70d76fff68e130a6c3d8d2bb6fcb8fe577076db18f85d5b8",
+    "src/core.ts": "63be291682c1fd25ebd93a3771b229883d5af16b4e4c6071df78c6e8149314a8",
+    "src/cli-main.ts": "02a32c6fec0bef820a0401ec23b2c2009a9db369b3bde9853f8359812d07ee5e",
+    "tools/dense-migrate.ts": "0e496055a70a40b10195e0bc0bb5d6e44cfc64f90a48b69bb5dc9da7f58ff89d",
+    "test/dense-a0.test.ts": "baa7b5598cd2cecf467dfc579e867f475b3baf3e6aa127f88d68a3f90eac3d15",
+    "test/golden/spec-free-digests.json": "e5b08c352166dfc4f9efe81b91acccccd68b5ac2e024a155ebc8118f72dd0853"
+  },
+  "unitTests": {
+    "status": "passed-after-fixture-corrections",
+    "fullRun": {
+      "tests": 770,
+      "passed": 752,
+      "failed": 3,
+      "skipped": 15
+    },
+    "correctionRerun": {
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "accountedPassingTests": 755,
+    "implementationChangedAfterFullRun": false,
+    "fixtureChanges": [
+      "Four curated inferred array/text cases now require exact reference readback instead of refusal.",
+      "Only compiler/dense.a0 changed in the spec-free digest fixture; every other row stayed identical."
+    ],
+    "note": "This records a full run followed by three focused reruns, not a second all-green full-suite invocation. A superseded earlier run was canceled after a local-only behavior report replaced the historical coverage fixture; the fixture was restored and the affected test passed in this full run."
+  },
+  "seed": {
+    "status": "passed",
+    "method": "bun run seed regenerated the seed and verified byte-identical stages 2, 3 and 4. The boot compiler closure did not change, so regenerated seed files remained unchanged."
+  },
+  "readerAudit": {
+    "total": 86,
+    "exactReadbacks": 79,
+    "capacityRefusals": 7,
+    "note": "Same corpus outcome counts as baseline; inferred-source coverage is exercised by independent tests, not claimed as additional migrated programs."
+  },
+  "behavior": {
+    "passed": 13,
+    "failed": 0,
+    "blocked": 6,
+    "skipped": 1
+  },
+  "targetEvidence": {
+    "dotnet": "dotnet.json",
+    "rtlAndGenericSynthesis": "hardware.json",
+    "applicationAcceptanceIncludingJvm": "app.json",
+    "corpusVerificationIncludingJvm": "verification.json",
+    "cBootstrap": "bootstrap.json",
+    "selfhostC": "selfhost-c.json",
+    "compiledCli": "native-cli.json"
+  },
+  "platformBlockers": {
+    "apple": "Apple-silicon bootstrap and AArch64 self-hosted execution require macOS; Metal requires macOS and swiftc.",
+    "corpus": [
+      {
+        "target": "native_arm64",
+        "detail": "arm64: needs macOS on Apple silicon, found linux-x64"
+      },
+      {
+        "target": "native_riscv64",
+        "detail": "riscv64: riscv64-elf-gcc not found"
+      },
+      {
+        "target": "native_avr",
+        "detail": "avr: avr-gcc not found (brew install avr-gcc avr-binutils simavr)"
+      },
+      {
+        "target": "native_arm32",
+        "detail": "arm32 (install the Arm GNU Toolchain: brew install --cask gcc-arm-embedded, or set A0_ARM_GCC): arm-none-eabi-gcc not found"
+      }
+    ]
+  },
+  "ai": {
+    "status": "not-run",
+    "reason": "Live benchmark credentials are not configured. Historical model results are not fresh unified-syntax measurements."
+  },
+  "remaining": [
+    "Select and implement the sole source grammar using fresh AI edit acceptance and whole-task token accounting.",
+    "Resolve remaining self-hosted capacity and syntax coverage gaps and emit authoritative compiler IR without a source-to-source frontend shim.",
+    "Migrate all tools and sources, retire alternate user-facing modes, and verify all supported targets."
+  ],
+  "runs": [
+    {
+      "kind": "remaining scope before local SDK configuration",
+      "line": "GATE RESULT: fail build=0 dotnet=1 gpu=1 selfhost=1 bootstrap=1 tokens=0 app=0 selfhost-c=0 site=0 verify=0 equiv=cached(c534bbeeb830) hw=0",
+      "load": [
+        3.82,
+        4.24,
+        3.05
+      ],
+      "loadSource": "loadavg",
+      "wallMs": 720550,
+      "results": [
+        {
+          "id": "build",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 6457
+        },
+        {
+          "id": "dotnet",
+          "outcome": "fail",
+          "rc": 1,
+          "ms": 526,
+          "key": "dd66a97d2583f3d8196c8f28a76c8ff6de8eb0a4aa5a487e938b5d89abe68f5e"
+        },
+        {
+          "id": "gpu",
+          "outcome": "fail",
+          "rc": 1,
+          "ms": 277,
+          "key": "31c4f706b308edeb11f51ed219a30cb82897ce7f9882a8c7ad39f05d80fb4c2b"
+        },
+        {
+          "id": "selfhost",
+          "outcome": "fail",
+          "rc": 1,
+          "ms": 102,
+          "key": "a4c527018f440bbf1bba1b399129c9a74985430608199cb6fdbec11f5b305182"
+        },
+        {
+          "id": "bootstrap",
+          "outcome": "fail",
+          "rc": 1,
+          "ms": 252006,
+          "key": "6808cabeb36627cf92f6481bce83a2244e7b88cbab05a4ba6d2f1e0d0f4f51f4"
+        },
+        {
+          "id": "tokens",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 1664,
+          "key": "834629d19a27f95c2b2466b556c7eef1169f9c2f0fc30a6666da60536d35af88"
+        },
+        {
+          "id": "app",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 130029,
+          "key": "5f410800804f1e0dd615ee27c71373f08359f8d56f0d2b157a4f49c1441f1153"
+        },
+        {
+          "id": "selfhost-c",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 8722,
+          "key": "e8878ccb4b122af897b17ac518d2b52732170a3a05ef582c7ce74b8d06c19e64"
+        },
+        {
+          "id": "site",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 314582,
+          "key": "8bf8bdd3a11b7aabbfb126cfe3ae98aaffc313316729d51e0e8a13025622c444"
+        },
+        {
+          "id": "verify",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 4810,
+          "key": "55fe7957d04aa608fcb2ecb05def6c12021910ed4a5f7a65db88590f36454481"
+        },
+        {
+          "id": "equiv",
+          "outcome": "cached",
+          "rc": 0,
+          "ms": 0,
+          "key": "c534bbeeb8301d46b09c95ebf8f42193d20a90052369aa1db17206a11d5d6933"
+        },
+        {
+          "id": "hw",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 579,
+          "key": "047574425855c7aa01967adf568c1da54255d075379b5f8eecf40a6588058fd0"
+        }
+      ]
+    },
+    {
+      "kind": "selected unit and target steps with Java and .NET configured; prior to fixture corrections",
+      "line": "GATE RESULT: fail lint=0 typecheck=cached(60980832dfbb) build=0 dotnet=0 test=1 verify=cached(55fe7957d04a)",
+      "load": [
+        1.1,
+        1.91,
+        2.4
+      ],
+      "loadSource": "loadavg",
+      "wallMs": 838979,
+      "results": [
+        {
+          "id": "lint",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 3244
+        },
+        {
+          "id": "typecheck",
+          "outcome": "cached",
+          "rc": 0,
+          "ms": 0,
+          "key": "60980832dfbb8fe93ad3fa45293f385e1f3c6f3b2b12bffbc07ba4163863a27e"
+        },
+        {
+          "id": "build",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 4067
+        },
+        {
+          "id": "dotnet",
+          "outcome": "pass",
+          "rc": 0,
+          "ms": 2177,
+          "key": "dd66a97d2583f3d8196c8f28a76c8ff6de8eb0a4aa5a487e938b5d89abe68f5e"
+        },
+        {
+          "id": "test",
+          "outcome": "fail",
+          "rc": 1,
+          "ms": 829254,
+          "key": "506ae453fe246ef310523f8d0705f2fa0e3541736d75a3991e68d3b05abf35e7"
+        },
+        {
+          "id": "verify",
+          "outcome": "cached",
+          "rc": 0,
+          "ms": 0,
+          "key": "55fe7957d04aa608fcb2ecb05def6c12021910ed4a5f7a65db88590f36454481"
+        }
+      ]
+    }
+  ],
+  "hygieneAndSeedRerun": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 1,
+    "command": "node --test dist/test/hygiene.test.js dist/test/seed.test.js",
+    "note": "Includes C-only seed reproduction and rejection of a deliberately damaged seed. The optional local denylist check is skipped because no denylist file is configured."
+  }
+}

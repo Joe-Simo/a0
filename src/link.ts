@@ -23,7 +23,7 @@ import {
   utf8Length,
   validate,
 } from './core.js';
-import type { Arities, parseDense } from './dense.js';
+import type { Arities } from './dense.js';
 import { diag } from './diagnostics.js';
 import { existsSync, realpath } from './node-fs.js';
 import { specLineOf } from './spec.js';
@@ -61,11 +61,21 @@ export interface Linked {
   /** Combined source text, dependency order, exactly what was validated. */
   readonly text: string;
   readonly sources: readonly LinkedSource[];
+  /** Original source programs and import arities, in dependency order, from the same parse. */
+  readonly units?: readonly LinkedUnit[];
+}
+
+export interface LinkedUnit {
+  readonly path: string;
+  readonly program: Program;
+  readonly known: Arities;
 }
 
 export type ReadSource = (path: string) => Promise<string>;
 
 export interface LinkOptions {
+  /** Retain parsed source units for migration; normal compilation does not retain this metadata. */
+  readonly includeUnits?: boolean;
   /**
    * Directory every `use` target must resolve inside (after symlinks are followed).
    * Defaults to the nearest ancestor of the entry's directory containing package.json,
@@ -126,8 +136,9 @@ export async function link(
     shown: string;
     fns: string[];
     profile: Profile;
-    /** The parse of `text`, when the file was canonical (reused when it is the whole program). */
-    parsed: Program | undefined;
+    /** The source reader's program. Linking joins programs, never reparses printed source. */
+    parsed: Program;
+    known?: Arities;
   }[] = [];
   const visiting = new Set<string>();
   const done = new Set<string>();
@@ -160,19 +171,19 @@ export async function link(
       for (const [name, g] of sigsOf.get(target) ?? []) usedSigs.set(name, g);
     }
     let text = shown;
+    let parsed = parsedCanonical as Program;
     let functions: readonly { name: string; params: readonly Type[]; result: Type }[];
     let declared: Profile = 'canonical';
     if (isDense && options.denseReader !== undefined) {
       text = options.denseReader(shown, usedSigs, abs);
-      const parsed = parse(text);
+      parsed = parse(text);
       functions = parsed.functions;
       declared = profileOf(parsed);
     } else if (isDense) {
       // dense.ts is loaded only for a dense file: a canonical `a0 check` never pays its start-up
       const { parseDense } = await import('./dense.js');
-      let parsed: ReturnType<typeof parseDense>;
       try {
-        parsed = parseDense(shown, { known });
+        parsed = parseDense(shown, { known, imports: usedSigs });
       } catch (e) {
         if (!(e instanceof A0Error) || e.line === undefined) throw e;
         throw e.rewrite(`${abs}:${e.line}: ${e.message.replace(/^line \d+: /, '')}`);
@@ -196,7 +207,8 @@ export async function link(
       shown,
       fns: functions.map((f) => f.name),
       profile: declared,
-      parsed: parsedCanonical,
+      parsed,
+      ...(options.includeUnits ? { known } : {}),
     });
   };
   await visit(entry, undefined);
@@ -228,8 +240,12 @@ export async function link(
   for (const { path, text } of order) {
     // Drop `use` lines (already resolved) but keep line count so diagnostics map back.
     const body = text
-      .replace(/^\s*use\s+"[^"]*"\s*$/gm, '')
-      .replace(/^[ \t]*profile[ \t]+strict[ \t]*(#.*)?$/gm, '');
+      .split(/\r?\n/)
+      .map((raw) => {
+        const line = stripComment(raw).trim();
+        return USE_PATH.test(line) || /^profile\s+strict$/.test(line) ? '' : raw;
+      })
+      .join('\n');
     const lineCount = body.split(/\r?\n/).length;
     sources.push({ path, startLine: line, lineCount });
     parts.push(body);
@@ -237,17 +253,23 @@ export async function link(
   }
   const combined = parts.join('\n');
   if (utf8Length(combined) > LIMITS.maxSourceBytes) throw diag('A0623', [LIMITS.maxSourceBytes]);
-  // A single canonical file with no `use` or `profile` line to drop is its own combined text: its
-  // parse above is the parse of `combined` (parse is a pure function of the text), so it is not
-  // parsed a second time.
-  const only = order.length === 1 ? order[0] : undefined;
-  const reuse = only?.parsed !== undefined && combined === only.text ? only.parsed : undefined;
+  // Both source readers produce the same Program. Keep those nodes through linking: printing
+  // dense input and parsing that printout costs another frontend pass and discards object identity.
+  // Validation owns the whole-program limits, dependency ordering, types, effects and contracts.
+  const parsed: Program = { functions: order.flatMap((o) => o.parsed.functions) };
   try {
-    const parsed = reuse ?? parse(combined);
     return {
       program: validate(profile === 'strict' ? { ...parsed, profile } : parsed),
       text: combined,
       sources,
+      ...(options.includeUnits
+        ? {
+            units: order.map((o) => {
+              if (o.known === undefined) throw new Error('source unit arities were not retained');
+              return { path: o.path, program: o.parsed, known: o.known };
+            }),
+          }
+        : {}),
     };
   } catch (e) {
     if (!(e instanceof A0Error)) throw e;
@@ -289,22 +311,30 @@ export async function parseFile(
   dense = false,
 ): Promise<{ program: Program; known: Arities }> {
   const seen = new Map<string, Map<string, number>>();
+  const signatures = new Map<string, Map<string, { params: readonly Type[]; result: Type }>>();
   const load = async (path: string, asDense: boolean): Promise<Program> => {
     const abs = resolve(path);
     const text = await read(abs);
     const isDense = asDense || isDensePath(abs);
-    const uses = isDense ? denseUses(text) : (parse(text).uses ?? []);
+    const canonical = isDense ? undefined : parse(text);
+    const uses = isDense ? denseUses(text) : (canonical?.uses ?? []);
     const known = new Map<string, number>();
+    const imports = new Map<string, { params: readonly Type[]; result: Type }>();
     for (const use of uses) {
       const target = resolve(dirname(abs), use);
       if (!seen.has(target)) await load(target, false);
       for (const [name, n] of seen.get(target) ?? []) known.set(name, n);
+      for (const [name, sig] of signatures.get(target) ?? []) imports.set(name, sig);
     }
     const program = isDense
-      ? (await import('./dense.js')).parseDense(text, { known })
-      : parse(text);
+      ? (await import('./dense.js')).parseDense(text, { known, imports })
+      : (canonical as Program);
     const own = new Map(program.functions.map((f) => [f.name, f.params.length] as const));
     seen.set(abs, new Map([...known, ...own]));
+    signatures.set(
+      abs,
+      new Map([...imports, ...program.functions.map((f) => [f.name, f] as const)]),
+    );
     return program;
   };
   const program = await load(entry, dense);

@@ -13,6 +13,7 @@
  *   a0 revision <file.a0> <function>
  *   a0 dense <file.a0> [out] [--normalize] [--comments]   (canonical to dense text, src/dense.ts)
  *   a0 canon <file.a0d> [out]             (dense text to canonical)
+ *   a0 migrate <file> <new-directory> [--root=directory]   (verified source-dependency copy)
  *   a0 mcp <file-or-dir>   (MCP server over stdio, src/mcp.ts)
  *   a0 lsp [root]          (Language Server Protocol over stdio, src/lsp.ts)
  *
@@ -58,6 +59,7 @@ function usage(): never {
       '  a0 revision <file.a0> <function>',
       '  a0 dense <file.a0> [out] [--normalize] [--comments]   # canonical file to dense text',
       '  a0 canon <file.a0d> [out]               # dense file to canonical text',
+      '  a0 migrate <file> <new-directory> [--root=directory]  # verified, lossless project copy',
       '  (any command: --dense reads files as dense text; .a0d files always are)',
       '  (--dense=a0 reads them with the dense reader written in A0, compiler/dense.a0)',
       "  (any command: --profile strict|canonical overrides the program's `profile` line; strict runs in the interpreter and on js, c, java, dotnet, wasm, riscv64, arm32 and avr)",
@@ -423,6 +425,24 @@ async function main(args: readonly string[]): Promise<void> {
       const text = formatDense(shown, { known, comments: flags.includes('--comments') });
       if (out === undefined) stdout(text);
       else await writeFile(out, text, 'utf8');
+      return;
+    }
+    case 'migrate': {
+      const flags = rest.filter((a) => a.startsWith('--'));
+      const [file, out, ...extra] = rest.filter((a) => !a.startsWith('--'));
+      if (
+        file === undefined ||
+        out === undefined ||
+        extra.length > 0 ||
+        flags.some((f) => !f.startsWith('--root=') || f === '--root=') ||
+        flags.length > 1 ||
+        denseA0 ||
+        profileOverride !== undefined
+      )
+        usage();
+      const { migrateProject } = await import('./migrate.js');
+      const manifest = await migrateProject(file, out, flags[0]?.slice('--root='.length), dense);
+      stdout(`${JSON.stringify(manifest, null, 2)}\n`);
       return;
     }
     case 'canon': {

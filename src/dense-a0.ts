@@ -4,7 +4,7 @@
  * reader on the interpreter and gives its canonical text to the normal pipeline.
  *
  * The reader takes one input of at most 16384 bytes and writes at most 16384, so the host cuts the
- * dense text at function boundaries (a segment between blank lines that starts with `fn`) into chunks,
+ * dense text at function declaration lines into chunks,
  * as tools/dense-chunk.ts does for the comparison: each chunk is the stub lines of the functions it
  * calls that used files or earlier chunks define (`use fn NAME TYPES -> RESULT`), then its functions.
  * The canonical text is the chunk outputs joined with one newline. A chunk the reader flags is cut in
@@ -92,28 +92,23 @@ interface Block {
 
 const USE_LINE = /^\s*use\s+"[^"]*"\s*(#.*)?$/;
 
-/** The functions of a dense file: segments between blank lines; a segment not starting with `fn` joins the one before. */
+/** Function declarations delimit blocks; blank lines are optional in Dense source. */
 function blocksOf(source: string): Block[] {
   const blocks: { name: string; lines: string[]; offset: number }[] = [];
   let offset = 0;
-  let fresh = true;
   for (const raw of source.split('\n')) {
     const line = raw.replace(/\r$/, '');
     const at = offset;
     offset += Buffer.byteLength(raw, 'utf8') + 1;
-    if (line.trim() === '') {
-      fresh = true;
-      continue;
-    }
-    const head = /^fn\s+(\S+)/.exec(line);
-    if (head !== null && fresh) {
+    if (line.trim() === '') continue;
+    const head = /^\s*fn\s+(\S+)/.exec(line);
+    if (head !== null) {
       blocks.push({ name: head[1] as string, lines: [line], offset: at });
     } else if (blocks.length === 0) {
       // the header of the file: use lines are resolved by the linker, anything else is given to the reader
       if (!USE_LINE.test(line) && !/^\s*#/.test(line))
         blocks.push({ name: '', lines: [line], offset: at });
     } else (blocks[blocks.length - 1] as { lines: string[] }).lines.push(line);
-    fresh = false;
   }
   return blocks.map((b) => ({ name: b.name, text: b.lines.join('\n'), offset: b.offset }));
 }

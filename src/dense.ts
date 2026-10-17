@@ -2012,6 +2012,8 @@ function declaredParams(rest: string): number {
 }
 
 export interface DenseParseOptions {
+  /** Imported function types, used to infer call results without a second source reader. */
+  readonly imports?: ReadonlyMap<string, Sig>;
   /**
    * Edit replies (the edit protocol sets it): a name written again shadows the earlier value from that line on,
    * the new value getting a fresh id. A whole source file keeps the duplicate id error.
@@ -2085,13 +2087,14 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
   }
 
   const arities = new Map<string, number>(options.known ?? []);
+  for (const [name, sig] of options.imports ?? []) arities.set(name, sig.params.length);
   const fnNames = new Set<string>([...arities.keys(), ...(options.names ?? [])]);
   for (const it of items) {
     const m = /^fn\s+(\S+)/.exec(it.text);
     if (m !== null) fnNames.add(m[1] as string);
   }
 
-  const sigs = new Map<string, Sig>();
+  const sigs = new Map<string, Sig>(options.imports);
   const uses: string[] = [];
   const useComments: (Comments | undefined)[] = [];
   const functions: Func[] = [];
