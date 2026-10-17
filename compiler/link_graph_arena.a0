@@ -2,6 +2,7 @@
 use "filesystem_arena.a0"
 use "link_paths_arena.a0"
 use "parse_arena.a0"
+use "link_grammar_ready_arena.a0"
 fn lk_code (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
 p at p0 0
 q0 get p 0
@@ -409,42 +410,44 @@ p at p0 0
 q1 at r 0
 error eq q1 6
 parsed at r 1
-q2 at r 0
-q set p 0 q2
-q3 get parsed 1
-q4 get q 1
-q5 select error q3 q4
-q_1 set q 1 q5
-q6 get p 15
-q7 get q_1 2
-q8 select error q6 q7
-q_2 set q_1 2 q8
-q9 get q_2 5
-q10 select error 1 q9
-q_3 set q_2 5 q10
-q11 get parsed 2
-q12 get q_3 95
-q13 select error q11 q12
-q_4 set q_3 95 q13
-q14 get parsed 3
-q15 get q_4 96
-q16 select error q14 q15
-q_5 set q_4 96 q16
-q17 get parsed 4
-q18 get q_5 97
-q19 select error q17 q18
-q_6 set q_5 97 q19
-q20 get parsed 5
-q21 get q_6 98
-q22 select error q20 q21
-q_7 set q_6 98 q22
-q23 get parsed 94
-q24 get q_7 99
-q25 select error q23 q24
-q_8 set q_7 99 q25
-q26 at r 2
-q27 rec q_8 parsed q26
-ret q27
+q2 at r 2
+ready call lv_parse_ready q2 parsed
+q3 at ready 0
+q set p 0 q3
+q4 get parsed 1
+q5 get q 1
+q6 select error q4 q5
+q_1 set q 1 q6
+q7 get p 15
+q8 get q_1 2
+q9 select error q7 q8
+q_2 set q_1 2 q9
+q10 get q_2 5
+q11 select error 1 q10
+q_3 set q_2 5 q11
+q12 get parsed 2
+q13 get q_3 95
+q14 select error q12 q13
+q_4 set q_3 95 q14
+q15 get parsed 3
+q16 get q_4 96
+q17 select error q15 q16
+q_5 set q_4 96 q17
+q18 get parsed 4
+q19 get q_5 97
+q20 select error q18 q19
+q_6 set q_5 97 q20
+q21 get parsed 5
+q22 get q_6 98
+q23 select error q21 q22
+q_7 set q_6 98 q23
+q24 get parsed 94
+q25 get q_7 99
+q26 select error q24 q25
+q_8 set q_7 99 q26
+q27 at ready 2
+q28 rec q_8 parsed q27
+ret q28
 end
 fn lk_savesnapshot (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
 saved call lk_snapshot p0
@@ -676,42 +679,118 @@ edge_2 set edge_1 2 q33
 q34 call lk_append visited 59 3 edge_2
 ret q34
 end
-fn lk_usecanonical (u32x128,u32x128,io) u32 (u32,u32,u32) -> (u32x128,u32x128,io)
+fn lk_pathparent (u32,u32,u32,u32,u32,io) u32 u32 -> (u32,u32,u32,u32,u32,io)
+i at p0 5
+cut at p0 4
+r call lp_dirname i p2 cut
+path at r 1
+n at path 1
+smaller lt n cut
+next select smaller n 0
+status at r 0
+os at p0 1
+h at p0 2
+len at p0 3
+io at r 2
+out rec status os h len next io
+ret out
+end
+fn lk_pathok (u32,u32,u32,u32,u32,io) u32 u32 -> bool
+status at p0 0
+ok eq status 0
+os at p0 1
+missing eq os 2
+cut at p0 4
+more gt cut 0
+a and ok missing
+out and a more
+ret out
+end
+fn lk_pathstep (u32,u32,u32,u32,u32,io) u32 u32 -> (u32,u32,u32,u32,u32,io)
+i at p0 5
+cut at p0 4
+r call fs_realpath i p2 0 cut
+status at r 0
+os at r 1
+h at r 2
+n at r 3
+io at r 4
+state rec status os h n cut io
+ok eq status 0
+missing eq os 2
+again and ok missing
+count select again 1 0
+out fold lk_pathparent count state p2
+ret out
+end
+fn lk_pathsuffix (u32,u32,u32,u32,u32,io) u32 u32 u32 -> (u32,u32,u32,u32,u32,io)
+cut at p0 4
+root eq cut 1
+sep select root 0 1
+start add cut sep
+n sub p3 start
+i at p0 5
+h at p0 2
+len at p0 3
+r call lp_resolve i h len p2 start n
+status at r 0
+path at r 1
+rh at path 0
+rn at path 1
+io at r 2
+out rec status 0 rh rn p3 io
+ret out
+end
+fn lk_canonicalpath (u32x128,u32x128,io) (u32,u32,u32) -> ((u32x128,u32x128,io),(u32,u32,u32))
+h at p1 0
+n at p1 1
+i at p0 2
+initial rec 0 2 0 0 n i
+walked loop lk_pathok lk_pathstep n initial h
+status at walked 0
+ok eq status 0
+os at walked 1
+found eq os 0
+cut at walked 4
+tail lt cut n
+a and ok found
+append and a tail
+count select append 1 0
+r fold lk_pathsuffix count walked h n
 p at p0 0
-q0 at p0 2
-q1 at p2 0
-q2 at p2 1
-r call fs_realpath q0 q1 0 q2
-q3 at p0 1
-q4 at r 4
-q5 rec p q3 q4
-q6 at r 0
-a call lk_code q5 q6
-q7 at r 1
-q8 eq q7 2
-q9 at r 1
-q10 select q8 0 q9
-a_1 call lk_os a q10
-q11 at r 1
-q12 eq q11 2
-q13 at r 2
-q14 at r 3
-q15 at r 3
-q16 rec q13 q14 q15
-canonical select q12 p2 q16
-q at a_1 0
-q17 at canonical 0
-q_1 set q 24 q17
-q18 at canonical 1
-q_2 set q_1 25 q18
-q19 get q_2 0
-q20 eq q19 0
-q21 select q20 1 0
-q22 at a_1 1
-q23 at a_1 2
-q24 rec q_2 q22 q23
-a_2 fold lk_usepolicy q21 q24 canonical
-ret a_2
+ps at p0 1
+io at r 5
+state rec p ps io
+code at r 0
+b call lk_code state code
+error at r 1
+missing eq error 2
+failure select missing 0 error
+c call lk_os b failure
+rh at r 2
+rn at r 3
+resolved rec rh rn rn
+path select missing p1 resolved
+out rec c path
+ret out
+end
+fn lk_usecanonical (u32x128,u32x128,io) u32 (u32,u32,u32) -> (u32x128,u32x128,io)
+r call lk_canonicalpath p0 p2
+a at r 0
+canonical at r 1
+p at a 0
+h at canonical 0
+p_1 set p 24 h
+n at canonical 1
+p_2 set p_1 25 n
+status get p_2 0
+ok eq status 0
+count select ok 1 0
+ps at a 1
+io at a 2
+state rec p_2 ps io
+out fold lk_usepolicy count state canonical
+ret out
 end
 fn lk_userelative (u32x128,u32x128,io) u32 (u32,u32,u32) u32x128 -> (u32x128,u32x128,io)
 ps at p0 1
@@ -1053,37 +1132,21 @@ ret q11
 end
 fn lk_canonicalroot (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
 p at p0 0
-q0 at p0 2
-q1 get p 89
-q2 get p 90
-r call fs_realpath q0 q1 0 q2
-q3 at p0 1
-q4 at r 4
-q5 rec p q3 q4
-q6 at r 0
-a call lk_code q5 q6
-q7 at r 1
-q8 eq q7 2
-q9 at r 1
-q10 select q8 0 q9
-a_1 call lk_os a q10
-q at a_1 0
-q11 at r 1
-q12 eq q11 2
-q13 get p 89
-q14 at r 2
-q15 select q12 q13 q14
-q_1 set q 8 q15
-q16 at r 1
-q17 eq q16 2
-q18 get p 90
-q19 at r 3
-q20 select q17 q18 q19
-q_2 set q_1 9 q20
-q21 at a_1 1
-q22 at a_1 2
-q23 rec q_2 q21 q22
-ret q23
+h get p 89
+n get p 90
+path rec h n n
+r call lk_canonicalpath p0 path
+a at r 0
+canonical at r 1
+q at a 0
+rh at canonical 0
+q_1 set q 8 rh
+rn at canonical 1
+q_2 set q_1 9 rn
+ps at a 1
+io at a 2
+out rec q_2 ps io
+ret out
 end
 fn lk_entryresolve (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
 p at p0 0

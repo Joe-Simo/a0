@@ -37,6 +37,7 @@ import {
 import { diag } from './diagnostics.js';
 import { link, parseFile } from './link.js';
 import { readFile, writeFd, writeFile } from './node-fs.js';
+import { protectionPolicy, requireProtectedTarget } from './protection-policy.js';
 import type { ContractResult } from './prove.js';
 import { revision } from './revision.js';
 import { COMPILER_VERSION, isTarget, TARGETS } from './targets.js';
@@ -47,6 +48,8 @@ function usage(): never {
     [
       'usage:',
       '  a0 --version                           # release and compiler version',
+      '  a0 seal on|off|status|keygen|unlock|resume|share|rotate|revoke|export|import [root] [options]',
+      '  a0 protect on|off|status [root]         # future releases; both controls default off',
       '  a0 check <file.a0>... [--json] [--fix] [--hints] [--prove [--deny-disproved] [--prove-timeout=MS]]    # --json: diagnostics as fields; --fix: apply the exact fixes; --prove: Z3 proof of pre/post',
       '  a0 explain [A0nnnn|--verify]           # what a diagnostic means, a failing and a fixed example',
       '  a0 run <file.a0> <function> <args...> [--fuel=N] [--max-trips=N]',
@@ -74,6 +77,7 @@ function usage(): never {
 }
 
 async function readSource(path: string): Promise<string> {
+  protectionPolicy(path);
   const text = await readFile(path, 'utf8');
   if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes) throw diag('A0810');
   return text;
@@ -90,15 +94,22 @@ async function loadProgram(path: string, dense = false): Promise<TypedProgram> {
   // the reader written in A0 is loaded only under --dense=a0
   const readDenseA0 = denseA0 ? (await import('./dense-a0.js')).readDenseA0 : undefined;
   return (
-    await link(path, (p) => readFile(p, 'utf8'), {
-      dense,
-      ...(readDenseA0 !== undefined
-        ? {
-            denseReader: (text, used, p) => readDenseA0(text, used, p).text,
-          }
-        : {}),
-      ...(profileOverride === undefined ? {} : { profile: profileOverride }),
-    })
+    await link(
+      path,
+      (p) => {
+        protectionPolicy(p);
+        return readFile(p, 'utf8');
+      },
+      {
+        dense,
+        ...(readDenseA0 !== undefined
+          ? {
+              denseReader: (text, used, p) => readDenseA0(text, used, p).text,
+            }
+          : {}),
+        ...(profileOverride === undefined ? {} : { profile: profileOverride }),
+      },
+    )
   ).program;
 }
 
@@ -193,6 +204,10 @@ async function main(args: readonly string[]): Promise<void> {
   const dense = denseA0 || args.includes('--dense');
   const [cmd, ...rest] = takeProfile(args.filter((a) => a !== '--dense' && a !== '--dense=a0'));
   switch (cmd) {
+    case 'seal':
+    case 'protect':
+      await (await import('./protection/cli.js')).protectionCli(cmd, rest);
+      return;
     case 'check': {
       const flags = rest.filter((a) => a.startsWith('--'));
       const files = rest.filter((a) => !a.startsWith('--'));
@@ -291,6 +306,7 @@ async function main(args: readonly string[]): Promise<void> {
       return;
     }
     case 'init': {
+      protectionPolicy(rest[0] ?? '.');
       const report = await (await import('./agents.js')).init(rest[0] ?? '.');
       for (const p of report.written) stdout(`wrote ${p}\n`);
       for (const p of report.skipped) stdout(`kept ${p} (exists)\n`);
@@ -332,6 +348,8 @@ async function main(args: readonly string[]): Promise<void> {
       const trips = flagNumber(rest, '--traps');
       const [target, file, out] = rest.filter((a) => a !== flag && !a.startsWith('--traps'));
       if (target === undefined || file === undefined || !isTarget(target)) usage();
+      const protectedBuild = protectionPolicy(file).protect;
+      if (protectedBuild) requireProtectedTarget(target);
       const program = await loadProgram(file, dense);
       const { compile } = await import('./backends.js');
       if (flag !== undefined) {
@@ -357,7 +375,10 @@ async function main(args: readonly string[]): Promise<void> {
           ? { ...compile(program, target), hits: 0, misses: 0 }
           : await compileCached(program, target, cache);
       // The wasm target's text is the binary module in base64; the output gets the bytes.
-      const data = target === 'wasm' ? (await import('./wasm.js')).wasmModuleBytes(text) : text;
+      let data: string | Uint8Array =
+        target === 'wasm' ? (await import('./wasm.js')).wasmModuleBytes(text) : text;
+      if (protectedBuild)
+        data = (await import('./protection/artifact.js')).protectWasm(data as Uint8Array).bytes;
       if (out === undefined) stdout(data);
       else await writeFile(out, data);
       if (process.env.A0_CACHE_STATS === '1') stderr(`cache: ${hits} hits, ${misses} misses\n`);
@@ -366,6 +387,9 @@ async function main(args: readonly string[]): Promise<void> {
     case 'wasm': {
       const [file, out] = rest;
       if (file === undefined || out === undefined) usage();
+      // C-derived builds materialize intermediates in external tools. The reviewed direct adapter is explicit.
+      if (protectionPolicy(file).protect)
+        throw new Error('A0 protection: USE_EMIT_WASM_FOR_PROTECTED_BUILD');
       const program = await loadProgram(file, dense);
       const { compile } = await import('./backends.js');
       const { compileCached, DiskCache } = await import('./cache.js');
@@ -417,7 +441,10 @@ async function main(args: readonly string[]): Promise<void> {
       const flags = rest.filter((a) => a.startsWith('--'));
       const [file, out] = rest.filter((a) => !a.startsWith('--'));
       if (file === undefined) usage();
-      const { program, known } = await parseFile(file, (p) => readFile(p, 'utf8'));
+      const { program, known } = await parseFile(file, (p) => {
+        protectionPolicy(p);
+        return readFile(p, 'utf8');
+      });
       const { formatDense, normalizeProgram } = await import('./dense.js');
       const shown = flags.includes('--normalize') ? normalizeProgram(program) : program;
       const text = formatDense(shown, { known, comments: flags.includes('--comments') });
@@ -428,7 +455,14 @@ async function main(args: readonly string[]): Promise<void> {
     case 'canon': {
       const [file, out] = rest;
       if (file === undefined) usage();
-      const { program } = await parseFile(file, (p) => readFile(p, 'utf8'), true);
+      const { program } = await parseFile(
+        file,
+        (p) => {
+          protectionPolicy(p);
+          return readFile(p, 'utf8');
+        },
+        true,
+      );
       const text = formatSource(program);
       if (out === undefined) stdout(text);
       else await writeFile(out, text, 'utf8');

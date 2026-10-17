@@ -319,11 +319,13 @@ escd eq p4 1
 notesc select escd false true
 sq and k3 isq
 sclose and sq notesc
+sbad and k3 isnl
+sfinish or sclose sbad
 cclose and k8 isnl
 s57 or k5 k7
 single or s57 k9
 arrow and k6 isgt
-e0 or wclose sclose
+e0 or wclose sfinish
 e1 or e0 single
 emit or e1 k6
 c0 or e0 cclose
@@ -332,7 +334,8 @@ closed or c1 k6
 consumed or sclose arrow
 ek0 select k6 6 p0
 ek1 select arrow 4 ek0
-ek select sclose 3 ek1
+ek2 select sclose 3 ek1
+ek select sbad 9 ek2
 s1 add p1 1
 es select sclose s1 p1
 wl sub p3 p1
@@ -511,6 +514,7 @@ pk at s 2
 ps at s 3
 k1 eq pk 1
 k2 eq pk 2
+k3 eq pk 3
 k5 eq pk 5
 k6 eq pk 6
 k7 eq pk 7
@@ -519,10 +523,12 @@ w or k1 k2
 o0 or k5 k6
 o1 or o0 k7
 one or o1 k9
-pend or w one
+pend0 or w one
+pend or pend0 k3
+ek select k3 9 pk
 wlen sub p1 ps
 len select w wlen 1
-c call tokput3 out nout pk ps len pend
+c call tokput3 out nout ek ps len pend
 n3 add nout 3
 nf select pend n3 nout
 r rec c nf

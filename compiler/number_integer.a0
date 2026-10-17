@@ -1,0 +1,681 @@
+# Unsigned decimal integer Number semantics, including scientific notation and Infinity.
+# Internal128 base65536 limbs cover2048 bits; binary64 and decimal-search intermediates need1028.
+use "arena_vector.a0"
+fn ni_add_step (u32x128,u32) u32 u32x128 u32x128 -> (u32x128,u32)
+q0 get p2 p1
+q1 get p3 p1
+q2 add q0 q1
+q3 at p0 1
+n add q2 q3
+q4 at p0 0
+q5 and n 65535
+q6 set q4 p1 q5
+q7 shr n 16
+q8 rec q6 q7
+ret q8
+end
+fn ni_add u32x128 u32x128 -> u32x128
+q0 call arena_zero
+q1 rec q0 0
+r fold ni_add_step 128 q1 p0 p1
+q2 at r 0
+ret q2
+end
+fn ni_sub_step (u32x128,u32) u32 u32x128 u32x128 -> (u32x128,u32)
+q0 get p3 p1
+q1 at p0 1
+rhs add q0 q1
+q2 at p0 0
+q3 get p2 p1
+q4 sub q3 rhs
+q5 and q4 65535
+q6 set q2 p1 q5
+q7 get p2 p1
+q8 lt q7 rhs
+q9 select q8 1 0
+q10 rec q6 q9
+ret q10
+end
+fn ni_sub u32x128 u32x128 -> u32x128
+q0 call arena_zero
+q1 rec q0 0
+r fold ni_sub_step 128 q1 p0 p1
+q2 at r 0
+ret q2
+end
+fn ni_cmp_step u32 u32 u32x128 u32x128 -> u32
+q0 get p2 p1
+q1 get p3 p1
+q2 eq q0 q1
+q3 get p2 p1
+q4 get p3 p1
+q5 lt q3 q4
+q6 select q5 1 2
+q7 select q2 p0 q6
+ret q7
+end
+fn ni_cmp u32x128 u32x128 -> u32
+q0 fold ni_cmp_step 128 0 p0 p1
+ret q0
+end
+fn ni_small_step (u32x128,u32) u32 u32x128 u32 -> (u32x128,u32)
+q0 get p2 p1
+q1 mul q0 p3
+q2 at p0 1
+n add q1 q2
+q3 at p0 0
+q4 and n 65535
+q5 set q3 p1 q4
+q6 shr n 16
+q7 rec q5 q6
+ret q7
+end
+fn ni_small u32x128 u32 -> u32x128
+q0 call arena_zero
+q1 rec q0 0
+r fold ni_small_step 128 q1 p0 p1
+q2 at r 0
+ret q2
+end
+fn ni_div_step (u32x128,u32) u32 u32x128 -> (u32x128,u32)
+at sub 127 p1
+q0 at p0 1
+q1 shl q0 16
+q2 get p2 at
+n or q1 q2
+q3 at p0 0
+q4 div n 10
+q5 set q3 at q4
+q6 rem n 10
+q7 rec q5 q6
+ret q7
+end
+fn ni_div10 u32x128 -> (u32x128,u32)
+q0 call arena_zero
+q1 rec q0 0
+q2 fold ni_div_step 128 q1 p0
+ret q2
+end
+fn ni_limb_bits u32 u32 u32 -> u32
+q0 shr p2 p1
+q1 ne q0 0
+q2 add p1 1
+q3 select q1 q2 p0
+ret q3
+end
+fn ni_bits_step u32 u32 u32x128 -> u32
+q0 get p2 p1
+bits fold ni_limb_bits 16 0 q0
+q1 get p2 p1
+q2 ne q1 0
+q3 mul p1 16
+q4 add q3 bits
+q5 select q2 q4 p0
+ret q5
+end
+fn ni_bits u32x128 -> u32
+q0 fold ni_bits_step 128 0 p0
+ret q0
+end
+fn ni_nonzero_step bool u32 u32x128 -> bool
+q0 get p2 p1
+q1 ne q0 0
+q2 or p0 q1
+ret q2
+end
+fn ni_nonzero u32x128 -> bool
+q0 fold ni_nonzero_step 128 false p0
+ret q0
+end
+fn ni_pow2 u32 -> u32x128
+q0 call arena_zero
+q1 shr p0 4
+q2 and p0 15
+q3 shl 1 q2
+q4 set q0 q1 q3
+ret q4
+end
+fn ni_bit u32x128 u32 -> bool
+q0 lt p1 2048
+q1 shr p1 4
+q2 get p0 q1
+q3 and p1 15
+q4 shr q2 q3
+q5 and q4 1
+q6 ne q5 0
+q7 and q0 q6
+ret q7
+end
+fn ni_cut_step u32x128 u32 u32x128 u32 -> u32x128
+at shr p3 4
+q0 and p3 15
+q1 shl 1 q0
+mask sub q1 1
+q2 lt p1 at
+q3 eq p1 at
+q4 get p2 p1
+q5 xor mask 65535
+q6 and q4 q5
+q7 get p2 p1
+q8 select q3 q6 q7
+value select q2 0 q8
+q9 set p0 p1 value
+ret q9
+end
+fn ni_sticky_step bool u32 u32x128 u32 -> bool
+at shr p3 4
+q0 and p3 15
+q1 shl 1 q0
+mask sub q1 1
+q2 lt p1 at
+q3 get p2 p1
+q4 eq p1 at
+q5 get p2 p1
+q6 and q5 mask
+q7 select q4 q6 0
+bits select q2 q3 q7
+q8 ne bits 0
+q9 or p0 q8
+ret q9
+end
+fn ni_round u32x128 -> u32x128
+bits call ni_bits p0
+q0 gt bits 53
+q1 sub bits 53
+shift select q0 q1 0
+q2 call arena_zero
+base fold ni_cut_step 128 q2 p0 shift
+q3 ne shift 0
+q4 sub shift 1
+q5 call ni_bit p0 q4
+half and q3 q5
+q6 sub shift 1
+sticky fold ni_sticky_step 128 false p0 q6
+q7 call ni_bit p0 shift
+q8 or sticky q7
+up and half q8
+q9 call ni_pow2 shift
+q10 call arena_zero
+q11 select up q9 q10
+q12 call ni_add base q11
+ret q12
+end
+fn ni_power_step (u32,bool) u32 u32x128 -> (u32,bool)
+q0 get p2 p1
+q1 sub q0 1
+q2 and q0 q1
+power eq q2 0
+q3 at p0 0
+q4 ne q0 0
+q5 select q4 1 0
+q6 add q3 q5
+q7 at p0 1
+q8 and q7 power
+q9 rec q6 q8
+ret q9
+end
+fn ni_power u32x128 -> bool
+q0 rec 0 true
+r fold ni_power_step 128 q0 p0
+q1 at r 0
+q2 eq q1 1
+q3 at r 1
+q4 and q2 q3
+ret q4
+end
+fn ni_extract u32x128 u32 -> u32
+at shr p1 4
+shift and p1 15
+q0 get p0 at
+q1 add at 1
+q2 get p0 q1
+q3 add at 2
+q4 get p0 q3
+q5 shr q0 shift
+q6 sub 16 shift
+q7 shl q2 q6
+q8 or q5 q7
+q9 sub 32 shift
+q10 shl q4 q9
+joined or q8 q10
+q11 eq shift 0
+q12 shl q2 16
+q13 or q0 q12
+q14 select q11 q13 joined
+ret q14
+end
+fn ni_float u32x128 -> (u32,u32)
+bits call ni_bits p0
+q0 gt bits 53
+q1 sub bits 53
+offset select q0 q1 0
+low call ni_extract p0 offset
+q2 add offset 32
+high call ni_extract p0 q2
+q3 lt bits 53
+q4 sub 53 bits
+left select q3 q4 0
+q5 ge left 32
+q6 shl low left
+lo select q5 0 q6
+q7 ge left 32
+q8 sub left 32
+q9 shl low q8
+q10 eq left 0
+q11 shl high left
+q12 sub 32 left
+q13 shr low q12
+q14 or q11 q13
+q15 select q10 high q14
+hi select q7 q9 q15
+exponent add bits 1022
+q16 and hi 1048575
+q17 shl exponent 20
+packed or q16 q17
+q18 eq bits 0
+q19 gt bits 1024
+q20 or q18 q19
+q21 select q20 0 lo
+q22 eq bits 0
+q23 gt bits 1024
+q24 select q23 2146435072 packed
+q25 select q22 0 q24
+q26 rec q21 q25
+ret q26
+end
+fn ni_interval u32x128 u32x128 u32x128 u32x128 bool -> bool
+q0 call ni_cmp p0 p1
+lower eq q0 1
+q1 call ni_sub p1 p0
+q2 call ni_sub p0 p1
+distance select lower q1 q2
+bound select lower p3 p2
+q3 call ni_small distance 2
+relation call ni_cmp q3 bound
+q4 eq relation 1
+q5 eq relation 0
+q6 and q5 p4
+q7 or q4 q6
+ret q7
+end
+fn ni_search_more (bool,u32x128,u32x128,u32x128,u32x128,u32) u32 u32x128 u32x128 u32x128 bool -> bool
+q0 at p0 0
+ret q0
+end
+fn ni_search_step (bool,u32x128,u32x128,u32x128,u32x128,u32) u32 u32x128 u32x128 u32x128 bool -> (bool,u32x128,u32x128,u32x128,u32x128,u32)
+q0 at p0 2
+division call ni_div10 q0
+prefix at division 0
+q1 at p0 3
+q2 at p0 1
+q3 at division 1
+q4 call ni_small q2 q3
+remainder call ni_add q1 q4
+q5 at p0 1
+quantum call ni_small q5 10
+floor call ni_sub p2 remainder
+ceil call ni_add floor quantum
+low call ni_interval floor p2 p3 p4 p5
+high call ni_interval ceil p2 p3 p4 p5
+left call ni_sub p2 floor
+right call ni_sub ceil p2
+relation call ni_cmp left right
+q6 xor high true
+q7 eq relation 1
+q8 or q6 q7
+q9 eq relation 0
+q10 get prefix 0
+q11 and q10 1
+q12 eq q11 0
+q13 and q9 q12
+q14 or q8 q13
+take and low q14
+q15 call arena_zero
+one set q15 0 1
+q16 call ni_add prefix one
+coefficient select take prefix q16
+good or low high
+q17 at p0 4
+q18 select good coefficient q17
+q19 add p1 1
+q20 at p0 5
+q21 select good q19 q20
+q22 rec good quantum prefix remainder q18 q21
+ret q22
+end
+fn ni_shortest u32x128 -> (u32x128,u32)
+bits call ni_bits p0
+q0 gt bits 53
+q1 sub bits 53
+shift select q0 q1 0
+above call ni_pow2 shift
+q2 call ni_power p0
+q3 gt bits 53
+q4 and q2 q3
+q5 sub shift 1
+q6 call ni_pow2 q5
+below select q4 q6 above
+q7 call ni_bit p0 shift
+even xor q7 true
+q8 call arena_zero
+one set q8 0 1
+q9 call arena_zero
+q10 rec true one p0 q9 p0 0
+found loop ni_search_more ni_search_step 309 q10 p0 above below even
+q11 at found 4
+q12 at found 5
+q13 rec q11 q12
+ret q13
+end
+fn ni_choose (u32x128,u32) u32 -> (u32x128,u32)
+q0 at p0 0
+q1 call ni_shortest q0
+ret q1
+end
+fn ni_parts u32x128 -> (bool,u32x128,u32,(u32,u32))
+n call ni_round p0
+bits call ni_bits n
+finite le bits 1024
+q0 ne bits 0
+q1 and finite q0
+q2 select q1 1 0
+q3 rec n 0
+chosen fold ni_choose q2 q3
+q4 xor finite true
+q5 at chosen 0
+q6 at chosen 1
+q7 call ni_float n
+q8 rec q4 q5 q6 q7
+ret q8
+end
+fn ni_accumulate u32x128 u32 u32 -> u32x128
+q0 call ni_small p0 10
+q1 call arena_zero
+q2 set q1 0 p2
+q3 call ni_add q0 q2
+ret q3
+end
+fn ni_digit (u32,u32x128,u32) u32 u32x128 -> (u32,u32x128,u32)
+q0 get p2 p1
+q1 ge q0 48
+q2 le q0 57
+valid and q1 q2
+q3 at p0 0
+q4 ne q3 0
+q5 at p0 0
+q6 select valid 0 3
+status select q4 q5 q6
+digit sub q0 48
+q7 at p0 2
+q8 ne q7 0
+q9 ne digit 0
+started or q8 q9
+q10 at p0 2
+q11 at p0 2
+q12 lt q11 310
+q13 and started q12
+q14 select q13 1 0
+count add q10 q14
+q15 eq status 0
+q16 ne count 0
+q17 and q15 q16
+q18 le count 309
+active and q17 q18
+q19 select active 1 0
+q20 at p0 1
+n fold ni_accumulate q19 q20 digit
+q21 rec status n count
+ret q21
+end
+fn ni_parse_more (u32,u32x128,u32,io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn ni_parse_page (u32,u32x128,u32,io) u32 u32 u32 u32 -> (u32,u32x128,u32,io)
+offset shl p1 7
+left sub p4 offset
+q0 gt left 128
+count select q0 128 left
+q1 at p0 3
+q2 add p3 offset
+loaded call arena_load q1 p2 q2 count
+q3 at loaded 0
+q4 at p0 1
+q5 at p0 2
+q6 rec q3 q4 q5
+q7 at loaded 1
+result fold ni_digit count q6 q7
+q8 at result 0
+q9 at result 1
+q10 at result 2
+q11 at loaded 2
+q12 rec q8 q9 q10 q11
+ret q12
+end
+fn ni_parse io u32 u32 u32 -> (u32,u32x128,u32,io)
+q0 ne p3 0
+q1 sub 4294967295 p3
+q2 le p2 q1
+valid and q0 q2
+q3 shr p3 7
+q4 and p3 127
+q5 ne q4 0
+q6 select q5 1 0
+pages add q3 q6
+q7 select valid 0 3
+q8 call arena_zero
+q9 rec q7 q8 0 p0
+q10 loop ni_parse_more ni_parse_page pages q9 p1 p2 p3
+ret q10
+end
+fn ni_div64 (u32,u32) -> ((u32,u32),u32)
+q0 at p0 1
+top div q0 10
+q1 at p0 1
+q2 rem q1 10
+q3 shl q2 16
+q4 at p0 0
+q5 shr q4 16
+middle or q3 q5
+q6 rem middle 10
+q7 shl q6 16
+q8 at p0 0
+q9 and q8 65535
+tail or q7 q9
+q10 div middle 10
+q11 shl q10 16
+q12 div tail 10
+q13 or q11 q12
+q14 rec q13 top
+q15 rem tail 10
+q16 rec q14 q15
+ret q16
+end
+fn ni_digits_more ((u32,u32),u32,u32x128) u32 -> bool
+n at p0 0
+q0 at n 0
+q1 at n 1
+q2 or q0 q1
+q3 ne q2 0
+ret q3
+end
+fn ni_digits_step ((u32,u32),u32,u32x128) u32 -> ((u32,u32),u32,u32x128)
+q0 at p0 0
+r call ni_div64 q0
+q1 at r 0
+q2 at p0 1
+q3 add q2 1
+q4 at p0 2
+q5 at p0 1
+q6 at r 1
+q7 add 48 q6
+q8 set q4 q5 q7
+q9 rec q1 q3 q8
+ret q9
+end
+fn ni_coeff_byte u32x128 u32 u32x128 u32 bool -> u32x128
+q0 ne p1 0
+q1 and p4 q0
+q2 select q1 1 0
+at add p1 q2
+q3 sub p3 p1
+q4 sub q3 1
+q5 get p2 q4
+q6 set p0 at q5
+ret q6
+end
+fn ni_zero_byte u32x128 u32 u32 -> u32x128
+q0 add p2 p1
+q1 set p0 q0 48
+ret q1
+end
+fn ni_exp_byte u32x128 u32 u32 u32 u32 -> u32x128
+q0 eq p1 0
+q1 eq p4 3
+q2 eq p4 2
+q3 select q2 10 1
+q4 select q1 100 q3
+q5 eq p1 1
+q6 eq p4 3
+q7 select q6 10 1
+q8 select q5 q7 1
+divisor select q0 q4 q8
+q9 add p3 2
+q10 add q9 p1
+q11 div p2 divisor
+q12 rem q11 10
+q13 add 48 q12
+q14 set p0 q10 q13
+ret q14
+end
+fn ni_text (bool,u32x128,u32,(u32,u32)) -> (u32,u32x128,u32)
+coefficient at p0 1
+low call ni_extract coefficient 0
+high call ni_extract coefficient 32
+zero call arena_zero
+q0 rec low high
+q1 set zero 0 48
+q2 rec q0 0 q1
+digits loop ni_digits_more ni_digits_step 20 q2
+q3 at digits 1
+q4 eq q3 0
+q5 at digits 1
+length select q4 1 q5
+q6 at p0 2
+q7 add length q6
+exponent sub q7 1
+scientific ge exponent 21
+q8 at digits 2
+page fold ni_coeff_byte length zero q8 length scientific
+q9 gt length 1
+dot and scientific q9
+q10 get page 1
+q11 select dot 46 q10
+page_1 set page 1 q11
+q12 select dot 1 0
+prefix add length q12
+q13 at p0 2
+q14 select scientific 0 q13
+page_2 fold ni_zero_byte q14 page_1 length
+q15 get page_2 prefix
+q16 select scientific 101 q15
+page_3 set page_2 prefix q16
+q17 add prefix 1
+q18 add prefix 1
+q19 get page_3 q18
+q20 select scientific 43 q19
+page_4 set page_3 q17 q20
+q21 ge exponent 100
+q22 ge exponent 10
+q23 select q22 2 1
+expdigits select q21 3 q23
+q24 select scientific expdigits 0
+page_5 fold ni_exp_byte q24 page_4 exponent prefix expdigits
+q25 add prefix 2
+q26 add q25 expdigits
+q27 at p0 2
+q28 add length q27
+size select scientific q26 q28
+q29 set zero 0 73
+q30 set q29 1 110
+q31 set q30 2 102
+q32 set q31 3 105
+q33 set q32 4 110
+q34 set q33 5 105
+q35 set q34 6 116
+infinity set q35 7 121
+q36 call ni_bits coefficient
+q37 le q36 57
+q38 le length 17
+good and q37 q38
+q39 at p0 0
+q40 select good 0 3
+q41 select q39 0 q40
+q42 at p0 0
+q43 select q42 infinity page_5
+q44 at p0 0
+q45 select q44 8 size
+q46 rec q41 q43 q45
+ret q46
+end
+fn ni_parts_go (bool,u32x128,u32,(u32,u32)) u32 u32x128 -> (bool,u32x128,u32,(u32,u32))
+q0 call ni_parts p2
+ret q0
+end
+fn ni_output (u32,(u32,u32),(u32,u32,u32),io) u32 u32 u32x128 -> (u32,(u32,u32),(u32,u32,u32),io)
+q0 at p0 3
+q1 at p0 2
+r call av_append q0 q1 p2 p3
+q2 at r 0
+q3 at p0 1
+q4 at r 1
+q5 at r 2
+q6 rec q2 q3 q4 q5
+ret q6
+end
+fn ni_publish (u32,(u32,u32),(u32,u32,u32),io) u32 u32x128 u32 -> (u32,(u32,u32),(u32,u32,u32),io)
+q0 call arena_zero
+q1 rec 0 2146435072
+q2 le p3 309
+q3 select q2 1 0
+q4 rec true q0 0 q1
+parts fold ni_parts_go q3 q4 p2
+text call ni_text parts
+q5 at text 0
+q6 at parts 3
+q7 at p0 2
+q8 at p0 3
+q9 at text 0
+q10 eq q9 0
+q11 select q10 1 0
+q12 rec q5 q6 q7 q8
+q13 at text 2
+q14 at text 1
+q15 fold ni_output q11 q12 q13 q14
+ret q15
+end
+fn number_integer io u32 u32 u32 -> (u32,(u32,u32),(u32,u32,u32),io)
+parsed call ni_parse p0 p1 p2 p3
+q0 at parsed 0
+q1 rec 0 0
+q2 rec 0 0 0
+q3 at parsed 3
+q4 at parsed 0
+q5 eq q4 0
+q6 select q5 1 0
+q7 rec q0 q1 q2 q3
+q8 at parsed 1
+q9 at parsed 2
+result fold ni_publish q6 q7 q8 q9
+q10 at result 0
+q11 at result 0
+q12 eq q11 0
+q13 at result 1
+q14 rec 0 0
+q15 select q12 q13 q14
+q16 at result 2
+q17 at result 3
+q18 rec q10 q15 q16 q17
+ret q18
+end

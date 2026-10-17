@@ -660,6 +660,64 @@ function mutableHere(
   return !borrowLive(fn, o, index, writes);
 }
 
+/** Consume an intermediate rebuild only after every old alias of private p0 is dead. */
+function intermediateRecord(fn: TypedFunc, node: Node, index: number): boolean {
+  const p0 = fn.params[0];
+  const type = fn.types.get(node.id);
+  const flatArray = (t: Type): boolean =>
+    !isPrimitive(t) && t.kind === 'arr' && (t.elem === 'u32' || t.elem === 'bool');
+  if (
+    node.op !== 'rec' ||
+    index === fn.nodes.length - 1 ||
+    p0 === undefined ||
+    type === undefined ||
+    isPrimitive(p0) ||
+    p0.kind !== 'rec' ||
+    fn.params.some(containsIo) ||
+    !p0.fields.some(flatArray) ||
+    !p0.fields.every((t) => t === 'u32' || t === 'bool' || flatArray(t)) ||
+    formatType(type) !== formatType(p0) ||
+    ownedRecord(fn) === null
+  )
+    return false;
+  const uses = fn.nodes.flatMap((n) =>
+    n.args.flatMap((o, k) => (o.kind === 'node' && o.id === node.id ? [{ n, k }] : [])),
+  );
+  if (
+    uses.length !== 1 ||
+    uses[0]?.k !== 1 ||
+    !['fold', 'loop'].includes(uses[0]?.n.op ?? '') ||
+    sameOp(fn.ret, { kind: 'node', id: node.id })
+  )
+    return false;
+  // An earlier rebuild could implicitly alias p0 even with entirely fresh field operands.
+  // Keep one intermediate layout until ownership plans can compose those storage transfers.
+  const sameLayout = fn.nodes.filter(
+    (n, j) =>
+      j < fn.nodes.length - 1 &&
+      n.op === 'rec' &&
+      formatType(fn.types.get(n.id) ?? 'u32') === formatType(p0),
+  );
+  if (sameLayout.length > 1) return false;
+  // Inlined aggregate calls and updates can retain storage aliases beyond core.borrowLive's
+  // get/at/mov/select graph. Conservatively include every aggregate dependency, even copies.
+  const potential = new Set<string>();
+  const mayAlias = (o: Operand): boolean =>
+    (o.kind === 'param' && o.index === 0) || (o.kind === 'node' && potential.has(o.id));
+  for (const n of fn.nodes.slice(0, index)) {
+    const t = fn.types.get(n.id);
+    if (t !== undefined && !isPrimitive(t) && n.args.some(mayAlias)) potential.add(n.id);
+  }
+  if (mayAlias(fn.ret) || fn.nodes.slice(index + 1).some((n) => n.args.some(mayAlias)))
+    return false;
+  if (borrowLive(fn, { kind: 'param', index: 0 }, index, true)) return false;
+  return node.args.every((o, k) => {
+    const t =
+      o.kind === 'node' ? fn.types.get(o.id) : o.kind === 'param' ? fn.params[o.index] : o.kind;
+    return t !== undefined && (isPrimitive(t) || mutableHere(fn, o, index, k, true));
+  });
+}
+
 /** Where each parameter travels: an integer register index, or a byte offset in the stack area. */
 interface ArgPlace {
   readonly reg?: number;
@@ -1260,9 +1318,8 @@ class FunctionEmitter {
     return true;
   }
 
-  /** Store a rebuilt record into its owned state. Cross-field aliases need the original
-   * temporary: copying one field could otherwise overwrite a later field's source. */
-  #storeRecordReturn(sub: Env, result: string, type: Type, node: Node): boolean {
+  /** Resolve every source before stores; cross-field aliases keep the original temporary. */
+  #recordValues(sub: Env, result: string, node: Node): Val[] | undefined {
     const vals = node.args.map((o) => this.#resolve(sub, o));
     let offset = this.#offset(result);
     for (const v of vals) {
@@ -1272,12 +1329,16 @@ class FunctionEmitter {
         this.#canon(v.key) === this.#canon(result) &&
         this.#offset(v.key) !== offset
       )
-        return false;
+        return undefined;
       offset += 4 * words(v.type);
     }
-    this.#pos += 1;
+    return vals;
+  }
+
+  /** Position-neutral stores: all sources stay live before the first field is overwritten. */
+  #storeRecordFields(result: string, vals: readonly Val[]): void {
     for (const v of vals) this.#use(v);
-    offset = 0;
+    let offset = 0;
     for (const v of vals) {
       if (
         !(
@@ -1290,6 +1351,13 @@ class FunctionEmitter {
         this.#place(v, '%rsp', this.#slot(result) + offset);
       offset += 4 * words(v.type);
     }
+  }
+
+  #storeRecordReturn(sub: Env, result: string, type: Type, node: Node): boolean {
+    const vals = this.#recordValues(sub, result, node);
+    if (vals === undefined) return false;
+    this.#pos += 1;
+    this.#storeRecordFields(result, vals);
     this.#pos += 1;
     this.#use({ kind: 'key', key: result, type });
     return true;
@@ -1724,6 +1792,16 @@ class FunctionEmitter {
       }
       case 'arr':
       case 'rec': {
+        const parent = env.params[0];
+        if (env.ownedP0 && parent?.kind === 'key' && intermediateRecord(env.fn, n, index)) {
+          const fields = this.#recordValues(env, parent.key, n);
+          if (fields !== undefined) {
+            this.#defAlias(key, parent.key, t);
+            this.#storeRecordFields(parent.key, fields);
+            this.#use({ kind: 'key', key: parent.key, type: t });
+            return;
+          }
+        }
         this.#def(key, t);
         if (deadLiteral(env.fn, index)) return;
         let off = this.#slot(key);

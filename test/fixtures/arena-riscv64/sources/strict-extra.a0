@@ -1,0 +1,57 @@
+profile strict
+fn ts -> u32
+ret 7
+end
+fn trap -> u32
+r call ts
+ret r
+end
+fn remzero u32 u32 -> u32
+r rem p0 p1
+ret r
+end
+fn both u32 u32 -> u32
+a arr 13 17
+x get a p0
+y div p1 0
+z add x y
+ret z
+end
+fn update u32 -> u32
+a arr 13 17
+b set a p0 99
+r get b 0
+ret r
+end
+fn stp u32 u32 -> u32
+den sub p1 2
+r div p0 den
+ret r
+end
+fn middle u32 -> u32
+iteration fold stp 4 p0
+ret iteration
+end
+fn top u32 -> u32
+r call middle p0
+ret r
+end
+fn harmless u32 u32 -> u32
+ret p0
+end
+fn after u32 -> u32
+finished fold harmless 2 p0
+r div finished 0
+ret r
+end
+fn pred_false u32 u32 -> bool
+ret false
+end
+fn unsafe_body u32 u32 -> u32
+r div p0 0
+ret r
+end
+fn skip u32 -> u32
+r loop pred_false unsafe_body 5 p0
+ret r
+end

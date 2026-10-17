@@ -1,0 +1,51 @@
+{
+  "recordedAt": "2026-10-16T18:52:39.456Z",
+  "head": "e10ffb45cadc2206adc051a6fb43593ec2459c05",
+  "tree": "82d7a50ff34b733cecb4df14bc25152e39842daf",
+  "base": "60452359f2f9faeb91a790445fb656f1c01f148b",
+  "kind": "local light gate, not the full promotion gate",
+  "result": "fail",
+  "steps": {
+    "lint": {
+      "exit": 0
+    },
+    "typecheck": {
+      "exit": 0
+    },
+    "build": {
+      "exit": 0
+    },
+    "test": {
+      "exit": 1,
+      "seconds": 1778.4,
+      "tests": 1009,
+      "passed": 985,
+      "failed": 5,
+      "explicitPlatformSkips": 19
+    },
+    "site": {
+      "exit": 0,
+      "seconds": 216.5
+    }
+  },
+  "failures": [
+    {
+      "tests": [
+        "native linker POSIX graph/source origins",
+        "native linked verifier source decisions"
+      ],
+      "classification": "Confirmed native parity regression exposed by the new TypeScript linker. Native directive removal still implemented the obsolete two-pass regex behavior, including retained use directives with trailing comments.",
+      "followup": "results/unification-native-link-header.json"
+    },
+    {
+      "tests": [
+        "Dense chunk corpus at16KB",
+        "Dense chunk corpus at4KB",
+        "Dense chunk corpus one function per chunk"
+      ],
+      "classification": "Stale expected fixture inventory: each completed all151 semantic conversion checks, then asserted150. The newly added grammar-independent IR builder is the additional unit.",
+      "followup": "Expected count updated to151; private inventory audit confirms151 readable units including compiler/ir_builder_arena.a0, with8 explicit preexisting refusals. No chunk correctness assertion, capacity, refusal policy or test is removed."
+    }
+  ],
+  "limits": "The updated whole suite has not yet been rerun. This failed gate cannot justify a push or merge. Hardware/full promotion gates remain outstanding."
+}

@@ -1,0 +1,2346 @@
+use "backend_geometry_arena.a0"
+
+fn ar_num (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 call bxtext_num p0 p2
+ret q0
+end
+
+fn ar_ok (u32,(u32,u32,u32),io) u32 u32x16 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+
+fn ar_type (u32,(u32,u32,u32),io) u32x16 u32 -> ((u32,(u32,u32,u32),io),u32)
+q0 get p1 0
+r call bg_row p0 q0 p2 3
+q1 at r 0
+q2 at r 1
+q3 get q2 0
+q4 rec q1 q3
+ret q4
+end
+
+fn ar_physical u32 -> u32
+q0 le p0 7
+q1 add 10 p0
+q2 eq p0 9
+q3 eq p0 10
+q4 eq p0 11
+q5 eq p0 12
+q6 eq p0 13
+q7 eq p0 14
+q8 eq p0 16
+q9 eq p0 17
+q10 eq p0 19
+q11 eq p0 20
+q12 eq p0 21
+q13 eq p0 22
+q14 eq p0 29
+q15 select q14 8 2
+q16 select q13 18 q15
+q17 select q12 9 q16
+q18 select q11 20 q17
+q19 select q10 19 q18
+q20 select q9 31 q19
+q21 select q8 7 q20
+q22 select q7 30 q21
+q23 select q6 29 q22
+q24 select q5 28 q23
+q25 select q4 7 q24
+q26 select q3 6 q25
+q27 select q2 5 q26
+q28 select q0 q1 q27
+ret q28
+end
+
+fn arlit0 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 120 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 1 v
+ret s
+end
+
+fn ar_reg (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+s fold arlit0 1 p0
+n call ar_physical p2
+s_1 fold ar_num 1 s n
+ret s_1
+end
+
+fn arlit1 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543779849 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 4 v
+ret s
+end
+
+fn arlit2 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 8236 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 2 v
+ret s
+end
+
+fn arlit3 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 1 v
+ret s
+end
+
+fn arlit4 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 2019914505 544681588 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 8 v
+ret s
+end
+
+fn ar_imm (u32,(u32,u32,u32),io) u32 u32 u32 bool -> (u32,(u32,u32,u32),io)
+s fold arlit1 1 p0
+s_1 fold ar_reg 1 s p2
+s_2 fold arlit2 1 s_1
+s_3 fold ar_num 1 s_2 p3
+s_4 fold arlit3 1 s_3
+q0 xor p4 true
+q1 select q0 1 0
+s_5 fold arlit4 q1 s_4
+q2 xor p4 true
+q3 select q2 1 0
+s_6 fold ar_reg q3 s_5 p2
+q4 xor p4 true
+q5 select q4 1 0
+s_7 fold arlit2 q5 s_6
+q6 xor p4 true
+q7 select q6 1 0
+s_8 fold ar_reg q7 s_7 p2
+q8 xor p4 true
+q9 select q8 1 0
+s_9 fold arlit3 q9 s_8
+ret s_9
+end
+
+fn arlit5 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 825456672 8236 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 10 v
+ret s
+end
+
+fn arlit6 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 863510572 2609 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 6 v
+ret s
+end
+
+fn arlit7 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543452169 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 4 v
+ret s
+end
+
+fn arlit8 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543453961 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 4 v
+ret s
+end
+
+fn arlit9 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 674242604 691090296 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 9 v
+ret s
+end
+
+fn ar_mem (u32,(u32,u32,u32),io) u32 bool u32 u32 u32 -> (u32,(u32,u32,u32),io)
+s call ar_imm p0 0 17 p5 true
+s_1 fold arlit5 1 s
+s_2 fold ar_reg 1 s_1 p4
+s_3 fold arlit6 1 s_2
+q0 select p2 1 0
+s_4 fold arlit7 q0 s_3
+q1 xor p2 true
+q2 select q1 1 0
+s_5 fold arlit8 q2 s_4
+s_6 fold ar_reg 1 s_5 p3
+s_7 fold arlit9 1 s_6
+ret s_7
+end
+
+fn arlit10 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543779849 539768696 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 8 v
+ret s
+end
+
+fn arlit11 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1768687882 825456672 808722476 822752825 1818364218 2015393140 2015374391 539767091 151676466 543323507 539783283 539783283 170996600 543453961 1869768058 674242604 170487923 1651864329 741832736 741832736 825456672 543820042 839541297 1970473274 1886593122 1886593068 930619436 1986857226 942831648 1886593068 10 0
+s call bxtext_packed p0 121 v
+ret s
+end
+
+fn ar_alloc (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 add p2 15
+rounded and q0 4294967280
+s fold arlit10 1 p0
+s_1 fold ar_num 1 s rounded
+s_2 fold arlit11 1 s_1
+ret s_2
+end
+
+fn arlit12 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 539768184 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 8 v
+ret s
+end
+
+fn arlit13 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 825456672 947396652 863510572 2609 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 18 v
+ret s
+end
+
+fn arlit14 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1969384457 741701664 2015899680 170471731 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 16 v
+ret s
+end
+
+fn arlit15 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544697353 539768184 863512624 665905 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 15 v
+ret s
+end
+
+fn arlit16 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684955401 897065065 897065004 170991660 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 16 v
+ret s
+end
+
+fn arlit17 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 2019914505 544681588 539768184 669048 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 15 v
+ret s
+end
+
+fn arlit18 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 539768696 669048 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 11 v
+ret s
+end
+
+fn arlit19 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 930619511 897065004 913842220 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn arlit20 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1651864329 930619511 897065004 913842220 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn arlit21 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1819634953 930619511 897065004 913842220 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn arlit22 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684955401 741832736 741701664 171341856 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 16 v
+ret s
+end
+
+fn arlit23 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544370441 539768696 539768184 669304 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 15 v
+ret s
+end
+
+fn arlit24 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1919907849 741832736 741701664 171341856 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 16 v
+ret s
+end
+
+fn arlit25 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1819046665 930619511 897065004 913842220 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn arlit26 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1819439881 930619511 897065004 913842220 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn arlit27 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1986618377 2015393653 2015374391 2015374389 2614 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 18 v
+ret s
+end
+
+fn arlit28 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1835364873 2015393653 2015374391 2015374389 2614 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 18 v
+ret s
+end
+
+fn arlit29 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1902473993 930619514 930619436 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 13 v
+ret s
+end
+
+fn arlit30 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1701737225 930619514 930619436 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 13 v
+ret s
+end
+
+fn arlit31 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1953264393 930619509 897065004 913842220 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn arlit32 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1953264393 930619509 913842220 897065004 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn arlit33 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1919907849 930619497 930619436 170991660 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 16 v
+ret s
+end
+
+fn arlit34 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1902469641 897065082 1714495532 1986857226 741832736 171341856 840985097 976292454 544632073 539768696 171455096 670258 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 47 v
+ret s
+end
+
+fn arlit35 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1818701321 543973999 6238305 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 11 v
+ret s
+end
+
+fn arlit36 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1882065162 1768710450 840986215 1597006090 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 16 v
+ret s
+end
+
+fn arlit37 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1627982394 543777892 539783283 539783283 171193901 543453961 539779442 1932015157 151660912 2015388787 874523704 1886595128 1929972265 964173924 808722476 695235368 1685260554 942766112 842211372 695235368 1685260554 959543328 875700268 695235368 1685260554 808613920 909189164 695235368 1684080906 2015390052 1931488312 908078192
+s call bxtext_packed p0 128 v
+v_1 arr 2612 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s_1 call bxtext_packed s 2 v_1
+ret s_1
+end
+
+fn arlit38 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 539769208 684147 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 11 v
+ret s
+end
+
+fn arlit39 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 1886593129 947396652 908927020 1812531764 846733412 824192048 1886595126 1812531753 829956196 840969273 1886595124 1812531753 829956196 857746488 1886595122 1812531753 964173924 808722476 695235368 1684801802 741898272 674772000 170487923 543452169 539779442 1932015157 151660912 1768186977 745567008 745567008 171193888
+s call bxtext_packed p0 128 v
+v_1 arr 1952805385 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s_1 call bxtext_packed s 5 v_1
+ret s_1
+end
+
+fn arlit40 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 2017796131 1769104752 1953391981 1713400929 762080373 1685221239 540033312 875976274 1277185353 540292688 1818321779 1830842977 1936026729 1701736308 772344366 1769238639 1847619183 1668706927 1865287946 1869182064 1869488238 1634493810 772344440 1954047348 10 0 0 0 0 0 0 0
+s call bxtext_packed p0 97 v
+ret s
+end
+
+fn arlit41 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1702047241 1869182051 1848516718 778400879 760565319 1667331187 572664939 1919959084 1768056687 684916 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 39 v
+ret s
+end
+
+fn arlit42 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 4 v
+ret s
+end
+
+fn arlit43 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 829956140 2617 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 6 v
+ret s
+end
+
+fn ar_load (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 get p2 8
+q1 eq p3 1
+q2 select q1 p4 0
+r call bg_word p0 q0 q2
+q3 lt p3 3
+q4 select q3 1 0
+q5 at r 0
+q6 eq p3 1
+q7 at r 1
+q8 mul p4 8
+q9 select q6 q7 q8
+s fold ar_mem q4 q5 true p5 21 q9
+q10 eq p3 3
+q11 eq p3 4
+q12 or q10 q11
+q13 select q12 1 0
+s_1 fold ar_imm q13 s p5 p4 false
+q14 eq p3 6
+q15 select q14 1 0
+s_2 fold arlit42 q15 s_1
+q16 eq p3 6
+q17 select q16 1 0
+s_3 fold ar_reg q17 s_2 p5
+q18 eq p3 6
+q19 select q18 1 0
+s_4 fold arlit43 q19 s_3
+ret s_4
+end
+
+fn arlit99 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1701732873 913842298 1715019820 1634994442 1092643945 1920229168 1683976289 1702524521 956985202 2618 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 38 v
+ret s
+end
+
+fn ar_divcheck (u32,(u32,u32,u32),io) u32 u32x16 u32 -> (u32,(u32,u32,u32),io)
+q0 get p2 14
+q1 ne q0 0
+q2 eq p3 10
+q3 eq p3 11
+q4 or q2 q3
+q5 and q1 q4
+q6 select q5 1 0
+s fold arlit99 q6 p0
+ret s
+end
+
+fn ar_scalar_node (u32,(u32,u32,u32),io) u32 u32 u32x16 u32 -> (u32,(u32,u32,u32),io)
+q0 get p3 3
+q1 add p4 p2
+r call bg_row p0 q0 q1 8
+n at r 1
+q2 at r 0
+q3 get p3 4
+q4 get n 2
+a call bg_row q2 q3 q4 2
+q5 at a 0
+q6 get p3 4
+q7 get n 2
+q8 add q7 1
+b call bg_row q5 q6 q8 2
+q9 at b 0
+q10 get p3 4
+q11 get n 2
+q12 add q11 2
+c call bg_row q9 q10 q12 2
+q13 get n 0
+q14 at c 0
+q15 at a 1
+q16 get q15 0
+q17 at a 1
+q18 get q17 1
+s call ar_load q14 0 p3 q16 q18 9
+q19 at b 1
+q20 get q19 0
+q21 at b 1
+q22 get q21 1
+s_1 call ar_load s 0 p3 q20 q22 10
+q23 at c 1
+q24 get q23 0
+q25 at c 1
+q26 get q25 1
+s_2 call ar_load s_1 0 p3 q24 q26 12
+s_3 call ar_divcheck s_2 0 p3 q13
+q27 eq q13 1
+q28 select q27 1 0
+s_4 fold arlit18 q28 s_3
+q29 eq q13 2
+q30 select q29 1 0
+s_5 fold arlit19 q30 s_4
+q31 eq q13 3
+q32 select q31 1 0
+s_6 fold arlit20 q32 s_5
+q33 eq q13 4
+q34 select q33 1 0
+s_7 fold arlit21 q34 s_6
+q35 eq q13 5
+q36 select q35 1 0
+s_8 fold arlit22 q36 s_7
+q37 eq q13 6
+q38 select q37 1 0
+s_9 fold arlit23 q38 s_8
+q39 eq q13 7
+q40 select q39 1 0
+s_10 fold arlit24 q40 s_9
+q41 eq q13 8
+q42 select q41 1 0
+s_11 fold arlit25 q42 s_10
+q43 eq q13 9
+q44 select q43 1 0
+s_12 fold arlit26 q44 s_11
+q45 eq q13 10
+q46 select q45 1 0
+s_13 fold arlit27 q46 s_12
+q47 eq q13 11
+q48 select q47 1 0
+s_14 fold arlit28 q48 s_13
+q49 eq q13 12
+q50 eq q13 13
+q51 or q49 q50
+q52 select q51 1 0
+s_15 fold arlit24 q52 s_14
+q53 eq q13 12
+q54 select q53 1 0
+s_16 fold arlit29 q54 s_15
+q55 eq q13 13
+q56 select q55 1 0
+s_17 fold arlit30 q56 s_16
+q57 eq q13 14
+q58 eq q13 17
+q59 or q57 q58
+q60 select q59 1 0
+s_18 fold arlit31 q60 s_17
+q61 eq q13 15
+q62 eq q13 16
+q63 or q61 q62
+q64 select q63 1 0
+s_19 fold arlit32 q64 s_18
+q65 eq q13 15
+q66 eq q13 17
+q67 or q65 q66
+q68 select q67 1 0
+s_20 fold arlit33 q68 s_19
+q69 eq q13 18
+q70 select q69 1 0
+s_21 fold arlit34 q70 s_20
+q71 get p3 8
+q72 add p4 p2
+off call bg_word s_21 q71 q72
+q73 at off 0
+q74 at off 1
+s_22 call ar_mem q73 0 false 11 21 q74
+ret s_22
+end
+
+fn ar_size (u32,(u32,u32,u32),io) u32x16 u32 -> ((u32,(u32,u32,u32),io),u32)
+q0 get p1 6
+r call bg_row p0 q0 p2 2
+q1 at r 0
+q2 at r 1
+q3 get q2 0
+q4 rec q1 q3
+ret q4
+end
+
+fn ar_value_valid (u32,(u32,u32,u32),io) u32x16 u32 -> (u32,(u32,u32,u32),io)
+q0 get p1 6
+r call bg_row p0 q0 p2 2
+q1 at r 0
+q2 get p1 14
+q3 ne q2 0
+q4 at r 1
+q5 get q4 1
+q6 ne q5 0
+q7 and q3 q6
+q8 at r 1
+q9 get q8 0
+q10 gt q9 4294967280
+q11 select q10 7 0
+q12 select q7 6 q11
+q13 call bg_fail q1 q12
+ret q13
+end
+
+fn ar_checkparam (u32,(u32,u32,u32),io) u32 u32x16 u32 -> (u32,(u32,u32,u32),io)
+q0 get p2 1
+q1 add p3 p1
+r call bg_word p0 q0 q1
+q2 at r 0
+q3 at r 1
+q4 call ar_value_valid q2 p2 q3
+ret q4
+end
+
+fn ar_checknode (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 get p2 3
+q1 add p3 p1
+r call bg_row p0 q0 q1 8
+q2 at r 0
+q3 at r 1
+q4 get q3 5
+s call ar_value_valid q2 p2 q4
+q5 at r 1
+q6 get q5 0
+q7 lt q6 1
+q8 gt q6 37
+q9 or q7 q8
+q10 select q9 6 0
+s_1 call bg_fail s q10
+q11 get p2 8
+q12 add p3 p1
+q13 add p4 p1
+q14 mul q13 8
+q15 call bg_store s_1 q11 q12 q14
+ret q15
+end
+
+fn ar_checkfn (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+q0 get p2 2
+r call bg_row p0 q0 p1 10
+p at r 1
+q1 get p 9
+q2 and q1 1
+ctx set p2 14 q2
+q3 at r 0
+q4 get p 4
+s call ar_value_valid q3 ctx q4
+q5 get p 9
+q6 gt q5 1
+q7 select q6 6 0
+s_1 call bg_fail s q7
+q8 get p 2
+q9 gt q8 536870910
+q10 get p 6
+q11 get p 2
+q12 sub 536870910 q11
+q13 gt q10 q12
+q14 or q9 q13
+q15 select q14 7 0
+s_2 call bg_fail s_1 q15
+q16 at s_2 0
+q17 eq q16 0
+q18 get p 2
+q19 select q17 q18 0
+q20 get p 3
+s_3 fold ar_checkparam q19 s_2 ctx q20
+q21 at s_3 0
+q22 eq q21 0
+q23 get p 6
+q24 select q22 q23 0
+q25 get p 5
+q26 get p 2
+q27 fold ar_checknode q24 s_3 ctx q25 q26
+ret q27
+end
+
+fn ar_optype (u32,(u32,u32,u32),io) u32x16 u32 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+q0 get p1 3
+q1 eq p2 1
+q2 select q1 p3 0
+a call bg_row p0 q0 q2 8
+q3 at a 0
+q4 get p1 1
+q5 eq p2 2
+q6 add p4 p3
+q7 select q5 q6 0
+b call bg_word q3 q4 q7
+q8 at b 0
+q9 eq p2 1
+q10 at a 1
+q11 get q10 5
+q12 eq p2 2
+q13 at b 1
+q14 eq p2 4
+q15 select q14 1 0
+q16 select q12 q13 q15
+q17 select q9 q11 q16
+q18 rec q8 q17
+ret q18
+end
+
+fn arlit44 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1902469641 930619514 1714561068 154808586 544569196 741356408 2015899680 151660853 2015393651 539766835 913844272 1627982377 543777892 539768184 539768184 1627982388 543777892 539768440 539768440 1627982388 543777892 539768696 539768696 151663661 2053467746 741832736 174207264 670258 0 0 0 0
+s call bxtext_packed p0 111 v
+ret s
+end
+
+fn ar_copy (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+s fold arlit44 1 p0
+ret s
+end
+
+fn arlit45 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543452169 539768184 863512624 665905 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 15 v
+ret s
+end
+
+fn arlit46 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 539768440 171455096 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 12 v
+ret s
+end
+
+fn arlit47 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 539768184 171455096 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 12 v
+ret s
+end
+
+fn ar_param (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 get p2 1
+q1 add p3 p1
+r call bg_word p0 q0 q1
+q2 at r 0
+q3 at r 1
+t call ar_type q2 p2 q3
+q4 at t 0
+q5 at r 1
+z call ar_size q4 p2 q5
+s at z 0
+tag at t 1
+reg add p1 p4
+q6 ge reg 8
+q7 select q6 1 0
+q8 sub reg 8
+q9 mul q8 8
+s_1 fold ar_imm q7 s 17 q9 true
+q10 lt reg 8
+q11 select q10 1 0
+s_2 fold arlit12 q11 s_1
+q12 lt reg 8
+q13 select q12 1 0
+s_3 fold ar_reg q13 s_2 reg
+q14 lt reg 8
+q15 select q14 1 0
+s_4 fold arlit3 q15 s_3
+q16 ge reg 8
+q17 select q16 1 0
+s_5 fold arlit13 q17 s_4
+q18 ge reg 8
+q19 ge tag 3
+q20 and q18 q19
+q21 select q20 1 0
+s_6 fold arlit45 q21 s_5
+q22 ge reg 8
+q23 eq tag 2
+q24 and q22 q23
+q25 select q24 1 0
+s_7 fold arlit14 q25 s_6
+q26 ge reg 8
+q27 eq tag 1
+q28 and q26 q27
+q29 select q28 1 0
+s_8 fold arlit15 q29 s_7
+q30 eq tag 2
+q31 select q30 1 0
+s_9 fold arlit16 q31 s_8
+q32 eq tag 1
+q33 select q32 1 0
+s_10 fold arlit17 q33 s_9
+q34 ge tag 4
+q35 select q34 1 0
+q36 at z 1
+s_11 fold ar_alloc q35 s_10 q36
+q37 ge tag 4
+q38 select q37 1 0
+s_12 fold arlit46 q38 s_11
+q39 ge tag 4
+q40 select q39 1 0
+q41 at z 1
+s_13 fold ar_imm q40 s_12 11 q41 true
+q42 ge tag 4
+q43 select q42 1 0
+s_14 fold ar_copy q43 s_13
+q44 ge tag 4
+q45 select q44 1 0
+s_15 fold arlit47 q45 s_14
+q46 mul p1 8
+s_16 call ar_mem s_15 0 false 9 21 q46
+ret s_16
+end
+
+fn ar_save (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+ty call ar_type p0 p2 p3
+q0 at ty 0
+sz call ar_size q0 p2 p3
+q1 at ty 1
+agg ge q1 4
+q2 select agg 1 0
+q3 at sz 0
+q4 at sz 1
+s fold ar_alloc q2 q3 q4
+q5 select agg 1 0
+s_1 fold arlit46 q5 s
+q6 select agg 1 0
+q7 at sz 1
+s_2 fold ar_imm q6 s_1 11 q7 true
+q8 select agg 1 0
+s_3 fold ar_copy q8 s_2
+q9 select agg 1 0
+s_4 fold arlit47 q9 s_3
+s_5 call ar_mem s_4 0 false 9 21 p4
+ret s_5
+end
+
+fn arlit48 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1902469641 897065082 1714495532 1986857226 741701664 171341856 840985097 976292454 544632073 539768184 171455096 670258 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 47 v
+ret s
+end
+
+fn ar_move (u32,(u32,u32,u32),io) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 get p2 4
+q1 at p3 3
+a call bg_row p0 q0 q1 2
+q2 at a 0
+q3 get p2 4
+q4 at p3 3
+q5 add q4 1
+b call bg_row q2 q3 q5 2
+q6 at b 0
+q7 get p2 4
+q8 at p3 3
+q9 add q8 2
+c call bg_row q6 q7 q9 2
+q10 at c 0
+q11 at a 1
+q12 get q11 0
+q13 at a 1
+q14 get q13 1
+s call ar_load q10 0 p2 q12 q14 9
+q15 at b 1
+q16 get q15 0
+q17 at b 1
+q18 get q17 1
+s_1 call ar_load s 0 p2 q16 q18 10
+q19 at c 1
+q20 get q19 0
+q21 at c 1
+q22 get q21 1
+s_2 call ar_load s_1 0 p2 q20 q22 12
+q23 at p3 1
+q24 eq q23 18
+q25 select q24 1 0
+s_3 fold arlit48 q25 s_2
+q26 at p3 6
+q27 at p3 9
+s_4 call ar_save s_3 0 p2 q26 q27
+ret s_4
+end
+
+fn arlit49 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 741767200 942831648 863510572 2609 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 18 v
+ret s
+end
+
+fn arlit50 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544699145 539768184 913844272 2601 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 14 v
+ret s
+end
+
+fn arlit80 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544699145 539768184 913844272 1929972265 543779954 741356408 741701664 171062048 544699145 741356408 2015900704 665910 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 47 v
+ret s
+end
+
+fn ar_storetoken (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+s fold arlit80 1 p0
+ret s
+end
+
+fn ar_field ((u32,(u32,u32,u32),io),u32) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) bool u32 -> ((u32,(u32,u32,u32),io),u32)
+q0 at p0 0
+q1 get p2 4
+q2 at p3 3
+q3 add q2 p1
+r call bg_row q0 q1 q3 2
+q4 at r 0
+q5 get p2 1
+q6 add p5 p1
+q7 select p4 q6 0
+ft call bg_word q4 q5 q7
+q8 at ft 1
+t select p4 q8 p5
+q9 at ft 0
+ty call ar_type q9 p2 t
+q10 at ty 0
+sz call ar_size q10 p2 t
+q11 at sz 0
+q12 at r 1
+q13 get q12 0
+q14 at r 1
+q15 get q14 1
+s call ar_load q11 0 p2 q13 q15 9
+q16 at p0 1
+s_1 call ar_imm s 0 17 q16 true
+s_2 fold arlit49 1 s_1
+q17 at ty 1
+q18 lt q17 3
+q19 select q18 1 0
+s_3 fold arlit50 q19 s_2
+q20 at ty 1
+q21 ge q20 4
+q22 select q21 1 0
+q23 at sz 1
+s_4 fold ar_imm q22 s_3 11 q23 true
+q24 at ty 1
+q25 ge q24 4
+q26 select q25 1 0
+s_5 fold ar_copy q26 s_4
+q27 at ty 1
+q28 eq q27 3
+q29 select q28 1 0
+s_6 fold ar_storetoken q29 s_5
+q30 at p0 1
+q31 at sz 1
+q32 add q30 q31
+q33 rec s_6 q32
+ret q33
+end
+
+fn ar_construct (u32,(u32,u32,u32),io) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 get p2 0
+q1 at p3 6
+t call bg_row p0 q0 q1 3
+q2 at t 0
+q3 at p3 8
+s call ar_alloc q2 0 q3
+q4 at p3 2
+q5 rec s 0
+q6 at t 1
+q7 get q6 0
+q8 eq q7 5
+q9 at t 1
+q10 get q9 0
+q11 eq q10 5
+q12 at t 1
+q13 get q12 1
+q14 at t 1
+q15 get q14 2
+q16 select q11 q13 q15
+st fold ar_field q4 q5 p2 p3 q8 q16
+q17 at st 0
+q18 at p3 9
+s_1 call ar_mem q17 0 false 12 21 q18
+ret s_1
+end
+
+fn arlit51 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 825456672 1886593068 863510572 1929972273 897065060 674242604 691090296 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 33 v
+ret s
+end
+
+fn ar_arg (u32,(u32,u32,u32),io) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 get p2 4
+q1 at p3 3
+q2 add q1 p1
+a call bg_row p0 q0 q2 2
+q3 eq p5 1
+q4 eq p1 0
+q5 eq p1 1
+q6 at a 1
+q7 get q6 0
+q8 select q5 6 q7
+q9 select q4 1 q8
+q10 at a 1
+q11 get q10 0
+k select q3 q9 q11
+q12 eq p5 1
+q13 eq p1 0
+q14 and q12 q13
+q15 at p3 0
+q16 at a 1
+q17 get q16 1
+v select q14 q15 q17
+reg add p1 p4
+q18 at a 0
+q19 lt reg 8
+q20 select q19 reg 9
+s call ar_load q18 0 p2 k v q20
+q21 ge reg 8
+q22 select q21 1 0
+q23 sub reg 8
+q24 mul q23 8
+s_1 fold ar_imm q22 s 17 q24 true
+q25 ge reg 8
+q26 select q25 1 0
+s_2 fold arlit51 q26 s_1
+ret s_2
+end
+
+fn arlit52 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1818321673 811671660 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 9 v
+ret s
+end
+
+fn arlit53 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 745567008 745567008 825456672 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn ar_invoke (u32,(u32,u32,u32),io) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 get p2 2
+r call bg_row p0 q0 p4 10
+p at r 1
+q1 at r 0
+q2 get p 4
+ty call ar_type q1 p2 q2
+q3 at ty 1
+q4 ge q3 4
+shift select q4 1 0
+q5 get p 2
+count add q5 shift
+q6 gt count 8
+q7 sub count 8
+q8 select q6 q7 0
+q9 mul q8 8
+q10 add q9 15
+bytes and q10 4294967280
+q11 ne bytes 0
+q12 select q11 1 0
+q13 at ty 0
+s fold ar_alloc q12 q13 bytes
+q14 ne shift 0
+q15 select q14 1 0
+q16 at p3 9
+s_1 fold ar_mem q15 s true 0 21 q16
+q17 get p 2
+s_2 fold ar_arg q17 s_1 p2 p3 shift p5
+s_3 fold arlit52 1 s_2
+q18 get p2 5
+q19 get p 0
+q20 get p 1
+s_4 call bxtext_span s_3 q18 q19 q20
+s_5 fold arlit3 1 s_4
+q21 ne bytes 0
+q22 select q21 1 0
+s_6 fold ar_imm q22 s_5 17 bytes true
+q23 ne bytes 0
+q24 select q23 1 0
+s_7 fold arlit53 q24 s_6
+ret s_7
+end
+
+fn ar_call (u32,(u32,u32,u32),io) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 at p3 7
+q1 ge q0 4
+q2 select q1 1 0
+q3 at p3 8
+s fold ar_alloc q2 p0 q3
+q4 at p3 7
+q5 ge q4 4
+q6 select q5 1 0
+q7 at p3 9
+s_1 fold ar_mem q6 s false 12 21 q7
+q8 at p3 4
+s_2 call ar_invoke s_1 0 p2 p3 q8 0
+q9 at p3 7
+q10 le q9 3
+q11 select q10 1 0
+q12 at p3 9
+s_3 fold ar_mem q11 s_2 false 0 21 q12
+ret s_3
+end
+
+fn ar_offset_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 -> ((u32,(u32,u32,u32),io),u32)
+q0 at p0 0
+q1 get p2 1
+q2 add p3 p1
+r call bg_word q0 q1 q2
+q3 at r 0
+q4 at r 1
+z call ar_size q3 p2 q4
+q5 at z 0
+q6 at p0 1
+q7 at z 1
+q8 add q6 q7
+q9 rec q5 q8
+ret q9
+end
+
+fn ar_offset (u32,(u32,u32,u32),io) u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32)
+q0 rec p0 0
+q1 fold ar_offset_step p3 q0 p1 p2
+ret q1
+end
+
+fn arlit100 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1953260041 913842293 930619436 1715019820 1634994442 1092643945 1920229168 1650421857 1684960623 976816755 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 41 v
+ret s
+end
+
+fn ar_boundcheck (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+q0 get p2 14
+q1 ne q0 0
+q2 select q1 1 0
+s fold arlit100 q2 p0
+ret s
+end
+
+fn arlit54 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1835364873 2015393653 2015374390 2015374390 2615 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 18 v
+ret s
+end
+
+fn arlit55 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1819634953 959608864 913842220 930619436 1684080906 846733412 2015374393 2015374389 670002 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 35 v
+ret s
+end
+
+fn arlit56 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 959608864 897065004 846733356 2617 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 18 v
+ret s
+end
+
+fn arlit57 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544697353 539768184 846735408 665913 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 15 v
+ret s
+end
+
+fn arlit58 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 539768184 171520632 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 12 v
+ret s
+end
+
+fn arlit81 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1970760713 741701664 2015899680 170473778 1970760713 808679456 674504748 691614328 1819478282 2015390060 539766835 741356408 171062048 544370441 539768184 539768184 170931064 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 68 v
+ret s
+end
+
+fn ar_access_token_read (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+s fold arlit81 1 p0
+ret s
+end
+
+fn arlit59 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544699145 539768184 846735408 665913 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 15 v
+ret s
+end
+
+fn arlit60 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 539768440 171520632 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 12 v
+ret s
+end
+
+fn ar_access_token_write (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+s fold arlit60 1 p0
+s_1 call ar_storetoken s 0
+ret s_1
+end
+
+fn ar_access (u32,(u32,u32,u32),io) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 get p2 4
+q1 at p3 3
+a call bg_row p0 q0 q1 2
+q2 at a 0
+q3 get p2 4
+q4 at p3 3
+q5 add q4 1
+b call bg_row q2 q3 q5 2
+q6 at b 0
+q7 get p2 4
+q8 at p3 3
+q9 add q8 2
+c call bg_row q6 q7 q9 2
+q10 at c 0
+q11 at a 1
+q12 get q11 0
+q13 at a 1
+q14 get q13 1
+q15 at p3 10
+t call ar_optype q10 p2 q12 q14 q15
+q16 at t 0
+q17 get p2 0
+q18 at t 1
+ty call bg_row q16 q17 q18 3
+q19 at ty 1
+q20 get q19 0
+rec eq q20 5
+q21 at ty 0
+q22 get p2 1
+q23 at ty 1
+q24 get q23 1
+q25 at b 1
+q26 get q25 1
+q27 add q24 q26
+q28 select rec q27 0
+ft call bg_word q21 q22 q28
+q29 at ft 1
+q30 at ty 1
+q31 get q30 2
+elem select rec q29 q31
+q32 at ft 0
+et call ar_type q32 p2 elem
+q33 at et 0
+es call ar_size q33 p2 elem
+q34 at es 0
+q35 at ty 1
+q36 get q35 1
+q37 at b 1
+q38 get q37 1
+q39 select rec q38 0
+off call ar_offset q34 p2 q36 q39
+q40 at p3 1
+q41 eq q40 26
+q42 at p3 1
+q43 eq q42 28
+update or q41 q43
+q44 at off 0
+q45 at a 1
+q46 get q45 0
+q47 at a 1
+q48 get q47 1
+s call ar_load q44 0 p2 q46 q48 9
+q49 at b 1
+q50 get q49 0
+q51 at b 1
+q52 get q51 1
+s_1 call ar_load s 0 p2 q50 q52 10
+q53 xor rec true
+q54 select q53 1 0
+q55 at ty 1
+q56 get q55 1
+s_2 fold ar_imm q54 s_1 11 q56 false
+q57 xor rec true
+q58 select q57 1 0
+s_3 fold ar_boundcheck q58 s_2 p2
+q59 select update 1 0
+q60 at t 1
+q61 at p3 9
+s_4 fold ar_save q59 s_3 p2 q60 q61
+q62 at b 1
+q63 get q62 0
+q64 at b 1
+q65 get q64 1
+s_5 call ar_load s_4 0 p2 q63 q65 10
+q66 xor rec true
+q67 select q66 1 0
+q68 at ty 1
+q69 get q68 1
+s_6 fold ar_imm q67 s_5 11 q69 false
+q70 xor rec true
+q71 select q70 1 0
+s_7 fold arlit54 q71 s_6
+q72 xor rec true
+q73 select q72 1 0
+q74 at es 1
+s_8 fold ar_imm q73 s_7 11 q74 true
+q75 xor rec true
+q76 select q75 1 0
+s_9 fold arlit55 q76 s_8
+q77 select rec 1 0
+q78 at off 1
+s_10 fold ar_imm q77 s_9 13 q78 true
+q79 select rec 1 0
+s_11 fold arlit56 q79 s_10
+q80 xor update true
+q81 at et 1
+q82 lt q81 3
+q83 and q80 q82
+q84 select q83 1 0
+s_12 fold arlit57 q84 s_11
+q85 xor update true
+q86 at et 1
+q87 ge q86 4
+q88 and q85 q87
+q89 select q88 1 0
+s_13 fold arlit58 q89 s_12
+q90 xor update true
+q91 at et 1
+q92 eq q91 3
+q93 and q90 q92
+q94 select q93 1 0
+s_14 fold ar_access_token_read q94 s_13
+q95 xor update true
+q96 select q95 1 0
+q97 at p3 6
+q98 at p3 9
+s_15 fold ar_save q96 s_14 p2 q97 q98
+q99 select update 1 0
+q100 at c 1
+q101 get q100 0
+q102 at c 1
+q103 get q102 1
+s_16 fold ar_load q99 s_15 p2 q101 q103 9
+q104 at et 1
+q105 lt q104 3
+q106 and update q105
+q107 select q106 1 0
+s_17 fold arlit59 q107 s_16
+q108 at et 1
+q109 ge q108 4
+q110 and update q109
+q111 select q110 1 0
+s_18 fold arlit60 q111 s_17
+q112 at et 1
+q113 ge q112 4
+q114 and update q113
+q115 select q114 1 0
+q116 at es 1
+s_19 fold ar_imm q115 s_18 11 q116 true
+q117 at et 1
+q118 ge q117 4
+q119 and update q118
+q120 select q119 1 0
+s_20 fold ar_copy q120 s_19
+q121 at et 1
+q122 eq q121 3
+q123 and update q122
+q124 select q123 1 0
+s_21 fold ar_access_token_write q124 s_20
+ret s_21
+end
+
+fn arlit61 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 846733431 2015374393 2015374389 1929972278 544568428 741356408 959608864 897065004 1870137610 2015390066 539766835 741356408 667936 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 55 v
+ret s
+end
+
+fn arlit62 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1651864329 846733431 2015374393 2015374389 1929972278 544568428 741356408 741701664 171341856 1919907849 863510633 2015374384 539766835 2609 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 54 v
+ret s
+end
+
+fn arlit63 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1819046665 897065065 897065004 842211372 1920141578 2015390060 2015374389 857746485 1929972274 543779948 539768440 539768440 151663155 1768714867 741767200 741767200 171062048 1819634953 959608864 897065004 913842220 1920141578 2015390060 539766835 741945976 171062048 1902473993 863510650 2015374384 151662643 1954047347 2015393582
+s call bxtext_packed p0 128 v
+v_1 arr 539769138 171520632 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s_1 call bxtext_packed s 8 v_1
+ret s_1
+end
+
+fn arlit64 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1986618377 2015393653 539769138 539768184 669304 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 19 v
+ret s
+end
+
+fn arlit65 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1835364873 2015393653 539769138 539768184 669304 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 19 v
+ret s
+end
+
+fn arlit66 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1701737225 863510650 2015374384 1644759606 544892270 741356408 174469408 543779849 741945976 822751264 2618 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 42 v
+ret s
+end
+
+fn arlit67 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1953264393 863510645 2015374384 2015374390 1812531767 846733417 807414841 1700923658 2015394417 539766835 151676465 1768713331 741767200 741767200 151663136 543450209 539768440 539768184 151664248 2015393644 539769138 913844272 976292393 10 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 93 v
+ret s
+end
+
+fn arlit68 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544699145 741945976 2015899680 170473522 544699145 741356408 2015900704 170473522 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 32 v
+ret s
+end
+
+fn ar_checked (u32,(u32,u32,u32),io) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 get p2 4
+q1 at p3 3
+a call bg_row p0 q0 q1 2
+q2 at a 0
+q3 get p2 4
+q4 at p3 3
+q5 add q4 1
+b call bg_row q2 q3 q5 2
+q6 at b 0
+q7 at a 1
+q8 get q7 0
+q9 at a 1
+q10 get q9 1
+s call ar_load q6 0 p2 q8 q10 9
+q11 at b 1
+q12 get q11 0
+q13 at b 1
+q14 get q13 1
+s_1 call ar_load s 0 p2 q12 q14 10
+op at p3 1
+q15 eq op 32
+q16 select q15 1 0
+s_2 fold arlit61 q16 s_1
+q17 eq op 33
+q18 select q17 1 0
+s_3 fold arlit62 q18 s_2
+q19 eq op 34
+q20 select q19 1 0
+s_4 fold arlit63 q20 s_3
+q21 eq op 35
+q22 select q21 1 0
+s_5 fold arlit64 q22 s_4
+q23 eq op 36
+q24 select q23 1 0
+s_6 fold arlit65 q24 s_5
+q25 eq op 35
+q26 eq op 36
+q27 or q25 q26
+q28 select q27 1 0
+s_7 fold arlit66 q28 s_6
+q29 at a 1
+q30 get q29 0
+q31 at a 1
+q32 get q31 1
+q33 at p3 10
+at call ar_optype s_7 p2 q30 q32 q33
+q34 at at 0
+q35 get p2 0
+q36 at at 1
+ty call bg_row q34 q35 q36 3
+q37 eq op 37
+q38 select q37 1 0
+q39 at ty 0
+q40 at ty 1
+q41 get q40 1
+s_8 fold ar_imm q38 q39 11 q41 false
+q42 eq op 37
+q43 select q42 1 0
+s_9 fold arlit67 q43 s_8
+s_10 call ar_alloc s_9 0 8
+s_11 fold arlit68 1 s_10
+q44 at p3 9
+s_12 call ar_mem s_11 0 false 12 21 q44
+ret s_12
+end
+
+fn arlit104 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543255561 539766900 1717514305 1812531824 812916836 674242604 170471540 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 28 v
+ret s
+end
+
+fn arlit105 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543453961 1869768058 825040940 812918838 2601 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 18 v
+ret s
+end
+
+fn arlit106 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543255561 539767156 1918979118 1769107295 1634625895 1869504364 6251876 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 27 v
+ret s
+end
+
+fn arlit107 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1685260554 741438496 909192480 691041320 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn ar_mark (u32,(u32,u32,u32),io) u32 u32x16 u32 bool -> (u32,(u32,u32,u32),io)
+s fold arlit104 1 p0
+q0 select p4 1 0
+s_1 fold arlit105 q0 s
+q1 xor p4 true
+q2 select q1 1 0
+s_2 fold arlit106 q2 s_1
+q3 xor p4 true
+q4 select q3 1 0
+s_3 fold ar_num q4 s_2 p3
+q5 xor p4 true
+q6 select q5 1 0
+s_4 fold arlit107 q6 s_3
+ret s_4
+end
+
+fn arlit69 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1601331532 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 4 v
+ret s
+end
+
+fn arlit70 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1936028767 151665268 1970564194 959543328 846733356 824192048 1778977382 1918979104 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 33 v
+ret s
+end
+
+fn arlit71 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684956511 171585802 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 8 v
+ret s
+end
+
+fn arlit108 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543255561 539766900 1717514305 1812531824 812916836 674242604 170471540 544699145 741945720 674770208 170471540 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 44 v
+ret s
+end
+
+fn ar_trip (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+s fold arlit108 1 p0
+ret s
+end
+
+fn arlit72 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1701732873 811671674 1714495532 543820042 1601331532 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 20 v
+ret s
+end
+
+fn arlit73 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 2015393641 539769137 741945720 151662880 1632378986 24434 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 26 v
+ret s
+end
+
+fn arlit74 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1936028767 1632373364 24434 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 10 v
+ret s
+end
+
+fn arlit75 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684956511 2618 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 6 v
+ret s
+end
+
+fn ar_fold (u32,(u32,u32,u32),io) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 get p2 4
+q1 at p3 3
+a call bg_row p0 q0 q1 2
+q2 at a 0
+q3 get p2 4
+q4 at p3 3
+q5 add q4 1
+b call bg_row q2 q3 q5 2
+q6 at b 0
+q7 at b 1
+q8 get q7 0
+q9 at b 1
+q10 get q9 1
+s call ar_load q6 0 p2 q8 q10 9
+q11 at p3 6
+q12 at p3 9
+s_1 call ar_save s 0 p2 q11 q12
+q13 at a 1
+q14 get q13 0
+q15 at a 1
+q16 get q15 1
+s_2 call ar_load s_1 0 p2 q14 q16 20
+s_3 call ar_imm s_2 0 19 0 false
+q17 get p2 14
+q18 ne q17 0
+q19 select q18 1 0
+q20 at p3 0
+s_4 fold ar_mark q19 s_3 p2 q20 false
+s_5 fold arlit69 1 s_4
+q21 at p3 0
+s_6 fold ar_num 1 s_5 q21
+s_7 fold arlit70 1 s_6
+q22 at p3 0
+s_8 fold ar_num 1 s_7 q22
+s_9 fold arlit71 1 s_8
+q23 get p2 14
+q24 ne q23 0
+q25 select q24 1 0
+s_10 fold ar_trip q25 s_9 p2
+q26 at p3 1
+q27 eq q26 21
+q28 select q27 1 0
+q29 at p3 5
+s_11 fold ar_invoke q28 s_10 p2 p3 q29 1
+q30 at p3 1
+q31 eq q30 21
+q32 select q31 1 0
+s_12 fold arlit72 q32 s_11
+q33 at p3 1
+q34 eq q33 21
+q35 select q34 1 0
+q36 at p3 0
+s_13 fold ar_num q35 s_12 q36
+q37 at p3 1
+q38 eq q37 21
+q39 select q38 1 0
+s_14 fold arlit71 q39 s_13
+q40 at p3 4
+s_15 call ar_invoke s_14 0 p2 p3 q40 1
+q41 at p3 7
+q42 le q41 3
+q43 select q42 1 0
+q44 at p3 9
+s_16 fold ar_mem q43 s_15 false 0 21 q44
+s_17 fold arlit73 1 s_16
+q45 at p3 0
+s_18 fold ar_num 1 s_17 q45
+s_19 fold arlit74 1 s_18
+q46 at p3 0
+s_20 fold ar_num 1 s_19 q46
+s_21 fold arlit75 1 s_20
+q47 get p2 14
+q48 ne q47 0
+q49 select q48 1 0
+q50 at p3 0
+s_22 fold ar_mark q49 s_21 p2 q50 true
+ret s_22
+end
+
+fn arlit82 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1818321673 1632378988 1599031666 1684104562 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn arlit83 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544699145 539768184 846735408 151660856 2015393651 874523703 942831656 1929972265 543779954 741356408 741832736 171062048 544699145 741356408 2015901728 170473522 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 64 v
+ret s
+end
+
+fn arlit84 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1818321673 1632378988 1599031666 1953067639 2661 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 18 v
+ret s
+end
+
+fn arlit85 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1818321673 1632378988 1599031666 1937012080 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn ar_io (u32,(u32,u32,u32),io) u32 u32x16 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32,(u32,u32,u32),io)
+q0 get p2 4
+q1 at p3 3
+a call bg_row p0 q0 q1 2
+q2 at a 0
+q3 get p2 4
+q4 at p3 3
+q5 add q4 1
+b call bg_row q2 q3 q5 2
+op at p3 1
+q6 eq op 29
+q7 select q6 1 0
+q8 at b 0
+s fold ar_alloc q7 q8 12
+q9 eq op 29
+q10 select q9 1 0
+q11 at p3 9
+s_1 fold ar_mem q10 s false 12 21 q11
+q12 at a 1
+q13 get q12 0
+q14 at a 1
+q15 get q14 1
+s_2 call ar_load s_1 0 p2 q13 q15 11
+q16 ne op 29
+q17 select q16 1 0
+q18 at b 1
+q19 get q18 0
+q20 at b 1
+q21 get q20 1
+q22 eq op 31
+q23 select q22 10 9
+s_3 fold ar_load q17 s_2 p2 q19 q21 q23
+q24 eq op 29
+q25 select q24 1 0
+s_4 fold arlit82 q25 s_3
+q26 eq op 29
+q27 select q26 1 0
+q28 at p3 9
+s_5 fold ar_mem q27 s_4 true 12 21 q28
+q29 eq op 29
+q30 select q29 1 0
+s_6 fold arlit83 q30 s_5
+q31 eq op 30
+q32 select q31 1 0
+s_7 fold arlit84 q32 s_6
+q33 at b 1
+q34 get q33 0
+q35 at b 1
+q36 get q35 1
+q37 at p3 10
+ty call ar_optype s_7 p2 q34 q36 q37
+q38 at ty 0
+q39 get p2 0
+q40 at ty 1
+t call bg_row q38 q39 q40 3
+q41 eq op 31
+q42 select q41 1 0
+q43 at t 0
+q44 at t 1
+q45 get q44 1
+s_8 fold ar_imm q42 q43 9 q45 false
+q46 eq op 31
+q47 select q46 1 0
+s_9 fold arlit85 q47 s_8
+q48 ne op 29
+q49 select q48 1 0
+q50 at p3 9
+s_10 fold ar_mem q49 s_9 false 11 21 q50
+ret s_10
+end
+
+fn ar_node (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 get p2 3
+q1 add p3 p1
+r call bg_row p0 q0 q1 8
+p at r 1
+q2 at r 0
+q3 get p 5
+t call ar_type q2 p2 q3
+q4 at t 0
+q5 get p 5
+z call ar_size q4 p2 q5
+q6 at z 0
+q7 get p2 8
+q8 add p3 p1
+o call bg_word q6 q7 q8
+q9 add p3 p1
+q10 get p 0
+q11 get p 1
+q12 get p 2
+q13 get p 3
+q14 get p 4
+q15 get p 5
+q16 at t 1
+q17 at z 1
+q18 at o 1
+q19 get p 0
+q20 le q19 18
+q21 at t 1
+q22 lt q21 3
+scalar and q20 q22
+q23 select scalar 1 0
+q24 at o 0
+s fold ar_scalar_node q23 q24 p1 p2 p3
+q25 eq q19 1
+q26 eq q19 18
+q27 or q25 q26
+q28 at t 1
+q29 ge q28 3
+q30 and q27 q29
+q31 select q30 1 0
+q32 rec q9 q10 q11 q12 q13 q14 q15 q16 q17 q18 p4
+s_1 fold ar_move q31 s p2 q32
+q33 eq q19 19
+q34 select q33 1 0
+q35 rec q9 q10 q11 q12 q13 q14 q15 q16 q17 q18 p4
+s_2 fold ar_call q34 s_1 p2 q35
+q36 eq q19 20
+q37 eq q19 21
+q38 or q36 q37
+q39 select q38 1 0
+q40 rec q9 q10 q11 q12 q13 q14 q15 q16 q17 q18 p4
+s_3 fold ar_fold q39 s_2 p2 q40
+q41 ge q19 22
+q42 le q19 24
+q43 and q41 q42
+q44 select q43 1 0
+q45 rec q9 q10 q11 q12 q13 q14 q15 q16 q17 q18 p4
+s_4 fold ar_construct q44 s_3 p2 q45
+q46 ge q19 25
+q47 le q19 28
+q48 and q46 q47
+q49 select q48 1 0
+q50 rec q9 q10 q11 q12 q13 q14 q15 q16 q17 q18 p4
+s_5 fold ar_access q49 s_4 p2 q50
+q51 ge q19 32
+q52 le q19 37
+q53 and q51 q52
+q54 select q53 1 0
+q55 rec q9 q10 q11 q12 q13 q14 q15 q16 q17 q18 p4
+s_6 fold ar_checked q54 s_5 p2 q55
+q56 ge q19 29
+q57 le q19 31
+q58 and q56 q57
+q59 select q58 1 0
+q60 rec q9 q10 q11 q12 q13 q14 q15 q16 q17 q18 p4
+s_7 fold ar_io q59 s_6 p2 q60
+ret s_7
+end
+
+fn arlit76 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 741880184 170942752 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 12 v
+ret s
+end
+
+fn arlit101 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543255561 539766900 1717514305 1812531824 829694052 674242604 170471540 543255561 539767412 1918979118 1769107295 1634625895 1852202860 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 53 v
+ret s
+end
+
+fn arlit102 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1685260554 741504032 1948790816 151660849 2048943219 745501285 1948792864 151660849 2048943219 745501285 674640160 170471796 1684300041 829694057 829693996 875700268 1685260554 741438496 1948790816 665904 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 79 v
+ret s
+end
+
+fn ar_enter (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+s fold arlit101 1 p0
+q0 get p2 15
+s_1 fold ar_num 1 s q0
+s_2 fold arlit102 1 s_1
+ret s_2
+end
+
+fn arlit77 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 539768440 171454840 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 12 v
+ret s
+end
+
+fn arlit78 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 544632073 539766881 171454840 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 12 v
+ret s
+end
+
+fn arlit103 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543255561 539766900 1717514305 1812531824 829694052 674242604 170471540 1684300041 829694057 829693996 841818156 1929972276 829694052 674242604 170471540 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 60 v
+ret s
+end
+
+fn ar_leave (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+s fold arlit103 1 p0
+ret s
+end
+
+fn ar_fn (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+q0 get p2 2
+r call bg_row p0 q0 p1 10
+p at r 1
+q1 at r 0
+q2 get p 4
+t call ar_type q1 p2 q2
+q3 at t 0
+q4 get p 4
+z call ar_size q3 p2 q4
+s at z 0
+q5 get p 9
+q6 and q5 1
+ctx set p2 14 q6
+ctx_1 set ctx 15 p1
+s_1 fold arlit35 1 s
+q7 get ctx_1 5
+q8 get p 0
+q9 get p 1
+s_2 call bxtext_span s_1 q7 q8 q9
+s_3 fold arlit36 1 s_2
+q10 get ctx_1 5
+q11 get p 0
+q12 get p 1
+s_4 call bxtext_span s_3 q10 q11 q12
+s_5 fold arlit37 1 s_4
+q13 at t 1
+q14 ge q13 4
+q15 select q14 1 0
+s_6 fold arlit76 q15 s_5
+q16 get p 2
+q17 get p 6
+q18 add q16 q17
+q19 mul q18 8
+s_7 call ar_alloc s_6 0 q19
+s_8 fold arlit38 1 s_7
+q20 get p 2
+q21 get p 3
+q22 at t 1
+q23 ge q22 4
+q24 select q23 1 0
+s_9 fold ar_param q20 s_8 ctx_1 q21 q24
+q25 get ctx_1 14
+q26 ne q25 0
+q27 select q26 1 0
+s_10 fold ar_enter q27 s_9 ctx_1
+q28 get p 6
+q29 get p 5
+q30 get p 3
+s_11 fold ar_node q28 s_10 ctx_1 q29 q30
+q31 get p 7
+q32 get p 8
+q33 at t 1
+q34 ge q33 4
+q35 select q34 9 0
+s_12 call ar_load s_11 0 ctx_1 q31 q32 q35
+q36 at t 1
+q37 ge q36 4
+q38 select q37 1 0
+s_13 fold arlit77 q38 s_12
+q39 at t 1
+q40 ge q39 4
+q41 select q40 1 0
+q42 at z 1
+s_14 fold ar_imm q41 s_13 11 q42 true
+q43 at t 1
+q44 ge q43 4
+q45 select q44 1 0
+s_15 fold ar_copy q45 s_14
+q46 at t 1
+q47 ge q46 4
+q48 select q47 1 0
+s_16 fold arlit78 q48 s_15
+q49 get ctx_1 14
+q50 ne q49 0
+q51 select q50 1 0
+s_17 fold ar_leave q51 s_16 ctx_1
+s_18 fold arlit39 1 s_17
+ret s_18
+end
+
+fn ar_config_store (u32,(u32,u32,u32),io) u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+r call arena_store q0 p2 0 128 p3
+q1 at r 0
+q2 at p0 1
+q3 at r 1
+q4 rec q1 q2 q3
+ret q4
+end
+
+fn ar_config (u32,(u32,u32,u32),io) u32x16 u32 u32 -> ((u32,(u32,u32,u32),io),u32x16)
+p call arena_zero
+p_1 set p 0 p2
+p_2 set p_1 1 p3
+r call bg_alloc p0 128
+q0 at r 1
+ctx set p1 7 q0
+old at r 0
+q1 at old 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 at r 1
+state fold ar_config_store q3 old q4 p_2
+q5 rec state ctx
+ret q5
+end
+
+fn ar_profile ((u32,(u32,u32,u32),io),u32) u32 u32x16 -> ((u32,(u32,u32,u32),io),u32)
+q0 at p0 0
+q1 get p2 2
+r call bg_row q0 q1 p1 10
+q2 at r 0
+q3 at p0 1
+q4 at r 1
+q5 get q4 9
+q6 and q5 1
+q7 or q3 q6
+q8 rec q2 q7
+ret q8
+end
+
+fn ar_descriptor_store (u32,(u32,u32,u32),io) u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+r call arena_store q0 p2 0 128 p3
+q1 at r 0
+q2 at p0 1
+q3 at r 1
+q4 rec q1 q2 q3
+ret q4
+end
+
+fn ar_descriptor ((u32,(u32,u32,u32),io),u32x16) u32 u32x128 -> ((u32,(u32,u32,u32),io),u32x16)
+s at p0 0
+ctx at p0 1
+q0 get p2 0
+q1 eq q0 0
+q2 get p2 1
+q3 eq q2 1093681731
+q4 and q1 q3
+q5 get p2 2
+q6 eq q5 1
+q7 and q4 q6
+q8 get p2 4
+q9 ne q8 0
+q10 and q7 q9
+q11 get p2 9
+q12 get ctx 11
+q13 eq q11 q12
+q14 and q10 q13
+q15 get p2 10
+q16 get ctx 13
+q17 eq q15 q16
+q18 and q14 q17
+q19 get p2 11
+q20 get ctx 12
+q21 eq q19 q20
+q22 and q18 q21
+q23 get p2 16
+q24 get ctx 0
+q25 eq q23 q24
+q26 and q22 q25
+q27 get p2 19
+q28 get ctx 1
+q29 eq q27 q28
+q30 and q26 q29
+q31 get p2 22
+q32 get ctx 2
+q33 eq q31 q32
+q34 and q30 q33
+q35 get p2 25
+q36 get ctx 3
+q37 eq q35 q36
+q38 and q34 q37
+q39 get p2 28
+q40 get ctx 4
+q41 eq q39 q40
+q42 and q38 q41
+q43 get p2 31
+q44 get ctx 5
+q45 eq q43 q44
+valid and q42 q45
+q46 xor valid true
+q47 select q46 6 0
+s_1 call bg_fail s q47
+r call bg_alloc s_1 128
+q48 at r 1
+ctx_1 set ctx 9 q48
+state at r 0
+q49 at state 0
+q50 eq q49 0
+q51 select q50 1 0
+q52 at r 1
+q fold ar_descriptor_store q51 state q52 p2
+q53 rec q ctx_1
+ret q53
+end
+
+fn arlit79 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 2017796131 1769104752 1953391981 1713400929 762080373 1685221239 540033312 875976274 1278168393 540292688 1869504867 1633905006 1330192492 1701996077 1868767333 1852797037 779382373 1865287946 1869182064 1869488238 174290546 1886334473 1852795252 1919905312 2019650661 1949174026 175405157 0 0 0 0 0
+s call bxtext_packed p0 108 v
+ret s
+end
+
+fn arlit86 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1232232780 1701994319 171598945 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 12 v
+ret s
+end
+
+fn arlit87 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543779849 539768436 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 8 v
+ret s
+end
+
+fn arlit88 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684080906 913580132 846471212 913580076 2003568906 812916853 674242604 170473076 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 32 v
+ret s
+end
+
+fn arlit89 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684080906 913580132 846471212 913580076 2003568906 880025717 674242604 170473076 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 32 v
+ret s
+end
+
+fn arlit90 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1701274121 812916853 880025644 1714495532 1768687882 741635104 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 25 v
+ret s
+end
+
+fn arlit91 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1734478090 1948284261 1948265520 824192052 1627982438 543777892 539767924 539766900 2609 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 34 v
+ret s
+end
+
+fn arlit92 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684080906 913580132 846471212 913580076 2004027658 741635104 1948790816 665910 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 31 v
+ret s
+end
+
+fn arlit93 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1819046665 880025705 812916780 171057196 1684300041 741635104 741504032 171209760 544697353 539766900 880027696 1913195049 822768741 1768687930 741372960 151662624 175400306 1232232780 1920425807 979727465 10 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 81 v
+ret s
+end
+
+fn arlit94 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 543779849 539768180 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 8 v
+ret s
+end
+
+fn arlit95 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1734478090 1948284261 1948265524 824192053 1929972326 543779948 539768180 539767924 1627982386 1948279908 1948265525 1948265522 2613 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 50 v
+ret s
+end
+
+fn arlit96 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684080906 913580132 896802860 913580076 2004027658 741372960 1948790816 665910 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 31 v
+ret s
+end
+
+fn arlit97 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1684300041 880025705 880025644 170991660 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 16 v
+ret s
+end
+
+fn arlit98 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1913207345 1275753573 1330213473 1953853535 151665267 1768186977 745567008 745567008 842214688 1685260554 744583712 674509344 170487923 543453961 539768179 1932015153 151660912 1931502707 941632566 695235368 1986857226 741700384 171013152 544632073 539768435 151662708 1819042147 1918979104 2002734921 1702127986 1700923658 1931508337
+s call bxtext_packed p0 128 v
+v_1 arr 840969270 976292454 544697353 539766900 896739376 1661536809 543976545 1232232780 1920425807 174421097 1684300041 896737385 896737324 171188268 1684300041 913514601 913514540 825040940 1851918602 1931508325 824192054 976357986 543452169 539768435 1886595128 1812531753 896737380 909189164 695235368 1684801802 744583712 674509344
+s_1 call bxtext_packed s 128 v_1
+v_2 arr 170487923 1684300041 1886593129 1886593068 842211372 1701972234 2676 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s_2 call bxtext_packed s_1 26 v_2
+ret s_2
+end
+
+fn ar_runtime (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+q0 get p2 7
+c call bg_row p0 q0 0 128
+s at c 0
+q1 at c 1
+q2 get q1 0
+q3 at c 1
+q4 get q3 1
+nin mul q2 4
+pos add nin 4
+out add pos 4
+q5 mul q4 4
+nout add out q5
+s_1 fold arlit86 1 s
+s_2 fold arlit87 1 s_1
+s_3 fold ar_num 1 s_2 pos
+s_4 fold arlit88 1 s_3
+s_5 fold arlit87 1 s_4
+s_6 fold ar_num 1 s_5 nin
+s_7 fold arlit89 1 s_6
+s_8 fold arlit90 1 s_7
+s_9 fold ar_num 1 s_8 q2
+s_10 fold arlit91 1 s_9
+s_11 fold arlit87 1 s_10
+s_12 fold ar_num 1 s_11 pos
+s_13 fold arlit92 1 s_12
+s_14 fold arlit93 1 s_13
+s_15 fold arlit87 1 s_14
+s_16 fold ar_num 1 s_15 nout
+s_17 fold arlit89 1 s_16
+s_18 fold arlit94 1 s_17
+s_19 fold ar_num 1 s_18 q4
+s_20 fold arlit95 1 s_19
+s_21 fold arlit87 1 s_20
+s_22 fold ar_num 1 s_21 out
+s_23 fold arlit96 1 s_22
+s_24 fold arlit97 1 s_23
+s_25 fold arlit87 1 s_24
+s_26 fold ar_num 1 s_25 nout
+s_27 fold arlit92 1 s_26
+s_28 fold arlit98 1 s_27
+ret s_28
+end
+
+fn arlit113 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1702047241 1869182051 1915625582 1952539759 2657 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 18 v
+ret s
+end
+
+fn ar_original (u32,(u32,u32,u32),io) u32x16 u32 bool -> ((u32,(u32,u32,u32),io),u32,u32)
+q0 get p1 9
+d call bg_read p0 q0 0 128
+q1 at d 0
+q2 at d 1
+q3 get q2 40
+q4 at d 1
+q5 get q4 37
+q6 select p3 q3 q5
+q7 select p3 14 12
+m call bg_row q1 q6 p2 q7
+q8 at m 1
+q9 get q8 3
+q10 at m 1
+q11 get q10 1
+symbol select p3 q9 q11
+q12 at m 0
+q13 at d 1
+q14 get q13 34
+p call bg_row q12 q14 symbol 2
+q15 at p 0
+q16 at p 1
+q17 get q16 0
+q18 at p 1
+q19 get q18 1
+q20 rec q15 q17 q19
+ret q20
+end
+
+fn arlit109 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1918979118 1769107295 1634625895 1852202860 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 17 v
+ret s
+end
+
+fn arlit110 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 772344378 1768125281 2236538 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 11 v
+ret s
+end
+
+fn arlit111 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 2594 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 2 v
+ret s
+end
+
+fn ar_original_fn (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+r call ar_original p0 p2 p1 false
+s at r 0
+s_1 fold arlit109 1 s
+s_2 fold ar_num 1 s_1 p1
+s_3 fold arlit110 1 s_2
+q0 get p2 5
+q1 at r 1
+q2 at r 2
+s_4 call bxtext_span s_3 q0 q1 q2
+s_5 fold arlit111 1 s_4
+ret s_5
+end
+
+fn arlit112 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1918979118 1769107295 1634625895 1869504364 6251876 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call bxtext_packed p0 19 v
+ret s
+end
+
+fn ar_original_node (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+g add p1 1
+r call ar_original p0 p2 g true
+s at r 0
+s_1 fold arlit112 1 s
+s_2 fold ar_num 1 s_1 g
+s_3 fold arlit110 1 s_2
+q0 get p2 5
+q1 at r 1
+q2 at r 2
+s_4 call bxtext_span s_3 q0 q1 q2
+s_5 fold arlit111 1 s_4
+ret s_5
+end
+
+fn arlit114 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1918979118 1852402527 1868717924 1935961717 772344378 1768125281 1646403706 1684960623 772416115 1601331532 1684957547 1986618463 1869768058 772344378 1768125281 1679958138 1702524521 170028914 1633955337 151675252 1818321454 544106345 772344376 1651469415 809574508 175138399 1717514305 151665264 1870095406 1092641906 1919311664 1936026977
+s call bxtext_packed p0 128 v
+v_1 arr 1731070218 1818390380 1596997920 1885434484 1684956511 1596997898 1885434484 1684956511 772344378 1919907684 170926180 1818701321 543973999 1952395329 1601200498 1684957547 1596997898 1885434484 1852402527 151665252 1870095406 807429234 1647184138 151679859 1818321454 544106345 772344376 1651469415 809574508 1634887263 175334765 1717514305
+s_1 call bxtext_packed s 128 v_1
+v_2 arr 1701667186 151665267 1634759470 2123107 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s_2 call bxtext_packed s_1 15 v_2
+ret s_2
+end
+
+fn arlit115 (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+v arr 1949174026 175405157 846212617 1734962273 171057262 1818701321 543973999 1952395329 1601200498 1853189986 1091203940 1920229168 1650421857 1684960623 151665267 1948279148 773860400 1601331532 1684957547 1970233951 175334510 773876233 1601331532 1885434484 1731070218 1818390380 1596997920 1885434484 1986618463 1869768058 1596997898 1885434484
+s call bxtext_packed p0 128 v
+v_1 arr 1986618463 1869768058 1812531770 812916833 1278091308 1801417313 1600417385 2054580580 175075941 1918979118 1634890847 151665264 1948279148 1092627505 1920229168 1801416801 174354025 543453961 539766900 829696048 1812531753 829694049 809574444 175138399 543452169 539767412 829696048 1812531753 863248481 809574444 1634890847 1852137328
+s_1 call bxtext_packed s 128 v_1
+v_2 arr 1929972324 846471268 674242604 170472308 543255561 539767412 1717514305 1701667186 1929972339 846471268 674242604 170471796 1767994377 809574508 1634890847 2672 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s_2 call bxtext_packed s_1 62 v_2
+ret s_2
+end
+
+fn ar_strict_runtime (u32,(u32,u32,u32),io) u32 u32x16 -> (u32,(u32,u32,u32),io)
+q0 get p2 11
+depth add q0 1
+q1 get p2 11
+q2 eq q1 4294967295
+q3 gt depth 178956970
+q4 or q2 q3
+q5 select q4 7 0
+s call bg_fail p0 q5
+bytes mul depth 24
+s_1 fold arlit113 1 s
+q6 get p2 11
+s_2 fold ar_original_fn q6 s_1 p2
+q7 get p2 13
+q8 sub q7 1
+s_3 fold ar_original_node q8 s_2 p2
+s_4 fold arlit114 1 s_3
+s_5 fold ar_num 1 s_4 bytes
+s_6 fold arlit115 1 s_5
+ret s_6
+end
+
+fn arena_riscv64_emit_context io u32x16 u32x128 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 ne p3 0
+q1 gt p4 16777216
+q2 or q0 q1
+q3 gt p5 16777216
+q4 or q2 q3
+q5 ne p6 0
+q6 or q4 q5
+q7 ne p7 0
+invalid or q6 q7
+q8 select invalid 6 0
+q9 rec 0 0 0
+q10 rec q8 q9 p0
+g call bg_analyze_types q10 p1
+ctx at g 1
+q11 at g 0
+config call ar_config q11 ctx p4 p5
+ctx_1 at config 1
+q12 at config 0
+q13 get ctx_1 13
+r call bg_alloc q12 q13
+q14 at r 1
+ctx_2 set ctx_1 8 q14
+q15 get ctx_2 11
+q16 at r 0
+s loop ar_ok ar_checkfn q15 q16 ctx_2
+q17 at s 0
+q18 eq q17 0
+q19 get ctx_2 11
+q20 select q18 q19 0
+q21 rec s 0
+profiles fold ar_profile q20 q21 ctx_2
+q22 at profiles 1
+ctx_3 set ctx_2 10 q22
+q23 at profiles 1
+q24 ne q23 0
+q25 select q24 1 0
+q26 at profiles 0
+q27 rec q26 ctx_3
+attached fold ar_descriptor q25 q27 p2
+ctx_4 at attached 1
+s_1 at attached 0
+s_2 fold arlit79 1 s_1
+q28 at s_2 0
+q29 eq q28 0
+q30 select q29 1 0
+s_3 fold ar_runtime q30 s_2 ctx_4
+q31 at s_3 0
+q32 eq q31 0
+q33 get ctx_4 11
+q34 select q32 q33 0
+s_4 fold ar_fn q34 s_3 ctx_4
+q35 at s_4 0
+q36 eq q35 0
+q37 get ctx_4 10
+q38 ne q37 0
+q39 and q36 q38
+q40 select q39 1 0
+s_5 fold ar_strict_runtime q40 s_4 ctx_4
+s_6 fold arlit41 1 s_5
+q41 call ew_public s_6
+ret q41
+end

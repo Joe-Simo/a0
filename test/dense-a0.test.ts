@@ -66,6 +66,8 @@ import { defaultNames, FunctionParser, formatDense, parseDense } from '../src/de
 import {
   arities,
   type Caps,
+  chunkOf,
+  chunkText,
   denseWithStubs,
   over,
   type Planned,
@@ -754,19 +756,71 @@ test('the dense reader ignores an empty line after exactly 4096 tokens and still
   assert.equal(read('use\nfn f u32 -> u32\nret A\n').err, true);
 });
 
+test('chunks: literal pools follow printed expression-frame depth, including calls and wide records', () => {
+  const read = loadReader();
+  const cases = [
+    { depth: 0, size: 32, count: 15, wide: false, chunks: 1 },
+    { depth: 1, size: 32, count: 15, wide: false, chunks: 2 },
+    { depth: 1, size: 448, count: 1, wide: false, chunks: 1 },
+    { depth: 1, size: 449, count: 1, wide: false, refused: true },
+    { depth: 2, size: 32, count: 3, wide: false, chunks: 2 },
+    { depth: 2, size: 64, count: 1, wide: false, chunks: 1 },
+    { depth: 2, size: 65, count: 1, wide: false, refused: true },
+    { depth: 1, size: 32, count: 15, wide: true, chunks: 2 },
+    { depth: 8, size: 5, count: 1, wide: false, refused: true },
+  ];
+  for (const { depth, size, count, wide, chunks, refused } of cases) {
+    const type = wide ? `(${Array(size).fill('u32').join(',')})` : `u32x${size}`;
+    const functions = [`fn sink ${type} -> u32\nret 0\nend`];
+    for (let i = 0; i < count; i++) {
+      const nodes = [
+        `a ${wide ? 'rec' : 'arr'} ${Array.from({ length: size }, (_, j) => j).join(' ')}`,
+      ];
+      let value = 'a';
+      for (let j = 1; j < depth; j++) {
+        const name = String.fromCharCode(97 + j);
+        nodes.push(`${name} mov ${value}`);
+        value = name;
+      }
+      if (depth > 0) nodes.push(`r call sink ${value}`);
+      functions.push(
+        `fn x${i} -> ${depth === 0 ? type : 'u32'}\n${nodes.join('\n')}\nret ${depth === 0 ? value : 'r'}\nend`,
+      );
+    }
+    const program = parse(functions.join('\n'));
+    const p = planned(program, new Map());
+    const label = `${wide ? 'record' : 'array'} depth${depth} ${count}x${size}`;
+    const expected = Array.from({ length: depth + 1 }, (_, i) => (i === depth ? count * size : 0));
+    assert.deepEqual(chunkOf(p.blocks, p.sigs).cost.arrayRegions, expected, label);
+    const got = readChunked(read, p);
+    if (refused) {
+      assert.deepEqual(got.refused, ['x0'], label);
+      assert.match(got.reasons.get('x0') ?? '', new RegExp(`array region at depth ${depth}`));
+      const bad = planChunks(p).find((c) => c.blocks.some((b) => b.name === 'x0'));
+      assert.ok(bad);
+      assert.equal(read(chunkText(bad)).err, true, `${label}: the real reader enforces this pool`);
+    } else {
+      assert.deepEqual([got.refused, got.retries], [[], 0], label);
+      assert.equal(got.chunks, chunks, label);
+      assert.equal(got.text, formatProgram(program), label);
+    }
+  }
+});
+
+// The grammar-independent IR builder adds one source unit to the existing chunk corpus.
 test('chunks: a program cut at 16 KB reads to the text of the whole program', (t) => {
   const n = chunkInvariance(t, '16 KB', READER_CAPS);
-  assert.equal(n, 112, `${n} programs`);
+  assert.equal(n, 151, `${n} programs`);
 });
 
 test('chunks: a program cut at 4 KB reads to the same text', (t) => {
   const n = chunkInvariance(t, '4 KB', { ...READER_CAPS, bytes: 4096 });
-  assert.equal(n, 112, `${n} programs`);
+  assert.equal(n, 151, `${n} programs`);
 });
 
 test('chunks: a program cut after every function reads to the same text', (t) => {
   const n = chunkInvariance(t, 'one function per chunk', { ...READER_CAPS, bytes: 1 });
-  assert.equal(n, 112, `${n} programs`);
+  assert.equal(n, 151, `${n} programs`);
 });
 
 test('chunks: generated call programs cut at random budgets read to the text of the whole program', (t) => {

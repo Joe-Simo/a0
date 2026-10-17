@@ -1,0 +1,167 @@
+# Ordered-linked Java service. Filesystem and target decisions execute in A0.
+use "link_verify_arena.a0"
+use "backend_context_arena.a0"
+use "emit_java_arena.a0"
+fn jvl_verify (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128) u32 -> (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128)
+q0 at p0 1
+r call arena_link_verify_resume q0 1
+q1 at r 0
+done call arena_link_verify_done q1
+q2 at r 0
+status call arena_link_verify_status q2
+q3 at p0 0
+q4 select done status 0
+e set q3 0 q4
+q5 eq status 0
+q6 select q5 1 3
+q7 select done q6 0
+e_1 set e 1 q7
+q8 at p0 2
+q9 at p0 3
+q10 rec e_1 r q8 q9
+ret q10
+end
+fn jvl_adapt (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128) u32 -> (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128)
+r at p0 1
+q at r 1
+q0 at q 6
+q1 at q 1
+q2 at r 2
+out call arena_backend_context_linked q0 q1 q2
+q3 at p0 0
+q4 at out 0
+e set q3 0 q4
+q5 at out 0
+q6 eq q5 0
+q7 select q6 2 3
+e_1 set e 1 q7
+q8 at r 0
+q9 at q 0
+q10 at q 1
+q11 at q 2
+q12 at q 3
+q13 at q 4
+q14 at q 5
+q15 at out 3
+q16 rec q9 q10 q11 q12 q13 q14 q15
+q17 at r 2
+q18 rec q8 q16 q17
+q19 at out 1
+q20 at out 2
+q21 rec e_1 q18 q19 q20
+ret q21
+end
+fn jvl_emit (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128) u32 -> (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128)
+r at p0 1
+q at r 1
+q0 at q 6
+q1 at p0 2
+q2 at p0 3
+q3 at p0 0
+q4 get q3 9
+q5 at p0 0
+q6 get q5 10
+out call java_emit_options q0 q1 q2 q4 q6
+q7 at p0 0
+q8 at out 0
+e set q7 0 q8
+e_1 set e 1 3
+q9 at out 1
+q10 at q9 0
+e_2 set e_1 16 q10
+q11 at out 1
+q12 at q11 1
+e_3 set e_2 17 q12
+q13 at out 1
+q14 at q13 2
+e_4 set e_3 18 q14
+q15 at r 0
+q16 at q 0
+q17 at q 1
+q18 at q 2
+q19 at q 3
+q20 at q 4
+q21 at q 5
+q22 at out 2
+q23 rec q16 q17 q18 q19 q20 q21 q22
+q24 at r 2
+q25 rec q15 q23 q24
+q26 at p0 2
+q27 at p0 3
+q28 rec e_4 q25 q26 q27
+ret q28
+end
+fn jvl_step (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128) u32 -> (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128)
+q0 at p0 0
+q1 get q0 1
+q2 eq q1 0
+q3 select q2 1 0
+a fold jvl_verify q3 p0
+q4 eq q1 1
+q5 select q4 1 0
+b fold jvl_adapt q5 a
+q6 eq q1 2
+q7 select q6 1 0
+q8 fold jvl_emit q7 b
+ret q8
+end
+fn jvl_more (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128) u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+q3 at p0 0
+q4 get q3 1
+q5 ne q4 3
+q6 and q2 q5
+ret q6
+end
+fn arena_java_link_resume (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128) u32 -> (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128)
+q0 loop jvl_more jvl_step p1 p0
+ret q0
+end
+fn arena_java_link_begin_options io u32 u32 u32 u32 bool u32 bool u32 u32 u32 -> (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128)
+r call arena_link_verify_begin p0 p1 p2 p3 p4 p5 p6 p7 p8
+z call arena_zero
+q0 at r 0
+done call arena_link_verify_done q0
+q1 at r 0
+status call arena_link_verify_status q1
+q2 select done status 0
+e set z 0 q2
+q3 eq status 0
+q4 select q3 1 3
+q5 select done q4 0
+e_1 set e 1 q5
+e_2 set e_1 2 1
+q6 set e_2 9 p9
+e_3 set q6 10 p10
+c arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+q7 rec e_3 r c z
+ret q7
+end
+fn arena_java_link_begin io u32 u32 u32 u32 bool u32 bool u32 -> (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128)
+q0 call arena_java_link_begin_options p0 p1 p2 p3 p4 p5 p6 p7 p8 256 1024
+ret q0
+end
+fn arena_java_link_result (u32x128,(u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x128),u32x16,u32x128) -> (u32,(u32,u32,u32),io)
+e at p0 0
+q0 get e 0
+q1 ne q0 0
+q2 get e 0
+q3 get e 1
+q4 eq q3 3
+q5 select q4 0 7
+status select q1 q2 q5
+q6 eq status 0
+q7 get e 16
+q8 get e 17
+q9 get e 18
+q10 rec q7 q8 q9
+q11 rec 0 0 0
+out select q6 q10 q11
+q12 at p0 1
+q13 at q12 1
+q14 at q13 6
+q15 rec status out q14
+ret q15
+end

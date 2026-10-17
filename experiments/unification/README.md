@@ -2,7 +2,7 @@
 
 These are historical measurement fixtures. The production compiler does not import them. They preserve the rejected candidate as well as the later candidate, so changing the compiler cannot silently change old trial outcomes.
 
-**Guide erratum:** the original Dense primers misdescribe generated IDs and omit the `$ID` escape for operation/function-name collisions. Raw outcomes remain unchanged; the original comparative AI-cost conclusions are withdrawn. A corrected-guidance matched replication is recorded in `results/unification-codex-v2-replication.json`; it uses fresh subjects in all arms and the same frozen second-study task packet, not new held-out tasks. See `results/unification-codex-guide-erratum.json`. Replay reproduces the original adjudications, including this experimental flaw.
+**Guide erratum:** the original Dense primers misdescribe generated IDs and omit the `$ID` escape for operation/function-name collisions. Raw outcomes remain unchanged; the original comparative AI-cost conclusions are withdrawn. A corrected-guidance matched replication is recorded in `results/unification-codex-v2-replication.json`; it uses fresh subjects in all arms and the same frozen second-study task packet, not new held-out tasks. See `results/unification-codex-guide-erratum.json` and the source-unification history record. Replay reproduces the original adjudications, including this experimental flaw.
 
 Run `node experiments/unification/replay.mjs` after installing the repository dependencies. Replay checks the published file hashes, unchanged source replies, both reply tokenizers, all first submissions and repairs, and the independent base/reference/wrong controls. It makes no provider calls and writes no files.
 
@@ -18,3 +18,4 @@ Both studies used byte-identical frozen control runtimes. The archive stores tho
 
 Generated runtime declaration headers have trailing whitespace trimmed; runtime imports are relocated. These export-only changes are covered by published hashes; the original source hashes remain in each relocation record.
 
+The [integrated A0 frontend snapshot](frontend-a0/README.md) adds reproducible native-language grammar/checker/verifier and portable host-schema experiments. It remains research only: recorded compilation-time and memory regressions block the public cutover. See `results/unification-portable-frontend.json`.

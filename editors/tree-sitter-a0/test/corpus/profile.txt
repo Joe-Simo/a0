@@ -1,0 +1,37 @@
+================================================================================
+Strict profile with imports and function
+================================================================================
+
+# before
+profile strict # selected
+use "base.a0"
+fn strict u32 -> u32
+profile mov p0
+strict add profile 1
+ret strict
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (comment)
+  (profile_declaration)
+  (comment)
+  (use_declaration path: (string))
+  (function_definition
+    name: (identifier)
+    parameters: (parameter_types (primitive_type))
+    result: (primitive_type)
+    (instruction id: (identifier) (operation operator: (operator) argument: (parameter)))
+    (instruction id: (identifier) (operation operator: (operator) argument: (identifier) argument: (integer)))
+    (return_statement value: (identifier))))
+
+================================================================================
+Profile-only module
+================================================================================
+
+profile strict
+
+--------------------------------------------------------------------------------
+
+(source_file (profile_declaration))

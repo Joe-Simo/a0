@@ -1,0 +1,120 @@
+# Original-source C# service. Ordered verifier/lowering and emission decisions remain A0.
+# State=(E128, backend service). E0 status,E1 done,E3..5 output V. No implicit publication.
+use "backend_service_arena.a0"
+use "emit_csharp_arena.a0"
+fn acs_service_failure (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))) u32 u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)))
+e at p0 0
+b at p0 1
+s set e 0 p2
+d set s 1 1
+r rec d b
+ret r
+end
+fn acs_service_emit (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))) u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)))
+e at p0 0
+b at p0 1
+v at b 0
+ctx at b 1
+desc at b 2
+q at b 3
+vv at q 0
+m at q 1
+g at q 2
+bb at q 3
+am at q 4
+ae at q 5
+t at q 6
+r call acs_emit t ctx
+code at r 0
+out at r 1
+t1 at r 2
+h at out 0
+len at out 1
+cap at out 2
+e0 set e 0 code
+e1 set e0 1 1
+e3 set e1 3 h
+e4 set e3 4 len
+e5 set e4 5 cap
+q1 rec vv m g bb am ae t1
+b1 rec v ctx desc q1
+result rec e5 b1
+ret result
+end
+fn acs_service_check (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))) -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)))
+e at p0 0
+b at p0 1
+v at b 0
+done call arena_backend_service_done v
+code call arena_backend_service_status v
+ok eq code 0
+go and done ok
+n select go 1 0
+s rec e b
+emitted fold acs_service_emit n s
+bad ne code 0
+fail and done bad
+nf select fail 1 0
+out fold acs_service_failure nf emitted code
+ret out
+end
+fn arena_csharp_source_begin io u32 u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)))
+b call arena_backend_service_begin p0 p1 p2
+e call arena_zero
+s rec e b
+r call acs_service_check s
+ret r
+end
+fn acs_service_resume_do (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))) u32 u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)))
+e at p0 0
+old at p0 1
+b call arena_backend_service_resume old p2
+s rec e b
+r call acs_service_check s
+ret r
+end
+fn arena_csharp_source_resume (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))) u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)))
+e at p0 0
+done get e 1
+pending eq done 0
+n select pending 1 0
+r fold acs_service_resume_do n p0 p1
+ret r
+end
+fn arena_csharp_source_done u32x128 -> bool
+done get p0 1
+r ne done 0
+ret r
+end
+fn arena_csharp_source_status u32x128 -> u32
+done get p0 1
+code get p0 0
+pending eq done 0
+r select pending 7 code
+ret r
+end
+fn arena_csharp_source_output u32x128 -> (u32,u32,u32)
+h get p0 3
+len get p0 4
+cap get p0 5
+r rec h len cap
+ret r
+end
+fn acs_service_publish_do (u32,io) u32 (u32,u32,u32) -> (u32,io)
+t at p0 1
+r call ew_emit t p2
+ret r
+end
+fn arena_csharp_source_publish (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))) -> (u32,io)
+e at p0 0
+b at p0 1
+q at b 3
+t at q 6
+code call arena_csharp_source_status e
+out call arena_csharp_source_output e
+s rec code t
+ok eq code 0
+n select ok 1 0
+r fold acs_service_publish_do n s out
+ret r
+end

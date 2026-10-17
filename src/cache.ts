@@ -8,19 +8,18 @@
  * behind a stale hit. Entries are immutable files; absence or corruption is a miss.
  */
 
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   assemble,
-  COMPILER_VERSION,
   type CompileOptions,
   emitFunction,
+  functionEmissionKey,
+  prepareCompilation,
   type Target,
 } from './backends.js';
 import type { TypedFunc, TypedProgram } from './core.js';
-import { semanticRevision } from './edit.js';
 
 export const DEFAULT_CACHE_DIR = '.a0-cache';
 
@@ -53,24 +52,34 @@ export class DiskCache {
   }
 
   async put(key: string, data: Buffer | string): Promise<void> {
-    await mkdir(join(this.dir, key.slice(0, 2)), { recursive: true });
-    // Write then rename so a concurrent reader never sees a partial entry.
-    const tmp = join(tmpdir(), `a0-cache-${process.pid}-${Math.random().toString(16).slice(2)}`);
-    await writeFile(tmp, data);
-    await rename(tmp, this.#path(key));
+    const parent = join(this.dir, key.slice(0, 2));
+    await mkdir(parent, { recursive: true });
+    // Atomic rename requires both files to be on the same filesystem.
+    const tmp = join(parent, `.a0-cache-${process.pid}-${randomUUID()}`);
+    try {
+      await writeFile(tmp, data, { flag: 'wx' });
+      await rename(tmp, this.#path(key));
+    } finally {
+      await rm(tmp, { force: true });
+    }
   }
 }
 
 /** Descriptor for one function's emitted text on one target. */
 export function emissionKey(target: Target, fn: TypedFunc, options: CompileOptions = {}): string {
-  const opt = options.optimize === false ? 'O0' : 'O1';
-  return cacheKey(`emit|${COMPILER_VERSION}|${target}|${opt}|${semanticRevision(fn)}`);
+  return cacheKey(`emit|${functionEmissionKey(target, fn, options)}`);
 }
 
 export interface CachedCompile {
   readonly text: string;
   readonly hits: number;
   readonly misses: number;
+}
+export interface ArtifactCache {
+  readonly hits: number;
+  readonly misses: number;
+  get(key: string): Promise<Buffer | undefined>;
+  put(key: string, data: Buffer | string): Promise<void>;
 }
 
 /**
@@ -80,16 +89,17 @@ export interface CachedCompile {
 export async function compileCached(
   program: TypedProgram,
   target: Target,
-  cache: DiskCache,
+  cache: ArtifactCache,
   options: CompileOptions = {},
 ): Promise<CachedCompile> {
+  const prepared = prepareCompilation(program, target);
   const before = { hits: cache.hits, misses: cache.misses };
   // All lookups are issued at once: the warm path is dominated by per-file read latency
   // (measured ~90 % of a 14-function compile when awaited in series), not by bytes.
-  const keys = program.functions.map((fn) => emissionKey(target, fn, options));
+  const keys = prepared.functions.map((fn) => emissionKey(target, fn, options));
   const hits = await Promise.all(keys.map((key) => cache.get(key)));
   const bodies = await Promise.all(
-    program.functions.map(async (fn, i) => {
+    prepared.functions.map(async (fn, i) => {
       const hit = hits[i];
       if (hit !== undefined) return hit.toString('utf8');
       const body = emitFunction(target, fn, options);
@@ -98,7 +108,7 @@ export async function compileCached(
     }),
   );
   return {
-    text: assemble(target, bodies, program, options),
+    text: assemble(target, bodies, prepared, options),
     hits: cache.hits - before.hits,
     misses: cache.misses - before.misses,
   };

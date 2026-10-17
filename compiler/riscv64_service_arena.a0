@@ -1,0 +1,194 @@
+use "emit_riscv64_arena.a0"
+use "verify_arena.a0"
+use "backend_context_arena.a0"
+fn rv64_qresume (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+q0 call arena_verify_resume p0 p2
+ret q0
+end
+fn arena_riscv64_source_begin io u32 u32 u32 u32 u32 u32 u32 -> ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32)
+q call arena_parse_verify_begin p0 p1 p2
+z call arena_zero
+ctx arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+q0 at q 0
+q1 get q0 0
+failed ne q1 0
+q2 at q 1
+q3 get q2 54
+imports ne q3 0
+terminal or failed imports
+q4 at q 0
+q5 call arena_verify_status q4
+q6 at q 0
+q7 call arena_verify_status q6
+q8 select imports 7 q7
+code select failed q5 q8
+q9 rec 0 0 0
+q10 select terminal 2 0
+q11 rec q ctx z q9 p3 p4 p5 p6 p7 q10 code z 0
+ret q11
+end
+fn rv64_controller_emit ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32) u32 -> ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32)
+q at p0 0
+q0 at q 6
+q1 at p0 1
+q2 at p0 2
+q3 at p0 4
+q4 at p0 5
+q5 at p0 6
+q6 at p0 7
+q7 at p0 8
+r call arena_riscv64_emit_context q0 q1 q2 q3 q4 q5 q6 q7
+q8 at q 0
+q9 at q 1
+q10 at q 2
+q11 at q 3
+q12 at q 4
+q13 at q 5
+q14 at r 2
+q15 rec q8 q9 q10 q11 q12 q13 q14
+q16 at p0 1
+q17 at p0 2
+q18 at r 1
+q19 at p0 4
+q20 at p0 5
+q21 at p0 6
+q22 at p0 7
+q23 at p0 8
+q24 at r 0
+q25 at p0 11
+q26 at p0 12
+q27 rec q15 q16 q17 q18 q19 q20 q21 q22 q23 2 q24 q25 q26
+ret q27
+end
+fn rv64_controller_lower_unit ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32) u32 -> ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32)
+q at p0 0
+q0 at q 6
+q1 at q 1
+c call arena_backend_context q0 q1
+q2 at q 0
+q3 at q 1
+q4 at q 2
+q5 at q 3
+q6 at q 4
+q7 at q 5
+q8 at c 3
+q9 rec q2 q3 q4 q5 q6 q7 q8
+q10 at c 1
+q11 at c 2
+q12 at p0 3
+q13 at p0 4
+q14 at p0 5
+q15 at p0 6
+q16 at p0 7
+q17 at p0 8
+q18 at c 0
+q19 at p0 11
+q20 at p0 12
+q21 at c 0
+q22 eq q21 0
+q23 select q22 1 0
+q24 rec q9 q10 q11 q12 q13 q14 q15 q16 q17 2 q18 q19 q20
+q25 fold rv64_controller_emit q23 q24
+ret q25
+end
+fn rv64_controller_lower_link ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32) u32 -> ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32)
+q at p0 0
+q0 at q 6
+q1 at q 1
+q2 at p0 11
+c call arena_backend_context_linked q0 q1 q2
+q3 at q 0
+q4 at q 1
+q5 at q 2
+q6 at q 3
+q7 at q 4
+q8 at q 5
+q9 at c 3
+q10 rec q3 q4 q5 q6 q7 q8 q9
+q11 at c 1
+q12 at c 2
+q13 at p0 3
+q14 at p0 4
+q15 at p0 5
+q16 at p0 6
+q17 at p0 7
+q18 at p0 8
+q19 at c 0
+q20 at p0 11
+q21 at p0 12
+q22 at c 0
+q23 eq q22 0
+q24 select q23 1 0
+q25 rec q10 q11 q12 q13 q14 q15 q16 q17 q18 2 q19 q20 q21
+q26 fold rv64_controller_emit q24 q25
+ret q26
+end
+fn rv64_controller_lower ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32) u32 -> ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32)
+q0 at p0 12
+q1 eq q0 0
+q2 select q1 1 0
+unit fold rv64_controller_lower_unit q2 p0
+q3 at p0 12
+q4 ne q3 0
+q5 select q4 1 0
+q6 fold rv64_controller_lower_link q5 unit
+ret q6
+end
+fn rv64_controller_fail ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32) u32 u32 -> ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 2
+q3 at p0 3
+q4 at p0 4
+q5 at p0 5
+q6 at p0 6
+q7 at p0 7
+q8 at p0 8
+q9 at p0 11
+q10 at p0 12
+q11 rec q0 q1 q2 q3 q4 q5 q6 q7 q8 2 p2 q9 q10
+ret q11
+end
+fn rv64_controller_pump ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32) u32 u32 -> ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32)
+q at p0 0
+q0 at q 0
+before call arena_verify_status q0
+q1 at q 0
+q2 get q1 0
+q3 eq q2 0
+q4 at q 0
+q5 get q4 1
+q6 ne q5 11
+pending and q3 q6
+q7 select pending 1 0
+q_1 fold rv64_qresume q7 q p2
+q8 at q_1 0
+status call arena_verify_status q8
+q9 at p0 1
+q10 at p0 2
+q11 at p0 3
+q12 at p0 4
+q13 at p0 5
+q14 at p0 6
+q15 at p0 7
+q16 at p0 8
+q17 at p0 11
+q18 at p0 12
+q19 eq status 0
+q20 select q19 1 0
+q21 rec q_1 q9 q10 q11 q12 q13 q14 q15 q16 0 status q17 q18
+emitted fold rv64_controller_lower q20 q21
+q22 at q_1 0
+q23 get q22 0
+failed ne q23 0
+q24 select failed 1 0
+q25 fold rv64_controller_fail q24 emitted status
+ret q25
+end
+fn arena_riscv64_source_pump ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32) u32 -> ((u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),u32x16,u32x128,(u32,u32,u32),u32,u32,u32,u32,u32,u32,u32,u32x128,u32)
+q0 at p0 9
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold rv64_controller_pump q2 p0 p1
+ret q3
+end

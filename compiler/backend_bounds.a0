@@ -1,0 +1,252 @@
+# Shared bounded depth9 range/nonzero analysis, captured from the A0 SV stage.
+# bc_ names avoid duplicate definitions when C and SV are linked together.
+use "sv_geometry.a0"
+
+fn bc_bound_operand (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),u32,u32,io)
+x1 eq p5 1
+x2 select x1 p6 0
+x3 mul x2 20
+x4 add x3 p7
+x5 get p2 15
+r6 call sv_get p0 x5 x4
+x7 at r6 0
+x8 at r6 1
+x9 at r6 2
+x10 at r6 3
+x11 rec x7 x8 x10
+x12 add x3 10
+x13 add x12 p7
+x14 get p2 15
+r15 call sv_get x11 x14 x13
+x16 at r15 0
+x17 at r15 1
+x18 at r15 2
+x19 at r15 3
+x20 rec x16 x17 x19
+x21 eq p5 3
+x22 select x21 p6 4294967295
+x23 select x1 x9 x22
+x24 ne p6 0
+x25 select x24 1 0
+x26 select x21 x25 0
+x27 select x1 x18 x26
+x28 at x20 0
+x29 at x20 1
+x30 at x20 2
+x31 rec x28 x29 x23 x27 x30
+ret x31
+end
+
+
+fn bc_bound_node (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p4 8
+x2 add x1 0
+x3 get p2 3
+r4 call sv_get p0 x3 x2
+x5 at r4 0
+x6 at r4 1
+x7 at r4 2
+x8 at r4 3
+x9 rec x5 x6 x8
+x10 sub p5 1
+x11 mul p4 8
+x12 add x11 2
+x13 get p2 3
+r14 call sv_get x9 x13 x12
+x15 at r14 0
+x16 at r14 1
+x17 at r14 2
+x18 at r14 3
+x19 rec x15 x16 x18
+x20 add x17 0
+x21 mul x20 2
+x22 get p2 4
+r23 call sv_get x19 x22 x21
+x24 at r23 0
+x25 at r23 1
+x26 at r23 2
+x27 at r23 3
+x28 rec x24 x25 x27
+x29 add x21 1
+x30 get p2 4
+r31 call sv_get x28 x30 x29
+x32 at r31 0
+x33 at r31 1
+x34 at r31 2
+x35 at r31 3
+x36 rec x32 x33 x35
+x37 call bc_bound_operand x36 0 p2 p3 p4 x26 x34 x10
+x38 at x37 0
+x39 at x37 1
+x40 at x37 2
+x41 at x37 3
+x42 at x37 4
+x43 rec x38 x39 x42
+x44 mul p4 8
+x45 add x44 2
+x46 get p2 3
+r47 call sv_get x43 x46 x45
+x48 at r47 0
+x49 at r47 1
+x50 at r47 2
+x51 at r47 3
+x52 rec x48 x49 x51
+x53 add x50 1
+x54 mul x53 2
+x55 get p2 4
+r56 call sv_get x52 x55 x54
+x57 at r56 0
+x58 at r56 1
+x59 at r56 2
+x60 at r56 3
+x61 rec x57 x58 x60
+x62 add x54 1
+x63 get p2 4
+r64 call sv_get x61 x63 x62
+x65 at r64 0
+x66 at r64 1
+x67 at r64 2
+x68 at r64 3
+x69 rec x65 x66 x68
+x70 call bc_bound_operand x69 0 p2 p3 p4 x59 x67 x10
+x71 at x70 0
+x72 at x70 1
+x73 at x70 2
+x74 at x70 3
+x75 at x70 4
+x76 rec x71 x72 x75
+x77 mul p4 8
+x78 add x77 2
+x79 get p2 3
+r80 call sv_get x76 x79 x78
+x81 at r80 0
+x82 at r80 1
+x83 at r80 2
+x84 at r80 3
+x85 rec x81 x82 x84
+x86 add x83 2
+x87 mul x86 2
+x88 get p2 4
+r89 call sv_get x85 x88 x87
+x90 at r89 0
+x91 at r89 1
+x92 at r89 2
+x93 at r89 3
+x94 rec x90 x91 x93
+x95 add x87 1
+x96 get p2 4
+r97 call sv_get x94 x96 x95
+x98 at r97 0
+x99 at r97 1
+x100 at r97 2
+x101 at r97 3
+x102 rec x98 x99 x101
+x103 call bc_bound_operand x102 0 p2 p3 p4 x92 x100 x10
+x104 at x103 0
+x105 at x103 1
+x106 at x103 2
+x107 at x103 3
+x108 at x103 4
+x109 rec x104 x105 x108
+x110 lt x40 x73
+x111 select x110 x40 x73
+x112 gt x40 x73
+x113 select x112 x40 x73
+x114 gt x73 x106
+x115 select x114 x73 x106
+x116 eq x73 0
+x117 sub x73 1
+x118 select x116 0 x117
+x119 lt x40 x118
+x120 select x119 x40 x118
+x121 eq x59 3
+x122 ne x67 0
+x123 and x121 x122
+x124 div x40 x67
+x125 select x123 x124 x40
+x126 eq x59 3
+x127 and x67 31
+x128 shr x40 x127
+x129 select x126 x128 x40
+x130 add x40 x73
+x131 ge x130 x40
+x132 select x131 x130 4294967295
+x133 mul x40 x73
+x134 div 4294967295 x73
+x135 eq x73 0
+x136 le x40 x134
+x137 or x135 x136
+x138 select x137 x133 4294967295
+x139 shr x113 1
+x140 or x113 x139
+x141 shr x140 2
+x142 or x140 x141
+x143 shr x142 4
+x144 or x142 x143
+x145 shr x144 8
+x146 or x144 x145
+x147 shr x146 16
+x148 or x146 x147
+x149 eq x7 1
+x150 select x149 x40 4294967295
+x151 eq x7 5
+x152 select x151 x111 x150
+x153 eq x7 11
+x154 select x153 x120 x152
+x155 eq x7 10
+x156 select x155 x125 x154
+x157 eq x7 9
+x158 select x157 x129 x156
+x159 eq x7 18
+x160 select x159 x115 x158
+x161 eq x7 2
+x162 select x161 x132 x160
+x163 eq x7 4
+x164 select x163 x138 x162
+x165 eq x7 6
+x166 select x165 x148 x164
+x167 eq x7 7
+x168 select x167 x148 x166
+x169 or x41 x74
+x170 and x74 x107
+x171 select x131 x169 0
+x172 eq x7 1
+x173 select x172 x41 0
+x174 eq x7 6
+x175 select x174 x169 x173
+x176 eq x7 18
+x177 select x176 x170 x175
+x178 eq x7 2
+x179 select x178 x171 x177
+x180 mul p4 20
+x181 add x180 p5
+x182 get p2 15
+x183 call sv_store x109 x182 x181 x168
+x184 add x180 10
+x185 add x184 p5
+x186 get p2 15
+x187 call sv_store x183 x186 x185 x179
+ret x187
+end
+
+
+fn bc_bound_nodes (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 fold bc_bound_node 1 p0 p2 p3 p1 p5
+ret x1
+end
+
+
+fn bc_bound_level (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 get p2 13
+x2 add p1 1
+x3 fold bc_bound_nodes x1 p0 p2 p3 p4 x2
+ret x3
+end
+
+
+fn bc_bound_init (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+x1 mul p1 20
+x2 get p2 15
+x3 call sv_store p0 x2 x1 4294967295
+ret x3
+end

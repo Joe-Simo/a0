@@ -1,0 +1,282 @@
+# Positive integer binary64 formatting for exact inputs below2^56.
+# This bounded interface is sufficient for the first A0218 iteration-product failure.
+# It rounds the exact integer to nearest/ties-even binary64, then emits JS String digits.
+# All decisions use u32 pairs; no host floating point or decimal formatting is used.
+use "arena_vector.a0"
+fn num56_add (u32,u32) (u32,u32) -> (u32,u32)
+q0 at p0 0
+q1 at p1 0
+lo add q0 q1
+q2 at p0 1
+q3 at p1 1
+q4 add q2 q3
+q5 at p0 0
+q6 lt lo q5
+q7 select q6 1 0
+q8 add q4 q7
+q9 rec lo q8
+ret q9
+end
+fn num56_sub (u32,u32) (u32,u32) -> (u32,u32)
+q0 at p0 0
+q1 at p1 0
+q2 sub q0 q1
+q3 at p0 1
+q4 at p1 1
+q5 sub q3 q4
+q6 at p0 0
+q7 at p1 0
+q8 lt q6 q7
+q9 select q8 1 0
+q10 sub q5 q9
+q11 rec q2 q10
+ret q11
+end
+fn num56_less (u32,u32) (u32,u32) -> bool
+q0 at p0 1
+q1 at p1 1
+q2 lt q0 q1
+q3 at p0 1
+q4 at p1 1
+q5 eq q3 q4
+q6 at p0 0
+q7 at p1 0
+q8 lt q6 q7
+q9 and q5 q8
+q10 or q2 q9
+ret q10
+end
+fn num56_same (u32,u32) (u32,u32) -> bool
+q0 at p0 0
+q1 at p1 0
+q2 eq q0 q1
+q3 at p0 1
+q4 at p1 1
+q5 eq q3 q4
+q6 and q2 q5
+ret q6
+end
+fn num56_small (u32,u32) u32 -> (u32,u32)
+q0 at p0 0
+q1 and q0 65535
+low mul q1 p1
+q2 at p0 0
+q3 shr q2 16
+q4 mul q3 p1
+q5 shr low 16
+high add q4 q5
+q6 and low 65535
+q7 shl high 16
+q8 or q6 q7
+q9 at p0 1
+q10 mul q9 p1
+q11 shr high 16
+q12 add q10 q11
+q13 rec q8 q12
+ret q13
+end
+fn num56_div10 (u32,u32) -> ((u32,u32),u32)
+q0 at p0 1
+top div q0 10
+q1 at p0 1
+q2 rem q1 10
+q3 shl q2 16
+q4 at p0 0
+q5 shr q4 16
+middle or q3 q5
+q6 rem middle 10
+q7 shl q6 16
+q8 at p0 0
+q9 and q8 65535
+tail or q7 q9
+q10 div middle 10
+q11 shl q10 16
+q12 div tail 10
+q13 or q11 q12
+q14 rec q13 top
+q15 rem tail 10
+q16 rec q14 q15
+ret q16
+end
+fn num56_bit_step u32 u32 u32 -> u32
+q0 shr p2 p1
+q1 ne q0 0
+q2 add p1 1
+q3 select q1 q2 p0
+ret q3
+end
+fn num56_bits (u32,u32) -> u32
+q0 at p0 1
+high fold num56_bit_step 32 0 q0
+q1 at p0 0
+low fold num56_bit_step 32 0 q1
+q2 at p0 1
+q3 ne q2 0
+q4 add 32 high
+q5 select q3 q4 low
+ret q5
+end
+fn num56_round (u32,u32) -> (u32,u32)
+bits call num56_bits p0
+q0 gt bits 53
+q1 sub bits 53
+shift select q0 q1 0
+unit shl 1 shift
+q2 at p0 0
+q3 sub unit 1
+rem and q2 q3
+q4 at p0 0
+q5 sub q4 rem
+q6 at p0 1
+twice mul rem 2
+q7 at p0 0
+q8 shr q7 shift
+q9 and q8 1
+odd ne q9 0
+q10 gt twice unit
+q11 eq twice unit
+q12 and q11 odd
+up or q10 q12
+q13 rec q5 q6
+q14 select up unit 0
+q15 rec q14 0
+q16 call num56_add q13 q15
+ret q16
+end
+fn num56_search_more (bool,(u32,u32),(u32,u32),(u32,u32),(u32,u32)) u32 (u32,u32) u32 u32 bool -> bool
+q0 at p0 0
+ret q0
+end
+fn num56_search_step (bool,(u32,u32),(u32,u32),(u32,u32),(u32,u32)) u32 (u32,u32) u32 u32 bool -> (bool,(u32,u32),(u32,u32),(u32,u32),(u32,u32))
+oldq at p0 1
+q0 at p0 2
+division call num56_div10 q0
+quotient at division 0
+q1 at p0 3
+q2 at division 1
+q3 call num56_small oldq q2
+remainder call num56_add q1 q3
+q call num56_small oldq 10
+twice call num56_small remainder 2
+q4 call num56_less q twice
+q5 call num56_same q twice
+q6 at quotient 0
+q7 and q6 1
+q8 ne q7 0
+q9 and q5 q8
+up or q4 q9
+q10 call num56_sub p2 remainder
+q11 rec 0 0
+q12 select up q q11
+candidate call num56_add q10 q12
+smaller call num56_less candidate p2
+q13 call num56_sub p2 candidate
+q14 call num56_sub candidate p2
+distance select smaller q13 q14
+q15 select smaller p4 p3
+distance2 call num56_small distance 2
+q16 rec q15 0
+q17 call num56_less distance2 q16
+q18 rec q15 0
+q19 call num56_same distance2 q18
+q20 and q19 p5
+good or q17 q20
+q21 at p0 4
+q22 select good candidate q21
+q23 rec good q quotient remainder q22
+ret q23
+end
+fn num56_shortest (u32,u32) -> (u32,u32)
+n call num56_round p0
+bits call num56_bits n
+q0 gt bits 53
+q1 sub bits 53
+shift select q0 q1 0
+step shl 1 shift
+q2 rec 1 0
+minus call num56_sub n q2
+q3 at n 0
+q4 at minus 0
+q5 and q3 q4
+q6 eq q5 0
+q7 at n 1
+q8 at minus 1
+q9 and q7 q8
+q10 eq q9 0
+q11 and q6 q10
+q12 at n 0
+q13 at n 1
+q14 or q12 q13
+q15 ne q14 0
+power and q11 q15
+q16 gt bits 53
+q17 and power q16
+q18 shr step 1
+lower select q17 q18 step
+q19 at n 0
+q20 shr q19 shift
+q21 and q20 1
+even eq q21 0
+q22 rec 1 0
+q23 rec 0 0
+q24 rec true q22 n q23 n
+found loop num56_search_more num56_search_step 18 q24 n step lower even
+q25 at found 4
+ret q25
+end
+fn num56_digit_more ((u32,u32),u32,u32x128) u32 -> bool
+n at p0 0
+q0 at n 0
+q1 at n 1
+q2 or q0 q1
+q3 ne q2 0
+ret q3
+end
+fn num56_digit_step ((u32,u32),u32,u32x128) u32 -> ((u32,u32),u32,u32x128)
+q0 at p0 0
+r call num56_div10 q0
+q1 at r 0
+q2 at p0 1
+q3 add q2 1
+q4 at p0 2
+q5 at p0 1
+q6 at r 1
+q7 add 48 q6
+q8 set q4 q5 q7
+q9 rec q1 q3 q8
+ret q9
+end
+fn num56_reverse u32x128 u32 u32x128 u32 -> u32x128
+q0 sub p3 p1
+q1 sub q0 1
+q2 get p2 q1
+q3 set p0 p1 q2
+ret q3
+end
+fn num56_emit (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 rec p2 p3
+n call num56_shortest q0
+zero call arena_zero
+q1 set zero 0 48
+q2 rec n 0 q1
+digits loop num56_digit_more num56_digit_step 20 q2
+q3 at digits 1
+q4 eq q3 0
+q5 at digits 1
+length select q4 1 q5
+q6 at digits 2
+bytes fold num56_reverse length zero q6 length
+q7 at p0 2
+q8 at p0 1
+q9 call av_append q7 q8 length bytes
+ret q9
+end
+fn number_u56 io u32 u32 -> (u32,(u32,u32,u32),io)
+good lt p2 16777216
+q0 select good 0 7
+q1 rec 0 0 0
+q2 select good 1 0
+q3 rec q0 q1 p0
+q4 fold num56_emit q2 q3 p1 p2
+ret q4
+end

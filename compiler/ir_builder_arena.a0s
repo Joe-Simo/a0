@@ -1,0 +1,93 @@
+raw # Grammar-independent schema1 construction. Canonical A0 is authoritative.
+raw # Callers own grammar, interning, type validity, limits and source-origin policy.
+raw use "arena_vector.a0"
+extern arena_zero() -> u32x128
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+def ab_vec(p:u32x128,o:u32) -> (u32,u32,u32)
+ return (p[o],p[o+1],p[o+2])
+end
+def ab_setvec(p:u32x128,o:u32,v:(u32,u32,u32)) -> u32x128
+ let a=set(p,o,v#0)
+ let b=set(a,o+1,v#1)
+ return set(b,o+2,v#2)
+end
+fn ap_appendgo(s:(u32x128,io),i:u32,o:u32,count:u32,page:u32x128) -> (u32x128,io)
+ let p=s#0
+ let r=av_append(s#1,ab_vec(p,o),count,page)
+ let q=ab_setvec(p,o,r#1)
+ return (set(q,0,r#0),r#2)
+end
+fn ap_append(s:(u32x128,io),o:u32,count:u32,page:u32x128) -> (u32x128,io)
+ let p=s#0
+ return fold(ap_appendgo,p[0]==0?1:0,s,o,count,page)
+end
+fn ab_operand(s:(u32x128,io),kind:u32,value:u32,start:u32,len:u32,flags:u32) -> (u32x128,u32,io)
+ let p=s#0
+ let index=p[48]/5
+ let z=arena_zero()
+ let r=set(z,0,kind)
+ let r=set(r,1,value)
+ let r=set(r,2,start)
+ let r=set(r,3,len)
+ let r=set(r,4,flags)
+ let out=ap_append(s,47,5,r)
+ return (out#0,index,out#1)
+end
+fn ab_node(s:(u32x128,io),id:u32,op:u32,argFirst:u32,argCount:u32,callee:u32,pred:u32,line:u32,idStart:u32,idLen:u32,opStart:u32,opLen:u32,flags:u32,textStart:u32,textLen:u32) -> (u32x128,io)
+ let z=arena_zero()
+ let r=set(z,0,id)
+ let r=set(r,1,op)
+ let r=set(r,2,argFirst)
+ let r=set(r,3,argCount)
+ let r=set(r,4,callee)
+ let r=set(r,5,pred)
+ let r=set(r,6,line)
+ let r=set(r,7,idStart)
+ let r=set(r,8,idLen)
+ let r=set(r,9,opStart)
+ let r=set(r,10,opLen)
+ let r=set(r,11,flags)
+ let r=set(r,12,textStart)
+ let r=set(r,13,textLen)
+ let out=ap_append(s,44,14,r)
+ let q=out#0
+ let q=set(q,14,q[14]+1)
+ return (set(q,21,id),out#1)
+end
+fn ab_begin(p:u32x128,name:u32,paramFirst:u32,paramCount:u32,result:u32,headerLine:u32) -> u32x128
+ let q=set(p,11,p[42]/14)
+ let q=set(q,12,headerLine)
+ let q=set(q,13,p[45]/14)
+ let q=set(q,14,0)
+ let q=set(q,15,paramFirst)
+ let q=set(q,16,paramCount)
+ let q=set(q,17,result)
+ let q=set(q,18,name)
+ let q=set(q,19,4294967295)
+ let q=set(q,20,4294967295)
+ let q=set(q,21,4294967295)
+ return set(q,23,p[57]/6)
+end
+fn ab_return(p:u32x128,operandIndex:u32,line:u32) -> u32x128
+ let q=set(p,19,operandIndex)
+ return set(q,20,line)
+end
+fn ab_function(s:(u32x128,io),endLine:u32,sourceIndex:u32,flags:u32) -> (u32x128,io)
+ let p=s#0
+ let z=arena_zero()
+ let r=set(z,0,p[18])
+ let r=set(r,1,p[15])
+ let r=set(r,2,p[16])
+ let r=set(r,3,p[17])
+ let r=set(r,4,p[13])
+ let r=set(r,5,p[14])
+ let r=set(r,6,p[19])
+ let r=set(r,7,p[12])
+ let r=set(r,8,p[20])
+ let r=set(r,9,endLine)
+ let r=set(r,10,p[23])
+ let r=set(r,11,p[57]/6-p[23])
+ let r=set(r,12,sourceIndex)
+ let r=set(r,13,flags)
+ return ap_append(s,41,14,r)
+end

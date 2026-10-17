@@ -3,11 +3,13 @@
 2026-10-16 publication update: first-party A0 source, editor and plugin packages use Apache 2.0 with copyright notices; third-party notices retain their original licenses. The website now includes the corrected independent Codex syntax study and its complete replay archive (`results/unification-codex-v2-replication.json`, `experiments/unification/README.md`). Earlier Dense-guide comparative conclusions are withdrawn (`results/unification-codex-guide-erratum.json`). This publication keeps the current compiler: unified syntax, native frontend performance, migration and the tool cutover remain unfinished. Historical language benchmarks retain their dates and scope.
 
 
-Last updated 2026-10-16, compiler `a0c-0.1.60` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
+Last updated 2026-10-17, compiler `a0c-0.1.63` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
 what exists, what is measured and where the numbers live, what is lost or unknown, how to reproduce it, and what comes next.
 Every number on this page is in the `results/` file named beside it, or is reproduced by the command shown. The long record of
 how the project got here, session by session, is in [docs/history/](docs/history/) (index at the end). Contributing rules are in
 [CONTRIBUTING.md](CONTRIBUTING.md); the design and semantics are in [DESIGN.md](DESIGN.md).
+
+2026-10-17 path-conformance repair: the public and native linkers resolve missing paths through their nearest existing ancestor, preserving lexical entry identity and rejecting escapes through directory symlinks. This corrects aliased-root diagnostics. The standard emission matrix differs only by compiler version tags (`results/native-path-alias-conformance.json`, `results/compiler-0.1.63-emission-parity.json`).
 
 ## What exists
 
@@ -28,7 +30,37 @@ how the project got here, session by session, is in [docs/history/](docs/history
 
 ## Current results
 
-Compiler migration (`a0c-0.1.60`): canonical checked arithmetic and array access are implemented in the A0 C,
+Source unification is in progress: grammar-independent A0 arena construction and direct parsed-IR
+linking are implemented. The recorded edit-study outcomes are preserved, but their Dense guidance
+incorrectly described generated IDs and omitted operation/function-name escaping. Their comparative
+AI-cost conclusions are withdrawn. A matched corrected-guidance replication meets the bounded
+AI-cost rule; its small reused task set does not establish production readiness.
+Compiler timings still contain losses, and the official syntax and tooling cutover remain unfinished.
+Raw outcomes, timing samples and conversion evidence are recorded in `results/unification-codex-v1.json`,
+`results/unification-codex-v2.json`, `results/unification-codex-v2-replication.json`,
+`results/unification-link-header-scan.json` and
+[the refactor record and guide erratum](docs/history/2026-10-16-unified-source-refactor.md).
+An integrated A0 grammar/checker/verifier prototype now rebuilds to a portable artifact and preserves
+whole-program typed IR, Specs and emitted output in component comparisons. Its measured compilation
+time and memory regressions block cutover; the existing public frontend remains authoritative.
+The raw matrices and reproducible snapshot are recorded in `results/unification-portable-frontend.json`
+and `experiments/unification/frontend-a0/README.md`.
+The first feature gate failed native-link parity and stale corpus-count checks; the native header fix
+passes focused verification. Updated whole-suite and promotion gates remain pending. Evidence:
+`results/unification-initial-gate.json`, `results/unification-native-link-header.json`.
+The next feature gate passed those fixes but failed Java checks against stale linked-graph
+expectations. Independent linking and evaluation confirm the corrected expectations, and the
+isolated Java checks pass. The whole-suite rerun is pending. The original and corrected rows
+are preserved in `results/unification-java-oracle-correction.json`.
+
+Current integration (`a0c-0.1.63`) adds experimental arena services for Darwin arm64, RISC-V64, Wasm and Java,
+plus canonical formatting, semantic revisions and UTF-8 provenance. Native C/x86 emitters reuse private
+intermediate record storage when lifetime and alias checks permit it. Component tests and limits are linked
+from [Entire compiler in A0](docs/design/compiler-selfhosting.md). The public compiler still uses TypeScript;
+full Dense and optimizer migration remain unfinished. The project now uses Apache-2.0, with third-party
+licenses retained in the distributed notices.
+
+Previous migration milestone (`a0c-0.1.60`): canonical checked arithmetic and array access are implemented in the A0 C,
 AArch64 and Wasm emitters. A0 optimization now uses weighted expansion costs and recognizes square-matrix recurrences;
 the reference optimizer also preserves the unsigned exponent when an earlier call exposes a large iteration count.
 The website compiler tool builds from the verified A0-generated seed. A0 optimization supports canonical checked

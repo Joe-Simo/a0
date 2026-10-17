@@ -31,6 +31,7 @@ import { formatDense } from './dense.js';
 import { diag } from './diagnostics.js';
 import { EditSession, revision, typedTargetView } from './edit.js';
 import { DENSE_EXTENSION, isDensePath, link } from './link.js';
+import { protectionPolicy, requireProtectedTarget } from './protection-policy.js';
 import { A0_VERSION } from './version.js';
 
 /** Largest text any tool returns, in characters. */
@@ -58,10 +59,12 @@ const denied = (path: string): A0Error => diag('A0801', [path]);
 /** Resolve `path` inside `root`; the real path (symlinks followed) must stay inside too. */
 export async function confine(root: string, path: string, mustExist: boolean): Promise<string> {
   const abs = resolve(root, path);
+  protectionPolicy(abs);
   if (!within(root, abs) || !isA0Path(abs))
     throw within(root, abs) ? diag('A0802', [path]) : denied(path);
   try {
     const real = await realpath(abs);
+    protectionPolicy(real);
     if (!within(root, real)) throw denied(path);
     // The name alone is not enough: `x.a0 -> .env` would expose (and a save overwrite) it.
     if (!isA0Path(real)) throw diag('A0802', [path]);
@@ -121,6 +124,7 @@ export async function createServer(
   options: { readonly surface?: McpSurface } = {},
 ): Promise<McpServer> {
   const launched = await realpath(resolve(launch));
+  protectionPolicy(launched);
   const isDir = (await stat(launched)).isDirectory();
   const root = isDir ? launched : dirname(launched);
   const defaultFile = isDir ? undefined : launched;
@@ -344,10 +348,15 @@ export async function createServer(
       description: `Compile the current program for a target (${TARGETS.join(', ')}); wasm is base64.`,
       inputSchema: { file: fileField, target: z.enum(TARGETS as [string, ...string[]]) },
     },
-    tool(
-      async ({ file, target }) =>
-        compile(await program(file), target as (typeof TARGETS)[number]).text,
-    ),
+    tool(async ({ file, target }) => {
+      const policy = protectionPolicy(await fileOf(file));
+      if (policy.protect) requireProtectedTarget(target);
+      const emitted = compile(await program(file), target as (typeof TARGETS)[number]).text;
+      if (!policy.protect) return emitted;
+      const { wasmModuleBytes } = await import('./wasm.js');
+      const { protectWasm } = await import('./protection/artifact.js');
+      return Buffer.from(protectWasm(wasmModuleBytes(emitted)).bytes).toString('base64');
+    }),
   );
 
   server.registerTool(

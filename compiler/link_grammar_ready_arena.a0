@@ -1,0 +1,44 @@
+# A0-only recognition of completed parser grammar with deferred spec verification.
+use "arena_vector.a0"
+fn lv_parse_deferred (u32,bool,io) u32 u32x128 -> (u32,bool,io)
+q0 get p2 60
+present eq q0 128
+q1 at p0 2
+q2 get p2 59
+q3 get p2 60
+q4 get p2 61
+q5 rec q2 q3 q4
+q6 select present 128 0
+r call av_load q1 q5 0 q6
+p at r 1
+q7 get p2 93
+q8 eq q7 1
+q9 and present q8
+q10 get p 92
+q11 eq q10 1
+q12 and q9 q11
+q13 get p 0
+q14 eq q13 0
+complete and q12 q14
+q15 at r 0
+q16 eq q15 0
+q17 select complete 0 7
+q18 at r 0
+code select q16 q17 q18
+q19 eq code 0
+q20 and q19 complete
+q21 at r 2
+q22 rec code q20 q21
+ret q22
+end
+fn lv_parse_ready io u32x128 -> (u32,bool,io)
+q0 get p1 0
+q1 eq q0 7
+q2 select q1 1 0
+q3 get p1 0
+q4 get p1 0
+q5 eq q4 0
+q6 rec q3 q5 p0
+q7 fold lv_parse_deferred q2 q6 p1
+ret q7
+end

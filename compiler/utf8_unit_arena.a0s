@@ -1,0 +1,35 @@
+# WHATWG/Node UTF8 maximal-subpart unit decisions. Pure bounded lookahead, no source-size cap.
+fn du_more(s:(u32,u32,bool,u32,u32,u32,u32x4,u32),i:u32) -> (u32,u32,bool,u32,u32,u32,u32x4,u32)
+ let active=(s#0==0)&s#2&(i<s#3)
+ let present=s#1<s#7
+ let byte=(s#6)[s#1]
+ let accepted=present&(byte>=s#4)&(byte<=s#5)
+ let code=active&present&(byte>255)?6:s#0
+ let consumed=active&accepted?s#1+1:s#1
+ let good=active?accepted:s#2
+ return (code,consumed,good,s#3,128,191,s#6,s#7)
+end
+fn utf8_unit(bytes:u32x4,available:u32) -> (u32,u32,u32x4,u32,u32,u32)
+ let b=bytes[0]
+ let two=(b>=194)&(b<=223)
+ let three=(b>=224)&(b<=239)
+ let four=(b>=240)&(b<=244)
+ let width=b<128?1:(two?2:(three?3:(four?4:0)))
+ let code=(available>4)|((available>0)&(b>255))?6:0
+ let consumed=available>0?1:0
+ let low=b==224?160:(b==240?144:128)
+ let high=b==237?159:(b==244?143:191)
+ let need=width>0?width-1:0
+ let start=(code,consumed,width!=0,need,low,high,bytes,available)
+ let done=fold(du_more,3,start)
+ let present=(available>0)&(done#0==0)
+ let valid=done#2
+ let length=present?(valid?width:3):0
+ let units=present?(valid&four?2:1):0
+ let result=bytes
+ result=set(result,0,length>0?(valid?bytes[0]:239):0)
+ result=set(result,1,length>1?(valid?bytes[1]:191):0)
+ result=set(result,2,length>2?(valid?bytes[2]:189):0)
+ result=set(result,3,length>3?bytes[3]:0)
+ return (done#0,present?done#1:0,result,length,units,present&!valid?1:0)
+end

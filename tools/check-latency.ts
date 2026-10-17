@@ -57,7 +57,7 @@ export const MIN_RUNS = 15;
 export const WARMUPS = 3;
 
 /** The `bun build` flags of the release binaries (tools/release.sh), for the host target. */
-export const BINARY_FLAGS = ['--compile', '--minify', '--bytecode', '--format=esm'] as const;
+export const BINARY_FLAGS = ['--compile', '--minify', '--bytecode', '--format=cjs'] as const;
 
 // --- statistics and verdicts (pure; test/check-latency.test.ts) ------------------------------------
 

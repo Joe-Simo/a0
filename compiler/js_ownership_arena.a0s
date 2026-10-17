@@ -1,0 +1,587 @@
+raw # A0 JS ownership planning. Full-u32 context only; no host ownership classifications.
+raw use "executable_bytes.a0"
+extern arena_zero() -> u32x128
+extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
+extern av_load(io,(u32,u32,u32),u32,u32) -> (u32,u32x128,io)
+extern av_store(io,(u32,u32,u32),u32,u32,u32x128) -> (u32,io)
+extern ew_new(io,u32) -> (u32,(u32,u32,u32),io)
+def jos_vec(m:u32x128,o:u32) -> (u32,u32,u32)
+ return (m[o],m[o+1],m[o+2])
+end
+def jos_setvec(m:u32x128,o:u32,v:(u32,u32,u32)) -> u32x128
+ let a=set(m,o,v#0)
+ let b=set(a,o+1,v#1)
+ return set(b,o+2,v#2)
+end
+fn jos_min(a:u32,b:u32) -> u32
+ return a==0?b:(b==0?a:(a<b?a:b))
+end
+fn jos_code(s:(u32x128,u32x16,u32x128,io),code:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ return (set(m,0,m[0]==0?code:m[0]),s#1,s#2,s#3)
+end
+fn jos_ok(s:(u32x128,u32x16,u32x128,io),i:u32) -> bool
+ return get(s#0,0)==0
+end
+fn jos_ok1(s:(u32x128,u32x16,u32x128,io),i:u32,a:u32) -> bool
+ return get(s#0,0)==0
+end
+fn jos_ok2(s:(u32x128,u32x16,u32x128,io),i:u32,a:u32,b:u32) -> bool
+ return get(s#0,0)==0
+end
+fn jos_raw_do(s:(u32x128,u32x16,u32x128,io),i:u32,h:u32,off:u32,n:u32) -> (u32x128,u32x16,u32x128,io)
+ let r=arena_load(s#3,h,off,n)
+ return jos_code((s#0,s#1,r#1,r#2),r#0)
+end
+fn jos_raw(s:(u32x128,u32x16,u32x128,io),h:u32,off:u32,n:u32) -> (u32x128,u32x16,u32x128,io)
+ let start=(s#0,s#1,arena_zero(),s#3)
+ return fold(jos_raw_do,get(s#0,0)==0?1:0,start,h,off,n)
+end
+fn jos_read(s:(u32x128,u32x16,u32x128,io),o:u32,off:u32,n:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ return jos_raw(s,m[o],off,n)
+end
+fn jos_word(s:(u32x128,u32x16,u32x128,io),o:u32,index:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_read(s,o,index,1)
+end
+fn jos_put_do(s:(u32x128,u32x16,u32x128,io),i:u32,o:u32,index:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let page=set(arena_zero(),0,value)
+ let r=av_store(s#3,jos_vec(m,o),index,1,page)
+ return jos_code((m,s#1,s#2,r#1),r#0)
+end
+fn jos_put(s:(u32x128,u32x16,u32x128,io),o:u32,index:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ return fold(jos_put_do,get(s#0,0)==0?1:0,s,o,index,value)
+end
+fn jos_alloc_do(s:(u32x128,u32x16,u32x128,io),i:u32,o:u32,length:u32) -> (u32x128,u32x16,u32x128,io)
+ let r=ew_new(s#3,length)
+ return jos_code((jos_setvec(s#0,o,r#1),s#1,s#2,r#2),r#0)
+end
+fn jos_alloc(s:(u32x128,u32x16,u32x128,io),o:u32,length:u32) -> (u32x128,u32x16,u32x128,io)
+ return fold(jos_alloc_do,get(s#0,0)==0?1:0,s,o,length)
+end
+fn jos_type(s:(u32x128,u32x16,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_raw(s,get(s#1,0),id*3,3)
+end
+fn jos_fn(s:(u32x128,u32x16,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_raw(s,get(s#1,2),id*10,10)
+end
+fn jos_node(s:(u32x128,u32x16,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_raw(s,get(s#1,3),id*8,8)
+end
+fn jos_arg(s:(u32x128,u32x16,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_raw(s,get(s#1,4),id*2,2)
+end
+fn jos_typeflag(s:(u32x128,u32x16,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_word(s,6,id)
+end
+fn jos_fnflag(s:(u32x128,u32x16,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_word(s,9,id)
+end
+fn jos_plan(s:(u32x128,u32x16,u32x128,io),node:u32,mode:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_word(s,12,node*3+mode)
+end
+fn jos_fact(s:(u32x128,u32x16,u32x128,io),row:u32,field:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_word(s,15,row*8+field)
+end
+fn jos_setfact(s:(u32x128,u32x16,u32x128,io),row:u32,field:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_put(s,15,row*8+field,value)
+end
+fn jos_row(m:u32x128,kind:u32,value:u32) -> u32
+ return kind==1?value-m[65]:m[66]+value
+end
+fn jos_type_child(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_raw(s,get(s#1,1),m[80]+i,1)
+ let child=get(a#2,0)
+ let b=jos_typeflag(a,child)
+ let flat=(get(b#2,0)&1)!=0
+ let m=b#0
+ let m=set(m,81,(m[81]!=0)&((child<2)|flat)?1:0)
+ let m=set(m,82,(m[82]!=0)|flat?1:0)
+ return (m,b#1,b#2,b#3)
+end
+fn jos_type_entry(s:(u32x128,u32x16,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_type(s,id)
+ let ty=a#2
+ let m=set(a#0,80,ty[1])
+ let m=set(m,81,1)
+ let m=set(m,82,0)
+ let count=ty[0]==5?ty[2]:0
+ let b=loop(jos_ok,jos_type_child,count,(m,a#1,a#2,a#3))
+ let m=b#0
+ let array=(ty[0]==4)&(ty[2]<2)
+ let record=(ty[0]==5)&(m[81]!=0)&(m[82]!=0)
+ return jos_put(b,6,id,(array?1:0)|(record?2:0))
+end
+fn jos_param_primitive(s:(u32x128,u32x16,u32x128,io),i:u32,first:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_raw(s,get(s#1,1),first+i,1)
+ let m=a#0
+ return (set(m,81,(m[81]!=0)&(get(a#2,0)<3)?1:0),a#1,a#2,a#3)
+end
+fn jos_fn_need(s:(u32x128,u32x16,u32x128,io),i:u32,first:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_node(s,first+i)
+ let op=get(a#2,0)
+ let need=(op==20)|(op==21)|(op==23)|(op==26)|(op==28)
+ let m=a#0
+ return (set(m,82,(m[82]!=0)|need?1:0),a#1,a#2,a#3)
+end
+fn jos_fn_seed(s:(u32x128,u32x16,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_fn(s,id)
+ let funrow=a#2
+ let b=jos_raw(a,get(a#1,1),funrow[3],funrow[2]>=2?2:0)
+ let ps=b#2
+ let m=set(b#0,81,1)
+ let c=loop(jos_ok1,jos_param_primitive,funrow[2],(m,b#1,b#2,b#3),funrow[3])
+ let m=set(c#0,82,0)
+ let d=loop(jos_ok1,jos_fn_need,funrow[6],(m,c#1,c#2,c#3),funrow[5])
+ let eligible=(funrow[2]>=2)&(ps[0]>=3)&(ps[1]==0)
+ return jos_put(d,9,id,(eligible?1:0)|(get(d#0,81)!=0?8:0)|(get(d#0,82)!=0?16:0))
+end
+fn jos_use_ref(s:(u32x128,u32x16,u32x128,io),unused:u32,i:u32,kind:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let row=jos_row(m,kind,value)
+ let site=m[84]
+ let a=jos_fact(s,row,0)
+ let old=get(a#2,0)
+ let b=jos_fact(a,row,7)
+ let times=old==site?get(b#2,0)+1:1
+ let c=jos_setfact(b,row,7,times)
+ let a=jos_setfact(c,row,0,site)
+ let op=m[80]
+ let read=((op==25)|(op==27))&(i==0)
+ let scalar=(m[83]<2)&((op==19)|(((op==20)|(op==21))&(i>=2)))
+ let allowed=read|scalar
+ let b=jos_fact(a,row,1)
+ let first=get(b#2,0)
+ let c=jos_setfact(b,row,1,(first==0)&!allowed?site:first)
+ let d=jos_fact(c,row,3)
+ let first=get(d#2,0)
+ let escape=!(allowed|(op==1)|(op==18))
+ let e=jos_setfact(d,row,3,(first==0)&escape?site:first)
+ let f=jos_fact(e,row,2)
+ let whole=(get(f#2,0)!=0)|!((m[85]!=0)&(i==0))
+ return jos_setfact(f,row,2,whole?1:0)
+end
+fn jos_use_arg(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_arg(s,m[82]+i)
+ let arg=a#2
+ return fold(jos_use_ref,(arg[0]==1)|(arg[0]==2)?1:0,a,i,arg[0],arg[1])
+end
+fn jos_use_node(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_node(s,m[65]+i)
+ let node=a#2
+ let b=jos_arg(a,node[2]+1)
+ let field=b#2
+ let m=set(b#0,80,node[0])
+ let m=set(m,81,node[1])
+ let m=set(m,82,node[2])
+ let m=set(m,83,node[5])
+ let m=set(m,84,i+1)
+ let m=set(m,85,(node[0]==27)&(field[0]==3)?1:0)
+ return loop(jos_ok,jos_use_arg,node[1],(m,b#1,b#2,b#3))
+end
+fn jos_return_use(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let row=jos_row(m,m[69],m[70])
+ let a=jos_setfact(s,row,0,m[66]+1)
+ let b=jos_setfact(a,row,2,1)
+ return jos_setfact(b,row,7,1)
+end
+fn jos_borrow_edge(s:(u32x128,u32x16,u32x128,io),i:u32,child:u32,kind:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let parent=jos_row(m,kind,value)
+ let a=jos_fact(s,child,0)
+ let last=get(a#2,0)
+ let b=jos_fact(a,child,4)
+ let desc=get(b#2,0)
+ let latest=last>desc?last:desc
+ let c=jos_fact(b,parent,4)
+ let old=get(c#2,0)
+ let d=jos_setfact(c,parent,4,latest>old?latest:old)
+ let e=jos_fact(d,child,3)
+ let first=get(e#2,0)
+ let f=jos_fact(e,child,5)
+ let first=jos_min(first,get(f#2,0))
+ let g=jos_fact(f,parent,5)
+ return jos_setfact(g,parent,5,jos_min(first,get(g#2,0)))
+end
+fn jos_borrow_arg(s:(u32x128,u32x16,u32x128,io),i:u32,child:u32,first:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_arg(s,first+i)
+ let arg=a#2
+ return fold(jos_borrow_edge,(arg[0]==1)|(arg[0]==2)?1:0,a,child,arg[0],arg[1])
+end
+fn jos_borrow_node(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let local=m[66]-1-i
+ let a=jos_node(s,m[65]+local)
+ let node=a#2
+ let op=node[0]
+ let ordinary=(op==1)|(op==25)|(op==27)
+ let selected=op==18
+ let borrowed=(node[5]>=3)&(ordinary|selected)
+ let first=node[2]+(selected?1:0)
+ let count=borrowed?(selected?2:1):0
+ return loop(jos_ok2,jos_borrow_arg,count,a,local,first)
+end
+fn jos_proj_other(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_node(s,m[65]+i)
+ let n=a#2
+ let b=jos_arg(a,n[2])
+ let parent=b#2
+ let c=jos_arg(b,n[2]+1)
+ let field=c#2
+ let hit=(n[0]==27)&(parent[0]==m[86])&(parent[1]==m[87])&(field[0]==3)&(field[1]==m[88])
+ let q=c#0
+ return (set(q,89,q[89]+(hit?1:0)),c#1,c#2,c#3)
+end
+fn jos_proj_candidate(s:(u32x128,u32x16,u32x128,io),unused:u32,i:u32,first:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_arg(s,first)
+ let parent=a#2
+ let b=jos_arg(a,first+1)
+ let field=b#2
+ let m=b#0
+ let row=jos_row(m,parent[0],parent[1])
+ let c=jos_fact(b,row,2)
+ let whole=get(c#2,0)
+ let m=set(c#0,86,parent[0])
+ let m=set(m,87,parent[1])
+ let m=set(m,88,field[1])
+ let m=set(m,89,0)
+ let count=(whole==0)&(field[0]==3)?m[66]:0
+ let d=loop(jos_ok,jos_proj_other,count,(m,c#1,c#2,c#3))
+ return jos_setfact(d,i,6,get(d#0,89)==1?1:0)
+end
+fn jos_proj_node(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_node(s,m[65]+i)
+ let node=a#2
+ let b=jos_typeflag(a,node[5])
+ let candidate=(node[0]==27)&((get(b#2,0)&1)!=0)
+ return fold(jos_proj_candidate,candidate?1:0,b,i,node[2])
+end
+fn jos_answer(s:(u32x128,u32x16,u32x128,io),yes:bool) -> (u32x128,u32x16,u32x128,io)
+ return (s#0,s#1,set(arena_zero(),0,yes?1:0),s#3)
+end
+fn jos_deep_node(s:(u32x128,u32x16,u32x128,io),i:u32,node:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_plan(s,node,get(s#0,71))
+ return jos_answer(a,(get(a#2,0)&2)!=0)
+end
+fn jos_deep(s:(u32x128,u32x16,u32x128,io),kind:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let param=(kind==2)&(value==0)&(m[71]!=0)&(((m[75]&1)!=0)|(m[71]==2))
+ let a=jos_answer(s,param)
+ return fold(jos_deep_node,kind==1?1:0,a,value)
+end
+fn jos_operand_node(s:(u32x128,u32x16,u32x128,io),i:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_node(s,value)
+ return (a#0,a#1,set(arena_zero(),0,get(a#2,5)),a#3)
+end
+fn jos_operand_param(s:(u32x128,u32x16,u32x128,io),i:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_raw(s,get(s#1,1),get(s#0,73)+value,1)
+end
+fn jos_operand_type(s:(u32x128,u32x16,u32x128,io),kind:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ let start=(s#0,s#1,set(arena_zero(),0,kind==4?1:0),s#3)
+ let a=fold(jos_operand_node,kind==1?1:0,start,value)
+ return fold(jos_operand_param,kind==2?1:0,a,value)
+end
+fn jos_mutable_ref(s:(u32x128,u32x16,u32x128,io),i:u32,kind:u32,value:u32,site:u32,deep:bool) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let row=jos_row(m,kind,value)
+ let a=jos_node(s,kind==1?value:0)
+ let op=get(a#2,0)
+ let b=jos_plan(a,kind==1?value:0,m[71])
+ let flags=get(b#2,0)
+ let fresh=(op==22)|(op==23)|(op==26)|(op==28)|((flags&(deep?2:1))!=0)
+ let eligible=kind==1?fresh:((kind==2)&(value==0)&(m[71]!=0))
+ let c=jos_fact(b,row,0)
+ let last=get(c#2,0)
+ let d=jos_fact(c,row,1)
+ let first=get(d#2,0)
+ return jos_answer(d,eligible&(last<=site)&((first==0)|(first==site)))
+end
+fn jos_mutable(s:(u32x128,u32x16,u32x128,io),kind:u32,value:u32,site:u32,deep:bool) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_answer(s,false)
+ return fold(jos_mutable_ref,(kind==1)|(kind==2)?1:0,a,kind,value,site,deep)
+end
+fn jos_consume(s:(u32x128,u32x16,u32x128,io),kind:u32,value:u32,site:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_mutable(s,kind,value,site,true)
+ let mut=get(a#2,0)!=0
+ let row=jos_row(a#0,kind,value)
+ let b=jos_fact(a,row,4)
+ let last=get(b#2,0)
+ let c=jos_fact(b,row,5)
+ let first=get(c#2,0)
+ return jos_answer(c,mut&(last<site)&((first==0)|(first>=site)))
+end
+fn jos_forward_projection(s:(u32x128,u32x16,u32x128,io),unused:u32,local:u32,first:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_arg(s,first)
+ let parent=a#2
+ let b=jos_deep(a,parent[0],parent[1])
+ let deep=get(b#2,0)!=0
+ let c=jos_fact(b,local,6)
+ let unique=get(c#2,0)!=0
+ let m=c#0
+ return (set(m,91,m[91]|(deep&unique?3:0)),c#1,c#2,c#3)
+end
+fn jos_record_array(s:(u32x128,u32x16,u32x128,io),unused:u32,kind:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_deep(s,kind,value)
+ let deep=get(a#2,0)!=0
+ let b=jos_consume(a,kind,value,m[84])
+ let consumed=get(b#2,0)!=0
+ let c=jos_fact(b,jos_row(m,kind,value),7)
+ let once=get(c#2,0)==1
+ let q=c#0
+ return (set(q,90,(q[90]!=0)&deep&consumed&once?1:0),c#1,c#2,c#3)
+end
+fn jos_record_arg(s:(u32x128,u32x16,u32x128,io),i:u32,first:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_arg(s,first+i)
+ let arg=a#2
+ let b=jos_operand_type(a,arg[0],arg[1])
+ let ty=get(b#2,0)
+ let c=jos_typeflag(b,ty)
+ let flat=(get(c#2,0)&1)!=0
+ return fold(jos_record_array,flat?1:0,c,arg[0],arg[1])
+end
+fn jos_forward_record(s:(u32x128,u32x16,u32x128,io),unused:u32,first:u32,count:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=set(s#0,90,1)
+ let a=loop(jos_ok1,jos_record_arg,count,(m,s#1,s#2,s#3),first)
+ let m=a#0
+ return (set(m,91,m[91]|(m[90]!=0?2:0)),a#1,a#2,a#3)
+end
+fn jos_forward_mutation(s:(u32x128,u32x16,u32x128,io),unused:u32,first:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_arg(s,first)
+ let target=a#2
+ let b=jos_mutable(a,target[0],target[1],get(a#0,84),false)
+ let yes=get(b#2,0)!=0
+ let m=b#0
+ return (set(m,91,m[91]|(yes?4:0)),b#1,b#2,b#3)
+end
+fn jos_iteration_owned(s:(u32x128,u32x16,u32x128,io),unused:u32,kind:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_mutable(s,kind,value,m[84],false)
+ let yes=get(a#2,0)!=0
+ let b=jos_fact(a,jos_row(m,kind,value),7)
+ let once=get(b#2,0)==1
+ let q=b#0
+ return (set(q,91,q[91]|(yes&once?8:0)),b#1,b#2,b#3)
+end
+fn jos_iteration_deep(s:(u32x128,u32x16,u32x128,io),unused:u32,kind:u32,value:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_deep(s,kind,value)
+ let deep=get(a#2,0)!=0
+ let b=jos_consume(a,kind,value,m[84])
+ let consumed=get(b#2,0)!=0
+ let c=jos_fact(b,jos_row(m,kind,value),7)
+ let once=get(c#2,0)==1
+ let q=c#0
+ return (set(q,91,q[91]|18|(deep&consumed&once?32:0)),c#1,c#2,c#3)
+end
+fn jos_forward_iteration(s:(u32x128,u32x16,u32x128,io),unused:u32,first:u32,callee:u32,type:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_arg(s,first+1)
+ let init=a#2
+ let b=fold(jos_iteration_owned,type>=3?1:0,a,init[0],init[1])
+ let c=jos_typeflag(b,type)
+ let flat=(get(c#2,0)&2)!=0
+ let d=jos_fnflag(c,callee)
+ let capable=(get(d#2,0)&2)!=0
+ return fold(jos_iteration_deep,flat&capable?1:0,d,init[0],init[1])
+end
+fn jos_forward_node(s:(u32x128,u32x16,u32x128,io),local:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_node(s,get(s#0,65)+local)
+ let node=a#2
+ let b=jos_typeflag(a,node[5])
+ let shape=get(b#2,0)
+ let flat=(shape&1)!=0
+ let record=(shape&2)!=0
+ let op=node[0]
+ let owned=flat&((op==22)|(op==26)|(op==20)|(op==21))
+ let m=set(b#0,80,op)
+ let m=set(m,81,node[1])
+ let m=set(m,82,node[2])
+ let m=set(m,83,node[5])
+ let m=set(m,84,local+1)
+ let m=set(m,85,m[65]+local)
+ let m=set(m,91,owned?2:0)
+ let c=fold(jos_forward_projection,(op==27)&flat?1:0,(m,b#1,b#2,b#3),local,node[2])
+ let d=fold(jos_forward_record,(op==23)&record?1:0,c,node[2],node[1])
+ let e=fold(jos_forward_mutation,(op==26)|(op==28)?1:0,d,node[2])
+ let f=fold(jos_forward_iteration,(op==20)|(op==21)?1:0,e,node[2],node[3],node[5])
+ let q=f#0
+ return jos_put(f,12,q[85]*3+q[71],q[91])
+end
+fn jos_mode(s:(u32x128,u32x16,u32x128,io),mode:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=set(s#0,71,mode)
+ return loop(jos_ok,jos_forward_node,m[66],(m,s#1,s#2,s#3))
+end
+fn jos_shape_child(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_raw(s,get(s#1,1),m[94]+i,1)
+ let left=get(a#2,0)
+ let b=jos_raw(a,get(a#1,1),m[95]+i,1)
+ let right=get(b#2,0)
+ let c=jos_type(b,left)
+ let l=c#2
+ let d=jos_type(c,right)
+ let r=d#2
+ let equal=(left==right)|((l[0]==4)&(r[0]==4)&(l[1]==r[1])&(l[2]==r[2]))
+ let q=d#0
+ return (set(q,96,(q[96]!=0)&equal?1:0),d#1,d#2,d#3)
+end
+fn jos_same_flat(s:(u32x128,u32x16,u32x128,io),left:u32,right:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_type(s,left)
+ let l=a#2
+ let b=jos_type(a,right)
+ let r=b#2
+ let initial=(left==right)|((l[0]==5)&(r[0]==5)&(l[2]==r[2]))
+ let m=set(b#0,94,l[1])
+ let m=set(m,95,r[1])
+ let m=set(m,96,initial?1:0)
+ let count=(left!=right)&initial?l[2]:0
+ let c=loop(jos_ok,jos_shape_child,count,(m,b#1,b#2,b#3))
+ return jos_answer(c,get(c#0,96)!=0)
+end
+fn jos_p0_whole(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ return jos_fact(s,get(s#0,66),2)
+end
+fn jos_finish_fn(s:(u32x128,u32x16,u32x128,io)) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let last=m[66]==0?0:m[65]+m[66]-1
+ let a=jos_node(s,last)
+ let op=get(a#2,0)
+ let b=jos_plan(a,last,2)
+ let deep=(get(b#2,0)&2)!=0
+ let c=jos_fnflag(b,m[64])
+ let flags=get(c#2,0)
+ let d=jos_same_flat(c,m[74],m[68])
+ let same=get(d#2,0)!=0
+ let capable=((flags&1)!=0)&((m[75]&2)!=0)&(op==23)&(m[69]==1)&(m[70]==last)&deep&same
+ let start=jos_answer(d,true)
+ let e=fold(jos_p0_whole,m[67]!=0?1:0,start)
+ let whole=get(e#2,0)!=0
+ let f=jos_put(e,9,m[64],flags|2147483648|(capable?2:0)|(capable&!whole?4:0))
+ let q=f#0
+ let q=set(q,61,q[61]-1)
+ let q=set(q,62,q[62]+1)
+ return (q,f#1,f#2,f#3)
+end
+fn jos_process_fn(s:(u32x128,u32x16,u32x128,io),unused:u32,id:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_fn(s,id)
+ let funrow=a#2
+ let b=jos_raw(a,get(a#1,1),funrow[3],funrow[2]==0?0:1)
+ let firsttype=get(b#2,0)
+ let c=jos_typeflag(b,firsttype)
+ let shape=get(c#2,0)
+ let m=set(c#0,64,id)
+ let m=set(m,65,funrow[5])
+ let m=set(m,66,funrow[6])
+ let m=set(m,67,funrow[2])
+ let m=set(m,68,funrow[4])
+ let m=set(m,69,funrow[7])
+ let m=set(m,70,funrow[8])
+ let m=set(m,73,funrow[3])
+ let m=set(m,74,firsttype)
+ let m=set(m,75,shape)
+ let valid=(funrow[2]<=4294967295-funrow[6])&((funrow[6]+funrow[2])<=536870911)
+ let d=jos_code((m,c#1,c#2,c#3),valid?0:7)
+ let e=jos_alloc(d,15,valid?(funrow[6]+funrow[2])*8:0)
+ let f=loop(jos_ok,jos_use_node,funrow[6],e)
+ let g=fold(jos_return_use,(funrow[7]==1)|(funrow[7]==2)?1:0,f)
+ let h=loop(jos_ok,jos_borrow_node,funrow[6],g)
+ let k=loop(jos_ok,jos_proj_node,funrow[6],h)
+ let l=loop(jos_ok,jos_mode,3,k)
+ return jos_finish_fn(l)
+end
+fn jos_ready_node(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=s#0
+ let a=jos_node(s,m[65]+i)
+ let n=a#2
+ let b=jos_typeflag(a,n[5])
+ let record=(get(b#2,0)&2)!=0
+ let c=jos_fnflag(b,n[3])
+ let ready=(get(c#2,0)&2147483648)!=0
+ let required=((n[0]==20)|(n[0]==21))&record
+ let q=c#0
+ return (set(q,93,(q[93]!=0)&(!required|ready)?1:0),c#1,c#2,c#3)
+end
+fn jos_mark_done(s:(u32x128,u32x16,u32x128,io),unused:u32,id:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_fnflag(s,id)
+ let b=jos_put(a,9,id,get(a#2,0)|2147483648)
+ let m=b#0
+ let m=set(m,61,m[61]-1)
+ let m=set(m,62,m[62]+1)
+ return (m,b#1,b#2,b#3)
+end
+fn jos_try_fn(s:(u32x128,u32x16,u32x128,io),unused:u32,id:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_fn(s,id)
+ let funrow=a#2
+ let m=set(a#0,65,funrow[5])
+ let m=set(m,66,funrow[6])
+ let m=set(m,93,1)
+ let b=jos_fnflag((m,a#1,a#2,a#3),id)
+ let need=(get(b#2,0)&16)!=0
+ let c=loop(jos_ok,jos_ready_node,need?funrow[6]:0,b)
+ let d=fold(jos_process_fn,need&(get(c#0,93)!=0)?1:0,c,id)
+ return fold(jos_mark_done,need?0:1,d,id)
+end
+fn jos_round_fn(s:(u32x128,u32x16,u32x128,io),id:u32) -> (u32x128,u32x16,u32x128,io)
+ let a=jos_fnflag(s,id)
+ let done=(get(a#2,0)&2147483648)!=0
+ return fold(jos_try_fn,done?0:1,a,id)
+end
+fn jos_round_more(s:(u32x128,u32x16,u32x128,io),i:u32) -> bool
+ let m=s#0
+ return (m[0]==0)&(m[61]!=0)
+end
+fn jos_round(s:(u32x128,u32x16,u32x128,io),i:u32) -> (u32x128,u32x16,u32x128,io)
+ let m=set(s#0,62,0)
+ let a=loop(jos_ok,jos_round_fn,get(s#1,11),(m,s#1,s#2,s#3))
+ let q=a#0
+ return jos_code(a,(q[61]!=0)&(q[62]==0)?6:0)
+end
+fn jos_public_directory(d:u32x128) -> u32x128
+ let a=set(d,6,0)
+ let a=set(a,7,0)
+ let a=set(a,8,0)
+ let a=set(a,9,0)
+ let a=set(a,10,0)
+ let a=set(a,11,0)
+ let a=set(a,12,0)
+ let a=set(a,13,0)
+ let a=set(a,14,0)
+ let a=set(a,15,0)
+ let a=set(a,16,0)
+ return set(a,17,0)
+end
+fn js_ownership_plan(t:io,ctx:u32x16) -> (u32,u32x128,io)
+ let z=arena_zero()
+ let m=set(z,1,1093683791)
+ let m=set(m,2,1)
+ let m=set(m,61,ctx[11])
+ let s=(m,ctx,z,t)
+ let a=jos_alloc(s,6,ctx[12])
+ let b=jos_alloc(a,9,ctx[11])
+ let valid=ctx[13]<=1431655765
+ let c=jos_code(b,valid?0:7)
+ let d=jos_alloc(c,12,valid?ctx[13]*3:0)
+ let e=loop(jos_ok,jos_type_entry,ctx[12],d)
+ let f=loop(jos_ok,jos_fn_seed,ctx[11],e)
+ let g=loop(jos_round_more,jos_round,ctx[11],f)
+ let result=g#0
+ let public=result[0]==0?result:jos_public_directory(result)
+ return (result[0],public,g#3)
+end
+fn js_ownership_context(t:io,ctx:u32x16) -> (u32,u32x16,u32x128,io)
+ let r=js_ownership_plan(t,ctx)
+ let d=r#1
+ let a=set(ctx,6,d[12])
+ let b=set(a,7,d[9])
+ let c=set(b,8,d[6])
+ let e=set(c,15,0)
+ let zero=arr(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+ return (r#0,r#0==0?e:zero,d,r#2)
+end

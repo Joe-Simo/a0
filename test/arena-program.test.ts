@@ -36,31 +36,47 @@ function prepare(): Promise<string> {
     const result = /^(a0t\d+) a0_arena_parse_check\(/m.exec(emitted.text)?.[1];
     assert.ok(result);
     await writeFile(join(dir, 'module.c'), emitted.text);
-    await writeFile(join(dir, 'api.h'), `#define PARSE_RESULT ${result}\n`);
+    const builderType = (name: string): string => {
+      const match = new RegExp(`^(a0t[0-9]+) a0_${name}\\(`, 'm').exec(emitted.text)?.[1];
+      assert.ok(match, `native builder export ${name}`);
+      return match;
+    };
+    await writeFile(
+      join(dir, 'api.h'),
+      [
+        `#define PARSE_RESULT ${result}`,
+        `#define STATE ${builderType('ab_begin')}`,
+        `#define MIO_RESULT ${builderType('ab_node')}`,
+        `#define OPERAND_RESULT ${builderType('ab_operand')}`,
+        '',
+      ].join('\n'),
+    );
     for (const level of [0, 2]) {
-      const built = runTool(
-        clang.path,
-        [
-          '-std=c11',
-          `-O${level}`,
-          '-Wall',
-          '-Wextra',
-          '-Wno-unused-parameter',
-          '-Werror',
-          '-fsanitize=undefined',
-          '-fno-sanitize-recover=all',
-          '-I',
-          dir,
-          '-I',
-          runtime,
-          join(fixtures, 'driver.c'),
-          join(runtime, 'arena_runtime.c'),
-          '-o',
-          join(dir, `driver-O${level}`),
-        ],
-        { cwd: dir, timeoutMs: 120_000 },
-      );
-      assert.ok(built.ok, `native A0 frontend O${level}: ${built.stderr}`);
+      for (const fixture of ['driver', 'builder']) {
+        const built = runTool(
+          clang.path,
+          [
+            '-std=c11',
+            `-O${level}`,
+            '-Wall',
+            '-Wextra',
+            '-Wno-unused-parameter',
+            '-Werror',
+            '-fsanitize=undefined',
+            '-fno-sanitize-recover=all',
+            '-I',
+            dir,
+            '-I',
+            runtime,
+            join(fixtures, `${fixture}.c`),
+            join(runtime, 'arena_runtime.c'),
+            '-o',
+            join(dir, `${fixture}-O${level}`),
+          ],
+          { cwd: dir, timeoutMs: 120_000 },
+        );
+        assert.ok(built.ok, `native A0 frontend ${fixture} O${level}: ${built.stderr}`);
+      }
     }
     return dir;
   })();
@@ -91,3 +107,14 @@ test(
   },
   async () => compare(await prepare(), true),
 );
+
+test('seed-built shared IR constructors preserve full-width rows, immutable prefixes and first failures', {
+  skip,
+}, async () => {
+  const dir = await prepare();
+  for (const level of [0, 2]) {
+    const ran = runTool(join(dir, `builder-O${level}`), [], { timeoutMs: 30_000 });
+    assert.ok(ran.ok, `${ran.stderr}\n${ran.stdout}`);
+    assert.match(ran.stdout, /PASS shared IR construction seam/);
+  }
+});

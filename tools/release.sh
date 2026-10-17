@@ -12,6 +12,7 @@
 # when built on macOS.
 set -eu
 cd "$(dirname "$0")/.."
+bun -e 'import { requirePackagingPolicy } from "./src/protection-policy.ts"; requirePackagingPolicy(".")'
 
 version=${1:-}
 version=${version#v}
@@ -35,10 +36,9 @@ for name in $binaries; do
   target=${name#a0-}
   target=${target%.exe}
   # --bytecode: the bundle is stored as JSC bytecode, so a start of `a0` does not parse the whole
-  # bundle again (about 65 ms of every command on Linux x64; results/check-latency-linux-x64.json).
-  # It needs --format=esm because src/cli.ts awaits at its top level. tools/check-latency.ts builds
-  # its binaries with the same flags (BINARY_FLAGS).
-  bun build --compile --target="bun-$target" --minify --bytecode --format=esm dist/src/a0.js --outfile "release/$name"
+  # bundle again. Pinned Bun supports bytecode with --format=cjs; src/cli.ts uses an asynchronous
+  # import. tools/check-latency.ts builds its binaries with the same flags (BINARY_FLAGS).
+  bun build --compile --target="bun-$target" --minify --bytecode --format=cjs dist/src/a0.js --outfile "release/$name"
 done
 
 if [ "$(uname -s)" = Darwin ]; then
