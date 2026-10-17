@@ -33,6 +33,8 @@ test('source linking resolves imports once and maps nested validation failures t
   assert.equal(run(main, []), 42);
   files['main.a0'] = 'profile strict\nuse "inc.a0"\nfn main\na inc true\nret a\nend\n';
   await assert.rejects(linkSource(join(root, 'main.a0'), load, options), /main\.a0:4:/);
+  files['main.a0'] = 'profile strict\nuse "inc.a0"\nfn main\nret inc true\nend\n';
+  await assert.rejects(linkSource(join(root, 'main.a0'), load, options), /main\.a0:4:/);
   files['main.a0'] = 'profile strict\nuse "main.a0"\nfn main\nret 0\nend\n';
   await assert.rejects(linkSource(join(root, 'main.a0'), load, options), /cycle/);
 });

@@ -1234,7 +1234,7 @@ export interface ProgramReader {
   operand(text: string, line: number, lineText: string): Operand;
   specs(name: string): SpecBuilder;
   finish(fn: Func): Func;
-  origin(fn: string, node: string | undefined, line: number): void;
+  origin?(fn: string, node: string | undefined, line: number): void;
 }
 
 export function parse(source: string): Program {
@@ -1362,7 +1362,7 @@ export function parseProgram(source: string, reader?: ProgramReader): Program {
     let result: Type;
     if (reader !== undefined) {
       ({ params, result } = reader.header(head, cur.line, cur.text));
-      reader.origin(name, undefined, cur.line);
+      reader.origin?.(name, undefined, cur.line);
     } else {
       const arrow = head.indexOf('->');
       if (arrow < 2 || arrow !== head.length - 2) {
@@ -1398,7 +1398,7 @@ export function parseProgram(source: string, reader?: ProgramReader): Program {
       }
       if (first === 'ret') {
         retComments = body.comments;
-        reader?.origin(name, 'ret', body.line);
+        reader?.origin?.(name, 'ret', body.line);
         if (isRetNodeForm(parts)) {
           // `ret OP ARGS…` is sugar for a fresh node followed by `ret` of it.
           const id = freshRetId(nodes);
@@ -1407,7 +1407,7 @@ export function parseProgram(source: string, reader?: ProgramReader): Program {
             nodes.push(
               reader === undefined ? parseNode(text, body.line) : reader.node(text, body.line),
             );
-            reader?.origin(name, id, body.line);
+            reader?.origin?.(name, id, body.line);
           } catch (e) {
             // The failing line is the synthesised `retval OP …`, not the source line: no edits.
             throw e instanceof A0Error && e.edits.length > 0 ? e.withEdits([], 'maybe') : e;
@@ -1456,7 +1456,7 @@ export function parseProgram(source: string, reader?: ProgramReader): Program {
         reader === undefined
           ? parseNodeOf(body.text, body.line, body.quote ? undefined : parts)
           : reader.node(body.text, body.line, body.quote ? undefined : parts);
-      reader?.origin(name, node.id, body.line);
+      reader?.origin?.(name, node.id, body.line);
       nodes.push(body.comments === undefined ? node : { ...node, comments: body.comments });
     }
     if (!closed || ret === undefined) throw diag('A0028', [name]);

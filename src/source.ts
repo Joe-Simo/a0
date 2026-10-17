@@ -14,6 +14,7 @@ import {
   parseOperand,
   parseProgram,
   parseType,
+  stripComment,
   type Type,
   textNode,
   withComments,
@@ -32,7 +33,6 @@ export function parseSource(source: string): Program {
 
 /** Shared source scanner and instruction parser; no conversion or full-program reparse. */
 export function parseSourceUnit(source: string): ParsedSource {
-  const origins = new Map<string, Map<string | undefined, number>>();
   let inferred = false;
   let used = 0;
   const operand = (text: string, line?: number, lineText?: string): Operand => {
@@ -41,11 +41,11 @@ export function parseSourceUnit(source: string): ParsedSource {
       text.length === 1 && code >= 65 && code <= 90
         ? { kind: 'param', index: code - 65 }
         : parseOperand(text, line, lineText);
-    if (value.kind === 'param') used = Math.max(used, value.index + 1);
+    if (inferred && value.kind === 'param') used = Math.max(used, value.index + 1);
     return value;
   };
   const node = (text: string, line?: number, words?: readonly string[]): Node => {
-    const quoted = /^(\S+)\s+"((?:[^"\\]|\\.)*)"\s*$/.exec(text);
+    const quoted = text.includes('"') ? /^(\S+)\s+"((?:[^"\\]|\\.)*)"\s*$/.exec(text) : null;
     if (quoted !== null) return textNode(quoted[1] as string, quoted[2] as string, line);
     const parts = words ?? text.trim().split(/\s+/);
     const id = parts[0] ?? '';
@@ -95,18 +95,31 @@ export function parseSourceUnit(source: string): ParsedSource {
       if (used > LIMITS.maxParams) throw diag('A0024');
       return { ...fn, params: new Array<Type>(used).fill('u32') };
     },
-    origin(fn, id, line) {
-      let map = origins.get(fn);
-      if (map === undefined) {
-        map = new Map();
-        origins.set(fn, map);
-      }
-      map.set(id, line);
-    },
   });
+  // Successful compilation needs no per-node origin map. Flat bindings are explicit;
+  // resolve diagnostics lazily using the same comment scanner and physical source lines.
+  let lines: string[] | undefined;
   return {
     program,
-    locate: (fn, id) => origins.get(fn)?.get(id) ?? origins.get(fn)?.get(undefined),
+    locate(fn, id) {
+      lines ??= source.split(/\r?\n/);
+      const functionHeader = new RegExp(`^fn\\s+${fn}(?:\\s|$)`);
+      const start = lines.findIndex((raw) => functionHeader.test(stripComment(raw).trim()));
+      if (start < 0) return undefined;
+      if (id === undefined) return start + 1;
+      let ret: number | undefined;
+      const binding = new RegExp(`^${id}\\s`);
+      for (let i = start + 1; i < lines.length; i++) {
+        const text = stripComment(lines[i] as string).trim();
+        if (text === 'end' || /^fn\s/.test(text)) break;
+        if (binding.test(text)) return i + 1;
+        if (/^ret(?:\s|$)/.test(text)) ret = i + 1;
+      }
+      const result = program.functions.find((value) => value.name === fn)?.ret;
+      return id === 'ret' || (result?.kind === 'node' && result.id === id)
+        ? (ret ?? start + 1)
+        : start + 1;
+    },
   };
 }
 
