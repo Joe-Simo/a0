@@ -51,8 +51,9 @@ export function migrateSourceProject(
   entry: string,
   destination: string,
   root = dirname(resolve(entry)),
+  legacyDense = false,
 ): Promise<MigrationManifest> {
-  return migrate(entry, destination, root, false, sourceCodec);
+  return migrate(entry, destination, root, legacyDense, sourceCodec);
 }
 
 /**

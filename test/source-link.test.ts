@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, join, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { test } from 'node:test';
 import { compile } from '../src/backends.js';
 import { formatProgram, run } from '../src/core.js';
+import { formatDense } from '../src/dense.js';
 import { link } from '../src/link.js';
 import { migrateProject, migrateSourceProject } from '../src/migrate.js';
 import { linkSource } from '../src/source-link.js';
@@ -53,16 +54,23 @@ test('whole-project source migration preserves legacy and Dense programs on ever
       join(input, 'lib/inc.a0'),
       '# increment\nfn inc u32 -> u32\na add p0 1\nret a\nend\n',
     );
-    const before = await link(entry, read, { root: input });
+    const before = await link(entry, read, { root: input, includeUnits: true });
     const denseRoot = join(scratch, 'dense');
     const dense = await migrateProject(entry, denseRoot, input);
-    for (const [name, source, root] of [
-      ['legacy', entry, input],
-      ['dense', join(denseRoot, dense.entry), denseRoot],
-    ]) {
-      assert.ok(name && source && root);
+    const legacyRoot = join(scratch, 'legacy-dense-input');
+    for (const unit of before.units ?? []) {
+      const path = join(legacyRoot, relative(input, unit.path));
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, formatDense(unit.program, { comments: true, known: unit.known }));
+    }
+    const sources: readonly (readonly [string, string, string, boolean])[] = [
+      ['legacy', entry, input, false],
+      ['dense', join(denseRoot, dense.entry), denseRoot, false],
+      ['legacy-dense-a0', join(legacyRoot, 'main.a0'), legacyRoot, true],
+    ];
+    for (const [name, source, root, legacyDense] of sources) {
       const output = join(scratch, `converted-${name}`);
-      const manifest = await migrateSourceProject(source, output, root);
+      const manifest = await migrateSourceProject(source, output, root, legacyDense);
       assert.equal(manifest.entry, 'main.a0');
       assert.ok(manifest.files.every((file) => file.destination.endsWith('.a0')));
       const after = await linkSource(join(output, manifest.entry), read, { root: output });
@@ -72,7 +80,7 @@ test('whole-project source migration preserves legacy and Dense programs on ever
       assert.equal(run(main, []), 42);
       for (const target of TARGETS)
         assert.deepEqual(compile(after.program, target), compile(before.program, target), target);
-      await assert.rejects(migrateSourceProject(source, output, root), /EEXIST/);
+      await assert.rejects(migrateSourceProject(source, output, root, legacyDense), /EEXIST/);
     }
   } finally {
     await rm(scratch, { recursive: true, force: true });

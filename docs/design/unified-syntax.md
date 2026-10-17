@@ -82,7 +82,9 @@ include references from executable contracts. Valid large boolean arrays remain 
 `src/source-link.ts` connects the candidate to the same dependency resolver, IR composition and
 validator as the historical readers. Parser origins map validation errors to physical source
 lines. `migrateSourceProject` in `src/migrate.ts` converts historical Canonical or `.a0d` dependency
-closures into candidate `.a0` files using the existing guarded staging engine. The public
+closures into candidate `.a0` files using the existing guarded staging engine. Its explicit
+`legacyDense` migration input argument also handles historical Dense trees stored as `.a0`;
+it never guesses between ambiguous spellings. The public
 `a0 migrate` command still targets historical Dense until cutover. Candidate migration checks
 complete per-file metadata and formatter fixed points, then links and compares the staged program
 and revision before publication.
