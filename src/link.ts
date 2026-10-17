@@ -68,11 +68,21 @@ export interface Linked {
   /** Flattened source artifact in dependency order; compilation uses the composed program. */
   readonly text: string;
   readonly sources: readonly LinkedSource[];
+  /** Original parsed source units and import arities, retained only for migration. */
+  readonly units?: readonly LinkedUnit[];
+}
+
+export interface LinkedUnit {
+  readonly path: string;
+  readonly program: Program;
+  readonly known: Arities;
 }
 
 export type ReadSource = (path: string) => Promise<string>;
 
 export interface LinkOptions {
+  /** Retain source units for deterministic migration. */
+  readonly includeUnits?: boolean;
   /** Host source adapter: virtual sources need no filesystem or mount. Default follows real symlinks. */
   readonly canonicalPath?: (path: string) => Promise<string>;
   /**
@@ -109,7 +119,7 @@ function projectRoot(entry: string): string {
 }
 
 /** Resolve existing ancestors of missing paths, preserving lexical entry identities. */
-async function canonical(path: string): Promise<string> {
+export async function physicalPath(path: string): Promise<string> {
   try {
     return await realpath(path);
   } catch (e) {
@@ -117,7 +127,7 @@ async function canonical(path: string): Promise<string> {
       const absolute = resolve(path);
       const parent = dirname(absolute);
       if (parent === absolute) return absolute;
-      return join(await canonical(parent), basename(absolute));
+      return join(await physicalPath(parent), basename(absolute));
     }
     throw e;
   }
@@ -193,7 +203,7 @@ export async function link(
   read: ReadSource,
   options: LinkOptions = {},
 ): Promise<Linked> {
-  const canonicalPath = options.canonicalPath ?? canonical;
+  const canonicalPath = options.canonicalPath ?? physicalPath;
   const root = await canonicalPath(options.root ?? projectRoot(entry));
   const inside = (abs: string): boolean => {
     const rel = relative(root, abs);
@@ -208,6 +218,7 @@ export async function link(
     profile: Profile;
     /** One source parse, retained for direct dependency-ordered IR composition. */
     parsed: Program;
+    known?: Arities;
   }[] = [];
   const visiting = new Set<string>();
   const done = new Set<string>();
@@ -257,7 +268,7 @@ export async function link(
       const { parseDense } = await import('./dense.js');
       let parsed: ReturnType<typeof parseDense>;
       try {
-        parsed = parseDense(shown, { known });
+        parsed = parseDense(shown, { known, imports: usedSigs });
       } catch (e) {
         if (!(e instanceof A0Error) || e.line === undefined) throw e;
         throw e.rewrite(`${abs}:${e.line}: ${e.message.replace(/^line \d+: /, '')}`);
@@ -280,6 +291,7 @@ export async function link(
       fns: functions.map((f) => f.name),
       profile: declared,
       parsed: parsedFile,
+      ...(options.includeUnits ? { known } : {}),
     });
   };
   await visit(entry, undefined);
@@ -329,6 +341,14 @@ export async function link(
       program: { ...parsed, ...validate(parsed) },
       text: combined,
       sources,
+      ...(options.includeUnits
+        ? {
+            units: order.map((o) => {
+              if (o.known === undefined) throw new Error('source unit arities were not retained');
+              return { path: o.path, program: o.parsed, known: o.known };
+            }),
+          }
+        : {}),
     };
   } catch (e) {
     if (!(e instanceof A0Error)) throw e;
@@ -370,6 +390,7 @@ export async function parseFile(
   dense = false,
 ): Promise<{ program: Program; known: Arities }> {
   const seen = new Map<string, Map<string, number>>();
+  const signatures = new Map<string, Map<string, { params: readonly Type[]; result: Type }>>();
   const load = async (path: string, asDense: boolean): Promise<Program> => {
     const abs = resolve(path);
     const text = await read(abs);
@@ -377,14 +398,21 @@ export async function parseFile(
     const parsedCanonical = isDense ? undefined : parse(text);
     const uses = isDense ? denseUses(text) : (parsedCanonical?.uses ?? []);
     const known = new Map<string, number>();
+    const imports = new Map<string, { params: readonly Type[]; result: Type }>();
     for (const use of uses) {
       const target = resolve(dirname(abs), use);
       if (!seen.has(target)) await load(target, false);
       for (const [name, n] of seen.get(target) ?? []) known.set(name, n);
+      for (const [name, sig] of signatures.get(target) ?? []) imports.set(name, sig);
     }
-    const program = parsedCanonical ?? (await import('./dense.js')).parseDense(text, { known });
+    const program =
+      parsedCanonical ?? (await import('./dense.js')).parseDense(text, { known, imports });
     const own = new Map(program.functions.map((f) => [f.name, f.params.length] as const));
     seen.set(abs, new Map([...known, ...own]));
+    signatures.set(
+      abs,
+      new Map([...imports, ...program.functions.map((f) => [f.name, f] as const)]),
+    );
     return program;
   };
   const program = await load(entry, dense);

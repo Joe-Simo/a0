@@ -10,19 +10,13 @@
  * kernel files against every other language of results/lang-axes.json with the ledger's rule. The canonical
  * files are not changed; the loss ledger is not updated.
  */
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { getEncoding } from 'js-tiktoken';
-import {
-  formatProgram,
-  type Program,
-  parse,
-  parseAndValidate,
-  run,
-  type TypedFunc,
-  type Value,
-} from '../src/core.js';
+import { formatProgram, type Program, parse } from '../src/core.js';
 import { formatDense, parseDense } from '../src/dense.js';
+import { readOnce } from '../src/dense-a0.js';
 import {
   arities,
   type DenseReader,
@@ -36,34 +30,8 @@ import { TOKEN_KERNELS } from './dense-tokens.js';
 import { KERNELS } from './exec-bench-kernels.js';
 import { reportJson } from './scrub-results.js';
 
-const PAGES = 128;
-const PAGE = 128;
 const enc = getEncoding('o200k_base');
 const tok = (s: string): number => enc.encode(s).length;
-
-function loadReader(): DenseReader {
-  const source = readFileSync(join(ROOT, 'compiler', 'dense.a0'), 'utf8');
-  const fn = parseAndValidate(source).functions.find((f: TypedFunc) => f.name === 'canonfn');
-  if (fn === undefined) throw new Error('compiler/dense.a0 defines no canonfn');
-  return (text) => {
-    const bytes = Buffer.from(text, 'utf8');
-    if (bytes.length > PAGES * PAGE) return { text: '', err: true };
-    const pages: Value[] = [];
-    for (let p = 0; p < PAGES; p += 1) {
-      const page: Value[] = [];
-      for (let k = 0; k < PAGE; k += 1) page.push(bytes[p * PAGE + k] ?? 0);
-      pages.push(page);
-    }
-    const [[out, pos], err] = run(fn, [pages, bytes.length], { fuel: 4_000_000_000 }) as [
-      [Value[], number],
-      boolean,
-    ];
-    const outBytes: number[] = [];
-    for (let i = 0; i < Math.min(pos, PAGES * PAGE); i += 1)
-      outBytes.push((out[i >> 7] as Value[])[i & 127] as number);
-    return { text: Buffer.from(outBytes).toString('utf8'), err };
-  };
-}
 
 interface Row {
   readonly path: string;
@@ -141,10 +109,13 @@ function check(
 
 function main(): void {
   const write = process.argv.includes('--write');
+  const readerSourceSha256 = createHash('sha256')
+    .update(readFileSync(join(ROOT, 'compiler', 'dense.a0')))
+    .digest('hex');
   const out =
     process.argv.find((a) => a.startsWith('--out='))?.slice(6) ??
     join(ROOT, 'results', 'dense-migration-tokens.json');
-  const read = loadReader();
+  const read = readOnce;
 
   // 1. in-tree programs
   const files: Row[] = [];
@@ -285,9 +256,11 @@ function main(): void {
   }
   const report = {
     tool: 'tools/dense-migrate.ts',
+    readerSourceSha256,
+    sourceMode: write ? 'files-on-disk' : 'in-memory-formatDense',
     preregistration: 'docs/history/2026-10-09-dense-migration-tokens-preregistration.md',
     meaning:
-      'Dense files on disk under dense/ (formatDense with the known arities of the used files; kernels without normalizeProgram), each checked from the file: parseDense formats back to the file text, and the A0 reader (compiler/dense.a0 canonfn via readChunked at READER_CAPS) reads it to formatProgram of the original. Tokens: o200k_base (js-tiktoken) of the migrated kernel files, kernel = text without trailing newlines, program = text plus one newline (tools/lang-axes.ts rules). Competitors: results/lang-axes.json unchanged. Rule: tools/loss-ledger.ts (noise 0; loss gap > 0, tie gap = 0, win gap < 0). The loss ledger is not updated.',
+      'Dense source (formatDense with the known arities of the used files; kernels without normalizeProgram), generated in memory unless sourceMode is files-on-disk under dense/. Each source is checked: parseDense formats back to the source text, and the A0 reader (compiler/dense.a0 canonfn via readChunked at READER_CAPS) reads it to formatProgram of the original. Tokens: o200k_base (js-tiktoken), kernel = text without trailing newlines, program = text plus one newline (tools/lang-axes.ts rules). Competitors: results/lang-axes.json unchanged. Rule: tools/loss-ledger.ts (noise 0; loss gap > 0, tie gap = 0, win gap < 0). The loss ledger is not updated.',
     tokenizer: 'o200k_base',
     files: { total: files.length, ...tally, reasons, rows: files },
     kernels: kernelRows,

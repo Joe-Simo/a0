@@ -1,0 +1,637 @@
+{
+  "generatedAt": "2026-10-17T16:28:22.890Z",
+  "application": "Conway’s Life 32x32 torus session protocol (examples/life.a0)",
+  "lexer": {
+    "application": "Self-hosted A0 lexer (compiler/lex.a0), io front lexio",
+    "reference": "Independent TypeScript tokenizer refLex in tools/app.ts",
+    "cases": 8,
+    "caseLabels": [
+      "lex/sq",
+      "lex/edit",
+      "lex/text",
+      "lex/types",
+      "lex/kernels.a0",
+      "lex/life.a0",
+      "lex/lex.a0",
+      "lex/ui.a0"
+    ],
+    "targets": {
+      "interpreter": {
+        "status": "passed",
+        "cases": 8,
+        "detail": "Reference interpreter vs BigInt oracle",
+        "elapsedMs": 838.3152060000002
+      },
+      "optimizer": {
+        "status": "passed",
+        "cases": 8,
+        "detail": "Optimized graph vs BigInt oracle",
+        "elapsedMs": 550.3869370000002,
+        "before": 579,
+        "after": 591
+      },
+      "javascript": {
+        "status": "passed",
+        "cases": 8,
+        "detail": "Executed emitted ES module in Node; public input guards retained.",
+        "elapsedMs": 147.4082930000004
+      },
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 8,
+        "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 1123.5753490000006,
+        "tool": "Debian clang version 19.1.7 (3+b1)"
+      },
+      "webassembly": {
+        "status": "passed",
+        "cases": 8,
+        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
+        "elapsedMs": 429.7748510000001,
+        "tool": "Debian clang version 19.1.7 (3+b1); /workspace/a0-unified/.a0-tmp/clang/root/usr/bin/wasm-ld-19"
+      },
+      "jvm": {
+        "status": "passed",
+        "cases": 8,
+        "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
+        "elapsedMs": 1527.0486149999997,
+        "tool": "javac 21.0.12.1; openjdk version \"21.0.12.1\" 2026-08-18"
+      }
+    }
+  },
+  "parser": {
+    "application": "Self-hosted A0 parser (compiler/parse.a0 linked with lex.a0), io front parseio",
+    "reference": "Independent TypeScript token-driven parser refParse in tools/app.ts (word IR)",
+    "cases": 14,
+    "caseLabels": [
+      "parse/sq",
+      "parse/retop",
+      "parse/text",
+      "parse/types",
+      "parse/calls",
+      "parse/unknown-callee",
+      "parse/later-node",
+      "parse/bad-op",
+      "parse/unterminated",
+      "parse/fns820",
+      "parse/kernels.a0",
+      "parse/life.a0",
+      "parse/lex.a0",
+      "parse/ui.a0"
+    ],
+    "targets": {
+      "interpreter": {
+        "status": "passed",
+        "cases": 14,
+        "detail": "Reference interpreter vs BigInt oracle",
+        "elapsedMs": 10669.873388
+      },
+      "optimizer": {
+        "status": "passed",
+        "cases": 14,
+        "detail": "Optimized graph vs BigInt oracle",
+        "elapsedMs": 10340.974820999996,
+        "before": 3682,
+        "after": 3701
+      },
+      "javascript": {
+        "status": "passed",
+        "cases": 14,
+        "detail": "Executed emitted ES module in Node; public input guards retained.",
+        "elapsedMs": 750.0889430000025
+      },
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 14,
+        "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 6004.398529999999,
+        "tool": "Debian clang version 19.1.7 (3+b1)"
+      },
+      "webassembly": {
+        "status": "passed",
+        "cases": 14,
+        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
+        "elapsedMs": 2266.3131599999997,
+        "tool": "Debian clang version 19.1.7 (3+b1); /workspace/a0-unified/.a0-tmp/clang/root/usr/bin/wasm-ld-19"
+      },
+      "jvm": {
+        "status": "passed",
+        "cases": 14,
+        "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
+        "elapsedMs": 1856.1481950000016,
+        "tool": "javac 21.0.12.1; openjdk version \"21.0.12.1\" 2026-08-18"
+      }
+    }
+  },
+  "checker": {
+    "application": "Self-hosted A0 checker (compiler/check.a0 linked with parse.a0 and lex.a0), io front checkio",
+    "reference": "Independent TypeScript checker refCheck in tools/ref-check.ts over the word IR of refParse",
+    "cases": 50,
+    "caseLabels": [
+      "check/sq",
+      "check/retop",
+      "check/text",
+      "check/types",
+      "check/calls",
+      "check/unknown-callee",
+      "check/later-node",
+      "check/bad-op",
+      "check/unterminated",
+      "check/fns820",
+      "check/kernels.a0",
+      "check/life.a0",
+      "check/lex.a0",
+      "check/ui.a0",
+      "check/operand-type",
+      "check/mixed-bool-u32",
+      "check/eq-mixed",
+      "check/arity",
+      "check/param-range",
+      "check/fold-state",
+      "check/fold-count",
+      "check/loop-predicate",
+      "check/iterations",
+      "check/iterations-through-variable",
+      "check/call-arity",
+      "check/io-twice",
+      "check/io-consumed-ret",
+      "check/io-taken-call",
+      "check/io-taken-ret",
+      "check/io-taken-twice",
+      "check/io-taken-put-other",
+      "check/io-taken-node",
+      "check/io-two-params",
+      "check/io-in-array",
+      "check/select-tokens",
+      "check/rec-two-tokens",
+      "check/ret-type",
+      "check/unknown-node",
+      "check/array-index",
+      "check/get-scalar",
+      "check/field-range",
+      "check/put-field-type",
+      "check/puts-scalar",
+      "check/aggregate-limit",
+      "check/checked-operand-type",
+      "check/checked-arity",
+      "check/checked-result",
+      "check/cget-scalar",
+      "check/cget-element",
+      "check/cget-index"
+    ],
+    "targets": {
+      "interpreter": {
+        "status": "passed",
+        "cases": 50,
+        "detail": "Reference interpreter vs BigInt oracle",
+        "elapsedMs": 12832.636147999998
+      },
+      "optimizer": {
+        "status": "passed",
+        "cases": 50,
+        "detail": "Optimized graph vs BigInt oracle",
+        "elapsedMs": 12663.301788999997,
+        "before": 6732,
+        "after": 6799
+      },
+      "javascript": {
+        "status": "passed",
+        "cases": 50,
+        "detail": "Executed emitted ES module in Node; public input guards retained.",
+        "elapsedMs": 877.2836019999959
+      },
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 50,
+        "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 8740.40681999999,
+        "tool": "Debian clang version 19.1.7 (3+b1)"
+      },
+      "webassembly": {
+        "status": "passed",
+        "cases": 50,
+        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
+        "elapsedMs": 3071.719001999998,
+        "tool": "Debian clang version 19.1.7 (3+b1); /workspace/a0-unified/.a0-tmp/clang/root/usr/bin/wasm-ld-19"
+      },
+      "jvm": {
+        "status": "passed",
+        "cases": 50,
+        "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
+        "elapsedMs": 2419.2469220000057,
+        "tool": "javac 21.0.12.1; openjdk version \"21.0.12.1\" 2026-08-18"
+      }
+    }
+  },
+  "suggester": {
+    "application": "Self-hosted A0 spelling suggestions (compiler/suggest.a0 linked with lex.a0), io front suggestio",
+    "reference": "Independent TypeScript refSuggest in tools/ref-parse.ts (the rule of getSpellingSuggestion over the token stream)",
+    "cases": 26,
+    "caseLabels": [
+      "suggest/A0102-0-token7",
+      "suggest/A0102-0-token0",
+      "suggest/A0102-1-token24",
+      "suggest/A0102-1-token0",
+      "suggest/A0102-2-token23",
+      "suggest/A0102-2-token0",
+      "suggest/A0102-3-token23",
+      "suggest/A0102-3-token0",
+      "suggest/A0102-4-token8",
+      "suggest/A0102-4-token0",
+      "suggest/A0102-5-token7",
+      "suggest/A0102-5-token0",
+      "suggest/A0101-6-token13",
+      "suggest/A0101-6-token0",
+      "suggest/A0101-7-token8",
+      "suggest/A0101-7-token0",
+      "suggest/A0101-8-token12",
+      "suggest/A0101-8-token0",
+      "suggest/A0103-9-token24",
+      "suggest/A0103-9-token0",
+      "suggest/A0104-10-token41",
+      "suggest/A0104-10-token0",
+      "suggest/A0103-11-token42",
+      "suggest/A0103-11-token0",
+      "suggest/A0001-12-token2",
+      "suggest/A0001-12-token0"
+    ],
+    "targets": {
+      "interpreter": {
+        "status": "passed",
+        "cases": 26,
+        "detail": "Reference interpreter vs BigInt oracle",
+        "elapsedMs": 3765.1893100000016
+      },
+      "optimizer": {
+        "status": "passed",
+        "cases": 26,
+        "detail": "Optimized graph vs BigInt oracle",
+        "elapsedMs": 3675.7945489999984,
+        "before": 1068,
+        "after": 1096
+      },
+      "javascript": {
+        "status": "passed",
+        "cases": 26,
+        "detail": "Executed emitted ES module in Node; public input guards retained.",
+        "elapsedMs": 103.3796769999899
+      },
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 26,
+        "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 1892.3835850000032,
+        "tool": "Debian clang version 19.1.7 (3+b1)"
+      },
+      "webassembly": {
+        "status": "passed",
+        "cases": 26,
+        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
+        "elapsedMs": 807.4310280000063,
+        "tool": "Debian clang version 19.1.7 (3+b1); /workspace/a0-unified/.a0-tmp/clang/root/usr/bin/wasm-ld-19"
+      },
+      "jvm": {
+        "status": "passed",
+        "cases": 26,
+        "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
+        "elapsedMs": 1153.1155560000043,
+        "tool": "javac 21.0.12.1; openjdk version \"21.0.12.1\" 2026-08-18"
+      }
+    }
+  },
+  "emitter": {
+    "application": "Self-hosted A0 AArch64 emitter (compiler/emit_arm64.a0 linked with check.a0, parse.a0, lex.a0), io front emitio",
+    "reference": "Byte-identical assembly across targets (expected from the reference interpreter); correctness by execution in results/selfhost.json",
+    "cases": 12,
+    "caseLabels": [
+      "emit/affine",
+      "emit/clamp_max",
+      "emit/rotl",
+      "emit/is_even",
+      "emit/parity_select",
+      "emit/call",
+      "emit/fold",
+      "emit/loop",
+      "emit/refuse-array",
+      "emit/refuse-io",
+      "emit/refuse-record",
+      "emit/ill-typed"
+    ],
+    "targets": {
+      "interpreter": {
+        "status": "passed",
+        "cases": 12,
+        "detail": "Reference interpreter vs BigInt oracle",
+        "elapsedMs": 1222.456268000009
+      },
+      "optimizer": {
+        "status": "passed",
+        "cases": 12,
+        "detail": "Optimized graph vs BigInt oracle",
+        "elapsedMs": 1393.3890350000001,
+        "before": 11947,
+        "after": 12016
+      },
+      "javascript": {
+        "status": "passed",
+        "cases": 12,
+        "detail": "Executed emitted ES module in Node; public input guards retained.",
+        "elapsedMs": 265.58895199999097
+      },
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 12,
+        "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 11840.958847999995,
+        "tool": "Debian clang version 19.1.7 (3+b1)"
+      },
+      "webassembly": {
+        "status": "passed",
+        "cases": 12,
+        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
+        "elapsedMs": 6270.663695999989,
+        "tool": "Debian clang version 19.1.7 (3+b1); /workspace/a0-unified/.a0-tmp/clang/root/usr/bin/wasm-ld-19"
+      },
+      "jvm": {
+        "status": "passed",
+        "cases": 12,
+        "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
+        "elapsedMs": 2827.251747000002,
+        "tool": "javac 21.0.12.1; openjdk version \"21.0.12.1\" 2026-08-18"
+      }
+    }
+  },
+  "cEmitter": {
+    "application": "Self-hosted A0 C emitter (compiler/emit_c.a0 linked with check.a0, parse.a0 and lex.a0), io front emitcio",
+    "reference": "emitc in the reference interpreter over the tables of refParse and refCheck: the C bytes must be identical on every target (tools/selfhost-c.ts compiles that C and checks it against the oracle)",
+    "cases": 15,
+    "caseLabels": [
+      "emitc/clamp",
+      "emitc/sq",
+      "emitc/retop",
+      "emitc/text",
+      "emitc/types",
+      "emitc/calls",
+      "emitc/unknown-callee",
+      "emitc/later-node",
+      "emitc/bad-op",
+      "emitc/unterminated",
+      "emitc/kernels.a0",
+      "emitc/operand-type",
+      "emitc/mixed-bool-u32",
+      "emitc/eq-mixed",
+      "emitc/arity"
+    ],
+    "cBytes": {
+      "emitc/clamp": 2158,
+      "emitc/sq": 2013,
+      "emitc/retop": 2025,
+      "emitc/text": 0,
+      "emitc/types": 2386,
+      "emitc/calls": 2653,
+      "emitc/unknown-callee": 0,
+      "emitc/later-node": 0,
+      "emitc/bad-op": 0,
+      "emitc/unterminated": 0,
+      "emitc/kernels.a0": 2706,
+      "emitc/operand-type": 0,
+      "emitc/mixed-bool-u32": 0,
+      "emitc/eq-mixed": 0,
+      "emitc/arity": 0
+    },
+    "targets": {
+      "interpreter": {
+        "status": "passed",
+        "cases": 15,
+        "detail": "Reference interpreter vs BigInt oracle",
+        "elapsedMs": 467.4102270000003
+      },
+      "optimizer": {
+        "status": "passed",
+        "cases": 15,
+        "detail": "Optimized graph vs BigInt oracle",
+        "elapsedMs": 501.0834249999898,
+        "before": 7978,
+        "after": 8048
+      },
+      "javascript": {
+        "status": "passed",
+        "cases": 15,
+        "detail": "Executed emitted ES module in Node; public input guards retained.",
+        "elapsedMs": 135.86534400000528
+      },
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 15,
+        "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 9421.597525999998,
+        "tool": "Debian clang version 19.1.7 (3+b1)"
+      },
+      "webassembly": {
+        "status": "passed",
+        "cases": 15,
+        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
+        "elapsedMs": 3511.8716730000015,
+        "tool": "Debian clang version 19.1.7 (3+b1); /workspace/a0-unified/.a0-tmp/clang/root/usr/bin/wasm-ld-19"
+      },
+      "jvm": {
+        "status": "passed",
+        "cases": 15,
+        "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
+        "elapsedMs": 2113.916222,
+        "tool": "javac 21.0.12.1; openjdk version \"21.0.12.1\" 2026-08-18"
+      }
+    }
+  },
+  "reference": "Independent TypeScript implementation in tools/app.ts (refStep/refSession); no A0 code involved",
+  "referenceSelfCheck": true,
+  "functions": 14,
+  "cases": 134,
+  "caseLabels": [
+    "empty/step0",
+    "empty/step1",
+    "empty/step2",
+    "empty/step3",
+    "empty/step4",
+    "empty/step5",
+    "empty/toggle",
+    "empty/toggle-wrap",
+    "empty/clear",
+    "blinker/step0",
+    "blinker/step1",
+    "blinker/step2",
+    "blinker/step3",
+    "blinker/step4",
+    "blinker/step5",
+    "blinker/toggle",
+    "blinker/toggle-wrap",
+    "blinker/clear",
+    "block/step0",
+    "block/step1",
+    "block/step2",
+    "block/step3",
+    "block/step4",
+    "block/step5",
+    "block/toggle",
+    "block/toggle-wrap",
+    "block/clear",
+    "glider/step0",
+    "glider/step1",
+    "glider/step2",
+    "glider/step3",
+    "glider/step4",
+    "glider/step5",
+    "glider/toggle",
+    "glider/toggle-wrap",
+    "glider/clear",
+    "wrapGlider/step0",
+    "wrapGlider/step1",
+    "wrapGlider/step2",
+    "wrapGlider/step3",
+    "wrapGlider/step4",
+    "wrapGlider/step5",
+    "wrapGlider/toggle",
+    "wrapGlider/toggle-wrap",
+    "wrapGlider/clear",
+    "full/step0",
+    "full/step1",
+    "full/step2",
+    "full/step3",
+    "full/step4",
+    "full/step5",
+    "full/toggle",
+    "full/toggle-wrap",
+    "full/clear",
+    "random0/step",
+    "random0/toggle",
+    "random1/step",
+    "random1/toggle",
+    "random2/step",
+    "random2/toggle",
+    "random3/step",
+    "random3/toggle",
+    "random4/step",
+    "random4/toggle",
+    "random5/step",
+    "random5/toggle",
+    "random6/step",
+    "random6/toggle",
+    "random7/step",
+    "random7/toggle",
+    "random8/step",
+    "random8/toggle",
+    "random9/step",
+    "random9/toggle",
+    "random10/step",
+    "random10/toggle",
+    "random11/step",
+    "random11/toggle",
+    "random12/step",
+    "random12/toggle",
+    "random13/step",
+    "random13/toggle",
+    "random14/step",
+    "random14/toggle",
+    "random15/step",
+    "random15/toggle",
+    "random16/step",
+    "random16/toggle",
+    "random17/step",
+    "random17/toggle",
+    "random18/step",
+    "random18/toggle",
+    "random19/step",
+    "random19/toggle",
+    "random20/step",
+    "random20/toggle",
+    "random21/step",
+    "random21/toggle",
+    "random22/step",
+    "random22/toggle",
+    "random23/step",
+    "random23/toggle",
+    "random24/step",
+    "random24/toggle",
+    "random25/step",
+    "random25/toggle",
+    "random26/step",
+    "random26/toggle",
+    "random27/step",
+    "random27/toggle",
+    "random28/step",
+    "random28/toggle",
+    "random29/step",
+    "random29/toggle",
+    "random30/step",
+    "random30/toggle",
+    "random31/step",
+    "random31/toggle",
+    "random32/step",
+    "random32/toggle",
+    "random33/step",
+    "random33/toggle",
+    "random34/step",
+    "random34/toggle",
+    "random35/step",
+    "random35/toggle",
+    "random36/step",
+    "random36/toggle",
+    "random37/step",
+    "random37/toggle",
+    "random38/step",
+    "random38/toggle",
+    "random39/step",
+    "random39/toggle"
+  ],
+  "targets": {
+    "interpreter": {
+      "status": "passed",
+      "cases": 134,
+      "detail": "Reference interpreter vs BigInt oracle",
+      "elapsedMs": 1982.9993539999998
+    },
+    "optimizer": {
+      "status": "passed",
+      "cases": 134,
+      "detail": "Optimized graph vs BigInt oracle",
+      "elapsedMs": 1491.807682,
+      "before": 175,
+      "after": 174
+    },
+    "javascript": {
+      "status": "passed",
+      "cases": 134,
+      "detail": "Executed emitted ES module in Node; public input guards retained.",
+      "elapsedMs": 18.999405999999908
+    },
+    "native_c_clang": {
+      "status": "passed",
+      "cases": 134,
+      "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+      "elapsedMs": 322.0903290000001,
+      "tool": "Debian clang version 19.1.7 (3+b1)"
+    },
+    "native_cpp_clang": {
+      "status": "passed",
+      "cases": 134,
+      "detail": "C-compatible output as C++17 via clang++; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+      "elapsedMs": 333.49694299999965,
+      "tool": "Debian clang version 19.1.7 (3+b1)"
+    },
+    "webassembly": {
+      "status": "passed",
+      "cases": 134,
+      "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
+      "elapsedMs": 238.49773600000026,
+      "tool": "Debian clang version 19.1.7 (3+b1); /workspace/a0-unified/.a0-tmp/clang/root/usr/bin/wasm-ld-19"
+    },
+    "jvm": {
+      "status": "passed",
+      "cases": 134,
+      "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
+      "elapsedMs": 859.6498590000001,
+      "tool": "javac 21.0.12.1; openjdk version \"21.0.12.1\" 2026-08-18"
+    }
+  },
+  "browser": "The Wasm build is also driven by the DOM adapter in site/ (built by `bun run site`); browser execution is checked manually or with the in-app browser, not by this script."
+}

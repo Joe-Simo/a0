@@ -558,10 +558,11 @@ function mergeReports(reports: readonly TargetReport[]): TargetReport {
     : reports.some((r) => r.status === 'blocked')
       ? 'blocked'
       : first.status;
+  const cases = reports.reduce((n, r) => n + r.cases, 0);
   return {
     status,
-    cases: reports.reduce((n, r) => n + r.cases, 0),
-    detail: first.detail,
+    cases,
+    detail: `${cases} total cases across ${reports.length} profile groups. ${reports.map((r, i) => `Group ${i + 1} (${r.cases} cases): ${r.detail}`).join(' ')}`,
     tool: first.tool,
     elapsedMs: reports.reduce((n, r) => n + (r.elapsedMs ?? 0), 0),
     failures: reports.flatMap((r) => r.failures ?? []),

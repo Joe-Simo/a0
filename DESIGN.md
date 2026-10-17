@@ -12,6 +12,10 @@ The product is **not** English interpreted at runtime, a universal virtual machi
 
 ## 2. Fundamental design decision
 
+The implementation work toward one source syntax is tracked in
+[unified syntax migration](docs/design/unified-syntax.md). Internal semantic representations and
+target-specific implementations remain separate from the source-language syntax decision.
+
 Separate these representations:
 
 1. **AI view:** compact, task-relevant operations, meaningful contracts, short scoped references, and edits.
