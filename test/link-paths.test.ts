@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -12,7 +12,7 @@ const skip =
 test('aliased project roots preserve missing-import errors through missing parent directories', {
   skip,
 }, async () => {
-  const root = await mkdtemp(join(tmpdir(), 'a0-link-alias-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'a0-link-alias-')));
   try {
     const physical = join(root, 'physical');
     const alias = join(root, 'alias');
@@ -43,7 +43,7 @@ test('aliased project roots preserve missing-import errors through missing paren
 test('missing imports through an outside symlink retain project-root confinement', {
   skip,
 }, async () => {
-  const root = await mkdtemp(join(tmpdir(), 'a0-link-escape-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'a0-link-escape-')));
   try {
     const project = join(root, 'project');
     const outside = join(root, 'outside');
@@ -73,7 +73,7 @@ test('missing imports through an outside symlink retain project-root confinement
 });
 
 test('entry symlinks retain lexical identity and relative-import semantics', { skip }, async () => {
-  const root = await mkdtemp(join(tmpdir(), 'a0-link-entry-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'a0-link-entry-')));
   try {
     await mkdir(join(root, 'sub'));
     await writeFile(join(root, 'dep.a0'), 'fn dep -> u32\nret 17\nend\n');
