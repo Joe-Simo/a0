@@ -2747,28 +2747,12 @@ export function compile(
   options: CompileOptions = {},
   cache?: FunctionCache,
 ): CompileResult {
-  assertTargetSupports(target, source, strictTrapSite);
-  // A strict program with no site that can trap is the canonical program for a target without the profile.
-  const program = STRICT_TARGETS.has(target) ? source : withoutProfile(source);
-  const optimized = options.optimize !== false;
+  const program = prepareCompilation(source, target);
   let cacheHits = 0;
   let cacheMisses = 0;
   const bodies = program.functions.map((fn) => {
     if (cache === undefined) return emitFunction(target, fn, options);
-    const key = FunctionCache.key(
-      target,
-      optimized,
-      fn,
-      target === 'c' && options.cParallel !== undefined
-        ? `|${options.cParallel.key}`
-        : target === 'c' && options.cTrap !== undefined
-          ? '|trap'
-          : target === 'x86_64' && options.x86Platform !== undefined
-            ? `|${options.x86Platform}`
-            : target === 'wasm'
-              ? `${options.wasmSimd === false ? '|nosimd' : ''}${options.wasmUnroll === undefined || options.wasmUnroll === 1 ? '' : `|unroll${options.wasmUnroll}`}`
-              : '',
-    );
+    const key = functionEmissionKey(target, fn, options);
     const hit = cache.get(key);
     if (hit !== undefined) {
       cacheHits += 1;
@@ -2780,4 +2764,30 @@ export function compile(
     return text;
   });
   return { text: assemble(target, bodies, program, options), cacheHits, cacheMisses };
+}
+/** Shared target/semantic validation for every cache adapter. */
+export function prepareCompilation(source: TypedProgram, target: Target): TypedProgram {
+  assertTargetSupports(target, source, strictTrapSite);
+  return STRICT_TARGETS.has(target) ? source : withoutProfile(source);
+}
+/** One emission descriptor shared by in-memory, plaintext and encrypted persistent caches. */
+export function functionEmissionKey(
+  target: Target,
+  fn: TypedFunc,
+  options: CompileOptions = {},
+): string {
+  return FunctionCache.key(
+    target,
+    options.optimize !== false,
+    fn,
+    target === 'c' && options.cParallel !== undefined
+      ? `|${options.cParallel.key}`
+      : target === 'c' && options.cTrap !== undefined
+        ? '|trap'
+        : target === 'x86_64' && options.x86Platform !== undefined
+          ? `|${options.x86Platform}`
+          : target === 'wasm'
+            ? `${options.wasmSimd === false ? '|nosimd' : ''}${options.wasmUnroll === undefined || options.wasmUnroll === 1 ? '' : `|unroll${options.wasmUnroll}`}`
+            : '',
+  );
 }

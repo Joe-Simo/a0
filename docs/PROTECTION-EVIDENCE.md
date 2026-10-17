@@ -1,0 +1,9 @@
+# Protection checkpoint
+
+This evidence describes frozen source commit `e585205`, based on compiler `a0c-0.1.60`. It is retained as historical checkpoint evidence in the combined integration; it is not a production confidentiality claim or validation of the newer combined compiler.
+
+The twenty focused tests and standalone offline checks pass. The initial performance budgets are not met; no measured reconstruction-resistance gain is demonstrated. Independent security review and cross-platform validation remain pending.
+
+See `results/protection-milestone-checkpoint.json`, `results/protection-benchmark-checkpoint.json`, `results/protection-native-offline-checkpoint.json`, and `results/protection-reconstruction-checkpoint.json` for scope, raw measurements and gaps.
+
+A controlled owned-fixture schedule confirms that an unsealed compilation already in flight can persist a plaintext managed-cache entry after sealing completes. This is a production blocker. See `results/protection-transition-race.json`; fixing it requires a shared managed-writer/transition protocol, not another inventory snapshot.

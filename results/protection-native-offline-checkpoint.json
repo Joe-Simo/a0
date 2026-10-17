@@ -1,0 +1,86 @@
+{
+  "schema": "a0-native-offline-conformance-1",
+  "runtime": "Bun 1.3.4 embedded CJS bytecode",
+  "binarySha256": "f5e7774187fa547f63e97ccc03b718c25415d844e57c0d4f64e782dc56660111",
+  "binaryBytes": 127422781,
+  "host": "linux-x64",
+  "network": "socket/connect/send/receive syscalls denied by inherited seccomp filter; strace observed zero network operations",
+  "externalApplications": "PATH empty; strace observed only the standalone A0 executable, no child application execution",
+  "steps": [
+    {
+      "command": [
+        "seal",
+        "keygen"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "seal",
+        "on"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "seal",
+        "on"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "protect",
+        "on"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "seal",
+        "unlock"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "seal",
+        "rotate"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "seal",
+        "export"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "seal",
+        "off"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "seal",
+        "off"
+      ],
+      "exit": 0
+    }
+  ],
+  "checks": [
+    "keygen",
+    "seal metadata and source",
+    "independent protect control",
+    "normal-source editing view",
+    "reference run",
+    "direct Wasm build",
+    "rotation",
+    "sealed export",
+    "authorized plaintext restoration"
+  ],
+  "baselineStandalone": "Unmodified pinned Bun release command rejects --bytecode --format=esm; no binary performance comparison claimed."
+}

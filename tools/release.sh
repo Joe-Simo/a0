@@ -12,6 +12,7 @@
 # when built on macOS.
 set -eu
 cd "$(dirname "$0")/.."
+bun -e 'import { requirePackagingPolicy } from "./src/protection-policy.ts"; requirePackagingPolicy(".")'
 
 version=${1:-}
 version=${version#v}
