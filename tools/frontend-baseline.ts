@@ -22,9 +22,21 @@ const option = (name: string): string | undefined =>
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const hash = (text: string): string => createHash('sha256').update(text).digest('hex');
 const read = (path: string): Promise<string> => readFile(path, 'utf8');
+function committedTree(path: string): { commit: string; tree: string } {
+  const git = (...args: string[]): string => {
+    const result = spawnSync('git', args, { cwd: path, encoding: 'utf8' });
+    if (result.status !== 0) throw new Error(result.stderr || String(result.error));
+    return result.stdout.trim();
+  };
+  if (git('status', '--porcelain', '--untracked-files=normal') !== '')
+    throw new Error('frontend measurements require a clean committed checkout');
+  return { commit: git('rev-parse', 'HEAD'), tree: git('rev-parse', 'HEAD^{tree}') };
+}
 async function main(): Promise<void> {
   const baseline = option('baseline');
   if (baseline === undefined) throw new Error('--baseline=<built checkout> is required');
+  const baselineIdentity = committedTree(resolve(baseline));
+  const candidateIdentity = committedTree(root);
   const encodings = ['o200k_base', 'cl100k_base'] as const;
   const tokenizers = encodings.map((name) => [name, getEncoding(name)] as const);
   const rows: Record<string, unknown>[] = [];
@@ -95,8 +107,6 @@ async function main(): Promise<void> {
     rows.push({ entry: name, files: forms.size, tokens, equivalent, measurements });
     process.stderr.write(`${name}: equivalent\n`);
   }
-  const git = (path: string): string =>
-    spawnSync('git', ['rev-parse', 'HEAD'], { cwd: path, encoding: 'utf8' }).stdout.trim();
   const capacityRows: Record<string, unknown>[] = [];
   for (const path of listSources(root)) {
     if (isReject(path, root)) continue;
@@ -131,14 +141,10 @@ async function main(): Promise<void> {
       logicalCpus: cpus().length,
       availableParallelism: availableParallelism(),
     },
-    baselineCommit: git(resolve(baseline)),
-    candidateCommit: git(root),
-    candidateDiffSha256: hash(
-      spawnSync('git', ['diff', 'HEAD', '--', 'src/link.ts'], {
-        cwd: root,
-        encoding: 'utf8',
-      }).stdout,
-    ),
+    baselineCommit: baselineIdentity.commit,
+    baselineTree: baselineIdentity.tree,
+    candidateCommit: candidateIdentity.commit,
+    candidateTree: candidateIdentity.tree,
     loadSource: loadSource(),
     method:
       'Isolated workers; six warmups, fifteen warm in-memory links per cell. Both source inputs are printer-normalized and comment-free. Output hashes use optimized JS, C and direct wasm. Worker RSS includes input snapshots and frontend warmups, sampled before importing backends or emitting. Token counts exclude comments and include imports, summed per file. Cells run sequentially; timings are exploratory, not a paired interleaved performance claim.',
@@ -158,6 +164,13 @@ async function main(): Promise<void> {
     },
     rows,
   };
+  if (
+    JSON.stringify(committedTree(resolve(baseline))) !== JSON.stringify(baselineIdentity) ||
+    JSON.stringify(committedTree(root)) !== JSON.stringify(candidateIdentity)
+  )
+    throw new Error(
+      'implementation changed during measurement; rerun on clean committed checkouts',
+    );
   await writeReport(option('out') ?? join(root, 'results/frontend-baseline.json'), report);
   process.stdout.write(reportJson({ programs: rows.length, equivalent: true }));
 }

@@ -78,6 +78,12 @@ includes input snapshots and frontend warmups and must not be described as parse
 RSS is sampled before importing the measured checkout's backends or emitting artifacts. Each
 worker loads only the measured checkout's frontend; tokenization and source conversion happen
 in the parent process. The report is `results/frontend-baseline.json`.
+New runs require clean committed baseline and candidate checkouts, record both complete Git
+tree IDs, and force a fresh TypeScript build in a separate process before each worker imports
+the implementation. Build time and compiler memory are excluded from the frontend samples.
+The earlier checked-in frontend report predates these provenance checks: its candidate was
+uncommitted and only the linker diff was recorded. Treat it as a historical exploratory
+snapshot, not a fully reproducible candidate-tree measurement.
 Both source inputs are printer-normalized without comments so comment retention does not bias
 the comparison between source surfaces.
 It also reruns the existing Dense chunk planner across the accepted-source tree and records

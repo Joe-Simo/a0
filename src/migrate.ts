@@ -7,6 +7,7 @@ import { formatProgram, formatSource } from './core.js';
 import { formatDense, parseDense } from './dense.js';
 import { programRevision } from './edit.js';
 import { link } from './link.js';
+import { protectionPolicy } from './protection-policy.js';
 
 export interface MigrationFile {
   readonly source: string;
@@ -39,11 +40,15 @@ export async function migrateProject(
   root = dirname(resolve(entry)),
   legacyDense = false,
 ): Promise<MigrationManifest> {
+  protectionPolicy(root);
+  protectionPolicy(entry);
+  protectionPolicy(destination);
   const sourceRoot = await realpath(root);
   const sourceEntry = await realpath(entry);
   const output = resolve(destination);
   const snapshots = new Map<string, string>();
   const read = async (path: string): Promise<string> => {
+    protectionPolicy(path);
     const key = await realpath(path);
     const old = snapshots.get(key);
     if (old !== undefined) return old;

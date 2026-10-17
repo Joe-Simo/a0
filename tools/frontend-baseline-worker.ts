@@ -1,4 +1,5 @@
 /** Isolated measurement process: load only the measured checkout's frontend before sampling RSS. */
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -15,6 +16,21 @@ const option = (name: string): string | undefined =>
   args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const implementation = option('implementation');
 if (implementation === undefined) throw new Error('missing implementation');
+// Compile in a child before loading measured modules. Compiler allocations and build time
+// are excluded from this process's frontend RSS and link samples. Force emission even
+// when the compiler version or incremental cache says nothing changed.
+const build = spawnSync(
+  process.execPath,
+  [
+    join(implementation, 'node_modules/typescript/bin/tsc'),
+    '-p',
+    'tsconfig.json',
+    '--incremental',
+    'false',
+  ],
+  { cwd: implementation, encoding: 'utf8', timeout: 180_000, maxBuffer: 8 * 1024 * 1024 },
+);
+if (build.status !== 0) throw new Error(build.stderr || build.stdout || String(build.error));
 const fixtures = JSON.parse(readFileSync(0, 'utf8')) as {
   root: string;
   entry: string;
@@ -92,6 +108,7 @@ process.stdout.write(
   JSON.stringify({
     samples,
     compilerVersion: builtVersion.COMPILER_VERSION,
+    buildMethod: 'fresh tsc --incremental false in a separate process before module import',
     implementationHashes,
     medianMs: samples.map((s) => s.ms).sort((a, b) => a - b)[Math.floor(samples.length / 2)],
     loadWithinLimit: samples.every((s) => s.loadBefore <= 10 && s.loadAfter <= 10),

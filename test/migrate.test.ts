@@ -18,6 +18,55 @@ const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const read = (path: string): Promise<string> => readFile(path, 'utf8');
 const hash = (text: string): string => createHash('sha256').update(text).digest('hex');
 
+test('migration refuses sealed source closures and destinations before publishing plaintext', async () => {
+  const scratch = await mkdtemp(join(tmpdir(), 'a0-migrate-sealed-'));
+  try {
+    const project = join(scratch, 'input');
+    const nested = join(project, 'lib');
+    const entry = join(project, 'main.a0');
+    const output = join(scratch, 'output');
+    await mkdir(nested, { recursive: true });
+    await writeFile(entry, 'use "lib/inc.a0"\nfn main -> u32\na call inc 1\nret a\nend\n');
+    await writeFile(join(nested, 'inc.a0'), 'fn inc u32 -> u32\na add p0 1\nret a\nend\n');
+    for (const phase of ['on', 'off', 'sealing', 'unsealing']) {
+      const store = join(project, '.a0-seal');
+      await mkdir(store);
+      await writeFile(join(store, 'head.json'), JSON.stringify({ format: 'a0-vault-1', phase }));
+      await assert.rejects(migrateProject(entry, output), /SEALED_USE_UNLOCK_SESSION/);
+      const cli = spawnSync(
+        process.execPath,
+        [join(root, 'dist/src/cli.js'), 'migrate', entry, output],
+        {
+          encoding: 'utf8',
+        },
+      );
+      assert.notEqual(cli.status, 0);
+      assert.match(cli.stderr, /SEALED_USE_UNLOCK_SESSION/);
+      await assert.rejects(access(output));
+      await rm(store, { recursive: true });
+    }
+    const store = join(nested, '.a0-seal');
+    await mkdir(store);
+    await writeFile(join(store, 'head.json'), '{"format":"a0-vault-1","phase":"on"}');
+    await assert.rejects(migrateProject(entry, output), /SEALED_USE_UNLOCK_SESSION/);
+    await assert.rejects(access(output));
+    await rm(store, { recursive: true });
+    const sealedOutput = join(scratch, 'sealed-output');
+    await mkdir(join(sealedOutput, '.a0-seal'), { recursive: true });
+    await writeFile(
+      join(sealedOutput, '.a0-seal/head.json'),
+      '{"format":"a0-vault-1","phase":"on"}',
+    );
+    await assert.rejects(
+      migrateProject(entry, join(sealedOutput, 'copy')),
+      /SEALED_USE_UNLOCK_SESSION/,
+    );
+    await assert.rejects(access(join(sealedOutput, 'copy')));
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+});
+
 test('migration preserves imports, comments, contracts, revisions and all backend output', async () => {
   const scratch = await mkdtemp(join(tmpdir(), 'a0-migrate-test-'));
   try {
