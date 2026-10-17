@@ -84,6 +84,9 @@ the implementation. Build time and compiler memory are excluded from the fronten
 The earlier checked-in frontend report predates these provenance checks: its candidate was
 uncommitted and only the linker diff was recorded. Treat it as a historical exploratory
 snapshot, not a fully reproducible candidate-tree measurement.
+Its input hash identifies the shared Canonical fixture even in Dense cells. New runs hash the
+actual bytes of each surface and compare those hashes between implementations on that surface;
+semantic program and output artifact hashes are compared across both surfaces.
 Both source inputs are printer-normalized without comments so comment retention does not bias
 the comparison between source surfaces.
 It also reruns the existing Dense chunk planner across the accepted-source tree and records
@@ -91,6 +94,8 @@ capacity refusals. Passing this static capacity check is not a self-hosted reade
 
 The behavior-table run is recorded separately in `results/unified-foundation-behavior.json`.
 Environment-blocked targets remain explicitly blocked; they are not counted as passing.
+The historical reader behavior report's .NET detail is labeled as the first profile group;
+its aggregate case count is unchanged. This is a metadata correction, not a new measurement.
 `results/unified-source-migration.json` records the source-tree conversion audit: each accepted
 entry is linked by the rebuilt baseline frontend, converted into an isolated directory, then
 linked again and compared by semantic-program hash. These are TypeScript reader checks, not

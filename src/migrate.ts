@@ -6,7 +6,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { formatProgram, formatSource } from './core.js';
 import { formatDense, parseDense } from './dense.js';
 import { programRevision } from './edit.js';
-import { link } from './link.js';
+import { link, physicalPath } from './link.js';
 import { protectionPolicy } from './protection-policy.js';
 
 export interface MigrationFile {
@@ -45,7 +45,8 @@ export async function migrateProject(
   protectionPolicy(destination);
   const sourceRoot = await realpath(root);
   const sourceEntry = await realpath(entry);
-  const output = resolve(destination);
+  const output = await physicalPath(resolve(destination));
+  protectionPolicy(output);
   const snapshots = new Map<string, string>();
   const read = async (path: string): Promise<string> => {
     protectionPolicy(path);
@@ -109,6 +110,7 @@ export async function migrateProject(
     })),
   };
 
+  protectionPolicy(output);
   await mkdir(dirname(output), { recursive: true });
   // mkdir reserves the destination without overwriting even an existing empty directory.
   await mkdir(output);
@@ -129,12 +131,15 @@ export async function migrateProject(
     )
       throw new Error('migration changed the linked program');
     // Detect concurrent source edits rather than publishing a stale snapshot as the migration.
-    for (const [path, text] of snapshots)
+    for (const [path, text] of snapshots) {
+      protectionPolicy(path);
       if (!Buffer.from(text, 'utf8').equals(await readFile(path)))
         throw new Error(`source changed during migration: ${relative(sourceRoot, path)}`);
+    }
     await writeFile(join(staging, 'a0-migration.json'), `${JSON.stringify(manifest, null, 2)}\n`, {
       flag: 'wx',
     });
+    protectionPolicy(output);
     await rename(staging, output);
     staging = undefined;
     return manifest;

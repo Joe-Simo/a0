@@ -97,12 +97,16 @@ async function main(): Promise<void> {
       }
     }
     const first = measurements[0] as Record<string, unknown>;
-    const equivalent = measurements.every(
-      (m) =>
-        m.programSha256 === first.programSha256 &&
-        m.inputSha256 === first.inputSha256 &&
-        JSON.stringify(m.artifacts) === JSON.stringify(first.artifacts),
-    );
+    const equivalent =
+      measurements.every(
+        (m) =>
+          m.programSha256 === first.programSha256 &&
+          JSON.stringify(m.artifacts) === JSON.stringify(first.artifacts),
+      ) &&
+      ['canonical', 'dense'].every((surface) => {
+        const cells = measurements.filter((m) => m.surface === surface);
+        return cells.length === 2 && cells[0]?.inputSha256 === cells[1]?.inputSha256;
+      });
     if (!equivalent) throw new Error(`${name}: program or generated artifact differs`);
     rows.push({ entry: name, files: forms.size, tokens, equivalent, measurements });
     process.stderr.write(`${name}: equivalent\n`);

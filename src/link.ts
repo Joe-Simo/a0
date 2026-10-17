@@ -119,7 +119,7 @@ function projectRoot(entry: string): string {
 }
 
 /** Resolve existing ancestors of missing paths, preserving lexical entry identities. */
-async function canonical(path: string): Promise<string> {
+export async function physicalPath(path: string): Promise<string> {
   try {
     return await realpath(path);
   } catch (e) {
@@ -127,7 +127,7 @@ async function canonical(path: string): Promise<string> {
       const absolute = resolve(path);
       const parent = dirname(absolute);
       if (parent === absolute) return absolute;
-      return join(await canonical(parent), basename(absolute));
+      return join(await physicalPath(parent), basename(absolute));
     }
     throw e;
   }
@@ -203,7 +203,7 @@ export async function link(
   read: ReadSource,
   options: LinkOptions = {},
 ): Promise<Linked> {
-  const canonicalPath = options.canonicalPath ?? canonical;
+  const canonicalPath = options.canonicalPath ?? physicalPath;
   const root = await canonicalPath(options.root ?? projectRoot(entry));
   const inside = (abs: string): boolean => {
     const rel = relative(root, abs);

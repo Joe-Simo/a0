@@ -75,6 +75,25 @@ test('behavior: a wrong expected value fails on a backend (the check is not vacu
   assert.equal(t.status, 'failed');
 });
 
+test('behavior: aggregate detail retains every profile group and the total case count', async () => {
+  const counts: number[] = [];
+  const result = await runTarget({
+    id: 'js',
+    label: 'JavaScript',
+    run: async (_program, cases) => {
+      counts.push(cases.length);
+      return { status: 'passed', cases: cases.length, detail: `executed ${cases.length} cases` };
+    },
+  });
+  assert.ok(counts.length > 1);
+  assert.equal(result.cases, select('js').cases.length);
+  assert.ok(result.detail.startsWith(`${result.cases} total cases`));
+  for (const [index, count] of counts.entries())
+    assert.ok(
+      result.detail.includes(`Group ${index + 1} (${count} cases): executed ${count} cases`),
+    );
+});
+
 test('behavior: every program passes on every target or sits in the ledger', async () => {
   const results = [];
   for (const def of TARGETS) results.push(await runTarget(def)); // one target at a time

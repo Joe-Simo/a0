@@ -115,7 +115,7 @@ process.stdout.write(
     frontendWorkerPeakRssKiB,
     programSha256: hash(formatProgram(linked.program)),
     inputSha256: hash(
-      JSON.stringify(fixtures.canonical.map(([p, t]) => [p.slice(fixtures.root.length), t])),
+      JSON.stringify([...texts].map(([p, t]) => [p.slice(fixtures.root.length), t])),
     ),
     artifacts,
   }),

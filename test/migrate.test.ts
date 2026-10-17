@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { access, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -62,6 +71,19 @@ test('migration refuses sealed source closures and destinations before publishin
       /SEALED_USE_UNLOCK_SESSION/,
     );
     await assert.rejects(access(join(sealedOutput, 'copy')));
+    const alias = join(scratch, 'alias');
+    const physicalParent = join(sealedOutput, 'nested');
+    await mkdir(physicalParent);
+    await symlink(physicalParent, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    await assert.rejects(
+      migrateProject(entry, join(alias, 'missing', 'copy')),
+      /SEALED_USE_UNLOCK_SESSION/,
+    );
+    await assert.rejects(access(join(physicalParent, 'missing')));
+    await rm(join(sealedOutput, '.a0-seal'), { recursive: true });
+    const manifest = await migrateProject(entry, join(alias, 'missing', 'copy'));
+    assert.equal(manifest.entry, 'main.a0d');
+    await access(join(physicalParent, 'missing', 'copy', manifest.entry));
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }
