@@ -1,0 +1,330 @@
+interface SpecCase {
+  readonly name: string;
+  readonly source: string;
+  readonly status: number;
+  readonly id?: number;
+  readonly heavy?: boolean;
+  readonly kind?: number;
+  readonly input?: number;
+  readonly line?: number;
+  readonly reason?: number;
+  readonly underlying?: number;
+  readonly evalphase?: number;
+  readonly ex?: number;
+  readonly visited?: number;
+  readonly cache?: number;
+}
+export const simple = (
+  spec = '',
+  body = 'x mov p0\nret x',
+  params = 'u32',
+  result = 'u32',
+  name = 'f',
+) => `fn ${name} ${params} -> ${result}\n${spec}\n${body}\nend\n`;
+const later = 'fn later u32 -> u32\nx add true p0\nret x\nend\n';
+const badparse = 'fn broken u32 ->u32\nx add p0\nret x\nend\n';
+const step = 'fn step u32 u32 -> u32\nx mov p0\nret x\nend\n';
+const checker = (n: number) => `fn held u32 -> bool\na fold step ${n} p0\nb eq a p0\nret b\nend\n`;
+const helper = 'fn identity u32 -> u32\nret p0\nend\n';
+const badbool = 'fn bad u32 -> bool\na div p0 0\nb eq a 0\nret b\nend\n';
+export const cases: readonly SpecCase[] = [
+  { name: 'empty-source', source: '', status: 0 },
+  { name: 'no-spec', source: simple(), status: 0 },
+  { name: 'matching-example', source: simple('ex 7 ->7'), status: 0 },
+  {
+    name: 'mismatching-example',
+    source: simple('ex 7 ->8'),
+    status: 8,
+    id: 715,
+    kind: 3,
+    line: 1,
+    input: 1,
+  },
+  {
+    name: 'pre-false',
+    source: simple('ex 7 ->7\npre lt p0 3'),
+    status: 8,
+    id: 716,
+    kind: 1,
+    line: 2,
+    input: 1,
+  },
+  {
+    name: 'post-false',
+    source: simple('ex 7 ->7\npost lt r 3'),
+    status: 8,
+    id: 716,
+    kind: 1,
+    line: 3,
+    input: 1,
+  },
+  { name: 'matching-pre-post', source: simple('ex 7 ->7\npre lt p0 10\npost eq r p0'), status: 0 },
+  {
+    name: 'zero-argument-contracts',
+    source: simple('ex ->9\npre eq 1 1\npost eq r 9', 'ret 9', '', 'u32'),
+    status: 0,
+  },
+  {
+    name: 'contracts-without-examples-do-not-execute',
+    source: simple('pre eq p0 0\npost eq r 0'),
+    status: 0,
+  },
+  {
+    name: 'three-examples-second-fails',
+    source: simple('ex 1 ->1\nex 2 ->3\nex 4 ->4'),
+    status: 8,
+    id: 715,
+    kind: 3,
+    ex: 2,
+  },
+  { name: 'three-examples-match', source: simple('ex 1 ->1\nex 2 ->2\nex 4 ->4'), status: 0 },
+  {
+    name: 'all-example-types-before-first-value',
+    source: simple('ex 1 ->2\nex false ->0'),
+    status: 8,
+    id: 714,
+    reason: 7,
+  },
+  {
+    name: 'earlier-example-shape-before-later-arity',
+    source: simple('ex false ->1\nex 2 3 ->2'),
+    status: 8,
+    id: 714,
+    reason: 7,
+  },
+  {
+    name: 'earlier-value-before-later-body',
+    source: simple('ex 1 ->2') + later,
+    status: 8,
+    id: 715,
+    kind: 3,
+    visited: 1,
+  },
+  {
+    name: 'earlier-pre-before-later-body',
+    source: simple('ex 1 ->1\npre eq p0 0') + later,
+    status: 8,
+    id: 716,
+    kind: 1,
+    visited: 1,
+  },
+  {
+    name: 'earlier-types-before-later-body',
+    source: simple('ex false ->1') + later,
+    status: 8,
+    id: 714,
+    reason: 7,
+    visited: 1,
+  },
+  {
+    name: 'whole-parse-before-earlier-value',
+    source: simple('ex 1 ->2') + badparse,
+    status: 6,
+    id: 23,
+    visited: 0,
+  },
+  {
+    name: 'whole-parse-before-earlier-type',
+    source: simple('ex false ->0') + badparse,
+    status: 6,
+    id: 23,
+    visited: 0,
+  },
+  {
+    name: 'own-body-before-own-spec',
+    source: simple('pre eq x x', 'x add true p0\nret x'),
+    status: 8,
+    id: 201,
+  },
+  {
+    name: 'io-signature-with-contract-only',
+    source: simple('pre eq 1 1', 'ret p0', 'io', 'io'),
+    status: 8,
+    id: 714,
+    reason: 1,
+  },
+  { name: 'self-call-unpublished', source: simple('pre call f p0'), status: 8, id: 714, reason: 4 },
+  {
+    name: 'earlier-helper-and-bound-r',
+    source:
+      helper +
+      simple('ex 9 ->10\npre eq p0 9\npost eq r 10', 'x call identity p0\ny add x 1\nret y'),
+    status: 0,
+  },
+  {
+    name: 'later-body-reached-only-after-earlier-example-pass',
+    source: simple('ex 1 ->1') + later,
+    status: 8,
+    id: 201,
+    visited: 2,
+  },
+  {
+    name: 'multiple-functions-reuse-literal-prefix',
+    source:
+      simple('ex 1 ->1\nex 2 ->2', undefined, undefined, undefined, 'a') +
+      simple('ex 3 ->3\nex 4 ->4', undefined, undefined, undefined, 'b') +
+      simple('ex 5 ->5', undefined, undefined, undefined, 'c'),
+    status: 0,
+    cache: 10,
+  },
+  {
+    name: 'bool-typed-values',
+    source: simple('ex true ->true\nex false ->false\npost eq r p0', 'ret p0', 'bool', 'bool'),
+    status: 0,
+  },
+  {
+    name: 'nested-record-array-values',
+    source: simple(
+      'ex ([1;2];(true;9)) ->([1;2];(true;9))\npost eq true true',
+      'ret p0',
+      '(u32x2,(bool,u32))',
+      '(u32x2,(bool,u32))',
+    ),
+    status: 0,
+  },
+  {
+    name: 'nested-deep-mismatch',
+    source: simple(
+      'ex ([1;2];(true;9)) ->([1;2];(true;8))',
+      'ret p0',
+      '(u32x2,(bool,u32))',
+      '(u32x2,(bool,u32))',
+    ),
+    status: 8,
+    id: 715,
+    kind: 3,
+  },
+  {
+    name: 'record-and-array-literals-remain-distinct',
+    source: simple('ex (1;2) ->[1;2]', 'ret p0', 'u32x2', 'u32x2'),
+    status: 8,
+    id: 714,
+    reason: 7,
+  },
+  {
+    name: 'canonical-divzero-total',
+    source: simple('ex 7 ->4294967295', 'x div p0 0\nret x'),
+    status: 0,
+  },
+  {
+    name: 'strict-body-trap',
+    source: 'profile strict\n' + simple('ex 7 ->4294967295', 'x div p0 0\nret x'),
+    status: 8,
+    id: 715,
+    kind: 2,
+    underlying: 711,
+    line: 1,
+    input: 1,
+  },
+  {
+    name: 'strict-dead-node-trap-remains',
+    source: 'profile strict\n' + simple('ex 7 ->7', 'bad div p0 0\nret p0'),
+    status: 8,
+    id: 715,
+    kind: 2,
+    underlying: 711,
+  },
+  {
+    name: 'strict-pre-trap',
+    source: 'profile strict\n' + badbool + simple('ex 7 ->7\npre call bad p0'),
+    status: 8,
+    id: 716,
+    kind: 2,
+    underlying: 711,
+    line: 2,
+  },
+  {
+    name: 'strict-post-trap',
+    source: 'profile strict\n' + badbool + simple('ex 7 ->7\npost call bad r'),
+    status: 8,
+    id: 716,
+    kind: 2,
+    underlying: 711,
+    line: 3,
+  },
+  {
+    name: 'false-pre-skips-trapping-body',
+    source: 'profile strict\n' + simple('ex 7 ->0\npre eq p0 0', 'x div p0 0\nret x'),
+    status: 8,
+    id: 716,
+    kind: 1,
+    underlying: 0,
+    line: 2,
+  },
+  {
+    name: 'body-mismatch-skips-trapping-post',
+    source: 'profile strict\n' + badbool + simple('ex 7 ->8\npost call bad r'),
+    status: 8,
+    id: 715,
+    kind: 3,
+    underlying: 0,
+    line: 1,
+  },
+  {
+    name: 'checked-overflow-tuple',
+    source: simple('ex 4294967295 ->(0;false)', 'a cadd p0 1\nret a', 'u32', '(u32,bool)'),
+    status: 0,
+  },
+  {
+    name: 'checked-divzero-tuple',
+    source: simple('ex 7 ->(0;false)', 'a cdiv p0 0\nret a', 'u32', '(u32,bool)'),
+    status: 0,
+  },
+  {
+    name: 'checked-get-tuple-strict',
+    source:
+      'profile strict\n' +
+      simple('ex [7;8] ->(0;false)', 'a cget p0 32\nret a', 'u32x2', '(u32,bool)'),
+    status: 0,
+  },
+  {
+    name: 'pre-body-post-each-fresh-fuel',
+    source:
+      step +
+      checker(2100) +
+      simple('ex 9 ->9\npre call held p0\npost call held r', 'x fold step 2100 p0\nret x'),
+    status: 0,
+    heavy: true,
+  },
+  {
+    name: 'each-example-fresh-fuel',
+    source: step + simple('ex 1 ->1\nex 2 ->2\nex 3 ->3', 'x fold step 2100 p0\nret x'),
+    status: 0,
+    heavy: true,
+  },
+  {
+    name: 'body-fuel-refusal',
+    source: step + simple('ex 9 ->9', 'x fold step 4000 p0\nret x'),
+    status: 8,
+    id: 719,
+    kind: 4,
+    underlying: 701,
+    line: 1,
+    input: 1,
+    heavy: true,
+  },
+  {
+    name: 'pre-fuel-refusal-has-no-input-field',
+    source: step + checker(4000) + simple('ex 9 ->9\npre call held p0'),
+    status: 8,
+    id: 719,
+    kind: 4,
+    underlying: 701,
+    line: 1,
+    input: 0,
+    evalphase: 2,
+    heavy: true,
+  },
+  {
+    name: 'post-fuel-refusal-has-no-input-field',
+    source: step + checker(4000) + simple('ex 9 ->9\npost call held r'),
+    status: 8,
+    id: 719,
+    kind: 4,
+    underlying: 701,
+    line: 1,
+    input: 0,
+    evalphase: 3,
+    heavy: true,
+  },
+];

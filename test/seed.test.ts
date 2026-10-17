@@ -8,7 +8,7 @@ import { parseAndValidate } from '../src/core.js';
 import { findClang, withTempDir } from '../src/toolchain.js';
 import { emitChunked, runStageChunk } from '../tools/bootstrap.js';
 import { generateCases } from '../tools/corpus.js';
-import { staleness } from '../tools/seed.js';
+import { readBootstrapSeed, staleness } from '../tools/seed.js';
 import { checkNative } from '../tools/verify.js';
 
 // A fresh machine has a C compiler and a shell, not Node, Bun or the TypeScript toolchain.
@@ -37,6 +37,27 @@ const size = (dir: string): number =>
 
 test('seed: it matches the compiler source in the working tree', async () => {
   assert.deepEqual(await staleness(), []);
+  const seed = await readBootstrapSeed();
+  assert.equal(seed.c, await readFile(join('seed', 'a0c-seed.c'), 'utf8'));
+  assert.equal(seed.manifest, await readFile(join('seed', 'MANIFEST'), 'utf8'));
+});
+
+test('seed: tool bootstrap refuses missing, damaged or stale input without regeneration', async () => {
+  await withTempDir(async (dir) => {
+    const copy = join(dir, 'seed');
+    await assert.rejects(readBootstrapSeed(copy), /bootstrap seed is unavailable or stale/);
+    cpSync('seed', copy, { recursive: true });
+    const files = ['a0c-seed.c', 'MANIFEST', 'stage-main.c', 'chunks/00.a0', 'plan.txt'];
+    for (const file of files) {
+      const path = join(copy, file);
+      const original = await readFile(path, 'utf8');
+      writeFileSync(path, `${original}\n`, 'utf8');
+      await assert.rejects(readBootstrapSeed(copy), /bootstrap seed is unavailable or stale/, file);
+      assert.equal(await readFile(path, 'utf8'), `${original}\n`, 'no implicit regeneration');
+      writeFileSync(path, original, 'utf8');
+    }
+    assert.equal((await readBootstrapSeed(copy)).c, await readFile('seed/a0c-seed.c', 'utf8'));
+  });
 });
 
 test('seed: it is small', () => {

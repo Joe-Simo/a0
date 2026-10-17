@@ -1,0 +1,267 @@
+raw # Unsigned decimal integer Number semantics, including scientific notation and Infinity.
+raw # Internal128 base65536 limbs cover2048 bits; binary64 and decimal-search intermediates need1028.
+raw use "arena_vector.a0"
+extern arena_zero() -> u32x128
+extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+
+fn ni_add_step(s:(u32x128,u32),i:u32,a:u32x128,b:u32x128) -> (u32x128,u32)
+ let n=a[i]+b[i]+s#1
+ return (set(s#0,i,n&65535),n>>16)
+end
+fn ni_add(a:u32x128,b:u32x128) -> u32x128
+ let r=fold(ni_add_step,128,(arena_zero(),0),a,b)
+ return r#0
+end
+fn ni_sub_step(s:(u32x128,u32),i:u32,a:u32x128,b:u32x128) -> (u32x128,u32)
+ let rhs=b[i]+s#1
+ return (set(s#0,i,(a[i]-rhs)&65535),bit(a[i]<rhs))
+end
+fn ni_sub(a:u32x128,b:u32x128) -> u32x128
+ let r=fold(ni_sub_step,128,(arena_zero(),0),a,b)
+ return r#0
+end
+fn ni_cmp_step(c:u32,i:u32,a:u32x128,b:u32x128) -> u32
+ return a[i]==b[i]?c:(a[i]<b[i]?1:2)
+end
+fn ni_cmp(a:u32x128,b:u32x128) -> u32
+ return fold(ni_cmp_step,128,0,a,b)
+end
+fn ni_small_step(s:(u32x128,u32),i:u32,a:u32x128,m:u32) -> (u32x128,u32)
+ let n=a[i]*m+s#1
+ return (set(s#0,i,n&65535),n>>16)
+end
+fn ni_small(a:u32x128,m:u32) -> u32x128
+ let r=fold(ni_small_step,128,(arena_zero(),0),a,m)
+ return r#0
+end
+fn ni_div_step(s:(u32x128,u32),i:u32,a:u32x128) -> (u32x128,u32)
+ let at=127-i
+ let n=(s#1<<16)|a[at]
+ return (set(s#0,at,n/10),n%10)
+end
+fn ni_div10(a:u32x128) -> (u32x128,u32)
+ return fold(ni_div_step,128,(arena_zero(),0),a)
+end
+fn ni_limb_bits(n:u32,i:u32,v:u32) -> u32
+ return (v>>i)!=0?i+1:n
+end
+fn ni_bits_step(n:u32,i:u32,a:u32x128) -> u32
+ let bits=fold(ni_limb_bits,16,0,a[i])
+ return a[i]!=0?i*16+bits:n
+end
+fn ni_bits(a:u32x128) -> u32
+ return fold(ni_bits_step,128,0,a)
+end
+fn ni_nonzero_step(n:bool,i:u32,a:u32x128) -> bool
+ return n|(a[i]!=0)
+end
+fn ni_nonzero(a:u32x128) -> bool
+ return fold(ni_nonzero_step,128,false,a)
+end
+fn ni_pow2(shift:u32) -> u32x128
+ return set(arena_zero(),shift>>4,1<<(shift&15))
+end
+fn ni_bit(a:u32x128,shift:u32) -> bool
+ return (shift<2048)&(((a[shift>>4]>>(shift&15))&1)!=0)
+end
+fn ni_cut_step(out:u32x128,i:u32,a:u32x128,shift:u32) -> u32x128
+ let at=shift>>4
+ let mask=(1<<(shift&15))-1
+ let value=i<at?0:(i==at?a[i]&(mask^65535):a[i])
+ return set(out,i,value)
+end
+fn ni_sticky_step(value:bool,i:u32,a:u32x128,shift:u32) -> bool
+ let at=shift>>4
+ let mask=(1<<(shift&15))-1
+ let bits=i<at?a[i]:(i==at?a[i]&mask:0)
+ return value|(bits!=0)
+end
+fn ni_round(a:u32x128) -> u32x128
+ let bits=ni_bits(a)
+ let shift=bits>53?bits-53:0
+ let base=fold(ni_cut_step,128,arena_zero(),a,shift)
+ let half=(shift!=0)&ni_bit(a,shift-1)
+ let sticky=fold(ni_sticky_step,128,false,a,shift-1)
+ let up=half&(sticky|ni_bit(a,shift))
+ return ni_add(base,up?ni_pow2(shift):arena_zero())
+end
+fn ni_power_step(s:(u32,bool),i:u32,a:u32x128) -> (u32,bool)
+ let value=a[i]
+ let power=(value&(value-1))==0
+ return (s#0+bit(value!=0),s#1&power)
+end
+fn ni_power(a:u32x128) -> bool
+ let r=fold(ni_power_step,128,(0,true),a)
+ return (r#0==1)&r#1
+end
+fn ni_extract(a:u32x128,offset:u32) -> u32
+ let at=offset>>4
+ let shift=offset&15
+ let low=a[at]
+ let middle=a[at+1]
+ let high=a[at+2]
+ let joined=(low>>shift)|(middle<<(16-shift))|(high<<(32-shift))
+ return shift==0?low|(middle<<16):joined
+end
+fn ni_float(n:u32x128) -> (u32,u32)
+ let bits=ni_bits(n)
+ let offset=bits>53?bits-53:0
+ let low=ni_extract(n,offset)
+ let high=ni_extract(n,offset+32)
+ let left=bits<53?53-bits:0
+ let lo=left>=32?0:low<<left
+ let hi=left>=32?low<<(left-32):(left==0?high:(high<<left)|(low>>(32-left)))
+ let exponent=bits+1022
+ let packed=(hi&1048575)|(exponent<<20)
+ return ((bits==0)|(bits>1024)?0:lo,bits==0?0:(bits>1024?2146435072:packed))
+end
+fn ni_interval(candidate:u32x128,n:u32x128,above:u32x128,below:u32x128,even:bool) -> bool
+ let lower=ni_cmp(candidate,n)==1
+ let distance=lower?ni_sub(n,candidate):ni_sub(candidate,n)
+ let bound=lower?below:above
+ let relation=ni_cmp(ni_small(distance,2),bound)
+ return (relation==1)|((relation==0)&even)
+end
+fn ni_search_more(s:(bool,u32x128,u32x128,u32x128,u32x128,u32),i:u32,n:u32x128,above:u32x128,below:u32x128,even:bool) -> bool
+ return s#0
+end
+fn ni_search_step(s:(bool,u32x128,u32x128,u32x128,u32x128,u32),i:u32,n:u32x128,above:u32x128,below:u32x128,even:bool) -> (bool,u32x128,u32x128,u32x128,u32x128,u32)
+ let division=ni_div10(s#2)
+ let prefix=division#0
+ let remainder=ni_add(s#3,ni_small(s#1,division#1))
+ let quantum=ni_small(s#1,10)
+ let floor=ni_sub(n,remainder)
+ let ceil=ni_add(floor,quantum)
+ let low=ni_interval(floor,n,above,below,even)
+ let high=ni_interval(ceil,n,above,below,even)
+ let left=ni_sub(n,floor)
+ let right=ni_sub(ceil,n)
+ let relation=ni_cmp(left,right)
+ let take=low&(!high|(relation==1)|((relation==0)&((prefix[0]&1)==0)))
+ let one=set(arena_zero(),0,1)
+ let coefficient=take?prefix:ni_add(prefix,one)
+ let good=low|high
+ return (good,quantum,prefix,remainder,good?coefficient:s#4,good?i+1:s#5)
+end
+fn ni_shortest(n:u32x128) -> (u32x128,u32)
+ let bits=ni_bits(n)
+ let shift=bits>53?bits-53:0
+ let above=ni_pow2(shift)
+ let below=ni_power(n)&(bits>53)?ni_pow2(shift-1):above
+ let even=!ni_bit(n,shift)
+ let one=set(arena_zero(),0,1)
+ let initial=(true,one,n,arena_zero(),n,0)
+ let found=loop(ni_search_more,ni_search_step,309,initial,n,above,below,even)
+ return (found#4,found#5)
+end
+fn ni_choose(s:(u32x128,u32),i:u32) -> (u32x128,u32)
+ return ni_shortest(s#0)
+end
+fn ni_parts(raw:u32x128) -> (bool,u32x128,u32,(u32,u32))
+ let n=ni_round(raw)
+ let bits=ni_bits(n)
+ let finite=bits<=1024
+ let chosen=fold(ni_choose,bit(finite&(bits!=0)),(n,0))
+ return (!finite,chosen#0,chosen#1,ni_float(n))
+end
+fn ni_accumulate(n:u32x128,i:u32,digit:u32) -> u32x128
+ return ni_add(ni_small(n,10),set(arena_zero(),0,digit))
+end
+fn ni_digit(s:(u32,u32x128,u32),i:u32,page:u32x128) -> (u32,u32x128,u32)
+ let ch=page[i]
+ let valid=(ch>=48)&(ch<=57)
+ let status=s#0!=0?s#0:(valid?0:3)
+ let digit=ch-48
+ let started=(s#2!=0)|(digit!=0)
+ let count=s#2+bit(started&(s#2<310))
+ let active=(status==0)&(count!=0)&(count<=309)
+ let n=fold(ni_accumulate,bit(active),s#1,digit)
+ return (status,n,count)
+end
+fn ni_parse_more(s:(u32,u32x128,u32,io),i:u32,handle:u32,start:u32,length:u32) -> bool
+ return s#0==0
+end
+fn ni_parse_page(s:(u32,u32x128,u32,io),i:u32,handle:u32,start:u32,length:u32) -> (u32,u32x128,u32,io)
+ let offset=i<<7
+ let left=length-offset
+ let count=left>128?128:left
+ let loaded=arena_load(s#3,handle,start+offset,count)
+ let result=fold(ni_digit,count,(loaded#0,s#1,s#2),loaded#1)
+ return (result#0,result#1,result#2,loaded#2)
+end
+fn ni_parse(t:io,handle:u32,start:u32,length:u32) -> (u32,u32x128,u32,io)
+ let valid=(length!=0)&(start<=4294967295-length)
+ let pages=(length>>7)+bit((length&127)!=0)
+ let initial=(valid?0:3,arena_zero(),0,t)
+ return loop(ni_parse_more,ni_parse_page,pages,initial,handle,start,length)
+end
+fn ni_div64(n:(u32,u32)) -> ((u32,u32),u32)
+ let top=n#1/10
+ let middle=((n#1%10)<<16)|(n#0>>16)
+ let tail=((middle%10)<<16)|(n#0&65535)
+ return ((((middle/10)<<16)|(tail/10),top),tail%10)
+end
+fn ni_digits_more(s:((u32,u32),u32,u32x128),i:u32) -> bool
+ let n=s#0
+ return (n#0|n#1)!=0
+end
+fn ni_digits_step(s:((u32,u32),u32,u32x128),i:u32) -> ((u32,u32),u32,u32x128)
+ let r=ni_div64(s#0)
+ return (r#0,s#1+1,set(s#2,s#1,48+r#1))
+end
+fn ni_coeff_byte(page:u32x128,i:u32,reverse:u32x128,length:u32,scientific:bool) -> u32x128
+ let at=i+bit(scientific&(i!=0))
+ return set(page,at,reverse[length-i-1])
+end
+fn ni_zero_byte(page:u32x128,i:u32,length:u32) -> u32x128
+ return set(page,length+i,48)
+end
+fn ni_exp_byte(page:u32x128,i:u32,exponent:u32,start:u32,length:u32) -> u32x128
+ let divisor=i==0?(length==3?100:(length==2?10:1)):(i==1?(length==3?10:1):1)
+ return set(page,start+2+i,48+(exponent/divisor)%10)
+end
+fn ni_text(parts:(bool,u32x128,u32,(u32,u32))) -> (u32,u32x128,u32)
+ let coefficient=parts#1
+ let low=ni_extract(coefficient,0)
+ let high=ni_extract(coefficient,32)
+ let zero=arena_zero()
+ let initial=((low,high),0,set(zero,0,48))
+ let digits=loop(ni_digits_more,ni_digits_step,20,initial)
+ let length=digits#1==0?1:digits#1
+ let exponent=length+parts#2-1
+ let scientific=exponent>=21
+ let page=fold(ni_coeff_byte,length,zero,digits#2,length,scientific)
+ let dot=scientific&(length>1)
+ let page=set(page,1,dot?46:page[1])
+ let prefix=length+bit(dot)
+ let page=fold(ni_zero_byte,scientific?0:parts#2,page,length)
+ let page=set(page,prefix,scientific?101:page[prefix])
+ let page=set(page,prefix+1,scientific?43:page[prefix+1])
+ let expdigits=exponent>=100?3:(exponent>=10?2:1)
+ let page=fold(ni_exp_byte,scientific?expdigits:0,page,exponent,prefix,expdigits)
+ let size=scientific?prefix+2+expdigits:length+parts#2
+ let infinity=set(set(set(set(set(set(set(set(zero,0,73),1,110),2,102),3,105),4,110),5,105),6,116),7,121)
+ let good=(ni_bits(coefficient)<=57)&(length<=17)
+ return (parts#0?0:(good?0:3),parts#0?infinity:page,parts#0?8:size)
+end
+fn ni_parts_go(s:(bool,u32x128,u32,(u32,u32)),i:u32,raw:u32x128) -> (bool,u32x128,u32,(u32,u32))
+ return ni_parts(raw)
+end
+fn ni_output(s:(u32,(u32,u32),(u32,u32,u32),io),i:u32,n:u32,page:u32x128) -> (u32,(u32,u32),(u32,u32,u32),io)
+ let r=av_append(s#3,s#2,n,page)
+ return (r#0,s#1,r#1,r#2)
+end
+fn ni_publish(s:(u32,(u32,u32),(u32,u32,u32),io),i:u32,raw:u32x128,count:u32) -> (u32,(u32,u32),(u32,u32,u32),io)
+ let initial=(true,arena_zero(),0,(0,2146435072))
+ let parts=fold(ni_parts_go,bit(count<=309),initial,raw)
+ let text=ni_text(parts)
+ let state=(text#0,parts#3,s#2,s#3)
+ return fold(ni_output,bit(text#0==0),state,text#2,text#1)
+end
+fn number_integer(t:io,handle:u32,start:u32,length:u32) -> (u32,(u32,u32),(u32,u32,u32),io)
+ let parsed=ni_parse(t,handle,start,length)
+ let state=(parsed#0,(0,0),(0,0,0),parsed#3)
+ let result=fold(ni_publish,bit(parsed#0==0),state,parsed#1,parsed#2)
+ return (result#0,result#0==0?result#1:(0,0),result#2,result#3)
+end

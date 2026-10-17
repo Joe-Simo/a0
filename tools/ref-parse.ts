@@ -72,11 +72,15 @@ export function refLex(src: string): number[] {
       while (i < b.length && word(b[i] as number)) i += 1;
       out.push(c >= 48 && c <= 57 ? 2 : 1, s, i - s);
     } else if (c === 34) {
-      const s = i + 1;
+      const s = i;
       i += 1;
-      while (i < b.length && b[i] !== 34) i += b[i] === 92 ? 2 : 1;
-      if (i < b.length) out.push(3, s, i - s);
-      i += 1;
+      while (i < b.length && b[i] !== 34 && b[i] !== 10) {
+        i += b[i] === 92 && i + 1 < b.length && b[i + 1] !== 10 ? 2 : 1;
+      }
+      if (i < b.length && b[i] === 34) {
+        out.push(3, s + 1, i - s - 1);
+        i += 1;
+      } else out.push(9, s, 1);
     } else if (c === 45 && b[i + 1] === 62) {
       out.push(4, i, 2);
       i += 2;
@@ -204,14 +208,15 @@ export function refParse(src: string): WordIr {
     const w = bytes(i);
     return kind(i) === 1 && w.length <= 6 ? irOp(String.fromCharCode(...w)) : 0;
   };
-  /** all-digit run b[s..s+n) -> value mod 2^32, or undefined when empty or not digits */
+  /** Canonical decimal u32 run; reject leading zeroes and arithmetic overflow. */
   const digits = (s: number, n: number): number | undefined => {
-    if (n === 0) return undefined;
+    if (n === 0 || (n > 1 && b[s] === 48)) return undefined;
     let v = 0;
     for (let k = 0; k < n; k += 1) {
       const c = b[s + k] as number;
       if (c < 48 || c > 57) return undefined;
-      v = (v * 10 + (c - 48)) % 2 ** 32;
+      v = v * 10 + (c - 48);
+      if (v > 0xffffffff) return undefined;
     }
     return v;
   };

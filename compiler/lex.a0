@@ -6,6 +6,8 @@
 # past the table are not stored, the count is exact).
 # kinds: 1 ident (a-z 0-9 _) 2 number (starts with a digit) 3 string (bytes between quotes,
 #        escapes kept raw) 4 arrow (->) 5 newline 6 minus 7 at 9 error (one byte)
+# A string reaching LF or EOF before its closing quote is an error at its opening quote.
+# The LF remains a newline token; raw CR and non-ASCII bytes inside strings are unchanged.
 # Comments (# to end of line) and spaces are dropped; the newline of a comment line is kept.
 # A token is pending until the byte after it, so each byte emits at most one triple. The
 # source is scanned a page at a time: the bytes of a page append their tokens to a window of
@@ -329,7 +331,8 @@ k8 eq p0 8
 k5 eq p0 5
 k7 eq p0 7
 k9 eq p0 9
-# close: a word at a non-word byte, a string at an unescaped quote, a comment at a newline,
+# close: a word at a non-word byte, a string at an unescaped quote or invalid raw LF,
+# a comment at a newline,
 # a one-byte token at any byte; a minus followed by '>' is an arrow
 inw or k1 k2
 notw select isw false true
@@ -338,11 +341,13 @@ escd eq p4 1
 notesc select escd false true
 sq and k3 isq
 sclose and sq notesc
+sbad and k3 isnl
+sfinish or sclose sbad
 cclose and k8 isnl
 s57 or k5 k7
 single or s57 k9
 arrow and k6 isgt
-e0 or wclose sclose
+e0 or wclose sfinish
 e1 or e0 single
 emit or e1 k6
 c0 or e0 cclose
@@ -351,7 +356,8 @@ closed or c1 k6
 consumed or sclose arrow
 ek0 select k6 6 p0
 ek1 select arrow 4 ek0
-ek select sclose 3 ek1
+ek2 select sclose 3 ek1
+ek select sbad 9 ek2
 s1 add p1 1
 es select sclose s1 p1
 wl sub p3 p1
@@ -539,7 +545,7 @@ z call zpage
 t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
 ret t
 end
-# the pages, then the pending token at end of input (an unterminated string is dropped)
+# the pages, then the pending token at end of input (an unterminated string is an error)
 fn lexsrc u32x512x64 u32 -> (u32x128x384,u32)
 zero call ztok
 n127 add p1 127
@@ -552,6 +558,7 @@ pk at s 2
 ps at s 3
 k1 eq pk 1
 k2 eq pk 2
+k3 eq pk 3
 k5 eq pk 5
 k6 eq pk 6
 k7 eq pk 7
@@ -560,10 +567,12 @@ w or k1 k2
 o0 or k5 k6
 o1 or o0 k7
 one or o1 k9
-pend or w one
+pend0 or w one
+pend or pend0 k3
+ek select k3 9 pk
 wlen sub p1 ps
 len select w wlen 1
-c call tokput3 out nout pk ps len pend
+c call tokput3 out nout ek ps len pend
 n3 add nout 3
 nf select pend n3 nout
 r rec c nf

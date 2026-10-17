@@ -1,0 +1,20 @@
+fn cell _x32 _ _x32 -> _x32
+r >> B 5
+c and B 31
+n count C r c
+me nb C r c
+is3 eq n 3
+is2 eq n 2
+me1 eq me 1
+alive2 select me1 is2 false
+alive select is3 true alive2
+bit select alive 1 0
+mask << bit c
+old get A r
+cellmask << 1 c
+keepmask xor cellmask 4294967295
+cleared and old keepmask
+new or cleared mask
+next set A r new
+ret next
+end

@@ -1,0 +1,130 @@
+# Experimental source service: ordered verification and context lowering execute in A0.
+use "verify_arena.a0"
+use "backend_context_arena.a0"
+fn abc_service_lower (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)) u32 -> (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))
+v at p0 0
+q at p0 3
+vv at q 0
+m at q 1
+g at q 2
+bb at q 3
+am at q 4
+ae at q 5
+q0 at q 6
+r call arena_backend_context q0 m
+q1 at r 0
+v_1 set v 0 q1
+v_2 set v_1 1 1
+q2 at r 3
+q3 at r 1
+q4 at r 2
+q5 rec vv m g bb am ae q2
+q6 rec v_2 q3 q4 q5
+ret q6
+end
+fn abc_service_failure (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)) u32 u32 -> (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))
+q0 at p0 0
+v set q0 0 p2
+v_1 set v 1 1
+q1 call arena_zero
+q2 set q1 0 p2
+d call abc_failure q2
+q3 call abc_zero16
+q4 at p0 3
+q5 rec v_1 q3 d q4
+ret q5
+end
+fn abc_service_check (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))
+v at p0 0
+c at p0 1
+d at p0 2
+q at p0 3
+vv at q 0
+m at q 1
+checked call arena_verify_status vv
+q0 get vv 0
+q1 ne q0 0
+q2 get vv 1
+q3 eq q2 11
+done or q1 q3
+q4 eq checked 0
+q5 and done q4
+q6 select q5 1 0
+q7 rec v c d q
+a fold abc_service_lower q6 q7
+v_1 at a 0
+q8 get v_1 1
+q9 eq q8 0
+q10 and q9 done
+q11 ne checked 0
+q12 and q10 q11
+q13 select q12 1 0
+q14 fold abc_service_failure q13 a checked
+ret q14
+end
+fn abc_service_resume_do (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)) u32 u32 -> (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))
+v at p0 0
+c at p0 1
+d at p0 2
+q0 at p0 3
+q call arena_verify_resume q0 p2
+q1 rec v c d q
+q2 call abc_service_check q1
+ret q2
+end
+fn abc_service_begin_check (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)) u32 -> (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))
+q0 call abc_service_check p0
+ret q0
+end
+fn arena_backend_service_begin io u32 u32 -> (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))
+q call arena_parse_verify_begin p0 p1 p2
+m at q 1
+vv at q 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 0
+q3 eq q2 7
+q4 get m 60
+q5 eq q4 128
+q6 and q3 q5
+sourceok or q1 q6
+q7 get m 54
+q8 ne q7 0
+q9 and sourceok q8
+q10 get vv 0
+q11 eq q10 0
+unitimports and q9 q11
+q12 call arena_zero
+v set q12 2 1
+q13 select unitimports 1 0
+q14 call abc_zero16
+q15 call arena_zero
+q16 rec v q14 q15 q
+a fold abc_service_failure q13 q16 7
+v_1 at a 0
+q17 get v_1 1
+q18 eq q17 0
+q19 select q18 1 0
+q20 fold abc_service_begin_check q19 a
+ret q20
+end
+fn arena_backend_service_resume (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)) u32 -> (u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io))
+v at p0 0
+q0 get v 1
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold abc_service_resume_do q2 p0 p1
+ret q3
+end
+fn arena_backend_service_done u32x128 -> bool
+q0 get p0 1
+q1 ne q0 0
+ret q1
+end
+fn arena_backend_service_status u32x128 -> u32
+q0 get p0 1
+q1 eq q0 0
+q2 get p0 0
+q3 select q1 7 q2
+ret q3
+end

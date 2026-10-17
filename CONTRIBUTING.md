@@ -78,6 +78,9 @@ are skipped or reported as blocked with the reason. Maintainer-only steps (`a0-d
 
 ## Build, test, run the gate
 
+The shipped compiler still uses TypeScript. The A0 implementation and the remaining migration work
+are tracked in [Entire compiler in A0](docs/design/compiler-selfhosting.md).
+
 You need [Bun](https://bun.sh) (CI pins 1.3.4; any recent 1.x works) and Node 22 or newer. Optional toolchains (clang, gcc, a JDK, a .NET SDK, Icarus Verilog, Yosys,
 qemu) enable more of the verification; a step whose toolchain is missing reports itself as blocked or skipped with the reason and
 never counts as a pass.
@@ -229,4 +232,4 @@ state, or scratch output.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). By contributing you agree your contribution is licensed the same way.
+Apache 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). By contributing you agree your contribution is licensed the same way.

@@ -1,0 +1,1544 @@
+# A0 JS ownership planning. Full-u32 context only; no host ownership classifications.
+use "executable_bytes.a0"
+fn jos_min u32 u32 -> u32
+q0 eq p0 0
+q1 eq p1 0
+q2 lt p0 p1
+q3 select q2 p0 p1
+q4 select q1 p0 q3
+q5 select q0 p1 q4
+ret q5
+end
+fn jos_code (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 0
+q3 select q1 p1 q2
+q4 set m 0 q3
+q5 at p0 1
+q6 at p0 2
+q7 at p0 3
+q8 rec q4 q5 q6 q7
+ret q8
+end
+fn jos_ok (u32x128,u32x16,u32x128,io) u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn jos_ok1 (u32x128,u32x16,u32x128,io) u32 u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn jos_ok2 (u32x128,u32x16,u32x128,io) u32 u32 u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn jos_raw_do (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 3
+r call arena_load q0 p2 p3 p4
+q1 at p0 0
+q2 at p0 1
+q3 at r 1
+q4 at r 2
+q5 rec q1 q2 q3 q4
+q6 at r 0
+q7 call jos_code q5 q6
+ret q7
+end
+fn jos_raw (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+q1 at p0 1
+q2 call arena_zero
+q3 at p0 3
+q4 at p0 0
+q5 get q4 0
+q6 eq q5 0
+q7 select q6 1 0
+q8 rec q0 q1 q2 q3
+q9 fold jos_raw_do q7 q8 p1 p2 p3
+ret q9
+end
+fn jos_read (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m p1
+q1 call jos_raw p0 q0 p2 p3
+ret q1
+end
+fn jos_word (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 call jos_read p0 p1 p2 1
+ret q0
+end
+fn jos_put_do (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 call arena_zero
+page set q0 0 p4
+q1 at p0 3
+q2 get m p2
+q3 add p2 1
+q4 get m q3
+q5 add p2 2
+q6 get m q5
+q7 rec q2 q4 q6
+r call av_store q1 q7 p3 1 page
+q8 at p0 1
+q9 at p0 2
+q10 at r 1
+q11 rec m q8 q9 q10
+q12 at r 0
+q13 call jos_code q11 q12
+ret q13
+end
+fn jos_put (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 fold jos_put_do q3 p0 p1 p2 p3
+ret q4
+end
+fn jos_alloc_do (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 3
+r call ew_new q0 p3
+q1 at p0 0
+q2 at r 1
+q3 at q2 0
+m0_a set q1 p2 q3
+q4 add p2 1
+q5 at q2 1
+m0_b set m0_a q4 q5
+q6 add p2 2
+q7 at q2 2
+q8 set m0_b q6 q7
+q9 at p0 1
+q10 at p0 2
+q11 at r 2
+q12 rec q8 q9 q10 q11
+q13 at r 0
+q14 call jos_code q12 q13
+ret q14
+end
+fn jos_alloc (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 fold jos_alloc_do q3 p0 p1 p2
+ret q4
+end
+fn jos_type (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 1
+q1 get q0 0
+q2 mul p1 3
+q3 call jos_raw p0 q1 q2 3
+ret q3
+end
+fn jos_fn (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 1
+q1 get q0 2
+q2 mul p1 10
+q3 call jos_raw p0 q1 q2 10
+ret q3
+end
+fn jos_node (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 1
+q1 get q0 3
+q2 mul p1 8
+q3 call jos_raw p0 q1 q2 8
+ret q3
+end
+fn jos_arg (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 1
+q1 get q0 4
+q2 mul p1 2
+q3 call jos_raw p0 q1 q2 2
+ret q3
+end
+fn jos_typeflag (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 call jos_word p0 6 p1
+ret q0
+end
+fn jos_fnflag (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 call jos_word p0 9 p1
+ret q0
+end
+fn jos_plan (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 mul p1 3
+q1 add q0 p2
+q2 call jos_word p0 12 q1
+ret q2
+end
+fn jos_fact (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 mul p1 8
+q1 add q0 p2
+q2 call jos_word p0 15 q1
+ret q2
+end
+fn jos_setfact (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 mul p1 8
+q1 add q0 p2
+q2 call jos_put p0 15 q1 p3
+ret q2
+end
+fn jos_row u32x128 u32 u32 -> u32
+q0 eq p1 1
+q1 get p0 65
+q2 sub p2 q1
+q3 get p0 66
+q4 add q3 p2
+q5 select q0 q2 q4
+ret q5
+end
+fn jos_type_child (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 at p0 1
+q1 get q0 1
+q2 get m 80
+q3 add q2 p1
+a call jos_raw p0 q1 q3 1
+q4 at a 2
+child get q4 0
+b call jos_typeflag a child
+q5 at b 2
+q6 get q5 0
+q7 and q6 1
+flat ne q7 0
+m_1 at b 0
+q8 get m_1 81
+q9 ne q8 0
+q10 lt child 2
+q11 or q10 flat
+q12 and q9 q11
+q13 select q12 1 0
+m_2 set m_1 81 q13
+q14 get m_2 82
+q15 ne q14 0
+q16 or q15 flat
+q17 select q16 1 0
+m_3 set m_2 82 q17
+q18 at b 1
+q19 at b 2
+q20 at b 3
+q21 rec m_3 q18 q19 q20
+ret q21
+end
+fn jos_type_entry (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_type p0 p1
+ty at a 2
+q0 at a 0
+q1 get ty 1
+m set q0 80 q1
+m_1 set m 81 1
+m_2 set m_1 82 0
+q2 get ty 0
+q3 eq q2 5
+q4 get ty 2
+count select q3 q4 0
+q5 at a 1
+q6 at a 2
+q7 at a 3
+q8 rec m_2 q5 q6 q7
+b loop jos_ok jos_type_child count q8
+m_3 at b 0
+q9 get ty 0
+q10 eq q9 4
+q11 get ty 2
+q12 lt q11 2
+array and q10 q12
+q13 get ty 0
+q14 eq q13 5
+q15 get m_3 81
+q16 ne q15 0
+q17 and q14 q16
+q18 get m_3 82
+q19 ne q18 0
+record and q17 q19
+q20 select array 1 0
+q21 select record 2 0
+q22 or q20 q21
+q23 call jos_put b 6 p1 q22
+ret q23
+end
+fn jos_param_primitive (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 1
+q1 get q0 1
+q2 add p2 p1
+a call jos_raw p0 q1 q2 1
+m at a 0
+q3 get m 81
+q4 ne q3 0
+q5 at a 2
+q6 get q5 0
+q7 lt q6 3
+q8 and q4 q7
+q9 select q8 1 0
+q10 set m 81 q9
+q11 at a 1
+q12 at a 2
+q13 at a 3
+q14 rec q10 q11 q12 q13
+ret q14
+end
+fn jos_fn_need (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 add p2 p1
+a call jos_node p0 q0
+q1 at a 2
+op get q1 0
+q2 eq op 20
+q3 eq op 21
+q4 or q2 q3
+q5 eq op 23
+q6 or q4 q5
+q7 eq op 26
+q8 or q6 q7
+q9 eq op 28
+need or q8 q9
+m at a 0
+q10 get m 82
+q11 ne q10 0
+q12 or q11 need
+q13 select q12 1 0
+q14 set m 82 q13
+q15 at a 1
+q16 at a 2
+q17 at a 3
+q18 rec q14 q15 q16 q17
+ret q18
+end
+fn jos_fn_seed (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_fn p0 p1
+funrow at a 2
+q0 at a 1
+q1 get q0 1
+q2 get funrow 3
+q3 get funrow 2
+q4 ge q3 2
+q5 select q4 2 0
+b call jos_raw a q1 q2 q5
+ps at b 2
+q6 at b 0
+m set q6 81 1
+q7 get funrow 2
+q8 at b 1
+q9 at b 2
+q10 at b 3
+q11 rec m q8 q9 q10
+q12 get funrow 3
+c loop jos_ok1 jos_param_primitive q7 q11 q12
+q13 at c 0
+m_1 set q13 82 0
+q14 get funrow 6
+q15 at c 1
+q16 at c 2
+q17 at c 3
+q18 rec m_1 q15 q16 q17
+q19 get funrow 5
+d loop jos_ok1 jos_fn_need q14 q18 q19
+q20 get funrow 2
+q21 ge q20 2
+q22 get ps 0
+q23 ge q22 3
+q24 and q21 q23
+q25 get ps 1
+q26 eq q25 0
+eligible and q24 q26
+q27 select eligible 1 0
+q28 at d 0
+q29 get q28 81
+q30 ne q29 0
+q31 select q30 8 0
+q32 or q27 q31
+q33 at d 0
+q34 get q33 82
+q35 ne q34 0
+q36 select q35 16 0
+q37 or q32 q36
+q38 call jos_put d 9 p1 q37
+ret q38
+end
+fn jos_use_ref (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+row call jos_row m p3 p4
+q0 get m 84
+a call jos_fact p0 row 0
+q1 at a 2
+old get q1 0
+b call jos_fact a row 7
+q2 eq old q0
+q3 at b 2
+q4 get q3 0
+q5 add q4 1
+times select q2 q5 1
+c call jos_setfact b row 7 times
+a_1 call jos_setfact c row 0 q0
+q6 get m 80
+q7 eq q6 25
+q8 eq q6 27
+q9 or q7 q8
+q10 eq p2 0
+read and q9 q10
+q11 get m 83
+q12 lt q11 2
+q13 eq q6 19
+q14 eq q6 20
+q15 eq q6 21
+q16 or q14 q15
+q17 ge p2 2
+q18 and q16 q17
+q19 or q13 q18
+scalar and q12 q19
+allowed or read scalar
+b_1 call jos_fact a_1 row 1
+q20 at b_1 2
+first get q20 0
+q21 eq first 0
+q22 xor allowed true
+q23 and q21 q22
+q24 select q23 q0 first
+c_1 call jos_setfact b_1 row 1 q24
+d call jos_fact c_1 row 3
+q25 at d 2
+first_1 get q25 0
+q26 eq q6 1
+q27 or allowed q26
+q28 eq q6 18
+q29 or q27 q28
+escape xor q29 true
+q30 eq first_1 0
+q31 and q30 escape
+q32 select q31 q0 first_1
+e call jos_setfact d row 3 q32
+f call jos_fact e row 2
+q33 at f 2
+q34 get q33 0
+q35 ne q34 0
+q36 get m 85
+q37 ne q36 0
+q38 eq p2 0
+q39 and q37 q38
+q40 xor q39 true
+whole or q35 q40
+q41 select whole 1 0
+q42 call jos_setfact f row 2 q41
+ret q42
+end
+fn jos_use_arg (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 82
+q1 add q0 p1
+a call jos_arg p0 q1
+arg at a 2
+q2 get arg 0
+q3 eq q2 1
+q4 get arg 0
+q5 eq q4 2
+q6 or q3 q5
+q7 select q6 1 0
+q8 get arg 0
+q9 get arg 1
+q10 fold jos_use_ref q7 a p1 q8 q9
+ret q10
+end
+fn jos_use_node (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 65
+q1 add q0 p1
+a call jos_node p0 q1
+node at a 2
+q2 get node 2
+q3 add q2 1
+b call jos_arg a q3
+field at b 2
+q4 at b 0
+q5 get node 0
+m_1 set q4 80 q5
+q6 get node 1
+m_2 set m_1 81 q6
+q7 get node 2
+m_3 set m_2 82 q7
+q8 get node 5
+m_4 set m_3 83 q8
+q9 add p1 1
+m_5 set m_4 84 q9
+q10 get node 0
+q11 eq q10 27
+q12 get field 0
+q13 eq q12 3
+q14 and q11 q13
+q15 select q14 1 0
+m_6 set m_5 85 q15
+q16 get node 1
+q17 at b 1
+q18 at b 2
+q19 at b 3
+q20 rec m_6 q17 q18 q19
+q21 loop jos_ok jos_use_arg q16 q20
+ret q21
+end
+fn jos_return_use (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 69
+q1 get m 70
+row call jos_row m q0 q1
+q2 get m 66
+q3 add q2 1
+a call jos_setfact p0 row 0 q3
+b call jos_setfact a row 2 1
+q4 call jos_setfact b row 7 1
+ret q4
+end
+fn jos_borrow_edge (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+parent call jos_row m p3 p4
+a call jos_fact p0 p2 0
+q0 at a 2
+last get q0 0
+b call jos_fact a p2 4
+q1 at b 2
+desc get q1 0
+q2 gt last desc
+latest select q2 last desc
+c call jos_fact b parent 4
+q3 at c 2
+old get q3 0
+q4 gt latest old
+q5 select q4 latest old
+d call jos_setfact c parent 4 q5
+e call jos_fact d p2 3
+q6 at e 2
+first get q6 0
+f call jos_fact e p2 5
+q7 at f 2
+q8 get q7 0
+first_1 call jos_min first q8
+g call jos_fact f parent 5
+q9 at g 2
+q10 get q9 0
+q11 call jos_min first_1 q10
+q12 call jos_setfact g parent 5 q11
+ret q12
+end
+fn jos_borrow_arg (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 add p3 p1
+a call jos_arg p0 q0
+arg at a 2
+q1 get arg 0
+q2 eq q1 1
+q3 get arg 0
+q4 eq q3 2
+q5 or q2 q4
+q6 select q5 1 0
+q7 get arg 0
+q8 get arg 1
+q9 fold jos_borrow_edge q6 a p2 q7 q8
+ret q9
+end
+fn jos_borrow_node (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 66
+q1 sub q0 1
+local sub q1 p1
+q2 get m 65
+q3 add q2 local
+a call jos_node p0 q3
+node at a 2
+q4 get node 0
+q5 eq q4 1
+q6 eq q4 25
+q7 or q5 q6
+q8 eq q4 27
+ordinary or q7 q8
+selected eq q4 18
+q9 get node 5
+q10 ge q9 3
+q11 or ordinary selected
+borrowed and q10 q11
+q12 get node 2
+q13 select selected 1 0
+first add q12 q13
+q14 select selected 2 1
+count select borrowed q14 0
+q15 loop jos_ok2 jos_borrow_arg count a local first
+ret q15
+end
+fn jos_proj_other (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 65
+q1 add q0 p1
+a call jos_node p0 q1
+n at a 2
+q2 get n 2
+b call jos_arg a q2
+parent at b 2
+q3 get n 2
+q4 add q3 1
+c call jos_arg b q4
+field at c 2
+q5 get n 0
+q6 eq q5 27
+q7 get parent 0
+q8 get m 86
+q9 eq q7 q8
+q10 and q6 q9
+q11 get parent 1
+q12 get m 87
+q13 eq q11 q12
+q14 and q10 q13
+q15 get field 0
+q16 eq q15 3
+q17 and q14 q16
+q18 get field 1
+q19 get m 88
+q20 eq q18 q19
+hit and q17 q20
+q at c 0
+q21 get q 89
+q22 select hit 1 0
+q23 add q21 q22
+q24 set q 89 q23
+q25 at c 1
+q26 at c 2
+q27 at c 3
+q28 rec q24 q25 q26 q27
+ret q28
+end
+fn jos_proj_candidate (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_arg p0 p3
+parent at a 2
+q0 add p3 1
+b call jos_arg a q0
+field at b 2
+m at b 0
+q1 get parent 0
+q2 get parent 1
+row call jos_row m q1 q2
+c call jos_fact b row 2
+q3 at c 2
+whole get q3 0
+q4 at c 0
+q5 get parent 0
+m_1 set q4 86 q5
+q6 get parent 1
+m_2 set m_1 87 q6
+q7 get field 1
+m_3 set m_2 88 q7
+m_4 set m_3 89 0
+q8 eq whole 0
+q9 get field 0
+q10 eq q9 3
+q11 and q8 q10
+q12 get m_4 66
+count select q11 q12 0
+q13 at c 1
+q14 at c 2
+q15 at c 3
+q16 rec m_4 q13 q14 q15
+d loop jos_ok jos_proj_other count q16
+q17 at d 0
+q18 get q17 89
+q19 eq q18 1
+q20 select q19 1 0
+q21 call jos_setfact d p2 6 q20
+ret q21
+end
+fn jos_proj_node (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 65
+q1 add q0 p1
+a call jos_node p0 q1
+node at a 2
+q2 get node 5
+b call jos_typeflag a q2
+q3 get node 0
+q4 eq q3 27
+q5 at b 2
+q6 get q5 0
+q7 and q6 1
+q8 ne q7 0
+candidate and q4 q8
+q9 select candidate 1 0
+q10 get node 2
+q11 fold jos_proj_candidate q9 b p1 q10
+ret q11
+end
+fn jos_answer (u32x128,u32x16,u32x128,io) bool -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+q1 at p0 1
+q2 call arena_zero
+q3 select p1 1 0
+q4 set q2 0 q3
+q5 at p0 3
+q6 rec q0 q1 q4 q5
+ret q6
+end
+fn jos_deep_node (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+q1 get q0 71
+a call jos_plan p0 p2 q1
+q2 at a 2
+q3 get q2 0
+q4 and q3 2
+q5 ne q4 0
+q6 call jos_answer a q5
+ret q6
+end
+fn jos_deep (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 eq p1 2
+q1 eq p2 0
+q2 and q0 q1
+q3 get m 71
+q4 ne q3 0
+q5 and q2 q4
+q6 get m 75
+q7 and q6 1
+q8 ne q7 0
+q9 get m 71
+q10 eq q9 2
+q11 or q8 q10
+param and q5 q11
+a call jos_answer p0 param
+q12 eq p1 1
+q13 select q12 1 0
+q14 fold jos_deep_node q13 a p2
+ret q14
+end
+fn jos_operand_node (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_node p0 p2
+q0 at a 0
+q1 at a 1
+q2 call arena_zero
+q3 at a 2
+q4 get q3 5
+q5 set q2 0 q4
+q6 at a 3
+q7 rec q0 q1 q5 q6
+ret q7
+end
+fn jos_operand_param (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 1
+q1 get q0 1
+q2 at p0 0
+q3 get q2 73
+q4 add q3 p2
+q5 call jos_raw p0 q1 q4 1
+ret q5
+end
+fn jos_operand_type (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+q1 at p0 1
+q2 call arena_zero
+q3 eq p1 4
+q4 select q3 1 0
+q5 set q2 0 q4
+q6 at p0 3
+q7 eq p1 1
+q8 select q7 1 0
+q9 rec q0 q1 q5 q6
+a fold jos_operand_node q8 q9 p2
+q10 eq p1 2
+q11 select q10 1 0
+q12 fold jos_operand_param q11 a p2
+ret q12
+end
+fn jos_mutable_ref (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 bool -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+row call jos_row m p2 p3
+q0 eq p2 1
+q1 select q0 p3 0
+a call jos_node p0 q1
+q2 at a 2
+op get q2 0
+q3 eq p2 1
+q4 select q3 p3 0
+q5 get m 71
+b call jos_plan a q4 q5
+q6 at b 2
+flags get q6 0
+q7 eq op 22
+q8 eq op 23
+q9 or q7 q8
+q10 eq op 26
+q11 or q9 q10
+q12 eq op 28
+q13 or q11 q12
+q14 select p5 2 1
+q15 and flags q14
+q16 ne q15 0
+fresh or q13 q16
+q17 eq p2 1
+q18 eq p2 2
+q19 eq p3 0
+q20 and q18 q19
+q21 get m 71
+q22 ne q21 0
+q23 and q20 q22
+eligible select q17 fresh q23
+c call jos_fact b row 0
+q24 at c 2
+last get q24 0
+d call jos_fact c row 1
+q25 at d 2
+first get q25 0
+q26 le last p4
+q27 and eligible q26
+q28 eq first 0
+q29 eq first p4
+q30 or q28 q29
+q31 and q27 q30
+q32 call jos_answer d q31
+ret q32
+end
+fn jos_mutable (u32x128,u32x16,u32x128,io) u32 u32 u32 bool -> (u32x128,u32x16,u32x128,io)
+a call jos_answer p0 false
+q0 eq p1 1
+q1 eq p1 2
+q2 or q0 q1
+q3 select q2 1 0
+q4 fold jos_mutable_ref q3 a p1 p2 p3 p4
+ret q4
+end
+fn jos_consume (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_mutable p0 p1 p2 p3 true
+q0 at a 2
+q1 get q0 0
+mut ne q1 0
+q2 at a 0
+row call jos_row q2 p1 p2
+b call jos_fact a row 4
+q3 at b 2
+last get q3 0
+c call jos_fact b row 5
+q4 at c 2
+first get q4 0
+q5 lt last p3
+q6 and mut q5
+q7 eq first 0
+q8 ge first p3
+q9 or q7 q8
+q10 and q6 q9
+q11 call jos_answer c q10
+ret q11
+end
+fn jos_forward_projection (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_arg p0 p3
+parent at a 2
+q0 get parent 0
+q1 get parent 1
+b call jos_deep a q0 q1
+q2 at b 2
+q3 get q2 0
+deep ne q3 0
+c call jos_fact b p2 6
+q4 at c 2
+q5 get q4 0
+unique ne q5 0
+m at c 0
+q6 get m 91
+q7 and deep unique
+q8 select q7 3 0
+q9 or q6 q8
+q10 set m 91 q9
+q11 at c 1
+q12 at c 2
+q13 at c 3
+q14 rec q10 q11 q12 q13
+ret q14
+end
+fn jos_record_array (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+a call jos_deep p0 p2 p3
+q0 at a 2
+q1 get q0 0
+deep ne q1 0
+q2 get m 84
+b call jos_consume a p2 p3 q2
+q3 at b 2
+q4 get q3 0
+consumed ne q4 0
+q5 call jos_row m p2 p3
+c call jos_fact b q5 7
+q6 at c 2
+q7 get q6 0
+once eq q7 1
+q at c 0
+q8 get q 90
+q9 ne q8 0
+q10 and q9 deep
+q11 and q10 consumed
+q12 and q11 once
+q13 select q12 1 0
+q14 set q 90 q13
+q15 at c 1
+q16 at c 2
+q17 at c 3
+q18 rec q14 q15 q16 q17
+ret q18
+end
+fn jos_record_arg (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 add p2 p1
+a call jos_arg p0 q0
+arg at a 2
+q1 get arg 0
+q2 get arg 1
+b call jos_operand_type a q1 q2
+q3 at b 2
+ty get q3 0
+c call jos_typeflag b ty
+q4 at c 2
+q5 get q4 0
+q6 and q5 1
+flat ne q6 0
+q7 select flat 1 0
+q8 get arg 0
+q9 get arg 1
+q10 fold jos_record_array q7 c q8 q9
+ret q10
+end
+fn jos_forward_record (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+m set q0 90 1
+q1 at p0 1
+q2 at p0 2
+q3 at p0 3
+q4 rec m q1 q2 q3
+a loop jos_ok1 jos_record_arg p3 q4 p2
+m_1 at a 0
+q5 get m_1 91
+q6 get m_1 90
+q7 ne q6 0
+q8 select q7 2 0
+q9 or q5 q8
+q10 set m_1 91 q9
+q11 at a 1
+q12 at a 2
+q13 at a 3
+q14 rec q10 q11 q12 q13
+ret q14
+end
+fn jos_forward_mutation (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_arg p0 p2
+target at a 2
+q0 get target 0
+q1 get target 1
+q2 at a 0
+q3 get q2 84
+b call jos_mutable a q0 q1 q3 false
+q4 at b 2
+q5 get q4 0
+yes ne q5 0
+m at b 0
+q6 get m 91
+q7 select yes 4 0
+q8 or q6 q7
+q9 set m 91 q8
+q10 at b 1
+q11 at b 2
+q12 at b 3
+q13 rec q9 q10 q11 q12
+ret q13
+end
+fn jos_iteration_owned (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 84
+a call jos_mutable p0 p2 p3 q0 false
+q1 at a 2
+q2 get q1 0
+yes ne q2 0
+q3 call jos_row m p2 p3
+b call jos_fact a q3 7
+q4 at b 2
+q5 get q4 0
+once eq q5 1
+q at b 0
+q6 get q 91
+q7 and yes once
+q8 select q7 8 0
+q9 or q6 q8
+q10 set q 91 q9
+q11 at b 1
+q12 at b 2
+q13 at b 3
+q14 rec q10 q11 q12 q13
+ret q14
+end
+fn jos_iteration_deep (u32x128,u32x16,u32x128,io) u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+a call jos_deep p0 p2 p3
+q0 at a 2
+q1 get q0 0
+deep ne q1 0
+q2 get m 84
+b call jos_consume a p2 p3 q2
+q3 at b 2
+q4 get q3 0
+consumed ne q4 0
+q5 call jos_row m p2 p3
+c call jos_fact b q5 7
+q6 at c 2
+q7 get q6 0
+once eq q7 1
+q at c 0
+q8 get q 91
+q9 or q8 18
+q10 and deep consumed
+q11 and q10 once
+q12 select q11 32 0
+q13 or q9 q12
+q14 set q 91 q13
+q15 at c 1
+q16 at c 2
+q17 at c 3
+q18 rec q14 q15 q16 q17
+ret q18
+end
+fn jos_forward_iteration (u32x128,u32x16,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x16,u32x128,io)
+q0 add p2 1
+a call jos_arg p0 q0
+init at a 2
+q1 ge p4 3
+q2 select q1 1 0
+q3 get init 0
+q4 get init 1
+b fold jos_iteration_owned q2 a q3 q4
+c call jos_typeflag b p4
+q5 at c 2
+q6 get q5 0
+q7 and q6 2
+flat ne q7 0
+d call jos_fnflag c p3
+q8 at d 2
+q9 get q8 0
+q10 and q9 2
+capable ne q10 0
+q11 and flat capable
+q12 select q11 1 0
+q13 get init 0
+q14 get init 1
+q15 fold jos_iteration_deep q12 d q13 q14
+ret q15
+end
+fn jos_forward_node (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+q1 get q0 65
+q2 add q1 p1
+a call jos_node p0 q2
+node at a 2
+q3 get node 5
+b call jos_typeflag a q3
+q4 at b 2
+shape get q4 0
+q5 and shape 1
+flat ne q5 0
+q6 and shape 2
+record ne q6 0
+q7 get node 0
+q8 eq q7 22
+q9 eq q7 26
+q10 or q8 q9
+q11 eq q7 20
+q12 or q10 q11
+q13 eq q7 21
+q14 or q12 q13
+owned and flat q14
+q15 at b 0
+m set q15 80 q7
+q16 get node 1
+m_1 set m 81 q16
+q17 get node 2
+m_2 set m_1 82 q17
+q18 get node 5
+m_3 set m_2 83 q18
+q19 add p1 1
+m_4 set m_3 84 q19
+q20 get m_4 65
+q21 add q20 p1
+m_5 set m_4 85 q21
+q22 select owned 2 0
+m_6 set m_5 91 q22
+q23 eq q7 27
+q24 and q23 flat
+q25 select q24 1 0
+q26 at b 1
+q27 at b 2
+q28 at b 3
+q29 rec m_6 q26 q27 q28
+q30 get node 2
+c fold jos_forward_projection q25 q29 p1 q30
+q31 eq q7 23
+q32 and q31 record
+q33 select q32 1 0
+q34 get node 2
+q35 get node 1
+d fold jos_forward_record q33 c q34 q35
+q36 eq q7 26
+q37 eq q7 28
+q38 or q36 q37
+q39 select q38 1 0
+q40 get node 2
+e fold jos_forward_mutation q39 d q40
+q41 eq q7 20
+q42 eq q7 21
+q43 or q41 q42
+q44 select q43 1 0
+q45 get node 2
+q46 get node 3
+q47 get node 5
+f fold jos_forward_iteration q44 e q45 q46 q47
+q at f 0
+q48 get q 85
+q49 mul q48 3
+q50 get q 71
+q51 add q49 q50
+q52 get q 91
+q53 call jos_put f 12 q51 q52
+ret q53
+end
+fn jos_mode (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+m set q0 71 p1
+q1 get m 66
+q2 at p0 1
+q3 at p0 2
+q4 at p0 3
+q5 rec m q2 q3 q4
+q6 loop jos_ok jos_forward_node q1 q5
+ret q6
+end
+fn jos_shape_child (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 at p0 1
+q1 get q0 1
+q2 get m 94
+q3 add q2 p1
+a call jos_raw p0 q1 q3 1
+q4 at a 2
+left get q4 0
+q5 at a 1
+q6 get q5 1
+q7 get m 95
+q8 add q7 p1
+b call jos_raw a q6 q8 1
+q9 at b 2
+right get q9 0
+c call jos_type b left
+l at c 2
+d call jos_type c right
+r at d 2
+q10 eq left right
+q11 get l 0
+q12 eq q11 4
+q13 get r 0
+q14 eq q13 4
+q15 and q12 q14
+q16 get l 1
+q17 get r 1
+q18 eq q16 q17
+q19 and q15 q18
+q20 get l 2
+q21 get r 2
+q22 eq q20 q21
+q23 and q19 q22
+equal or q10 q23
+q at d 0
+q24 get q 96
+q25 ne q24 0
+q26 and q25 equal
+q27 select q26 1 0
+q28 set q 96 q27
+q29 at d 1
+q30 at d 2
+q31 at d 3
+q32 rec q28 q29 q30 q31
+ret q32
+end
+fn jos_same_flat (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_type p0 p1
+l at a 2
+b call jos_type a p2
+r at b 2
+q0 eq p1 p2
+q1 get l 0
+q2 eq q1 5
+q3 get r 0
+q4 eq q3 5
+q5 and q2 q4
+q6 get l 2
+q7 get r 2
+q8 eq q6 q7
+q9 and q5 q8
+initial or q0 q9
+q10 at b 0
+q11 get l 1
+m set q10 94 q11
+q12 get r 1
+m_1 set m 95 q12
+q13 select initial 1 0
+m_2 set m_1 96 q13
+q14 ne p1 p2
+q15 and q14 initial
+q16 get l 2
+count select q15 q16 0
+q17 at b 1
+q18 at b 2
+q19 at b 3
+q20 rec m_2 q17 q18 q19
+c loop jos_ok jos_shape_child count q20
+q21 at c 0
+q22 get q21 96
+q23 ne q22 0
+q24 call jos_answer c q23
+ret q24
+end
+fn jos_p0_whole (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+q1 get q0 66
+q2 call jos_fact p0 q1 2
+ret q2
+end
+fn jos_finish_fn (u32x128,u32x16,u32x128,io) -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 66
+q1 eq q0 0
+q2 get m 65
+q3 get m 66
+q4 add q2 q3
+q5 sub q4 1
+last select q1 0 q5
+a call jos_node p0 last
+q6 at a 2
+op get q6 0
+b call jos_plan a last 2
+q7 at b 2
+q8 get q7 0
+q9 and q8 2
+deep ne q9 0
+q10 get m 64
+c call jos_fnflag b q10
+q11 at c 2
+flags get q11 0
+q12 get m 74
+q13 get m 68
+d call jos_same_flat c q12 q13
+q14 at d 2
+q15 get q14 0
+same ne q15 0
+q16 and flags 1
+q17 ne q16 0
+q18 get m 75
+q19 and q18 2
+q20 ne q19 0
+q21 and q17 q20
+q22 eq op 23
+q23 and q21 q22
+q24 get m 69
+q25 eq q24 1
+q26 and q23 q25
+q27 get m 70
+q28 eq q27 last
+q29 and q26 q28
+q30 and q29 deep
+capable and q30 same
+start call jos_answer d true
+q31 get m 67
+q32 ne q31 0
+q33 select q32 1 0
+e fold jos_p0_whole q33 start
+q34 at e 2
+q35 get q34 0
+whole ne q35 0
+q36 get m 64
+q37 or flags 2147483648
+q38 select capable 2 0
+q39 or q37 q38
+q40 xor whole true
+q41 and capable q40
+q42 select q41 4 0
+q43 or q39 q42
+f call jos_put e 9 q36 q43
+q at f 0
+q44 get q 61
+q45 sub q44 1
+q_1 set q 61 q45
+q46 get q_1 62
+q47 add q46 1
+q_2 set q_1 62 q47
+q48 at f 1
+q49 at f 2
+q50 at f 3
+q51 rec q_2 q48 q49 q50
+ret q51
+end
+fn jos_process_fn (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_fn p0 p2
+funrow at a 2
+q0 at a 1
+q1 get q0 1
+q2 get funrow 3
+q3 get funrow 2
+q4 eq q3 0
+q5 select q4 0 1
+b call jos_raw a q1 q2 q5
+q6 at b 2
+firsttype get q6 0
+c call jos_typeflag b firsttype
+q7 at c 2
+shape get q7 0
+q8 at c 0
+m set q8 64 p2
+q9 get funrow 5
+m_1 set m 65 q9
+q10 get funrow 6
+m_2 set m_1 66 q10
+q11 get funrow 2
+m_3 set m_2 67 q11
+q12 get funrow 4
+m_4 set m_3 68 q12
+q13 get funrow 7
+m_5 set m_4 69 q13
+q14 get funrow 8
+m_6 set m_5 70 q14
+q15 get funrow 3
+m_7 set m_6 73 q15
+m_8 set m_7 74 firsttype
+m_9 set m_8 75 shape
+q16 get funrow 2
+q17 get funrow 6
+q18 sub 4294967295 q17
+q19 le q16 q18
+q20 get funrow 6
+q21 get funrow 2
+q22 add q20 q21
+q23 le q22 536870911
+valid and q19 q23
+q24 at c 1
+q25 at c 2
+q26 at c 3
+q27 rec m_9 q24 q25 q26
+q28 select valid 0 7
+d call jos_code q27 q28
+q29 get funrow 6
+q30 get funrow 2
+q31 add q29 q30
+q32 mul q31 8
+q33 select valid q32 0
+e call jos_alloc d 15 q33
+q34 get funrow 6
+f loop jos_ok jos_use_node q34 e
+q35 get funrow 7
+q36 eq q35 1
+q37 get funrow 7
+q38 eq q37 2
+q39 or q36 q38
+q40 select q39 1 0
+g fold jos_return_use q40 f
+q41 get funrow 6
+h loop jos_ok jos_borrow_node q41 g
+q42 get funrow 6
+k loop jos_ok jos_proj_node q42 h
+l loop jos_ok jos_mode 3 k
+q43 call jos_finish_fn l
+ret q43
+end
+fn jos_ready_node (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+m at p0 0
+q0 get m 65
+q1 add q0 p1
+a call jos_node p0 q1
+n at a 2
+q2 get n 5
+b call jos_typeflag a q2
+q3 at b 2
+q4 get q3 0
+q5 and q4 2
+record ne q5 0
+q6 get n 3
+c call jos_fnflag b q6
+q7 at c 2
+q8 get q7 0
+q9 and q8 2147483648
+ready ne q9 0
+q10 get n 0
+q11 eq q10 20
+q12 get n 0
+q13 eq q12 21
+q14 or q11 q13
+required and q14 record
+q at c 0
+q15 get q 93
+q16 ne q15 0
+q17 xor required true
+q18 or q17 ready
+q19 and q16 q18
+q20 select q19 1 0
+q21 set q 93 q20
+q22 at c 1
+q23 at c 2
+q24 at c 3
+q25 rec q21 q22 q23 q24
+ret q25
+end
+fn jos_mark_done (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_fnflag p0 p2
+q0 at a 2
+q1 get q0 0
+q2 or q1 2147483648
+b call jos_put a 9 p2 q2
+m at b 0
+q3 get m 61
+q4 sub q3 1
+m_1 set m 61 q4
+q5 get m_1 62
+q6 add q5 1
+m_2 set m_1 62 q6
+q7 at b 1
+q8 at b 2
+q9 at b 3
+q10 rec m_2 q7 q8 q9
+ret q10
+end
+fn jos_try_fn (u32x128,u32x16,u32x128,io) u32 u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_fn p0 p2
+funrow at a 2
+q0 at a 0
+q1 get funrow 5
+m set q0 65 q1
+q2 get funrow 6
+m_1 set m 66 q2
+m_2 set m_1 93 1
+q3 at a 1
+q4 at a 2
+q5 at a 3
+q6 rec m_2 q3 q4 q5
+b call jos_fnflag q6 p2
+q7 at b 2
+q8 get q7 0
+q9 and q8 16
+need ne q9 0
+q10 get funrow 6
+q11 select need q10 0
+c loop jos_ok jos_ready_node q11 b
+q12 at c 0
+q13 get q12 93
+q14 ne q13 0
+q15 and need q14
+q16 select q15 1 0
+d fold jos_process_fn q16 c p2
+q17 select need 0 1
+q18 fold jos_mark_done q17 d p2
+ret q18
+end
+fn jos_round_fn (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+a call jos_fnflag p0 p1
+q0 at a 2
+q1 get q0 0
+q2 and q1 2147483648
+done ne q2 0
+q3 select done 0 1
+q4 fold jos_try_fn q3 a p1
+ret q4
+end
+fn jos_round_more (u32x128,u32x16,u32x128,io) u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 61
+q3 ne q2 0
+q4 and q1 q3
+ret q4
+end
+fn jos_round (u32x128,u32x16,u32x128,io) u32 -> (u32x128,u32x16,u32x128,io)
+q0 at p0 0
+m set q0 62 0
+q1 at p0 1
+q2 get q1 11
+q3 at p0 1
+q4 at p0 2
+q5 at p0 3
+q6 rec m q3 q4 q5
+a loop jos_ok jos_round_fn q2 q6
+q at a 0
+q7 get q 61
+q8 ne q7 0
+q9 get q 62
+q10 eq q9 0
+q11 and q8 q10
+q12 select q11 6 0
+q13 call jos_code a q12
+ret q13
+end
+fn jos_public_directory u32x128 -> u32x128
+a set p0 6 0
+a_1 set a 7 0
+a_2 set a_1 8 0
+a_3 set a_2 9 0
+a_4 set a_3 10 0
+a_5 set a_4 11 0
+a_6 set a_5 12 0
+a_7 set a_6 13 0
+a_8 set a_7 14 0
+a_9 set a_8 15 0
+a_10 set a_9 16 0
+q0 set a_10 17 0
+ret q0
+end
+fn js_ownership_plan io u32x16 -> (u32,u32x128,io)
+z call arena_zero
+m set z 1 1093683791
+m_1 set m 2 1
+q0 get p1 11
+m_2 set m_1 61 q0
+q1 rec m_2 p1 z p0
+q2 get p1 12
+a call jos_alloc q1 6 q2
+q3 get p1 11
+b call jos_alloc a 9 q3
+q4 get p1 13
+valid le q4 1431655765
+q5 select valid 0 7
+c call jos_code b q5
+q6 get p1 13
+q7 mul q6 3
+q8 select valid q7 0
+d call jos_alloc c 12 q8
+q9 get p1 12
+e loop jos_ok jos_type_entry q9 d
+q10 get p1 11
+f loop jos_ok jos_fn_seed q10 e
+q11 get p1 11
+g loop jos_round_more jos_round q11 f
+result at g 0
+q12 get result 0
+q13 eq q12 0
+q14 call jos_public_directory result
+public select q13 result q14
+q15 get result 0
+q16 at g 3
+q17 rec q15 public q16
+ret q17
+end
+fn js_ownership_context io u32x16 -> (u32,u32x16,u32x128,io)
+r call js_ownership_plan p0 p1
+d at r 1
+q0 get d 12
+a set p1 6 q0
+q1 get d 9
+b set a 7 q1
+q2 get d 6
+c set b 8 q2
+e set c 15 0
+zero arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+q3 at r 0
+q4 at r 0
+q5 eq q4 0
+q6 select q5 e zero
+q7 at r 2
+q8 rec q3 q6 d q7
+ret q8
+end

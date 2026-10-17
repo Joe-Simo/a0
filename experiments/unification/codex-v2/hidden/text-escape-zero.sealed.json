@@ -1,0 +1,63 @@
+{
+  "id": "text-escape-zero",
+  "summary": "the text-literal escape `\\0` decodes to a zero byte",
+  "instruction": "Change request for the A0 front end (lexer and parser): in a `text \"...\"` literal the escape `\\0` (a backslash, then the digit zero) must decode to the byte 0. A zero digit that is not escaped is still the byte 48, and the other escapes are unchanged.",
+  "a0Targets": [
+    "txtb"
+  ],
+  "tests": [
+    {
+      "kind": "parse",
+      "src": "fn f -> u32\nt text \"0\\00\\n\"\nret 0\nend\n",
+      "expect": {
+        "code": 0,
+        "args": [
+          3,
+          48,
+          3,
+          0,
+          3,
+          48,
+          3,
+          10
+        ]
+      }
+    },
+    {
+      "kind": "parse",
+      "src": "fn f -> u32\nt text \"\\\\0\\0\"\nret 0\nend\n",
+      "expect": {
+        "code": 0,
+        "args": [
+          3,
+          92,
+          3,
+          48,
+          3,
+          0
+        ]
+      }
+    },
+    {
+      "kind": "same",
+      "src": "fn sq u32 -> u32\na mul p0 p0\nret a\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "# a small program\nuse \"lib.a0\"\nfn inc u32 -> u32\na add p0 1 # one more\nret a\nend\nfn g u32x4 (u32,bool) -> u32\nb at p1 0\nc get p0 2\nd call inc c\ne div d 3\nf select true e b\nt text \"hi\\n\"\nret f\nend\n"
+    },
+    {
+      "kind": "same",
+      "src": "fn h u32x4x2 boolx3 -> (u32,u32x4)\nx get p0 1\ny get x 0\nz rec y x\nret z\nend\nfn k u32 u32 -> u32\nret sub p0 p1\nend\n"
+    }
+  ],
+  "reference": {
+    "a0": "isz eq c 48 @ ist\nm2 select isz 0 m1 @ m1\nv select e1 m2 c\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -579,1 +579,1 @@\n-                pushArg(3, e === 110 ? 10 : e === 116 ? 9 : e);\n+                pushArg(3, e === 110 ? 10 : e === 116 ? 9 : e === 48 ? 0 : e);\n"
+  },
+  "wrong": {
+    "a0": "isz eq c 48 @ ist\nm2 select isz 0 m1 @ m1\nw0 select isz 0 c @ m2\nv select e1 m2 w0\n",
+    "ts": "--- a/front.ts\n+++ b/front.ts\n@@ -579,1 +579,1 @@\n-                pushArg(3, e === 110 ? 10 : e === 116 ? 9 : e);\n+                pushArg(3, e === 110 ? 10 : e === 116 ? 9 : e === 0 ? 48 : e);\n",
+    "why": "A0: the zero is decoded whether or not it was escaped; TS: the mapping is written the wrong way round (byte 0 to 48)"
+  }
+}

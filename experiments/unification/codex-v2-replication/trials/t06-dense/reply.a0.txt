@@ -1,0 +1,14 @@
+fn countbit u32 u32 u32 -> u32
+add A and shr C B 1
+
+fn countrow u32 u32 u32x32 -> u32
+row get C B
+bits fold countbit 32 0 row
+add A bits
+
+fn writegrid u32x32 io -> io
+t write B 76
+u write t 32
+v fold writerow 32 u A
+population fold countrow 32 0 A
+w write v population

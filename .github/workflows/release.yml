@@ -38,7 +38,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run typecheck
-      # Five binaries, five MCP Bundles, release/server.json (bundle URLs and SHA-256), checksums.txt.
+      # Five binaries, five MCP Bundles, LICENSE, NOTICE, server.json, and checksums.txt.
       - name: Build artifacts
         run: sh tools/release.sh "$VERSION"
       - name: Publish GitHub release
@@ -54,12 +54,12 @@ jobs:
             release/a0-darwin-arm64 release/a0-darwin-x64 release/a0-linux-arm64 release/a0-linux-x64 release/a0-windows-x64.exe \
             release/a0-mcp-darwin-arm64.mcpb release/a0-mcp-darwin-x64.mcpb release/a0-mcp-linux-arm64.mcpb \
             release/a0-mcp-linux-x64.mcpb release/a0-mcp-windows-x64.mcpb \
-            release/checksums.txt release/server.json
+            release/LICENSE release/NOTICE release/checksums.txt release/server.json
           # Fail unless every expected asset is on the release.
           gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | LC_ALL=C sort > "$RUNNER_TEMP/assets.txt"
           printf '%s\n' a0-darwin-arm64 a0-darwin-x64 a0-linux-arm64 a0-linux-x64 a0-windows-x64.exe \
             a0-mcp-darwin-arm64.mcpb a0-mcp-darwin-x64.mcpb a0-mcp-linux-arm64.mcpb a0-mcp-linux-x64.mcpb a0-mcp-windows-x64.mcpb \
-            checksums.txt server.json | LC_ALL=C sort > "$RUNNER_TEMP/expected.txt"
+            LICENSE NOTICE checksums.txt server.json | LC_ALL=C sort > "$RUNNER_TEMP/expected.txt"
           diff "$RUNNER_TEMP/expected.txt" "$RUNNER_TEMP/assets.txt"
       # main gets the formula's version and sha256 values and the registry manifest's bundles (the other
       # version files were bumped before tagging and checked above).
@@ -115,6 +115,12 @@ jobs:
         run: |
           export A0_INSTALL_DIR="$RUNNER_TEMP/a0-bin"
           curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/install.sh" | A0_VERSION="$GITHUB_REF_NAME" sh
+          if command -v sha256sum >/dev/null 2>&1; then
+            binary_sha=$(sha256sum "$A0_INSTALL_DIR/a0" | awk '{print $1}')
+          else
+            binary_sha=$(shasum -a 256 "$A0_INSTALL_DIR/a0" | awk '{print $1}')
+          fi
+          for name in LICENSE NOTICE; do test -s "$RUNNER_TEMP/share/a0/$binary_sha/$name"; done
           echo "A0_BIN=$A0_INSTALL_DIR/a0" >> "$GITHUB_ENV"
       - name: Install with install.ps1
         if: runner.os == 'Windows'
@@ -123,6 +129,11 @@ jobs:
           $env:A0_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'a0-bin'
           $env:A0_VERSION = $env:GITHUB_REF_NAME
           irm "https://raw.githubusercontent.com/$env:GITHUB_REPOSITORY/$env:GITHUB_REF_NAME/install.ps1" | iex
+          $binaryHash = (Get-FileHash -Algorithm SHA256 (Join-Path $env:A0_INSTALL_DIR 'a0.exe')).Hash.ToLowerInvariant()
+          $noticeDir = Join-Path (Join-Path $env:A0_INSTALL_DIR 'share\a0') $binaryHash
+          foreach ($name in @('LICENSE', 'NOTICE')) {
+            if (-not (Test-Path (Join-Path $noticeDir $name) -PathType Leaf)) { throw "missing installed $name" }
+          }
           "A0_BIN=$(Join-Path $env:A0_INSTALL_DIR 'a0.exe')" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
       - name: a0 --version, check, run, MCP initialize and tools/list
         shell: bash

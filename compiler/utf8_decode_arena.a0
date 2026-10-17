@@ -1,0 +1,375 @@
+# Streaming raw-byte UTF8 normalization with immutable source and versioned span relations.
+use "utf8_unit_arena.a0"
+use "arena_vector.a0"
+fn ud_zero4 -> u32x4
+q arr 0 0 0 0
+ret q
+end
+fn ud_code (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+q2 get d 0
+q3 select q1 p1 q2
+q4 set d 0 q3
+q5 at p0 1
+q6 at p0 2
+q7 rec q4 q5 q6
+ret q7
+end
+fn ud_append_do (u32x128,u32x128,io) u32 u32 u32 u32x128 -> (u32x128,u32x128,io)
+d at p0 0
+q0 at p0 2
+q1 get d p2
+q2 add p2 1
+q3 get d q2
+q4 add p2 2
+q5 get d q4
+q6 rec q1 q3 q5
+r call av_append q0 q6 p3 p4
+q7 at r 1
+q8 at q7 0
+m1_a set d p2 q8
+q9 add p2 1
+q10 at q7 1
+m1_b set m1_a q9 q10
+q11 add p2 2
+q12 at q7 2
+q13 set m1_b q11 q12
+q14 at r 0
+q15 set q13 0 q14
+q16 at p0 1
+q17 at r 2
+q18 rec q15 q16 q17
+ret q18
+end
+fn ud_append (u32x128,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x128,io)
+d at p0 0
+q0 add p1 1
+q1 get d q0
+q2 sub 4294967295 q1
+safe le p2 q2
+q3 select safe 0 3
+a call ud_code p0 q3
+q4 at a 0
+q5 get q4 0
+q6 eq q5 0
+q7 select q6 1 0
+q8 fold ud_append_do q7 a p1 p2 p3
+ret q8
+end
+fn ud_copy_ok (u32x128,u32x128,io) u32 u32 u32 -> bool
+q0 at p0 0
+q1 get q0 0
+q2 eq q1 0
+ret q2
+end
+fn ud_copy_page (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+d at p0 0
+off mul p1 128
+q0 sub p3 off
+q1 gt q0 128
+q2 sub p3 off
+count select q1 128 q2
+q3 at p0 2
+q4 get d 6
+q5 add p2 off
+r call arena_load q3 q4 q5 count
+q6 at r 0
+q7 set d 0 q6
+q8 at p0 1
+q9 at r 2
+q10 rec q7 q8 q9
+q11 at r 1
+q12 call ud_append q10 32 count q11
+ret q12
+end
+fn ud_flush_do (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+d at p0 0
+q0 get d 9
+q1 div q0 128
+q2 get d 9
+q3 rem q2 128
+q4 ne q3 0
+q5 select q4 1 0
+pages add q1 q5
+q6 get d 4
+q7 get d 9
+a loop ud_copy_ok ud_copy_page pages p0 q6 q7
+row call arena_zero
+q8 get d 5
+row_1 set row 0 q8
+q9 get d 9
+row_2 set row_1 1 q9
+q10 get d 4
+row_3 set row_2 2 q10
+q11 get d 9
+row_4 set row_3 3 q11
+q12 get d 8
+row_5 set row_4 4 q12
+q13 get d 3
+q14 get d 8
+q15 sub q13 q14
+row_6 set row_5 5 q15
+b call ud_append a 35 7 row_6
+after at b 0
+q16 get after 33
+after_1 set after 2 q16
+q17 set after_1 9 0
+q18 at b 1
+q19 at b 2
+q20 rec q17 q18 q19
+ret q20
+end
+fn ud_flush (u32x128,u32x128,io) -> (u32x128,u32x128,io)
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+q2 get d 9
+q3 ne q2 0
+q4 and q1 q3
+q5 select q4 1 0
+q6 fold ud_flush_do q5 p0
+ret q6
+end
+fn ud_refresh (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+d at p0 0
+q0 get d 7
+q1 sub q0 p2
+q2 gt q1 128
+q3 get d 7
+q4 sub q3 p2
+count select q2 128 q4
+q5 at p0 2
+q6 get d 6
+r call arena_load q5 q6 p2 count
+q7 at r 0
+a set d 0 q7
+b set a 10 p2
+q8 set b 11 count
+q9 at r 1
+q10 at r 2
+q11 rec q8 q9 q10
+ret q11
+end
+fn ud_gather (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+d at p0 0
+q0 get d 1
+pos add q0 p1
+q1 get d 10
+q2 ge pos q1
+q3 get d 10
+q4 sub pos q3
+q5 get d 11
+q6 lt q4 q5
+cached and q2 q6
+q7 get d 0
+q8 eq q7 0
+q9 xor cached true
+q10 and q8 q9
+q11 select q10 1 0
+a fold ud_refresh q11 p0 pos
+after at a 0
+page at a 1
+q12 add 48 p1
+q13 get after 10
+q14 sub pos q13
+q15 get page q14
+q16 set after q12 q15
+q17 at a 2
+q18 rec q16 page q17
+ret q18
+end
+fn ud_good (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+d at p0 0
+q0 get d 1
+q1 get d 12
+q2 add q0 q1
+a set d 1 q2
+q3 get d 9
+q4 get d 12
+q5 add q3 q4
+b set a 9 q5
+q6 get d 3
+q7 get d 14
+q8 add q6 q7
+q9 set b 3 q8
+q10 at p0 1
+q11 at p0 2
+q12 rec q9 q10 q11
+ret q12
+end
+fn ud_bad (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+a call ud_flush p0
+before at a 0
+page call arena_zero
+page_1 set page 0 239
+page_2 set page_1 1 191
+page_3 set page_2 2 189
+b call ud_append a 32 3 page_3
+row call arena_zero
+q0 get before 33
+row_1 set row 0 q0
+row_2 set row_1 1 3
+q1 get before 1
+row_3 set row_2 2 q1
+q2 get before 12
+row_4 set row_3 3 q2
+q3 get before 3
+row_5 set row_4 4 q3
+row_6 set row_5 5 1
+row_7 set row_6 6 1
+c call ud_append b 35 7 row_7
+d at c 0
+q4 get d 1
+q5 get d 12
+cursor add q4 q5
+q6 get d 3
+units add q6 1
+e set d 1 cursor
+q7 get d 33
+e_1 set e 2 q7
+e_2 set e_1 3 units
+e_3 set e_2 4 cursor
+q8 get d 33
+e_4 set e_3 5 q8
+e_5 set e_4 8 units
+e_6 set e_5 9 0
+q9 at c 1
+q10 at c 2
+q11 rec e_6 q9 q10
+ret q11
+end
+fn ud_continue (u32x128,u32x128,io) u32 -> bool
+d at p0 0
+q0 get d 0
+q1 eq q0 0
+q2 get d 1
+q3 get d 7
+q4 lt q2 q3
+q5 and q1 q4
+ret q5
+end
+fn ud_step (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+initial at p0 0
+q0 get initial 7
+q1 get initial 1
+remaining sub q0 q1
+q2 gt remaining 4
+available select q2 4 remaining
+a loop ud_continue ud_gather available p0
+d at a 0
+bytes call ud_zero4
+q3 get d 48
+bytes_1 set bytes 0 q3
+q4 get d 49
+bytes_2 set bytes_1 1 q4
+q5 get d 50
+bytes_3 set bytes_2 2 q5
+q6 get d 51
+bytes_4 set bytes_3 3 q6
+unit call utf8_unit bytes_4 available
+q7 at unit 0
+b call ud_code a q7
+after at b 0
+q8 at unit 1
+q9 gt q8 0
+q10 at unit 1
+q11 le q10 remaining
+safe and q9 q11
+q12 select safe 0 7
+checked call ud_code b q12
+c at checked 0
+q13 at unit 1
+c_1 set c 12 q13
+q14 at unit 3
+c_2 set c_1 13 q14
+q15 at unit 4
+c_3 set c_2 14 q15
+q16 at unit 5
+c_4 set c_3 15 q16
+q17 get c_4 96
+q18 add q17 1
+c_5 set c_4 96 q18
+q19 at checked 1
+q20 at checked 2
+q21 get c_5 0
+q22 eq q21 0
+q23 get c_5 15
+q24 eq q23 0
+q25 and q22 q24
+q26 select q25 1 0
+q27 rec c_5 q19 q20
+good fold ud_good q26 q27
+q28 get c_5 0
+q29 eq q28 0
+q30 get c_5 15
+q31 eq q30 1
+q32 and q29 q31
+q33 select q32 1 0
+q34 fold ud_bad q33 good
+ret q34
+end
+fn arena_utf8_decode io u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+d call arena_zero
+d_1 set d 6 p1
+d_2 set d_1 7 p2
+d_3 set d_2 10 4294967295
+d_4 set d_3 93 1429750833
+d_5 set d_4 94 1
+q0 call arena_zero
+q1 rec d_5 q0 p0
+scanned loop ud_continue ud_step p2 q1
+flushed call ud_flush scanned
+after at flushed 0
+q2 get after 0
+q3 eq q2 0
+q4 get after 1
+q5 eq q4 p2
+complete and q3 q5
+q6 select complete 0 7
+checked call ud_code flushed q6
+result at checked 0
+q7 get result 0
+success eq q7 0
+q8 get result 32
+q9 get result 33
+q10 get result 34
+q11 get result 35
+q12 get result 36
+q13 get result 37
+q14 rec q8 q9 q10
+q15 rec 0 0 0
+q16 select success q14 q15
+q17 at q16 0
+m2_a set result 32 q17
+q18 at q16 1
+m2_b set m2_a 33 q18
+q19 at q16 2
+q20 set m2_b 34 q19
+q21 rec q11 q12 q13
+q22 rec 0 0 0
+q23 select success q21 q22
+q24 at q23 0
+m3_a set q20 35 q24
+q25 at q23 1
+m3_b set m3_a 36 q25
+q26 at q23 2
+q27 set m3_b 37 q26
+q28 get q27 2
+q29 select success q28 0
+result_1 set q27 2 q29
+q30 get result_1 3
+q31 select success q30 0
+result_2 set result_1 3 q31
+q32 select success 1 0
+result_3 set result_2 95 q32
+q33 get result_3 0
+q34 get result_3 32
+q35 get result_3 33
+q36 get result_3 34
+q37 rec q34 q35 q36
+q38 at checked 2
+q39 rec q33 q37 result_3 q38
+ret q39
+end

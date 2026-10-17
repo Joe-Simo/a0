@@ -9,7 +9,22 @@ typedef struct a0_io a0_io;
 #define A0_IO_OUTPUT_CAPACITY 1024u
 #endif
 struct a0_io { uint32_t input[A0_IO_INPUT_CAPACITY]; uint32_t ninput; uint32_t position; uint32_t output[A0_IO_OUTPUT_CAPACITY]; uint32_t noutput; };
-static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < A0_IO_OUTPUT_CAPACITY) t->output[t->noutput++] = v; return t; }
+/* Explicit compiler transport hooks; the default buffered ABI and behavior stay intact. */
+static inline uint32_t a0rt_read_word(a0_io *t) {
+#ifdef A0_COMPILER_READ
+  return A0_COMPILER_READ(t);
+#else
+  return t->position < t->ninput ? t->input[t->position++] : 0u;
+#endif
+}
+static inline a0_io *a0_write(a0_io *t, uint32_t v) {
+#ifdef A0_COMPILER_WRITE
+  A0_COMPILER_WRITE(t, v);
+#else
+  if (t->noutput < A0_IO_OUTPUT_CAPACITY) t->output[t->noutput++] = v;
+#endif
+  return t;
+}
 static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }
 static inline uint32_t a0_add(uint32_t a, uint32_t b) { return a + b; }
 static inline uint32_t a0_sub(uint32_t a, uint32_t b) { return a - b; }
@@ -414,48 +429,51 @@ a0t6 a0_lexstep(uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4)
   bool n22 = (n21 ? false : true); (void)n22;
   bool n23 = (n12 && n3); (void)n23;
   bool n24 = (n23 && n22); (void)n24;
-  bool n25 = (n14 && n2); (void)n25;
-  bool n26 = (n15 || n16); (void)n26;
-  bool n27 = (n26 || n17); (void)n27;
-  bool n28 = (n13 && n7); (void)n28;
-  bool n29 = (n20 || n24); (void)n29;
-  bool n30 = (n29 || n27); (void)n30;
-  bool n31 = (n30 || n13); (void)n31;
-  bool n32 = (n29 || n25); (void)n32;
-  bool n33 = (n32 || n27); (void)n33;
-  bool n34 = (n33 || n13); (void)n34;
-  bool n35 = (n24 || n28); (void)n35;
-  uint32_t n36 = (n13 ? 6u : p0); (void)n36;
-  uint32_t n37 = (n28 ? 4u : n36); (void)n37;
-  uint32_t n38 = (n24 ? 3u : n37); (void)n38;
-  uint32_t n39 = a0_add(p1, 1u); (void)n39;
-  uint32_t n40 = (n24 ? n39 : p1); (void)n40;
-  uint32_t n41 = a0_sub(p3, p1); (void)n41;
-  uint32_t n42 = a0_sub(n41, 1u); (void)n42;
-  uint32_t n43 = (n28 ? 2u : 1u); (void)n43;
-  uint32_t n44 = (n24 ? n42 : n43); (void)n44;
-  uint32_t n45 = (n20 ? n41 : n44); (void)n45;
-  bool n46 = a0_eq(p0, 0u); (void)n46;
-  bool n47 = (n46 || n34); (void)n47;
-  bool n48 = (n35 ? false : true); (void)n48;
-  bool n49 = (n47 && n48); (void)n49;
-  bool n50 = a0_isdigit(n0); (void)n50;
-  uint32_t n51 = (n50 ? 2u : 1u); (void)n51;
-  uint32_t n52 = (n9 ? 0u : 9u); (void)n52;
-  uint32_t n53 = (n8 ? 7u : n52); (void)n53;
-  uint32_t n54 = (n6 ? 6u : n53); (void)n54;
-  uint32_t n55 = (n2 ? 5u : n54); (void)n55;
-  uint32_t n56 = (n5 ? 8u : n55); (void)n56;
-  uint32_t n57 = (n3 ? 3u : n56); (void)n57;
-  uint32_t n58 = (n1 ? n51 : n57); (void)n58;
-  uint32_t n59 = (n34 ? 0u : p0); (void)n59;
-  uint32_t n60 = (n49 ? n58 : n59); (void)n60;
-  uint32_t n61 = (n49 ? p3 : p1); (void)n61;
-  uint32_t n62 = (n4 ? 1u : 0u); (void)n62;
-  uint32_t n63 = (n21 ? 0u : n62); (void)n63;
-  uint32_t n64 = (n12 ? n63 : 0u); (void)n64;
-  a0t6 n65; n65.f0 = n31; n65.f1 = n38; n65.f2 = n40; n65.f3 = n45; n65.f4 = n60; n65.f5 = n61; n65.f6 = n64; (void)n65;
-  return n65;
+  bool n25 = (n12 && n2); (void)n25;
+  bool n26 = (n24 || n25); (void)n26;
+  bool n27 = (n14 && n2); (void)n27;
+  bool n28 = (n15 || n16); (void)n28;
+  bool n29 = (n28 || n17); (void)n29;
+  bool n30 = (n13 && n7); (void)n30;
+  bool n31 = (n20 || n26); (void)n31;
+  bool n32 = (n31 || n29); (void)n32;
+  bool n33 = (n32 || n13); (void)n33;
+  bool n34 = (n31 || n27); (void)n34;
+  bool n35 = (n34 || n29); (void)n35;
+  bool n36 = (n35 || n13); (void)n36;
+  bool n37 = (n24 || n30); (void)n37;
+  uint32_t n38 = (n13 ? 6u : p0); (void)n38;
+  uint32_t n39 = (n30 ? 4u : n38); (void)n39;
+  uint32_t n40 = (n24 ? 3u : n39); (void)n40;
+  uint32_t n41 = (n25 ? 9u : n40); (void)n41;
+  uint32_t n42 = a0_add(p1, 1u); (void)n42;
+  uint32_t n43 = (n24 ? n42 : p1); (void)n43;
+  uint32_t n44 = a0_sub(p3, p1); (void)n44;
+  uint32_t n45 = a0_sub(n44, 1u); (void)n45;
+  uint32_t n46 = (n30 ? 2u : 1u); (void)n46;
+  uint32_t n47 = (n24 ? n45 : n46); (void)n47;
+  uint32_t n48 = (n20 ? n44 : n47); (void)n48;
+  bool n49 = a0_eq(p0, 0u); (void)n49;
+  bool n50 = (n49 || n36); (void)n50;
+  bool n51 = (n37 ? false : true); (void)n51;
+  bool n52 = (n50 && n51); (void)n52;
+  bool n53 = a0_isdigit(n0); (void)n53;
+  uint32_t n54 = (n53 ? 2u : 1u); (void)n54;
+  uint32_t n55 = (n9 ? 0u : 9u); (void)n55;
+  uint32_t n56 = (n8 ? 7u : n55); (void)n56;
+  uint32_t n57 = (n6 ? 6u : n56); (void)n57;
+  uint32_t n58 = (n2 ? 5u : n57); (void)n58;
+  uint32_t n59 = (n5 ? 8u : n58); (void)n59;
+  uint32_t n60 = (n3 ? 3u : n59); (void)n60;
+  uint32_t n61 = (n1 ? n54 : n60); (void)n61;
+  uint32_t n62 = (n36 ? 0u : p0); (void)n62;
+  uint32_t n63 = (n52 ? n61 : n62); (void)n63;
+  uint32_t n64 = (n52 ? p3 : p1); (void)n64;
+  uint32_t n65 = (n4 ? 1u : 0u); (void)n65;
+  uint32_t n66 = (n21 ? 0u : n65); (void)n66;
+  uint32_t n67 = (n12 ? n66 : 0u); (void)n67;
+  a0t6 n68; n68.f0 = n33; n68.f1 = n41; n68.f2 = n43; n68.f3 = n48; n68.f4 = n63; n68.f5 = n64; n68.f6 = n67; (void)n68;
+  return n68;
 }
 
 a0t8 a0_lexbyte(a0t8 p0, uint32_t p1, a0t5 p2, uint32_t p3) {
@@ -738,22 +756,25 @@ a0t12 a0_lexsrc(a0t4 p0, uint32_t p1) {
   uint32_t n8 = n3.f3; (void)n8;
   bool n9 = a0_eq(n7, 1u); (void)n9;
   bool n10 = a0_eq(n7, 2u); (void)n10;
-  bool n11 = a0_eq(n7, 5u); (void)n11;
-  bool n12 = a0_eq(n7, 6u); (void)n12;
-  bool n13 = a0_eq(n7, 7u); (void)n13;
-  bool n14 = a0_eq(n7, 9u); (void)n14;
-  bool n15 = (n9 || n10); (void)n15;
-  bool n16 = (n11 || n12); (void)n16;
-  bool n17 = (n16 || n13); (void)n17;
+  bool n11 = a0_eq(n7, 3u); (void)n11;
+  bool n12 = a0_eq(n7, 5u); (void)n12;
+  bool n13 = a0_eq(n7, 6u); (void)n13;
+  bool n14 = a0_eq(n7, 7u); (void)n14;
+  bool n15 = a0_eq(n7, 9u); (void)n15;
+  bool n16 = (n9 || n10); (void)n16;
+  bool n17 = (n12 || n13); (void)n17;
   bool n18 = (n17 || n14); (void)n18;
-  bool n19 = (n15 || n18); (void)n19;
-  uint32_t n20 = a0_sub(p1, n8); (void)n20;
-  uint32_t n21 = (n15 ? n20 : 1u); (void)n21;
-  a0t9 n22 = a0_tokput3((*n5), n6, n7, n8, n21, n19); (void)n22;
-  uint32_t n23 = a0_add(n6, 3u); (void)n23;
-  uint32_t n24 = (n19 ? n23 : n6); (void)n24;
-  a0t12 n25; n25.f0 = n22; n25.f1 = n24; (void)n25;
-  return n25;
+  bool n19 = (n18 || n15); (void)n19;
+  bool n20 = (n16 || n19); (void)n20;
+  bool n21 = (n20 || n11); (void)n21;
+  uint32_t n22 = (n11 ? 9u : n7); (void)n22;
+  uint32_t n23 = a0_sub(p1, n8); (void)n23;
+  uint32_t n24 = (n16 ? n23 : 1u); (void)n24;
+  a0t9 n25 = a0_tokput3((*n5), n6, n22, n8, n24, n21); (void)n25;
+  uint32_t n26 = a0_add(n6, 3u); (void)n26;
+  uint32_t n27 = (n21 ? n26 : n6); (void)n27;
+  a0t12 n28; n28.f0 = n25; n28.f1 = n27; (void)n28;
+  return n28;
 }
 
 a0t3 a0_zpk(void) {
@@ -771,7 +792,7 @@ a0t13 a0_rpkb(a0t13 p0, uint32_t p1) {
   uint32_t n0 = p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   a0_io * n2 = p0.f2; (void)n2;
-  a0t63 n3; n3.f0 = n2->position < n2->ninput ? n2->input[n2->position++] : 0u; n3.f1 = n2; (void)n3;
+  a0t63 n3; n3.f0 = a0rt_read_word(n2); n3.f1 = n2; (void)n3;
   uint32_t n4 = n3.f0; (void)n4;
   a0_io * n5 = n3.f1; (void)n5;
   uint32_t n6 = a0_shl(n4, n1); (void)n6;
@@ -785,7 +806,7 @@ static inline void a0o_rpkb(a0t13 *p0, uint32_t p1) {
   uint32_t n0 = (*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   a0_io * n2 = (*p0).f2; (void)n2;
-  a0t63 n3; n3.f0 = n2->position < n2->ninput ? n2->input[n2->position++] : 0u; n3.f1 = n2; (void)n3;
+  a0t63 n3; n3.f0 = a0rt_read_word(n2); n3.f1 = n2; (void)n3;
   uint32_t n4 = n3.f0; (void)n4;
   a0_io * n5 = n3.f1; (void)n5;
   uint32_t n6 = a0_shl(n4, n1); (void)n6;
@@ -870,7 +891,7 @@ static inline void a0o_readpage(a0t15 *p0, uint32_t p1, uint32_t p2, a0t3 p3) {
 }
 
 a0t16 a0_readsrc(a0_io * p0) {
-  a0t63 n0; n0.f0 = p0->position < p0->ninput ? p0->input[p0->position++] : 0u; n0.f1 = p0; (void)n0;
+  a0t63 n0; n0.f0 = a0rt_read_word(p0); n0.f1 = p0; (void)n0;
   uint32_t n1 = n0.f0; (void)n1;
   a0_io * n2 = n0.f1; (void)n2;
   bool n3 = a0_lt(131072u, n1); (void)n3;
@@ -1086,37 +1107,52 @@ a0t27 a0_scanb(a0t27 p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, bool p5, ui
   uint32_t n36 = a0_add(n35, n16); (void)n36;
   uint32_t n37 = a0_sub(n36, 48u); (void)n37;
   uint32_t n38 = (n33 ? n3 : n37); (void)n38;
-  bool n39 = (n4 && n34); (void)n39;
-  bool n40 = (n33 ? n4 : n39); (void)n40;
-  bool n41 = a0_isword(n16); (void)n41;
-  bool n42 = (n5 && n41); (void)n42;
-  bool n43 = a0_eq(n16, 92u); (void)n43;
-  bool n44 = a0_eq(n6, 1u); (void)n44;
-  uint32_t n45 = a0_add(n7, 1u); (void)n45;
-  uint32_t n46 = (n44 ? n7 : n45); (void)n46;
-  uint32_t n47 = (n43 ? 1u : 0u); (void)n47;
-  uint32_t n48 = (n44 ? 0u : n47); (void)n48;
-  bool n49 = a0_eq(n17, 1u); (void)n49;
-  bool n50 = a0_eq(n17, 2u); (void)n50;
-  bool n51 = a0_eq(n17, 3u); (void)n51;
-  uint32_t n52 = (n49 ? 51u : 117u); (void)n52;
-  uint32_t n53 = (n50 ? 50u : n52); (void)n53;
-  uint32_t n54 = (n51 ? 120u : n53); (void)n54;
-  bool n55 = a0_lt(n17, 4u); (void)n55;
-  bool n56 = a0_eq(n16, n54); (void)n56;
-  bool n57 = (n8 && n56); (void)n57;
-  bool n58 = (n55 ? n57 : n8); (void)n58;
-  bool n59 = a0_eq(n17, 4u); (void)n59;
-  uint32_t n60 = (n49 ? 111u : 98u); (void)n60;
-  uint32_t n61 = (n50 ? 111u : n60); (void)n61;
-  uint32_t n62 = (n51 ? 108u : n61); (void)n62;
-  uint32_t n63 = (n59 ? 120u : n62); (void)n63;
-  bool n64 = a0_lt(n17, 5u); (void)n64;
-  bool n65 = a0_eq(n16, n63); (void)n65;
-  bool n66 = (n9 && n65); (void)n66;
-  bool n67 = (n64 ? n66 : n9); (void)n67;
-  a0t27 n68; n68.f0 = n27; n68.f1 = n29; n68.f2 = n31; n68.f3 = n38; n68.f4 = n40; n68.f5 = n42; n68.f6 = n48; n68.f7 = n46; n68.f8 = n58; n68.f9 = n67; (void)n68;
-  return n68;
+  uint32_t n39 = a0_sub(n16, 48u); (void)n39;
+  uint32_t n40 = a0_div(4294967295u, 10u); (void)n40;
+  uint32_t n41 = a0_rem(4294967295u, 10u); (void)n41;
+  bool n42 = a0_lt(n3, n40); (void)n42;
+  bool n43 = a0_eq(n3, n40); (void)n43;
+  bool n44 = a0_le(n39, n41); (void)n44;
+  bool n45 = (n43 && n44); (void)n45;
+  bool n46 = (n42 || n45); (void)n46;
+  uint32_t n47 = (p5 ? 1u : 0u); (void)n47;
+  bool n48 = a0_gt(n17, n47); (void)n48;
+  bool n49 = a0_eq(n3, 0u); (void)n49;
+  bool n50 = (n48 && n49); (void)n50;
+  bool n51 = (n50 ? false : true); (void)n51;
+  bool n52 = (n34 && n46); (void)n52;
+  bool n53 = (n52 && n51); (void)n53;
+  bool n54 = (n4 && n53); (void)n54;
+  bool n55 = (n33 ? n4 : n54); (void)n55;
+  bool n56 = a0_isword(n16); (void)n56;
+  bool n57 = (n5 && n56); (void)n57;
+  bool n58 = a0_eq(n16, 92u); (void)n58;
+  bool n59 = a0_eq(n6, 1u); (void)n59;
+  uint32_t n60 = a0_add(n7, 1u); (void)n60;
+  uint32_t n61 = (n59 ? n7 : n60); (void)n61;
+  uint32_t n62 = (n58 ? 1u : 0u); (void)n62;
+  uint32_t n63 = (n59 ? 0u : n62); (void)n63;
+  bool n64 = a0_eq(n17, 1u); (void)n64;
+  bool n65 = a0_eq(n17, 2u); (void)n65;
+  bool n66 = a0_eq(n17, 3u); (void)n66;
+  uint32_t n67 = (n64 ? 51u : 117u); (void)n67;
+  uint32_t n68 = (n65 ? 50u : n67); (void)n68;
+  uint32_t n69 = (n66 ? 120u : n68); (void)n69;
+  bool n70 = a0_lt(n17, 4u); (void)n70;
+  bool n71 = a0_eq(n16, n69); (void)n71;
+  bool n72 = (n8 && n71); (void)n72;
+  bool n73 = (n70 ? n72 : n8); (void)n73;
+  bool n74 = a0_eq(n17, 4u); (void)n74;
+  uint32_t n75 = (n64 ? 111u : 98u); (void)n75;
+  uint32_t n76 = (n65 ? 111u : n75); (void)n76;
+  uint32_t n77 = (n66 ? 108u : n76); (void)n77;
+  uint32_t n78 = (n74 ? 120u : n77); (void)n78;
+  bool n79 = a0_lt(n17, 5u); (void)n79;
+  bool n80 = a0_eq(n16, n78); (void)n80;
+  bool n81 = (n9 && n80); (void)n81;
+  bool n82 = (n79 ? n81 : n9); (void)n82;
+  a0t27 n83; n83.f0 = n27; n83.f1 = n29; n83.f2 = n31; n83.f3 = n38; n83.f4 = n55; n83.f5 = n57; n83.f6 = n63; n83.f7 = n61; n83.f8 = n73; n83.f9 = n82; (void)n83;
+  return n83;
 }
 
 static inline void a0o_scanb(a0t27 *p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, bool p5, uint32_t p6) {
@@ -1159,37 +1195,52 @@ static inline void a0o_scanb(a0t27 *p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t 
   uint32_t n36 = a0_add(n35, n16); (void)n36;
   uint32_t n37 = a0_sub(n36, 48u); (void)n37;
   uint32_t n38 = (n33 ? n3 : n37); (void)n38;
-  bool n39 = (n4 && n34); (void)n39;
-  bool n40 = (n33 ? n4 : n39); (void)n40;
-  bool n41 = a0_isword(n16); (void)n41;
-  bool n42 = (n5 && n41); (void)n42;
-  bool n43 = a0_eq(n16, 92u); (void)n43;
-  bool n44 = a0_eq(n6, 1u); (void)n44;
-  uint32_t n45 = a0_add(n7, 1u); (void)n45;
-  uint32_t n46 = (n44 ? n7 : n45); (void)n46;
-  uint32_t n47 = (n43 ? 1u : 0u); (void)n47;
-  uint32_t n48 = (n44 ? 0u : n47); (void)n48;
-  bool n49 = a0_eq(n17, 1u); (void)n49;
-  bool n50 = a0_eq(n17, 2u); (void)n50;
-  bool n51 = a0_eq(n17, 3u); (void)n51;
-  uint32_t n52 = (n49 ? 51u : 117u); (void)n52;
-  uint32_t n53 = (n50 ? 50u : n52); (void)n53;
-  uint32_t n54 = (n51 ? 120u : n53); (void)n54;
-  bool n55 = a0_lt(n17, 4u); (void)n55;
-  bool n56 = a0_eq(n16, n54); (void)n56;
-  bool n57 = (n8 && n56); (void)n57;
-  bool n58 = (n55 ? n57 : n8); (void)n58;
-  bool n59 = a0_eq(n17, 4u); (void)n59;
-  uint32_t n60 = (n49 ? 111u : 98u); (void)n60;
-  uint32_t n61 = (n50 ? 111u : n60); (void)n61;
-  uint32_t n62 = (n51 ? 108u : n61); (void)n62;
-  uint32_t n63 = (n59 ? 120u : n62); (void)n63;
-  bool n64 = a0_lt(n17, 5u); (void)n64;
-  bool n65 = a0_eq(n16, n63); (void)n65;
-  bool n66 = (n9 && n65); (void)n66;
-  bool n67 = (n64 ? n66 : n9); (void)n67;
-  a0t27 n68; n68.f0 = n27; n68.f1 = n29; n68.f2 = n31; n68.f3 = n38; n68.f4 = n40; n68.f5 = n42; n68.f6 = n48; n68.f7 = n46; n68.f8 = n58; n68.f9 = n67; (void)n68;
-  *p0 = n68;
+  uint32_t n39 = a0_sub(n16, 48u); (void)n39;
+  uint32_t n40 = a0_div(4294967295u, 10u); (void)n40;
+  uint32_t n41 = a0_rem(4294967295u, 10u); (void)n41;
+  bool n42 = a0_lt(n3, n40); (void)n42;
+  bool n43 = a0_eq(n3, n40); (void)n43;
+  bool n44 = a0_le(n39, n41); (void)n44;
+  bool n45 = (n43 && n44); (void)n45;
+  bool n46 = (n42 || n45); (void)n46;
+  uint32_t n47 = (p5 ? 1u : 0u); (void)n47;
+  bool n48 = a0_gt(n17, n47); (void)n48;
+  bool n49 = a0_eq(n3, 0u); (void)n49;
+  bool n50 = (n48 && n49); (void)n50;
+  bool n51 = (n50 ? false : true); (void)n51;
+  bool n52 = (n34 && n46); (void)n52;
+  bool n53 = (n52 && n51); (void)n53;
+  bool n54 = (n4 && n53); (void)n54;
+  bool n55 = (n33 ? n4 : n54); (void)n55;
+  bool n56 = a0_isword(n16); (void)n56;
+  bool n57 = (n5 && n56); (void)n57;
+  bool n58 = a0_eq(n16, 92u); (void)n58;
+  bool n59 = a0_eq(n6, 1u); (void)n59;
+  uint32_t n60 = a0_add(n7, 1u); (void)n60;
+  uint32_t n61 = (n59 ? n7 : n60); (void)n61;
+  uint32_t n62 = (n58 ? 1u : 0u); (void)n62;
+  uint32_t n63 = (n59 ? 0u : n62); (void)n63;
+  bool n64 = a0_eq(n17, 1u); (void)n64;
+  bool n65 = a0_eq(n17, 2u); (void)n65;
+  bool n66 = a0_eq(n17, 3u); (void)n66;
+  uint32_t n67 = (n64 ? 51u : 117u); (void)n67;
+  uint32_t n68 = (n65 ? 50u : n67); (void)n68;
+  uint32_t n69 = (n66 ? 120u : n68); (void)n69;
+  bool n70 = a0_lt(n17, 4u); (void)n70;
+  bool n71 = a0_eq(n16, n69); (void)n71;
+  bool n72 = (n8 && n71); (void)n72;
+  bool n73 = (n70 ? n72 : n8); (void)n73;
+  bool n74 = a0_eq(n17, 4u); (void)n74;
+  uint32_t n75 = (n64 ? 111u : 98u); (void)n75;
+  uint32_t n76 = (n65 ? 111u : n75); (void)n76;
+  uint32_t n77 = (n66 ? 108u : n76); (void)n77;
+  uint32_t n78 = (n74 ? 120u : n77); (void)n78;
+  bool n79 = a0_lt(n17, 5u); (void)n79;
+  bool n80 = a0_eq(n16, n78); (void)n80;
+  bool n81 = (n9 && n80); (void)n81;
+  bool n82 = (n79 ? n81 : n9); (void)n82;
+  a0t27 n83; n83.f0 = n27; n83.f1 = n29; n83.f2 = n31; n83.f3 = n38; n83.f4 = n55; n83.f5 = n57; n83.f6 = n63; n83.f7 = n61; n83.f8 = n73; n83.f9 = n82; (void)n83;
+  *p0 = n83;
 }
 
 a0t27 a0_scanseg(a0t27 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, bool p5, uint32_t p6) {
@@ -2808,15 +2859,30 @@ a0t38 a0_grpb(a0t38 p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4) {
   bool n22 = (n21 ? false : true); (void)n22;
   bool n23 = (n13 ? n20 : n4); (void)n23;
   bool n24 = (n22 ? false : n23); (void)n24;
-  a0t37 n25 = (*n0); n25.e[n1 % 64u] = n2; (void)n25;
-  a0t37 n26 = (n13 ? n25 : (*n0)); (void)n26;
-  uint32_t n27 = a0_add(n1, 1u); (void)n27;
-  uint32_t n28 = (n13 ? n27 : n1); (void)n28;
-  uint32_t n29 = (n13 ? 0u : n17); (void)n29;
-  bool n30 = (n12 ? true : n3); (void)n30;
-  bool n31 = (n13 ? false : n30); (void)n31;
-  a0t38 n32; n32.f0 = n26; n32.f1 = n28; n32.f2 = n29; n32.f3 = n31; n32.f4 = n24; (void)n32;
-  return n32;
+  uint32_t n25 = a0_sub(n11, 48u); (void)n25;
+  uint32_t n26 = a0_div(4294967295u, 10u); (void)n26;
+  uint32_t n27 = a0_rem(4294967295u, 10u); (void)n27;
+  bool n28 = a0_lt(n2, n26); (void)n28;
+  bool n29 = a0_eq(n2, n26); (void)n29;
+  bool n30 = a0_le(n25, n27); (void)n30;
+  bool n31 = (n29 && n30); (void)n31;
+  bool n32 = (n28 || n31); (void)n32;
+  bool n33 = a0_eq(n2, 0u); (void)n33;
+  bool n34 = (n3 && n33); (void)n34;
+  bool n35 = (n34 ? false : true); (void)n35;
+  bool n36 = (n32 && n35); (void)n36;
+  bool n37 = (n36 ? false : true); (void)n37;
+  bool n38 = (n12 && n37); (void)n38;
+  bool n39 = (n38 ? false : n24); (void)n39;
+  a0t37 n40 = (*n0); n40.e[n1 % 64u] = n2; (void)n40;
+  a0t37 n41 = (n13 ? n40 : (*n0)); (void)n41;
+  uint32_t n42 = a0_add(n1, 1u); (void)n42;
+  uint32_t n43 = (n13 ? n42 : n1); (void)n43;
+  uint32_t n44 = (n13 ? 0u : n17); (void)n44;
+  bool n45 = (n12 ? true : n3); (void)n45;
+  bool n46 = (n13 ? false : n45); (void)n46;
+  a0t38 n47; n47.f0 = n41; n47.f1 = n43; n47.f2 = n44; n47.f3 = n46; n47.f4 = n39; (void)n47;
+  return n47;
 }
 
 static inline void a0o_grpb(a0t38 *p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4) {
@@ -2845,15 +2911,30 @@ static inline void a0o_grpb(a0t38 *p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p
   bool n22 = (n21 ? false : true); (void)n22;
   bool n23 = (n13 ? n20 : n4); (void)n23;
   bool n24 = (n22 ? false : n23); (void)n24;
-  a0t37 n25 = (*n0); n25.e[n1 % 64u] = n2; (void)n25;
-  a0t37 n26 = (n13 ? n25 : (*n0)); (void)n26;
-  uint32_t n27 = a0_add(n1, 1u); (void)n27;
-  uint32_t n28 = (n13 ? n27 : n1); (void)n28;
-  uint32_t n29 = (n13 ? 0u : n17); (void)n29;
-  bool n30 = (n12 ? true : n3); (void)n30;
-  bool n31 = (n13 ? false : n30); (void)n31;
-  a0t38 n32; n32.f0 = n26; n32.f1 = n28; n32.f2 = n29; n32.f3 = n31; n32.f4 = n24; (void)n32;
-  *p0 = n32;
+  uint32_t n25 = a0_sub(n11, 48u); (void)n25;
+  uint32_t n26 = a0_div(4294967295u, 10u); (void)n26;
+  uint32_t n27 = a0_rem(4294967295u, 10u); (void)n27;
+  bool n28 = a0_lt(n2, n26); (void)n28;
+  bool n29 = a0_eq(n2, n26); (void)n29;
+  bool n30 = a0_le(n25, n27); (void)n30;
+  bool n31 = (n29 && n30); (void)n31;
+  bool n32 = (n28 || n31); (void)n32;
+  bool n33 = a0_eq(n2, 0u); (void)n33;
+  bool n34 = (n3 && n33); (void)n34;
+  bool n35 = (n34 ? false : true); (void)n35;
+  bool n36 = (n32 && n35); (void)n36;
+  bool n37 = (n36 ? false : true); (void)n37;
+  bool n38 = (n12 && n37); (void)n38;
+  bool n39 = (n38 ? false : n24); (void)n39;
+  a0t37 n40 = (*n0); n40.e[n1 % 64u] = n2; (void)n40;
+  a0t37 n41 = (n13 ? n40 : (*n0)); (void)n41;
+  uint32_t n42 = a0_add(n1, 1u); (void)n42;
+  uint32_t n43 = (n13 ? n42 : n1); (void)n43;
+  uint32_t n44 = (n13 ? 0u : n17); (void)n44;
+  bool n45 = (n12 ? true : n3); (void)n45;
+  bool n46 = (n13 ? false : n45); (void)n46;
+  a0t38 n47; n47.f0 = n41; n47.f1 = n43; n47.f2 = n44; n47.f3 = n46; n47.f4 = n39; (void)n47;
+  *p0 = n47;
 }
 
 a0t36 a0_gstep(a0t36 p0, uint32_t p1, a0t37 p2) {
@@ -6048,43 +6129,6 @@ static inline bool a0r_fecap(const a0t9 *p0, uint32_t p1, uint32_t p2, uint32_t 
   return n23;
 }
 
-uint32_t a0_chkslot(uint32_t p0, uint32_t p1, a0t5 p2, uint32_t p3, uint32_t p4) {
-  uint32_t n0 = a0_add(p3, 4u); (void)n0;
-  uint32_t n1 = a0_div(n0, 6u); (void)n1;
-  uint32_t n2 = a0_add(n1, p1); (void)n2;
-  uint32_t n3 = a0_mul(n2, 6u); (void)n3;
-  uint32_t n4 = a0_add(n3, 1u); (void)n4;
-  uint32_t n5 = a0_sub(n4, p3); (void)n5;
-  bool n6 = a0_lt(n5, 128u); (void)n6;
-  bool n7 = a0_lt(n4, p4); (void)n7;
-  bool n8 = (n6 && n7); (void)n8;
-  uint32_t n9 = p2.e[n5 % 128u]; (void)n9;
-  bool n10 = a0_ge(n9, 32u); (void)n10;
-  bool n11 = a0_le(n9, 37u); (void)n11;
-  bool n12 = (n10 && n11); (void)n12;
-  bool n13 = (n8 && n12); (void)n13;
-  uint32_t n14 = (n13 ? 1u : p0); (void)n14;
-  return n14;
-}
-
-uint32_t a0_chkpage(uint32_t p0, uint32_t p1, a0t11 p2, uint32_t p3) {
-  uint32_t n0 = a0_mul(p1, 128u); (void)n0;
-  const a0t5 *const n1 = &p2.e[p1 % 128u]; (void)n1;
-  uint32_t n2 = p0; for (uint32_t a0i = 0; a0i < 22u; a0i++) { n2 = a0_chkslot(n2, a0i, (*n1), n0, p3); } (void)n2;
-  return n2;
-}
-
-bool a0_refuse(uint32_t p0, a0t11 p1, uint32_t p2) {
-  uint32_t n0 = a0_mul(p2, 6u); (void)n0;
-  uint32_t n1 = a0_add(n0, 127u); (void)n1;
-  uint32_t n2 = a0_shr(n1, 7u); (void)n2;
-  uint32_t n3 = 0u; for (uint32_t a0i = 0; a0i < n2; a0i++) { n3 = a0_chkpage(n3, a0i, p1, n0); } (void)n3;
-  bool n4 = a0_ne(n3, 0u); (void)n4;
-  bool n5 = a0_eq(p0, 1u); (void)n5;
-  bool n6 = (n4 || n5); (void)n6;
-  return n6;
-}
-
 a0t51 a0_z8(void) {
   a0t5 n0 = a0_zpage(); (void)n0;
   a0t51 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; (void)n1;
@@ -8649,6 +8693,28 @@ bool a0_czpg(bool p0, uint32_t p1, a0t50 p2, uint32_t p3, uint32_t p4, uint32_t 
   return n7;
 }
 
+a0_io * a0_cchecked(a0_io * p0, uint32_t p1, a0t58 p2) {
+  bool n0 = a0_eq(p1, 32u); (void)n0;
+  bool n1 = a0_eq(p1, 33u); (void)n1;
+  bool n2 = a0_eq(p1, 34u); (void)n2;
+  bool n3 = a0_eq(p1, 35u); (void)n3;
+  bool n4 = a0_eq(p1, 36u); (void)n4;
+  bool n5 = a0_eq(p1, 37u); (void)n5;
+  a0_io * n6 = a0_cwt(p0, n0, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 1684300127u, 40u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n6;
+  a0_io * n7 = a0_cwt(n6, n0, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 677734239u, 0u, 0u, 0u, 4u, 741369390u, 32u, 0u, 0u, 0u, 0u, 1u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n7;
+  a0_io * n8 = a0_cwt(n7, n1, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 1651864415u, 40u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n8;
+  a0_io * n9 = a0_cwt(n8, n1, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 677734239u, 0u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n9;
+  a0_io * n10 = a0_cwt(n9, n2, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 1819635039u, 40u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n10;
+  a0_io * n11 = a0_cwt(n10, n2, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 1965563965u, 913600105u, 695492404u, 0u, 0u, 1u, 673196576u, 1953393013u, 1952396342u, 41u, 0u, 0u, 2u, 540884000u, 1717991472u, 1717986918u, 997549670u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n11;
+  a0_io * n12 = a0_cwt(n11, n3, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 678520159u, 0u, 0u, 0u, 2u, 1966088236u, 541007913u, 975205680u, 1597006112u, 678848868u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n12;
+  a0_io * n13 = a0_cwt(n12, n3, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 677736031u, 0u, 0u, 0u, 2u, 1966088236u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n13;
+  a0_io * n14 = a0_cwt(n13, n4, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 678520159u, 0u, 0u, 0u, 2u, 1966088236u, 541007913u, 975205680u, 1597006112u, 678258034u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 2112297u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n14;
+  a0_io * n15 = a0_cwt(n14, n4, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 677736031u, 0u, 0u, 0u, 2u, 1966088236u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n15;
+  a0_io * n16 = a0_cwt(n15, n5, p2, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 811671613u, 678718559u, 0u, 0u, 0u, 2u, 8236u, 0u, 0u, 0u, 0u, 0u, 5u, 540748149u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n16;
+  a0_io * n17 = a0_cwt(n16, n5, p2, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 8253u, 0u, 0u, 0u, 0u, 4u, 540108334u, 8255u, 0u, 0u, 0u, 0u, 1u, 1633379630u, 1701994288u, 10349u, 0u, 0u, 0u, 2u, 8236u, 0u, 0u, 0u, 0u, 0u, 5u, 542976373u, 1966088250u, 59u, 0u, 0u, 0u); (void)n17;
+  return n17;
+}
+
 a0_io * a0_cnode(a0_io * p0, uint32_t p1, a0t11 p2, a0t50 p3, a0t52 p4, a0t26 p5, a0t22 p6, a0t23 p7, a0t17 p8, uint32_t p9, uint32_t p10, a0t52 p11, uint32_t p12) {
   uint32_t n0 = a0_add(p9, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 6u); (void)n1;
@@ -8907,10 +8973,10 @@ a0_io * a0_cnode(a0_io * p0, uint32_t p1, a0t11 p2, a0t50 p3, a0t52 p4, a0t26 p5
   bool n254 = (n155 && n119); (void)n254;
   a0_io * n255 = a0_cwt(n253, n254, n120, 2112800u, 0u, 0u, 0u, 0u, 0u, 1u, 8251u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n255;
   a0_io * n256 = a0_cwt(n255, n155, n120, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 26158u, 0u, 0u, 0u, 0u, 0u, 7u, 2112800u, 0u, 0u, 0u, 0u, 0u, 3u, 59u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n256;
-  a0_io * n257 = a0_cwt(n256, n156, n120, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 8253u, 0u, 0u, 0u, 0u, 1u, 1869626925u, 1769236851u, 1008758383u, 32u, 0u, 0u, 1u, 1768832557u, 1953853550u, 2113312u, 0u, 0u, 0u, 1u, 1852390957u, 1534358896u, 0u, 0u, 0u, 0u, 1u, 1869626925u, 1769236851u, 724266607u, 540680285u, 540767536u, 0u); (void)n257;
-  a0_io * n258 = a0_cwt(n257, n156, n120, 0u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 8253u, 0u, 0u, 0u, 0u, 1u, 59u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n258;
-  a0_io * n259 = a0_cwt(n258, n157, n120, 1629502752u, 1920425776u, 677737577u, 0u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n259;
-  a0_io * n260 = a0_cwt(n259, n158, n120, 1629502752u, 1970298672u, 2650996u, 0u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 539780398u, 0u, 0u, 0u, 0u, 0u, 6u, 3877237u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n260;
+  a0_io * n257 = a0_cwt(n256, n156, n120, 8251u, 0u, 0u, 0u, 0u, 0u, 4u, 540042798u, 811671613u, 1918858354u, 1600414053u, 1685221239u, 40u, 1u, 2112297u, 0u, 0u, 0u, 0u, 0u, 4u, 540108334u, 8253u, 0u, 0u, 0u, 0u, 1u, 59u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n257;
+  a0_io * n258 = a0_cwt(n257, n157, n120, 1629502752u, 1920425776u, 677737577u, 0u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 15145u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n258;
+  a0_io * n259 = a0_cwt(n258, n158, n120, 1629502752u, 1970298672u, 2650996u, 0u, 0u, 0u, 1u, 8236u, 0u, 0u, 0u, 0u, 0u, 2u, 539780398u, 0u, 0u, 0u, 0u, 0u, 6u, 3877237u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u); (void)n259;
+  a0_io * n260 = a0_cchecked(n259, n6, n120); (void)n260;
   a0_io * n261 = a0_cws6c(n260, n119, 1870014496u, 1848206441u, 0u, 0u, 0u, 0u); (void)n261;
   a0_io * n262 = a0_cwdecc(n261, n119, p1); (void)n262;
   a0_io * n263 = a0_cws6c(n262, n119, 59u, 0u, 0u, 0u, 0u, 0u); (void)n263;
@@ -9815,70 +9881,84 @@ a0_io * a0_cpre(a0_io * p0, uint32_t p1) {
   a0_io * n15 = a0_cws6(n14, 1881175135u, 1953067887u, 997093225u, 1852405024u, 1597125492u, 1970217076u); (void)n15;
   a0_io * n16 = a0_cws6(n15, 1953853556u, 1596997979u, 1331646281u, 1431327829u, 1094934356u, 1229144400u); (void)n16;
   a0_io * n17 = a0_cws6(n16, 995973460u, 1852405024u, 1597125492u, 1869488244u, 1970304117u, 2099264372u); (void)n17;
-  a0_io * n18 = a0_cws6(n17, 1953696315u, 1667855457u, 1819175200u, 543518313u, 1767845985u, 1630150767u); (void)n18;
-  a0_io * n19 = a0_cws6(n18, 1920425776u, 677737577u, 1767845985u, 1948917871u, 1769283628u, 842232942u); (void)n19;
-  a0_io * n20 = a0_cws6(n19, 1981838431u, 544940073u, 673212009u, 1849568628u, 1886680431u, 1008759925u); (void)n20;
-  a0_io * n21 = a0_cws6(n20, 1596997920u, 1331646281u, 1431327829u, 1094934356u, 1229144400u, 539580756u); (void)n21;
-  a0_io * n22 = a0_cws6(n21, 1866345844u, 1970304117u, 762600308u, 1970236990u, 1953853556u, 542976811u); (void)n22;
-  a0_io * n23 = a0_cws6(n22, 997597245u, 1952805408u, 544109173u, 2099264372u, 1635021578u, 543385972u); (void)n23;
-  a0_io * n24 = a0_cws6(n23, 1768713833u, 1629513070u, 1869176624u, 811674144u, 1953853535u, 811673715u); (void)n24;
-  a0_io * n25 = a0_cws6(n24, 544172383u, 539784234u, 1936617315u, 1769283700u, 842232942u, 706770015u); (void)n25;
-  a0_io * n26 = a0_cws6(n25, 1965042789u, 863268457u, 544497458u, 2065705326u, 1597006112u, 1953067639u); (void)n26;
-  a0_io * n27 = a0_cws6(n26, 745810021u, 992570912u, 1919903264u, 1769285664u, 842232942u, 1763734623u); (void)n27;
-  a0_io * n28 = a0_cws6(n27, 807419168u, 543760443u, 997072956u, 724265248u, 811671593u, 1769109343u); (void)n28;
-  a0_io * n29 = a0_cws6(n28, 1948804468u, 1533354028u, 992566633u, 1952805408u, 544109173u, 2099264372u); (void)n29;
-  a0_io * n30 = a0_cws6(n29, 1635021578u, 543385972u, 1768713833u, 1965057390u, 863268457u, 544497458u); (void)n30;
-  a0_io * n31 = a0_cws6(n30, 1633628257u, 1965581412u, 863268457u, 544497458u, 1965042785u, 863268457u); (void)n31;
-  a0_io * n32 = a0_cws6(n31, 544497458u, 2065705314u, 1952805408u, 544109173u, 539697249u, 2099264354u); (void)n32;
-  a0_io * n33 = a0_cws6(n32, 1635021578u, 543385972u, 1768713833u, 1965057390u, 863268457u, 544497458u); (void)n33;
-  a0_io * n34 = a0_cws6(n33, 1935618145u, 1965580917u, 863268457u, 544497458u, 1965042785u, 863268457u); (void)n34;
-  a0_io * n35 = a0_cws6(n34, 544497458u, 2065705314u, 1952805408u, 544109173u, 539828321u, 2099264354u); (void)n35;
-  a0_io * n36 = a0_cws6(n35, 1635021578u, 543385972u, 1768713833u, 1965057390u, 863268457u, 544497458u); (void)n36;
-  a0_io * n37 = a0_cws6(n36, 1834954849u, 1965583477u, 863268457u, 544497458u, 1965042785u, 863268457u); (void)n37;
-  a0_io * n38 = a0_cws6(n37, 544497458u, 2065705314u, 1952805408u, 544109173u, 1852405032u, 1597125492u); (void)n38;
-  a0_io * n39 = a0_cws6(n38, 673720692u, 1953393013u, 1952396342u, 706765097u, 992567840u, 1930067232u); (void)n39;
-  a0_io * n40 = a0_cws6(n39, 1769234804u, 1852383331u, 1701734764u, 1852405024u, 1597125492u, 811671668u); (void)n40;
-  a0_io * n41 = a0_cws6(n40, 1684955487u, 1852405032u, 1597125492u, 744562804u, 1852405024u, 1597125492u); (void)n41;
-  a0_io * n42 = a0_cws6(n41, 694296692u, 1914731296u, 1920300133u, 543236206u, 996286502u, 1930067232u); (void)n42;
-  a0_io * n43 = a0_cws6(n42, 1769234804u, 1852383331u, 1701734764u, 1852405024u, 1597125492u, 811671668u); (void)n43;
-  a0_io * n44 = a0_cws6(n43, 678588255u, 1953393013u, 1952395827u, 539779360u, 1953393013u, 1952395827u); (void)n44;
-  a0_io * n45 = a0_cws6(n44, 539583008u, 1701978235u, 1852994932u, 2082496800u, 540762656u, 1953696381u); (void)n45;
-  a0_io * n46 = a0_cws6(n45, 1667855457u, 1819175200u, 543518313u, 1953393013u, 1952395827u, 1597006112u); (void)n46;
-  a0_io * n47 = a0_cws6(n46, 678588280u, 1953393013u, 1952395827u, 539779360u, 1953393013u, 1952395827u); (void)n47;
-  a0_io * n48 = a0_cws6(n47, 539583008u, 1701978235u, 1852994932u, 1579180320u, 540762656u, 1953696381u); (void)n48;
-  a0_io * n49 = a0_cws6(n48, 1667855457u, 1819175200u, 543518313u, 1953393013u, 1952395827u, 1597006112u); (void)n49;
-  a0_io * n50 = a0_cws6(n49, 678193267u, 1953393013u, 1952395827u, 539779360u, 1953393013u, 1952395827u); (void)n50;
-  a0_io * n51 = a0_cws6(n50, 539583008u, 1701978235u, 1852994932u, 1008754976u, 1646796860u, 857744928u); (void)n51;
-  a0_io * n52 = a0_cws6(n51, 992572721u, 1930067232u, 1769234804u, 1852383331u, 1701734764u, 1852405024u); (void)n52;
-  a0_io * n53 = a0_cws6(n52, 1597125492u, 811671668u, 1919447903u, 1852405032u, 1597125492u, 744562804u); (void)n53;
-  a0_io * n54 = a0_cws6(n53, 1852405024u, 1597125492u, 694296692u, 1914731296u, 1920300133u, 543236206u); (void)n54;
-  a0_io * n55 = a0_cws6(n54, 673201726u, 539369570u, 695546163u, 175972411u, 1952543859u, 1763730281u); (void)n55;
-  a0_io * n56 = a0_cws6(n55, 1852402798u, 1868701797u, 1629514863u, 1902468912u, 1852405032u, 1597125492u); (void)n56;
-  a0_io * n57 = a0_cws6(n56, 744562804u, 1852405024u, 1597125492u, 694296692u, 1914731296u, 1920300133u); (void)n57;
-  a0_io * n58 = a0_cws6(n57, 543236206u, 1646279997u, 175972411u, 1952543859u, 1763730281u, 1852402798u); (void)n58;
-  a0_io * n59 = a0_cws6(n58, 1868701797u, 1629514863u, 1701732144u, 1852405032u, 1597125492u, 744562804u); (void)n59;
-  a0_io * n60 = a0_cws6(n59, 1852405024u, 1597125492u, 694296692u, 1914731296u, 1920300133u, 543236206u); (void)n60;
-  a0_io * n61 = a0_cws6(n60, 1646279969u, 175972411u, 1952543859u, 1763730281u, 1852402798u, 1868701797u); (void)n61;
-  a0_io * n62 = a0_cws6(n61, 1629514863u, 1953259312u, 1852405032u, 1597125492u, 744562804u, 1852405024u); (void)n62;
-  a0_io * n63 = a0_cws6(n62, 1597125492u, 694296692u, 1914731296u, 1920300133u, 543236206u, 996286524u); (void)n63;
-  a0_io * n64 = a0_cws6(n63, 1930067232u, 1769234804u, 1852383331u, 1701734764u, 1869570592u, 811671660u); (void)n64;
-  a0_io * n65 = a0_cws6(n64, 677735519u, 1953393013u, 1952395827u, 539779360u, 1953393013u, 1952395827u); (void)n65;
-  a0_io * n66 = a0_cws6(n65, 539583008u, 1701978235u, 1852994932u, 1008754976u, 996286525u, 1930067232u); (void)n66;
-  a0_io * n67 = a0_cws6(n66, 1769234804u, 1852383331u, 1701734764u, 1869570592u, 811671660u, 678717279u); (void)n67;
-  a0_io * n68 = a0_cws6(n67, 1953393013u, 1952395827u, 539779360u, 1953393013u, 1952395827u, 539583008u); (void)n68;
-  a0_io * n69 = a0_cws6(n68, 1701978235u, 1852994932u, 1042309408u, 540762656u, 1953696381u, 1667855457u); (void)n69;
-  a0_io * n70 = a0_cws6(n69, 1819175200u, 543518313u, 1819242338u, 1597006112u, 1965581671u, 863268457u); (void)n70;
-  a0_io * n71 = a0_cws6(n70, 544497458u, 1965042785u, 863268457u, 544497458u, 2065705314u, 1952805408u); (void)n71;
-  a0_io * n72 = a0_cws6(n71, 544109173u, 1027481697u, 540762656u, 1953696381u, 1667855457u, 1819175200u); (void)n72;
-  a0_io * n73 = a0_cws6(n72, 543518313u, 1953393013u, 1952395827u, 1597006112u, 678848868u, 1953393013u); (void)n73;
-  a0_io * n74 = a0_cws6(n73, 1952395827u, 539779360u, 1953393013u, 1952395827u, 539583008u, 1701978235u); (void)n74;
-  a0_io * n75 = a0_cws6(n74, 1852994932u, 1025532448u, 1966088253u, 807419680u, 1717986936u, 1717986918u); (void)n75;
-  a0_io * n76 = a0_cws6(n75, 975205734u, 790651168u, 540762656u, 1953696381u, 1667855457u, 1819175200u); (void)n76;
-  a0_io * n77 = a0_cws6(n76, 543518313u, 1953393013u, 1952395827u, 1597006112u, 678258034u, 1953393013u); (void)n77;
-  a0_io * n78 = a0_cws6(n77, 1952395827u, 539779360u, 1953393013u, 1952395827u, 539583008u, 1701978235u); (void)n78;
-  a0_io * n79 = a0_cws6(n78, 1852994932u, 1025532448u, 1966088253u, 1629503264u, 1629501984u, 1646273824u); (void)n79;
-  a0_io * n80 = a0_cws6(n79, 175972411u, 10u, 0u, 0u, 0u, 0u); (void)n80;
-  return n80;
+  a0_io * n18 = a0_cws6(n17, 707725883u, 1886930208u, 1768122732u, 1868767348u, 1818849389u, 1948283493u); (void)n18;
+  a0_io * n19 = a0_cws6(n18, 1936613746u, 1953656688u, 1869572128u, 540767083u, 543516788u, 1634100580u); (void)n19;
+  a0_io * n20 = a0_cws6(n19, 544500853u, 1717990754u, 1684370021u, 1229078816u, 1684955424u, 1751474720u); (void)n20;
+  a0_io * n21 = a0_cws6(n20, 1869182561u, 1953702002u, 1763735905u, 1667331182u, 706752116u, 1953696303u); (void)n21;
+  a0_io * n22 = a0_cws6(n21, 1667855457u, 1819175200u, 543518313u, 1953393013u, 1952395827u, 1915773216u); (void)n22;
+  a0_io * n23 = a0_cws6(n22, 1701994356u, 2002740321u, 677671535u, 1767845985u, 1948917871u, 175841321u); (void)n23;
+  a0_io * n24 = a0_cws6(n23, 1684433187u, 1092642405u, 1329815344u, 1279873101u, 1381978693u, 172245317u); (void)n24;
+  a0_io * n25 = a0_cws6(n24, 1701978144u, 1852994932u, 1596997920u, 1347243843u, 1380273225u, 1095062111u); (void)n25;
+  a0_io * n26 = a0_cws6(n25, 695478340u, 1696795195u, 174420844u, 1701978144u, 1852994932u, 1043166240u); (void)n26;
+  a0_io * n27 = a0_cws6(n26, 1769172848u, 1852795252u, 1948269600u, 1768832557u, 1953853550u, 1948270368u); (void)n27;
+  a0_io * n28 = a0_cws6(n27, 1852390957u, 1534358896u, 1883123060u, 1953067887u, 728657769u, 975199531u); (void)n28;
+  a0_io * n29 = a0_cws6(n28, 997535776u, 1852121866u, 174483812u, 1953696381u, 1667855457u, 1819175200u); (void)n29;
+  a0_io * n30 = a0_cws6(n29, 543518313u, 1767845985u, 1630150767u, 1920425776u, 677737577u, 1767845985u); (void)n30;
+  a0_io * n31 = a0_cws6(n30, 1948917871u, 1769283628u, 842232942u, 1981838431u, 175841321u, 1684433187u); (void)n31;
+  a0_io * n32 = a0_cws6(n31, 1092642405u, 1329815344u, 1279873101u, 1465864773u, 1163151698u, 1092624394u); (void)n32;
+  a0_io * n33 = a0_cws6(n32, 1329815344u, 1279873101u, 1465864773u, 1163151698u, 539784232u, 171649398u); (void)n33;
+  a0_io * n34 = a0_cws6(n33, 1936483619u, 538970725u, 673212009u, 1849568628u, 1886680431u, 1008759925u); (void)n34;
+  a0_io * n35 = a0_cws6(n34, 1596997920u, 1331646281u, 1431327829u, 1094934356u, 1229144400u, 539580756u); (void)n35;
+  a0_io * n36 = a0_cws6(n35, 1866345844u, 1970304117u, 762600308u, 1970236990u, 1953853556u, 542976811u); (void)n36;
+  a0_io * n37 = a0_cws6(n36, 997597245u, 1852121866u, 174483812u, 1701978144u, 1852994932u, 171668512u); (void)n37;
+  a0_io * n38 = a0_cws6(n37, 1953696381u, 1667855457u, 1819175200u, 543518313u, 1767845985u, 1630150767u); (void)n38;
+  a0_io * n39 = a0_cws6(n38, 1970298672u, 1630040948u, 1869176624u, 745810464u, 1852793632u, 1965061235u); (void)n39;
+  a0_io * n40 = a0_cws6(n39, 863268457u, 544497458u, 539780394u, 1953393013u, 1952395827u, 539586080u); (void)n40;
+  a0_io * n41 = a0_cws6(n40, 811671675u, 1769109343u, 1948804468u, 695083052u, 1868963899u, 1965564018u); (void)n41;
+  a0_io * n42 = a0_cws6(n41, 863268457u, 544497458u, 540876905u, 1763719984u, 1847606304u, 728309819u); (void)n42;
+  a0_io * n43 = a0_cws6(n42, 1629497643u, 1920425776u, 677737577u, 1696607348u, 693987675u, 1701978171u); (void)n43;
+  a0_io * n44 = a0_cws6(n43, 1852994932u, 540767264u, 1953696381u, 1667855457u, 1819175200u, 543518313u); (void)n44;
+  a0_io * n45 = a0_cws6(n44, 1953393013u, 1952395827u, 1597006112u, 677667937u, 1953393013u, 1952395827u); (void)n45;
+  a0_io * n46 = a0_cws6(n45, 539779360u, 1953393013u, 1952395827u, 539583008u, 1701978235u, 1852994932u); (void)n46;
+  a0_io * n47 = a0_cws6(n46, 723542304u, 540762656u, 1953696381u, 1667855457u, 1819175200u, 543518313u); (void)n47;
+  a0_io * n48 = a0_cws6(n47, 1953393013u, 1952395827u, 1597006112u, 677541235u, 1953393013u, 1952395827u); (void)n48;
+  a0_io * n49 = a0_cws6(n48, 539779360u, 1953393013u, 1952395827u, 539583008u, 1701978235u, 1852994932u); (void)n49;
+  a0_io * n50 = a0_cws6(n49, 757096736u, 540762656u, 1953696381u, 1667855457u, 1819175200u, 543518313u); (void)n50;
+  a0_io * n51 = a0_cws6(n50, 1953393013u, 1952395827u, 1597006112u, 678196589u, 1953393013u, 1952395827u); (void)n51;
+  a0_io * n52 = a0_cws6(n51, 539779360u, 1953393013u, 1952395827u, 539583008u, 1701978235u, 1852994932u); (void)n52;
+  a0_io * n53 = a0_cws6(n52, 1769285664u, 842232942u, 673805407u, 1852405032u, 1597257332u, 543238516u); (void)n53;
+  a0_io * n54 = a0_cws6(n53, 694296618u, 175972411u, 1952543859u, 1763730281u, 1852402798u, 1769283685u); (void)n54;
+  a0_io * n55 = a0_cws6(n54, 842232942u, 1629516895u, 1851875120u, 1769285732u, 842232942u, 1629516895u); (void)n55;
+  a0_io * n56 = a0_cws6(n55, 1769283628u, 842232942u, 1646294111u, 544940073u, 1970562418u, 1629515378u); (void)n56;
+  a0_io * n57 = a0_cws6(n56, 1646274080u, 175972411u, 1952543859u, 1763730281u, 1852402798u, 1769283685u); (void)n57;
+  a0_io * n58 = a0_cws6(n57, 842232942u, 1629516895u, 1919901488u, 1852405032u, 1597125492u, 744562804u); (void)n58;
+  a0_io * n59 = a0_cws6(n58, 1852405024u, 1597125492u, 694296692u, 1914731296u, 1920300133u, 543236206u); (void)n59;
+  a0_io * n60 = a0_cws6(n59, 996286588u, 1930067232u, 1769234804u, 1852383331u, 1701734764u, 1852405024u); (void)n60;
+  a0_io * n61 = a0_cws6(n60, 1597125492u, 811671668u, 1919907935u, 1852405032u, 1597125492u, 744562804u); (void)n61;
+  a0_io * n62 = a0_cws6(n61, 1852405024u, 1597125492u, 694296692u, 1914731296u, 1920300133u, 543236206u); (void)n62;
+  a0_io * n63 = a0_cws6(n62, 996286558u, 1930067232u, 1769234804u, 1852383331u, 1701734764u, 1852405024u); (void)n63;
+  a0_io * n64 = a0_cws6(n63, 1597125492u, 811671668u, 1818784607u, 1852405032u, 1597125492u, 744562804u); (void)n64;
+  a0_io * n65 = a0_cws6(n64, 1852405024u, 1597125492u, 694296692u, 1914731296u, 1920300133u, 543236206u); (void)n65;
+  a0_io * n66 = a0_cws6(n65, 673201212u, 539369570u, 695546163u, 175972411u, 1952543859u, 1763730281u); (void)n66;
+  a0_io * n67 = a0_cws6(n66, 1852402798u, 1769283685u, 842232942u, 1629516895u, 1752391472u, 1769285746u); (void)n67;
+  a0_io * n68 = a0_cws6(n67, 842232942u, 1629516895u, 1769283628u, 842232942u, 1646294111u, 544940073u); (void)n68;
+  a0_io * n69 = a0_cws6(n68, 1970562418u, 1629515378u, 540950048u, 639656488u, 1966158624u, 2099264297u); (void)n69;
+  a0_io * n70 = a0_cws6(n69, 1635021578u, 543385972u, 1768713833u, 1646290286u, 543977327u, 1700737121u); (void)n70;
+  a0_io * n71 = a0_cws6(n70, 1769285745u, 842232942u, 1629516895u, 1769283628u, 842232942u, 1646294111u); (void)n71;
+  a0_io * n72 = a0_cws6(n71, 544940073u, 1970562418u, 1629515378u, 540884256u, 2099264354u, 1635021578u); (void)n72;
+  a0_io * n73 = a0_cws6(n72, 543385972u, 1768713833u, 1646290286u, 543977327u, 1851732065u, 1769285733u); (void)n73;
+  a0_io * n74 = a0_cws6(n73, 842232942u, 1629516895u, 1769283628u, 842232942u, 1646294111u, 544940073u); (void)n74;
+  a0_io * n75 = a0_cws6(n74, 1970562418u, 1629515378u, 540877088u, 2099264354u, 1635021578u, 543385972u); (void)n75;
+  a0_io * n76 = a0_cws6(n75, 1768713833u, 1646290286u, 543977327u, 1818177633u, 1769285748u, 842232942u); (void)n76;
+  a0_io * n77 = a0_cws6(n76, 1629516895u, 1769283628u, 842232942u, 1646294111u, 544940073u, 1970562418u); (void)n77;
+  a0_io * n78 = a0_cws6(n77, 1629515378u, 1646279712u, 175972411u, 1952543859u, 1763730281u, 1852402798u); (void)n78;
+  a0_io * n79 = a0_cws6(n78, 1868701797u, 1629514863u, 1701601072u, 1852405032u, 1597125492u, 744562804u); (void)n79;
+  a0_io * n80 = a0_cws6(n79, 1852405024u, 1597125492u, 694296692u, 1914731296u, 1920300133u, 543236206u); (void)n80;
+  a0_io * n81 = a0_cws6(n80, 1646279996u, 175972411u, 1952543859u, 1763730281u, 1852402798u, 1868701797u); (void)n81;
+  a0_io * n82 = a0_cws6(n81, 1629514863u, 1952931632u, 1852405032u, 1597125492u, 744562804u, 1852405024u); (void)n82;
+  a0_io * n83 = a0_cws6(n82, 1597125492u, 694296692u, 1914731296u, 1920300133u, 543236206u, 996286526u); (void)n83;
+  a0_io * n84 = a0_cws6(n83, 1930067232u, 1769234804u, 1852383331u, 1701734764u, 1869570592u, 811671660u); (void)n84;
+  a0_io * n85 = a0_cws6(n84, 677734239u, 1953393013u, 1952395827u, 539779360u, 1953393013u, 1952395827u); (void)n85;
+  a0_io * n86 = a0_cws6(n85, 539583008u, 1701978235u, 1852994932u, 1042309408u, 996286525u, 1930067232u); (void)n86;
+  a0_io * n87 = a0_cws6(n86, 1769234804u, 1852383331u, 1701734764u, 1852405024u, 1597125492u, 811671668u); (void)n87;
+  a0_io * n88 = a0_cws6(n87, 1986618463u, 1852405032u, 1597125492u, 744562804u, 1852405024u, 1597125492u); (void)n88;
+  a0_io * n89 = a0_cws6(n88, 694296692u, 1914731296u, 1920300133u, 543301742u, 807419197u, 541007989u); (void)n89;
+  a0_io * n90 = a0_cws6(n89, 1717991472u, 1717986918u, 544564838u, 543236154u, 996286511u, 1930067232u); (void)n90;
+  a0_io * n91 = a0_cws6(n90, 1769234804u, 1852383331u, 1701734764u, 1852405024u, 1597125492u, 811671668u); (void)n91;
+  a0_io * n92 = a0_cws6(n91, 1835364959u, 1852405032u, 1597125492u, 744562804u, 1852405024u, 1597125492u); (void)n92;
+  a0_io * n93 = a0_cws6(n92, 694296692u, 1914731296u, 1920300133u, 543301742u, 807419197u, 541007989u); (void)n93;
+  a0_io * n94 = a0_cws6(n93, 540680289u, 539304033u, 2099264354u, 2570u, 0u, 0u); (void)n94;
+  return n94;
 }
 
 a0_io * a0_emitc(a0_io * p0, a0t26 p1, a0t22 p2, a0t20 p3, a0t11 p4, a0t50 p5, a0t52 p6, a0t23 p7, a0t17 p8, uint32_t p9, uint32_t p10, uint32_t p11, uint32_t p12, uint32_t p13) {
@@ -10066,7 +10146,7 @@ a0t62 a0_cunit(a0_io * p0, a0t4 p1, uint32_t p2, a0t51 p3, uint32_t p4, bool p5,
   uint32_t n76 = (n75 ? n74 : n62); (void)n76;
   uint32_t n77 = (n73 ? n76 : n54); (void)n77;
   uint32_t n78 = n4.f16; (void)n78;
-  bool n79 = a0_refuse(n78, (*n41), n51); (void)n79;
+  bool n79 = a0_eq(n78, 1u); (void)n79;
   bool n80 = a0_eq(n77, 0u); (void)n80;
   bool n81 = (n80 && n79); (void)n81;
   uint32_t n82 = (n81 ? 2u : n77); (void)n82;
@@ -10080,7 +10160,7 @@ a0t62 a0_cunit(a0_io * p0, a0t4 p1, uint32_t p2, a0t51 p3, uint32_t p4, bool p5,
 }
 
 a0t63 a0_rdword(a0_io * p0) {
-  a0t63 n0; n0.f0 = p0->position < p0->ninput ? p0->input[p0->position++] : 0u; n0.f1 = p0; (void)n0;
+  a0t63 n0; n0.f0 = a0rt_read_word(p0); n0.f1 = p0; (void)n0;
   return n0;
 }
 

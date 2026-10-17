@@ -23,8 +23,8 @@ import { IR_OPS, irWords, refLex, refParse, refSuggest } from '../tools/ref-pars
  * end (src/core.ts) on the strict-profile surface: the `profile strict` first line, and the six
  * checked operations cadd csub cmul cdiv crem cget, whose result is the tuple (u32,bool). Both
  * profiles, every operation, tuple results as records, and the programs each must reject. The
- * emitters of the compiler give structure code 2 (A0713) for a strict program and for a checked
- * operation, and are untouched for a canonical program.
+ * emitters of the compiler give structure code 2 (A0713) for a strict program, accept total
+ * checked operations in canonical programs, and leave other canonical programs unchanged.
  */
 
 const FN_COUNT = 'fn f u32 -> u32\nret p0\nend\n';
@@ -318,7 +318,7 @@ test('self-hosted suggestions: the tokens of the profile line are not unknown na
   assert.equal(a0('fn f u32 -> u32\nprofile add p0 q\nret profile\nend\n', 9)[0], 101);
 });
 
-test('self-hosted emitters refuse a strict program and a checked op with the structure code 2 (A0713) and leave canonical programs alone', async () => {
+test('self-hosted emitters accept canonical checked ops and explicitly refuse strict programs', async () => {
   const compiler = (await link('compiler/boot.a0', (p) => readFile(p, 'utf8'))).program;
   const entry = (name: string): TypedFunc => compiler.byName.get(name) as TypedFunc;
   const compile = (name: string, src: string): [number, number] => {
@@ -329,16 +329,16 @@ test('self-hosted emitters refuse a strict program and a checked op with the str
   };
   const refused = [
     ['a strict program', `profile strict\n${FN_COUNT}`],
-    ...CHECKED_OP_NAMES.map((op): [string, string] => [
-      `${op}`,
-      `fn f ${op === 'cget' ? 'u32x4' : 'u32'} u32 -> (u32,bool)\nr ${op} p0 p1\nret r\nend\n`,
-    ]),
     [
       'a checked op in a strict program',
       `profile strict\nfn f u32 u32 -> (u32,bool)\nr cadd p0 p1\nret r\nend\n`,
     ],
   ] as const;
   const accepted = 'fn f u32 u32 -> u32\nr add p0 p1\nret r\nend\n';
+  const checked = CHECKED_OP_NAMES.map(
+    (op) =>
+      `fn f ${op === 'cget' ? 'u32x4' : 'u32'} u32 -> (u32,bool)\nr ${op} p0 p1\nret r\nend\n`,
+  );
   for (const name of ['emitchunkio', 'emitachunkio'] as const) {
     for (const [label, src] of refused) {
       const [code, words] = compile(name, src);
@@ -354,12 +354,22 @@ test('self-hosted emitters refuse a strict program and a checked op with the str
     const [code, words] = compile(name, accepted);
     assert.equal(code, 0, `${name}: canonical program`);
     assert.ok(words > 0, `${name}: canonical program emits`);
+    for (const src of checked) {
+      const [code, words] = compile(name, src);
+      assert.equal(code, 0, `${name}: canonical checked op`);
+      assert.ok(words > 0, `${name}: canonical checked op emits`);
+    }
   }
   // the wasm entry: mode 1 is a source chunk, then the variant count, the call table (none) and
   // the first checked function (none)
   for (const [label, src] of refused) {
     const io = makeIo([1, ...WORDS(src), 1, 0, 0, 0, 0]);
     assert.equal(run(entry('emitwasmio'), [io], { fuel: 1e13 }), 2, `emitwasmio: ${label}`);
+  }
+  for (const src of checked) {
+    const io = makeIo([1, ...WORDS(src), 1, 0, 0, 0, 0]);
+    assert.equal(run(entry('emitwasmio'), [io], { fuel: 1e13 }), 0, 'Wasm canonical checked op');
+    assert.ok(io.output.length > 0);
   }
 });
 

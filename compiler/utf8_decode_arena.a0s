@@ -1,0 +1,174 @@
+raw # Streaming raw-byte UTF8 normalization with immutable source and versioned span relations.
+raw use "utf8_unit_arena.a0"
+raw use "arena_vector.a0"
+extern utf8_unit(u32x4,u32) -> (u32,u32,u32x4,u32,u32,u32)
+extern arena_zero() -> u32x128
+extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+extern ud_zero4() -> u32x4
+raw fn ud_zero4 -> u32x4
+raw q arr 0 0 0 0
+raw ret q
+raw end
+def ud_vec(d:u32x128,o:u32) -> (u32,u32,u32)
+ return (d[o],d[o+1],d[o+2])
+end
+def ud_setvec(d:u32x128,o:u32,v:(u32,u32,u32)) -> u32x128
+ let a=set(d,o,v#0)
+ let b=set(a,o+1,v#1)
+ return set(b,o+2,v#2)
+end
+fn ud_code(s:(u32x128,u32x128,io),code:u32) -> (u32x128,u32x128,io)
+ let d=s#0
+ return (set(d,0,d[0]==0?code:d[0]),s#1,s#2)
+end
+fn ud_append_do(s:(u32x128,u32x128,io),i:u32,o:u32,n:u32,page:u32x128) -> (u32x128,u32x128,io)
+ let d=s#0
+ let r=av_append(s#2,ud_vec(d,o),n,page)
+ let after=ud_setvec(d,o,r#1)
+ return (set(after,0,r#0),s#1,r#2)
+end
+fn ud_append(s:(u32x128,u32x128,io),o:u32,n:u32,page:u32x128) -> (u32x128,u32x128,io)
+ let d=s#0
+ let safe=n<=4294967295-d[o+1]
+ let a=ud_code(s,safe?0:3)
+ return fold(ud_append_do,bit((a#0)[0]==0),a,o,n,page)
+end
+fn ud_copy_ok(s:(u32x128,u32x128,io),i:u32,start:u32,length:u32) -> bool
+ return (s#0)[0]==0
+end
+fn ud_copy_page(s:(u32x128,u32x128,io),i:u32,start:u32,length:u32) -> (u32x128,u32x128,io)
+ let d=s#0
+ let off=i*128
+ let count=length-off>128?128:length-off
+ let r=arena_load(s#2,d[6],start+off,count)
+ let a=(set(d,0,r#0),s#1,r#2)
+ return ud_append(a,32,count,r#1)
+end
+fn ud_flush_do(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let d=s#0
+ let pages=d[9]/128+bit(d[9]%128!=0)
+ let a=loop(ud_copy_ok,ud_copy_page,pages,s,d[4],d[9])
+ let row=arena_zero()
+ row=set(row,0,d[5])
+ row=set(row,1,d[9])
+ row=set(row,2,d[4])
+ row=set(row,3,d[9])
+ row=set(row,4,d[8])
+ row=set(row,5,d[3]-d[8])
+ let b=ud_append(a,35,7,row)
+ let after=b#0
+ after=set(after,2,after[33])
+ return (set(after,9,0),b#1,b#2)
+end
+fn ud_flush(s:(u32x128,u32x128,io)) -> (u32x128,u32x128,io)
+ let d=s#0
+ return fold(ud_flush_do,bit((d[0]==0)&(d[9]!=0)),s)
+end
+fn ud_refresh(s:(u32x128,u32x128,io),i:u32,pos:u32) -> (u32x128,u32x128,io)
+ let d=s#0
+ let count=d[7]-pos>128?128:d[7]-pos
+ let r=arena_load(s#2,d[6],pos,count)
+ let a=set(d,0,r#0)
+ let b=set(a,10,pos)
+ return (set(b,11,count),r#1,r#2)
+end
+fn ud_gather(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let d=s#0
+ let pos=d[1]+i
+ let cached=(pos>=d[10])&((pos-d[10])<d[11])
+ let a=fold(ud_refresh,bit((d[0]==0)&!cached),s,pos)
+ let after=a#0
+ let page=a#1
+ return (set(after,48+i,page[pos-after[10]]),page,a#2)
+end
+fn ud_good(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let d=s#0
+ let a=set(d,1,d[1]+d[12])
+ let b=set(a,9,d[9]+d[12])
+ return (set(b,3,d[3]+d[14]),s#1,s#2)
+end
+fn ud_bad(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let a=ud_flush(s)
+ let before=a#0
+ let page=arena_zero()
+ page=set(page,0,239)
+ page=set(page,1,191)
+ page=set(page,2,189)
+ let b=ud_append(a,32,3,page)
+ let row=arena_zero()
+ row=set(row,0,before[33])
+ row=set(row,1,3)
+ row=set(row,2,before[1])
+ row=set(row,3,before[12])
+ row=set(row,4,before[3])
+ row=set(row,5,1)
+ row=set(row,6,1)
+ let c=ud_append(b,35,7,row)
+ let d=c#0
+ let cursor=d[1]+d[12]
+ let units=d[3]+1
+ let e=set(d,1,cursor)
+ e=set(e,2,d[33])
+ e=set(e,3,units)
+ e=set(e,4,cursor)
+ e=set(e,5,d[33])
+ e=set(e,8,units)
+ e=set(e,9,0)
+ return (e,c#1,c#2)
+end
+fn ud_continue(s:(u32x128,u32x128,io),i:u32) -> bool
+ let d=s#0
+ return (d[0]==0)&(d[1]<d[7])
+end
+fn ud_step(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let initial=s#0
+ let remaining=initial[7]-initial[1]
+ let available=remaining>4?4:remaining
+ let a=loop(ud_continue,ud_gather,available,s)
+ let d=a#0
+ let bytes=ud_zero4()
+ bytes=set(bytes,0,d[48])
+ bytes=set(bytes,1,d[49])
+ bytes=set(bytes,2,d[50])
+ bytes=set(bytes,3,d[51])
+ let unit=utf8_unit(bytes,available)
+ let b=ud_code(a,unit#0)
+ let after=b#0
+ let safe=(unit#1>0)&(unit#1<=remaining)
+ let checked=ud_code(b,safe?0:7)
+ let c=checked#0
+ c=set(c,12,unit#1)
+ c=set(c,13,unit#3)
+ c=set(c,14,unit#4)
+ c=set(c,15,unit#5)
+ c=set(c,96,c[96]+1)
+ let start=(c,checked#1,checked#2)
+ let good=fold(ud_good,bit((c[0]==0)&(c[15]==0)),start)
+ return fold(ud_bad,bit((c[0]==0)&(c[15]==1)),good)
+end
+fn arena_utf8_decode(io:io,source:u32,length:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=arena_zero()
+ d=set(d,6,source)
+ d=set(d,7,length)
+ d=set(d,10,4294967295)
+ d=set(d,93,1429750833)
+ d=set(d,94,1)
+ let state=(d,arena_zero(),io)
+ let scanned=loop(ud_continue,ud_step,length,state)
+ let flushed=ud_flush(scanned)
+ let after=flushed#0
+ let complete=(after[0]==0)&(after[1]==length)
+ let checked=ud_code(flushed,complete?0:7)
+ let result=checked#0
+ let success=result[0]==0
+ let zero=(0,0,0)
+ let bytes=ud_vec(result,32)
+ let origins=ud_vec(result,35)
+ result=ud_setvec(result,32,success?bytes:zero)
+ result=ud_setvec(result,35,success?origins:zero)
+ result=set(result,2,success?result[2]:0)
+ result=set(result,3,success?result[3]:0)
+ result=set(result,95,bit(success))
+ return (result[0],ud_vec(result,32),result,checked#2)
+end

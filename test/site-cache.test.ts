@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { findClang } from '../src/toolchain.js';
+import { readBootstrapSeed } from '../tools/seed.js';
 import { buildProgram, type Keys, wasmTool } from '../tools/site-build.js';
 import {
   codeDigest,
@@ -110,6 +111,19 @@ test('a page program rebuilt from the cache has the same bytes as one built with
     const off = openCache({ enabled: false });
     // the wasm tool is built once, into the empty cache (a miss), and the three runs share it
     const tool = await wasmTool(findClang(), cache, () => undefined);
+    assert.equal(
+      await readFile('dist/bootstrap/a0c-seed/emitter.c', 'utf8'),
+      (await readBootstrapSeed()).c,
+      'the compiler bootstrap is the verified A0-generated seed',
+    );
+    const toolHits: boolean[] = [];
+    const restored = await wasmTool(
+      { ...findClang(), path: 'missing-compiler-on-a-cache-hit' },
+      cache,
+      (hit) => toolHits.push(hit),
+    );
+    assert.deepEqual(toolHits, [true], 'the tool is restored without invoking clang again');
+    assert.equal(restored.digest, tool.digest);
     const code = codeDigest(['tools/site-build.ts']);
     const notes: boolean[] = [];
     const keysFor = (c: SiteCache): Keys => ({

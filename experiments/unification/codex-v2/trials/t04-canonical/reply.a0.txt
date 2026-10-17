@@ -1,0 +1,48 @@
+fn txtb (u32x128x2,u32,u32) u32 u32x128 u32x128 u32 u32 u32 -> (u32x128x2,u32,u32)
+w at p0 0
+k at p0 1
+esc at p0 2
+q add p4 p1
+qh shr q 7
+ql and q 127
+isl eq qh 0
+cl get p2 ql
+ch get p3 ql
+c select isl cl ch
+isbs eq c 92
+e1 eq esc 1
+isn eq c 110
+ist eq c 116
+isz eq c 48
+m0 select isn 10 c
+m1 select ist 9 m0
+m2 select isz 0 m1
+v select e1 m2 c
+skip select e1 false isbs
+pr add p5 k
+pin lt pr 16384
+put select skip false pin
+wr sub pr p6
+f mul wr 2
+h0 shr f 7
+l0 and f 127
+g0 get w h0
+o0 get g0 l0
+v0 select put 3 o0
+g0b set g0 l0 v0
+w1 set w h0 g0b
+f1 add f 1
+h1 shr f1 7
+l1 and f1 127
+g1 get w1 h1
+o1 get g1 l1
+v1 select put v o1
+g1b set g1 l1 v1
+w2 set w1 h1 g1b
+k1 add k 1
+kn select skip k k1
+esc1 select isbs 1 0
+esc2 select e1 0 esc1
+r rec w2 kn esc2
+ret r
+end

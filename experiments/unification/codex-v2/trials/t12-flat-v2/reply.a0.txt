@@ -1,0 +1,20 @@
+fn fr_line_emit io _ _ _ _ _ _ _ -> io
+a write A 11
+b write a C
+c write b D
+d write c E
+e write d F
+f write e G
+g write f H
+ret g
+end
+
+fn fr_line io _ _ _ _ _ _ -> io
+a ne F 0
+b and G 255
+c ne b 0
+d select c 1 0
+e select a d 0
+f fold fr_line_emit e A B C D E F G
+ret f
+end

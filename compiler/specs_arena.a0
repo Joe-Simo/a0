@@ -1,0 +1,1270 @@
+# Spec grammar only. Full verification remains explicitly unsupported at the parent boundary.
+# All spans, node IDs, child IDs and storage extents are full u32; recursive literals use a growing stack.
+use "parse_arena_common.a0"
+fn sp_fail (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 ne p1 0
+go and q1 q2
+q3 get p 0
+q4 select go 6 q3
+a set p 0 q4
+q5 get p 1
+q6 select go p1 q5
+b set a 1 q6
+q7 get p 2
+q8 select go p2 q7
+c set b 2 q8
+q9 get p 3
+q10 select go p3 q9
+d set c 3 q10
+q11 at p0 1
+q12 at p0 2
+q13 rec d q11 q12
+ret q13
+end
+fn sp_appendgo (u32x128,u32x128,io) u32 u32 u32 u32x128 -> (u32x128,u32x128,io)
+p at p0 0
+q0 at p0 2
+q1 get p p2
+q2 add p2 1
+q3 get p q2
+q4 add p2 2
+q5 get p q4
+q6 rec q1 q3 q5
+r call av_append q0 q6 p3 p4
+q7 at r 1
+q8 at q7 0
+m1_a set p p2 q8
+q9 add p2 1
+q10 at q7 1
+m1_b set m1_a q9 q10
+q11 add p2 2
+q12 at q7 2
+q13 set m1_b q11 q12
+q14 at r 0
+q15 set q13 0 q14
+q16 at p0 1
+q17 at r 2
+q18 rec q15 q16 q17
+ret q18
+end
+fn sp_append (u32x128,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold sp_appendgo q2 p0 p1 p2 p3
+ret q3
+end
+fn sp_readgo (u32x128,u32x128,io) u32 (u32,u32,u32) u32 u32 -> (u32x128,u32x128,io)
+q0 at p0 2
+r call av_load q0 p2 p3 p4
+q1 at p0 0
+q2 at r 0
+q3 set q1 0 q2
+q4 at r 1
+q5 at r 2
+q6 rec q3 q4 q5
+ret q6
+end
+fn sp_read (u32x128,u32x128,io) (u32,u32,u32) u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold sp_readgo q2 p0 p1 p2 p3
+ret q3
+end
+fn sp_fill (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 8
+q1 get p 9
+left sub q0 q1
+q2 gt left 128
+n select q2 128 left
+q3 at p0 2
+q4 get p 6
+q5 get p 9
+r call arena_load q3 q4 q5 n
+q6 at r 0
+a set p 0 q6
+q7 get p 9
+b set a 10 q7
+q8 gt n 126
+q9 select q8 126 n
+c set b 11 q9
+q10 at r 1
+q11 at r 2
+q12 rec c q10 q11
+ret q12
+end
+fn sp_peek (u32x128,u32x128,io) -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 9
+q1 get p 10
+q2 ge q0 q1
+q3 get p 9
+q4 get p 10
+q5 sub q3 q4
+q6 get p 11
+q7 lt q5 q6
+cached and q2 q7
+q8 get p 0
+q9 eq q8 0
+q10 get p 9
+q11 get p 8
+q12 lt q10 q11
+q13 and q9 q12
+q14 xor cached true
+go and q13 q14
+q15 select go 1 0
+q16 fold sp_fill q15 p0
+ret q16
+end
+fn sp_char u32x128 u32x128 -> u32
+q0 get p0 9
+q1 get p0 8
+q2 lt q0 q1
+q3 get p0 9
+q4 get p0 10
+q5 sub q3 q4
+q6 get p1 q5
+q7 select q2 q6 0
+ret q7
+end
+fn sp_space u32x128 u32x128 -> u32
+q0 get p0 9
+q1 get p0 10
+at sub q0 q1
+q2 get p0 8
+q3 get p0 9
+left sub q2 q3
+c call sp_char p0 p1
+n call al_white p1 at left
+q4 get p0 9
+q5 get p0 8
+q6 ge q4 q5
+q7 eq c 10
+q8 select q7 1 n
+q9 select q6 0 q8
+ret q9
+end
+fn sp_word u32 -> bool
+q0 ge p0 97
+q1 le p0 122
+q2 and q0 q1
+q3 ge p0 48
+q4 le p0 57
+q5 and q3 q4
+q6 or q2 q5
+q7 eq p0 95
+q8 or q6 q7
+ret q8
+end
+fn sp_digit u32 -> bool
+q0 ge p0 48
+q1 le p0 57
+q2 and q0 q1
+ret q2
+end
+fn sp_deliver (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 54
+nested ne q0 0
+q1 call arena_zero
+z set q1 0 p1
+target select nested 56 38
+q2 get p 12
+q3 eq q2 0
+append or nested q3
+q4 select append 1 0
+a call sp_append p0 target q4 z
+q at a 0
+q5 select nested 1 0
+q_1 set q 13 q5
+q6 xor nested true
+q7 get q_1 12
+q8 eq q7 0
+q9 and q6 q8
+q10 get q_1 22
+q11 add q10 1
+q12 get q_1 22
+q13 select q9 q11 q12
+q_2 set q_1 22 q13
+q14 xor nested true
+q15 get q_2 12
+q16 eq q15 1
+q17 and q14 q16
+q18 get q_2 20
+q19 select q17 p1 q18
+q_3 set q_2 20 q19
+q20 xor nested true
+q21 get q_3 12
+q22 eq q21 1
+q23 and q20 q22
+q24 get q_3 12
+q25 select q23 2 q24
+q_4 set q_3 12 q25
+q26 at a 1
+q27 at a 2
+q28 rec q_4 q26 q27
+ret q28
+end
+fn sp_literal (u32x128,u32x128,io) u32 u32 u32 u32 u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 33
+id div q0 6
+z call arena_zero
+z_1 set z 0 p1
+z_2 set z_1 1 p2
+z_3 set z_2 2 p3
+z_4 set z_3 3 p4
+z_5 set z_4 4 p5
+z_6 set z_5 5 p6
+r call sp_append p0 32 6 z_6
+q1 call sp_deliver r id
+ret q1
+end
+fn sp_numdigit (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+d sub p2 48
+q0 get p 18
+q1 ne q0 0
+q2 get p 16
+q3 gt q2 429496729
+q4 or q1 q3
+q5 get p 16
+q6 eq q5 429496729
+q7 gt d 5
+q8 and q6 q7
+over or q4 q8
+q9 get p 16
+q10 mul q9 10
+q11 add q10 d
+q set p 16 q11
+q12 get p 17
+q13 add q12 1
+q_1 set q 17 q13
+q14 select over 1 0
+q_2 set q_1 18 q14
+q15 get p 17
+q16 eq q15 0
+q17 get p 19
+q18 select q16 p2 q17
+q_3 set q_2 19 q18
+q19 get p 9
+q20 add q19 1
+q_4 set q_3 9 q20
+q21 at p0 1
+q22 at p0 2
+q23 rec q_4 q21 q22
+ret q23
+end
+fn sp_numdone (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 18
+q1 ne q0 0
+q2 get p 19
+q3 eq q2 48
+q4 get p 17
+q5 gt q4 1
+q6 and q3 q5
+bad or q1 q6
+q7 select bad 2 0
+q8 get p 15
+q9 get p 17
+a call sp_fail p0 q7 q8 q9
+q10 at a 0
+q set q10 14 0
+q11 at a 1
+q12 at a 2
+q13 rec q q11 q12
+q14 get p 16
+q15 get p 15
+q16 get p 17
+q17 call sp_literal q13 1 q14 0 0 q15 q16
+ret q17
+end
+fn sp_num (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+r call sp_peek p0
+p at r 0
+q0 at r 1
+c call sp_char p q0
+q1 get p 9
+q2 get p 8
+q3 lt q1 q2
+q4 call sp_digit c
+more and q3 q4
+q5 select more 1 0
+a fold sp_numdigit q5 r c
+q6 select more 0 1
+q7 fold sp_numdone q6 a
+ret q7
+end
+fn sp_truechars -> u32x5
+q0 arr 116 114 117 101 0
+ret q0
+end
+fn sp_falsechars -> u32x5
+q0 arr 102 97 108 115 101
+ret q0
+end
+fn sp_boolchar (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+tr call sp_truechars
+fa call sp_falsechars
+q0 get p 17
+q1 lt q0 5
+q2 get p 17
+idx select q1 q2 4
+q3 get p 16
+q4 and q3 1
+tv ne q4 0
+q5 get p 16
+q6 and q5 2
+fv ne q6 0
+q7 get p 17
+q8 lt q7 4
+q9 and tv q8
+q10 get tr idx
+q11 eq p2 q10
+nt and q9 q11
+q12 get p 17
+q13 lt q12 5
+q14 and fv q13
+q15 get fa idx
+q16 eq p2 q15
+nf and q14 q16
+q17 select nt 1 0
+q18 select nf 1 0
+q19 mul q18 2
+q20 add q17 q19
+q set p 16 q20
+q21 get p 17
+q22 add q21 1
+q_1 set q 17 q22
+q23 get p 9
+q24 add q23 1
+q_2 set q_1 9 q24
+q25 at p0 1
+q26 at p0 2
+q27 rec q_2 q25 q26
+ret q27
+end
+fn sp_booldone (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 16
+q1 eq q0 1
+q2 get p 17
+q3 eq q2 4
+t and q1 q3
+q4 get p 16
+q5 eq q4 2
+q6 get p 17
+q7 eq q6 5
+f and q5 q7
+q8 or t f
+q9 select q8 0 3
+q10 get p 15
+q11 get p 17
+a call sp_fail p0 q9 q10 q11
+q12 at a 0
+q set q12 14 0
+q13 at a 1
+q14 at a 2
+q15 rec q q13 q14
+q16 select t 1 0
+q17 get p 15
+q18 get p 17
+q19 call sp_literal q15 2 q16 0 0 q17 q18
+ret q19
+end
+fn sp_bool (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+r call sp_peek p0
+p at r 0
+q0 at r 1
+c call sp_char p q0
+q1 get p 9
+q2 get p 8
+q3 lt q1 q2
+q4 call sp_word c
+more and q3 q4
+q5 select more 1 0
+a fold sp_boolchar q5 r c
+q6 select more 0 1
+q7 fold sp_booldone q6 a
+ret q7
+end
+fn sp_open (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+z call arena_zero
+q0 eq p2 91
+q1 select q0 3 4
+z_1 set z 0 q1
+q2 get p 9
+z_2 set z_1 1 q2
+q3 get p 57
+z_3 set z_2 2 q3
+z_4 set z_3 3 0
+z_5 set z_4 4 0
+a call sp_append p0 53 5 z_5
+q4 at a 0
+q5 get p 9
+q6 add q5 1
+q set q4 9 q6
+q7 at a 1
+q8 at a 2
+q9 rec q q7 q8
+ret q9
+end
+fn sp_copyok (u32x128,u32x128,io) u32 (u32,u32,u32) u32 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+fn sp_copy (u32x128,u32x128,io) u32 (u32,u32,u32) u32 u32 -> (u32x128,u32x128,io)
+base mul p1 128
+remain sub p4 base
+q0 gt remain 128
+n select q0 128 remain
+q1 at p0 2
+q2 add p3 base
+r call av_load q1 p2 q2 n
+q3 at p0 0
+q4 at r 0
+q set q3 0 q4
+q5 at p0 1
+q6 at r 2
+q7 rec q q5 q6
+q8 at r 1
+q9 call sp_append q7 35 n q8
+ret q9
+end
+fn sp_close (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 57
+q1 get p2 2
+count sub q0 q1
+q2 eq count 0
+q3 get p2 0
+q4 eq q3 4
+q5 eq count 1
+q6 and q4 q5
+q7 get p2 4
+q8 eq q7 0
+q9 and q6 q8
+q10 select q9 6 0
+bad select q2 5 q10
+q11 get p2 1
+q12 get p 9
+q13 add q12 1
+q14 get p2 1
+q15 sub q13 q14
+a call sp_fail p0 bad q11 q15
+q16 get p 36
+q17 div count 128
+q18 rem count 128
+q19 eq q18 0
+q20 select q19 0 1
+pages add q17 q20
+q21 get p 56
+q22 get p 57
+q23 get p 58
+q24 rec q21 q22 q23
+q25 get p2 2
+b loop sp_copyok sp_copy pages a q24 q25 count
+q at b 0
+q26 get q 54
+q27 sub q26 5
+q_1 set q 54 q27
+q28 get p2 2
+q_2 set q_1 57 q28
+q29 get p 9
+q30 add q29 1
+q_3 set q_2 9 q30
+q31 at b 1
+q32 at b 2
+q33 rec q_3 q31 q32
+q34 get p2 0
+q35 get p2 1
+q36 get p 9
+q37 add q36 1
+q38 get p2 1
+q39 sub q37 q38
+q40 call sp_literal q33 q34 0 q16 count q35 q39
+ret q40
+end
+fn sp_separator (u32x128,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x128,io)
+p at p0 0
+q0 eq p2 59
+q1 eq p2 44
+sep or q0 q1
+q2 select sep 1 0
+z set p3 4 q2
+q3 get p 53
+q4 get p 54
+q5 get p 55
+q6 get p 54
+q7 sub q6 5
+q set p 54 q7
+q8 at p0 1
+q9 at p0 2
+q10 rec q q8 q9
+a call sp_append q10 53 5 z
+q11 at a 0
+q12 get p 9
+q13 select sep 1 0
+q14 add q12 q13
+r set q11 9 q14
+r_1 set r 13 0
+q15 at a 1
+q16 at a 2
+q17 rec r_1 q15 q16
+ret q17
+end
+fn sp_startscalar (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q set p 14 p2
+q0 get p 9
+q_1 set q 15 q0
+q1 eq p2 2
+q2 select q1 3 0
+q_2 set q_1 16 q2
+q_3 set q_2 17 0
+q_4 set q_3 18 0
+q_5 set q_4 19 0
+q3 at p0 1
+q4 at p0 2
+q5 rec q_5 q3 q4
+ret q5
+end
+fn sp_wantliteral (u32x128,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 54
+nested ne q0 0
+q1 get p 9
+q2 get p 8
+eof ge q1 q2
+q3 get p3 0
+q4 eq q3 3
+q5 select q4 93 41
+q6 eq p2 q5
+q7 and nested q6
+q8 xor eof true
+close and q7 q8
+q9 eq p2 91
+q10 eq p2 40
+open or q9 q10
+digit call sp_digit p2
+word call sp_word p2
+q11 select nested 4 1
+q12 xor close true
+q13 xor open true
+q14 and q12 q13
+q15 xor digit true
+q16 and q14 q15
+q17 xor word true
+q18 and q16 q17
+q19 select q18 3 0
+bad select eof q11 q19
+q20 get p3 1
+q21 get p 9
+q22 select nested q20 q21
+q23 get p 9
+q24 select eof q22 q23
+q25 select eof 0 1
+a call sp_fail p0 bad q24 q25
+ap at a 0
+q26 get ap 0
+go eq q26 0
+q27 and go close
+q28 select q27 1 0
+b fold sp_close q28 a p3
+q29 xor close true
+q30 and go q29
+q31 and q30 open
+q32 select q31 1 0
+b_1 fold sp_open q32 b p2
+q33 xor close true
+q34 and go q33
+q35 xor open true
+q36 and q34 q35
+q37 or digit word
+q38 and q36 q37
+q39 select q38 1 0
+q40 select digit 1 2
+b_2 fold sp_startscalar q39 b_1 q40
+ret b_2
+end
+fn sp_root (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 9
+q1 get p 8
+eof ge q0 q1
+q2 get p 9
+q3 get p 10
+at sub q2 q3
+q4 get p 8
+q5 get p 9
+q6 sub q4 q5
+q7 ge q6 2
+q8 eq p2 45
+q9 and q7 q8
+q10 at p0 1
+q11 add at 1
+q12 get q10 q11
+q13 eq q12 62
+arrow and q9 q13
+q14 get p 12
+q15 eq q14 0
+q16 and q15 eof
+q17 eq q14 2
+q18 xor eof true
+q19 and q17 q18
+q20 select q19 8 0
+bad select q16 7 q20
+q21 get p 9
+q22 get p 8
+q23 get p 9
+q24 sub q22 q23
+a call sp_fail p0 bad q21 q24
+q at a 0
+q25 eq q14 0
+take and q25 arrow
+q26 get p 9
+q27 select take 2 0
+q28 add q26 q27
+q_1 set q 9 q28
+q29 select take 1 q14
+q_2 set q_1 12 q29
+z call arena_zero
+q30 ne q14 2
+q31 xor take true
+q32 and q30 q31
+q33 get q_2 0
+q34 eq q33 0
+q35 and q32 q34
+q36 select q35 1 0
+q37 at a 1
+q38 at a 2
+q39 rec q_2 q37 q38
+out fold sp_wantliteral q36 q39 p2 z
+ret out
+end
+fn sp_inside (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 at p0 2
+q1 get p 53
+q2 get p 54
+q3 get p 55
+q4 rec q1 q2 q3
+q5 get p 54
+q6 sub q5 5
+r call av_load q0 q4 q6 5
+q7 at r 0
+q set p 0 q7
+q8 get p 13
+q9 ne q8 0
+q10 select q9 1 0
+q11 at p0 1
+q12 at r 2
+q13 rec q q11 q12
+q14 at r 1
+a fold sp_separator q10 q13 p2 q14
+q15 get p 13
+q16 eq q15 0
+q17 select q16 1 0
+q18 at r 1
+a_1 fold sp_wantliteral q17 a p2 q18
+ret a_1
+end
+fn sp_syntax (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+r call sp_peek p0
+p at r 0
+q0 at r 1
+c call sp_char p q0
+q1 at r 1
+space call sp_space p q1
+q2 get p 9
+q3 add q2 space
+q set p 9 q3
+q4 get p 0
+q5 eq q4 0
+q6 eq space 0
+active and q5 q6
+q7 get p 54
+nested ne q7 0
+q8 and active nested
+q9 select q8 1 0
+q10 at r 1
+q11 at r 2
+q12 rec q q10 q11
+a fold sp_inside q9 q12 c
+q13 xor nested true
+q14 and active q13
+q15 select q14 1 0
+q16 fold sp_root q15 a c
+ret q16
+end
+fn sp_exok (u32x128,u32x128,io) u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 get p 12
+q3 ne q2 2
+q4 get p 9
+q5 get p 8
+q6 lt q4 q5
+q7 or q3 q6
+q8 and q1 q7
+ret q8
+end
+fn sp_exstep (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 14
+q1 eq q0 1
+q2 select q1 1 0
+a fold sp_num q2 p0
+q3 eq q0 2
+q4 select q3 1 0
+a_1 fold sp_bool q4 a
+q5 eq q0 0
+q6 select q5 1 0
+q7 fold sp_syntax q6 a_1
+ret q7
+end
+fn sp_example (u32x128,u32x128,io) -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 7
+q set p 9 q0
+q_1 set q 11 0
+q_2 set q_1 12 0
+q_3 set q_2 13 0
+q_4 set q_3 14 0
+q_5 set q_4 20 4294967295
+q1 get p 39
+q_6 set q_5 21 q1
+q_7 set q_6 22 0
+q_8 set q_7 54 0
+q_9 set q_8 57 0
+q2 get p 8
+q3 get p 7
+len sub q2 q3
+q4 le len 536870909
+q5 mul len 8
+q6 add q5 16
+limit select q4 q6 4294967295
+q7 at p0 1
+q8 at p0 2
+q9 rec q_9 q7 q8
+r loop sp_exok sp_exstep limit q9
+rp at r 0
+q10 get rp 12
+q11 eq q10 2
+q12 get rp 54
+q13 eq q12 0
+q14 and q11 q13
+q15 get rp 14
+q16 eq q15 0
+q17 and q14 q16
+q18 get rp 9
+q19 get rp 8
+q20 eq q18 q19
+finished and q17 q20
+q21 get rp 0
+q22 eq q21 0
+q23 xor finished true
+q24 and q22 q23
+q25 get rp 0
+q26 select q24 3 q25
+rp_1 set rp 0 q26
+q27 at r 1
+q28 at r 2
+z call arena_zero
+q29 get p 24
+z_1 set z 0 q29
+q30 get p 4
+z_2 set z_1 1 q30
+q31 get p 39
+z_3 set z_2 2 q31
+q32 get rp_1 22
+z_4 set z_3 3 q32
+q33 get rp_1 20
+z_5 set z_4 4 q33
+q34 get p 5
+z_6 set z_5 5 q34
+q35 get p 7
+z_7 set z_6 6 q35
+z_8 set z_7 7 len
+q36 rec rp_1 q27 q28
+a call sp_append q36 41 8 z_8
+q37 at a 0
+q38 get p 25
+q39 add q38 1
+q_10 set q37 25 q39
+q40 at a 1
+q41 at a 2
+q42 rec q_10 q40 q41
+ret q42
+end
+fn sp_wordflush (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 call arena_zero
+q1 get p 15
+q2 set q0 0 q1
+q3 get p 9
+q4 get p 15
+q5 sub q3 q4
+z set q2 1 q5
+a call sp_append p0 59 2 z
+q6 at a 0
+q set q6 14 0
+q7 at a 1
+q8 at a 2
+q9 rec q q7 q8
+ret q9
+end
+fn sp_wordsok (u32x128,u32x128,io) u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 get p 9
+q3 get p 8
+q4 lt q2 q3
+q5 get p 14
+q6 ne q5 0
+q7 or q4 q6
+q8 and q1 q7
+ret q8
+end
+fn sp_wordsstep (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+r call sp_peek p0
+p at r 0
+q0 at r 1
+c call sp_char p q0
+q1 at r 1
+space call sp_space p q1
+q2 get p 9
+q3 get p 8
+eof ge q2 q3
+q4 get p 14
+inside ne q4 0
+q5 ne space 0
+q6 or q5 eof
+flush and inside q6
+q7 select flush 1 0
+a fold sp_wordflush q7 r
+q at a 0
+q8 xor inside true
+q9 xor eof true
+q10 and q8 q9
+q11 eq space 0
+q12 and q10 q11
+q13 get p 9
+q14 get q 15
+q15 select q12 q13 q14
+q_1 set q 15 q15
+q16 xor inside true
+q17 xor eof true
+q18 and q16 q17
+q19 eq space 0
+q20 and q18 q19
+q21 get q_1 14
+q22 select q20 1 q21
+q_2 set q_1 14 q22
+q23 get p 9
+q24 get p 9
+q25 eq space 0
+q26 select q25 1 space
+q27 add q24 q26
+q28 select eof q23 q27
+q_3 set q_2 9 q28
+q29 at a 1
+q30 at a 2
+q31 rec q_3 q29 q30
+ret q31
+end
+fn sp_contractparse (u32x128,u32x128,io) u32 u32x128 u32x128 u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 8
+q1 get p 7
+len sub q0 q1
+q2 get p 0
+pp set p2 0 q2
+q3 get p 31
+pp_1 set pp 2 q3
+pp_2 set pp_1 14 0
+pp_3 set pp_2 22 0
+q4 get p 59
+q5 get p 60
+q6 get p 61
+q7 rec q4 q5 q6
+m1_a set pp_3 35 q4
+m1_b set m1_a 36 q5
+q8 set m1_b 37 q6
+q9 get p 47
+q10 get p 48
+q11 get p 49
+q12 rec q9 q10 q11
+m3_a set q8 44 q9
+m3_b set m3_a 45 q10
+q13 set m3_b 46 q11
+q14 get p 50
+q15 get p 51
+q16 get p 52
+q17 rec q14 q15 q16
+m5_a set q13 47 q14
+m5_b set m5_a 48 q15
+q18 set m5_b 49 q16
+q19 get p 80
+q20 get p 81
+q21 get p 82
+q22 rec q19 q20 q21
+q23 get p 83
+q24 get p 84
+q25 get p 85
+q26 rec q22 q23 q24 q25
+m9_a set q18 62 q19
+m9_b set m9_a 63 q20
+q27 set m9_b 64 q21
+m8_b set q27 65 q23
+m8_c set m8_b 66 q24
+q28 set m8_c 67 q25
+q29 set p3 5 p4
+ll set q29 6 p5
+q30 at p0 2
+q31 rec q28 q30
+q32 get p 5
+parsed call ap_node q31 ll q32
+pp_4 at parsed 0
+q33 get pp_4 44
+q34 get pp_4 45
+q35 get pp_4 46
+q36 rec q33 q34 q35
+m11_a set p 47 q33
+m11_b set m11_a 48 q34
+q37 set m11_b 49 q35
+q38 get pp_4 47
+q39 get pp_4 48
+q40 get pp_4 49
+q41 rec q38 q39 q40
+m13_a set q37 50 q38
+m13_b set m13_a 51 q39
+q42 set m13_b 52 q40
+q43 get pp_4 62
+q44 get pp_4 63
+q45 get pp_4 64
+q46 rec q43 q44 q45
+q47 get pp_4 65
+q48 get pp_4 66
+q49 get pp_4 67
+q50 rec q46 q47 q48 q49
+m17_a set q42 80 q43
+m17_b set m17_a 81 q44
+q51 set m17_b 82 q45
+m16_b set q51 83 q47
+m16_c set m16_b 84 q48
+q52 set m16_c 85 q49
+q53 get pp_4 0
+q54 eq q53 6
+q55 get pp_4 0
+q56 select q54 0 q55
+qp set q52 0 q56
+q57 get pp_4 1
+qp_1 set qp 88 q57
+q58 get pp_4 5
+qp_2 set qp_1 89 q58
+q59 get pp_4 91
+qp_3 set qp_2 90 q59
+q60 get pp_4 92
+qp_4 set qp_3 91 q60
+q61 get pp_4 0
+bad eq q61 6
+q62 at p0 1
+q63 at parsed 1
+q64 rec qp_4 q62 q63
+q65 select bad 14 0
+q66 get pp_4 3
+q67 get pp_4 4
+d call sp_fail q64 q65 q66 q67
+z call arena_zero
+q68 get p 28
+z_1 set z 0 q68
+q69 get p 24
+z_2 set z_1 1 q69
+q70 get p 5
+z_3 set z_2 2 q70
+q71 get p 48
+q72 div q71 14
+z_4 set z_3 3 q72
+q73 get p 4
+z_5 set z_4 4 q73
+q74 get p 7
+z_6 set z_5 5 q74
+z_7 set z_6 6 len
+a call sp_append d 44 7 z_7
+ap at a 0
+q75 get p 45
+q76 div q75 7
+contract add q76 1
+q77 get p 28
+q78 eq q77 2
+q79 get ap 26
+q80 select q78 contract q79
+ap_1 set ap 26 q80
+q81 get p 28
+q82 eq q81 3
+q83 get ap_1 27
+q84 select q82 contract q83
+ap_2 set ap_1 27 q84
+q85 at a 1
+q86 at a 2
+q87 rec ap_2 q85 q86
+ret q87
+end
+fn sp_contract (u32x128,u32x128,io) u32x128 u32x128 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 28
+q1 eq q0 2
+keyword select q1 3 4
+q2 call arena_zero
+q3 get p 29
+q4 sub q3 keyword
+q5 set q2 0 q4
+z set q5 1 keyword
+q6 get p 60
+first div q6 2
+a call sp_append p0 59 2 z
+q7 at a 0
+q8 get p 7
+q set q7 9 q8
+q_1 set q 11 0
+q_2 set q_1 14 0
+q9 get p 8
+q10 get p 7
+len sub q9 q10
+q11 add len 2
+q12 at a 1
+q13 at a 2
+q14 rec q_2 q12 q13
+words loop sp_wordsok sp_wordsstep q11 q14
+wp at words 0
+q15 get wp 60
+q16 div q15 2
+n sub q16 first
+q17 eq n 1
+q18 get p 28
+q19 eq q18 2
+q20 select q19 12 13
+q21 select q17 q20 0
+q22 get p 7
+b call sp_fail words q21 q22 len
+bp at b 0
+q23 get bp 0
+q24 eq q23 0
+q25 select q24 1 0
+q26 fold sp_contractparse q25 b p1 p2 first n
+ret q26
+end
+fn sp_function (u32x128,u32x128,io) -> (u32x128,u32x128,io)
+p at p0 0
+z call arena_zero
+q0 get p 24
+z_1 set z 0 q0
+q1 get p 86
+z_2 set z_1 1 q1
+q2 get p 25
+z_3 set z_2 2 q2
+q3 get p 26
+q4 eq q3 0
+q5 get p 26
+q6 sub q5 1
+q7 select q4 4294967295 q6
+z_4 set z_3 3 q7
+q8 get p 27
+q9 eq q8 0
+q10 get p 27
+q11 sub q10 1
+q12 select q9 4294967295 q11
+z_5 set z_4 4 q12
+q13 call sp_append p0 62 5 z_5
+ret q13
+end
+fn sp_finishfunction (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 call sp_function p0
+ret q0
+end
+fn sp_example_go (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 call sp_example p0
+ret q0
+end
+fn sp_contract_go (u32x128,u32x128,io) u32 u32x128 u32x128 -> (u32x128,u32x128,io)
+q0 call sp_contract p0 p2 p3
+ret q0
+end
+fn sp_rawok (u32x128,u32x128,io) u32 u32x128 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+fn sp_raw (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+q0 at p0 2
+q1 get p2 56
+q2 get p2 57
+q3 get p2 58
+q4 rec q1 q2 q3
+q5 mul p1 6
+r call av_load q0 q4 q5 6
+row at r 1
+q6 at p0 0
+q7 at r 0
+p set q6 0 q7
+q8 get row 1
+q9 get p 24
+change ne q8 q9
+q10 get p 24
+q11 ne q10 4294967295
+q12 and change q11
+q13 select q12 1 0
+q14 at p0 1
+q15 at r 2
+q16 rec p q14 q15
+a fold sp_finishfunction q13 q16
+q at a 0
+q17 get row 1
+q_1 set q 24 q17
+q18 get q_1 25
+q19 select change 0 q18
+q_2 set q_1 25 q19
+q20 get q_2 26
+q21 select change 0 q20
+q_3 set q_2 26 q21
+q22 get q_3 27
+q23 select change 0 q22
+q_4 set q_3 27 q23
+q24 get q_4 42
+q25 div q24 8
+q26 get q_4 86
+q27 select change q25 q26
+q_5 set q_4 86 q27
+q28 at a 2
+q29 get p2 32
+q30 get p2 33
+q31 get p2 34
+q32 rec q29 q30 q31
+q33 get row 2
+q34 mul q33 10
+line call av_load q28 q32 q34 10
+li at line 1
+q35 get q_5 0
+q36 eq q35 0
+q37 at line 0
+q38 get q_5 0
+q39 select q36 q37 q38
+q_6 set q_5 0 q39
+q_7 set q_6 4 p1
+q40 get row 2
+q_8 set q_7 5 q40
+q41 get row 0
+q_9 set q_8 28 q41
+q42 get row 3
+q_10 set q_9 29 q42
+q43 get row 4
+q_11 set q_10 30 q43
+q44 get li 0
+q_12 set q_11 31 q44
+q45 get row 3
+q_13 set q_12 7 q45
+q46 get row 3
+q47 get row 4
+q48 add q46 q47
+q_14 set q_13 8 q48
+q49 get row 0
+q50 eq q49 1
+q51 get q_14 25
+q52 ge q51 3
+q53 select q52 9 0
+q54 get row 0
+q55 eq q54 2
+q56 get q_14 26
+q57 ne q56 0
+q58 select q57 10 0
+q59 get q_14 27
+q60 ne q59 0
+q61 select q60 11 0
+q62 select q55 q58 q61
+bad select q50 q53 q62
+q63 at a 1
+q64 at line 2
+q65 rec q_14 q63 q64
+q66 get li 3
+q67 get li 4
+b call sp_fail q65 bad q66 q67
+bp at b 0
+q68 get bp 0
+q69 eq q68 0
+q70 get row 0
+q71 eq q70 1
+q72 and q69 q71
+q73 select q72 1 0
+ex fold sp_example_go q73 b
+ep at ex 0
+q74 get ep 0
+q75 eq q74 0
+q76 get row 0
+q77 ne q76 1
+q78 and q75 q77
+q79 select q78 1 0
+q80 fold sp_contract_go q79 ex p2 li
+ret q80
+end
+fn arena_specs io u32x128 -> (u32,u32x128,io)
+z call arena_zero
+q0 get p1 0
+q1 eq q0 0
+q2 get p1 0
+q3 eq q2 7
+q4 or q1 q3
+q5 get p1 0
+q6 select q4 0 q5
+q set z 0 q6
+q7 get p1 6
+q_1 set q 6 q7
+q_2 set q_1 24 4294967295
+q8 get p1 62
+q9 get p1 63
+q10 get p1 64
+q11 rec q8 q9 q10
+q12 get p1 65
+q13 get p1 66
+q14 get p1 67
+q15 rec q11 q12 q13 q14
+m3_a set q_2 80 q8
+m3_b set m3_a 81 q9
+q16 set m3_b 82 q10
+m2_b set q16 83 q12
+m2_c set m2_b 84 q13
+q17 set m2_c 85 q14
+q_3 set q17 92 1
+q18 get p1 57
+q19 div q18 6
+q20 rec q_3 z p0
+r loop sp_rawok sp_raw q19 q20 p1
+p at r 0
+q21 get p 0
+q22 eq q21 0
+q23 get p 24
+q24 ne q23 4294967295
+q25 and q22 q24
+q26 select q25 1 0
+out fold sp_finishfunction q26 r
+a at out 0
+q27 get a 0
+q28 at out 2
+q29 rec q27 a q28
+ret q29
+end

@@ -1,0 +1,59 @@
+use "sv_text.a0"
+fn sv_store (u32,(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+old at p0 0
+out at p0 1
+t at p0 2
+z call arena_zero
+page set z 0 p3
+r call arena_store t p1 p2 1 page
+s at r 0
+t1 at r 1
+ok eq old 0
+status select ok s old
+result rec status out t1
+ret result
+end
+fn sv_ok (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> bool
+s at p0 0
+r eq s 0
+ret r
+end
+fn sv_field_offset_good ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 -> bool
+s at p0 0
+status at s 0
+r eq status 0
+ret r
+end
+fn sv_field_offset_step ((u32,(u32,u32,u32),io),u32) u32 u32x16 u32 -> ((u32,(u32,u32,u32),io),u32)
+s at p0 0
+sum at p0 1
+tlist get p2 1
+widths get p2 6
+idx add p3 p1
+r call sv_get s tlist idx
+status at r 0
+out at r 1
+ty at r 2
+t at r 3
+s1 rec status out t
+q call sv_get s1 widths ty
+status1 at q 0
+out1 at q 1
+width at q 2
+t1 at q 3
+s2 rec status1 out1 t1
+value add sum width
+result rec s2 value
+ret result
+end
+fn sv_field_offset (u32,(u32,u32,u32),io) u32x16 u32 u32 -> (u32,(u32,u32,u32),u32,io)
+s rec p0 0
+r loop sv_field_offset_good sv_field_offset_step p3 s p1 p2
+state at r 0
+sum at r 1
+status at state 0
+out at state 1
+t at state 2
+result rec status out sum t
+ret result
+end

@@ -1,50 +1,50 @@
 {
-  "generatedAt": "2026-10-15T12:55:03.720Z",
-  "compilerVersion": "a0c-0.1.46",
+  "generatedAt": "2026-10-16T10:15:00.111Z",
+  "compilerVersion": "a0c-0.1.59",
   "stage": "wasm32 emitter written in A0 (compiler/emit_wasm.a0; entry emitwasmio in compiler/boot.a0), the port of src/wasm.ts, with the optimizer written in A0 (compiler/optimize.a0, generated from compiler/optimize.a0s by tools/a0s.ts), the port of src/optimize.ts",
-  "method": "a0c-stage1 (the bootstrap C seed) compiles the closure of emitwasmio in chunks; clang builds that C into a0w. The optimizer runs one function a run (mode 7), in program order, each run given the optimized bodies of the callees it asks for (code 7, then rerun); its output is compared function by function with optimizeFunction (nodes in order, ops, operands, callee, predicate, node type, ret, literal iterations). Each program is then emitted a chunk of functions at a time from the optimized (or the original) program, as the checked tables of the TypeScript front end in the A0 front end layout (mode 2) and, where every chunk fits the A0 front end (131072 source bytes a chunk), as formatted source through the A0 lexer, parser and checker (mode 1); a0w links the chunks into the module (mode 3). Unoptimized modules are compared byte for byte with src/wasm.ts on the unoptimized program, optimized ones with compile(program, wasm) (default options: src/optimize.ts).",
+  "method": "The verified checked-in A0-generated C seed compiles the closure of emitwasmio in chunks; clang builds that C into a0w. The optimizer runs one function a run (mode 7), in program order, each run given the optimized bodies of the callees it asks for (code 7, then rerun); its output is compared function by function with optimizeFunction (nodes in order, ops, operands, callee, predicate, node type, ret, literal iterations). Each program is then emitted a chunk of functions at a time from the optimized (or the original) program, as the checked tables of the TypeScript front end in the A0 front end layout (mode 2) and, where every chunk fits the A0 front end (131072 source bytes a chunk), as formatted source through the A0 lexer, parser and checker (mode 1); a0w links the chunks into the module (mode 3). Unoptimized modules are compared byte for byte with src/wasm.ts on the unoptimized program, optimized ones with compile(program, wasm) (default options: src/optimize.ts).",
   "tool": {
     "exe": "dist/bootstrap/a0w/a0w",
-    "stage1": "dist/bootstrap/a0c-stage1/a0c-stage1",
-    "functions": 779,
-    "sourceBytes": 845599,
-    "cBytes": 3771433,
-    "chunks": 20,
-    "emitMs": 9637,
-    "buildMs": 33763
+    "stage1": "dist/bootstrap/a0c-seed/a0c-seed",
+    "functions": 865,
+    "sourceBytes": 918127,
+    "cBytes": 4202051,
+    "chunks": 21,
+    "emitMs": 22086,
+    "buildMs": 23914
   },
   "programs": [
     {
       "label": "corpus",
       "functions": 48,
       "unoptimized": {
-        "moduleBytes": 28345,
+        "moduleBytes": 28359,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 13160,
+          "ms": 9045,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 13753,
+          "ms": 9384,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 5585,
+        "moduleBytes": 5595,
         "tables": {
           "chunks": 1,
           "runs": 58,
-          "ms": 5188,
+          "ms": 3298,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 58,
-          "ms": 2142,
+          "ms": 1397,
           "identical": true,
           "code": 0
         }
@@ -54,7 +54,7 @@
         "identical": 48,
         "runs": 57,
         "notRun": [],
-        "ms": 23
+        "ms": 10
       }
     },
     {
@@ -65,13 +65,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 125,
+          "ms": 70,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 123,
+          "ms": 76,
           "identical": true,
           "code": 0
         }
@@ -81,13 +81,13 @@
         "tables": {
           "chunks": 1,
           "runs": 6,
-          "ms": 238,
+          "ms": 133,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 6,
-          "ms": 127,
+          "ms": 77,
           "identical": true,
           "code": 0
         }
@@ -97,7 +97,7 @@
         "identical": 5,
         "runs": 5,
         "notRun": [],
-        "ms": 1
+        "ms": 0
       }
     },
     {
@@ -108,13 +108,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 914,
+          "ms": 612,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 1014,
+          "ms": 651,
           "identical": true,
           "code": 0
         }
@@ -123,14 +123,14 @@
         "moduleBytes": 2831,
         "tables": {
           "chunks": 1,
-          "runs": 16,
-          "ms": 1411,
+          "runs": 19,
+          "ms": 926,
           "identical": true
         },
         "source": {
           "chunks": 1,
-          "runs": 16,
-          "ms": 949,
+          "runs": 19,
+          "ms": 668,
           "identical": true,
           "code": 0
         }
@@ -138,9 +138,9 @@
       "ir": {
         "functions": 14,
         "identical": 14,
-        "runs": 15,
+        "runs": 18,
         "notRun": [],
-        "ms": 2
+        "ms": 4
       }
     },
     {
@@ -151,13 +151,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 113,
+          "ms": 73,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 121,
+          "ms": 77,
           "identical": true,
           "code": 0
         }
@@ -167,13 +167,13 @@
         "tables": {
           "chunks": 1,
           "runs": 9,
-          "ms": 279,
+          "ms": 157,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 9,
-          "ms": 106,
+          "ms": 72,
           "identical": true,
           "code": 0
         }
@@ -194,13 +194,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 215,
+          "ms": 149,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 314,
+          "ms": 164,
           "identical": true,
           "code": 0
         }
@@ -210,13 +210,13 @@
         "tables": {
           "chunks": 1,
           "runs": 10,
-          "ms": 441,
+          "ms": 248,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 10,
-          "ms": 181,
+          "ms": 110,
           "identical": true,
           "code": 0
         }
@@ -226,7 +226,7 @@
         "identical": 7,
         "runs": 9,
         "notRun": [],
-        "ms": 3
+        "ms": 1
       }
     },
     {
@@ -237,13 +237,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 316,
+          "ms": 211,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 314,
+          "ms": 209,
           "identical": true,
           "code": 0
         }
@@ -253,13 +253,13 @@
         "tables": {
           "chunks": 1,
           "runs": 14,
-          "ms": 829,
+          "ms": 492,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 14,
-          "ms": 472,
+          "ms": 324,
           "identical": true,
           "code": 0
         }
@@ -269,7 +269,7 @@
         "identical": 11,
         "runs": 13,
         "notRun": [],
-        "ms": 3
+        "ms": 1
       }
     },
     {
@@ -280,13 +280,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 283,
+          "ms": 161,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 266,
+          "ms": 172,
           "identical": true,
           "code": 0
         }
@@ -296,13 +296,13 @@
         "tables": {
           "chunks": 1,
           "runs": 12,
-          "ms": 481,
+          "ms": 296,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 12,
-          "ms": 228,
+          "ms": 151,
           "identical": true,
           "code": 0
         }
@@ -323,13 +323,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 325,
+          "ms": 202,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 372,
+          "ms": 221,
           "identical": true,
           "code": 0
         }
@@ -338,14 +338,14 @@
         "moduleBytes": 961,
         "tables": {
           "chunks": 1,
-          "runs": 7,
-          "ms": 485,
+          "runs": 8,
+          "ms": 434,
           "identical": true
         },
         "source": {
           "chunks": 1,
-          "runs": 7,
-          "ms": 310,
+          "runs": 8,
+          "ms": 221,
           "identical": true,
           "code": 0
         }
@@ -353,36 +353,208 @@
       "ir": {
         "functions": 6,
         "identical": 6,
-        "runs": 6,
+        "runs": 7,
         "notRun": [],
-        "ms": 1
+        "ms": 0
       }
     },
     {
       "label": "carrysel",
       "functions": 4,
       "unoptimized": {
-        "moduleBytes": 1867,
+        "moduleBytes": 1803,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 590,
+          "ms": 388,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 644,
+          "ms": 345,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 1735,
+        "moduleBytes": 1719,
         "tables": {
           "chunks": 1,
           "runs": 6,
-          "ms": 1412,
+          "ms": 724,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 6,
+          "ms": 366,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 4,
+        "identical": 4,
+        "runs": 5,
+        "notRun": [],
+        "ms": 3
+      }
+    },
+    {
+      "label": "selgroup",
+      "functions": 7,
+      "unoptimized": {
+        "moduleBytes": 1575,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 463,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 452,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 941,
+        "tables": {
+          "chunks": 1,
+          "runs": 11,
+          "ms": 593,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 11,
+          "ms": 269,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 7,
+        "identical": 7,
+        "runs": 10,
+        "notRun": [],
+        "ms": 2
+      }
+    },
+    {
+      "label": "bench/rle4k",
+      "functions": 3,
+      "unoptimized": {
+        "moduleBytes": 978,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 782,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 1014,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 962,
+        "tables": {
+          "chunks": 1,
+          "runs": 5,
+          "ms": 1544,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 5,
+          "ms": 965,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 3,
+        "identical": 3,
+        "runs": 4,
+        "notRun": [],
+        "ms": 1
+      }
+    },
+    {
+      "label": "reduce",
+      "functions": 8,
+      "unoptimized": {
+        "moduleBytes": 2333,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 364,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 375,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 2240,
+        "tables": {
+          "chunks": 1,
+          "runs": 10,
+          "ms": 487,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 10,
+          "ms": 356,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 8,
+        "identical": 8,
+        "runs": 9,
+        "notRun": [],
+        "ms": 1
+      }
+    },
+    {
+      "label": "bench/sieve4k",
+      "functions": 4,
+      "unoptimized": {
+        "moduleBytes": 1165,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 454,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 601,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 1163,
+        "tables": {
+          "chunks": 1,
+          "runs": 6,
+          "ms": 1160,
           "identical": true
         },
         "source": {
@@ -398,40 +570,40 @@
         "identical": 4,
         "runs": 5,
         "notRun": [],
-        "ms": 9
+        "ms": 1
       }
     },
     {
       "label": "bench/prefix1k",
       "functions": 3,
       "unoptimized": {
-        "moduleBytes": 647,
+        "moduleBytes": 655,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 801,
+          "ms": 477,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 884,
+          "ms": 514,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 647,
+        "moduleBytes": 655,
         "tables": {
           "chunks": 1,
           "runs": 5,
-          "ms": 1156,
+          "ms": 690,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 5,
-          "ms": 823,
+          "ms": 521,
           "identical": true,
           "code": 0
         }
@@ -452,13 +624,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 417,
+          "ms": 259,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 413,
+          "ms": 273,
           "identical": true,
           "code": 0
         }
@@ -468,13 +640,13 @@
         "tables": {
           "chunks": 1,
           "runs": 3,
-          "ms": 525,
+          "ms": 323,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 3,
-          "ms": 416,
+          "ms": 279,
           "identical": true,
           "code": 0
         }
@@ -484,7 +656,7 @@
         "identical": 2,
         "runs": 2,
         "notRun": [],
-        "ms": 2
+        "ms": 1
       }
     },
     {
@@ -495,13 +667,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 773,
+          "ms": 536,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 803,
+          "ms": 564,
           "identical": true,
           "code": 0
         }
@@ -511,13 +683,13 @@
         "tables": {
           "chunks": 1,
           "runs": 2,
-          "ms": 676,
+          "ms": 445,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 2,
-          "ms": 585,
+          "ms": 421,
           "identical": true,
           "code": 0
         }
@@ -531,6 +703,49 @@
       }
     },
     {
+      "label": "bench/mat4",
+      "functions": 2,
+      "unoptimized": {
+        "moduleBytes": 2132,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 1966,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 2084,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 2814,
+        "tables": {
+          "chunks": 1,
+          "runs": 4,
+          "ms": 7755,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 4,
+          "ms": 7094,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 2,
+        "identical": 2,
+        "runs": 3,
+        "notRun": [],
+        "ms": 6
+      }
+    },
+    {
       "label": "bench/mat4n",
       "functions": 2,
       "unoptimized": {
@@ -538,13 +753,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 2889,
+          "ms": 1997,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 3143,
+          "ms": 2030,
           "identical": true,
           "code": 0
         }
@@ -554,13 +769,13 @@
         "tables": {
           "chunks": 1,
           "runs": 3,
-          "ms": 3244,
+          "ms": 2113,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 3,
-          "ms": 2985,
+          "ms": 1943,
           "identical": true,
           "code": 0
         }
@@ -570,7 +785,7 @@
         "identical": 2,
         "runs": 2,
         "notRun": [],
-        "ms": 11
+        "ms": 5
       }
     },
     {
@@ -581,13 +796,13 @@
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 821,
+          "ms": 634,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 805,
+          "ms": 629,
           "identical": true,
           "code": 0
         }
@@ -596,14 +811,14 @@
         "moduleBytes": 1003,
         "tables": {
           "chunks": 1,
-          "runs": 8,
-          "ms": 1215,
+          "runs": 11,
+          "ms": 691,
           "identical": true
         },
         "source": {
           "chunks": 1,
-          "runs": 8,
-          "ms": 856,
+          "runs": 11,
+          "ms": 542,
           "identical": true,
           "code": 0
         }
@@ -611,42 +826,42 @@
       "ir": {
         "functions": 7,
         "identical": 7,
-        "runs": 7,
+        "runs": 10,
         "notRun": [],
-        "ms": 1
+        "ms": 0
       }
     },
     {
       "label": "prefix",
       "functions": 4,
       "unoptimized": {
-        "moduleBytes": 1059,
+        "moduleBytes": 1034,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 602,
+          "ms": 379,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 566,
+          "ms": 432,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 1059,
+        "moduleBytes": 1034,
         "tables": {
           "chunks": 1,
           "runs": 6,
-          "ms": 820,
+          "ms": 473,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 6,
-          "ms": 701,
+          "ms": 386,
           "identical": true,
           "code": 0
         }
@@ -663,33 +878,33 @@
       "label": "carryunroll",
       "functions": 2,
       "unoptimized": {
-        "moduleBytes": 1076,
+        "moduleBytes": 1038,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 329,
+          "ms": 285,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 380,
+          "ms": 225,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 887,
+        "moduleBytes": 871,
         "tables": {
           "chunks": 1,
           "runs": 4,
-          "ms": 717,
+          "ms": 555,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 4,
-          "ms": 356,
+          "ms": 394,
           "identical": true,
           "code": 0
         }
@@ -699,40 +914,40 @@
         "identical": 2,
         "runs": 3,
         "notRun": [],
-        "ms": 3
+        "ms": 4
       }
     },
     {
       "label": "carryfwd",
       "functions": 6,
       "unoptimized": {
-        "moduleBytes": 2118,
+        "moduleBytes": 2055,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 593,
+          "ms": 563,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 589,
+          "ms": 559,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 1950,
+        "moduleBytes": 1887,
         "tables": {
           "chunks": 1,
           "runs": 8,
-          "ms": 823,
+          "ms": 558,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 8,
-          "ms": 599,
+          "ms": 438,
           "identical": true,
           "code": 0
         }
@@ -746,36 +961,122 @@
       }
     },
     {
-      "label": "bench/isort256",
-      "functions": 5,
+      "label": "loopstate",
+      "functions": 7,
       "unoptimized": {
-        "moduleBytes": 1289,
+        "moduleBytes": 1168,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 381,
+          "ms": 252,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 392,
+          "ms": 273,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 1289,
+        "moduleBytes": 1167,
+        "tables": {
+          "chunks": 1,
+          "runs": 8,
+          "ms": 368,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 8,
+          "ms": 329,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 7,
+        "identical": 7,
+        "runs": 7,
+        "notRun": [],
+        "ms": 1
+      }
+    },
+    {
+      "label": "pointers",
+      "functions": 16,
+      "unoptimized": {
+        "moduleBytes": 3341,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 944,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 855,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 2949,
+        "tables": {
+          "chunks": 1,
+          "runs": 18,
+          "ms": 1150,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 18,
+          "ms": 853,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 16,
+        "identical": 16,
+        "runs": 17,
+        "notRun": [],
+        "ms": 3
+      }
+    },
+    {
+      "label": "bench/bsearch1k",
+      "functions": 5,
+      "unoptimized": {
+        "moduleBytes": 832,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 225,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 270,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 832,
         "tables": {
           "chunks": 1,
           "runs": 7,
-          "ms": 584,
+          "ms": 476,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 7,
-          "ms": 462,
+          "ms": 268,
           "identical": true,
           "code": 0
         }
@@ -789,36 +1090,294 @@
       }
     },
     {
-      "label": "site/page.a0",
-      "functions": 35,
+      "label": "bench/isort256",
+      "functions": 5,
       "unoptimized": {
-        "moduleBytes": 137487,
+        "moduleBytes": 1255,
         "tables": {
-          "chunks": 3,
-          "runs": 5,
-          "ms": 26360,
+          "chunks": 1,
+          "runs": 1,
+          "ms": 266,
           "identical": true
         },
         "source": {
-          "chunks": 3,
-          "runs": 5,
-          "ms": 32024,
+          "chunks": 1,
+          "runs": 1,
+          "ms": 292,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 137468,
+        "moduleBytes": 1255,
+        "tables": {
+          "chunks": 1,
+          "runs": 7,
+          "ms": 383,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 7,
+          "ms": 360,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 5,
+        "identical": 5,
+        "runs": 6,
+        "notRun": [],
+        "ms": 1
+      }
+    },
+    {
+      "label": "inplace",
+      "functions": 9,
+      "unoptimized": {
+        "moduleBytes": 3516,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 784,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 948,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 5753,
+        "tables": {
+          "chunks": 1,
+          "runs": 11,
+          "ms": 1996,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 11,
+          "ms": 1561,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 9,
+        "identical": 9,
+        "runs": 10,
+        "notRun": [],
+        "ms": 4
+      }
+    },
+    {
+      "label": "lazyread",
+      "functions": 6,
+      "unoptimized": {
+        "moduleBytes": 1390,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 261,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 277,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 1197,
+        "tables": {
+          "chunks": 1,
+          "runs": 10,
+          "ms": 532,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 10,
+          "ms": 287,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 6,
+        "identical": 6,
+        "runs": 9,
+        "notRun": [],
+        "ms": 1
+      }
+    },
+    {
+      "label": "readonly",
+      "functions": 13,
+      "unoptimized": {
+        "moduleBytes": 2139,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 510,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 504,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 2067,
+        "tables": {
+          "chunks": 1,
+          "runs": 16,
+          "ms": 692,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 16,
+          "ms": 498,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 13,
+        "identical": 13,
+        "runs": 15,
+        "notRun": [],
+        "ms": 2
+      }
+    },
+    {
+      "label": "bench/hash1k",
+      "functions": 7,
+      "unoptimized": {
+        "moduleBytes": 1144,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 501,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 488,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 1136,
+        "tables": {
+          "chunks": 1,
+          "runs": 11,
+          "ms": 672,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 11,
+          "ms": 444,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 7,
+        "identical": 7,
+        "runs": 10,
+        "notRun": [],
+        "ms": 2
+      }
+    },
+    {
+      "label": "bench/heap256",
+      "functions": 8,
+      "unoptimized": {
+        "moduleBytes": 3442,
+        "tables": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 1099,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 1,
+          "ms": 1046,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 3400,
+        "tables": {
+          "chunks": 1,
+          "runs": 9,
+          "ms": 1277,
+          "identical": true
+        },
+        "source": {
+          "chunks": 1,
+          "runs": 9,
+          "ms": 1097,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "ir": {
+        "functions": 8,
+        "identical": 8,
+        "runs": 8,
+        "notRun": [],
+        "ms": 1
+      }
+    },
+    {
+      "label": "site/page.a0",
+      "functions": 35,
+      "unoptimized": {
+        "moduleBytes": 137609,
+        "tables": {
+          "chunks": 3,
+          "runs": 5,
+          "ms": 17674,
+          "identical": true
+        },
+        "source": {
+          "chunks": 3,
+          "runs": 5,
+          "ms": 21679,
+          "identical": true,
+          "code": 0
+        }
+      },
+      "optimized": {
+        "moduleBytes": 137581,
         "tables": {
           "chunks": 3,
           "runs": 43,
-          "ms": 32172,
+          "ms": 21028,
           "identical": true
         },
         "source": {
           "chunks": 4,
           "runs": 45,
-          "ms": 39459,
+          "ms": 25588,
           "identical": true,
           "code": 0
         }
@@ -828,40 +1387,40 @@
         "identical": 35,
         "runs": 38,
         "notRun": [],
-        "ms": 91
+        "ms": 29
       }
     },
     {
       "label": "site/docs.a0",
       "functions": 26,
       "unoptimized": {
-        "moduleBytes": 106917,
+        "moduleBytes": 107039,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 6160,
+          "ms": 3887,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 6573,
+          "ms": 4460,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 106898,
+        "moduleBytes": 107011,
         "tables": {
           "chunks": 1,
           "runs": 30,
-          "ms": 9589,
+          "ms": 6564,
           "identical": true
         },
         "source": {
           "chunks": 3,
           "runs": 34,
-          "ms": 12740,
+          "ms": 8458,
           "identical": true,
           "code": 0
         }
@@ -871,7 +1430,7 @@
         "identical": 26,
         "runs": 29,
         "notRun": [],
-        "ms": 25
+        "ms": 13
       }
     }
   ],

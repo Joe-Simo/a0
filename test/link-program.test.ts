@@ -30,7 +30,7 @@ test('link joins source programs while preserving combined-text line positions',
       [8, 8],
     ],
   );
-  assert.equal(linked.text.split('\n')[8], '');
+  assert.equal(linked.text.split('\n')[8], '# import comment');
   assert.equal(linked.text.split('\n')[10], 'fn main u32 -> u32');
 });
 

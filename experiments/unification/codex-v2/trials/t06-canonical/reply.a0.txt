@@ -1,0 +1,21 @@
+fn life_grid_countbit u32 u32 u32 -> u32
+shifted shr p2 p1
+bit and shifted 1
+total add p0 bit
+ret total
+end
+
+fn life_grid_countrow u32 u32 u32x32 -> u32
+row get p2 p1
+total fold life_grid_countbit 32 p0 row
+ret total
+end
+
+fn writegrid u32x32 io -> io
+population fold life_grid_countrow 32 0 p0
+header write p1 76
+length write header 32
+rows fold writerow 32 length p0
+trailer write rows population
+ret trailer
+end

@@ -1,0 +1,416 @@
+raw # Spec semantic component: binding and literal type shapes, never unchecked verifier success.
+raw # Ordinary source IR is immutable; every contract node/operand/parameter list is separate.
+raw use "check_arena.a0"
+extern arena_zero() -> u32x128
+extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
+extern av_load(io,(u32,u32,u32),u32,u32) -> (u32,u32x128,io)
+extern av_store(io,(u32,u32,u32),u32,u32,u32x128) -> (u32,io)
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+extern ac_type((u32x128,io),u32) -> (u32x128,u32x128,io)
+extern ac_op((u32x128,io),u32) -> (u32x128,io)
+extern ac_call((u32x128,io),u32,u32,u32) -> (u32x128,io)
+def sb_vec(p:u32x128,o:u32) -> (u32,u32,u32)
+ return (p[o],p[o+1],p[o+2])
+end
+def sb_setvec(p:u32x128,o:u32,v:(u32,u32,u32)) -> u32x128
+ let a=set(p,o,v#0)
+ let b=set(a,o+1,v#1)
+ return set(b,o+2,v#2)
+end
+fn sb_runtime(s:(u32x128,u32x128,u32x128,io),code:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let active=(b[0]==0)&(code!=0)
+ let p=set(s#0,0,active?code:get(s#0,0))
+ let b=set(b,0,active?code:b[0])
+ return (p,s#1,b,s#3)
+end
+fn sb_fail(s:(u32x128,u32x128,u32x128,io),reason:u32,literal:u32,type:u32,path:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let go=(b[0]==0)&(reason!=0)
+ let b=set(b,0,go?8:b[0])
+ let b=set(b,1,go?714:b[1])
+ let b=set(b,2,go?reason:b[2])
+ let b=set(b,8,go?literal:b[8])
+ let b=set(b,9,go?type:b[9])
+ let b=set(b,10,go?path:b[10])
+ let p=set(s#0,0,go?8:get(s#0,0))
+ let p=set(p,1,go?714:p[1])
+ let p=set(p,2,go?0:p[2])
+ let p=set(p,3,go?0:p[3])
+ let p=set(p,4,go?0:p[4])
+ let p=set(p,5,go?reason:p[5])
+ return (p,s#1,b,s#3)
+end
+fn sb_appendgo(s:(u32x128,u32x128,u32x128,io),i:u32,off:u32,n:u32,page:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let r=av_append(s#3,sb_vec(b,off),n,page)
+ let b=sb_setvec(b,off,r#1)
+ return sb_runtime((s#0,s#1,b,r#2),r#0)
+end
+fn sb_append(s:(u32x128,u32x128,u32x128,io),off:u32,n:u32,page:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ return fold(sb_appendgo,b[0]==0?1:0,s,off,n,page)
+end
+fn sb_litmore(s:(u32x128,u32x128,u32x128,io),i:u32) -> bool
+ let b=s#2
+ return (b[0]==0)&(b[36]!=0)
+end
+fn sb_lit_child(s:(u32x128,u32x128,u32x128,io),i:u32,frame:u32x128,lit:u32x128,type:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let child=av_load(s#3,sb_vec(s#1,35),lit[2]+frame[3],1)
+ let cref=child#1
+ let tr=av_load(child#2,sb_vec(s#0,71),type[0]==4?type[1]+frame[3]:0,type[0]==4?1:0)
+ let tref=tr#1
+ let a=sb_runtime((s#0,s#1,b,tr#2),child#0==0?tr#0:child#0)
+ let oldpath=b[39]/3
+ let z=arena_zero()
+ let z=set(z,0,frame[2])
+ let z=set(z,1,lit[0]==3?1:2)
+ let z=set(z,2,frame[3])
+ let a=sb_append(a,38,3,z)
+ let q=a#2
+ let q=set(q,36,q[36]-4)
+ let updated=set(frame,3,frame[3]+1)
+ let a=sb_append((a#0,a#1,q,a#3),35,4,updated)
+ let z=arena_zero()
+ let z=set(z,0,cref[0])
+ let z=set(z,1,type[0]==4?tref[0]:type[1])
+ let z=set(z,2,oldpath)
+ let z=set(z,3,4294967295)
+ return sb_append(a,35,4,z)
+end
+fn sb_litstep(s:(u32x128,u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let r=av_load(s#3,sb_vec(b,35),b[36]-4,4)
+ let frame=r#1
+ let l=av_load(r#2,sb_vec(s#1,32),frame[0]*6,6)
+ let lit=l#1
+ let t=ac_type((s#0,l#2),frame[1])
+ let ty=t#1
+ let code=r#0==0?(l#0==0?get(t#0,0):l#0):r#0
+ let a=sb_runtime((t#0,s#1,b,t#2),code)
+ let tag=ty[0]==0?1:(ty[0]==1?2:(ty[0]==3?3:(ty[0]==4?4:0)))
+ let aggregate=(tag==3)|(tag==4)
+ let good=(lit[0]==tag)&((!aggregate)|(lit[3]==ty[2]))
+ let a=sb_fail(a,good?0:7,frame[0],frame[1],frame[2])
+ let q=a#2
+ let q=set(q,12,lit[4])
+ let q=set(q,13,lit[5])
+ let initial=frame[3]==4294967295
+ let finished=!aggregate|(!initial&(frame[3]>=lit[3]))
+ let q=set(q,36,finished?q[36]-4:q[36])
+ let a=(a#0,a#1,q,a#3)
+ let child=!initial&!finished
+ let a=fold(sb_lit_child,(q[0]==0)&child?1:0,a,frame,lit,ty)
+ let q=a#2
+ let q=set(q,36,initial&aggregate?q[36]-4:q[36])
+ let updated=set(frame,3,0)
+ return sb_append((a#0,a#1,q,a#3),35,initial&aggregate?4:0,updated)
+end
+fn sb_literal(s:(u32x128,u32x128,u32x128,io),root:u32,type:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=set(s#2,36,0)
+ let z=arena_zero()
+ let z=set(z,0,root)
+ let z=set(z,1,type)
+ let z=set(z,2,4294967295)
+ let z=set(z,3,4294967295)
+ let a=sb_append((s#0,s#1,b,s#3),35,4,z)
+ let syntax=s#1
+ let nodes=syntax[33]/6
+ let budget=nodes<=1073741819?nodes*4+16:4294967295
+ let r=loop(sb_litmore,sb_litstep,budget,a)
+ let b=r#2
+ let r=sb_runtime(r,(b[0]==0)&(b[36]!=0)?3:0)
+ let b=r#2
+ let z=arena_zero()
+ let z=set(z,0,root)
+ let z=set(z,1,type)
+ let z=set(z,2,b[5])
+ let z=set(z,3,b[6])
+ let z=set(z,4,b[7])
+ return sb_append((r#0,r#1,b,r#3),32,5,z)
+end
+fn sb_boundok(s:(u32x128,u32x128,u32x128,io),i:u32,node:u32x128) -> bool
+ let b=s#2
+ return b[0]==0
+end
+fn sb_rname(s:(u32x128,u32x128,u32x128,u32,io),i:u32,start:u32) -> (u32x128,u32x128,u32x128,u32,io)
+ let m=s#0
+ let r=arena_load(s#4,m[6],start,1)
+ let a=sb_runtime((m,s#1,s#2,r#2),r#0)
+ return (a#0,a#1,a#2,get(r#1,0),a#3)
+end
+fn sb_bind_arg(s:(u32x128,u32x128,u32x128,io),i:u32,node:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let syntax=s#1
+ let r=av_load(s#3,sb_vec(syntax,50),(node[2]+i)*5,5)
+ let o=r#1
+ let a=sb_runtime((s#0,syntax,s#2,r#2),r#0)
+ let b=a#2
+ let named=(o[0]==0)&(b[83]==3)&(o[3]==1)
+ let n=fold(sb_rname,named?1:0,(a#0,a#1,b,0,a#3),o[2])
+ let result=named&(n#3==114)
+ let q=set(n#2,91,o[1])
+ let q=set(q,109,i)
+ let q=set(q,12,o[2])
+ let q=set(q,13,o[3])
+ let fail=sb_fail((n#0,n#1,q,n#4),(o[0]==0)&!result?3:0,o[1],4294967295,4294967295)
+ let bound=set(o,0,result?1:o[0])
+ let bound=set(bound,1,result?b[80]:o[1])
+ return sb_append(fail,41,5,bound)
+end
+fn sb_param_more(s:(u32x128,u32x128,u32x128,io),i:u32) -> bool
+ let b=s#2
+ return b[0]==0
+end
+fn sb_param_copy(s:(u32x128,u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let r=av_load(s#3,sb_vec(s#0,50),b[81]+i,1)
+ let a=sb_runtime((s#0,s#1,b,r#2),r#0)
+ return sb_append(a,44,1,r#1)
+end
+fn sb_wrap(s:(u32x128,u32x128,u32x128,io),id:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let b=set(b,92,(b[0]==0)&(id!=0)?id:b[92])
+ return sb_fail((s#0,s#1,b,s#3),id==0?0:4,4294967295,4294967295,4294967295)
+end
+fn sb_typedarg(s:(u32x128,u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let r=av_load(s#3,sb_vec(b,41),(b[85]+i)*5,5)
+ let o=r#1
+ let a=sb_runtime((s#0,s#1,b,r#2),r#0)
+ let valid=(o[0]!=1)|((o[1]<b[84])&((o[4]&4)==0))
+ let a=sb_wrap(a,valid?0:105)
+ let ar=a#2
+ let count=(o[0]==1)&valid&(ar[0]==0)?1:0
+ let t=av_load(a#3,sb_vec(ar,44),count!=0?b[86]+o[1]:0,count)
+ let a=sb_runtime((a#0,a#1,ar,t#2),t#0)
+ let page=t#1
+ let type=o[0]==1?page[0]:(o[0]==3?1:0)
+ let z=set(arena_zero(),0,type)
+ return sb_append(a,53,1,z)
+end
+fn sb_type_core(s:(u32x128,u32x128,u32x128,io),i:u32,node:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let m=s#0
+ let b=s#2
+ let c=sb_setvec(m,47,sb_vec(b,41))
+ let c=sb_setvec(c,124,sb_vec(b,53))
+ let c=set(c,10,b[3])
+ let c=set(c,11,b[89])
+ let c=set(c,12,0)
+ let c=set(c,13,b[81])
+ let c=set(c,14,b[84])
+ let c=set(c,15,b[89])
+ let c=set(c,16,1)
+ let c=set(c,17,1)
+ let c=set(c,18,node[1])
+ let c=set(c,19,b[85])
+ let c=set(c,20,node[3])
+ let c=set(c,21,0)
+ let c=set(c,22,4294967295)
+ let c=set(c,23,4294967295)
+ let c=set(c,80,node[6])
+ let c=set(c,81,node[7])
+ let c=set(c,82,node[8])
+ let c=set(c,127,1)
+ let c=set(c,87,0)
+ let c=set(c,88,1072693248)
+ let call=(node[1]>=19)&(node[1]<=21)
+ let typed=fold(ac_op,call?0:1,(c,s#3))
+ let typed=fold(ac_call,call?1:0,typed,node[4],node[5])
+ let t=typed#0
+ let b=set(b,90,t[21])
+ let b=set(b,94,t[22])
+ let b=set(b,95,t[23])
+ let b=set(b,96,t[127])
+ let b=set(b,97,t[87])
+ let b=set(b,98,t[88])
+ let b=set(b,99,t[111])
+ let b=set(b,100,t[112])
+ let b=set(b,101,t[113])
+ let b=set(b,102,t[114])
+ let p=sb_setvec(m,68,sb_vec(t,68))
+ let p=sb_setvec(p,71,sb_vec(t,71))
+ let p=sb_setvec(p,74,sb_vec(t,74))
+ let p=set(p,77,t[77])
+ let p=set(p,78,t[78])
+ let p=set(p,79,t[79])
+ let p=sb_setvec(p,84,sb_vec(t,84))
+ let runtime=(t[0]!=0)&(t[0]!=8)
+ let a=sb_runtime((p,s#1,b,typed#1),runtime?t[0]:0)
+ let a=sb_wrap(a,t[0]==8?t[1]:0)
+ return sb_fail(a,(t[0]==0)&(t[21]!=1)?5:0,4294967295,t[21],4294967295)
+end
+fn sb_type_contract(s:(u32x128,u32x128,u32x128,io),contract:u32,f:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let syntax=s#1
+ let r=av_load(s#3,sb_vec(syntax,44),contract*7,7)
+ let row=r#1
+ let n=av_load(r#2,sb_vec(syntax,47),row[3]*14,14)
+ let node=n#1
+ let a=sb_runtime((s#0,syntax,s#2,n#2),r#0==0?n#0:r#0)
+ let b=a#2
+ let b=set(b,4,row[0])
+ let b=set(b,11,row[2])
+ let b=set(b,80,f[2])
+ let b=set(b,81,f[1])
+ let b=set(b,82,f[3])
+ let b=set(b,83,row[0])
+ let b=set(b,84,f[2]+(row[0]==3?1:0))
+ let b=set(b,85,b[42]/5)
+ let b=set(b,86,b[45])
+ let b=set(b,87,contract)
+ let b=set(b,88,row[3])
+ let b=set(b,89,b[48]/14)
+ let bound=loop(sb_boundok,sb_bind_arg,node[3],(a#0,a#1,b,a#3),node)
+ let a=sb_wrap(bound,b[84]>64?315:0)
+ let params=loop(sb_param_more,sb_param_copy,f[2],a)
+ let z=set(arena_zero(),0,f[3])
+ let params=sb_append(params,44,row[0]==3?1:0,z)
+ let p=params#2
+ let p=set(p,54,0)
+ let args=loop(sb_param_more,sb_typedarg,node[3],(params#0,params#1,p,params#3))
+ let q=args#2
+ let typed=fold(sb_type_core,q[0]==0?1:0,args,node)
+ let nn=set(node,2,b[85])
+ let a=sb_append(typed,47,14,nn)
+ let out=a#2
+ let z=arena_zero()
+ let z=set(z,0,b[3])
+ let z=set(z,1,row[0])
+ let z=set(z,2,contract)
+ let z=set(z,3,b[86])
+ let z=set(z,4,b[84])
+ let z=set(z,5,b[89])
+ let z=set(z,6,out[90])
+ let z=set(z,7,out[94])
+ let z=set(z,8,out[95])
+ let z=set(z,9,out[96])
+ let z=set(z,10,out[97])
+ let z=set(z,11,out[98])
+ return sb_append(a,50,12,z)
+end
+fn sb_io_type(s:(u32x128,u32x128,u32x128,io),type:u32) -> (u32x128,u32x128,u32x128,io)
+ let t=ac_type((s#0,s#3),type)
+ let ty=t#1
+ let a=sb_runtime((t#0,s#1,s#2,t#2),get(t#0,0))
+ return sb_fail(a,ty[3]!=0?1:0,4294967295,type,4294967295)
+end
+fn sb_io_param(s:(u32x128,u32x128,u32x128,io),i:u32,f:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let r=av_load(s#3,sb_vec(s#0,50),f[1]+i,1)
+ let a=sb_runtime((s#0,s#1,s#2,r#2),r#0)
+ return sb_io_type(a,get(r#1,0))
+end
+fn sb_example_arg_more(s:(u32x128,u32x128,u32x128,io),i:u32,example:u32x128,f:u32x128) -> bool
+ let b=s#2
+ return b[0]==0
+end
+fn sb_example_arg(s:(u32x128,u32x128,u32x128,io),i:u32,example:u32x128,f:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let root=av_load(s#3,sb_vec(s#1,38),example[2]+i,1)
+ let type=av_load(root#2,sb_vec(s#0,50),f[1]+i,1)
+ let b=set(s#2,6,0)
+ let b=set(b,7,i)
+ let a=sb_runtime((s#0,s#1,b,type#2),root#0==0?type#0:root#0)
+ return sb_literal(a,get(root#1,0),get(type#1,0))
+end
+fn sb_example_more(s:(u32x128,u32x128,u32x128,io),i:u32,first:u32,f:u32x128) -> bool
+ let b=s#2
+ return b[0]==0
+end
+fn sb_example_result(s:(u32x128,u32x128,u32x128,io),i:u32,literal:u32,type:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=set(s#2,6,1)
+ let b=set(b,7,4294967295)
+ return sb_literal((s#0,s#1,b,s#3),literal,type)
+end
+fn sb_example_type(s:(u32x128,u32x128,u32x128,io),i:u32,first:u32,f:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let ex=av_load(s#3,sb_vec(s#1,41),(first+i)*8,8)
+ let example=ex#1
+ let b=set(s#2,4,1)
+ let b=set(b,5,i+1)
+ let b=set(b,11,example[5])
+ let b=set(b,103,f[2])
+ let b=set(b,104,example[3])
+ let a=sb_runtime((s#0,s#1,b,ex#2),ex#0)
+ let a=sb_fail(a,example[3]!=f[2]?6:0,example[3],f[2],4294967295)
+ let args=loop(sb_example_arg_more,sb_example_arg,f[2],a,example,f)
+ let b=args#2
+ return fold(sb_example_result,b[0]==0?1:0,args,example[4],f[3])
+end
+fn sb_contract_go(s:(u32x128,u32x128,u32x128,io),i:u32,index:u32,f:u32x128) -> (u32x128,u32x128,u32x128,io)
+ return sb_type_contract(s,index,f)
+end
+fn sb_io_result(s:(u32x128,u32x128,u32x128,io),i:u32,type:u32) -> (u32x128,u32x128,u32x128,io)
+ return sb_io_type(s,type)
+end
+fn sb_type_function(s:(u32x128,u32x128,u32x128,io),function:u32,dir:u32x128) -> (u32x128,u32x128,u32x128,io)
+ let f=av_load(s#3,sb_vec(s#0,41),function*14,14)
+ let row=f#1
+ let b=set(s#2,3,function)
+ let b=set(b,15,row[0])
+ let b=set(b,4,0)
+ let b=set(b,5,0)
+ let b=set(b,105,get(s#0,8))
+ let b=set(b,106,b[51]/12)
+ let b=set(b,107,b[33]/5)
+ let a=sb_runtime((s#0,s#1,b,f#2),f#0)
+ let ios=loop(sb_boundok,sb_io_param,row[2],a,row)
+ let b=ios#2
+ let result=fold(sb_io_result,b[0]==0?1:0,ios,row[3])
+ let result=sb_fail(result,dir[2]>3?2:0,dir[2],3,4294967295)
+ let b=result#2
+ let pre=fold(sb_contract_go,(b[0]==0)&(dir[3]!=4294967295)?1:0,result,dir[3],row)
+ let b=pre#2
+ let post=fold(sb_contract_go,(b[0]==0)&(dir[4]!=4294967295)?1:0,pre,dir[4],row)
+ let examples=loop(sb_example_more,sb_example_type,dir[2],post,dir[1],row)
+ let b=examples#2
+ let z=arena_zero()
+ let z=set(z,0,function)
+ let z=set(z,1,b[106])
+ let z=set(z,2,b[51]/12-b[106])
+ let z=set(z,3,b[107])
+ let z=set(z,4,b[33]/5-b[107])
+ return sb_append(examples,56,5,z)
+end
+fn sb_find_more(s:(u32x128,u32x128,u32x128,io),i:u32,function:u32) -> bool
+ let b=s#2
+ return (b[0]==0)&(b[110]<b[111])&(b[112]==4294967295)
+end
+fn sb_find_step(s:(u32x128,u32x128,u32x128,io),i:u32,function:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let mid=b[110]+(b[111]-b[110])/2
+ let r=av_load(s#3,sb_vec(s#1,62),mid*5,1)
+ let row=r#1
+ let a=sb_runtime((s#0,s#1,b,r#2),r#0)
+ let b=set(a#2,110,row[0]<function?mid+1:b[110])
+ let b=set(b,111,row[0]>function?mid:b[111])
+ let b=set(b,112,row[0]==function?mid:b[112])
+ return (a#0,a#1,b,a#3)
+end
+fn sb_find(s:(u32x128,u32x128,u32x128,io),function:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=set(s#2,110,0)
+ let b=set(b,111,get(s#1,63)/5)
+ let b=set(b,112,4294967295)
+ return loop(sb_find_more,sb_find_step,32,(s#0,s#1,b,s#3),function)
+end
+fn sb_function_found(s:(u32x128,u32x128,u32x128,io),i:u32,function:u32) -> (u32x128,u32x128,u32x128,io)
+ let b=s#2
+ let row=av_load(s#3,sb_vec(s#1,62),b[112]*5,5)
+ let a=sb_runtime((s#0,s#1,b,row#2),row#0)
+ return sb_type_function(a,function,row#1)
+end
+fn arena_spec_types(t:io,checked:u32x128,function:u32) -> (u32,u32x128,u32x128,io)
+ let z=arena_zero()
+ let b=set(z,0,checked[0])
+ let b=set(b,3,function)
+ let b=set(b,93,1)
+ let present=checked[60]==128
+ let loaded=av_load(t,sb_vec(checked,59),0,present?128:0)
+ let syntax=loaded#1
+ let a=sb_runtime((checked,syntax,b,loaded#2),present?loaded#0:0)
+ let b=a#2
+ let valid=(checked[96]==1)&((!present)|(syntax[92]==1))
+ let a=sb_runtime(a,valid?0:3)
+ let found=sb_find(a,function)
+ let b=found#2
+ let result=fold(sb_function_found,(b[0]==0)&(b[112]!=4294967295)?1:0,found,function)
+ let b=result#2
+ return (b[0],result#0,b,result#3)
+end

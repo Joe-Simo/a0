@@ -227,7 +227,24 @@ v10 mul v 10
 vd add v10 c
 vd2 sub vd 48
 v2 select skip v vd2
-dig1 and dig isd
+# Decimal accumulation must fit u32 before the wrapped multiply/add is used.
+# The quotient and remainder of UINT32_MAX define the last permitted digit.
+digit sub c 48
+maxprefix div 4294967295 10
+maxlast rem 4294967295 10
+small lt v maxprefix
+edge eq v maxprefix
+lastok le digit maxlast
+edgeok and edge lastok
+fits or small edgeok
+firstdigit select p5 1 0
+later gt gk firstdigit
+zero eq v 0
+leading and later zero
+notleading select leading false true
+valid0 and isd fits
+valid and valid0 notleading
+dig1 and dig valid
 dig2 select skip dig dig1
 isw call isword c
 wl2 and wl isw
@@ -1270,6 +1287,22 @@ other0 or isd isx
 other select other0 false true
 ok1 select isx okx ok
 ok2 select other false ok1
+# A dimension is a nonzero decimal spelling; it must not wrap or start with zero.
+digit sub c 48
+maxprefix div 4294967295 10
+maxlast rem 4294967295 10
+small lt v maxprefix
+edge eq v maxprefix
+lastok le digit maxlast
+edgeok and edge lastok
+fits or small edgeok
+zero eq v 0
+leading and have zero
+notleading select leading false true
+valid and fits notleading
+badnum0 select valid false true
+badnum and isd badnum0
+ok3 select badnum false ok2
 gs2 set gs ng v
 gsr select isx gs2 gs
 ng1 add ng 1
@@ -1277,7 +1310,7 @@ ngr select isx ng1 ng
 v3 select isx 0 v2
 h1 select isd true have
 h2 select isx false h1
-r rec gsr ngr v3 h2 ok2
+r rec gsr ngr v3 h2 ok3
 ret r
 end
 # intern group p1 of p2 as the array of that length of the previous type
@@ -3306,47 +3339,6 @@ b6 or b5 l0
 b7 or b6 d0
 r or b7 a0
 ret r
-end
-# --- what no emitter implements ---------------------------------------------------------
-# A program in the strict profile, or with a checked operation (cadd csub cmul cdiv crem cget,
-# 32 to 37), parses and checks as the TypeScript front end does, but no emitter of the compiler
-# implements either: the drivers give the structure diagnostic 2 (src/core.ts A0713) for it.
-# found or an operation of the node slot p1 of the page p2 (p3 its first word, p4 the node words)
-fn chkslot u32 u32 u32x128 u32 u32 -> u32
-k0a add p3 4
-k0 div k0a 6
-k add k0 p1
-a0 mul k 6
-a add a0 1
-loc sub a p3
-inpg lt loc 128
-inlim lt a p4
-ok and inpg inlim
-op get p2 loc
-ge32 ge op 32
-le37 le op 37
-c0 and ge32 le37
-c and ok c0
-f select c 1 p0
-ret f
-end
-# page p1 of the nodes p2: the operation word of node k is word 6k+1
-fn chkpage u32 u32 u32x128x128 u32 -> u32
-base mul p1 128
-pg get p2 p1
-r fold chkslot 22 p0 pg base p3
-ret r
-end
-# whether the profile p0 is strict (1) or one of the first p2 nodes of the table p1 is a checked op
-fn refuse u32 u32x128x128 u32 -> bool
-w mul p2 6
-w127 add w 127
-np shr w127 7
-r fold chkpage np 0 p1 w
-chk ne r 0
-st eq p0 1
-res or chk st
-ret res
 end
 # --- writers: page p1 of a table holding p3 words ------------------------------------------
 fn wstep384 io u32 u32x384 -> io

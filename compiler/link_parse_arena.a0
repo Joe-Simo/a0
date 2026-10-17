@@ -1,0 +1,625 @@
+# Private canonical POSIX link+parse composition. Parser schema1 remains unchanged.
+use "link_graph_arena.a0"
+use "link_strip_arena.a0"
+use "link_origins.a0"
+fn lc_lfbyte (u32,u32,io) u32 u32x128 -> (u32,u32,io)
+q0 at p0 0
+q1 at p0 1
+q2 get p2 p1
+q3 eq q2 10
+q4 select q3 1 0
+q5 add q1 q4
+q6 at p0 2
+q7 rec q0 q5 q6
+ret q7
+end
+fn lc_lfok (u32,u32,io) u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn lc_lfpage (u32,u32,io) u32 u32 u32 -> (u32,u32,io)
+base mul p1 128
+left sub p3 base
+q0 gt left 128
+n select q0 128 left
+q1 at p0 2
+r call arena_load q1 p2 base n
+q2 at r 0
+q3 eq q2 0
+q4 select q3 n 0
+q5 at r 0
+q6 at p0 1
+q7 at r 2
+q8 rec q5 q6 q7
+q9 at r 1
+q10 fold lc_lfbyte q4 q8 q9
+ret q10
+end
+fn lc_lines io u32 u32 -> (u32,u32,io)
+q0 div p2 128
+q1 rem p2 128
+q2 eq q1 0
+q3 select q2 0 1
+pages add q0 q3
+q4 rec 0 1 p0
+q5 loop lc_lfok lc_lfpage pages q4 p1 p2
+ret q5
+end
+fn lc_stripfile (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+p at p0 0
+q0 at p0 2
+q1 get p2 2
+q2 get p2 3
+q3 get p 86
+snapshot get p2 4
+r call link_strip q0 q1 q2 q3 snapshot
+q4 at r 1
+q5 at q4 0
+m0_a set p 80 q5
+q6 at q4 1
+m0_b set m0_a 81 q6
+q7 at q4 2
+q8 set m0_b 82 q7
+q9 at r 2
+q10 at q9 0
+m1_a set q8 83 q10
+q11 at q9 1
+m1_b set m1_a 84 q11
+q12 at q9 2
+q13 set m1_b 85 q12
+q14 at r 0
+q15 set q13 0 q14
+q16 at p0 1
+q17 at r 3
+q18 rec q15 q16 q17
+ret q18
+end
+fn lc_bound (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 eq p2 0
+sep select q0 0 1
+q1 get p 42
+left sub 2097152 q1
+q2 gt sep left
+q3 get p 81
+q4 sub left sep
+q5 gt q3 q4
+bad or q2 q5
+q6 get p 42
+q7 add q6 sep
+p_1 set p 87 q7
+q8 get p_1 5
+q9 select bad 4 q8
+p_2 set p_1 5 q9
+q10 at p0 1
+q11 at p0 2
+q12 rec p_2 q10 q11
+q13 select bad 623 0
+q14 call lk_fail q12 q13 4294967295 4294967295
+ret q14
+end
+fn lc_join (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 call arena_zero
+q1 set q0 0 10
+a call lk_append p0 41 1 q1
+q2 call arena_zero
+q3 get p 42
+row set q2 0 q3
+row_1 set row 1 1
+row_2 set row_1 2 4294967295
+q4 call lk_append a 44 4 row_2
+ret q4
+end
+fn lc_copyfile (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 at p0 2
+q1 get p 41
+q2 get p 42
+q3 get p 43
+q4 rec q1 q2 q3
+q5 get p 80
+q6 get p 81
+r call lp_copy q0 q4 q5 0 q6
+q7 at r 1
+q8 at q7 0
+m1_a set p 41 q8
+q9 at q7 1
+m1_b set m1_a 42 q9
+q10 at q7 2
+q11 set m1_b 43 q10
+q12 at r 0
+q13 set q11 0 q12
+q14 at p0 1
+q15 at r 2
+q16 rec q13 q14 q15
+ret q16
+end
+fn lc_addsegment (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 mul p1 4
+item call lk_read p0 83 q0 4
+p at item 0
+row at item 2
+q1 get row 0
+q2 get p 87
+q3 add q1 q2
+row_1 set row 0 q3
+q4 at item 1
+q5 at item 3
+q6 rec p q4 q5
+q7 call lk_append q6 44 4 row_1
+ret q7
+end
+fn lc_segments (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 84
+q1 div q0 4
+q2 loop lk_phaseok lc_addsegment q1 p0
+ret q2
+end
+fn lc_filemeta (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+p at p0 0
+q0 at p0 2
+q1 get p 80
+q2 get p 81
+r call lc_lines q0 q1 q2
+q3 at r 0
+p_1 set p 0 q3
+q4 at r 1
+p_2 set p_1 89 q4
+q5 get p_2 88
+q6 at r 1
+q7 add q5 q6
+p_3 set p_2 88 q7
+q8 get p_3 87
+data set p2 10 q8
+q9 at r 1
+data_1 set data 11 q9
+q10 at p0 1
+q11 at r 2
+q12 rec p_3 q10 q11
+q13 get p_3 86
+q14 mul q13 12
+saved call lk_store q12 32 q14 12 data_1
+q15 call arena_zero
+q16 get p_3 86
+directory set q15 0 q16
+q17 get p_3 88
+q18 at r 1
+q19 sub q17 q18
+directory_1 set directory 1 q19
+q20 at r 1
+directory_2 set directory_1 2 q20
+q21 get p_3 87
+directory_3 set directory_2 3 q21
+q22 call lk_append saved 50 4 directory_3
+ret q22
+end
+fn lc_file (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+order call lk_read p0 35 p1 1
+ids at order 2
+q0 at order 0
+q1 at order 1
+q2 at order 3
+q3 rec q0 q1 q2
+q4 get ids 0
+q5 mul q4 12
+meta call lk_read q3 32 q5 12
+row at meta 2
+q6 at meta 0
+q7 get ids 0
+p set q6 86 q7
+q8 get ids 0
+p_1 set p 15 q8
+q9 get p_1 0
+q10 eq q9 0
+q11 select q10 1 0
+q12 at meta 1
+q13 at meta 3
+q14 rec p_1 q12 q13
+a fold lc_stripfile q11 q14 row
+p_2 at a 0
+q15 get p_2 0
+q16 eq q15 0
+q17 select q16 1 0
+b fold lc_bound q17 a p1
+p_3 at b 0
+q18 get p_3 0
+q19 eq q18 0
+q20 ne p1 0
+q21 and q19 q20
+q22 select q21 1 0
+c fold lc_join q22 b
+p_4 at c 0
+q23 get p_4 0
+q24 eq q23 0
+q25 select q24 1 0
+d fold lc_copyfile q25 c
+p_5 at d 0
+q26 get p_5 0
+q27 eq q26 0
+q28 select q27 1 0
+e fold lc_segments q28 d
+p_6 at e 0
+q29 get p_6 0
+q30 eq q29 0
+q31 select q30 1 0
+q32 fold lc_filemeta q31 e row
+ret q32
+end
+fn lc_reparse (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 at p0 2
+q1 get p 41
+q2 get p 42
+r call arena_parse q0 q1 q2
+ps at r 1
+q3 at r 2
+ready call lv_parse_ready q3 ps
+good at ready 1
+q4 at r 0
+error eq q4 6
+q5 get p 11
+q6 eq q5 1
+q7 get ps 8
+pickedprofile select q6 1 q7
+q8 get ps 8
+q9 select good pickedprofile q8
+ps_1 set ps 8 q9
+q10 at ready 0
+q set p 0 q10
+q_1 set q 120 1
+q11 select good 1 0
+q_2 set q_1 121 q11
+q12 get ps_1 0
+q13 eq q12 7
+q14 and good q13
+q15 select q14 1 0
+q_3 set q_2 122 q15
+q16 get ps_1 1
+q17 get q_3 1
+q18 select error q16 q17
+q_4 set q_3 1 q18
+q19 get q_4 2
+q20 select error 4294967295 q19
+q_5 set q_4 2 q20
+q21 get q_5 3
+q22 select error 4294967295 q21
+q_6 set q_5 3 q22
+q23 get q_6 5
+q24 select error 5 q23
+q_7 set q_6 5 q24
+q25 get q_7 11
+q26 select good pickedprofile q25
+q_8 set q_7 11 q26
+q27 get ps_1 2
+q28 get q_8 95
+q29 select error q27 q28
+q_9 set q_8 95 q29
+q30 get ps_1 3
+q31 get q_9 96
+q32 select error q30 q31
+q_10 set q_9 96 q32
+q33 get ps_1 4
+q34 get q_10 97
+q35 select error q33 q34
+q_11 set q_10 97 q35
+q36 get ps_1 5
+q37 get q_11 98
+q38 select error q36 q37
+q_12 set q_11 98 q38
+q39 get ps_1 95
+q40 get q_12 99
+q41 select error q39 q40
+q_13 set q_12 99 q41
+q42 at ready 2
+q43 rec q_13 ps_1 q42
+ret q43
+end
+fn lc_span (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 at p0 2
+q1 get p 44
+q2 get p 45
+q3 get p 46
+q4 rec q1 q2 q3
+q5 get p 100
+q6 get p 101
+q7 get p 102
+q8 rec q5 q6 q7
+r call lc_project q0 q4 p2 p3 q8
+q9 at r 1
+q10 at q9 0
+m2_a set p 100 q10
+q11 at q9 1
+m2_b set m2_a 101 q11
+q12 at q9 2
+q13 set m2_b 102 q12
+q14 at r 0
+q set q13 0 q14
+q15 call arena_zero
+row set q15 0 p2
+row_1 set row 1 p3
+q16 at r 2
+row_2 set row_1 2 q16
+q17 at r 3
+row_3 set row_2 3 q17
+q18 at p0 1
+q19 at r 4
+q20 rec q q18 q19
+q21 call lk_append q20 p1 4 row_3
+ret q21
+end
+fn lc_functionspan (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+q0 get p2 3
+q1 get p2 4
+q2 call lc_span p0 53 q0 q1
+ret q2
+end
+fn lc_functionorigin (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 mul p1 14
+f call lk_pread p0 41 q0 14
+fnrow at f 2
+q1 at f 0
+q2 at f 1
+q3 at f 3
+q4 rec q1 q2 q3
+q5 get fnrow 7
+q6 mul q5 10
+l call lk_pread q4 32 q6 10
+row at l 2
+p at l 0
+q7 get p 0
+q8 eq q7 0
+q9 select q8 1 0
+q10 at l 1
+q11 at l 3
+q12 rec p q10 q11
+q13 fold lc_functionspan q9 q12 row
+ret q13
+end
+fn lc_nodeid (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+q0 get p2 7
+q1 get p2 8
+q2 call lc_span p0 56 q0 q1
+ret q2
+end
+fn lc_nodeop (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+q0 get p2 9
+q1 get p2 10
+q2 call lc_span p0 56 q0 q1
+ret q2
+end
+fn lc_nodeorigin (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 mul p1 14
+r call lk_pread p0 44 q0 14
+row at r 2
+p at r 0
+q1 get p 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 at r 1
+q5 at r 3
+q6 rec p q4 q5
+a fold lc_nodeid q3 q6 row
+q at a 0
+q7 get q 0
+q8 eq q7 0
+q9 select q8 1 0
+q10 fold lc_nodeop q9 a row
+ret q10
+end
+fn lc_operandspan (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+q0 get p2 2
+q1 get p2 3
+q2 call lc_span p0 74 q0 q1
+ret q2
+end
+fn lc_operandorigin (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 mul p1 5
+r call lk_pread p0 47 q0 5
+p at r 0
+q1 get p 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 at r 1
+q5 at r 3
+q6 rec p q4 q5
+q7 at r 2
+q8 fold lc_operandspan q3 q6 q7
+ret q8
+end
+fn lc_specspan (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+q0 get p2 3
+q1 get p2 4
+q2 call lc_span p0 77 q0 q1
+ret q2
+end
+fn lc_specorigin (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 mul p1 6
+r call lk_pread p0 56 q0 6
+p at r 0
+q1 get p 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 at r 1
+q5 at r 3
+q6 rec p q4 q5
+q7 at r 2
+q8 fold lc_specspan q3 q6 q7
+ret q8
+end
+fn lc_linespan (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+q0 get p2 1
+q1 get p2 2
+q2 call lc_span p0 103 q0 q1
+ret q2
+end
+fn lc_lineorigin (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 mul p1 10
+r call lk_pread p0 32 q0 10
+p at r 0
+q1 get p 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 at r 1
+q5 at r 3
+q6 rec p q4 q5
+q7 at r 2
+q8 fold lc_linespan q3 q6 q7
+ret q8
+end
+fn lc_usespan (u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,io)
+q0 get p2 0
+q1 get p2 1
+q2 call lc_span p0 106 q0 q1
+ret q2
+end
+fn lc_useorigin (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 mul p1 3
+r call lk_pread p0 53 q0 3
+p at r 0
+q1 get p 0
+q2 eq q1 0
+q3 select q2 1 0
+q4 at r 1
+q5 at r 3
+q6 rec p q4 q5
+q7 at r 2
+q8 fold lc_usespan q3 q6 q7
+ret q8
+end
+fn lc_origins (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+ps at p0 1
+q0 get ps 42
+q1 div q0 14
+a loop lk_phaseok lc_functionorigin q1 p0
+q2 get ps 45
+q3 div q2 14
+b loop lk_phaseok lc_nodeorigin q3 a
+q4 get ps 48
+q5 div q4 5
+c loop lk_phaseok lc_operandorigin q5 b
+q6 get ps 57
+q7 div q6 6
+d loop lk_phaseok lc_specorigin q7 c
+q8 get ps 33
+q9 div q8 10
+e loop lk_phaseok lc_lineorigin q9 d
+q10 get ps 54
+q11 div q10 3
+q12 loop lk_phaseok lc_useorigin q11 e
+ret q12
+end
+fn lc_diagline (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 mul p1 4
+r call lk_read p0 50 q0 4
+row at r 2
+p at r 0
+q1 get p 95
+q2 get row 1
+q3 ge q1 q2
+q4 get row 1
+q5 sub q1 q4
+q6 get row 2
+q7 lt q5 q6
+inside and q3 q7
+q8 get row 0
+q9 get p 2
+q10 select inside q8 q9
+q set p 2 q10
+q11 get row 0
+q12 get p 115
+q13 select inside q11 q12
+q_1 set q 115 q13
+q14 get row 1
+q15 sub q1 q14
+q16 add q15 1
+q17 get p 116
+q18 select inside q16 q17
+q_2 set q_1 116 q18
+q19 at r 1
+q20 at r 3
+q21 rec q_2 q19 q20
+ret q21
+end
+fn lc_diagspan (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 96
+q1 get p 97
+q2 call lc_span p0 109 q0 q1
+ret q2
+end
+fn lc_diagnostic (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 0
+p_1 set p 0 0
+p_2 set p_1 115 4294967295
+q1 get p_2 95
+p_3 set p_2 117 q1
+q2 get p_3 96
+p_4 set p_3 118 q2
+q3 get p_4 97
+p_5 set p_4 119 q3
+q4 get p_5 51
+q5 div q4 4
+q6 at p0 1
+q7 at p0 2
+q8 rec p_5 q6 q7
+a loop lk_phaseok lc_diagline q5 q8
+q at a 0
+q9 get q 0
+q10 eq q9 0
+q11 select q10 1 0
+b fold lc_diagspan q11 a
+q_1 at b 0
+q12 get q_1 0
+q13 eq q12 0
+q14 get q_1 0
+q15 select q13 q0 q14
+q16 set q_1 0 q15
+q17 at b 1
+q18 at b 2
+q19 rec q16 q17 q18
+ret q19
+end
+fn lc_linkparse io u32 u32 u32 u32 bool u32 bool u32 -> (u32x128,u32x128,io)
+graph call lk_graph p0 p1 p2 p3 p4 p5 p6 p7 p8
+q0 at graph 0
+p set q0 94 2
+p_1 set p 88 1
+q1 get p_1 36
+q2 at graph 1
+q3 at graph 2
+q4 rec p_1 q2 q3
+combined loop lk_phaseok lc_file q1 q4
+p_2 at combined 0
+q5 get p_2 0
+q6 eq q5 0
+q7 select q6 1 0
+parsed fold lc_reparse q7 combined
+p_3 at parsed 0
+q8 get p_3 0
+q9 eq q8 0
+q10 select q9 1 0
+mapped fold lc_origins q10 parsed
+p_4 at mapped 0
+q11 get p_4 0
+q12 eq q11 6
+q13 get p_4 5
+q14 eq q13 5
+q15 and q12 q14
+q16 select q15 1 0
+q17 fold lc_diagnostic q16 mapped
+ret q17
+end
+fn arena_link_parse io u32 u32 u32 u32 bool u32 bool u32 -> (u32,u32x128,u32x128,io)
+r call lc_linkparse p0 p1 p2 p3 p4 p5 p6 p7 p8
+p at r 0
+q0 get p 0
+q1 at r 1
+q2 at r 2
+q3 rec q0 q1 p q2
+ret q3
+end

@@ -962,6 +962,37 @@ export function denseNodeTexts(
   return out;
 }
 
+/** Array-pool entries at each expression-frame depth in the default dense spelling. */
+export function denseArrayRegionCosts(
+  program: Program,
+  known: ReadonlyMap<string, number>,
+): ReadonlyMap<string, readonly number[]> {
+  const ctx = contextFor(program, { known });
+  const costs = new Map<string, readonly number[]>();
+  for (const fn of program.functions) {
+    const plan = planFunction(fn, ctx);
+    const regions: number[] = [];
+    const pending = plan.roots.map((k) => ({ k, depth: 0 }));
+    while (pending.length > 0) {
+      const { k, depth } = pending.pop() as { k: number; depth: number };
+      const node = fn.nodes[k] as Node;
+      // Text uses the source token, not the literal-element pool. Small records stay in the frame.
+      if (
+        (node.op === 'arr' && node.text === undefined) ||
+        (node.op === 'rec' && node.args.length > 4)
+      )
+        regions[depth] = (regions[depth] ?? 0) + node.args.length;
+      for (const child of plan.nest[k] ?? [])
+        if (child !== undefined) pending.push({ k: child, depth: depth + 1 });
+    }
+    costs.set(
+      fn.name,
+      Array.from({ length: regions.length }, (_, i) => regions[i] ?? 0),
+    );
+  }
+  return costs;
+}
+
 /** One function in dense form (callable only inside the program it belongs to). */
 export function formatDenseFunction(
   fn: Func,

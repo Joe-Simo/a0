@@ -1,0 +1,828 @@
+# Immutable structural type records backed by invocation-local generic word arenas.
+# H=(types,children,symbolInterner), vectors=(handle,length,capacity).
+# Type record5 words: kind,a,b,containsIo,widthCache. kinds0u32,1bool,2io,3arr,4rec.
+# Arrays a=elementID,b=length; records a=childrenStart,b=fieldCount.
+# Pure widthCache=min(actual,2097153); IO widthCache=0. This cache is not type identity.
+# Source spans and all IDs are full u32. Parse stack/field buffers grow in A0.
+use "symbol_arena.a0"
+fn tp_bytes u32x128 u32 u32x128 -> u32x128
+q0 div p1 4
+q1 get p2 q0
+q2 rem p1 4
+q3 mul q2 8
+q4 shr q1 q3
+byte and q4 255
+q5 set p0 p1 byte
+ret q5
+end
+fn tp_storekey io u32 u32 u32 u32x128 -> (u32,io)
+z call arena_zero
+q0 mul p3 4
+bytes fold tp_bytes q0 z p4
+q1 mul p3 4
+q2 call arena_store p0 p1 p2 q1 bytes
+ret q2
+end
+fn tp_keymore (u32,io) u32 u32 (u32,u32,u32) u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn tp_keypage (u32,io) u32 u32 (u32,u32,u32) u32 u32 -> (u32,io)
+base mul p1 32
+remain sub p5 base
+q0 gt remain 32
+n select q0 32 remain
+q1 at p0 1
+q2 add p4 base
+r call av_load q1 p3 q2 n
+q3 at r 2
+q4 mul base 4
+q5 add 8 q4
+q6 at r 0
+q7 eq q6 0
+q8 select q7 n 0
+q9 at r 1
+out call tp_storekey q3 p2 q5 q8 q9
+q10 at r 0
+q11 eq q10 0
+q12 at out 0
+q13 at r 0
+q14 select q11 q12 q13
+q15 at out 1
+q16 rec q14 q15
+ret q16
+end
+fn tp_buildkey (u32,u32,io) u32 u32 u32 u32 (u32,u32,u32) u32 -> (u32,u32,io)
+z call arena_zero
+p set z 0 p2
+q0 eq p2 4
+q1 select q0 p4 p3
+q set p 1 q1
+words set q 2 p4
+q2 eq p2 4
+q3 eq p2 3
+q4 select q3 3 1
+n select q2 2 q4
+q5 at p0 2
+q6 at p0 1
+r call tp_storekey q5 q6 0 n words
+q7 div p4 32
+q8 rem p4 32
+q9 eq q8 0
+q10 select q9 0 1
+pages add q7 q10
+q11 eq p2 4
+q12 at r 0
+q13 eq q12 0
+q14 and q11 q13
+q15 select q14 pages 0
+q16 at p0 1
+done loop tp_keymore tp_keypage q15 r q16 p5 p6 p4
+q17 at done 0
+q18 at p0 1
+q19 at done 1
+q20 rec q17 q18 q19
+ret q20
+end
+fn tp_key io u32 u32 u32 (u32,u32,u32) u32 -> (u32,u32,u32,io)
+q0 ne p1 4
+q1 le p3 1073741821
+valid or q0 q1
+q2 eq p1 4
+q3 mul p3 4
+q4 add 8 q3
+q5 eq p1 3
+q6 select q5 12 4
+n select q2 q4 q6
+q7 select valid n 0
+allocated call arena_alloc p0 q7
+q8 at allocated 0
+code select valid q8 3
+q9 eq code 0
+q10 select q9 1 0
+q11 at allocated 1
+q12 at allocated 2
+q13 rec code q11 q12
+r fold tp_buildkey q10 q13 p1 p2 p3 p4 p5
+q14 at r 0
+q15 at r 1
+q16 at r 2
+q17 rec q14 q15 n q16
+ret q17
+end
+fn tp_statmore (u32,u32,u32,io) u32 (u32,u32,u32) (u32,u32,u32) u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn tp_statfield (u32,u32,u32,io) u32 (u32,u32,u32) (u32,u32,u32) u32 -> (u32,u32,u32,io)
+q0 at p0 3
+q1 add p4 p1
+r call av_load q0 p3 q1 1
+p at r 1
+q2 get p 0
+q3 at r 2
+q4 mul q2 5
+q5 at r 0
+q6 eq q5 0
+q7 select q6 5 0
+e call av_load q3 p2 q4 q7
+q at e 1
+q8 at r 0
+q9 eq q8 0
+q10 at e 0
+q11 at r 0
+code select q9 q10 q11
+q12 at p0 1
+q13 get q 3
+contains or q12 q13
+q14 at p0 2
+q15 get q 4
+sum add q14 q15
+q16 gt sum 2097153
+width select q16 2097153 sum
+q17 ne contains 0
+q18 select q17 0 width
+q19 at e 2
+q20 rec code contains q18 q19
+ret q20
+end
+fn tp_arraystat (u32,u32,u32,io) u32 (u32,u32,u32) u32 u32 -> (u32,u32,u32,io)
+q0 at p0 3
+q1 mul p3 5
+r call av_load q0 p2 q1 5
+p at r 1
+q2 get p 4
+q3 eq q2 0
+q4 div 2097152 q2
+q5 le p4 q4
+bounded or q3 q5
+q6 mul q2 p4
+bits select bounded q6 2097153
+q7 at r 0
+q8 get p 3
+q9 get p 3
+q10 ne q9 0
+q11 select q10 0 bits
+q12 at r 2
+q13 rec q7 q8 q11 q12
+ret q13
+end
+fn tp_copymore (u32,(u32,u32,u32),io) u32 (u32,u32,u32) u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn tp_copyfields (u32,(u32,u32,u32),io) u32 (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),io)
+base mul p1 128
+remaining sub p4 base
+q0 gt remaining 128
+n select q0 128 remaining
+q1 at p0 2
+q2 add p3 base
+r call av_load q1 p2 q2 n
+q3 at r 2
+q4 at p0 1
+q5 at r 0
+q6 eq q5 0
+q7 select q6 n 0
+q8 at r 1
+x call av_append q3 q4 q7 q8
+q9 at r 0
+q10 eq q9 0
+q11 at x 0
+q12 at r 0
+q13 select q10 q11 q12
+q14 at x 1
+q15 at x 2
+q16 rec q13 q14 q15
+ret q16
+end
+fn tp_publish (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,io) u32 u32 u32 u32 (u32,u32,u32) u32 u32 u32 u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,io)
+h at p0 1
+oldtypes at h 0
+oldchildren at h 1
+q0 at oldtypes 1
+count div q0 5
+isrec eq p2 4
+add select isrec p4 0
+q1 at oldtypes 1
+q2 le q1 4294967290
+q3 at oldchildren 1
+q4 sub 4294967295 q3
+q5 le add q4
+valid and q2 q5
+q6 at p0 3
+q7 at oldtypes 1
+q8 add q7 5
+q9 select valid q8 0
+reserved call av_reserve q6 oldtypes q9
+q10 at reserved 2
+q11 at oldchildren 1
+q12 add q11 add
+q13 select valid q12 0
+c call av_reserve q10 oldchildren q13
+q14 at reserved 0
+q15 eq q14 0
+q16 at c 0
+q17 at reserved 0
+q18 select q15 q16 q17
+code select valid q18 3
+q19 div p4 128
+q20 rem p4 128
+q21 eq q20 0
+q22 select q21 0 1
+pages add q19 q22
+q23 eq code 0
+q24 and isrec q23
+q25 select q24 pages 0
+q26 at c 1
+q27 at c 2
+q28 rec code q26 q27
+children loop tp_copymore tp_copyfields q25 q28 p5 p6 p4
+z call arena_zero
+p set z 0 p2
+q29 at oldchildren 1
+q30 select isrec q29 p3
+q set p 1 q30
+r set q 2 p4
+v set r 3 p9
+entry set v 4 p10
+q31 at children 2
+q32 at reserved 1
+q33 at children 0
+q34 eq q33 0
+q35 select q34 5 0
+tr call av_append q31 q32 q35 entry
+q36 at children 0
+q37 eq q36 0
+q38 at tr 0
+q39 at children 0
+status select q37 q38 q39
+q40 at tr 1
+q41 at children 1
+q42 at h 2
+q43 rec q40 q41 q42
+q44 at tr 2
+q45 rec status q43 count q44
+ret q45
+end
+fn tp_symbols (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,io) u32 ((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)) u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,io)
+h at p0 1
+q0 at p0 3
+q1 at p2 2
+r call si_intern q0 q1 p3 0 p4
+count at p0 2
+q2 at r 2
+good le q2 count
+q3 at r 0
+q4 eq q3 0
+q5 select good 0 1
+q6 at r 0
+status select q4 q5 q6
+q7 at h 0
+q8 at h 1
+q9 at r 1
+q10 at r 2
+q11 eq q10 count
+q12 eq status 0
+q13 and q11 q12
+q14 rec q7 q8 q9
+result select q13 q14 p2
+q15 at r 2
+q16 at r 3
+q17 rec status result q15 q16
+ret q17
+end
+fn tp_intern io ((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)) u32 u32 u32 (u32,u32,u32) u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,io)
+key call tp_key p0 p2 p3 p4 p5 p6
+q0 eq p2 2
+initialio select q0 1 0
+q1 eq p2 0
+q2 eq p2 1
+q3 select q2 1 0
+initialwidth select q1 32 q3
+q4 eq p2 4
+q5 at key 0
+q6 eq q5 0
+q7 and q4 q6
+q8 select q7 p4 0
+q9 at key 0
+q10 at key 3
+q11 rec q9 initialio initialwidth q10
+q12 at p1 0
+stats loop tp_statmore tp_statfield q8 q11 q12 p5 p6
+q13 eq p2 3
+q14 at stats 0
+q15 eq q14 0
+q16 and q13 q15
+q17 select q16 1 0
+q18 at p1 0
+cache fold tp_arraystat q17 stats q18 p3 p4
+q19 at cache 0
+q20 eq q19 0
+q21 select q20 1 0
+q22 at cache 0
+q23 at cache 3
+q24 rec q22 p1 0 q23
+q25 at key 1
+q26 at key 2
+q27 at cache 1
+q28 at cache 2
+prepared fold tp_publish q21 q24 p2 p3 p4 p5 p6 q25 q26 q27 q28
+q29 at prepared 0
+q30 eq q29 0
+q31 select q30 1 0
+q32 at key 1
+q33 at key 2
+out fold tp_symbols q31 prepared p1 q32 q33
+q34 at out 0
+q35 at out 0
+q36 eq q35 0
+q37 at out 1
+q38 select q36 q37 p1
+q39 at out 2
+q40 at out 3
+q41 rec q34 q38 q39 q40
+ret q41
+end
+fn tp_initmore (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),io) u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn tp_init (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),io) u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),io)
+q0 at p0 2
+q1 at p0 1
+q2 rec 0 0 0
+r call tp_intern q0 q1 p1 0 0 q2 0
+q3 at r 0
+q4 at r 1
+q5 at r 3
+q6 rec q3 q4 q5
+ret q6
+end
+fn tp_new io -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),io)
+si call si_new p0
+q0 rec 0 0 0
+q1 rec 0 0 0
+q2 rec 0 0 0
+q3 rec q2 0 0 0
+q4 rec 0 0 0
+q5 rec 0 0 0
+q6 at si 1
+q7 at si 0
+q8 rec q4 q5 q6
+q9 at si 2
+q10 rec q7 q8 q9
+r loop tp_initmore tp_init 3 q10
+q11 at r 0
+q12 at r 0
+q13 eq q12 0
+q14 at r 1
+q15 rec q0 q1 q3
+q16 select q13 q14 q15
+q17 at r 2
+q18 rec q11 q16 q17
+ret q18
+end
+fn tp_charload (u32,u32,io) u32 u32 u32 u32 -> (u32,u32,io)
+q0 at p0 2
+q1 add p3 p4
+r call arena_load q0 p2 q1 1
+p at r 1
+q2 at r 0
+q3 get p 0
+q4 at r 2
+q5 rec q2 q3 q4
+ret q5
+end
+fn tp_char io u32 u32 u32 u32 -> (u32,u32,io)
+q0 lt p4 p3
+q1 select q0 1 0
+q2 rec 0 256 p0
+q3 fold tp_charload q1 q2 p1 p2 p4
+ret q3
+end
+fn tp_prefixload (u32,u32x128,io) u32 u32 u32 u32 u32 -> (u32,u32x128,io)
+q0 at p0 2
+q1 add p3 p4
+q2 call arena_load q0 p2 q1 p5
+ret q2
+end
+fn tp_open (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io) u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io)
+z call arena_zero
+q0 at p0 7
+q1 at q0 1
+p set z 0 q1
+q2 at p0 8
+q3 at p0 6
+r call av_append q2 q3 1 p
+q4 at r 0
+q5 at p0 1
+q6 at p0 4
+q7 add q6 1
+q8 at r 1
+q9 at p0 7
+q10 at r 2
+q11 rec q4 q5 0 0 q7 0 q8 q9 q10
+ret q11
+end
+fn tp_primitive (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 add q2 p3
+q4 at p0 6
+q5 at p0 7
+q6 at p0 8
+q7 rec q0 q1 p2 0 q3 1 q4 q5 q6
+ret q7
+end
+fn tp_base (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 4
+remain sub p4 q0
+q1 gt remain 4
+n select q1 4 remain
+z call arena_zero
+q2 gt n 0
+q3 select q2 1 0
+q4 at p0 8
+q5 rec 0 z q4
+q6 at p0 4
+read fold tp_prefixload q3 q5 p2 p3 q6 n
+p at read 1
+q7 ge n 3
+q8 get p 0
+q9 eq q8 117
+q10 and q7 q9
+q11 get p 1
+q12 eq q11 51
+q13 and q10 q12
+q14 get p 2
+q15 eq q14 50
+u and q13 q15
+q16 ge n 4
+q17 get p 0
+q18 eq q17 98
+q19 and q16 q18
+q20 get p 1
+q21 eq q20 111
+q22 and q19 q21
+q23 get p 2
+q24 eq q23 111
+q25 and q22 q24
+q26 get p 3
+q27 eq q26 108
+b and q25 q27
+q28 ge n 2
+q29 get p 0
+q30 eq q29 105
+q31 and q28 q30
+q32 get p 1
+q33 eq q32 111
+io and q31 q33
+q34 gt n 0
+q35 get p 0
+q36 eq q35 40
+open and q34 q36
+q37 or u b
+q38 or q37 io
+found or q38 open
+q39 at read 0
+q40 eq q39 0
+q41 select found 0 6
+q42 at read 0
+code select q40 q41 q42
+q43 at p0 1
+q44 eq code 6
+q45 select q44 1 0
+q46 at p0 4
+q47 at p0 6
+q48 at p0 7
+q49 at read 2
+q50 select b 1 0
+id select io 2 q50
+q51 select b 4 3
+size select io 2 q51
+q52 eq code 0
+q53 xor open true
+q54 and q52 q53
+q55 select q54 1 0
+q56 rec code q43 0 q45 q46 0 q47 q48 q49
+scalar fold tp_primitive q55 q56 id size
+q57 eq code 0
+q58 and q57 open
+q59 select q58 1 0
+q60 fold tp_open q59 scalar
+ret q60
+end
+fn tp_digitmore (u32,u32,u32,u32,bool,io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 4
+q3 and q1 q2
+ret q3
+end
+fn tp_digit (u32,u32,u32,u32,bool,io) u32 u32 u32 u32 -> (u32,u32,u32,u32,bool,io)
+q0 at p0 5
+q1 at p0 1
+r call tp_char q0 p2 p3 p4 q1
+q2 at r 1
+q3 ge q2 48
+q4 at r 1
+q5 le q4 57
+digit and q3 q5
+q6 at p0 2
+q7 mul q6 10
+q8 at r 1
+q9 add q7 q8
+value sub q9 48
+q10 at p0 2
+q11 gt q10 65536
+q12 gt value 65536
+q13 select q12 65537 value
+bounded select q11 65537 q13
+q14 at r 0
+q15 at p0 1
+q16 add q15 1
+q17 at p0 1
+q18 select digit q16 q17
+q19 at p0 2
+q20 select digit bounded q19
+q21 at p0 3
+q22 select digit 1 0
+q23 add q21 q22
+q24 at r 2
+q25 rec q14 q18 q20 q23 digit q24
+ret q25
+end
+fn tp_arrayintern (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,io) u32 u32 u32 (u32,u32,u32) -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,io)
+q0 at p0 3
+q1 at p0 1
+q2 call tp_intern q0 q1 3 p2 p3 p4 0
+ret q2
+end
+fn tp_array (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 8
+q1 at p0 4
+q2 add q1 1
+first call tp_char q0 p2 p3 p4 q2
+q3 at first 1
+q4 ge q3 49
+q5 at first 1
+q6 le q5 57
+starts and q4 q6
+q7 at first 0
+q8 at p0 4
+q9 add q8 1
+q10 at first 2
+q11 rec q7 q9 0 0 starts q10
+digits loop tp_digitmore tp_digit p4 q11 p2 p3 p4
+q12 at digits 5
+q13 at p0 1
+q14 at q13 0
+q15 at p0 2
+q16 mul q15 5
+q17 at digits 0
+q18 eq q17 0
+q19 select q18 5 0
+r call av_load q12 q14 q16 q19
+p at r 1
+q20 xor starts true
+q21 at digits 2
+q22 gt q21 65536
+q23 get p 3
+q24 ne q23 0
+q25 select q24 5 0
+q26 select q22 4 q25
+reason select q20 3 q26
+q27 at digits 0
+q28 eq q27 0
+q29 at r 0
+q30 eq q29 0
+q31 eq reason 0
+q32 select q31 0 6
+q33 at r 0
+q34 select q30 q32 q33
+q35 at digits 0
+code select q28 q34 q35
+q36 eq code 0
+q37 select q36 1 0
+q38 at p0 1
+q39 at p0 2
+q40 at r 2
+q41 rec code q38 q39 q40
+q42 at p0 2
+q43 at digits 2
+q44 rec 0 0 0
+interned fold tp_arrayintern q37 q41 q42 q43 q44
+q45 eq reason 3
+q46 eq reason 4
+q47 or q45 q46
+q48 at p0 4
+q49 at digits 1
+pos select q47 q48 q49
+q50 at interned 0
+q51 at interned 1
+q52 at interned 2
+q53 at p0 6
+q54 at p0 7
+q55 at interned 3
+q56 rec q50 q51 q52 reason pos 1 q53 q54 q55
+ret q56
+end
+fn tp_recordintern (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,io) u32 (u32,u32,u32) u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,io)
+q0 at p0 3
+q1 at p0 1
+q2 call tp_intern q0 q1 4 0 p4 p2 p3
+ret q2
+end
+fn tp_field (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io)
+z call arena_zero
+q0 at p0 2
+p set z 0 q0
+q1 at p0 8
+q2 at p0 7
+field call av_append q1 q2 1 p
+stack at p0 6
+q3 at field 2
+q4 at stack 1
+q5 sub q4 1
+q6 at field 0
+q7 eq q6 0
+q8 select q7 1 0
+read call av_load q3 stack q5 q8
+frame at read 1
+q9 get frame 0
+close eq p2 41
+comma eq p2 44
+q10 or close comma
+reason select q10 0 2
+q11 at field 0
+q12 eq q11 0
+q13 at read 0
+q14 eq q13 0
+q15 eq reason 0
+q16 select q15 0 6
+q17 at read 0
+q18 select q14 q16 q17
+q19 at field 0
+code select q12 q18 q19
+fields at field 1
+q20 eq code 0
+q21 and q20 close
+q22 select q21 1 0
+q23 at p0 1
+q24 at p0 2
+q25 at read 2
+q26 rec code q23 q24 q25
+q27 at fields 1
+q28 sub q27 q9
+interned fold tp_recordintern q22 q26 fields q9 q28
+q29 at interned 0
+q30 eq q29 0
+q31 and close q30
+q32 at stack 0
+q33 at stack 1
+q34 sub q33 1
+q35 at stack 2
+q36 rec q32 q34 q35
+nextstack select q31 q36 stack
+q37 at interned 0
+q38 eq q37 0
+q39 and close q38
+q40 at fields 0
+q41 at fields 2
+q42 rec q40 q9 q41
+nextfields select q39 q42 fields
+q43 eq reason 0
+q44 at p0 4
+q45 add q44 1
+q46 at p0 4
+nextpos select q43 q45 q46
+q47 at interned 0
+q48 at interned 1
+q49 at interned 2
+q50 select close 1 0
+q51 at interned 3
+q52 rec q47 q48 q49 reason nextpos q50 nextstack nextfields q51
+ret q52
+end
+fn tp_complete (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 8
+q1 at p0 1
+q2 at q1 0
+q3 at p0 2
+q4 mul q3 5
+r call av_load q0 q2 q4 5
+p at r 1
+q5 get p 3
+q6 eq q5 0
+q7 get p 4
+q8 gt q7 2097152
+too and q6 q8
+q9 at p0 6
+q10 at q9 1
+root eq q10 0
+q11 at p0 4
+q12 ne q11 p3
+q13 and root q12
+q14 select q13 7 0
+reason select too 6 q14
+q15 at r 0
+q16 eq q15 0
+q17 eq reason 0
+q18 select q17 0 6
+q19 at r 0
+code select q16 q18 q19
+q20 at p0 1
+q21 at p0 2
+q22 at p0 4
+q23 select root 2 1
+q24 at p0 6
+q25 at p0 7
+q26 at r 2
+q27 eq code 0
+q28 xor root true
+q29 and q27 q28
+q30 select q29 1 0
+q31 rec code q20 q21 reason q22 q23 q24 q25 q26
+q32 fold tp_field q30 q31 p2
+ret q32
+end
+fn tp_suffix (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 8
+q1 at p0 4
+r call tp_char q0 p2 p3 p4 q1
+q2 at r 0
+q3 at p0 1
+q4 at p0 2
+q5 at p0 4
+q6 at p0 6
+q7 at p0 7
+q8 at r 2
+q9 at r 0
+q10 eq q9 0
+q11 at r 1
+q12 eq q11 120
+array and q10 q12
+q13 select array 1 0
+q14 rec q2 q3 q4 0 q5 1 q6 q7 q8
+a fold tp_array q13 q14 p2 p3 p4
+q15 at r 0
+q16 eq q15 0
+q17 xor array true
+q18 and q16 q17
+q19 select q18 1 0
+q20 at r 1
+q21 fold tp_complete q19 a q20 p4
+ret q21
+end
+fn tp_more (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 5
+q3 ne q2 2
+q4 and q1 q3
+ret q4
+end
+fn tp_step (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 5
+base eq q0 0
+q1 select base 1 0
+r fold tp_base q1 p0 p2 p3 p4
+q2 xor base true
+q3 select q2 1 0
+q4 fold tp_suffix q3 r p2 p3 p4
+ret q4
+end
+fn tp_parse io ((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)) u32 u32 u32 -> (u32,((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32)),u32,u32,u32,io)
+q0 sub 4294967295 p3
+q1 le p4 q0
+code select q1 0 3
+q2 le p4 1431655763
+q3 mul p4 3
+q4 add q3 4
+steps select q2 q4 4294967295
+q5 rec 0 0 0
+q6 rec 0 0 0
+q7 rec code p1 0 0 0 0 q5 q6 p0
+r loop tp_more tp_step steps q7 p2 p3 p4
+q8 at r 0
+q9 eq q8 0
+q10 at r 5
+q11 ne q10 2
+q12 and q9 q11
+q13 at r 0
+status select q12 3 q13
+q14 at r 1
+q15 at r 2
+q16 at r 3
+q17 at r 4
+q18 add p3 q17
+q19 at r 8
+q20 rec status q14 q15 q16 q18 q19
+ret q20
+end

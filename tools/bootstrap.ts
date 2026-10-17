@@ -34,6 +34,7 @@ import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 import { C_IO_INPUT_CAPACITY, C_IO_OUTPUT_CAPACITY, compile } from '../src/backends.js';
 import {
+  CHECKED_OPS,
   type Func,
   formatFunction,
   formatProgram,
@@ -223,6 +224,14 @@ export function planChunks(src: string): Chunk[] {
   const types: string[] = [];
   for (const f of fns)
     for (const t of headerTypes(signature(f))) if (!types.includes(t)) types.push(t);
+  // This builtin result type can occur only inside a body. Intern it consistently across
+  // chunks so the C emitter can name its typedef even when every public result is scalar.
+  if (fns.some((f) => f.nodes.some((n) => CHECKED_OPS.has(n.op))) && !types.includes('(u32,bool)'))
+    types.push('(u32,bool)');
+  // A read also constructs a builtin tuple that need not appear in any signature.
+  // Every chunk must intern it before checking bodies so typedef IDs stay identical.
+  if (fns.some((f) => f.nodes.some((n) => n.op === 'read')) && !types.includes('(u32,io)'))
+    types.push('(u32,io)');
   const prelude = `fn ${PRELUDE} ${types.join(' ')} -> u32\nret 0\nend\n`;
   const index = new Map(fns.map((f, i) => [f.name, i] as const));
   const text = fns.map((f) => `${formatFunction(f)}\n`);
@@ -379,8 +388,9 @@ export async function buildStage(
   name: string,
   c: string,
   entry = 'emitchunkio',
+  buildDir = BUILD_DIR,
 ): Promise<[string, number]> {
-  const dir = join(BUILD_DIR, name);
+  const dir = join(buildDir, name);
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'emitter.c'), c, 'utf8');
   await writeFile(join(dir, 'main.c'), stageMain(entry), 'utf8');

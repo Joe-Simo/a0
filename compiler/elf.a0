@@ -1,0 +1,93 @@
+# ELF64 static Linux executable writer. machine62=x86_64,183=aarch64.
+# Code begins at256 for BOTH one/two program headers; callers relocate against0x400100.
+# The reference's old128 offset overlaps its optional second56-byte program header.
+# Input/output are mutable byte vectors (handle,length,capacity). No packed offsets or fixed tables.
+# entry0 is accepted for empty code, matching the reference writer's max(1,length) contract.
+use "executable_bytes.a0"
+fn elf_phdr (u32,(u32,u32,u32),io) u32 u32 u32 u32 u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+a fold ew_u32 1 p0 p2 1
+x add p2 4
+b fold ew_u32 1 a x p3
+x1 add p2 8
+c fold ew_u64 1 b x1 p4 0
+x2 add p2 16
+d fold ew_u64 1 c x2 p5 p6
+x3 add p2 24
+e fold ew_u64 1 d x3 p5 p6
+x4 add p2 32
+f fold ew_u64 1 e x4 p7 0
+x5 add p2 40
+g fold ew_u64 1 f x5 p8 p9
+x6 add p2 48
+h fold ew_u64 1 g x6 4096 0
+ret h
+end
+fn elf_bss (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+mod and p2 4095
+aligned eq mod 0
+delta select aligned 4096 8192
+extra add 4194304 delta
+addr add p2 extra
+carry lt addr p2
+high select carry 1 0
+r fold elf_phdr 1 p0 120 6 p2 addr high 0 p3 p4
+ret r
+end
+fn elf_build_valid (u32,(u32,u32,u32),io) u32 (u32,u32,u32) u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+t at p0 2
+len at p2 1
+size add len 256
+out call ew_new t size
+a fold ew_u32 1 out 0 1179403647
+b fold ew_u32 1 a 4 65794
+c fold ew_u16 1 b 16 2
+d fold ew_u16 1 c 18 p3
+e fold ew_u32 1 d 20 1
+entry add p4 4194560
+carry lt entry p4
+high select carry 1 0
+f fold ew_u64 1 e 24 entry high
+g fold ew_u64 1 f 32 64 0
+h fold ew_u16 1 g 52 64
+i fold ew_u16 1 h 54 56
+bssbits or p5 p6
+has ne bssbits 0
+phnum select has 2 1
+j fold ew_u16 1 i 56 phnum
+k fold elf_phdr 1 j 64 5 0 4194304 0 size size 0
+times select has 1 0
+l fold elf_bss times k size p5 p6
+m call ew_copy l p2 0 len 256
+r call ew_public m
+ret r
+end
+fn elf_build64 io (u32,u32,u32) u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+valid call av_valid p1
+m1 eq p2 62
+m2 eq p2 183
+machine or m1 m2
+len at p1 1
+empty eq len 0
+bound select empty 1 len
+entry lt p3 bound
+small le len 4294967039
+v1 and valid machine
+v2 and v1 entry
+hi le p5 2097151
+v3 and v2 hi
+safe and v3 small
+status select small 6 7
+s select safe 0 status
+z rec 0 0 0
+start rec s z p0
+n select safe 1 0
+r fold elf_build_valid n start p1 p2 p3 p4 p5
+ret r
+end
+
+# BSS low/high words cover all exact nonnegative JS safe integers, up to2^53-1.
+# Larger high words report malformed input instead of silently truncating the size.
+fn elf_build io (u32,u32,u32) u32 u32 u32 -> (u32,(u32,u32,u32),io)
+r call elf_build64 p0 p1 p2 p3 p4 0
+ret r
+end

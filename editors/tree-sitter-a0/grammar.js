@@ -1,6 +1,6 @@
 /**
  * @file Tree-sitter grammar for A0 (DESIGN.md section 4, "Grammar").
- * @license MIT
+ * @license Apache-2.0
  */
 
 /// <reference types="tree-sitter-cli/dsl" />
@@ -25,15 +25,27 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   rules: {
-    // file = use* function+
+    // A profile directive may occur once, before imports/functions (comments are extras).
+    // Empty, profile-only and import-only modules are valid, including a final EOF.
     source_file: ($) =>
       seq(
         repeat($._newline),
-        repeat(seq($.use_declaration, repeat1($._newline))),
-        $.function_definition,
-        repeat(seq(repeat1($._newline), $.function_definition)),
-        repeat($._newline),
+        optional(choice(
+          seq($.profile_declaration, optional(seq(repeat1($._newline), optional($._declarations)))),
+          $._declarations,
+        )),
       ),
+
+    profile_declaration: (_) => seq('profile', 'strict'),
+
+    _declarations: ($) =>
+      choice(
+        seq($.use_declaration, optional(seq(repeat1($._newline), optional($._declarations)))),
+        $._functions,
+      ),
+
+    _functions: ($) =>
+      seq($.function_definition, optional(seq(repeat1($._newline), optional($._functions)))),
 
     // use = "use" quoted_relative_path NEWLINE
     use_declaration: ($) => seq('use', field('path', $.string)),

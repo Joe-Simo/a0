@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { parseAndValidate } from '../src/core.js';
 import { findClang, findGcc } from '../src/toolchain.js';
 
 // Both are CommonJS packages: loaded by require, typed by their own declarations.
@@ -66,6 +67,106 @@ test('tree-sitter grammar parses every .a0 file in the repository without errors
     .filter((line) => /\(ERROR|\(MISSING/.test(line));
   assert.deepEqual(failures, []);
   assert.equal(parsed.status, 0, parsed.stderr);
+});
+
+test('tree-sitter accepts empty and import-only modules while keeping import order and separators', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'a0-ts-modules-'));
+  try {
+    const valid = [
+      '',
+      '# module documentation',
+      'use "base.a0"',
+      'use "base.a0"\n\n# shared declarations\nuse "other.a0"\n',
+      'use "base.a0"\nfn f -> u32\nret 0\nend',
+    ];
+    for (const [index, source] of valid.entries()) {
+      assert.doesNotThrow(() => parseAndValidate(source));
+      const file = join(dir, `valid-${index}.a0`);
+      writeFileSync(file, source);
+      const parsed = treeSitter(['parse', '--quiet', file]);
+      assert.equal(parsed.status, 0, `${parsed.stdout}${parsed.stderr}`);
+    }
+    const invalid = [
+      'use',
+      'use base.a0\n',
+      'use "base.a0" use "other.a0"\n',
+      'use "base.a0" fn f -> u32\nret 0\nend\n',
+      'fn f -> u32\nret 0\nend\nuse "later.a0"\n',
+    ];
+    for (const [index, source] of invalid.entries()) {
+      assert.throws(() => parseAndValidate(source));
+      const file = join(dir, `invalid-${index}.a0`);
+      writeFileSync(file, source);
+      const parsed = treeSitter(['parse', '--quiet', file]);
+      assert.notEqual(parsed.status, 0, `unexpected grammar acceptance: ${source}`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('tree-sitter profile directive matches parser placement and keeps profile/strict identifiers', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'a0-ts-profile-'));
+  try {
+    const body = 'fn strict u32 -> u32\nprofile mov p0\nstrict add profile 1\nret strict\nend';
+    const valid = [
+      'profile strict',
+      '# before\n\nprofile strict # after',
+      'profile strict\nuse "base.a0"',
+      `profile strict\n${body}`,
+      `# before\n  profile\tstrict # after\n\nuse "base.a0"\n${body}\n`,
+      `profile strict\r\n${body.replaceAll('\n', '\r\n')}\r\n`,
+    ];
+    for (const [index, source] of valid.entries()) {
+      assert.doesNotThrow(() => parseAndValidate(source));
+      const file = join(dir, `valid-${index}.a0`);
+      writeFileSync(file, source);
+      const parsed = treeSitter(['parse', file]);
+      assert.equal(parsed.status, 0, `${parsed.stdout}${parsed.stderr}`);
+      assert.equal((parsed.stdout.match(/\(profile_declaration/g) ?? []).length, 1);
+    }
+    const invalid = [
+      'profile',
+      'profile canonical',
+      'profile lax',
+      'profile strict extra',
+      'profile strict\nprofile strict',
+      'use "base.a0"\nprofile strict',
+      `${body}\nprofile strict`,
+      `profile strict ${body}`,
+      'profile strict use "base.a0"',
+    ];
+    for (const [index, source] of invalid.entries()) {
+      assert.throws(() => parseAndValidate(source));
+      const file = join(dir, `invalid-${index}.a0`);
+      writeFileSync(file, source);
+      const parsed = treeSitter(['parse', '--quiet', file]);
+      assert.notEqual(parsed.status, 0, `unexpected grammar acceptance: ${source}`);
+    }
+    const source = `profile strict\n${body}\n`;
+    const file = join(dir, 'highlight.a0');
+    writeFileSync(file, source);
+    const query = treeSitter(['query', 'queries/highlights.scm', file]);
+    assert.equal(query.status, 0, query.stderr);
+    const lines = source.split('\n');
+    const keywords = [
+      ...query.stdout.matchAll(
+        /capture: \d+ - keyword, start: \((\d+), (\d+)\), end: \((\d+), (\d+)\)/g,
+      ),
+    ].map((match) => ({
+      line: Number(match[1]),
+      word: lines[Number(match[1])]?.slice(Number(match[2]), Number(match[4])),
+    }));
+    assert.deepEqual(
+      keywords.filter(({ word }) => word === 'profile' || word === 'strict'),
+      [
+        { line: 0, word: 'profile' },
+        { line: 0, word: 'strict' },
+      ],
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('tree-sitter corpus tests and highlight query pass', () => {

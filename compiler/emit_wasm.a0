@@ -16116,6 +16116,150 @@ c6 fold wxiter2 cd c5 p2 p3 p4 p5 p6 p7 p8 p9 p10
 ret c6
 end
 # ---------------------------------------------------------------------------------------------
+# Canonical checked operations (32..37). Every operand is an already evaluated SSA value;
+# repeated wxpr calls reload that value and never evaluate its producer again. The result is
+# the ordinary eight-byte (u32,bool) record. These operations are total in either profile,
+# but the current A0 module pipeline still refuses strict until trap/profile propagation exists.
+fn wxhcsum u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+d at p2 0
+n at p2 1
+op at p2 3
+size at p2 10
+ak at p2 17
+av at p2 18
+bk at p2 19
+bv at p2 20
+s0 fold wxslot 1 p0 d n size
+r0 get s0 0
+slot get r0 16
+s1 fold wxnl 1 s0
+r1 get s1 0
+sum get r1 16
+isadd eq op 32
+ins select isadd 106 107
+s2 fold wxpr 1 s1 ak av
+s3 fold wxpr 1 s2 bk bv
+s4 fold wxop 1 s3 ins
+s5 fold wxls 1 s4 sum
+s6 fold wxlg 1 s5 slot
+s7 fold wxlg 1 s6 sum
+s8 fold wxst 1 s7 0
+s9 fold wxlg 1 s8 slot
+yes select isadd 1 0
+no select isadd 0 1
+s10 fold wxlg yes s9 sum
+s11 fold wxpr 1 s10 ak av
+s12 fold wxpr no s11 bk bv
+s13 fold wxop 1 s12 79
+s14 fold wxst 1 s13 4
+ret s14
+end
+fn wxhcmul u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+d at p2 0
+n at p2 1
+size at p2 10
+ak at p2 17
+av at p2 18
+bk at p2 19
+bv at p2 20
+s0 fold wxslot 1 p0 d n size
+r0 get s0 0
+slot get r0 16
+s1 fold wxlg 1 s0 slot
+s2 fold wxpr 1 s1 ak av
+s3 fold wxpr 1 s2 bk bv
+s4 fold wxop 1 s3 108
+s5 fold wxst 1 s4 0
+s6 fold wxlg 1 s5 slot
+s7 fold wxpr 1 s6 ak av
+# i64.extend_i32_u a; i64.extend_i32_u b; i64.mul; i64.const 32; i64.shr_u; i64.eqz
+s8 fold wxop 1 s7 173
+s9 fold wxpr 1 s8 bk bv
+s10 fold wxop 1 s9 173
+s11 fold wxop 1 s10 126
+s12 fold wxop 1 s11 66
+s13 fold wxop 1 s12 32
+s14 fold wxop 1 s13 136
+s15 fold wxop 1 s14 80
+s16 fold wxst 1 s15 4
+ret s16
+end
+fn wxhcdiv u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+d at p2 0
+n at p2 1
+op at p2 3
+size at p2 10
+ak at p2 17
+av at p2 18
+bk at p2 19
+bv at p2 20
+s0 fold wxslot 1 p0 d n size
+r0 get s0 0
+slot get r0 16
+s1 fold wxnl 1 s0
+r1 get s1 0
+zero get r1 16
+s2 fold wxpr 1 s1 bk bv
+s3 fold wxop 1 s2 69
+s4 fold wxls 1 s3 zero
+s5 fold wxlg 1 s4 slot
+s6 fold wxkc 1 s5 0
+s7 fold wxpr 1 s6 ak av
+s8 fold wxpr 1 s7 bk bv
+s9 fold wxlg 1 s8 zero
+s10 fold wxop 1 s9 114
+isdiv eq op 35
+ins select isdiv 110 112
+s11 fold wxop 1 s10 ins
+s12 fold wxlg 1 s11 zero
+s13 fold wxop 1 s12 27
+s14 fold wxst 1 s13 0
+s15 fold wxlg 1 s14 slot
+s16 fold wxlg 1 s15 zero
+s17 fold wxop 1 s16 69
+s18 fold wxst 1 s17 4
+ret s18
+end
+fn wxhcget u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 -> u32x128x512
+d at p2 0
+n at p2 1
+size at p2 10
+ak at p2 17
+av at p2 18
+bk at p2 19
+bv at p2 20
+ty at p2 23
+len call wxty p3 ty 1
+s0 fold wxslot 1 p0 d n size
+r0 get s0 0
+slot get r0 16
+s1 fold wxnl 1 s0
+r1 get s1 0
+ok get r1 16
+s2 fold wxpr 1 s1 bk bv
+s3 fold wxkc 1 s2 len
+s4 fold wxop 1 s3 73
+s5 fold wxls 1 s4 ok
+s6 fold wxlg 1 s5 slot
+s7 fold wxlg 1 s6 ok
+# if (result i32) guards the load itself; an invalid index never forms/loads an address.
+s8 fold wxe 1 s7 15 127
+s9 fold wxpr 1 s8 ak av
+s10 fold wxpr 1 s9 bk bv
+s11 fold wxkc 1 s10 2
+s12 fold wxop 1 s11 116
+s13 fold wxop 1 s12 106
+s14 fold wxld 1 s13 0
+s15 fold wxop 1 s14 5
+s16 fold wxkc 1 s15 0
+s17 fold wxop 1 s16 11
+s18 fold wxst 1 s17 0
+s19 fold wxlg 1 s18 slot
+s20 fold wxlg 1 s19 ok
+s21 fold wxst 1 s20 4
+ret s21
+end
+
 # The node of frame p2 (index p3): `emitNode`. First the cases that bind a node without code: an
 # induction variable, the carried element, a read of scalar state in locals, a chain node's
 # words; then an aliasing set/put (one store) or rec (its scalar fields), a fold/loop, and the ops
@@ -16415,7 +16559,28 @@ gd select fc 1 0
 gf fold wxhwrite gd gc b1
 gg select fd 1 0
 gh fold wxhputs gg gf b1 p8
-ret gh
+# Checked aggregate results are distinct from the canonical scalar ops above.
+cks eq q 32
+ckb eq q 33
+cksum or cks ckb
+cksum1 and eb cksum
+ckmul eq q 34
+ckmul1 and eb ckmul
+ckd eq q 35
+ckr eq q 36
+ckdiv or ckd ckr
+ckdiv1 and eb ckdiv
+ckget eq q 37
+ckget1 and eb ckget
+cksum2 select cksum1 1 0
+ck0 fold wxhcsum cksum2 gh b1
+ckmul2 select ckmul1 1 0
+ck1 fold wxhcmul ckmul2 ck0 b1
+ckdiv2 select ckdiv1 1 0
+ck2 fold wxhcdiv ckdiv2 ck1 b1
+ckget2 select ckget1 1 0
+ck3 fold wxhcget ckget2 ck2 b1 p8
+ret ck3
 end
 # ---------------------------------------------------------------------------------------------
 # The machine: pop an item of the work stack and run it. Items (kind, a, b, c): 1 nodes of frame

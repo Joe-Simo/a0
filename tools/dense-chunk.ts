@@ -28,7 +28,7 @@ import {
   parse,
   type Type,
 } from '../src/core.js';
-import { formatDense } from '../src/dense.js';
+import { denseArrayRegionCosts, formatDense } from '../src/dense.js';
 
 /** A function's signature, as its canonical header writes it. */
 export interface Signature {
@@ -147,6 +147,8 @@ export interface Cost {
   params: number;
   callArgs: number;
   arrayElems: number;
+  /** Literal/wide-record elements by printed expression-frame depth, not only their sum. */
+  arrayRegions: readonly number[];
   outBytes: number;
 }
 
@@ -161,6 +163,7 @@ const ZERO: Cost = {
   params: 0,
   callArgs: 0,
   arrayElems: 0,
+  arrayRegions: [],
   outBytes: 0,
 };
 
@@ -176,11 +179,18 @@ function add(a: Cost, b: Cost): Cost {
     params: a.params + b.params,
     callArgs: a.callArgs + b.callArgs,
     arrayElems: a.arrayElems + b.arrayElems,
+    arrayRegions: Array.from(
+      { length: Math.max(a.arrayRegions.length, b.arrayRegions.length) },
+      (_, i) => (a.arrayRegions[i] ?? 0) + (b.arrayRegions[i] ?? 0),
+    ),
     outBytes: a.outBytes + b.outBytes,
   };
 }
 
-/** Whether every count of `c` is within `caps`. */
+// compiler/dense.a0 sqr/casc: literal storage follows every expression frame, including calls.
+const ARRAY_REGION_CAPS = [2112, 448, 64, 64, 64, 64, 64, 64] as const;
+
+/** Whether every count of `c` is within `caps` and the reader's literal regions. */
 export function fits(c: Cost, caps: Caps): boolean {
   return (
     c.bytes <= caps.bytes &&
@@ -193,6 +203,7 @@ export function fits(c: Cost, caps: Caps): boolean {
     c.params <= caps.params &&
     c.callArgs <= caps.callArgs &&
     c.arrayElems <= caps.arrayElems &&
+    c.arrayRegions.every((n, depth) => n <= (ARRAY_REGION_CAPS[depth] ?? 0)) &&
     c.outBytes <= caps.outBytes
   );
 }
@@ -201,6 +212,11 @@ export function fits(c: Cost, caps: Caps): boolean {
 export function over(c: Cost, caps: Caps): string | undefined {
   for (const k of Object.keys(caps) as (keyof Caps)[])
     if (c[k] > caps[k]) return `over the capacity of one input: ${k} ${c[k]} > ${caps[k]}`;
+  for (const [depth, count] of c.arrayRegions.entries()) {
+    const capacity = ARRAY_REGION_CAPS[depth] ?? 0;
+    if (count > capacity)
+      return `over the capacity of one input: array region at depth ${depth}: ${count} > ${capacity}`;
+  }
   return undefined;
 }
 
@@ -239,7 +255,9 @@ export interface Planned {
  * a block: the stubs say what the used files define) and the signatures of the functions it can call.
  */
 export function planned(program: Program, used: ReadonlyMap<string, Signature>): Planned {
-  const dense = formatDense({ ...program, uses: [] }, { known: arities(used) });
+  const known = arities(used);
+  const dense = formatDense({ ...program, uses: [] }, { known });
+  const regions = denseArrayRegionCosts(program, known);
   const sigs = new Map<string, Signature>(used);
   for (const f of program.functions) sigs.set(f.name, { params: f.params, result: f.result });
   const texts = dense.split(/\n\n+/).filter((b) => b.trim() !== '');
@@ -279,6 +297,7 @@ export function planned(program: Program, used: ReadonlyMap<string, Signature>):
         params: f.params.length,
         callArgs: args,
         arrayElems: elems,
+        arrayRegions: regions.get(f.name) as readonly number[],
         // the canonical text of the function and the blank line after it
         outBytes: Buffer.byteLength(formatFunction(f)) + 2,
       });

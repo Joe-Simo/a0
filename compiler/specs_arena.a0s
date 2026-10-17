@@ -1,0 +1,478 @@
+raw # Spec grammar only. Full verification remains explicitly unsupported at the parent boundary.
+raw # All spans, node IDs, child IDs and storage extents are full u32; recursive literals use a growing stack.
+raw use "parse_arena_common.a0"
+extern arena_zero() -> u32x128
+extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
+extern av_load(io,(u32,u32,u32),u32,u32) -> (u32,u32x128,io)
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+extern al_white(u32x128,u32,u32) -> u32
+extern ap_node((u32x128,io),u32x128,u32) -> (u32x128,io)
+
+def sp_vec(p:u32x128,o:u32) -> (u32,u32,u32)
+ return (p[o],p[o+1],p[o+2])
+end
+def sp_setvec(p:u32x128,o:u32,v:(u32,u32,u32)) -> u32x128
+ let a=set(p,o,v#0)
+ let b=set(a,o+1,v#1)
+ return set(b,o+2,v#2)
+end
+def sp_setsy(p:u32x128,o:u32,sy:((u32,u32,u32),u32,u32,u32)) -> u32x128
+ let a=sp_setvec(p,o,sy#0)
+ let b=set(a,o+3,sy#1)
+ let c=set(b,o+4,sy#2)
+ return set(c,o+5,sy#3)
+end
+def sp_sy(p:u32x128,o:u32) -> ((u32,u32,u32),u32,u32,u32)
+ return (sp_vec(p,o),p[o+3],p[o+4],p[o+5])
+end
+fn sp_fail(s:(u32x128,u32x128,io),reason:u32,start:u32,len:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let go=(p[0]==0)&(reason!=0)
+ let a=set(p,0,go?6:p[0])
+ let b=set(a,1,go?reason:p[1])
+ let c=set(b,2,go?start:p[2])
+ let d=set(c,3,go?len:p[3])
+ return (d,s#1,s#2)
+end
+fn sp_appendgo(s:(u32x128,u32x128,io),i:u32,o:u32,count:u32,page:u32x128) -> (u32x128,u32x128,io)
+ let p=s#0
+ let r=av_append(s#2,sp_vec(p,o),count,page)
+ let q=sp_setvec(p,o,r#1)
+ return (set(q,0,r#0),s#1,r#2)
+end
+fn sp_append(s:(u32x128,u32x128,io),o:u32,count:u32,page:u32x128) -> (u32x128,u32x128,io)
+ let p=s#0
+ return fold(sp_appendgo,p[0]==0?1:0,s,o,count,page)
+end
+fn sp_readgo(s:(u32x128,u32x128,io),i:u32,v:(u32,u32,u32),start:u32,count:u32) -> (u32x128,u32x128,io)
+ let r=av_load(s#2,v,start,count)
+ return (set(s#0,0,r#0),r#1,r#2)
+end
+fn sp_read(s:(u32x128,u32x128,io),v:(u32,u32,u32),start:u32,count:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ return fold(sp_readgo,p[0]==0?1:0,s,v,start,count)
+end
+fn sp_fill(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let left=p[8]-p[9]
+ let n=left>128?128:left
+ let r=arena_load(s#2,p[6],p[9],n)
+ let a=set(p,0,r#0)
+ let b=set(a,10,p[9])
+ let c=set(b,11,n>126?126:n)
+ return (c,r#1,r#2)
+end
+fn sp_peek(s:(u32x128,u32x128,io)) -> (u32x128,u32x128,io)
+ let p=s#0
+ let cached=(p[9]>=p[10])&((p[9]-p[10])<p[11])
+ let go=(p[0]==0)&(p[9]<p[8])&!cached
+ return fold(sp_fill,go?1:0,s)
+end
+fn sp_char(p:u32x128,page:u32x128) -> u32
+ return p[9]<p[8]?page[p[9]-p[10]]:0
+end
+fn sp_space(p:u32x128,page:u32x128) -> u32
+ let at=p[9]-p[10]
+ let left=p[8]-p[9]
+ let c=sp_char(p,page)
+ let n=al_white(page,at,left)
+ return p[9]>=p[8]?0:(c==10?1:n)
+end
+fn sp_word(c:u32) -> bool
+ return ((c>=97)&(c<=122))|((c>=48)&(c<=57))|(c==95)
+end
+fn sp_digit(c:u32) -> bool
+ return (c>=48)&(c<=57)
+end
+fn sp_deliver(s:(u32x128,u32x128,io),lit:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let nested=p[54]!=0
+ let z=set(arena_zero(),0,lit)
+ let target=nested?56:38
+ let append=nested|(p[12]==0)
+ let a=sp_append(s,target,append?1:0,z)
+ let q=a#0
+ let q=set(q,13,nested?1:0)
+ let q=set(q,22,(!nested&(q[12]==0))?q[22]+1:q[22])
+ let q=set(q,20,(!nested&(q[12]==1))?lit:q[20])
+ let q=set(q,12,(!nested&(q[12]==1))?2:q[12])
+ return (q,a#1,a#2)
+end
+fn sp_literal(s:(u32x128,u32x128,io),kind:u32,value:u32,first:u32,count:u32,start:u32,len:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let id=p[33]/6
+ let z=arena_zero()
+ let z=set(z,0,kind)
+ let z=set(z,1,value)
+ let z=set(z,2,first)
+ let z=set(z,3,count)
+ let z=set(z,4,start)
+ let z=set(z,5,len)
+ let r=sp_append(s,32,6,z)
+ return sp_deliver(r,id)
+end
+fn sp_numdigit(s:(u32x128,u32x128,io),i:u32,c:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let d=c-48
+ let over=(p[18]!=0)|(p[16]>429496729)|((p[16]==429496729)&(d>5))
+ let q=set(p,16,p[16]*10+d)
+ let q=set(q,17,p[17]+1)
+ let q=set(q,18,bit(over))
+ let q=set(q,19,p[17]==0?c:p[19])
+ let q=set(q,9,p[9]+1)
+ return (q,s#1,s#2)
+end
+fn sp_numdone(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let bad=(p[18]!=0)|((p[19]==48)&(p[17]>1))
+ let a=sp_fail(s,bad?2:0,p[15],p[17])
+ let q=set(a#0,14,0)
+ return sp_literal((q,a#1,a#2),1,p[16],0,0,p[15],p[17])
+end
+fn sp_num(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let r=sp_peek(s)
+ let p=r#0
+ let c=sp_char(p,r#1)
+ let more=(p[9]<p[8])&sp_digit(c)
+ let a=fold(sp_numdigit,more?1:0,r,c)
+ return fold(sp_numdone,more?0:1,a)
+end
+fn sp_truechars() -> u32x5
+ return arr(116,114,117,101,0)
+end
+fn sp_falsechars() -> u32x5
+ return arr(102,97,108,115,101)
+end
+fn sp_boolchar(s:(u32x128,u32x128,io),i:u32,c:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let tr=sp_truechars()
+ let fa=sp_falsechars()
+ let idx=p[17]<5?p[17]:4
+ let tv=(p[16]&1)!=0
+ let fv=(p[16]&2)!=0
+ let nt=tv&(p[17]<4)&(c==tr[idx])
+ let nf=fv&(p[17]<5)&(c==fa[idx])
+ let q=set(p,16,bit(nt)+bit(nf)*2)
+ let q=set(q,17,p[17]+1)
+ let q=set(q,9,p[9]+1)
+ return (q,s#1,s#2)
+end
+fn sp_booldone(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let t=(p[16]==1)&(p[17]==4)
+ let f=(p[16]==2)&(p[17]==5)
+ let a=sp_fail(s,(t|f)?0:3,p[15],p[17])
+ let q=set(a#0,14,0)
+ return sp_literal((q,a#1,a#2),2,t?1:0,0,0,p[15],p[17])
+end
+fn sp_bool(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let r=sp_peek(s)
+ let p=r#0
+ let c=sp_char(p,r#1)
+ let more=(p[9]<p[8])&sp_word(c)
+ let a=fold(sp_boolchar,more?1:0,r,c)
+ return fold(sp_booldone,more?0:1,a)
+end
+fn sp_open(s:(u32x128,u32x128,io),i:u32,c:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let z=arena_zero()
+ let z=set(z,0,c==91?3:4)
+ let z=set(z,1,p[9])
+ let z=set(z,2,p[57])
+ let z=set(z,3,0)
+ let z=set(z,4,0)
+ let a=sp_append(s,53,5,z)
+ let q=set(a#0,9,p[9]+1)
+ return (q,a#1,a#2)
+end
+fn sp_copyok(s:(u32x128,u32x128,io),i:u32,v:(u32,u32,u32),start:u32,count:u32) -> bool
+ let p=s#0
+ return p[0]==0
+end
+fn sp_copy(s:(u32x128,u32x128,io),i:u32,v:(u32,u32,u32),start:u32,count:u32) -> (u32x128,u32x128,io)
+ let base=i*128
+ let remain=count-base
+ let n=remain>128?128:remain
+ let r=av_load(s#2,v,start+base,n)
+ let q=set(s#0,0,r#0)
+ return sp_append((q,s#1,r#2),35,n,r#1)
+end
+fn sp_close(s:(u32x128,u32x128,io),i:u32,frame:u32x128) -> (u32x128,u32x128,io)
+ let p=s#0
+ let count=p[57]-frame[2]
+ let bad=count==0?5:((frame[0]==4)&(count==1)&(frame[4]==0)?6:0)
+ let a=sp_fail(s,bad,frame[1],p[9]+1-frame[1])
+ let first=p[36]
+ let pages=count/128+(count%128==0?0:1)
+ let b=loop(sp_copyok,sp_copy,pages,a,sp_vec(p,56),frame[2],count)
+ let q=b#0
+ let q=set(q,54,q[54]-5)
+ let q=set(q,57,frame[2])
+ let q=set(q,9,p[9]+1)
+ return sp_literal((q,b#1,b#2),frame[0],0,first,count,frame[1],p[9]+1-frame[1])
+end
+fn sp_separator(s:(u32x128,u32x128,io),i:u32,c:u32,frame:u32x128) -> (u32x128,u32x128,io)
+ let p=s#0
+ let sep=(c==59)|(c==44)
+ let z=set(frame,4,bit(sep))
+ let v=sp_vec(p,53)
+ let q=set(p,54,p[54]-5)
+ let a=sp_append((q,s#1,s#2),53,5,z)
+ let r=set(a#0,9,p[9]+bit(sep))
+ let r=set(r,13,0)
+ return (r,a#1,a#2)
+end
+fn sp_startscalar(s:(u32x128,u32x128,io),i:u32,mode:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let q=set(p,14,mode)
+ let q=set(q,15,p[9])
+ let q=set(q,16,mode==2?3:0)
+ let q=set(q,17,0)
+ let q=set(q,18,0)
+ let q=set(q,19,0)
+ return (q,s#1,s#2)
+end
+fn sp_wantliteral(s:(u32x128,u32x128,io),i:u32,c:u32,frame:u32x128) -> (u32x128,u32x128,io)
+ let p=s#0
+ let nested=p[54]!=0
+ let eof=p[9]>=p[8]
+ let close=nested&(c==(frame[0]==3?93:41))&!eof
+ let open=(c==91)|(c==40)
+ let digit=sp_digit(c)
+ let word=sp_word(c)
+ let bad=eof?(nested?4:1):(!close&!open&!digit&!word?3:0)
+ let a=sp_fail(s,bad,eof?(nested?frame[1]:p[9]):p[9],eof?0:1)
+ let ap=a#0
+ let go=ap[0]==0
+ let b=fold(sp_close,go&close?1:0,a,frame)
+ let b=fold(sp_open,go&!close&open?1:0,b,c)
+ let b=fold(sp_startscalar,go&!close&!open&(digit|word)?1:0,b,digit?1:2)
+ return b
+end
+fn sp_root(s:(u32x128,u32x128,io),i:u32,c:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let eof=p[9]>=p[8]
+ let at=p[9]-p[10]
+ let arrow=(p[8]-p[9]>=2)&(c==45)&(get(s#1,at+1)==62)
+ let phase=p[12]
+ let bad=(phase==0)&eof?7:((phase==2)&!eof?8:0)
+ let a=sp_fail(s,bad,p[9],p[8]-p[9])
+ let q=a#0
+ let take=(phase==0)&arrow
+ let q=set(q,9,p[9]+(take?2:0))
+ let q=set(q,12,take?1:phase)
+ let z=arena_zero()
+ let out=fold(sp_wantliteral,((phase!=2)&!take)&(q[0]==0)?1:0,(q,a#1,a#2),c,z)
+ return out
+end
+fn sp_inside(s:(u32x128,u32x128,io),i:u32,c:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let r=av_load(s#2,sp_vec(p,53),p[54]-5,5)
+ let q=set(p,0,r#0)
+ let a=fold(sp_separator,p[13]!=0?1:0,(q,s#1,r#2),c,r#1)
+ let a=fold(sp_wantliteral,p[13]==0?1:0,a,c,r#1)
+ return a
+end
+fn sp_syntax(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let r=sp_peek(s)
+ let p=r#0
+ let c=sp_char(p,r#1)
+ let space=sp_space(p,r#1)
+ let q=set(p,9,p[9]+space)
+ let active=(p[0]==0)&(space==0)
+ let nested=p[54]!=0
+ let a=fold(sp_inside,active&nested?1:0,(q,r#1,r#2),c)
+ return fold(sp_root,active&!nested?1:0,a,c)
+end
+fn sp_exok(s:(u32x128,u32x128,io),i:u32) -> bool
+ let p=s#0
+ return (p[0]==0)&((p[12]!=2)|(p[9]<p[8]))
+end
+fn sp_exstep(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let mode=p[14]
+ let a=fold(sp_num,mode==1?1:0,s)
+ let a=fold(sp_bool,mode==2?1:0,a)
+ return fold(sp_syntax,mode==0?1:0,a)
+end
+fn sp_example(s:(u32x128,u32x128,io)) -> (u32x128,u32x128,io)
+ let p=s#0
+ let q=set(p,9,p[7])
+ let q=set(q,11,0)
+ let q=set(q,12,0)
+ let q=set(q,13,0)
+ let q=set(q,14,0)
+ let q=set(q,20,4294967295)
+ let q=set(q,21,p[39])
+ let q=set(q,22,0)
+ let q=set(q,54,0)
+ let q=set(q,57,0)
+ let len=p[8]-p[7]
+ let limit=len<=536870909?len*8+16:4294967295
+ let r=loop(sp_exok,sp_exstep,limit,(q,s#1,s#2))
+ let rp=r#0
+ let finished=(rp[12]==2)&(rp[54]==0)&(rp[14]==0)&(rp[9]==rp[8])
+ let rp=set(rp,0,(rp[0]==0)&!finished?3:rp[0])
+ let r=(rp,r#1,r#2)
+ let z=arena_zero()
+ let z=set(z,0,p[24])
+ let z=set(z,1,p[4])
+ let z=set(z,2,p[39])
+ let z=set(z,3,get(r#0,22))
+ let z=set(z,4,get(r#0,20))
+ let z=set(z,5,p[5])
+ let z=set(z,6,p[7])
+ let z=set(z,7,len)
+ let a=sp_append(r,41,8,z)
+ let q=set(a#0,25,p[25]+1)
+ return (q,a#1,a#2)
+end
+fn sp_wordflush(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let z=set(set(arena_zero(),0,p[15]),1,p[9]-p[15])
+ let a=sp_append(s,59,2,z)
+ let q=set(a#0,14,0)
+ return (q,a#1,a#2)
+end
+fn sp_wordsok(s:(u32x128,u32x128,io),i:u32) -> bool
+ let p=s#0
+ return (p[0]==0)&((p[9]<p[8])|(p[14]!=0))
+end
+fn sp_wordsstep(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ let r=sp_peek(s)
+ let p=r#0
+ let c=sp_char(p,r#1)
+ let space=sp_space(p,r#1)
+ let eof=p[9]>=p[8]
+ let inside=p[14]!=0
+ let flush=inside&((space!=0)|eof)
+ let a=fold(sp_wordflush,flush?1:0,r)
+ let q=a#0
+ let q=set(q,15,(!inside&!eof&(space==0))?p[9]:q[15])
+ let q=set(q,14,(!inside&!eof&(space==0))?1:q[14])
+ let q=set(q,9,eof?p[9]:p[9]+(space==0?1:space))
+ return (q,a#1,a#2)
+end
+fn sp_contractparse(s:(u32x128,u32x128,io),i:u32,parser:u32x128,line:u32x128,first:u32,n:u32) -> (u32x128,u32x128,io)
+ let p=s#0
+ let bp=p
+ let len=p[8]-p[7]
+ let pp=set(parser,0,bp[0])
+ let pp=set(pp,2,p[31])
+ let pp=set(pp,14,0)
+ let pp=set(pp,22,0)
+ let pp=sp_setvec(pp,35,sp_vec(bp,59))
+ let pp=sp_setvec(pp,44,sp_vec(bp,47))
+ let pp=sp_setvec(pp,47,sp_vec(bp,50))
+ let pp=sp_setsy(pp,62,sp_sy(bp,80))
+ let ll=set(set(line,5,first),6,n)
+ let parsed=ap_node((pp,s#2),ll,p[5])
+ let pp=parsed#0
+ let qp=sp_setvec(bp,47,sp_vec(pp,44))
+ let qp=sp_setvec(qp,50,sp_vec(pp,47))
+ let qp=sp_setsy(qp,80,sp_sy(pp,62))
+ let qp=set(qp,0,pp[0]==6?0:pp[0])
+ let qp=set(qp,88,pp[1])
+ let qp=set(qp,89,pp[5])
+ let qp=set(qp,90,pp[91])
+ let qp=set(qp,91,pp[92])
+ let bad=pp[0]==6
+ let d=sp_fail((qp,s#1,parsed#1),bad?14:0,pp[3],pp[4])
+ let z=arena_zero()
+ let z=set(z,0,p[28])
+ let z=set(z,1,p[24])
+ let z=set(z,2,p[5])
+ let z=set(z,3,bp[48]/14)
+ let z=set(z,4,p[4])
+ let z=set(z,5,p[7])
+ let z=set(z,6,len)
+ let a=sp_append(d,44,7,z)
+ let ap=a#0
+ let contract=bp[45]/7+1
+ let ap=set(ap,26,p[28]==2?contract:ap[26])
+ let ap=set(ap,27,p[28]==3?contract:ap[27])
+ return (ap,a#1,a#2)
+end
+fn sp_contract(s:(u32x128,u32x128,io),parser:u32x128,line:u32x128) -> (u32x128,u32x128,io)
+ let p=s#0
+ let keyword=p[28]==2?3:4
+ let z=set(set(arena_zero(),0,p[29]-keyword),1,keyword)
+ let first=p[60]/2
+ let a=sp_append(s,59,2,z)
+ let q=set(a#0,9,p[7])
+ let q=set(q,11,0)
+ let q=set(q,14,0)
+ let len=p[8]-p[7]
+ let words=loop(sp_wordsok,sp_wordsstep,len+2,(q,a#1,a#2))
+ let wp=words#0
+ let n=wp[60]/2-first
+ let b=sp_fail(words,n==1?(p[28]==2?12:13):0,p[7],len)
+ let bp=b#0
+ return fold(sp_contractparse,bp[0]==0?1:0,b,parser,line,first,n)
+end
+fn sp_function(s:(u32x128,u32x128,io)) -> (u32x128,u32x128,io)
+ let p=s#0
+ let z=arena_zero()
+ let z=set(z,0,p[24])
+ let z=set(z,1,p[86])
+ let z=set(z,2,p[25])
+ let z=set(z,3,p[26]==0?4294967295:p[26]-1)
+ let z=set(z,4,p[27]==0?4294967295:p[27]-1)
+ return sp_append(s,62,5,z)
+end
+fn sp_finishfunction(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ return sp_function(s)
+end
+fn sp_example_go(s:(u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,io)
+ return sp_example(s)
+end
+fn sp_contract_go(s:(u32x128,u32x128,io),i:u32,parser:u32x128,line:u32x128) -> (u32x128,u32x128,io)
+ return sp_contract(s,parser,line)
+end
+fn sp_rawok(s:(u32x128,u32x128,io),i:u32,parser:u32x128) -> bool
+ let p=s#0
+ return p[0]==0
+end
+fn sp_raw(s:(u32x128,u32x128,io),i:u32,parser:u32x128) -> (u32x128,u32x128,io)
+ let r=av_load(s#2,sp_vec(parser,56),i*6,6)
+ let row=r#1
+ let p=set(s#0,0,r#0)
+ let change=row[1]!=p[24]
+ let a=fold(sp_finishfunction,change&(p[24]!=4294967295)?1:0,(p,s#1,r#2))
+ let q=a#0
+ let q=set(q,24,row[1])
+ let q=set(q,25,change?0:q[25])
+ let q=set(q,26,change?0:q[26])
+ let q=set(q,27,change?0:q[27])
+ let q=set(q,86,change?q[42]/8:q[86])
+ let line=av_load(a#2,sp_vec(parser,32),row[2]*10,10)
+ let li=line#1
+ let q=set(q,0,q[0]==0?line#0:q[0])
+ let q=set(q,4,i)
+ let q=set(q,5,row[2])
+ let q=set(q,28,row[0])
+ let q=set(q,29,row[3])
+ let q=set(q,30,row[4])
+ let q=set(q,31,li[0])
+ let q=set(q,7,row[3])
+ let q=set(q,8,row[3]+row[4])
+ let bad=row[0]==1?(q[25]>=3?9:0):(row[0]==2?(q[26]!=0?10:0):(q[27]!=0?11:0))
+ let b=sp_fail((q,a#1,line#2),bad,li[3],li[4])
+ let bp=b#0
+ let ex=fold(sp_example_go,(bp[0]==0)&(row[0]==1)?1:0,b)
+ let ep=ex#0
+ return fold(sp_contract_go,(ep[0]==0)&(row[0]!=1)?1:0,ex,parser,li)
+end
+fn arena_specs(t:io,parser:u32x128) -> (u32,u32x128,io)
+ let z=arena_zero()
+ let q=set(z,0,((parser[0]==0)|(parser[0]==7))?0:parser[0])
+ let q=set(q,6,parser[6])
+ let q=set(q,24,4294967295)
+ let q=sp_setsy(q,80,sp_sy(parser,62))
+ let q=set(q,92,1)
+ let r=loop(sp_rawok,sp_raw,parser[57]/6,(q,z,t),parser)
+ let p=r#0
+ let out=fold(sp_finishfunction,(p[0]==0)&(p[24]!=4294967295)?1:0,r)
+ let a=out#0
+ return (a[0],a,out#2)
+end

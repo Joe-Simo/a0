@@ -17,4 +17,6 @@ if (typeof enable === 'function') {
     // a cache directory that cannot be written: the start-up is the uncached one
   }
 }
-await import('./cli-main.js');
+// The asynchronous module load still follows cache initialization. Avoid top-level await so
+// pinned Bun can bundle the standalone executable as CJS bytecode.
+void import('./cli-main.js');

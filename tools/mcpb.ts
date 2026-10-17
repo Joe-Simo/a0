@@ -15,6 +15,9 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { packExtension, validateManifest } from '@anthropic-ai/mcpb';
+import { requirePackagingPolicy } from '../src/protection-policy.js';
+
+requirePackagingPolicy('.');
 
 const version = process.argv[2]?.replace(/^v/, '');
 if (!version || !/^\d+\.\d+\.\d+$/.test(version))
@@ -56,6 +59,7 @@ for (const { id, platform } of targets) {
   chmodSync(join(stage, 'server', exe), 0o755);
   copyFileSync(join(root, 'mcpb/icon.png'), join(stage, 'icon.png'));
   copyFileSync(join(root, 'LICENSE'), join(stage, 'LICENSE'));
+  copyFileSync(join(root, 'NOTICE'), join(stage, 'NOTICE'));
   const manifest = {
     ...template,
     version,

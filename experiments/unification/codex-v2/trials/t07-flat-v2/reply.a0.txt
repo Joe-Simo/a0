@@ -1,0 +1,143 @@
+fn reversebits _ -> _
+a shr A 1
+b and a 1431655765
+c and A 1431655765
+d shl c 1
+e or b d
+f shr e 2
+g and f 858993459
+h and e 858993459
+i shl h 2
+j or g i
+k shr j 4
+l and k 252645135
+m and j 252645135
+n shl m 4
+o or l n
+p shr o 8
+q and p 16711935
+r and o 16711935
+s shl r 8
+t or q s
+u shr t 16
+v shl t 16
+w or u v
+ret w
+end
+
+fn readrow _x32 _ io -> (_x32,io)
+r read C
+v at r 0
+t at r 1
+w reversebits v
+g set A B w
+out (g t)
+ret out
+end
+
+fn readgrid _x32 io -> (_x32,io)
+r read B
+v at r 0
+t at r 1
+w reversebits v
+g set A 0 w
+s readrow g 1 t
+g1 at s 0
+t1 at s 1
+s2 readrow g1 2 t1
+g2 at s2 0
+t2 at s2 1
+s3 readrow g2 3 t2
+g3 at s3 0
+t3 at s3 1
+s4 readrow g3 4 t3
+g4 at s4 0
+t4 at s4 1
+s5 readrow g4 5 t4
+g5 at s5 0
+t5 at s5 1
+s6 readrow g5 6 t5
+g6 at s6 0
+t6 at s6 1
+s7 readrow g6 7 t6
+g7 at s7 0
+t7 at s7 1
+s8 readrow g7 8 t7
+g8 at s8 0
+t8 at s8 1
+s9 readrow g8 9 t8
+g9 at s9 0
+t9 at s9 1
+s10 readrow g9 10 t9
+g10 at s10 0
+t10 at s10 1
+s11 readrow g10 11 t10
+g11 at s11 0
+t11 at s11 1
+s12 readrow g11 12 t11
+g12 at s12 0
+t12 at s12 1
+s13 readrow g12 13 t12
+g13 at s13 0
+t13 at s13 1
+s14 readrow g13 14 t13
+g14 at s14 0
+t14 at s14 1
+s15 readrow g14 15 t14
+g15 at s15 0
+t15 at s15 1
+s16 readrow g15 16 t15
+g16 at s16 0
+t16 at s16 1
+s17 readrow g16 17 t16
+g17 at s17 0
+t17 at s17 1
+s18 readrow g17 18 t17
+g18 at s18 0
+t18 at s18 1
+s19 readrow g18 19 t18
+g19 at s19 0
+t19 at s19 1
+s20 readrow g19 20 t19
+g20 at s20 0
+t20 at s20 1
+s21 readrow g20 21 t20
+g21 at s21 0
+t21 at s21 1
+s22 readrow g21 22 t21
+g22 at s22 0
+t22 at s22 1
+s23 readrow g22 23 t22
+g23 at s23 0
+t23 at s23 1
+s24 readrow g23 24 t23
+g24 at s24 0
+t24 at s24 1
+s25 readrow g24 25 t24
+g25 at s25 0
+t25 at s25 1
+s26 readrow g25 26 t25
+g26 at s26 0
+t26 at s26 1
+s27 readrow g26 27 t26
+g27 at s27 0
+t27 at s27 1
+s28 readrow g27 28 t27
+g28 at s28 0
+t28 at s28 1
+s29 readrow g28 29 t28
+g29 at s29 0
+t29 at s29 1
+s30 readrow g29 30 t29
+g30 at s30 0
+t30 at s30 1
+s31 readrow g30 31 t30
+ret s31
+end
+
+fn writerow io _ _x32 -> io
+row get C B
+w reversebits row
+t write A w
+ret t
+end

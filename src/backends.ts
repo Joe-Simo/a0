@@ -474,6 +474,39 @@ function mutableHere(
   return true;
 }
 
+interface CUseSummary {
+  readonly lastUse: number;
+  /** First use that can retain/modify the value, or -1 when all uses only read it. */
+  readonly firstUnsafe: number;
+}
+const C_USES = new WeakMap<TypedFunc, ReadonlyMap<string | number, CUseSummary>>();
+
+/** Node ids and parameter indices are disjoint Map key types. Literals cannot own storage. */
+function cUses(fn: TypedFunc): ReadonlyMap<string | number, CUseSummary> {
+  const have = C_USES.get(fn);
+  if (have !== undefined) return have;
+  const uses = new Map<string | number, { lastUse: number; firstUnsafe: number }>();
+  for (const [index, node] of fn.nodes.entries()) {
+    for (const [argIndex, operand] of node.args.entries()) {
+      if (operand.kind !== 'node' && operand.kind !== 'param') continue;
+      const key = operand.kind === 'node' ? operand.id : operand.index;
+      const readonly =
+        ((node.op === 'get' || node.op === 'at') && argIndex === 0) ||
+        node.op === 'call' ||
+        ((node.op === 'fold' || node.op === 'loop') && argIndex >= 2);
+      const prior = uses.get(key);
+      if (prior === undefined) {
+        uses.set(key, { lastUse: index, firstUnsafe: readonly ? -1 : index });
+      } else {
+        prior.lastUse = index;
+        if (!readonly && prior.firstUnsafe < 0) prior.firstUnsafe = index;
+      }
+    }
+  }
+  C_USES.set(fn, uses);
+  return uses;
+}
+
 /**
  * C only: `mutableHere` with two more facts of the C emitter. A `fold`/`loop`/`call` result is
  * storage of this function (a fresh local, or the loop state aliasing an unshared initial value),
@@ -487,10 +520,10 @@ function mutableHereC(
   o: Operand,
   index: number,
   ownedParam: (paramIndex: number) => boolean,
-  ownedNodes: ReadonlySet<string> = NO_NODES,
+  ownedNodes: Pick<ReadonlySet<string>, 'has'> = NO_NODES,
 ): boolean {
   if (o.kind === 'node') {
-    const def = fn.nodes.find((n) => n.id === o.id);
+    const def = nodeDefs(fn).get(o.id);
     if (
       def === undefined ||
       !(FRESH_OPS.has(def.op) || C_FRESH_OPS.has(def.op) || ownedNodes.has(o.id))
@@ -500,18 +533,13 @@ function mutableHereC(
     return false;
   }
   if (sameOp(fn.ret, o)) return false;
-  for (const [j, n] of fn.nodes.entries()) {
-    if (j === index) continue;
-    for (const [k, arg] of n.args.entries()) {
-      if (!sameOp(arg, o)) continue;
-      if (j > index) return false;
-      if ((n.op === 'get' || n.op === 'at') && k === 0) continue;
-      if (n.op === 'call') continue;
-      if ((n.op === 'fold' || n.op === 'loop') && k >= 2) continue;
-      return false;
-    }
-  }
-  return true;
+  const uses = cUses(fn).get(o.kind === 'node' ? o.id : o.index);
+  // All uses after the update are forbidden. Earlier uses must only read storage;
+  // uses by the current node itself are ignored, exactly as in the original scan.
+  return (
+    uses === undefined ||
+    (uses.lastUse <= index && (uses.firstUnsafe < 0 || uses.firstUnsafe === index))
+  );
 }
 const C_FRESH_OPS = new Set<Op>(['fold', 'loop', 'call']);
 const NO_NODES: ReadonlySet<string> = new Set();
@@ -533,8 +561,11 @@ interface Projections {
   /** Projection node id to its container operand and field. */
   readonly of: ReadonlyMap<string, { readonly container: Operand; readonly field: number }>;
 }
+const C_PROJECTIONS = new WeakMap<TypedFunc, Map<CVariant, Projections>>();
 
 function cProjections(fn: TypedFunc, variant: CVariant): Projections {
+  const have = C_PROJECTIONS.get(fn)?.get(variant);
+  if (have !== undefined) return have;
   const of = new Map<string, { container: Operand; field: number }>();
   const last = fn.nodes[fn.nodes.length - 1];
   const stateOk =
@@ -575,7 +606,14 @@ function cProjections(fn: TypedFunc, variant: CVariant): Projections {
         of.set(id, { container: c, field });
     }
   }
-  return { of };
+  const projections = { of };
+  let modes = C_PROJECTIONS.get(fn);
+  if (modes === undefined) {
+    modes = new Map();
+    C_PROJECTIONS.set(fn, modes);
+  }
+  modes.set(variant, projections);
+  return projections;
 }
 
 /** JS ownership: only the p0 state of the owned iteration-body variant is private. */
@@ -844,6 +882,7 @@ const cFrameRuntime = (
   program: TypedProgram,
   inputCapacity: number,
   maxTrips: number | undefined,
+  hostIo = false,
 ): string => {
   const strict = program.profile === 'strict';
   const depth = program.functions.length + 1;
@@ -931,7 +970,9 @@ const cFrameRuntime = (
     );
     if (usesIo(program))
       lines.push(
-        `static inline a0t_r2_u_io a0_sread(a0_io *t) { a0t_r2_u_io r; if (t->position >= t->ninput || t->position >= ${inputCapacity}u) a0_strap(2); r.f0 = t->input[t->position++]; r.f1 = t; return r; }`,
+        hostIo
+          ? 'static inline a0t_r2_u_io a0_sread(a0_io *t) { a0t_r2_u_io r; if (!A0_IO_READ(t, &r.f0)) a0_strap(2); r.f1 = t; return r; }'
+          : `static inline a0t_r2_u_io a0_sread(a0_io *t) { a0t_r2_u_io r; if (t->position >= t->ninput || t->position >= ${inputCapacity}u) a0_strap(2); r.f0 = t->input[t->position++]; r.f1 = t; return r; }`,
       );
   }
   return lines.join('\n');
@@ -944,6 +985,14 @@ const cIoRuntime = (inCap: number, outCap: number): string =>
   `struct a0_io { uint32_t input[${inCap}]; uint32_t ninput; uint32_t position; uint32_t output[${outCap}]; uint32_t noutput; };
 static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; r.f0 = t->position < t->ninput && t->position < ${inCap}u ? t->input[t->position++] : 0u; r.f1 = t; return r; }
 static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < ${outCap}u) t->output[t->noutput++] = v; return t; }
+static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
+
+/** Host streams retain token identity; a false read denotes end of input. */
+const C_HOST_IO = `#if !defined(A0_IO_READ) || !defined(A0_IO_WRITE)
+#error "host I/O requires A0_IO_READ(token, out) and A0_IO_WRITE(token, word)"
+#endif
+static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; uint32_t v = 0u; bool present = A0_IO_READ(t, &v); r.f0 = present ? v : 0u; r.f1 = t; return r; }
+static inline a0_io *a0_write(a0_io *t, uint32_t v) { A0_IO_WRITE(t, v); return t; }
 static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
 
 export const cType = (t: Type): string =>
@@ -1238,10 +1287,7 @@ function cMutableHere(
   selfRead: boolean,
   projections: Projections = { of: new Map() },
 ): boolean {
-  return (
-    mutableHereC(fn, o, index, owned, new Set(projections.of.keys())) &&
-    !borrowLive(fn, o, index, selfRead)
-  );
+  return mutableHereC(fn, o, index, owned, projections.of) && !borrowLive(fn, o, index, selfRead);
 }
 
 /** Does the node at `index` update its first operand in place? Records the alias. */
@@ -1604,8 +1650,54 @@ function cBorrow(ctx: CContext, n: Node): string | undefined {
   return `  ${kind}${cType(t)} *const n_${n.id} = &${a}${part};`;
 }
 
+/** A single-use intermediate rebuild can consume private state before a nested iteration. */
+function cIntermediateRecord(ctx: CContext, node: Node, index: number): boolean {
+  const { fn, variant } = ctx;
+  const p0 = fn.params[0];
+  const type = fn.types.get(node.id);
+  const flatArray = (t: Type): boolean =>
+    !isPrimitive(t) && t.kind === 'arr' && (t.elem === 'u32' || t.elem === 'bool');
+  if (
+    variant !== 'owned' ||
+    node.op !== 'rec' ||
+    index === fn.nodes.length - 1 ||
+    p0 === undefined ||
+    type === undefined ||
+    isPrimitive(p0) ||
+    p0.kind !== 'rec' ||
+    fn.params.some(containsIo) ||
+    !p0.fields.some(flatArray) ||
+    !p0.fields.every((t) => t === 'u32' || t === 'bool' || flatArray(t)) ||
+    formatType(type) !== formatType(p0) ||
+    ![...ctx.projections.of.values()].some(
+      (p) => p.container.kind === 'param' && p.container.index === 0,
+    )
+  )
+    return false;
+  const uses = fn.nodes.flatMap((n) =>
+    n.args.flatMap((o, k) => (o.kind === 'node' && o.id === node.id ? [{ n, k }] : [])),
+  );
+  if (
+    uses.length !== 1 ||
+    uses[0]?.k !== 1 ||
+    !['fold', 'loop'].includes(uses[0]?.n.op ?? '') ||
+    sameOp(fn.ret, { kind: 'node', id: node.id }) ||
+    sameOp(fn.ret, { kind: 'param', index: 0 })
+  )
+    return false;
+  for (const [j, n] of fn.nodes.entries()) {
+    if (j > index && n.args.some((o) => o.kind === 'param' && o.index === 0)) return false;
+  }
+  if (borrowLive(fn, { kind: 'param', index: 0 }, index, true)) return false;
+  return node.args.every(
+    (o) =>
+      isPrimitive(operandTypeOf(fn, o)) ||
+      cMutableHere(fn, o, index, cOwned(variant, fn), true, ctx.projections),
+  );
+}
+
 /**
- * The final `rec` of an owned body with state projections, written into the state itself: a
+ * A `rec` of an owned body with state projections, written into the state itself: a
  * field whose new value is its own projection (updated in place or unchanged) is not stored.
  * Stores run in field order and must read no other field's storage, so a value that is, or as a
  * `mov`/`select` pointer may be, another field's projection keeps the copying form.
@@ -1615,7 +1707,8 @@ function cStateStores(ctx: CContext, rec: Node): string | undefined {
   const projectionOf = (x: Operand): number | undefined => {
     const r = cRoot(ctx, x);
     const p = r.kind === 'node' ? ctx.projections.of.get(r.id) : undefined;
-    return p !== undefined && p.container.kind === 'param' ? p.field : undefined;
+    const parent = p === undefined ? undefined : cRoot(ctx, p.container);
+    return parent?.kind === 'param' && parent.index === 0 ? p?.field : undefined;
   };
   for (const [m, o] of rec.args.entries()) {
     const roots: Operand[] = [];
@@ -1631,7 +1724,11 @@ function cStateStores(ctx: CContext, rec: Node): string | undefined {
     };
     reach(o);
     const fields = roots.map(projectionOf);
-    if (fields.every((f) => f === m)) continue;
+    if (fields.every((f) => f === m)) {
+      // A skipped store still consumes its projection, whose local pointer may be declared.
+      stores.push(`(void)${cArg(ctx, o)};`);
+      continue;
+    }
     if (fields.some((f) => f !== undefined && f !== m)) return undefined;
     const self = fields.includes(m) ? `if (${cArg(ctx, o)} != &(*p0).f${m}) ` : '';
     stores.push(`${self}(*p0).f${m} = ${cVal(ctx, o)};`);
@@ -1851,6 +1948,10 @@ function cBodyWith(
     if (nested.skipped.has(n.id)) return cSkipped(ctx, n);
     const borrow = cBorrow(ctx, n);
     if (borrow !== undefined) return borrow;
+    if (cIntermediateRecord(ctx, n, index)) {
+      const stores = cStateStores(ctx, n);
+      if (stores !== undefined) return stores;
+    }
     if (
       variant === 'owned' &&
       index === fn.nodes.length - 1 &&
@@ -1917,13 +2018,19 @@ const tripCall = (trap: boolean, fn: TypedFunc, n: Node): string =>
   trap ? ` a0_trip("${fn.name}", "${n.id}", i);` : '';
 
 const emitCFunction = (fn: TypedFunc, parallel?: CParallel, trap = false): string => {
-  const variants: CVariant[] = ['value'];
-  if (hasOwnedVariant(fn)) variants.push('owned');
-  if (hasRefVariant(fn)) variants.push('ref');
-  if (hasViewVariant(fn)) variants.push('view');
-  const helpers = new Map<string, string>();
-  const bodies = variants.map((v) => cBody(fn, v, parallel, helpers, trap));
-  return [...helpers.values(), ...bodies].join('\n\n');
+  try {
+    const variants: CVariant[] = ['value'];
+    if (hasOwnedVariant(fn)) variants.push('owned');
+    if (hasRefVariant(fn)) variants.push('ref');
+    if (hasViewVariant(fn)) variants.push('view');
+    const helpers = new Map<string, string>();
+    const bodies = variants.map((v) => cBody(fn, v, parallel, helpers, trap));
+    return [...helpers.values(), ...bodies].join('\n\n');
+  } finally {
+    // Reuse analysis across this function's variants without retaining it for a live project.
+    C_USES.delete(fn);
+    C_PROJECTIONS.delete(fn);
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -2456,10 +2563,12 @@ export function assemble(
       const decls = types.map(cTypeDecl).filter((d) => d.length > 0);
       if (io)
         decls.push(
-          cIoRuntime(
-            options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
-            options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
-          ),
+          options.cIo === 'host'
+            ? C_HOST_IO
+            : cIoRuntime(
+                options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
+                options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
+              ),
         );
       const arena = cArenaRuntime(program);
       if (arena !== undefined) decls.push(arena);
@@ -2478,6 +2587,7 @@ export function assemble(
             program,
             options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
             options.cTrap?.maxTrips,
+            options.cIo === 'host',
           ),
         );
       else if (options.cTrap !== undefined && program.profile !== 'strict')
@@ -2510,6 +2620,15 @@ export interface CompileOptions {
   /** C/wasm/x86_64/Java/C# io capacities in words (defaults C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY); prelude only, bodies are unaffected. */
   readonly ioInputCapacity?: number;
   readonly ioOutputCapacity?: number;
+  /**
+   * C target only: host word streams instead of fixed input/output arrays. The caller
+   * defines struct a0_io and A0_IO_READ(token, out)/A0_IO_WRITE(token, word) before
+   * including the module. READ returns false at end of input (zero in canonical,
+   * an input trap in strict); WRITE receives every word, including puts' length prefix.
+   * The token and host context remain live for the call; hooks must not reenter the module.
+   * Absent, the existing fixed-capacity ABI and emitted bytes are unchanged.
+   */
+  readonly cIo?: 'host';
   /** C target only: automatic parallel folds (src/parallel.ts `parallelC`); absent = sequential. */
   readonly cParallel?: CParallel;
   /**
@@ -2606,7 +2725,9 @@ export function emitFunction(target: Target, fn: TypedFunc, options: CompileOpti
   // when optimization removes every iteration or effect.
   if (target === 'sv' && needsSequential(fn)) {
     assertVectorSized(fn, 'SystemVerilog');
-    return emitSequential(source);
+    // Every instance must use the same interface selected for its original source module.
+    const clocked = new Set([fn, ...fn.calls.values()].filter(needsSequential).map((f) => f.name));
+    return emitSequential(source, clocked);
   }
   if (target === 'c' && options.cParallel !== undefined)
     return emitCFunction(source, options.cParallel);
@@ -2626,28 +2747,12 @@ export function compile(
   options: CompileOptions = {},
   cache?: FunctionCache,
 ): CompileResult {
-  assertTargetSupports(target, source, strictTrapSite);
-  // A strict program with no site that can trap is the canonical program for a target without the profile.
-  const program = STRICT_TARGETS.has(target) ? source : withoutProfile(source);
-  const optimized = options.optimize !== false;
+  const program = prepareCompilation(source, target);
   let cacheHits = 0;
   let cacheMisses = 0;
   const bodies = program.functions.map((fn) => {
     if (cache === undefined) return emitFunction(target, fn, options);
-    const key = FunctionCache.key(
-      target,
-      optimized,
-      fn,
-      target === 'c' && options.cParallel !== undefined
-        ? `|${options.cParallel.key}`
-        : target === 'c' && options.cTrap !== undefined
-          ? '|trap'
-          : target === 'x86_64' && options.x86Platform !== undefined
-            ? `|${options.x86Platform}`
-            : target === 'wasm'
-              ? `${options.wasmSimd === false ? '|nosimd' : ''}${options.wasmUnroll === undefined || options.wasmUnroll === 1 ? '' : `|unroll${options.wasmUnroll}`}`
-              : '',
-    );
+    const key = functionEmissionKey(target, fn, options);
     const hit = cache.get(key);
     if (hit !== undefined) {
       cacheHits += 1;
@@ -2659,4 +2764,30 @@ export function compile(
     return text;
   });
   return { text: assemble(target, bodies, program, options), cacheHits, cacheMisses };
+}
+/** Shared target/semantic validation for every cache adapter. */
+export function prepareCompilation(source: TypedProgram, target: Target): TypedProgram {
+  assertTargetSupports(target, source, strictTrapSite);
+  return STRICT_TARGETS.has(target) ? source : withoutProfile(source);
+}
+/** One emission descriptor shared by in-memory, plaintext and encrypted persistent caches. */
+export function functionEmissionKey(
+  target: Target,
+  fn: TypedFunc,
+  options: CompileOptions = {},
+): string {
+  return FunctionCache.key(
+    target,
+    options.optimize !== false,
+    fn,
+    target === 'c' && options.cParallel !== undefined
+      ? `|${options.cParallel.key}`
+      : target === 'c' && options.cTrap !== undefined
+        ? '|trap'
+        : target === 'x86_64' && options.x86Platform !== undefined
+          ? `|${options.x86Platform}`
+          : target === 'wasm'
+            ? `${options.wasmSimd === false ? '|nosimd' : ''}${options.wasmUnroll === undefined || options.wasmUnroll === 1 ? '' : `|unroll${options.wasmUnroll}`}`
+            : '',
+  );
 }

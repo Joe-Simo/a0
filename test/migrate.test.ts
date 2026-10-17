@@ -7,7 +7,8 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { compile } from '../src/backends.js';
-import { formatProgram, formatSource, parseAndValidate, run } from '../src/core.js';
+import { formatProgram, formatSource, parse, run } from '../src/core.js';
+import { parseDense } from '../src/dense.js';
 import { programRevision } from '../src/edit.js';
 import { link } from '../src/link.js';
 import { migrateProject } from '../src/migrate.js';
@@ -108,7 +109,12 @@ test('migration retains strict semantics and compiler CLI checks the result', as
     assert.equal(check.status, 0, check.stderr);
     const linked = await link(join(output, manifest.entry), read, { root: output });
     assert.equal(linked.program.profile, 'strict');
-    assert.equal(formatSource(parseAndValidate(source)), formatSource(linked.program));
+    const before = await link(entry, read, { root: scratch });
+    assert.equal(formatSource(before.program), formatSource(linked.program));
+    assert.equal(
+      formatSource(parse(source)),
+      formatSource(parseDense(await read(join(output, manifest.entry)))),
+    );
     const fn = linked.program.byName.get('main');
     assert.ok(fn);
     assert.throws(() => run(fn, [0]));

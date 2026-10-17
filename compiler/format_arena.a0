@@ -1,0 +1,2627 @@
+# Full-word canonical formatting over immutable parser/grammar schema1.
+use "diagnostics_arena.a0"
+use "number_integer.a0"
+use "sha256_arena.a0"
+fn af_k (u32,(u32,u32,u32),io) u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 2
+q3 rec q0 q1 p1 q2
+ret q3
+end
+fn af_fail (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 0
+q3 select q1 p1 q2
+q4 at p0 1
+q5 at p0 2
+q6 at p0 3
+q7 rec q3 q4 q5 q6
+ret q7
+end
+fn af_ok (u32,(u32,u32,u32),u32x128,io) u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_byte (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+d at p0 2
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+q4 call ad_byte q3 p1
+q5 call af_k q4 d
+ret q5
+end
+fn af_num (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+d at p0 2
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+q4 call ad_number q3 p1
+q5 call af_k q4 d
+ret q5
+end
+fn af_row_load ((u32,(u32,u32,u32),u32x128,io),u32x128) u32 (u32,u32,u32) u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32x128)
+k at p0 0
+d at k 2
+out at k 1
+q0 at k 3
+q1 mul p3 p4
+a call av_load q0 p2 q1 p4
+q2 at a 0
+q3 at a 2
+q4 rec q2 out d q3
+q5 at a 1
+q6 rec q4 q5
+ret q6
+end
+fn af_row (u32,(u32,u32,u32),u32x128,io) (u32,u32,u32) u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32x128)
+q0 ne p3 0
+q1 le p3 128
+q2 and q0 q1
+q3 eq p3 0
+q4 select q3 1 p3
+q5 div 4294967295 q4
+q6 le p2 q5
+valid and q2 q6
+q7 select valid 0 7
+a call af_fail p0 q7
+q8 at a 0
+q9 eq q8 0
+q10 select q9 1 0
+q11 call arena_zero
+q12 rec a q11
+q13 fold af_row_load q10 q12 p1 p2 p3
+ret q13
+end
+fn af_span_copy (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+d at p0 2
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+q4 get p2 6
+q5 call ad_copy q3 q4 p3 p4
+q6 call af_k q5 d
+ret q6
+end
+fn af_span (u32,(u32,u32,u32),u32x128,io) u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p1 7
+q1 le p2 q0
+q2 get p1 7
+q3 sub q2 p2
+q4 le p3 q3
+valid and q1 q4
+q5 select valid 0 7
+a call af_fail p0 q5
+q6 at a 0
+q7 eq q6 0
+q8 select q7 1 0
+q9 fold af_span_copy q8 a p1 p2 p3
+ret q9
+end
+fn af_symbol_copy (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+d at p0 2
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+q4 call ad_symbol q3 p2 p3
+q5 call af_k q4 d
+ret q5
+end
+fn af_symbol (u32,(u32,u32,u32),u32x128,io) u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 le p2 858993459
+q1 select q0 0 7
+a call af_fail p0 q1
+q2 at a 0
+q3 eq q2 0
+q4 select q3 1 0
+q5 fold af_symbol_copy q4 a p1 p2
+ret q5
+end
+fn af_event_new ((u32,(u32,u32,u32),u32x128,io),u32) u32 u32 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32)
+k at p0 0
+d at k 2
+out at k 1
+q0 get d 4
+q1 get d 5
+q2 get d 6
+page call arena_zero
+page_1 set page 0 p2
+page_2 set page_1 1 p3
+page_3 set page_2 2 p4
+q3 at out 1
+page_4 set page_3 3 q3
+q4 get d 8
+page_5 set page_4 5 q4
+q5 at k 3
+q6 rec q0 q1 q2
+a call av_append q5 q6 6 page_5
+id div q1 6
+q7 at a 1
+q8 at q7 0
+m1_a set d 4 q8
+q9 at q7 1
+m1_b set m1_a 5 q9
+q10 at q7 2
+q11 set m1_b 6 q10
+q12 at a 0
+q13 set q11 8 id
+q14 at a 2
+q15 rec q12 out q13 q14
+q16 rec q15 id
+ret q16
+end
+fn af_begin (u32,(u32,u32,u32),u32x128,io) u32 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32)
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 2
+q3 get q2 3
+q4 ne q3 0
+q5 and q1 q4
+q6 select q5 1 0
+q7 rec p0 4294967295
+q8 fold af_event_new q6 q7 p1 p2 p3
+ret q8
+end
+fn af_event_end (u32,(u32,u32,u32),u32x128,io) u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 2
+q1 get q0 4
+q2 get q0 5
+q3 get q0 6
+q4 rec q1 q2 q3
+r call af_row p0 q4 p2 6
+a at r 0
+row at r 1
+d at a 2
+out at a 1
+q5 at out 1
+q6 get row 3
+length sub q5 q6
+page set row 4 length
+q7 at a 3
+q8 get d 4
+q9 get d 5
+q10 get d 6
+q11 rec q8 q9 q10
+q12 mul p2 6
+stored call av_store q7 q11 q12 6 page
+q13 at stored 0
+q14 get row 5
+q15 set d 8 q14
+q16 at stored 1
+q17 rec q13 out q15 q16
+ret q17
+end
+fn af_end (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 0
+q1 eq q0 0
+q2 ne p1 4294967295
+q3 and q1 q2
+q4 select q3 1 0
+q5 fold af_event_end q4 p0 p1
+ret q5
+end
+fn af_lit_fnword (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 102
+page_2 set page_1 1 110
+page_3 set page_2 2 32
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_arrow (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 32
+page_2 set page_1 1 45
+page_3 set page_2 2 62
+page_4 set page_3 3 32
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_retword (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 114
+page_2 set page_1 1 101
+page_3 set page_2 2 116
+page_4 set page_3 3 32
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_endword (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 101
+page_2 set page_1 1 110
+page_3 set page_2 2 100
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_useword (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 117
+page_2 set page_1 1 115
+page_3 set page_2 2 101
+page_4 set page_3 3 32
+page_5 set page_4 4 34
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 5 page_5
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_profile (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 112
+page_2 set page_1 1 114
+page_3 set page_2 2 111
+page_4 set page_3 3 102
+page_5 set page_4 4 105
+page_6 set page_5 5 108
+page_7 set page_6 6 101
+page_8 set page_7 7 32
+page_9 set page_8 8 115
+page_10 set page_9 9 116
+page_11 set page_10 10 114
+page_12 set page_11 11 105
+page_13 set page_12 12 99
+page_14 set page_13 13 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 14 page_14
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_trueword (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 116
+page_2 set page_1 1 114
+page_3 set page_2 2 117
+page_4 set page_3 3 101
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_falseword (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 102
+page_2 set page_1 1 97
+page_3 set page_2 2 108
+page_4 set page_3 3 115
+page_5 set page_4 4 101
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 5 page_5
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_exword (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 101
+page_2 set page_1 1 120
+page_3 set page_2 2 32
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_examplearrow (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 45
+page_2 set page_1 1 62
+page_3 set page_2 2 32
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_type_u32 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 117
+page_2 set page_1 1 51
+page_3 set page_2 2 50
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_type_bool (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 98
+page_2 set page_1 1 111
+page_3 set page_2 2 111
+page_4 set page_3 3 108
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_type_io (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 105
+page_2 set page_1 1 111
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 2 page_2
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op1 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 109
+page_2 set page_1 1 111
+page_3 set page_2 2 118
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op2 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 97
+page_2 set page_1 1 100
+page_3 set page_2 2 100
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op3 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 115
+page_2 set page_1 1 117
+page_3 set page_2 2 98
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op4 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 109
+page_2 set page_1 1 117
+page_3 set page_2 2 108
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op5 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 97
+page_2 set page_1 1 110
+page_3 set page_2 2 100
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op6 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 111
+page_2 set page_1 1 114
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 2 page_2
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op7 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 120
+page_2 set page_1 1 111
+page_3 set page_2 2 114
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op8 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 115
+page_2 set page_1 1 104
+page_3 set page_2 2 108
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op9 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 115
+page_2 set page_1 1 104
+page_3 set page_2 2 114
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op10 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 100
+page_2 set page_1 1 105
+page_3 set page_2 2 118
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op11 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 114
+page_2 set page_1 1 101
+page_3 set page_2 2 109
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op12 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 101
+page_2 set page_1 1 113
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 2 page_2
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op13 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 110
+page_2 set page_1 1 101
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 2 page_2
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op14 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 108
+page_2 set page_1 1 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 2 page_2
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op15 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 108
+page_2 set page_1 1 101
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 2 page_2
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op16 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 103
+page_2 set page_1 1 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 2 page_2
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op17 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 103
+page_2 set page_1 1 101
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 2 page_2
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op18 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 115
+page_2 set page_1 1 101
+page_3 set page_2 2 108
+page_4 set page_3 3 101
+page_5 set page_4 4 99
+page_6 set page_5 5 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 6 page_6
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op19 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 99
+page_2 set page_1 1 97
+page_3 set page_2 2 108
+page_4 set page_3 3 108
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op20 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 102
+page_2 set page_1 1 111
+page_3 set page_2 2 108
+page_4 set page_3 3 100
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op21 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 108
+page_2 set page_1 1 111
+page_3 set page_2 2 111
+page_4 set page_3 3 112
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op22 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 97
+page_2 set page_1 1 114
+page_3 set page_2 2 114
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op23 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 114
+page_2 set page_1 1 101
+page_3 set page_2 2 99
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op24 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 116
+page_2 set page_1 1 101
+page_3 set page_2 2 120
+page_4 set page_3 3 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op25 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 103
+page_2 set page_1 1 101
+page_3 set page_2 2 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op26 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 115
+page_2 set page_1 1 101
+page_3 set page_2 2 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op27 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 97
+page_2 set page_1 1 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 2 page_2
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op28 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 112
+page_2 set page_1 1 117
+page_3 set page_2 2 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 3 page_3
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op29 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 114
+page_2 set page_1 1 101
+page_3 set page_2 2 97
+page_4 set page_3 3 100
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op30 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 119
+page_2 set page_1 1 114
+page_3 set page_2 2 105
+page_4 set page_3 3 116
+page_5 set page_4 4 101
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 5 page_5
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op31 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 112
+page_2 set page_1 1 117
+page_3 set page_2 2 116
+page_4 set page_3 3 115
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op32 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 99
+page_2 set page_1 1 97
+page_3 set page_2 2 100
+page_4 set page_3 3 100
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op33 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 99
+page_2 set page_1 1 115
+page_3 set page_2 2 117
+page_4 set page_3 3 98
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op34 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 99
+page_2 set page_1 1 109
+page_3 set page_2 2 117
+page_4 set page_3 3 108
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op35 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 99
+page_2 set page_1 1 100
+page_3 set page_2 2 105
+page_4 set page_3 3 118
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op36 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 99
+page_2 set page_1 1 114
+page_3 set page_2 2 101
+page_4 set page_3 3 109
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_lit_op37 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+page call arena_zero
+page_1 set page 0 99
+page_2 set page_1 1 103
+page_3 set page_2 2 101
+page_4 set page_3 3 116
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+s call ad_append q3 4 page_4
+q4 at p0 2
+q5 call af_k s q4
+ret q5
+end
+fn af_opcode (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 eq p1 0
+q1 gt p1 37
+q2 or q0 q1
+q3 select q2 6 0
+a call af_fail p0 q3
+q4 eq p1 1
+q5 select q4 1 0
+a1 fold af_lit_op1 q5 a
+q6 eq p1 2
+q7 select q6 1 0
+a2 fold af_lit_op2 q7 a1
+q8 eq p1 3
+q9 select q8 1 0
+a3 fold af_lit_op3 q9 a2
+q10 eq p1 4
+q11 select q10 1 0
+a4 fold af_lit_op4 q11 a3
+q12 eq p1 5
+q13 select q12 1 0
+a5 fold af_lit_op5 q13 a4
+q14 eq p1 6
+q15 select q14 1 0
+a6 fold af_lit_op6 q15 a5
+q16 eq p1 7
+q17 select q16 1 0
+a7 fold af_lit_op7 q17 a6
+q18 eq p1 8
+q19 select q18 1 0
+a8 fold af_lit_op8 q19 a7
+q20 eq p1 9
+q21 select q20 1 0
+a9 fold af_lit_op9 q21 a8
+q22 eq p1 10
+q23 select q22 1 0
+a10 fold af_lit_op10 q23 a9
+q24 eq p1 11
+q25 select q24 1 0
+a11 fold af_lit_op11 q25 a10
+q26 eq p1 12
+q27 select q26 1 0
+a12 fold af_lit_op12 q27 a11
+q28 eq p1 13
+q29 select q28 1 0
+a13 fold af_lit_op13 q29 a12
+q30 eq p1 14
+q31 select q30 1 0
+a14 fold af_lit_op14 q31 a13
+q32 eq p1 15
+q33 select q32 1 0
+a15 fold af_lit_op15 q33 a14
+q34 eq p1 16
+q35 select q34 1 0
+a16 fold af_lit_op16 q35 a15
+q36 eq p1 17
+q37 select q36 1 0
+a17 fold af_lit_op17 q37 a16
+q38 eq p1 18
+q39 select q38 1 0
+a18 fold af_lit_op18 q39 a17
+q40 eq p1 19
+q41 select q40 1 0
+a19 fold af_lit_op19 q41 a18
+q42 eq p1 20
+q43 select q42 1 0
+a20 fold af_lit_op20 q43 a19
+q44 eq p1 21
+q45 select q44 1 0
+a21 fold af_lit_op21 q45 a20
+q46 eq p1 22
+q47 select q46 1 0
+a22 fold af_lit_op22 q47 a21
+q48 eq p1 23
+q49 select q48 1 0
+a23 fold af_lit_op23 q49 a22
+q50 eq p1 24
+q51 select q50 1 0
+a24 fold af_lit_op24 q51 a23
+q52 eq p1 25
+q53 select q52 1 0
+a25 fold af_lit_op25 q53 a24
+q54 eq p1 26
+q55 select q54 1 0
+a26 fold af_lit_op26 q55 a25
+q56 eq p1 27
+q57 select q56 1 0
+a27 fold af_lit_op27 q57 a26
+q58 eq p1 28
+q59 select q58 1 0
+a28 fold af_lit_op28 q59 a27
+q60 eq p1 29
+q61 select q60 1 0
+a29 fold af_lit_op29 q61 a28
+q62 eq p1 30
+q63 select q62 1 0
+a30 fold af_lit_op30 q63 a29
+q64 eq p1 31
+q65 select q64 1 0
+a31 fold af_lit_op31 q65 a30
+q66 eq p1 32
+q67 select q66 1 0
+a32 fold af_lit_op32 q67 a31
+q68 eq p1 33
+q69 select q68 1 0
+a33 fold af_lit_op33 q69 a32
+q70 eq p1 34
+q71 select q70 1 0
+a34 fold af_lit_op34 q71 a33
+q72 eq p1 35
+q73 select q72 1 0
+a35 fold af_lit_op35 q73 a34
+q74 eq p1 36
+q75 select q74 1 0
+a36 fold af_lit_op36 q75 a35
+q76 eq p1 37
+q77 select q76 1 0
+a37 fold af_lit_op37 q77 a36
+ret a37
+end
+fn af_operand_node (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p3 1
+q1 call af_symbol p0 p2 q0
+ret q1
+end
+fn af_operand_smallparam (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_byte p0 112
+q1 get p3 1
+q2 call af_num q0 q1
+ret q2
+end
+fn af_operand_bigparam_do (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+a call af_byte p0 112
+q0 at a 0
+q1 at a 1
+q2 at a 3
+q3 get p2 6
+q4 get p3 2
+q5 add q4 1
+q6 get p3 3
+q7 sub q6 1
+n call number_integer q2 q3 q5 q7
+q8 at n 0
+q9 at n 3
+q10 rec q8 q1 q9
+q11 at n 2
+q12 call ad_string q10 q11
+q13 at a 2
+q14 call af_k q12 q13
+ret q14
+end
+fn af_operand_bigparam (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p3 3
+q1 ge q0 2
+q2 get p3 2
+q3 get p2 7
+q4 le q2 q3
+q5 and q1 q4
+q6 get p3 3
+q7 get p2 7
+q8 get p3 2
+q9 sub q7 q8
+q10 le q6 q9
+valid and q5 q10
+q11 select valid 0 7
+a call af_fail p0 q11
+q12 at a 0
+q13 eq q12 0
+q14 select q13 1 0
+q15 fold af_operand_bigparam_do q14 a p2 p3
+ret q15
+end
+fn af_operand_param (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p3 4
+q1 and q0 4
+big ne q1 0
+q2 select big 0 1
+a fold af_operand_smallparam q2 p0 p2 p3
+q3 select big 1 0
+q4 fold af_operand_bigparam q3 a p2 p3
+ret q4
+end
+fn af_operand_number (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p3 1
+q1 call af_num p0 q0
+ret q1
+end
+fn af_operand_bool (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p3 1
+q1 le q0 1
+q2 select q1 0 6
+a call af_fail p0 q2
+q3 get p3 1
+q4 eq q3 0
+q5 select q4 1 0
+b fold af_lit_falseword q5 a
+q6 get p3 1
+q7 eq q6 0
+q8 select q7 0 1
+q9 fold af_lit_trueword q8 b
+ret q9
+end
+fn af_operand (u32,(u32,u32,u32),u32x128,io) u32x128 (u32,u32,u32) u32 -> (u32,(u32,u32,u32),u32x128,io)
+r call af_row p0 p2 p3 5
+row at r 1
+q0 at r 0
+q1 get row 0
+q2 le q1 3
+q3 select q2 0 6
+a call af_fail q0 q3
+q4 get row 0
+q5 eq q4 0
+q6 select q5 1 0
+b fold af_operand_node q6 a p1 row
+q7 get row 0
+q8 eq q7 1
+q9 select q8 1 0
+c fold af_operand_param q9 b p1 row
+q10 get row 0
+q11 eq q10 2
+q12 select q11 1 0
+d fold af_operand_number q12 c p1 row
+q13 get row 0
+q14 eq q13 3
+q15 select q14 1 0
+q16 fold af_operand_bool q15 d p1 row
+ret q16
+end
+fn af_operand_region (u32,(u32,u32,u32),u32x128,io) u32x128 (u32,u32,u32) u32 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+b call af_begin p0 p4 p3 p5
+q0 at b 0
+a call af_operand q0 p1 p2 p3
+q1 at b 1
+q2 call af_end a q1
+ret q2
+end
+fn af_argument (u32,(u32,u32,u32),u32x128,io) u32 u32x128 (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+a call af_byte p0 32
+q0 add p4 p1
+q1 eq p5 0
+q2 select q1 9 15
+q3 call af_operand_region a p2 p3 q0 q2 p1
+ret q3
+end
+fn af_text_escape (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_byte p0 92
+ret q0
+end
+fn af_textbyte (u32,(u32,u32,u32),u32x128,io) u32 (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 eq p4 0
+q1 select q0 9 15
+q2 add p3 p1
+b call af_begin p0 q1 q2 p1
+q3 at b 0
+q4 add p3 p1
+r call af_row q3 p2 q4 5
+row at r 1
+q5 get row 1
+q6 at r 0
+q7 get row 0
+q8 eq q7 2
+q9 le q5 255
+q10 and q8 q9
+q11 select q10 0 6
+a call af_fail q6 q11
+q12 eq q5 92
+q13 eq q5 34
+q14 or q12 q13
+q15 eq q5 10
+q16 or q14 q15
+q17 eq q5 9
+escaped or q16 q17
+q18 select escaped 1 0
+c fold af_text_escape q18 a
+q19 eq q5 10
+q20 eq q5 9
+q21 select q20 116 q5
+q22 select q19 110 q21
+d call af_byte c q22
+q23 at b 1
+q24 call af_end d q23
+ret q24
+end
+fn af_text_ok (u32,(u32,u32,u32),u32x128,io) u32 (u32,u32,u32) u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_args_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 (u32,u32,u32) u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_text (u32,(u32,u32,u32),u32x128,io) u32 (u32,u32,u32) u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_byte p0 32
+a call af_byte q0 34
+q1 get p3 3
+q2 get p3 2
+b loop af_text_ok af_textbyte q1 a p2 q2 p4
+q3 call af_byte b 34
+ret q3
+end
+fn af_node_predicate (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+a call af_byte p0 32
+b call af_begin a 8 p4 p5
+q0 at b 0
+q1 get p3 5
+c call af_symbol q0 p2 q1
+q2 at b 1
+q3 call af_end c q2
+ret q3
+end
+fn af_node_callee (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+a call af_byte p0 32
+b call af_begin a 7 p4 p5
+q0 at b 0
+q1 get p3 4
+c call af_symbol q0 p2 q1
+q2 at b 1
+q3 call af_end c q2
+ret q3
+end
+fn af_node_arguments (u32,(u32,u32,u32),u32x128,io) u32 u32x128 (u32,u32,u32) u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p4 1
+q1 eq q0 21
+q2 select q1 1 0
+a fold af_node_predicate q2 p0 p2 p4 p5 p6
+q3 get p4 4
+q4 ne q3 4294967295
+q5 select q4 1 0
+b fold af_node_callee q5 a p2 p4 p5 p6
+q6 get p4 3
+q7 get p4 2
+q8 loop af_args_ok af_argument q6 b p2 p3 q7 p6
+ret q8
+end
+fn af_node (u32,(u32,u32,u32),u32x128,io) u32x128 (u32,u32,u32) (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 eq p5 0
+q1 select q0 4 14
+b call af_begin p0 q1 p4 0
+q2 at b 0
+r call af_row q2 p2 p4 14
+row at r 1
+q3 get row 2
+q4 at p3 1
+q5 div q4 5
+q6 le q3 q5
+q7 get row 3
+q8 at p3 1
+q9 div q8 5
+q10 get row 2
+q11 sub q9 q10
+q12 le q7 q11
+operands and q6 q12
+q13 get row 1
+q14 ge q13 1
+q15 get row 1
+q16 le q15 37
+q17 and q14 q16
+q18 get row 11
+q19 and q18 2
+q20 eq q19 0
+q21 get row 1
+q22 eq q21 22
+q23 or q20 q22
+q24 get row 1
+q25 eq q24 24
+q26 or q23 q25
+known and q17 q26
+q27 at r 0
+q28 and operands known
+q29 select q28 0 7
+a call af_fail q27 q29
+name call af_begin a 5 p4 p5
+q30 at name 0
+q31 get row 0
+named call af_symbol q30 p1 q31
+q32 at name 1
+q33 call af_end named q32
+c call af_byte q33 32
+q34 get row 1
+q35 eq q34 24
+q36 get row 11
+q37 and q36 2
+q38 ne q37 0
+text or q35 q38
+op call af_begin c 6 p4 p5
+q39 at op 0
+q40 get row 1
+q41 select text 24 q40
+spelled call af_opcode q39 q41
+q42 at op 1
+d call af_end spelled q42
+q43 select text 1 0
+e fold af_text q43 d p3 row p5
+q44 select text 0 1
+f fold af_node_arguments q44 e p1 p3 row p4 p5
+q45 at b 1
+q46 call af_end f q45
+ret q46
+end
+fn af_lpush_do ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+k at p0 0
+q0 at k 0
+q1 at k 1
+q2 at k 3
+q3 call arena_zero
+q4 set q3 0 p2
+page set q4 1 p3
+q5 at p0 1
+r call av_append q2 q5 2 page
+q6 at r 0
+q7 at r 2
+q8 rec q6 q1 q7
+q9 at k 2
+q10 call af_k q8 q9
+q11 at r 1
+q12 rec q10 q11
+ret q12
+end
+fn af_lpush ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+k at p0 0
+stack at p0 1
+q0 at k 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 rec k stack
+q4 fold af_lpush_do q2 q3 p1 p2
+ret q4
+end
+fn af_lsemicolon ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 call af_lpush p0 1 59
+ret q0
+end
+fn af_lchildren_ok ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 u32 -> bool
+q0 at p0 0
+q1 at q0 0
+q2 eq q1 0
+ret q2
+end
+fn af_lchildren ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 sub p4 1
+index sub q0 p1
+q1 at p0 0
+q2 get p2 35
+q3 get p2 36
+q4 get p2 37
+q5 rec q2 q3 q4
+q6 add p3 index
+r call af_row q1 q5 q6 1
+q7 at r 0
+q8 at p0 1
+q9 rec q7 q8
+q10 at r 1
+q11 get q10 0
+a call af_lpush q9 0 q11
+q12 ne index 0
+q13 select q12 1 0
+q14 fold af_lsemicolon q13 a
+ret q14
+end
+fn af_lnumber (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 1
+q1 call af_num p0 q0
+ret q1
+end
+fn af_lbool (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 1
+q1 le q0 1
+q2 select q1 0 6
+a call af_fail p0 q2
+q3 get p2 1
+q4 eq q3 0
+q5 select q4 1 0
+b fold af_lit_falseword q5 a
+q6 get p2 1
+q7 eq q6 0
+q8 select q7 0 1
+q9 fold af_lit_trueword q8 b
+ret q9
+end
+fn af_lscalar ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 get p3 0
+q1 eq q0 1
+q2 select q1 1 0
+q3 at p0 0
+a fold af_lnumber q2 q3 p3
+q4 get p3 0
+q5 eq q4 2
+q6 select q5 1 0
+b fold af_lbool q6 a p3
+q7 call af_end b p4
+q8 at p0 1
+q9 rec q7 q8
+ret q9
+end
+fn af_lcontainer ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 get p2 35
+q1 get p2 36
+q2 get p2 37
+q3 get p3 3
+q4 ne q3 0
+q5 get p3 2
+q6 le q5 q1
+q7 and q4 q6
+q8 get p3 3
+q9 get p3 2
+q10 sub q1 q9
+q11 le q8 q10
+valid and q7 q11
+q12 at p0 0
+q13 select valid 0 7
+k call af_fail q12 q13
+q14 get p3 0
+q15 eq q14 3
+q16 select q15 91 40
+opened call af_byte k q16
+q17 at p0 1
+q18 rec opened q17
+a call af_lpush q18 2 p4
+q19 get p3 0
+q20 eq q19 3
+q21 select q20 93 41
+b call af_lpush a 1 q21
+q22 get p3 0
+q23 eq q22 4
+q24 get p3 3
+q25 eq q24 1
+q26 and q23 q25
+q27 select q26 1 0
+c fold af_lsemicolon q27 b
+q28 get p3 3
+q29 get p3 2
+q30 get p3 3
+q31 loop af_lchildren_ok af_lchildren q28 c p2 q29 q30
+ret q31
+end
+fn af_lvalue ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 at p0 0
+q1 get p2 32
+q2 get p2 33
+q3 get p2 34
+q4 rec q1 q2 q3
+r call af_row q0 q4 p3 6
+row at r 1
+q5 at r 0
+q6 get row 0
+q7 ge q6 1
+q8 get row 0
+q9 le q8 4
+q10 and q7 q9
+q11 select q10 0 6
+a call af_fail q5 q11
+b call af_begin a 13 p3 0
+q12 get row 0
+q13 lt q12 3
+q14 select q13 1 0
+q15 at b 0
+q16 at p0 1
+q17 rec q15 q16
+q18 at b 1
+c fold af_lscalar q14 q17 p2 row q18
+q19 get row 0
+q20 ge q19 3
+q21 select q20 1 0
+q22 at b 1
+q23 fold af_lcontainer q21 c p2 row q22
+ret q23
+end
+fn af_lbyte ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 at p0 0
+q1 call af_byte q0 p3
+q2 at p0 1
+q3 rec q1 q2
+ret q3
+end
+fn af_lend ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 at p0 0
+q1 call af_end q0 p3
+q2 at p0 1
+q3 rec q1 q2
+ret q3
+end
+fn af_lmore ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 -> bool
+q0 at p0 0
+q1 at q0 0
+q2 eq q1 0
+q3 at p0 1
+q4 at q3 1
+q5 ne q4 0
+q6 and q2 q5
+ret q6
+end
+fn af_lstep ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+stack at p0 1
+q0 at p0 0
+q1 at stack 1
+q2 div q1 2
+q3 sub q2 1
+r call af_row q0 stack q3 2
+row at r 1
+q4 at r 0
+q5 get row 0
+q6 le q5 2
+q7 select q6 0 6
+a call af_fail q4 q7
+q8 at stack 0
+q9 at stack 1
+q10 sub q9 2
+q11 at stack 2
+q12 rec q8 q10 q11
+q13 get row 0
+q14 eq q13 0
+q15 select q14 1 0
+q16 rec a q12
+q17 get row 1
+b fold af_lvalue q15 q16 p2 q17
+q18 get row 0
+q19 eq q18 1
+q20 select q19 1 0
+q21 get row 1
+c fold af_lbyte q20 b p2 q21
+q22 get row 0
+q23 eq q22 2
+q24 select q23 1 0
+q25 get row 1
+q26 fold af_lend q24 c p2 q25
+ret q26
+end
+fn af_literal (u32,(u32,u32,u32),u32x128,io) u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 rec 0 0 0
+q1 rec p0 q0
+start call af_lpush q1 0 p2
+q2 get p1 92
+q3 sub 0 q2
+r loop af_lmore af_lstep q3 start p1
+q4 at r 0
+q5 at r 1
+q6 at q5 1
+q7 eq q6 0
+q8 select q7 0 7
+q9 call af_fail q4 q8
+ret q9
+end
+fn af_tprimitive (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 0
+q1 eq q0 0
+q2 select q1 1 0
+a fold af_lit_type_u32 q2 p0
+q3 get p2 0
+q4 eq q3 1
+q5 select q4 1 0
+b fold af_lit_type_bool q5 a
+q6 get p2 0
+q7 eq q6 2
+q8 select q7 1 0
+q9 fold af_lit_type_io q8 b
+ret q9
+end
+fn af_tscalar ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32x128 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 at p0 0
+q1 call af_tprimitive q0 0 p3
+q2 at p0 1
+q3 rec q1 q2
+ret q3
+end
+fn af_tarray ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32x128 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 get p3 2
+a call af_lpush p0 2 q0
+b call af_lpush a 1 120
+q1 get p3 1
+q2 call af_lpush b 0 q1
+ret q2
+end
+fn af_tcomma ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 call af_lpush p0 1 44
+ret q0
+end
+fn af_tchildren_ok ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 u32 -> bool
+q0 at p0 0
+q1 at q0 0
+q2 eq q1 0
+ret q2
+end
+fn af_tchildren ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 sub p4 1
+index sub q0 p1
+q1 at p0 0
+q2 get p2 71
+q3 get p2 72
+q4 get p2 73
+q5 rec q2 q3 q4
+q6 add p3 index
+r call af_row q1 q5 q6 1
+q7 at r 0
+q8 at p0 1
+q9 rec q7 q8
+q10 at r 1
+q11 get q10 0
+a call af_lpush q9 0 q11
+q12 ne index 0
+q13 select q12 1 0
+q14 fold af_tcomma q13 a
+ret q14
+end
+fn af_trecord ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32x128 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 get p3 2
+q1 ne q0 0
+q2 get p3 1
+q3 get p2 72
+q4 le q2 q3
+q5 and q1 q4
+q6 get p3 2
+q7 get p2 72
+q8 get p3 1
+q9 sub q7 q8
+q10 le q6 q9
+valid and q5 q10
+q11 at p0 0
+q12 select valid 0 7
+k call af_fail q11 q12
+opened call af_byte k 40
+q13 at p0 1
+q14 rec opened q13
+a call af_lpush q14 1 41
+q15 get p3 2
+q16 get p3 1
+q17 get p3 2
+q18 loop af_tchildren_ok af_tchildren q15 a p2 q16 q17
+ret q18
+end
+fn af_tvalue ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 at p0 0
+q1 get p2 68
+q2 get p2 69
+q3 get p2 70
+q4 rec q1 q2 q3
+r call af_row q0 q4 p3 5
+row at r 1
+q5 at r 0
+q6 get row 0
+q7 le q6 4
+q8 select q7 0 6
+a call af_fail q5 q8
+q9 get row 0
+q10 lt q9 3
+q11 select q10 1 0
+q12 at p0 1
+q13 rec a q12
+b fold af_tscalar q11 q13 p2 row
+q14 get row 0
+q15 eq q14 3
+q16 select q15 1 0
+c fold af_tarray q16 b p2 row
+q17 get row 0
+q18 eq q17 4
+q19 select q18 1 0
+q20 fold af_trecord q19 c p2 row
+ret q20
+end
+fn af_tbyte ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 at p0 0
+q1 call af_byte q0 p3
+q2 at p0 1
+q3 rec q1 q2
+ret q3
+end
+fn af_tnumber ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+q0 at p0 0
+q1 call af_num q0 p3
+q2 at p0 1
+q3 rec q1 q2
+ret q3
+end
+fn af_tmore ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 -> bool
+q0 at p0 0
+q1 at q0 0
+q2 eq q1 0
+q3 at p0 1
+q4 at q3 1
+q5 ne q4 0
+q6 and q2 q5
+ret q6
+end
+fn af_tstep ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32x128 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+stack at p0 1
+q0 at p0 0
+q1 at stack 1
+q2 div q1 2
+q3 sub q2 1
+r call af_row q0 stack q3 2
+row at r 1
+q4 at r 0
+q5 get row 0
+q6 le q5 2
+q7 select q6 0 6
+a call af_fail q4 q7
+q8 at stack 0
+q9 at stack 1
+q10 sub q9 2
+q11 at stack 2
+q12 rec q8 q10 q11
+q13 get row 0
+q14 eq q13 0
+q15 select q14 1 0
+q16 rec a q12
+q17 get row 1
+b fold af_tvalue q15 q16 p2 q17
+q18 get row 0
+q19 eq q18 1
+q20 select q19 1 0
+q21 get row 1
+c fold af_tbyte q20 b p2 q21
+q22 get row 0
+q23 eq q22 2
+q24 select q23 1 0
+q25 get row 1
+q26 fold af_tnumber q24 c p2 q25
+ret q26
+end
+fn af_printtype (u32,(u32,u32,u32),u32x128,io) u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 rec 0 0 0
+q1 rec p0 q0
+start call af_lpush q1 0 p2
+q2 get p1 93
+q3 sub 0 q2
+r loop af_tmore af_tstep q3 start p1
+q4 at r 0
+q5 at r 1
+q6 at q5 1
+q7 eq q6 0
+q8 select q7 0 7
+q9 call af_fail q4 q8
+ret q9
+end
+fn af_comment (u32,(u32,u32,u32),u32x128,io) u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+b call af_begin p0 16 p2 0
+q0 at b 0
+q1 get p1 38
+q2 get p1 39
+q3 get p1 40
+q4 rec q1 q2 q3
+r call af_row q0 q4 p2 3
+q5 at r 0
+q6 at r 1
+q7 get q6 0
+q8 at r 1
+q9 get q8 1
+a call af_span q5 p1 q7 q9
+q10 at b 1
+q11 call af_end a q10
+ret q11
+end
+fn af_leading_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_leading (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 add p3 p1
+q1 call af_comment p0 p2 q0
+q2 call af_byte q1 10
+ret q2
+end
+fn af_before (u32,(u32,u32,u32),u32x128,io) u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p1 32
+q1 get p1 33
+q2 get p1 34
+q3 rec q0 q1 q2
+r call af_row p0 q3 p2 10
+row at r 1
+q4 get p1 39
+count div q4 3
+q5 get row 8
+q6 le q5 count
+q7 get row 9
+q8 get row 8
+q9 sub count q8
+q10 le q7 q9
+valid and q6 q10
+q11 at r 0
+q12 select valid 0 7
+a call af_fail q11 q12
+q13 get row 9
+q14 get row 8
+q15 loop af_leading_ok af_leading q13 a p1 q14
+ret q15
+end
+fn af_after_comment (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_byte p0 32
+q1 call af_comment q0 p2 p3
+ret q1
+end
+fn af_after (u32,(u32,u32,u32),u32x128,io) u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p1 32
+q1 get p1 33
+q2 get p1 34
+q3 rec q0 q1 q2
+r call af_row p0 q3 p2 10
+q4 at r 1
+q5 get q4 7
+q6 ne q5 4294967295
+q7 select q6 1 0
+q8 at r 0
+q9 at r 1
+q10 get q9 7
+q11 fold af_after_comment q7 q8 p1 q10
+ret q11
+end
+fn af_before_part (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_before p0 p2 p3
+ret q0
+end
+fn af_after_part (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_after p0 p2 p3
+ret q0
+end
+fn af_body_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 bool -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_body (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 44
+q1 get p2 45
+q2 get p2 46
+q3 rec q0 q1 q2
+q4 add p3 p1
+r call af_row p0 q3 q4 14
+row at r 1
+q5 get row 11
+q6 and q5 1
+q7 eq q6 0
+attached and p4 q7
+q8 select attached 1 0
+q9 at r 0
+q10 get row 6
+a fold af_before_part q8 q9 p2 q10
+q11 get p2 44
+q12 get p2 45
+q13 get p2 46
+q14 rec q11 q12 q13
+q15 get p2 47
+q16 get p2 48
+q17 get p2 49
+q18 rec q15 q16 q17
+q19 add p3 p1
+b call af_node a p2 q14 q18 q19 0
+q20 select attached 1 0
+q21 get row 6
+c fold af_after_part q20 b p2 q21
+q22 call af_byte c 10
+ret q22
+end
+fn af_parameter_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_parameter (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 50
+q1 get p2 51
+q2 get p2 52
+q3 rec q0 q1 q2
+q4 add p3 p1
+r call af_row p0 q3 q4 1
+q5 at r 0
+a call af_byte q5 32
+b call af_begin a 2 p4 p1
+q6 at b 0
+q7 at r 1
+q8 get q7 0
+c call af_printtype q6 p2 q8
+q9 at b 1
+q10 call af_end c q9
+ret q10
+end
+fn af_header (u32,(u32,u32,u32),u32x128,io) u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p1 41
+q1 get p1 42
+q2 get p1 43
+q3 rec q0 q1 q2
+r call af_row p0 q3 p2 14
+row at r 1
+q4 select p3 1 0
+q5 at r 0
+q6 get row 7
+a fold af_before_part q4 q5 p1 q6
+h call af_begin a 1 p2 0
+q7 at h 0
+b call af_lit_fnword q7 0
+name call af_begin b 21 p2 0
+q8 at name 0
+q9 get row 0
+c call af_symbol q8 p1 q9
+q10 at name 1
+d call af_end c q10
+q11 get p1 51
+q12 get row 1
+q13 le q12 q11
+q14 get row 2
+q15 get row 1
+q16 sub q11 q15
+q17 le q14 q16
+valid and q13 q17
+q18 select valid 0 7
+e call af_fail d q18
+q19 get row 2
+q20 get row 1
+f loop af_parameter_ok af_parameter q19 e p1 q20 p2
+g call af_lit_arrow f 0
+result call af_begin g 3 p2 0
+q21 at result 0
+q22 get row 3
+typed call af_printtype q21 p1 q22
+q23 at result 1
+q24 call af_end typed q23
+q25 at h 1
+finished call af_end q24 q25
+q26 select p3 1 0
+q27 get row 7
+after fold af_after_part q26 finished p1 q27
+q28 call af_byte after 10
+ret q28
+end
+fn af_find_more ((u32,(u32,u32,u32),u32x128,io),u32x128,u32,u32) u32 u32x128 u32 -> bool
+q0 at p0 0
+q1 at q0 0
+q2 eq q1 0
+q3 at p0 2
+q4 at p0 3
+q5 lt q3 q4
+q6 and q2 q5
+q7 at p0 1
+q8 get q7 5
+q9 eq q8 0
+q10 and q6 q9
+ret q10
+end
+fn af_find_step ((u32,(u32,u32,u32),u32x128,io),u32x128,u32,u32) u32 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32x128,u32,u32)
+q0 at p0 2
+q1 at p0 3
+q2 at p0 2
+q3 sub q1 q2
+q4 div q3 2
+mid add q0 q4
+q5 at p0 0
+q6 get p2 62
+q7 get p2 63
+q8 get p2 64
+q9 rec q6 q7 q8
+a call af_row q5 q9 mid 5
+row at a 1
+q10 get row 0
+found eq q10 p3
+q11 set row 5 1
+q12 at p0 1
+result select found q11 q12
+q13 get row 0
+q14 lt q13 p3
+q15 add mid 1
+q16 at p0 2
+lo select q14 q15 q16
+q17 get row 0
+q18 ge q17 p3
+q19 at p0 3
+hi select q18 mid q19
+q20 at a 0
+q21 rec q20 result lo hi
+ret q21
+end
+fn af_find_spec (u32,(u32,u32,u32),u32x128,io) u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32x128)
+q0 call arena_zero
+q1 set q0 3 4294967295
+empty set q1 4 4294967295
+q2 get p1 63
+q3 div q2 5
+q4 rec p0 empty 0 q3
+r loop af_find_more af_find_step 33 q4 p1 p2
+q5 at r 0
+q6 at r 1
+q7 rec q5 q6
+ret q7
+end
+fn af_exarg_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_exarg (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 38
+q1 get p2 39
+q2 get p2 40
+q3 rec q0 q1 q2
+q4 add p3 p1
+r call af_row p0 q3 q4 1
+q5 at r 0
+q6 at r 1
+q7 get q6 0
+q8 call af_literal q5 p2 q7
+q9 call af_byte q8 32
+ret q9
+end
+fn af_example_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_example (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p3 41
+q1 get p3 42
+q2 get p3 43
+q3 rec q0 q1 q2
+q4 add p4 p1
+r call af_row p0 q3 q4 8
+row at r 1
+q5 select p5 1 0
+q6 at r 0
+q7 get row 5
+a fold af_before_part q5 q6 p2 q7
+q8 add p4 p1
+begin call af_begin a 12 q8 0
+q9 at begin 0
+b call af_lit_exword q9 0
+q10 get row 2
+q11 get p3 39
+q12 le q10 q11
+q13 get row 3
+q14 get p3 39
+q15 get row 2
+q16 sub q14 q15
+q17 le q13 q16
+valid and q12 q17
+q18 select valid 0 7
+c call af_fail b q18
+q19 get row 3
+q20 get row 2
+d loop af_exarg_ok af_exarg q19 c p3 q20
+e call af_lit_examplearrow d 0
+q21 get row 4
+f call af_literal e p3 q21
+q22 at begin 1
+g call af_end f q22
+q23 select p5 1 0
+q24 get row 5
+h fold af_after_part q23 g p2 q24
+q25 call af_byte h 10
+ret q25
+end
+fn af_contract (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p3 44
+q1 get p3 45
+q2 get p3 46
+q3 rec q0 q1 q2
+r call af_row p0 q3 p4 7
+row at r 1
+q4 select p5 1 0
+q5 at r 0
+q6 get row 2
+a fold af_before_part q4 q5 p2 q6
+q7 get p3 47
+q8 get p3 48
+q9 get p3 49
+q10 rec q7 q8 q9
+q11 get p3 50
+q12 get p3 51
+q13 get p3 52
+q14 rec q11 q12 q13
+q15 get row 3
+b call af_node a p2 q10 q14 q15 1
+q16 select p5 1 0
+q17 get row 2
+c fold af_after_part q16 b p2 q17
+q18 call af_byte c 10
+ret q18
+end
+fn af_specs (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+r call af_find_spec p0 p3 p4
+row at r 1
+q0 get row 1
+q1 get p3 42
+q2 div q1 8
+q3 le q0 q2
+q4 get row 2
+q5 get p3 42
+q6 div q5 8
+q7 get row 1
+q8 sub q6 q7
+q9 le q4 q8
+valid and q3 q9
+q10 at r 0
+q11 select valid 0 7
+a call af_fail q10 q11
+q12 get row 2
+q13 get row 1
+b loop af_example_ok af_example q12 a p2 p3 q13 p5
+q14 get row 3
+q15 ne q14 4294967295
+q16 select q15 1 0
+q17 get row 3
+c fold af_contract q16 b p2 p3 q17 p5
+q18 get row 4
+q19 ne q18 4294967295
+q20 select q19 1 0
+q21 get row 4
+q22 fold af_contract q20 c p2 p3 q21 p5
+ret q22
+end
+fn af_retline (u32,(u32,u32,u32),u32x128,io) u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p1 41
+q1 get p1 42
+q2 get p1 43
+q3 rec q0 q1 q2
+r call af_row p0 q3 p2 14
+row at r 1
+q4 select p3 1 0
+q5 at r 0
+q6 get row 8
+a fold af_before_part q4 q5 p1 q6
+begin call af_begin a 10 p2 0
+q7 at begin 0
+b call af_lit_retword q7 0
+q8 get p1 47
+q9 get p1 48
+q10 get p1 49
+q11 rec q8 q9 q10
+q12 get row 6
+c call af_operand_region b p1 q11 q12 11 p2
+q13 at begin 1
+d call af_end c q13
+q14 select p3 1 0
+q15 get row 8
+e fold af_after_part q14 d p1 q15
+q16 call af_byte e 10
+ret q16
+end
+fn af_endline (u32,(u32,u32,u32),u32x128,io) u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p1 41
+q1 get p1 42
+q2 get p1 43
+q3 rec q0 q1 q2
+r call af_row p0 q3 p2 14
+row at r 1
+q4 select p3 1 0
+q5 at r 0
+q6 get row 9
+a fold af_before_part q4 q5 p1 q6
+begin call af_begin a 22 p2 0
+q7 at begin 0
+b call af_lit_endword q7 0
+q8 at begin 1
+c call af_end b q8
+q9 select p3 1 0
+q10 get row 9
+q11 fold af_after_part q9 c p1 q10
+ret q11
+end
+fn af_newline (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_byte p0 10
+ret q0
+end
+fn af_newline2 (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_byte p0 10
+q1 call af_byte q0 10
+ret q1
+end
+fn af_tail_comment (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 eq p1 0
+q1 select q0 0 1
+a fold af_newline q1 p0
+q2 add p3 p1
+q3 call af_comment a p2 q2
+ret q3
+end
+fn af_tail_fn (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+a call af_newline2 p0 0
+q0 get p2 39
+count div q0 3
+q1 get p2 25
+q2 le q1 count
+q3 get p2 26
+q4 get p2 25
+q5 sub count q4
+q6 le q3 q5
+valid and q2 q6
+q7 select valid 0 7
+b call af_fail a q7
+q8 get p2 26
+q9 get p2 25
+q10 loop af_leading_ok af_tail_comment q8 b p2 q9
+ret q10
+end
+fn af_function (u32,(u32,u32,u32),u32x128,io) u32x128 u32x128 u32 bool bool -> (u32,(u32,u32,u32),u32x128,io)
+begin call af_begin p0 19 p3 0
+q0 at begin 0
+q1 get p1 41
+q2 get p1 42
+q3 get p1 43
+q4 rec q1 q2 q3
+r call af_row q0 q4 p3 14
+row at r 1
+q5 at r 0
+a call af_header q5 p1 p3 p4
+q6 xor p5 true
+q7 get p1 57
+q8 ne q7 0
+q9 and q6 q8
+q10 select q9 1 0
+b fold af_specs q10 a p1 p2 p3 p4
+q11 get p1 45
+count div q11 14
+q12 get row 4
+q13 le q12 count
+q14 get row 5
+q15 get row 4
+q16 sub count q15
+q17 le q14 q16
+valid and q13 q17
+q18 select valid 0 7
+c call af_fail b q18
+q19 get row 5
+q20 get row 4
+d loop af_body_ok af_body q19 c p1 q20 p4
+e call af_retline d p1 p3 p4
+f call af_endline e p1 p3 p4
+q21 add p3 1
+q22 get p1 42
+q23 div q22 14
+q24 eq q21 q23
+q25 and p4 q24
+q26 get p1 26
+q27 ne q26 0
+q28 and q25 q27
+q29 select q28 1 0
+g fold af_tail_fn q29 f p1
+q30 at begin 1
+q31 call af_end g q30
+ret q31
+end
+fn af_functions_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 bool bool -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_functions (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 bool bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 eq p1 0
+q1 select q0 0 1
+a fold af_newline2 q1 p0
+q2 call af_function a p2 p3 p1 p4 p5
+ret q2
+end
+fn af_profile (u32,(u32,u32,u32),u32x128,io) u32 u32x128 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 select p3 1 0
+q1 get p2 24
+a fold af_before_part q0 p0 p2 q1
+q2 get p2 24
+begin call af_begin a 17 q2 0
+q3 at begin 0
+b call af_lit_profile q3 0
+q4 at begin 1
+c call af_end b q4
+q5 select p3 1 0
+q6 get p2 24
+d fold af_after_part q5 c p2 q6
+q7 call af_byte d 10
+ret q7
+end
+fn af_import_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_import (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 53
+q1 get p2 54
+q2 get p2 55
+q3 rec q0 q1 q2
+r call af_row p0 q3 p1 3
+row at r 1
+q4 at r 0
+q5 get row 2
+a call af_before q4 p2 q5
+begin call af_begin a 18 p1 0
+q6 at begin 0
+b call af_lit_useword q6 0
+q7 get row 0
+q8 get row 1
+c call af_span b p2 q7 q8
+q9 call af_byte c 34
+q10 at begin 1
+d call af_end q9 q10
+q11 get row 2
+q12 call af_after d p2 q11
+q13 call af_byte q12 10
+ret q13
+end
+fn af_format_one (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_function p0 p2 p3 p4 false p5
+ret q0
+end
+fn af_format_program (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 8
+q1 eq q0 1
+q2 select q1 1 0
+a fold af_profile q2 p0 p2 false
+q3 get p2 8
+q4 eq q3 1
+q5 select q4 1 0
+b fold af_newline q5 a
+q6 get p2 42
+q7 div q6 14
+c loop af_functions_ok af_functions q7 b p2 p3 false p5
+q8 call af_byte c 10
+ret q8
+end
+fn af_source_body (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 42
+q1 div q0 14
+a loop af_functions_ok af_functions q1 p0 p2 p3 true p4
+q2 call af_byte a 10
+ret q2
+end
+fn af_source_tail (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 39
+total div q0 3
+q1 get p2 25
+q2 le q1 total
+q3 get p2 26
+q4 get p2 25
+q5 sub total q4
+q6 le q3 q5
+valid and q2 q6
+q7 select valid 0 7
+a call af_fail p0 q7
+q8 get p2 26
+q9 get p2 25
+q10 loop af_leading_ok af_leading q8 a p2 q9
+ret q10
+end
+fn af_format_source (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 8
+q1 eq q0 1
+q2 select q1 1 0
+a fold af_profile q2 p0 p2 true
+q3 get p2 54
+q4 div q3 3
+b loop af_import_ok af_import q4 a p2
+q5 get p2 8
+q6 eq q5 1
+q7 get p2 54
+q8 ne q7 0
+head or q6 q8
+q9 get p2 42
+q10 ne q9 0
+q11 get p2 26
+q12 ne q11 0
+body or q10 q12
+q13 and head body
+q14 select q13 1 0
+c fold af_newline q14 b
+q15 get p2 42
+q16 ne q15 0
+q17 select q16 1 0
+d fold af_source_body q17 c p2 p3 p5
+q18 get p2 42
+q19 eq q18 0
+q20 select q19 1 0
+q21 fold af_source_tail q20 d p2
+ret q21
+end
+fn af_same128 bool u32 u32x128 u32x128 -> bool
+q0 get p2 p1
+q1 get p3 p1
+q2 eq q0 q1
+q3 and p0 q2
+ret q3
+end
+fn af_auth_spec (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 60
+q1 eq q0 128
+q2 get p3 0
+q3 eq q2 0
+q4 and q1 q3
+q5 get p3 6
+q6 get p2 6
+q7 eq q5 q6
+q8 and q4 q7
+q9 get p3 24
+q10 eq q9 4294967295
+q11 and q8 q10
+q12 get p3 54
+q13 eq q12 0
+q14 and q11 q13
+q15 get p3 57
+q16 eq q15 0
+q17 and q14 q16
+q18 get p3 92
+q19 eq q18 1
+declared and q17 q19
+q20 get p3 33
+q21 rem q20 6
+q22 eq q21 0
+q23 get p3 42
+q24 rem q23 8
+q25 eq q24 0
+q26 and q22 q25
+q27 get p3 45
+q28 rem q27 7
+q29 eq q28 0
+q30 and q26 q29
+q31 get p3 48
+q32 rem q31 14
+q33 eq q32 0
+q34 and q30 q33
+q35 get p3 51
+q36 rem q35 5
+q37 eq q36 0
+q38 and q34 q37
+q39 get p3 60
+q40 rem q39 2
+q41 eq q40 0
+q42 and q38 q41
+q43 get p3 63
+q44 rem q43 5
+q45 eq q44 0
+shape and q42 q45
+q46 and declared shape
+q47 select q46 0 7
+a call af_fail p0 q47
+q48 get p2 59
+q49 get p2 60
+q50 get p2 61
+q51 rec q48 q49 q50
+r call af_row a q51 0 128
+q52 at r 1
+same fold af_same128 128 true q52 p3
+q53 at r 0
+q54 select same 0 7
+q55 call af_fail q53 q54
+ret q55
+end
+fn af_schema (u32,(u32,u32,u32),u32x128,io) u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p1 0
+q1 eq q0 0
+q2 get p1 0
+q3 eq q2 7
+accepted or q1 q3
+q4 get p1 0
+status select accepted 0 q4
+q5 get p1 93
+q6 eq q5 1
+q7 get p1 10
+q8 eq q7 0
+q9 get p1 96
+q10 eq q9 1
+q11 or q8 q10
+q12 and q6 q11
+q13 get p1 8
+q14 le q13 1
+q15 and q12 q14
+q16 le p3 2
+shape and q15 q16
+q17 get p1 33
+q18 rem q17 10
+q19 eq q18 0
+q20 get p1 36
+q21 rem q20 2
+q22 eq q21 0
+q23 and q19 q22
+q24 get p1 39
+q25 rem q24 3
+q26 eq q25 0
+q27 and q23 q26
+q28 get p1 42
+q29 rem q28 14
+q30 eq q29 0
+q31 and q27 q30
+q32 get p1 45
+q33 rem q32 14
+q34 eq q33 0
+q35 and q31 q34
+q36 get p1 48
+q37 rem q36 5
+q38 eq q37 0
+q39 and q35 q38
+q40 get p1 54
+q41 rem q40 3
+q42 eq q41 0
+q43 and q39 q42
+q44 get p1 57
+q45 rem q44 6
+q46 eq q45 0
+q47 and q43 q46
+q48 get p1 69
+q49 rem q48 5
+q50 eq q49 0
+valid and q47 q50
+a call af_fail p0 status
+q51 and shape valid
+q52 select q51 0 6
+b call af_fail a q52
+q53 ne p3 0
+q54 get p1 42
+q55 div q54 14
+q56 lt p4 q55
+selected or q53 q56
+q57 select selected 0 6
+c call af_fail b q57
+q58 get p1 0
+q59 ne q58 7
+q60 get p1 30
+q61 eq q60 1
+q62 get p1 57
+q63 ne q62 0
+q64 and q61 q63
+complete or q59 q64
+q65 select complete 0 7
+d call af_fail c q65
+q66 get p1 57
+q67 ne q66 0
+q68 select q67 1 0
+q69 fold af_auth_spec q68 d p1 p2
+ret q69
+end
+fn af_run (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+q0 eq p4 0
+q1 select q0 1 0
+a fold af_format_one q1 p0 p2 p3 p5 p6
+q2 eq p4 1
+q3 select q2 1 0
+b fold af_format_program q3 a p2 p3 p5 p6
+q4 eq p4 2
+q5 select q4 1 0
+q6 fold af_format_source q5 b p2 p3 p5 p6
+ret q6
+end
+fn arena_format_described io u32x128 u32x128 u32 u32 bool bool -> (u32,(u32,u32,u32),u32x128,io)
+d call arena_zero
+d_1 set d 1 1093682772
+d_2 set d_1 2 1
+q0 select p6 1 0
+d_3 set d_2 3 q0
+d_4 set d_3 8 4294967295
+d_5 set d_4 10 p3
+d_6 set d_5 11 p4
+q1 select p5 1 0
+d_7 set d_6 12 q1
+q2 get p1 6
+d_8 set d_7 13 q2
+q3 get p1 7
+d_9 set d_8 14 q3
+q4 rec 0 0 0
+q5 rec 0 q4 d_9 p0
+checked call af_schema q5 p1 p2 p3 p4
+q6 at checked 0
+q7 eq q6 0
+q8 select q7 1 0
+out fold af_run q8 checked p1 p2 p3 p4 p5
+q9 at out 2
+q10 at out 0
+d_10 set q9 0 q10
+q11 at out 0
+q12 eq q11 0
+q13 at out 1
+q14 at q13 1
+q15 select q12 q14 0
+d_11 set d_10 9 q15
+q16 at out 0
+q17 eq q16 0
+q18 rec 0 0 0
+m0_a set d_11 4 0
+m0_b set m0_a 5 0
+q19 set m0_b 6 0
+public select q17 d_11 q19
+q20 at out 0
+q21 at out 0
+q22 eq q21 0
+q23 at out 1
+q24 rec 0 0 0
+q25 select q22 q23 q24
+q26 at out 3
+q27 rec q20 q25 public q26
+ret q27
+end
+fn arena_format io u32x128 u32x128 u32 u32 bool -> (u32,(u32,u32,u32),io)
+r call arena_format_described p0 p1 p2 p3 p4 p5 false
+q0 at r 0
+q1 at r 1
+q2 at r 3
+q3 rec q0 q1 q2
+ret q3
+end

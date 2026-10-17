@@ -1,0 +1,140 @@
+# Ordered raw-source Wasm service. Host repeats opaque continuations only.
+use "backend_service_arena.a0"
+use "emit_wasm_arena.a0"
+fn aws_failure (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128) u32 u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+q0 at p0 0
+q1 set q0 0 p2
+e set q1 1 1
+q2 at p0 1
+q3 at p0 2
+q4 rec e q2 q3
+ret q4
+end
+fn aws_emit (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128) u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+b at p0 1
+q at b 3
+q0 at q 6
+q1 at b 1
+q2 at b 2
+q3 at p0 2
+r call arena_wasm_emit_options q0 q1 q2 q3
+q4 at p0 0
+q5 at r 0
+q6 set q4 0 q5
+e set q6 1 1
+q7 at r 1
+q8 at q7 0
+e_1 set e 3 q8
+q9 at r 1
+q10 at q9 1
+e_2 set e_1 4 q10
+q11 at r 1
+q12 at q11 2
+e_3 set e_2 5 q12
+q13 at r 2
+q14 get q13 110
+e_4 set e_3 6 q14
+q15 at q 0
+q16 at q 1
+q17 at q 2
+q18 at q 3
+q19 at q 4
+q20 at q 5
+q21 at r 3
+q22 at b 0
+q23 at b 1
+q24 at b 2
+q25 rec q15 q16 q17 q18 q19 q20 q21
+q26 rec q22 q23 q24 q25
+q27 at p0 2
+q28 rec e_4 q26 q27
+ret q28
+end
+fn aws_check (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128) -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+e at p0 0
+options at p0 2
+b at p0 1
+q0 at b 0
+done call arena_backend_service_done q0
+q1 at b 0
+code call arena_backend_service_status q1
+q2 eq code 0
+q3 and done q2
+q4 select q3 1 0
+q5 rec e b options
+a fold aws_emit q4 q5
+q6 ne code 0
+q7 and done q6
+q8 select q7 1 0
+q9 fold aws_failure q8 a code
+ret q9
+end
+fn arena_wasm_source_begin io u32 u32 u32x128 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+b call arena_backend_service_begin p0 p1 p2
+q0 call arena_zero
+q1 rec q0 b p3
+q2 call aws_check q1
+ret q2
+end
+fn aws_resume (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128) u32 u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+q0 at p0 1
+b call arena_backend_service_resume q0 p2
+q1 at p0 0
+q2 at p0 2
+q3 rec q1 b q2
+q4 call aws_check q3
+ret q4
+end
+fn arena_wasm_source_resume (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128) u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128)
+q0 at p0 0
+q1 get q0 1
+q2 eq q1 0
+q3 select q2 1 0
+q4 fold aws_resume q3 p0 p1
+ret q4
+end
+fn arena_wasm_source_done u32x128 -> bool
+q0 get p0 1
+q1 ne q0 0
+ret q1
+end
+fn arena_wasm_source_status u32x128 -> u32
+q0 get p0 1
+q1 eq q0 0
+q2 get p0 0
+q3 select q1 7 q2
+ret q3
+end
+fn arena_wasm_source_result (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128) -> (u32,(u32,u32,u32),io)
+e at p0 0
+b at p0 1
+q at b 3
+code call arena_wasm_source_status e
+q0 eq code 0
+q1 get e 3
+q2 get e 4
+q3 get e 5
+q4 rec q1 q2 q3
+q5 rec 0 0 0
+out select q0 q4 q5
+q6 at q 6
+q7 rec code out q6
+ret q7
+end
+fn aws_publish (u32,io) u32 (u32,u32,u32) -> (u32,io)
+q0 at p0 1
+q1 call ew_emit q0 p2
+ret q1
+end
+fn arena_wasm_source_publish (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),u32x128) -> (u32,io)
+r call arena_wasm_source_result p0
+q0 at r 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 at r 0
+q4 at r 2
+q5 rec q3 q4
+q6 at r 1
+q7 fold aws_publish q2 q5 q6
+ret q7
+end

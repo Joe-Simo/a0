@@ -1,0 +1,22 @@
+fn life_popbit
+shifted shr C B
+bit and shifted 1
+total add A bit
+ret total
+end
+
+fn life_poprow _ _ _x32 -> _
+row get C B
+count fold life_popbit 32 0 row
+total add A count
+ret total
+end
+
+fn writegrid _x32 io -> io
+population fold life_poprow 32 0 A
+header write B 76
+length write header 32
+rows fold writerow 32 length A
+t write rows population
+ret t
+end
