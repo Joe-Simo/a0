@@ -25,6 +25,11 @@
  *       the report (the trial shape of tools/ai-edit-experiment.ts, through tools/scrub-results.ts)
  *
  * Nothing here calls a model.
+ *
+ * Fresh source controls: append --surface=canonical|dense to any command. The historical
+ * default is unchanged. Dump/scoring commands require Bun source execution and a clean
+ * committed checkout; dump writes a provenance manifest beside its prompt map.
+ * Protocol: docs/history/2026-10-17-unified-controls-preregistration.md.
  */
 
 import { createHash } from 'node:crypto';
@@ -43,10 +48,12 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from '../src/core.js';
-import { EditSession } from '../src/edit.js';
+import { formatDense } from '../src/dense.js';
+import { EditSession, revision } from '../src/edit.js';
 import { link } from '../src/link.js';
 import { extractBlock } from './ai-edit-apply.js';
 import { APP_TASKS, type AppTask, type AppTest, START_SHA256 } from './app-edit-tasks.js';
+import { committedTree } from './measurement-checkout.js';
 import { refParse as originalRefParse, type WordIr } from './ref-parse.js';
 import { writeReport as writeScrubbed } from './scrub-results.js';
 
@@ -56,6 +63,8 @@ async function writeReport(path: string, value: unknown): Promise<void> {
 }
 
 export type Side = 'a0' | 'ts';
+/** Research controls, not compiler source-language modes. */
+export type A0Surface = 'canonical' | 'dense';
 export const PROTOCOL: Record<Side, string> = { a0: 'structured', ts: 'diff' };
 
 /**
@@ -98,14 +107,24 @@ export function checkStart(p: Programs): void {
 
 // --- Views ----------------------------------------------------------------------
 
-function a0Session(source: string, task: AppTask): { session: EditSession; view: string } {
+function a0Session(
+  source: string,
+  task: AppTask,
+  surface: A0Surface = 'canonical',
+): {
+  session: EditSession;
+  view: string;
+  programHandle: string;
+} {
   const session = new EditSession(parseAndValidate(source));
-  const views = task.a0Targets.map((f) => session.open(f, { scope: 'deps' }).text);
+  const dense = surface === 'dense';
+  const views = task.a0Targets.map((f) => session.open(f, { scope: 'deps', dense }).text);
   // the sealed arm lists every signature of the program; A0_PROGRAM_VIEW=deps (the deps-view arm,
   // docs/history/2026-10-06-app-edit-deps-preregistration.md) lists only those the first target reaches
   const scope = process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all';
-  views.push(session.openProgram({ scope, target: task.a0Targets[0] as string }).text);
-  return { session, view: views.join('\n') };
+  const program = session.openProgram({ scope, target: task.a0Targets[0] as string, dense });
+  views.push(program.text);
+  return { session, view: views.join('\n'), programHandle: program.handle };
 }
 
 export function prompt(
@@ -113,9 +132,10 @@ export function prompt(
   task: AppTask,
   programs: Programs,
   guide: string,
+  surface: A0Surface = 'canonical',
 ): { system: string; user: string } {
   if (side === 'a0') {
-    const { view } = a0Session(programs.a0, task);
+    const { view } = a0Session(programs.a0, task, surface);
     return {
       system: `${guide.trimEnd()}\n\n${A0_PROTOCOL}`,
       user: `${task.instruction}\n\n${view}`,
@@ -351,9 +371,10 @@ export async function judge(
   task: AppTask,
   programs: Programs,
   reply: string,
+  surface: A0Surface = 'canonical',
 ): Promise<Applied> {
   if (side === 'a0') {
-    const { session } = a0Session(programs.a0, task);
+    const { session } = a0Session(programs.a0, task, surface);
     let next: TypedProgram;
     try {
       next = session.apply(extractBlock(reply));
@@ -397,7 +418,27 @@ async function sealed(): Promise<string> {
   return got;
 }
 
-export async function selfCheck(): Promise<{ ok: boolean; rows: Record<string, unknown>[] }> {
+/** Translate sealed reference edits through the existing edit engine, never hand-write Dense answers. */
+function controlReply(task: AppTask, source: string, reply: string, surface: A0Surface): string {
+  if (surface === 'canonical') return reply;
+  const original = a0Session(source, task).session;
+  const before = original.program;
+  const after = original.apply(reply);
+  const changed = after.functions.filter((fn) => {
+    const old = before.byName.get(fn.name);
+    return old === undefined || revision(old) !== revision(fn);
+  });
+  const removed = before.functions
+    .filter((fn) => !after.byName.has(fn.name))
+    .map((fn) => `-fn ${fn.name}`);
+  const known = new Map(after.functions.map((fn) => [fn.name, fn.params.length]));
+  const { programHandle } = a0Session(source, task, surface);
+  return `${programHandle}\n${removed.join('\n')}\n${formatDense({ functions: changed }, { known })}`;
+}
+
+export async function selfCheck(
+  surface: A0Surface = 'canonical',
+): Promise<{ ok: boolean; rows: Record<string, unknown>[] }> {
   const programs = await startPrograms();
   checkStart(programs);
   const rows: Record<string, unknown>[] = [];
@@ -410,9 +451,15 @@ export async function selfCheck(): Promise<{ ok: boolean; rows: Record<string, u
   };
   for (const task of APP_TASKS) {
     for (const side of ['a0', 'ts'] as const) {
-      const ref = await judge(side, task, programs, task.reference[side]);
+      const reference =
+        side === 'a0'
+          ? controlReply(task, programs.a0, task.reference.a0, surface)
+          : task.reference.ts;
+      const ref = await judge(side, task, programs, reference, surface);
       const startFails = runTests(start[side], task.tests);
-      const wrong = await judge(side, task, programs, task.wrong[side]);
+      const wrongReply =
+        side === 'a0' ? controlReply(task, programs.a0, task.wrong.a0, surface) : task.wrong.ts;
+      const wrong = await judge(side, task, programs, wrongReply, surface);
       const row = {
         task: task.id,
         side,
@@ -436,10 +483,28 @@ const sideArg = (s: string | undefined): Side | undefined =>
   s === 'a0' || s === 'ts' ? s : undefined;
 
 async function main(): Promise<void> {
-  const [cmd, ...args] = process.argv.slice(2);
-  const guide = await readFile('MODEL_GUIDE.min.txt', 'utf8');
+  const [cmd, ...rawArgs] = process.argv.slice(2);
+  if (
+    (cmd === 'dump' || cmd === 'run') &&
+    (process.versions.bun === undefined || !import.meta.url.endsWith('.ts'))
+  )
+    throw new Error(
+      'measurement commands must execute source directly: bun tools/app-edit-bench.ts',
+    );
+  const surfaces = rawArgs.filter((arg) => arg.startsWith('--surface='));
+  if (
+    surfaces.length > 1 ||
+    surfaces.some((arg) => !['--surface=canonical', '--surface=dense'].includes(arg))
+  )
+    throw new Error(
+      'study surface must be canonical or dense; a unified candidate is not implemented',
+    );
+  const surface: A0Surface = surfaces[0] === '--surface=dense' ? 'dense' : 'canonical';
+  const args = rawArgs.filter((arg) => !arg.startsWith('--surface='));
+  const guidePath = surface === 'dense' ? 'MODEL_GUIDE.dense.txt' : 'MODEL_GUIDE.min.txt';
+  const guide = await readFile(guidePath, 'utf8');
   if (cmd === 'self-check') {
-    const r = await selfCheck();
+    const r = await selfCheck(surface);
     for (const row of r.rows)
       console.log(
         `${String(row.task).padEnd(22)} ${String(row.side).padEnd(3)} ref ${row.referencePasses ? 'pass' : 'FAIL'}  start ${row.startFails ? 'fails' : 'PASSES'}  wrong ${row.wrongFails ? 'fails' : 'PASSES'}${row.wrongApplies ? '' : ' (NOT APPLIED)'}${row.referencePasses ? '' : `  ${JSON.stringify(row.referenceFailures)}`}`,
@@ -449,6 +514,8 @@ async function main(): Promise<void> {
       await writeReport(args[0], {
         generatedAt: new Date().toISOString(),
         tool: 'tools/app-edit-bench.ts self-check',
+        a0SourceSurface: surface,
+        modelCalls: 0,
         taskSetSha256: await sealed(),
         ...r,
       });
@@ -458,19 +525,41 @@ async function main(): Promise<void> {
   if (cmd === 'dump') {
     const out = args[0] as string;
     const only = sideArg(args[1]);
-    await sealed();
+    const implementation = committedTree(process.cwd());
+    const taskSha = await sealed();
     const programs = await startPrograms();
     checkStart(programs);
     const dump: Record<string, { system: string; user: string }> = {};
     for (const task of APP_TASKS)
       for (const side of ['a0', 'ts'] as const)
         if (only === undefined || only === side)
-          dump[`${task.id}/${side}/${PROTOCOL[side]}`] = prompt(side, task, programs, guide);
-    await writeFile(out, JSON.stringify(dump, null, 1));
+          dump[`${task.id}/${side}/${PROTOCOL[side]}`] = prompt(
+            side,
+            task,
+            programs,
+            guide,
+            surface,
+          );
+    if (JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(implementation))
+      throw new Error('implementation changed during prompt preparation');
+    const text = JSON.stringify(dump, null, 1);
+    await writeFile(out, text);
+    await writeReport(`${out}.manifest.json`, {
+      implementation,
+      runtime: { node: process.version, bun: process.versions.bun ?? null },
+      a0SourceSurface: surface,
+      programViewScope: process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all',
+      taskSetSha256: taskSha,
+      startSha256: START_SHA256,
+      guide: { path: guidePath, sha256: sha(guide) },
+      promptsSha256: sha(text),
+      modelCalls: 0,
+    });
     console.log(`${Object.keys(dump).length} prompts`);
     return;
   }
   if (cmd === 'run') {
+    const implementation = committedTree(process.cwd());
     const [repliesPath, out, sideText, model] = args as [
       string,
       string,
@@ -481,14 +570,14 @@ async function main(): Promise<void> {
     const taskSha = await sealed();
     const programs = await startPrograms();
     checkStart(programs);
-    const check = await selfCheck();
+    const check = await selfCheck(surface);
     const replies = JSON.parse(await readFile(repliesPath, 'utf8')) as Record<string, string[]>;
     const trials: Record<string, unknown>[] = [];
     for (const task of APP_TASKS)
       for (const side of ['a0', 'ts'] as const) {
         if (only !== undefined && only !== side) continue;
         const key = `${task.id}/${side}/${PROTOCOL[side]}`;
-        const p = prompt(side, task, programs, guide);
+        const p = prompt(side, task, programs, guide, surface);
         const rs = replies[key] ?? [];
         const attempts: Record<string, unknown>[] = [];
         let toolContext = tok(p.user);
@@ -498,7 +587,7 @@ async function main(): Promise<void> {
         let failures: string[] = rs.length === 0 ? ['no reply'] : [];
         for (const [n, reply] of rs.slice(0, 2).entries()) {
           output += tok(reply);
-          const r = await judge(side, task, programs, reply);
+          const r = await judge(side, task, programs, reply, surface);
           failures = r.failures;
           const ok = r.failures.length === 0;
           if (n === 0) acceptedOneShot = ok;
@@ -535,10 +624,20 @@ async function main(): Promise<void> {
           },
         });
       }
+    if (JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(implementation))
+      throw new Error('implementation changed during scoring');
     await writeReport(out, {
       generatedAt: new Date().toISOString(),
       tool: 'tools/app-edit-bench.ts run',
-      preRegistration: 'docs/history/2026-10-06-app-edit-preregistration.md',
+      preRegistration:
+        surface === 'dense'
+          ? 'docs/history/2026-10-17-unified-controls-preregistration.md'
+          : 'docs/history/2026-10-06-app-edit-preregistration.md',
+      a0SourceSurface: surface,
+      guide: { path: guidePath, sha256: sha(guide) },
+      implementation,
+      runtime: { node: process.version, bun: process.versions.bun ?? null },
+      programViewScope: process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all',
       model: model ?? null,
       side: only ?? 'both',
       taskSetSha256: taskSha,
@@ -556,7 +655,7 @@ async function main(): Promise<void> {
     return;
   }
   console.error(
-    'usage: bun tools/app-edit-bench.ts self-check [OUT] | dump OUT [a0|ts] | run REPLIES OUT [a0|ts] [model]',
+    'usage: bun tools/app-edit-bench.ts self-check [OUT] | dump OUT [a0|ts] | run REPLIES OUT [a0|ts] [model] [--surface=canonical|dense]',
   );
   process.exitCode = 2;
 }

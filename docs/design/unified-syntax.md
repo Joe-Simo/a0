@@ -56,8 +56,8 @@ destination reserved against accidental overwrites. Ordinary failures clean up s
 empty reservation. A process interruption can leave an empty reservation or a sibling staging
 directory; retain the originals, inspect the abandoned output, and retry into a fresh directory.
 This is not a power-loss durability guarantee or a transactional snapshot against uncooperative
-concurrent writers. Directory replacement behavior has been exercised on Linux; Windows and
-macOS host execution still need verification. An unsupported rename fails without modifying the
+concurrent writers. Directory replacement behavior has been exercised on Linux and in the macOS
+integration gate; Windows host execution still needs verification. An unsupported rename fails without modifying the
 original sources. Do not delete old source trees based on an unverified migration.
 
 ## Measurements
@@ -128,6 +128,28 @@ array/text refusal expectations and only the deliberately changed compiler sourc
 all three affected checks passed focused reruns. `results/unified-reader-gate/summary.json`
 preserves the failed full-run outcome and the successful reruns; it does not claim a second
 all-green full-suite invocation. No implementation changed after that full run.
+
+The later integration published as `e67d33a` passed both [full CI](https://github.com/Joe-Simo/a0/actions/runs/39067658205)
+and the [macOS full gate](https://github.com/Joe-Simo/a0/actions/runs/39067655493) on the identical
+`7b34126` tree. Those results supersede the Apple-host availability blocker for that release.
+They do not establish a completed single-syntax frontend or fresh AI acceptance results.
+
+## Fresh controls before selecting the standard syntax
+
+`tools/app-edit-bench.ts --surface=canonical|dense` now uses the same sealed application task set,
+validators and hidden tests for both existing source views. Dense harness references are derived
+through the production edit engine and formatter; no reference answer is submitted as a model
+reply. Canonical remains the default. Prompt dumps carry source-tree, starter, guide, task-set and
+prompt hashes. Measurements require a clean committed tree and direct Bun source execution to
+avoid recording source hashes alongside stale compiled tooling. The [registered protocol](../history/2026-10-17-unified-controls-preregistration.md)
+defines the paired pilot, repair budget, usage accounting and limits on any conclusion.
+
+`bun tools/dense-loader.ts --source-spelling-only` audits accepted source files as written through
+both existing parsers, including source comments and imported arities. This is a grammar audit,
+not a runtime benchmark or a new reader. An independent strict-profile regression test demonstrates
+that a binding whose name is also a callee can be accepted by both grammars with different runtime
+behavior. A source conversion must therefore be explicit and verified; content-based parser
+guessing cannot safely merge the source entry points.
 
 Existing evidence must remain distinguishable from fresh measurements:
 

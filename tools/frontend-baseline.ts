@@ -13,6 +13,7 @@ import { getEncoding } from 'js-tiktoken';
 import { formatProgram, parse } from '../src/core.js';
 import { planned, READER_CAPS, refusedUpFront, usedSignatures } from './dense-chunk.js';
 import { denseForms, isReject, listSources } from './dense-loader.js';
+import { committedTree } from './measurement-checkout.js';
 import { reportJson, writeReport } from './scrub-results.js';
 import { loadSource } from './system-load.js';
 
@@ -22,16 +23,6 @@ const option = (name: string): string | undefined =>
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const hash = (text: string): string => createHash('sha256').update(text).digest('hex');
 const read = (path: string): Promise<string> => readFile(path, 'utf8');
-function committedTree(path: string): { commit: string; tree: string } {
-  const git = (...args: string[]): string => {
-    const result = spawnSync('git', args, { cwd: path, encoding: 'utf8' });
-    if (result.status !== 0) throw new Error(result.stderr || String(result.error));
-    return result.stdout.trim();
-  };
-  if (git('status', '--porcelain', '--untracked-files=normal') !== '')
-    throw new Error('frontend measurements require a clean committed checkout');
-  return { commit: git('rev-parse', 'HEAD'), tree: git('rev-parse', 'HEAD^{tree}') };
-}
 async function main(): Promise<void> {
   const baseline = option('baseline');
   if (baseline === undefined) throw new Error('--baseline=<built checkout> is required');
