@@ -2998,8 +2998,12 @@ class FunctionEmitter {
     }
     // Reuse precisely the state storage established above: borrowed/live initial values have
     // already been copied, while private/unshared state retains its existing alias decision.
+    // Literal zero retains the existing empty-fold path, including its pruned IO imports.
     const readArray =
-      node.op === 'fold' && fn.profile !== 'strict' && extra.length === 0
+      node.op === 'fold' &&
+      fn.profile !== 'strict' &&
+      extra.length === 0 &&
+      !(count.kind === 'u32' && count.value === 0)
         ? readArrayState(body)
         : undefined;
     if (readArray !== undefined) {

@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { type CompileOptions, compile, emitFunction, FunctionCache } from '../src/backends.js';
+import {
+  assemble,
+  type CompileOptions,
+  compile,
+  emitFunction,
+  FunctionCache,
+} from '../src/backends.js';
 import {
   A0Error,
   formatTrap,
@@ -362,4 +369,129 @@ test('read-array fold bodies round-trip through the ordinary function cache', ()
     const module = new WebAssembly.Module(Buffer.from(second.text, 'base64'));
     check(program, module, 4, true, true, 'collect', 11, [0xffffffff, 0, 0x80000000, 7]);
   }
+});
+
+test('literal zero folds preserve complete pre-change bytes and import pruning for every layout', async () => {
+  const fixture = JSON.parse(
+    await readFile('test/fixtures/wasm-read-array-zero/old-emission.json', 'utf8'),
+  ) as {
+    source: string;
+    records: Record<string, string[]>;
+    variants: { optimize: boolean; wasmSimd: boolean; wasmUnroll: 1 | 2 | 4; sha256: string }[];
+  };
+  const program = parseAndValidate(fixture.source);
+  for (const variant of fixture.variants) {
+    const oldBodies = fixture.records[variant.sha256];
+    assert.ok(oldBodies);
+    assert.equal(
+      createHash('sha256').update(JSON.stringify(oldBodies)).digest('hex'),
+      variant.sha256,
+    );
+    for (const host of [false, true])
+      for (const wasmExports of [undefined, ['collect'], []])
+        for (const wasmDebugNames of [false, true])
+          for (const capacity of [3, 17]) {
+            const options: CompileOptions = {
+              optimize: variant.optimize,
+              wasmSimd: variant.wasmSimd,
+              wasmUnroll: variant.wasmUnroll,
+              wasmDebugNames,
+              ioInputCapacity: capacity,
+              ioOutputCapacity: capacity,
+              ...(host ? { wasmIo: HOST } : {}),
+              ...(wasmExports === undefined ? {} : { wasmExports }),
+            };
+            // The retained, independent old emission records pass through the same assembler/version.
+            // Thus this compares every module byte without exempting any debug/version metadata.
+            const expected = assemble('wasm', oldBodies, program, options);
+            const actual = compile(program, 'wasm', options).text;
+            assert.equal(actual, expected);
+            const module = new WebAssembly.Module(Buffer.from(actual, 'base64'));
+            if (wasmExports !== undefined) {
+              assert.deepEqual(WebAssembly.Module.imports(module), []);
+              new WebAssembly.Instance(module);
+            }
+          }
+  }
+});
+
+test('high unsigned read-fold counts reach the third host read and propagate its exception', () => {
+  for (const length of [3, 4])
+    for (const swapped of [false, true]) {
+      const program = parseAndValidate(source(length, swapped));
+      const fn = program.byName.get('collect');
+      assert.ok(fn);
+      for (const count of [0x80000000, 0xffffffff]) {
+        const stop = new Error('stop on third read');
+        const referenceReads: number[] = [];
+        const input = new Proxy([0xffffffff, 0x80000000, 0], {
+          get(target, key, receiver) {
+            if (key === '0' || key === '1' || key === '2') {
+              referenceReads.push(Number(key));
+              if (key === '2') throw stop;
+            }
+            return Reflect.get(target, key, receiver);
+          },
+        });
+        const original = Array.from({ length }, (_, index) => index + 17);
+        const io = makeIo(input);
+        assert.throws(
+          () => run(fn, [original, io, count], { fuel: 1e5 }),
+          (error) => error === stop,
+        );
+        assert.deepEqual(referenceReads, [0, 1, 2]);
+        assert.equal(io.position, 2, 'the reference must stop during its third runtime read');
+        for (const optimize of [false, true])
+          for (const wasmSimd of [false, true]) {
+            let attempts = 0;
+            const module = new WebAssembly.Module(
+              Buffer.from(
+                compile(program, 'wasm', {
+                  optimize,
+                  wasmSimd,
+                  wasmIo: HOST,
+                  wasmExports: ['collect'],
+                }).text,
+                'base64',
+              ),
+            );
+            const token = 0x89abcdef;
+            const instance = new WebAssembly.Instance(module, {
+              [HOST.module]: {
+                [HOST.read]: (handle: number) => {
+                  assert.equal(handle >>> 0, token);
+                  if (++attempts === 3) throw stop;
+                  return attempts === 1 ? -1 : 0x80000000;
+                },
+              },
+            });
+            const memory = instance.exports.memory as WebAssembly.Memory;
+            const heap = Number((instance.exports.__heap_base as WebAssembly.Global).value);
+            if (memory.buffer.byteLength < heap + 1024) memory.grow(1);
+            const view = new DataView(memory.buffer),
+              array = heap + 64,
+              result = heap + 256;
+            for (let at = heap; at < heap + 1024; at += 4) view.setUint32(at, GUARD, true);
+            for (const [index, word] of original.entries())
+              view.setUint32(array + index * 4, word, true);
+            const call = instance.exports.a0_collect as (
+              out: number,
+              array: number,
+              token: number,
+              count: number,
+            ) => void;
+            assert.throws(
+              () => call(result, array, token, count),
+              (error) => error === stop,
+            );
+            assert.equal(attempts, 3);
+            assert.deepEqual(
+              Array.from({ length }, (_, index) => view.getUint32(array + index * 4, true)),
+              original,
+            );
+            for (const at of [array - 4, array + length * 4, result - 4, result + (length + 1) * 4])
+              assert.equal(view.getUint32(at, true), GUARD);
+          }
+      }
+    }
 });
