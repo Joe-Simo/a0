@@ -3,10 +3,10 @@
   "commit": "1b1fc66f850df2a124b1b67d356364b23097c938",
   "base": "383472392a0634c328a024d084a6a5b4a10230a5",
   "heuristic": {
-    "score": 33.45,
+    "score": 35.69,
     "verdict": "rework",
     "exitCode": 1,
-    "findings": 48
+    "findings": 51
   },
   "basis": "tools/dev/prereview.ts explicitly describes findings as heuristics over added lines: a flag asks for a look, it is not a verdict. Numeric findings match protocol or language bounds also exercised by tests; the documentation finding comes from its adapter filename. Every finding is reviewed below. No source literal or prereview rule was changed to evade the tool.",
   "findings": [
@@ -64,6 +64,36 @@
       "controls": [
         "test/source-native-preflight.test.ts",
         "test/source-native-program.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/diagnostics_arena.a0",
+      "line": 14401,
+      "weight": 0.7,
+      "text": "q32 eq q31 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The native diagnostic ABI uses all-ones for absent node/argument context. Header-only structured errors require absent node; all these errors require absent operand selection. Body errors additionally verify node membership within the selected function. These checks reject malformed contexts; no expected diagnostic is substituted.",
+      "controls": [
+        "test/arena-diagnostics.test.ts",
+        "test/source-native-ir-diagnostics.controls.ts",
+        "results/source-frontend-68-build-provenance.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/diagnostics_arena.a0",
+      "line": 14403,
+      "weight": 0.7,
+      "text": "q34 eq q33 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The native diagnostic ABI uses all-ones for absent node/argument context. Header-only structured errors require absent node; all these errors require absent operand selection. Body errors additionally verify node membership within the selected function. These checks reject malformed contexts; no expected diagnostic is substituted.",
+      "controls": [
+        "test/arena-diagnostics.test.ts",
+        "test/source-native-ir-diagnostics.controls.ts",
+        "results/source-frontend-68-build-provenance.json"
       ]
     },
     {
@@ -847,7 +877,7 @@
     {
       "kind": "fabricated-const",
       "file": "src/source-direct.ts",
-      "line": 96,
+      "line": 70,
       "weight": 0.7,
       "text": "memory.grow(Math.ceil((end - memory.buffer.byteLength) / 65536));",
       "baseExactMatches": [],
@@ -888,6 +918,21 @@
     },
     {
       "kind": "fabricated-const",
+      "file": "tools/source-direct-build.ts",
+      "line": 94,
+      "weight": 0.7,
+      "text": "const transportStackArgument = 16777216;",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "This is the existing16MiB transport linker stack argument, named so the complete effective flags and the independently computed stack proof can be recorded and cross-checked. No stack size, runtime behavior or test-specific output is introduced.",
+      "controls": [
+        "test/source-cost-control.test.ts",
+        "test/wasm-stack-bound.test.ts",
+        "tools/wasm-stack-bound.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
       "file": "tools/wasm-stack-bound.ts",
       "line": 304,
       "weight": 0.7,
@@ -903,35 +948,34 @@
       "kind": "thick-shim",
       "file": "docs/design/native-diagnostic-adapter.md",
       "line": 0,
-      "weight": 0.55,
-      "text": "110 added lines in a shim-like file",
+      "weight": 0.695,
+      "text": "139 added lines in a shim-like file",
       "baseExactMatches": [],
       "disposition": "reviewed-false-positive",
-      "reason": "This is design documentation describing the packet ABI, validation, native catalog coverage and explicit remaining refusals. The filename contains adapter; the added lines are not runtime shim code. The actual implementation runs the existing A0 renderer through generic word ports and performs strict packet hydration without a source reader or host message reconstruction.",
+      "reason": "The filename contains adapter, but the flagged139 added lines are documentation of the native packet ABI, refusal boundaries, optional capabilities, evidence and remaining integration. They add no shim implementation or fallback.",
       "controls": [
-        "test/source-native-render.test.ts",
-        "test/source-native-live-diagnostics.controls.ts",
-        "test/source-native-diagnostic.test.ts"
+        "docs/design/native-diagnostic-adapter.md"
       ]
     }
   ],
-  "reviewedCodeCommit": "b5d7bcee7349e7d1a89b5af4940c3ec79a9eb763",
+  "reviewedCodeCommit": "b7f3abec63b91dad6806aefa726490fc150cfda6",
   "integrationEvidence": [
     "results/source-native-global-diagnostic-integration.json",
-    "results/arena-format-unified.json"
+    "results/arena-format-unified.json",
+    "results/source-frontend-68-build-provenance.json",
+    "results/c-arena-stage-portable.json",
+    "results/source-frontend-js-correctness.json",
+    "results/source-corpus-inventory-68.json",
+    "results/wasm-read-array-loop-confirmation.json"
   ],
   "reviewedSourceInputs": [
     {
-      "path": "docs/design/native-diagnostic-adapter.md",
-      "sha256": "718b37068886fd0df432def1469a36f57f4bcc80f5ebc67e522c46f1f992b9f2"
+      "path": "compiler/check_arena_shared.a0",
+      "sha256": "0f53402ad4add2852e2ef721d4d152b0554468741e22ed2be1c8d316f4799119"
     },
     {
-      "path": "test/source-native-live-diagnostics.controls.ts",
-      "sha256": "2877e22d6073e12dbff6556eb1de1efe57d5003aa28805ac9febea66b13e3ee7"
-    },
-    {
-      "path": "docs/design/arena-format.md",
-      "sha256": "5305a8737a49e1bf19d52d219ec9ca85b0d0f2917ef5874e2ff3d8e72b0a3716"
+      "path": "compiler/diagnostics_arena.a0",
+      "sha256": "ab6959d32a21293b5133aec0ce7a6f87b1b39dc82d2c7e508ee1063800f46174"
     },
     {
       "path": "compiler/format_arena.a0",
@@ -942,12 +986,44 @@
       "sha256": "253b569d89be0b3c0ff3771b3401bd18d32075e8545c3901883465fde15b9fdb"
     },
     {
-      "path": "compiler/revision_arena.a0",
-      "sha256": "fb39aa2015f7a41c9e15755d3f20713d81ed389df97cf7f87b9112f2b635338b"
+      "path": "compiler/source_grammar.a0",
+      "sha256": "11107bb07b24e810eb0f9064baa1d3ab10b3ee276a4296fcb173c947d63c90eb"
     },
     {
-      "path": "compiler/revision_arena.a0s",
-      "sha256": "1abf0ad64e025ebfa403e26c16765d72e6f97bed852c6eb606888a46abc8960d"
+      "path": "compiler/source_type_grammar.a0",
+      "sha256": "c0624db52b8ab322f68e6f7e66c8379ad7e8771b00e9d7d9aa721c6c728ac5fb"
+    },
+    {
+      "path": "compiler/specs_arena.a0",
+      "sha256": "700359d197c624ba1c6c1e4bd41ffd722592d5e8c4d989ebdbff158fa74210ab"
+    },
+    {
+      "path": "compiler/verify_arena_shared.a0",
+      "sha256": "37cff40149d69a7402328bed66388f317b690c9f9a5b3c78d0154b7d06e69d90"
+    },
+    {
+      "path": "docs/design/native-diagnostic-adapter.md",
+      "sha256": "6e6dcad62265df961adc4d54617eeca83cef4c8f3c6bcc73d230ca59c3c188c7"
+    },
+    {
+      "path": "src/source-direct.ts",
+      "sha256": "6831415d1e925a4f991cf6631e174d1ade452b952dba4910d6effdbb97296cc2"
+    },
+    {
+      "path": "src/source-native-diagnostic.ts",
+      "sha256": "1e139b2d1e763ecf8095e5f17ab45f06c9f036c6bbd7f36506644c146e5a15eb"
+    },
+    {
+      "path": "src/source-native-render.ts",
+      "sha256": "0cf687f6854a6a7bf40d3cf70c943f83467f6297ffd4018c85820e5a0f15b3d8"
+    },
+    {
+      "path": "tools/source-direct-build.ts",
+      "sha256": "b76bcd797a5705b81fcb693eda6fb05cb153f8d3c6a973a84e429a13bddc5006"
+    },
+    {
+      "path": "tools/wasm-stack-bound.ts",
+      "sha256": "5c080d515272325d9687ca0a6eba0940bc4836785fada51cf71ab45592096655"
     }
   ]
 }
