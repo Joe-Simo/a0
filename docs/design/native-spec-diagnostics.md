@@ -13,7 +13,10 @@ frontend exposes the copy only when diagnostic ports were explicitly enabled. Di
 generated JavaScript use the same generic compiled-source marshaller and allocate the copy
 lazily after a failed check. Success still does not load the companion.
 
-The companion verifies the persisted PS directory before reading spec facts. Ordinary faults
+The companion verifies the persisted PS directory before reading spec facts. A source-unit
+grammar failure leaves the returned PS page empty; the A0 component reads its authoritative PS
+from that persisted native directory. A nonempty supplied page must match the directory exactly.
+Semantic spec failures always require the supplied page as well. Ordinary faults
 use the existing renderer. Spec faults reuse its message preparation, JSON field envelope,
 UTF8/UTF16 conversion, quoting and detached location collector. Contract checker faults construct
 a read-only synthetic function context from the binder's actual node, operand, type and callee

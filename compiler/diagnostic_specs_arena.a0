@@ -1683,32 +1683,40 @@ a3 fold ds_json_spec q19 a2_1 p1 p2
 q20 call ad_byte a3 125
 ret q20
 end
-fn ds_auth (u32,(u32,u32,u32),io) u32x128 u32x128 -> (u32,(u32,u32,u32),io)
+fn ds_auth (u32,(u32,u32,u32),io) u32x128 u32x128 bool -> ((u32,(u32,u32,u32),io),u32x128)
 q0 get p1 60
 q1 eq q0 128
 q2 get p1 93
 q3 eq q2 1
 q4 and q1 q3
-q5 get p2 6
-q6 get p1 6
-q7 eq q5 q6
-q8 and q4 q7
-q9 get p2 92
-q10 eq q9 1
-q11 and q8 q10
-q12 select q11 0 7
-a call ds_fail p0 q12
-q13 get p1 59
-q14 get p1 60
-q15 get p1 61
-q16 rec q13 q14 q15
-p call ds_row a q16 0 128
-q17 at p 1
-same fold af_same128 128 true q17 p2
-q18 at p 0
-q19 select same 0 7
-q20 call ds_fail q18 q19
-ret q20
+q5 select q4 0 7
+a call ds_fail p0 q5
+q6 get p1 59
+q7 get p1 60
+q8 get p1 61
+q9 rec q6 q7 q8
+p call ds_row a q9 0 128
+actual at p 1
+same fold af_same128 128 true actual p2
+q10 xor same true
+q11 and p3 q10
+q12 select q11 128 0
+q13 call arena_zero
+empty fold af_same128 q12 true p2 q13
+q14 and p3 empty
+q15 or same q14
+q16 get actual 6
+q17 get p1 6
+q18 eq q16 q17
+q19 and q15 q18
+q20 get actual 92
+q21 eq q20 1
+ready and q19 q21
+q22 at p 0
+q23 select ready 0 7
+q24 call ds_fail q22 q23
+q25 rec q24 actual
+ret q25
 end
 fn ds_selected (u32,(u32,u32,u32),io) u32x128 u32x128 -> ((u32,(u32,u32,u32),io),u32x128)
 q0 get p1 21
@@ -2509,34 +2517,36 @@ ready and q21 q22
 q23 select ready 0 7
 q24 rec 0 0 0
 q25 rec q23 q24 p0
-w call ds_auth q25 p2 p3
-text call ds_sem_values w p2 p3 p4 p7
-q26 at text 0
-q27 get p2 41
-q28 get p2 42
-q29 get p2 43
-q30 rec q27 q28 q29
-q31 get p4 3
-owner call ds_row q26 q30 q31 14
+authenticated call ds_auth q25 p2 p3 false
+ps at authenticated 1
+q26 at authenticated 0
+text call ds_sem_values q26 p2 ps p4 p7
+q27 at text 0
+q28 get p2 41
+q29 get p2 42
+q30 get p2 43
+q31 rec q28 q29 q30
 q32 get p4 3
-loc set p1 2 q32
+owner call ds_row q27 q31 q32 14
+q33 get p4 3
+loc set p1 2 q33
 loc_1 set loc 21 1
-q33 at owner 1
-q34 get q33 7
-loc_2 set loc_1 22 q34
-q35 at owner 0
-selected call ds_selected q35 loc_2 p2
-q36 at selected 0
-q37 at text 1
-json call ds_json q36 q37 p1 p2
-q38 at json 0
-q39 at json 1
-q40 call arena_zero
-q41 at json 2
-q42 rec q38 q39 q40 true false 0 q41
-q43 at selected 1
-q44 call ad_collect q42 q43
-ret q44
+q34 at owner 1
+q35 get q34 7
+loc_2 set loc_1 22 q35
+q36 at owner 0
+selected call ds_selected q36 loc_2 p2
+q37 at selected 0
+q38 at text 1
+json call ds_json q37 q38 p1 p2
+q39 at json 0
+q40 at json 1
+q41 call arena_zero
+q42 at json 2
+q43 rec q39 q40 q41 true false 0 q42
+q44 at selected 1
+q45 call ad_collect q43 q44
+ret q45
 end
 fn ds_verified_bound (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32x128 u32x128 u32x128 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
 q0 at p0 3
@@ -2563,136 +2573,141 @@ ready and q13 q14
 q15 select ready 0 7
 q16 rec 0 0 0
 q17 rec q15 q16 p0
-w call ds_auth q17 p2 p3
+authenticated call ds_auth q17 p2 p3 false
+ps at authenticated 1
+w at authenticated 0
 q18 get p1 12
 q19 ge q18 1
 q20 get p1 12
 q21 le q20 3
 phase and q19 q21
-q22 get p1 14
-q23 eq q22 2
-q24 get p5 0
-q25 eq q24 9
-q26 and q23 q25
-q27 get p1 13
-q28 get p5 1
-q29 eq q27 q28
-q30 and q26 q29
-q31 get p1 13
-q32 ge q31 701
+q22 get p1 13
+q23 eq q22 702
+q24 get p1 13
+q25 ge q24 709
+q26 get p1 13
+q27 le q26 712
+q28 and q25 q27
+known_trap or q23 q28
+q29 get p1 14
+q30 eq q29 2
+q31 get p5 0
+q32 eq q31 9
 q33 and q30 q32
 q34 get p1 13
-q35 le q34 712
-trapped and q33 q35
-q36 get p1 14
-q37 eq q36 3
-q38 get p5 0
-q39 eq q38 0
-q40 and q37 q39
-q41 get p1 13
-q42 eq q41 0
-unequal and q40 q42
-q43 get p1 14
-q44 eq q43 1
-q45 get p5 0
-q46 eq q45 0
-q47 and q44 q46
-q48 get p1 13
-q49 eq q48 0
-false_contract and q47 q49
-q50 get p2 1
-q51 eq q50 715
-q52 get p1 12
-q53 eq q52 1
-q54 and q51 q53
-q55 get p1 21
-q56 eq q55 1
-q57 and q54 q56
-q58 get p1 23
-q59 eq q58 1
-q60 and q57 q59
-q61 or trapped unequal
-body and q60 q61
-q62 get p2 1
-q63 eq q62 716
-q64 get p1 12
-q65 ge q64 2
-q66 and q63 q65
-q67 get p1 21
-q68 get p1 12
-q69 eq q67 q68
-q70 and q66 q69
-q71 get p1 23
-q72 eq q71 1
-q73 and q70 q72
-q74 or trapped false_contract
-contract and q73 q74
-q75 get p2 1
-q76 eq q75 719
-q77 get p1 14
-q78 eq q77 4
-q79 and q76 q78
-q80 get p5 0
-q81 eq q80 9
-q82 and q79 q81
-q83 get p5 1
-q84 eq q83 701
-q85 and q82 q84
-q86 get p1 13
-q87 eq q86 701
-q88 and q85 q87
-q89 get p1 21
-q90 eq q89 1
-q91 and q88 q90
-q92 get p1 23
-q93 get p1 12
-q94 eq q93 1
-q95 select q94 1 0
-q96 eq q92 q95
-fuel and q91 q96
-q97 or body contract
-q98 or q97 fuel
-q99 and phase q98
-q100 select q99 0 7
-w_1 call ds_fail w q100
-q101 get p3 62
-q102 get p3 63
-q103 get p3 64
-q104 rec q101 q102 q103
-q105 get p4 112
-directory call ds_row w_1 q104 q105 5
-q106 at directory 1
-q107 get q106 0
-q108 get p1 2
-q109 eq q107 q108
-q110 at directory 1
-q111 get q110 1
-q112 get p1 5
-q113 eq q111 q112
-q114 and q109 q113
-q115 get p1 3
-q116 at directory 1
-q117 get q116 2
-q118 lt q115 q117
-valid and q114 q118
-q119 at directory 0
-q120 select valid 0 7
-w_2 call ds_fail q119 q120
-values call ds_exec_values w_2 p1 p2 p3 p5 p6
+q35 get p5 1
+q36 eq q34 q35
+q37 and q33 q36
+trapped and q37 known_trap
+q38 get p1 14
+q39 eq q38 3
+q40 get p5 0
+q41 eq q40 0
+q42 and q39 q41
+q43 get p1 13
+q44 eq q43 0
+unequal and q42 q44
+q45 get p1 14
+q46 eq q45 1
+q47 get p5 0
+q48 eq q47 0
+q49 and q46 q48
+q50 get p1 13
+q51 eq q50 0
+false_contract and q49 q51
+q52 get p2 1
+q53 eq q52 715
+q54 get p1 12
+q55 eq q54 1
+q56 and q53 q55
+q57 get p1 21
+q58 eq q57 1
+q59 and q56 q58
+q60 get p1 23
+q61 eq q60 1
+q62 and q59 q61
+q63 or trapped unequal
+body and q62 q63
+q64 get p2 1
+q65 eq q64 716
+q66 get p1 12
+q67 ge q66 2
+q68 and q65 q67
+q69 get p1 21
+q70 get p1 12
+q71 eq q69 q70
+q72 and q68 q71
+q73 get p1 23
+q74 eq q73 1
+q75 and q72 q74
+q76 or trapped false_contract
+contract and q75 q76
+q77 get p2 1
+q78 eq q77 719
+q79 get p1 14
+q80 eq q79 4
+q81 and q78 q80
+q82 get p5 0
+q83 eq q82 9
+q84 and q81 q83
+q85 get p5 1
+q86 eq q85 701
+q87 and q84 q86
+q88 get p1 13
+q89 eq q88 701
+q90 and q87 q89
+q91 get p1 21
+q92 eq q91 1
+q93 and q90 q92
+q94 get p1 23
+q95 get p1 12
+q96 eq q95 1
+q97 select q96 1 0
+q98 eq q94 q97
+fuel and q93 q98
+q99 or body contract
+q100 or q99 fuel
+q101 and phase q100
+q102 select q101 0 7
+w_1 call ds_fail w q102
+q103 get ps 62
+q104 get ps 63
+q105 get ps 64
+q106 rec q103 q104 q105
+q107 get p4 112
+directory call ds_row w_1 q106 q107 5
+q108 at directory 1
+q109 get q108 0
+q110 get p1 2
+q111 eq q109 q110
+q112 at directory 1
+q113 get q112 1
+q114 get p1 5
+q115 eq q113 q114
+q116 and q111 q115
+q117 get p1 3
+q118 at directory 1
+q119 get q118 2
+q120 lt q117 q119
+valid and q116 q120
+q121 at directory 0
+q122 select valid 0 7
+w_2 call ds_fail q121 q122
+values call ds_exec_values w_2 p1 p2 ps p5 p6
 text call ds_exec_texts values p1 p2
-q121 at text 0
-selected call ds_selected q121 p1 p2
-q122 at selected 0
-q123 at text 1
-json call ds_json q122 q123 p1 p2
-q124 at json 0
-q125 at json 1
-q126 call arena_zero
-q127 at json 2
-q128 rec q124 q125 q126 true false 0 q127
-q129 at selected 1
-q130 call ad_collect q128 q129
-ret q130
+q123 at text 0
+selected call ds_selected q123 p1 p2
+q124 at selected 0
+q125 at text 1
+json call ds_json q124 q125 p1 p2
+q126 at json 0
+q127 at json 1
+q128 call arena_zero
+q129 at json 2
+q130 rec q126 q127 q128 true false 0 q129
+q131 at selected 1
+q132 call ad_collect q130 q131
+ret q132
 end
 fn ds_verified (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32x128 u32x128 u32x128 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
 q0 at p0 3
@@ -3192,49 +3207,52 @@ q1 eq q0 6
 q2 get p1 1
 q3 eq q2 11
 q4 and q1 q3
-q5 get p3 0
-q6 eq q5 6
+q5 get p2 10
+q6 eq q5 1
 q7 and q4 q6
-q8 get p3 1
-q9 ge q8 1
-q10 and q7 q9
-q11 get p3 1
-q12 le q11 14
-q13 get p3 1
-q14 eq q13 16
-q15 get p3 112
-q16 ge q15 1
-q17 and q14 q16
-q18 get p3 112
-q19 le q18 5
-q20 and q17 q19
-q21 or q12 q20
-q22 and q10 q21
-q23 get p3 24
-q24 get p2 11
-q25 eq q23 q24
-q26 and q22 q25
-q27 get p2 10
-q28 eq q27 1
-q29 and q26 q28
-q30 le p7 1
-ready and q29 q30
-q31 select ready 0 7
-q32 rec 0 0 0
-q33 rec q31 q32 p0
-w call ds_auth q33 p2 p3
-text call ds_grammar_values w p2 p3 p7
+q8 le p7 1
+ready and q7 q8
+q9 select ready 0 7
+q10 rec 0 0 0
+q11 rec q9 q10 p0
+authenticated call ds_auth q11 p2 p3 true
+ps at authenticated 1
+q12 get ps 0
+q13 eq q12 6
+q14 get ps 1
+q15 ge q14 1
+q16 and q13 q15
+q17 get ps 1
+q18 le q17 14
+q19 get ps 1
+q20 eq q19 16
+q21 get ps 112
+q22 ge q21 1
+q23 and q20 q22
+q24 get ps 112
+q25 le q24 5
+q26 and q23 q25
+q27 or q18 q26
+q28 and q16 q27
+q29 get ps 24
+q30 get p2 11
+q31 eq q29 q30
+syntax and q28 q31
+q32 at authenticated 0
+q33 select syntax 0 7
+w call ds_fail q32 q33
+text call ds_grammar_values w p2 ps p7
 loc set p2 109 4294967295
 loc_1 set loc 110 4294967295
 loc_2 set loc_1 111 4294967295
 loc_3 set loc_2 112 4294967295
 loc_4 set loc_3 113 4294967295
-q34 get p3 1
+q34 get ps 1
 q35 eq q34 3
 q36 select q35 1 0
 q37 at text 0
 q38 rec q37 loc_4
-span fold ds_grammar_span q36 q38 p3
+span fold ds_grammar_span q36 q38 ps
 q39 at span 0
 q40 at text 1
 q41 at span 1

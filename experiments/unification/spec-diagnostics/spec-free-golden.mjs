@@ -120,6 +120,9 @@ await writeReport(output, {
   newGoldenExact: true,
   unchangedExistingRows: Object.keys(old.rows).length - changed.length,
   added,
+  addedRows: added.map((path) => ({ path, after: now.rows[path] })),
+  oldGoldenSHA256: hash(await readFile(join(baseline, 'test/golden/spec-free-digests.json'))),
+  newGoldenSHA256: hash(await readFile(join(current, 'test/golden/spec-free-digests.json'))),
   removed,
   changed: changed.map((path) => ({ path, before: old.rows[path], after: now.rows[path] })),
   baselinePreparation:

@@ -157,6 +157,13 @@ test('complete spec JSON equals independent source oracle on C, direct and JS ta
         json,
         `${target}/${name}/JSON bytes`,
       );
+      if (expected.line !== undefined) {
+        const unit = engine.parseUnit(source);
+        assert.ok(!unit.ok, `${target}/${name}/unit grammar`);
+        assert.deepEqual(rendered(unit, `${target}/${name}/unit`).toJSON(), expected.toJSON());
+        assert.ok(unit.diagnostic && 'packet' in unit.diagnostic);
+        assert.equal(Buffer.from(unit.diagnostic.packet.json).toString(), json);
+      }
     }
     evidence.push({
       name,
@@ -175,6 +182,10 @@ test('successful specs, resource failures, options and retained packets preserve
   const saved = engines.map(([, engine]) => engine.parse(sources.unequal as string));
   for (const [, engine] of engines) {
     assert.ok(engine.parse(success).ok);
+    assert.ok(
+      engine.parseUnit(sources.unequal as string).ok,
+      'a parsed unit does not execute examples',
+    );
     assert.ok(engine.parse(freshFuel).ok);
     for (const budget of [0, 1, 32, 128, 512]) {
       const result = engine.parse(success, budget);
