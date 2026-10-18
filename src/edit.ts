@@ -86,11 +86,12 @@ export interface Replacement {
  *   `ret operand`                change the function result
  * The whole edit is validated as one function and committed atomically.
  */
-export type EditOp =
+export type EditOp = (
   | { readonly kind: 'node'; readonly node: Node; readonly after?: string; readonly fresh?: true }
   | { readonly kind: 'delete'; readonly id: string }
   | { readonly kind: 'ret'; readonly operand: Operand; readonly comments?: Comments }
-  | ({ readonly kind: 'spec' } & SpecEdit);
+  | ({ readonly kind: 'spec' } & SpecEdit)
+) & { readonly source?: EditSourceLine };
 
 /**
  * The error for a second line defining `id` in one reply. When that line reads `id` (`m sub m 1`
@@ -180,6 +181,7 @@ export interface NodeEditSyntax {
   spec(match: RegExpExecArray, line: number, index: number): SpecEdit;
   /** Physical reply lines when a caller retains blank/comment lines outside the protocol loop. */
   line?(index: number): number;
+  source?(index: number): EditSourceLine | undefined;
 }
 
 function legacyEditReturn(text: string, line: number): EditOp[] {
@@ -215,6 +217,10 @@ export function parseEditOpsWithLanguage(
   let sawRet = false;
   lines.forEach((text, i) => {
     const line = language.line?.(i) ?? firstLine + i;
+    const push = (...next: EditOp[]): void => {
+      const source = language.source?.(i);
+      for (const op of next) ops.push(source === undefined ? op : { ...op, source });
+    };
     const claim = (id: string): void => {
       const at = seen.get(id);
       if (at !== undefined)
@@ -227,7 +233,7 @@ export function parseEditOpsWithLanguage(
       spec[1] === undefined &&
       (spec[2] === '+' || (spec[4] ?? '').trim() !== '')
     ) {
-      ops.push({ kind: 'spec', ...language.spec(spec, line, i), line });
+      push({ kind: 'spec', ...language.spec(spec, line, i), line });
       return;
     }
     if (text.startsWith('-')) {
@@ -240,17 +246,17 @@ export function parseEditOpsWithLanguage(
         if (head === undefined || !isValidIdentifier(head)) throw diag('A0504', [id], { line });
         claim(head);
         textDeletes.set(head, { text: rest, line, raw: text });
-        ops.push({ kind: 'delete', id: head });
+        push({ kind: 'delete', id: head });
         return;
       }
       claim(id);
-      ops.push({ kind: 'delete', id });
+      push({ kind: 'delete', id });
       return;
     }
     if (/^ret\s/.test(text)) {
       if (sawRet) throw diag('A0505', [], { line });
       sawRet = true;
-      ops.push(...language.ret(text, line, i));
+      push(...language.ret(text, line, i));
       return;
     }
     const m = /^(.*?)\s+@\s+([a-z][a-z0-9_]*)$/.exec(text);
@@ -271,7 +277,7 @@ export function parseEditOpsWithLanguage(
       }
     }
     claim(node.id);
-    ops.push(m ? { kind: 'node', node, after: m[2] ?? '' } : { kind: 'node', node });
+    push(m ? { kind: 'node', node, after: m[2] ?? '' } : { kind: 'node', node });
   });
   for (const [id, d] of textDeletes)
     throw diag('A0504', [d.text], {
@@ -364,7 +370,7 @@ function reaches(
 
 /** Internal semantic services; structural mutation and refusal policy live once below. */
 export interface NodeEditLanguage<T> {
-  check(replaced: Func): T;
+  check(replaced: Func, edits: readonly EditOp[]): T;
   specs(fn: Func, edits: readonly SpecEdit[]): Spec | undefined;
 }
 
@@ -382,7 +388,12 @@ export function replaceNodesWithLanguage<T>(
       ...edits.flatMap((o) => (o.kind === 'node' && o.fresh !== true ? [o.node] : [])),
     ]);
     edits = edits.map((o) => {
-      if (o.kind === 'node' && o.fresh === true) return { kind: 'node', node: { ...o.node, id } };
+      if (o.kind === 'node' && o.fresh === true)
+        return {
+          kind: 'node',
+          node: { ...o.node, id },
+          ...(o.source === undefined ? {} : { source: o.source }),
+        };
       if (o.kind === 'ret' && o.operand.kind === 'node' && o.operand.id === 'retval')
         return { ...o, operand: { kind: 'node', id } };
       return o;
@@ -448,7 +459,7 @@ export function replaceNodesWithLanguage<T>(
   };
   const replaced: Func =
     specEdits.length === 0 ? body : withSpec(body, language.specs(fn, specEdits));
-  const typed = language.check(replaced);
+  const typed = language.check(replaced, edits);
   // A node this edit adds that nothing reads is almost always a result the reply forgot to
   // return (`ret` still names the old node). Land nothing silently wrong: reject with the fix.
   const existing = new Set(fn.nodes.map((n) => n.id));
@@ -881,7 +892,13 @@ function splitLineEdits(
       rest.push(raw);
     } else if (open) {
       if (t === 'end') open = false;
-      rest.push(protocolLine(raw, t.replace(/^(0|[1-9][0-9]*)\s+(?=[a-z])/, '')));
+      const copied = /^(0|[1-9][0-9]*)\s+(?=[a-z])/.exec(t);
+      const source = protocolLine(raw, t.replace(/^(0|[1-9][0-9]*)\s+(?=[a-z])/, ''));
+      rest.push(
+        copied === null
+          ? source
+          : { ...source, framing: { kind: 'copy', address: copied[1] as string } },
+      );
     } else if (LINE_EDIT.test(t) || isSpec(t)) edits.push(protocolLine(raw, t));
     else rest.push(raw);
   }
@@ -939,7 +956,13 @@ export function lineEditBlocksWithLanguage(
     const n = Number(m[2]);
     const mode = m[3] ?? '';
     const text = (m[4] ?? '').trim();
-    const payload = language.protocolLine(raw, text);
+    const payload: EditSourceLine = {
+      ...language.protocolLine(raw, text),
+      framing: {
+        kind: mode === '+' ? 'insert' : 'replace',
+        address: `${m[1] === undefined ? '' : `${m[1]}:`}${m[2]}`,
+      },
+    };
     const entry = byFn.get(name) ?? { at: new Map(), after: new Map() };
     byFn.set(name, entry);
     if (mode === '+') {
@@ -1904,7 +1927,12 @@ export class EditSession {
     )
       body = body.slice(0, echoAt);
     // A trailing `end` mirrors the view and carries no information: accept it.
-    while (body.length > 0 && stripComment(body[body.length - 1]?.text ?? '').trim() === 'end')
+    const carriesBlock = body.some((row) => /^fn\s/.test(stripComment(row.text).trim()));
+    while (
+      !carriesBlock &&
+      body.length > 0 &&
+      stripComment(body[body.length - 1]?.text ?? '').trim() === 'end'
+    )
       body = body.slice(0, -1);
     while (body.length > 0 && (body[body.length - 1]?.text ?? '').trim() === '')
       body = body.slice(0, -1);

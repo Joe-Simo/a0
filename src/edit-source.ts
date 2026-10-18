@@ -22,6 +22,7 @@ export interface EditSourceLine {
   readonly origin?: EditSourceOrigin;
   /** An untouched row emitted from the pre-edit function; never an invented reply location. */
   readonly owner?: EditSourceOwner;
+  readonly framing?: { readonly kind: 'replace' | 'insert' | 'copy'; readonly address: string };
 }
 
 export function editSourceLines(raw: string): EditSourceLine[] {
@@ -53,6 +54,7 @@ export function editSourceSlice(
   )
     throw new Error('invalid edit reply substring');
   return {
+    ...row,
     text: row.text.slice(start, end),
     ...(row.origin === undefined
       ? {}

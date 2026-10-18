@@ -237,6 +237,145 @@ for (const [backend, factory, rawFactory] of factories) {
     }
   });
 
+  test(`${backend}: whole-function end comments survive with and without a final newline`, () => {
+    const frontend = factory();
+    try {
+      for (const suffix of ['', '\n']) {
+        const session = createNativeEditSession(initial(frontend), frontend);
+        session.open('f');
+        session.apply(`e0\nfn f u32 u32 -> u32\nx add A B\nret x\nend # authored end${suffix}`);
+        assert.equal(session.program.functions[0]?.endComments?.trailing, '# authored end');
+        assert.equal(call(session.program), 5);
+      }
+    } finally {
+      frontend.close();
+    }
+  });
+
+  test(`${backend}: final native rename fixes target only their owning reply row and keep comments and anchors`, () => {
+    const frontend = factory();
+    try {
+      const base = initial(
+        frontend,
+        'fn f u32 u32 -> u32\nx add A B\nret x\nend\nfn g u32 u32 -> u32\nx add A B\nret x\nend\n',
+      );
+      const session = createNativeEditSession(base, frontend);
+      session.open('f');
+      session.open('g');
+      const error = rejected(session, 'e0\nx add A B\ne1\nx mod A B # once');
+      assert.ok(error instanceof NativeEditDiagnostic && error.id === 'A0102');
+      assert.equal(error.native.status, 8);
+      assert.equal(error.native.diagnostic, 102);
+      assert.equal(error.applicability, 'exact');
+      assert.deepEqual(
+        error.edits.map((edit) => (edit.op === 'lines' ? edit.line : null)),
+        [4],
+      );
+      session.apply('fix all');
+      assert.equal(run(session.program.byName.get('f') as TypedFunc, [2, 3]), 5);
+      assert.equal(run(session.program.byName.get('g') as TypedFunc, [2, 3]), 2);
+      assert.equal(session.program.byName.get('g')?.nodes[0]?.comments?.trailing, '# once');
+      const numbered = createNativeEditSession(base, frontend);
+      numbered.open('f', { numbered: true });
+      assert.equal(
+        (rejected(numbered, '1 x mod A B # numbered once') as A0Error).applicability,
+        'exact',
+      );
+      numbered.apply('fix all');
+      assert.equal(call(numbered.program), 2);
+      assert.equal(
+        numbered.program.byName.get('f')?.nodes[0]?.comments?.trailing,
+        '# numbered once',
+      );
+      const anchored = createNativeEditSession(
+        initial(frontend, 'fn f u32 u32 -> u32\nmod add A 1\nx add mod B\nret x\nend\n'),
+        frontend,
+      );
+      anchored.open('f');
+      const anchorError = rejected(anchored, 'x mod A 5 @ mod # anchor once');
+      assert.ok(
+        anchorError instanceof NativeEditDiagnostic && anchorError.applicability === 'exact',
+      );
+      assert.ok(
+        anchorError.edits.some(
+          (edit) => edit.op === 'lines' && edit.to.includes('@ mod') && !edit.to.includes('@ rem'),
+        ),
+      );
+      anchored.apply('fix all');
+      assert.equal(call(anchored.program), 2);
+      assert.equal(anchored.program.byName.get('f')?.nodes[1]?.comments?.trailing, '# anchor once');
+    } finally {
+      frontend.close();
+    }
+  });
+
+  test(`${backend}: native multiline fixes retain numbered insertion, replacement and copied-row framing`, () => {
+    const frontend = factory();
+    try {
+      for (const reply of [
+        '1 x add A 1 2 # replacement',
+        '1+ y add A 1 2 # insertion\n2 ret y',
+        'fn f u32 u32 -> u32\n1 x add A 1 2 # copied\n2 ret x\nend',
+      ]) {
+        const session = createNativeEditSession(
+          initial(frontend, 'fn f u32 u32 -> u32\nx add A B\nret x\nend\n'),
+          frontend,
+        );
+        session.open('f', { numbered: true });
+        const error = rejected(session, reply);
+        assert.ok(error instanceof NativeEditDiagnostic);
+        assert.equal(error.applicability, 'exact', reply);
+        session.apply('fix all');
+        assert.equal(call(session.program), 5, reply);
+        assert.equal(session.program.byName.get('f')?.params.length, 2);
+      }
+    } finally {
+      frontend.close();
+    }
+  });
+
+  test(`${backend}: a later reply cannot execute a rename against source owned by a previous reply`, () => {
+    const frontend = factory();
+    try {
+      const session = createNativeEditSession(
+        initial(
+          frontend,
+          'fn mod u32 u32 -> u32\nret A\nend\nfn f u32 u32 -> u32\nx mod A B\nret x\nend\n',
+        ),
+        frontend,
+      );
+      session.open('f');
+      session.openProgram();
+      session.apply('e0\nx mod A B # prior reply');
+      const previous = session.program;
+      const error = rejected(session, 'g0\n-fn mod');
+      assert.ok(error instanceof NativeEditDiagnostic);
+      assert.equal(error.edits.length, 0);
+      assert.notEqual(error.applicability, 'exact');
+      assert.equal(session.program, previous);
+      const scoped = createNativeEditSession(
+        initial(
+          frontend,
+          'fn not bool -> bool\nret A\nend\nfn f bool -> bool\ny not A\nret y\nend\n',
+        ),
+        frontend,
+      );
+      scoped.openProgram();
+      const scopedPrevious = scoped.program;
+      const scopedError = rejected(scoped, '-fn not\nfn g bool -> bool\ny not A\nret y\nend');
+      assert.ok(scopedError instanceof NativeEditDiagnostic && scopedError.id === 'A0102');
+      assert.equal(
+        scopedError.edits.length,
+        0,
+        'an old failing function cannot borrow equal text from another function',
+      );
+      assert.notEqual(scopedError.applicability, 'exact');
+      assert.equal(scoped.program, scopedPrevious);
+    } finally {
+      frontend.close();
+    }
+  });
+
   test(`${backend}: optional diagnostic renderer never changes valid spec or numbered edit acceptance`, () => {
     const left = factory(),
       right = rawFactory();

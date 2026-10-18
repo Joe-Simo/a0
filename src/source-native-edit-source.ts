@@ -52,12 +52,23 @@ export function mapNativeEditDiagnostic(error: A0Error, rows: readonly EditSourc
     const code = stripComment(origin.raw),
       prefix = code.slice(0, origin.start),
       suffix = code.slice(Math.min(origin.end, code.length));
-    // A multi-line replacement under N / f:N / signed-spec prefixes requires new protocol rows.
-    if (edit.to.includes('\n') && (prefix.trim() !== '' || suffix.trim() !== '')) continue;
+    let replacement = `${prefix}${edit.to}${suffix}`;
+    if (edit.to.includes('\n') && (prefix.trim() !== '' || suffix.trim() !== '')) {
+      const frame = target.framing;
+      if (frame === undefined || suffix.trim() !== '') continue;
+      replacement = edit.to
+        .split('\n')
+        .map((line, index) =>
+          frame.kind === 'copy'
+            ? `${frame.address} ${line}`
+            : `${frame.address}${frame.kind === 'insert' || index > 0 ? '+' : ''} ${line}`,
+        )
+        .join('\n');
+    }
     edits.push({
       ...edit,
       text: normalizeLine(origin.raw),
-      to: `${prefix}${edit.to}${suffix}`,
+      to: replacement,
       line: origin.line,
     });
   }

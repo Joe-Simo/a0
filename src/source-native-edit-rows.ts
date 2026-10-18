@@ -1,9 +1,11 @@
 /** Native formatter rows and authentic parser ownership for numbered/session transactions. */
-import type { Func, Node, Program } from './core.js';
+import { type Func, type Node, normalizeLine, type Program, stripComment } from './core.js';
+import type { A0Error, FixEdit } from './diagnostics.js';
 import { type EditSourceLine, type EditSourceOwner, editSourceJoin } from './edit-source.js';
+import { applyEdit } from './fix.js';
 import type { nativeSource } from './source-native.js';
 import { nativeEditEventText, nativeEditFormat } from './source-native-edit-context.js';
-import { throwNativeEditSource } from './source-native-edit-source.js';
+import { mapNativeEditDiagnostic, throwNativeEditSource } from './source-native-edit-source.js';
 import type { Spec, SpecExample } from './spec.js';
 
 type Frontend = ReturnType<typeof nativeSource>;
@@ -64,6 +66,7 @@ export function nativeEditRows(frontend: Frontend) {
           text: nativeEditEventText(output, at),
           owner,
           ...(source?.origin === undefined ? {} : { origin: source.origin }),
+          ...(source?.framing === undefined ? {} : { framing: source.framing }),
         },
       });
     }
@@ -183,5 +186,117 @@ export function nativeEditRows(frontend: Frontend) {
     });
     return { ...unit.program, functions };
   };
-  return { render, parse, remember };
+  const transfer = (before: Program, after: Program): void => {
+    for (const [index, fn] of after.functions.entries()) {
+      const original = before.functions[index];
+      if (
+        original === undefined ||
+        original.name !== fn.name ||
+        original.nodes.length !== fn.nodes.length
+      )
+        throw new Error('native check changed edit source ownership');
+      for (const kind of ['header', 'ret', 'end'] as const)
+        remember(fn, kind, saved(original, kind));
+      fn.nodes.forEach((node, index) => {
+        remember(node, 'node', saved(original.nodes[index] as Node, 'node'));
+      });
+      fn.spec?.examples.forEach((example, index) => {
+        const source = original.spec?.examples[index];
+        if (source !== undefined) remember(example, 'example', saved(source, 'example'));
+      });
+      for (const kind of ['pre', 'post'] as const) {
+        const source = original.spec?.[kind],
+          target = fn.spec?.[kind];
+        if (source !== undefined && target !== undefined)
+          remember(target, kind, saved(source, kind));
+      }
+    }
+  };
+  const diagnostic = (error: A0Error, program: Program, state: readonly number[]) => {
+    // ac_error retains M109=function index and M110=global node index. These are
+    // native checker facts, not a function guessed from diagnostic wording/text.
+    let contextSource: EditSourceLine | undefined;
+    const functionIndex = state[109],
+      nodeIndex = state[110];
+    if (
+      state.length === 128 &&
+      state[0] === 8 &&
+      state[93] === 1 &&
+      state[96] === 1 &&
+      error.spec === undefined &&
+      error.specOwner === undefined &&
+      functionIndex !== undefined &&
+      nodeIndex !== undefined &&
+      Number.isInteger(functionIndex) &&
+      functionIndex >= 0 &&
+      functionIndex < program.functions.length
+    ) {
+      const fn = program.functions[functionIndex] as Func;
+      const first = program.functions
+        .slice(0, functionIndex)
+        .reduce((count, fn) => count + fn.nodes.length, 0);
+      const node = fn.nodes[nodeIndex - first];
+      if (node !== undefined) contextSource = saved(node, 'node');
+    }
+    const sourceRows: EditSourceLine[] = [];
+    for (const fn of program.functions) {
+      for (const node of fn.nodes) {
+        const source = saved(node, 'node');
+        if (source?.origin !== undefined) sourceRows.push(source);
+      }
+      for (const kind of ['pre', 'post'] as const) {
+        const node = fn.spec?.[kind],
+          source = node === undefined ? undefined : saved(node, kind);
+        if (source?.origin !== undefined) sourceRows.push(source);
+      }
+    }
+    const edits: FixEdit[] = [];
+    for (const edit of error.edits) {
+      if (edit.op === 'lines') {
+        if (
+          contextSource?.origin !== undefined &&
+          normalizeLine(contextSource.text) === edit.text
+        ) {
+          let at = sourceRows.indexOf(contextSource);
+          if (at < 0) {
+            at = sourceRows.length;
+            sourceRows.push(contextSource);
+          }
+          edits.push({ ...edit, line: at + 1 });
+        }
+        continue;
+      }
+      const fn = program.functions.find((fn) => fn.name === edit.fn);
+      const nodes = fn?.nodes.filter((node) => node.id === edit.node) ?? [];
+      if (fn?.spec?.pre?.id === edit.node) nodes.push(fn.spec.pre);
+      if (fn?.spec?.post?.id === edit.node) nodes.push(fn.spec.post);
+      if (nodes.length !== 1) continue;
+      const node = nodes[0] as Node;
+      const source = saved(
+        node,
+        node === fn?.spec?.pre ? 'pre' : node === fn?.spec?.post ? 'post' : 'node',
+      );
+      if (source?.origin === undefined) continue;
+      const replacement = applyEdit(source.text, edit);
+      if (replacement === undefined || replacement === source.text) continue;
+      let at = sourceRows.indexOf(source);
+      if (at < 0) {
+        at = sourceRows.length;
+        sourceRows.push(source);
+      }
+      edits.push({
+        op: 'lines',
+        rule: edit.rule,
+        text: normalizeLine(source.text),
+        to: stripComment(replacement).trimEnd(),
+        line: at + 1,
+      });
+    }
+    const mapped = mapNativeEditDiagnostic(
+      error.withEdits(edits, edits.length === error.edits.length ? error.applicability : 'maybe'),
+      sourceRows,
+    );
+    return { error: mapped, sourceRows };
+  };
+  return { render, parse, remember, transfer, diagnostic };
 }

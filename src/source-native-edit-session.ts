@@ -15,6 +15,8 @@ import { type EditSourceLine, editSourceJoin, editSourceSlice } from './edit-sou
 import type { nativeSource } from './source-native.js';
 import { nativeEditLanguage } from './source-native-edit.js';
 import { nativeEditRows } from './source-native-edit-rows.js';
+import { NativeEditDiagnostic, NativeEditSourceError } from './source-native-edit-source.js';
+import { NativeSourceError } from './source-native-link.js';
 import { parseNativeNodeEditOps } from './source-native-node-edit.js';
 import { nativeSpecEditLanguage } from './source-native-spec-edit.js';
 import { losslessSourceString } from './source-utf8.js';
@@ -28,8 +30,26 @@ export function createNativeEditSession(
   frontend: Frontend,
   options: SessionOptions = {},
 ): EditSession {
-  const authority = nativeEditLanguage(frontend);
+  const baseAuthority = nativeEditLanguage(frontend);
   let rows = nativeEditRows(frontend);
+  const authority = {
+    ...baseAuthority,
+    check(candidate: Program): TypedProgram {
+      const result = frontend.checkProgram(candidate);
+      if (!result.ok) {
+        const raw = new NativeSourceError(result);
+        if (raw.a0Error === undefined) throw raw;
+        const mapped = rows.diagnostic(raw.a0Error, candidate, result.state);
+        throw new NativeEditDiagnostic(
+          new NativeEditSourceError(result, mapped.sourceRows),
+          mapped.error,
+        );
+      }
+      rows.transfer(candidate, result.typed);
+      return result.typed;
+    },
+  };
+
   const revision = (value: Program, kind: 'function' | 'program'): string => {
     const active = frontend.activateProgramForFormat(value);
     if (!active.ok)
@@ -150,7 +170,14 @@ export function createNativeEditSession(
       const target = placed.byName.get(fn.name) ?? fn;
       return replaceNodesWithLanguage(target, edits, {
         specs,
-        check(replaced) {
+        check(replaced, normalized) {
+          for (const op of normalized) {
+            if (op.source === undefined) continue;
+            if (op.kind === 'node') {
+              const node = replaced.nodes.find((node) => node.id === op.node.id);
+              if (node !== undefined) rows.remember(node, 'node', op.source);
+            } else if (op.kind === 'ret') rows.remember(replaced, 'ret', op.source);
+          }
           return validateOrderedWith(
             {
               ...placed,

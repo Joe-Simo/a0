@@ -16,7 +16,7 @@ import {
   replaceNodesWithLanguage,
   validateOrderedWith,
 } from './edit.js';
-import type { EditSourceLine } from './edit-source.js';
+import { type EditSourceLine, editSourceSlice } from './edit-source.js';
 import type { NativeUnitResult, nativeSource } from './source-native.js';
 import { nativeEditLanguage } from './source-native-edit.js';
 import { nativeEditContext } from './source-native-edit-context.js';
@@ -162,6 +162,7 @@ export function parseNativeNodeEditOps(
   const text = losslessSourceString(raw, 'native node edit reply');
   if (utf8Length(text) > LIMITS.maxSourceBytes) throw diag('A0502');
   const entries = replyLines(text);
+  const payloads = new Map<number, EditSourceLine>();
   let context: { header: string; ret: string } | undefined;
   const originalContext = (): { header: string; ret: string } => {
     if (context !== undefined) return context;
@@ -174,6 +175,15 @@ export function parseNativeNodeEditOps(
     const original = originalContext(),
       anchored = code !== entry.code;
     let source = entry.raw;
+    const originalRow = sourceRows?.[entry.line - 1];
+    if (originalRow !== undefined) {
+      const start = originalRow.text.indexOf(code);
+      if (start < 0) throw new Error('native node payload lost its physical source');
+      payloads.set(
+        index,
+        anchored ? editSourceSlice(originalRow, start, start + code.length) : originalRow,
+      );
+    }
     if (anchored) {
       const start = source.indexOf(entry.code);
       if (start < 0 || !entry.code.startsWith(code))
@@ -223,6 +233,8 @@ export function parseNativeNodeEditOps(
     entries.map((entry) => entry.code),
     1,
     {
+      source: (index) =>
+        payloads.get(index) ?? sourceRows?.[(entries[index]?.line ?? index + 1) - 1],
       line: (index) =>
         sourceRows?.[(entries[index]?.line ?? index + 1) - 1]?.origin?.line ??
         entries[index]?.line ??
