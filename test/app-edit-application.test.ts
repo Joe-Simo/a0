@@ -108,6 +108,16 @@ test('fixed generated-JS execution preserves IO and closes its own runtime', asy
     const result = await runtime.execute(program, 'session', [[42]]);
     assert.deepEqual(result, [{ value: 42, position: 1, output: [42], inputUnchanged: true }]);
     await assert.rejects(runtime.execute(program, 'missing', [[42]]), /process failed/);
+    assert.deepEqual(await runtime.execute(program, 'session', [[42]]), result);
+    await assert.rejects(runtime.execute(program, 'session', []), /call count limit/);
+    await assert.rejects(
+      runtime.execute(
+        program,
+        'session',
+        Array.from({ length: 513 }, () => [42]),
+      ),
+      /call count limit/,
+    );
     await assert.rejects(runtime.execute(program, 'session', [[-1]]), /invalid application input/);
   } finally {
     await runtime.close();
