@@ -61,3 +61,8 @@ activation costs. It establishes no latency, RSS, compilation, execution, binary
 improvement. No model subjects are launched by the harness or its controls. Independent subject
 trials, new independent tasks, an exact artifact cohort and their preregistration remain separate
 work before any adoption decision.
+
+The [runtime control report](../../results/native-app-edit-arm.json) retains the regenerated prompt
+manifest, migrated starter, exact default-prompt comparison, raw reply boundary controls and the
+native singleton type/value probe. Its package is a pinned runtime control artifact, not a fresh
+combined study build. The record makes no AI success or performance claim.

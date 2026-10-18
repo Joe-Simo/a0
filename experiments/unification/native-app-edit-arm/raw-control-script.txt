@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import {writeFile} from 'node:fs/promises';
+import {startPrograms,controlReply,judge} from '../tools/app-edit-bench.ts';
+import {nativeAppEditArm} from '../tools/app-edit-native.ts';
+import {APP_TASKS} from '../tools/app-edit-tasks.ts';
+const historical=await startPrograms();
+const arm=await nativeAppEditArm(historical,{directory:process.env.A0_SOURCE_PACKAGE!,manifestSHA256:process.env.A0_SOURCE_PACKAGE_SHA256!});
+try{
+ const task=APP_TASKS[0]!;
+ const reference=controlReply(task,arm.programs.a0,task.reference.a0,'native',arm.services,historical.a0);
+ const reply='```a0\r\n# Ω😀\r\n'+reference.replaceAll('\n','\r\n')+'\r\n```';
+ let received:string|undefined;
+ const services={...arm.services,session(program:Parameters<typeof arm.services.session>[0]){
+  const session=arm.services.session(program);
+  const apply=session.apply.bind(session);
+  session.apply=(text:string)=>{received=text;return apply(text)};
+  return session;
+ }};
+ const accepted=await judge('a0',task,arm.programs,reply,'native',services);
+ assert.equal(received,reply);
+ assert.deepEqual(accepted.failures,[]);
+ const handle=reference.split('\n')[0]!;
+ const bad=await judge('a0',task,arm.programs,handle+'\nfn bad\nx [1;2]\nret 0\nend','native',arm.services);
+ assert.ok(bad.error);
+ assert.ok(!bad.error.includes('unknown handle'));
+ await writeFile('.a0-tmp/raw-control.final.json',JSON.stringify({rawReplyPreserved:true,fencedCrlfUnicodeReferencePasses:true,historicalAggregateRefused:true,refusal:bad.error,modelCalls:0},null,2));
+ console.log('raw reply boundary and native grammar refusal controls pass');
+}finally{arm.close()}

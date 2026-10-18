@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {readFile,writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {prompt,startPrograms} from '../tools/app-edit-bench.ts';
+import {APP_TASKS} from '../tools/app-edit-tasks.ts';
+const result=spawnSync('git',['show','b2cf95b:tools/app-edit-bench.ts'],{encoding:'utf8'});
+assert.equal(result.status,0,result.stderr);
+const original=result.stdout;
+const adapted=original.replaceAll("from '../src/",`from '${resolve('src')}/`).replaceAll("from './",`from '${resolve('tools')}/`);
+await writeFile('.a0-tmp/old-app-harness.ts',adapted);
+const baseline=await import('./old-app-harness.ts');
+const programs=await startPrograms();
+const rows=[];
+for(const surface of ['canonical','dense'] as const){
+ const guide=await readFile(surface==='dense'?'MODEL_GUIDE.dense.txt':'MODEL_GUIDE.min.txt','utf8');
+ for(const task of APP_TASKS) for(const side of ['a0','ts'] as const){
+  const old=baseline.prompt(side,task,programs,guide,surface);
+  const next=prompt(side,task,programs,guide,surface);
+  assert.deepEqual(next,old,`${surface}/${side}/${task.id}`);
+  rows.push({surface,side,task:task.id,sha256:createHash('sha256').update(JSON.stringify(next)).digest('hex')});
+ }
+}
+await writeFile('.a0-tmp/prompt-identity.json',JSON.stringify({baseline:'b2cf95b',baselineHarnessSHA256:createHash('sha256').update(original).digest('hex'),adaptation:'import paths only, to the same host dependencies',rows},null,2));
+console.log(`${rows.length} exact default prompt pairs match baseline`);

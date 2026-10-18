@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile} from 'node:fs/promises';
+import {loadNativeSourcePackage} from '../src/source-native-package.ts';
+const p=process.env.A0_SOURCE_PACKAGE!;
+const loaded=await loadNativeSourcePackage(await readFile(p+'/manifest.json'),process.env.A0_SOURCE_PACKAGE_SHA256!,n=>readFile(p+'/'+n));
+const engine=loaded.instantiate();
+try{
+ const rows=[];
+ for(const type of ['(_,)','(_)']){
+  const result=engine.parse('fn single _ -> '+type+'\ns (A,)\nret s\nend\n');
+  const diagnostic=result.ok?undefined:result.diagnostic?.rendered;
+  const formatted=result.ok?engine.format(result):undefined;
+  rows.push({type,accepted:result.ok,id:diagnostic?.ok?diagnostic.error.id:null,formatted:formatted?.ok?formatted.text:null});
+ }
+ assert.equal(rows[0]!.accepted,false);
+ assert.equal(rows[0]!.id,'A0001');
+ assert.equal(rows[1]!.accepted,true);
+ assert.match(rows[1]!.formatted!,/fn single _ -> \(_\)/);
+ await writeFile('.a0-tmp/singleton-type-probe.json',JSON.stringify({packageManifestSHA256:loaded.manifestSHA256,rows,modelCalls:0},null,2));
+ console.log('native singleton TYPE and VALUE distinction verified');
+}finally{engine.close()}
