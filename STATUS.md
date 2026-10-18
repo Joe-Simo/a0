@@ -1,5 +1,12 @@
 # A0 status
 
+2026-10-18 direct Wasm control: all 240 emitted C hashes match at maximum recorded load 1.7,
+but the boot frontend median is 2716.08 ms versus 189.73 ms for old Canonical and 1291.83 ms
+for the C-derived frontend. The direct components total 143167 bytes and use less linear Wasm
+memory than the C control after deriving the generic arena stack bound; these reductions do not
+clear the latency loss. The public default is unchanged (`results/unified-source-direct-wasm.json`,
+`results/unified-source-direct-wasm-samples.json`, `results/unified-source-direct-wasm-decision.json`).
+
 2026-10-18 transport controls: borrowing LOAD replies passes the wire and graph controls but
 loses on all six frontend latency and live RSS medians; boot rises from 1291.52 to 1350.19 ms
 (`results/unified-source-reply-view.json`, raw cells in
