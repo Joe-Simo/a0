@@ -45,6 +45,11 @@ z arr 97 32 115 105 110 103 108 101 45 102 105 101 108 100 32 114 101 99 111 114
 s call ad_append p0 46 z
 ret s
 end
+fn ds_trailing_comma (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+z arr 111 110 108 121 32 97 32 115 105 110 103 108 101 45 102 105 101 108 100 32 114 101 99 111 114 100 32 116 97 107 101 115 32 97 32 116 114 97 105 108 105 110 103 32 99 111 109 109 97 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s call ad_append p0 49 z
+ret s
+end
 fn ds_missing_arrow (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
 z arr 97 110 32 101 120 97 109 112 108 101 32 110 101 101 100 115 32 96 45 62 96 32 97 110 100 32 105 116 115 32 114 101 115 117 108 116 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 s call ad_append p0 36 z
@@ -3143,16 +3148,20 @@ q111 get p2 1
 q112 eq q111 16
 q113 select q112 1 0
 msg_12 fold ds_repeat_message q113 msg_11 p2
-q114 at msg_12 1
+trailing_reason get p2 1
+trailing eq trailing_reason 17
+trailing_count select trailing 1 0
+msg_13 fold ds_trailing_comma trailing_count msg_12
+q114 at msg_13 1
 q115 at q114 0
 m7_a set d_4 18 q115
 q116 at q114 1
 m7_b set m7_a 19 q116
 q117 at q114 2
 q118 set m7_b 20 q117
-q119 at msg_12 0
+q119 at msg_13 0
 q120 rec 0 0 0
-q121 at msg_12 2
+q121 at msg_13 2
 q122 rec q119 q120 q121
 q123 rec q122 q118
 ret q123
@@ -3233,7 +3242,10 @@ q24 get ps 112
 q25 le q24 5
 q26 and q23 q25
 q27 or q18 q26
-q28 and q16 q27
+trailing_reason get ps 1
+trailing eq trailing_reason 17
+supported_reason or q27 trailing
+q28 and q16 supported_reason
 q29 get ps 24
 q30 get p2 11
 q31 eq q29 q30

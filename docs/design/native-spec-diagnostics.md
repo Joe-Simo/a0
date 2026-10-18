@@ -54,12 +54,16 @@ owning function header; example and contract execution faults point at the selec
 The native companion follows that location policy. The complete retained binder/evaluator pages
 remain available separately from the selected public diagnostic location.
 
-This private compatibility work does not close existing native grammar acceptance differences.
-For example, the native spec reader still accepts some legacy aggregate separators and some
-adjacent elements that the current public compact aggregate reader rejects. An unfinished spec
-aggregate can still terminate with a native transport/incomplete status instead of A0714. Those
-are parser compatibility work, not conditions for a host-side diagnostic fallback. There is no
-public cutover or performance claim in this change.
+The native reader uses the shared [flat aggregate grammar](flat-aggregate-grammar.md), including
+its separator, singleton and repetition rules. Incomplete literals are classified from the
+active parser frame: an opener or comma needs another literal, while a completed item needs a
+closing delimiter. Resource and storage failures keep their transport status.
+
+The earlier statement that unfinished spec aggregates could return transport status 3 was not
+supported by a retained probe. The [frozen pre-change artifact](../../results/native-spec-grammar-baseline.json)
+returned ordinary grammar status 6 for every incomplete-input case in the grammar baseline; its opener/comma-ended cases reported
+the wrong missing-close message. This change corrects those phase distinctions rather than
+normalizing transport failures. There is no public cutover or performance claim in this change.
 
 The compiled compatibility controls and artifact hashes are recorded in
 [the native spec diagnostic parity report](../../results/native-spec-diagnostic-parity.json).

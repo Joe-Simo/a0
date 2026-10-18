@@ -314,10 +314,7 @@ q13 eq q12 3
 q14 ne count 1
 q15 or q13 q14
 q16 and q11 q15
-mode get p 94
-body ne mode 0
-trailing and body q16
-q17 select trailing 17 0
+q17 select q16 17 0
 q18 select q9 6 q17
 bad select q2 5 q18
 q19 get p2 1
@@ -377,12 +374,7 @@ end
 
 fn sp_separator (u32x128,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x128,io)
 p at p0 0
-comma eq p2 44
-semicolon eq p2 59
-mode get p 94
-spec eq mode 0
-legacy and spec semicolon
-sep or comma legacy
+sep eq p2 44
 star eq p2 42
 q0 get p3 0
 q1 eq q0 3
@@ -399,7 +391,13 @@ q9 or q8 close
 q10 get p 99
 q11 ne q10 0
 q12 or q9 q11
-allowed or q12 spec
+mode get p 94
+spec eq mode 0
+position get p 9
+endpos get p 8
+eof ge position endpos
+spec_eof and spec eof
+allowed or q12 spec_eof
 q13 xor allowed true
 invalid select q6 q7 q13
 q14 get p3 0
@@ -508,7 +506,16 @@ word_spec call sp_spec_atom_char p2
 word_mode get p 94
 word_body ne word_mode 0
 word select word_body word_any word_spec
-q11 select nested 4 1
+items_end get p 57
+items_start get p3 2
+has_item ne items_end items_start
+separator get p3 4
+no_separator eq separator 0
+complete_item and has_item no_separator
+completed_nested and nested complete_item
+body_nested and nested word_body
+needs_close or body_nested completed_nested
+q11 select needs_close 4 1
 q12 get p 94
 q13 ne q12 0
 q14 and q13 nested
@@ -525,7 +532,7 @@ q24 select q15 18 q23
 bad select eof q11 q24
 q25 get p3 1
 q26 get p 9
-q27 select nested q25 q26
+q27 select needs_close q25 q26
 q28 get p 9
 q29 select eof q27 q28
 q30 select eof 0 1

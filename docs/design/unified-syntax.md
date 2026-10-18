@@ -78,6 +78,9 @@ frozen experiment. Historical input remains available for migration; no new CLI 
 extension exposes the candidate. The formatter preserves IDs, order, signatures, contracts,
 profiles, imports and comments. Explicit signatures retain unused parameters. Inferred signatures
 include references from executable contracts. Valid large boolean arrays remain representable.
+The chosen separator, singleton and repetition rules are specified in
+[the flat aggregate grammar](flat-aggregate-grammar.md), including incomplete-input refusals
+and the boundary between aggregate items and top-level example arguments.
 
 `src/source-link.ts` connects the candidate to the same dependency resolver, IR composition and
 validator as the historical readers. Parser origins map validation errors to physical source

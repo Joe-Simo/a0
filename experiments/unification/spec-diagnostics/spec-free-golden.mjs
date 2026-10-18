@@ -15,13 +15,32 @@ const baseline = option('baseline'),
   baselineDist = option('baseline-dist'),
   output = option('out'),
   current = process.cwd();
+const comparison = option('comparison') ?? 'spec-diagnostics';
+const comparisons = {
+  'spec-diagnostics': {
+    commit: 'ca3cc4e07791edc4a33a601d760eb949df474911',
+    added: ['compiler/diagnostic_specs_arena.a0'],
+    changed: [
+      'compiler/diagnostics_arena.a0',
+      'compiler/source_grammar.a0',
+      'compiler/spec_types_arena_shared.a0',
+    ],
+  },
+  'aggregate-grammar': {
+    commit: '02c8bab5ee113f35afddcfc5561fb9616b31320a',
+    added: [],
+    changed: ['compiler/diagnostic_specs_arena.a0', 'compiler/source_grammar.a0'],
+  },
+};
+assert.ok(Object.hasOwn(comparisons, comparison), 'unknown frozen comparison');
+const expected = comparisons[comparison];
 assert.ok(
   baseline && baselineDist && output,
   '--baseline=DIR --baseline-dist=DIR --out=FILE required',
 );
 assert.equal(
   execFileSync('git', ['-C', baseline, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
-  'ca3cc4e07791edc4a33a601d760eb949df474911',
+  expected.commit,
 );
 async function files(dir, out = [], depth = 0) {
   for (const n of (await readdir(dir)).sort()) {
@@ -86,7 +105,7 @@ for (const path of execFileSync('git', ['-C', baseline, 'ls-files', 'src/*.ts'],
   .split('\n')) {
   assert.equal(
     hash(await readFile(join(baseline, path))),
-    hash(execFileSync('git', ['-C', baseline, 'show', `ca3cc4e:${path}`])),
+    hash(execFileSync('git', ['-C', baseline, 'show', `${expected.commit}:${path}`])),
     `frozen source differs: ${path}`,
   );
 }
@@ -102,18 +121,15 @@ const added = Object.keys(now.rows).filter((p) => !Object.hasOwn(old.rows, p)),
     (p) =>
       Object.hasOwn(now.rows, p) && JSON.stringify(old.rows[p]) !== JSON.stringify(now.rows[p]),
   );
-assert.deepEqual(added, ['compiler/diagnostic_specs_arena.a0']);
+assert.deepEqual(added, expected.added);
 assert.deepEqual(removed, []);
-assert.deepEqual(changed, [
-  'compiler/diagnostics_arena.a0',
-  'compiler/source_grammar.a0',
-  'compiler/spec_types_arena_shared.a0',
-]);
+assert.deepEqual(changed, expected.changed);
 await writeReport(output, {
   schema: 1,
   scope:
     'Independent frozen-source/frozen-output replay of exhaustive spec-free digests; no normalization and no performance claim.',
-  baselineCommit: 'ca3cc4e07791edc4a33a601d760eb949df474911',
+  comparison,
+  baselineCommit: expected.commit,
   baselineRows: Object.keys(old.rows).length,
   currentRows: Object.keys(now.rows).length,
   oldGoldenExact: true,
@@ -126,7 +142,7 @@ await writeReport(output, {
   removed,
   changed: changed.map((path) => ({ path, before: old.rows[path], after: now.rows[path] })),
   baselinePreparation:
-    'Fresh TypeScript project build of immutable ca3cc4e into a separate output directory; every tracked src/*.ts input equals git ca3cc4e, then old source/old golden and current source/current golden are replayed without normalization.',
+    `Fresh TypeScript project build of immutable ${expected.commit} into a separate output directory; every tracked src/*.ts input equals that commit, then old source/old golden and current source/current golden are replayed without normalization.`,
   baselineCompilerOutputs: old.outputs,
   currentCompilerOutputs: now.outputs,
 });
