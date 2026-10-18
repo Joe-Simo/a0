@@ -26,7 +26,7 @@
  *
  * Nothing here calls a model.
  *
- * Fresh source controls: append --surface=canonical|dense to any command. The historical
+ * Fresh source controls: append --surface=canonical|dense|native to any command. The historical
  * default is unchanged. Dump/scoring commands require Bun source execution and a clean
  * committed checkout; dump writes a provenance manifest beside its prompt map.
  * Protocol: docs/history/2026-10-17-unified-controls-preregistration.md.
@@ -64,7 +64,33 @@ async function writeReport(path: string, value: unknown): Promise<void> {
 
 export type Side = 'a0' | 'ts';
 /** Research controls, not compiler source-language modes. */
-export type A0Surface = 'canonical' | 'dense';
+export type A0Surface = 'canonical' | 'dense' | 'native';
+
+/** Explicit benchmark dependency. Native source never falls back to the historical reader. */
+export interface A0ArmServices {
+  readonly parse: (source: string) => TypedProgram;
+  readonly session: (program: TypedProgram) => EditSession;
+  readonly formatControl: (program: TypedProgram, changed: readonly TypedFunc[]) => string;
+  readonly revision: (fn: TypedFunc) => string;
+}
+
+function armServices(surface: A0Surface, services?: A0ArmServices): A0ArmServices {
+  if (surface === 'native') {
+    if (services === undefined) throw new Error('native benchmark requires explicit A0 services');
+    return services;
+  }
+  if (services !== undefined) throw new Error('native services require the native research arm');
+  return {
+    parse: parseAndValidate,
+    session: (program) => new EditSession(program),
+    revision,
+    formatControl: (program, changed) =>
+      formatDense(
+        { functions: changed },
+        { known: new Map(program.functions.map((fn) => [fn.name, fn.params.length])) },
+      ),
+  };
+}
 export const PROTOCOL: Record<Side, string> = { a0: 'structured', ts: 'diff' };
 
 /**
@@ -111,12 +137,14 @@ function a0Session(
   source: string,
   task: AppTask,
   surface: A0Surface = 'canonical',
+  services?: A0ArmServices,
 ): {
   session: EditSession;
   view: string;
   programHandle: string;
 } {
-  const session = new EditSession(parseAndValidate(source));
+  const language = armServices(surface, services);
+  const session = language.session(language.parse(source));
   const dense = surface === 'dense';
   const views = task.a0Targets.map((f) => session.open(f, { scope: 'deps', dense }).text);
   // the sealed arm lists every signature of the program; A0_PROGRAM_VIEW=deps (the deps-view arm,
@@ -133,9 +161,10 @@ export function prompt(
   programs: Programs,
   guide: string,
   surface: A0Surface = 'canonical',
+  services?: A0ArmServices,
 ): { system: string; user: string } {
   if (side === 'a0') {
-    const { view } = a0Session(programs.a0, task, surface);
+    const { view } = a0Session(programs.a0, task, surface, services);
     return {
       system: `${guide.trimEnd()}\n\n${A0_PROTOCOL}`,
       user: `${task.instruction}\n\n${view}`,
@@ -372,12 +401,13 @@ export async function judge(
   programs: Programs,
   reply: string,
   surface: A0Surface = 'canonical',
+  services?: A0ArmServices,
 ): Promise<Applied> {
   if (side === 'a0') {
-    const { session } = a0Session(programs.a0, task, surface);
+    const { session } = a0Session(programs.a0, task, surface, services);
     let next: TypedProgram;
     try {
-      next = session.apply(extractBlock(reply));
+      next = session.apply(surface === 'native' ? reply : extractBlock(reply));
     } catch (e) {
       const error = formatDiagnostic(e, false);
       return { error, failures: [error] };
@@ -405,6 +435,38 @@ export function rejection(side: Side, failures: readonly string[]): string {
 
 const enc = getEncoding('o200k_base');
 const tok = (s: string): number => enc.encode(s).length;
+const encCl = getEncoding('cl100k_base');
+
+export function localTokens(text: string) {
+  return { o200k_base: tok(text), cl100k_base: encCl.encode(text).length };
+}
+
+/** Visible message contents, counted per message on every call. Provider framing, cache and
+ * reasoning usage remain unknown; a failed first reply is input again on the repair call. */
+export function conversationCost(
+  initial: { readonly system: string; readonly user: string },
+  attempts: readonly { readonly reply: string; readonly repair?: string }[],
+) {
+  return Object.fromEntries(
+    (['o200k_base', 'cl100k_base'] as const).map((encoding) => {
+      const count = (text: string) => localTokens(text)[encoding];
+      const messages = [initial.system, initial.user];
+      const calls = attempts.map((attempt, index) => {
+        const input = messages.reduce((sum, message) => sum + count(message), 0);
+        const output = count(attempt.reply);
+        messages.push(attempt.reply);
+        if (index + 1 < attempts.length) {
+          if (attempt.repair === undefined) throw new Error('repair call has no rejection message');
+          messages.push(attempt.repair);
+        }
+        return { input, output };
+      });
+      const input = calls.reduce((sum, call) => sum + call.input, 0);
+      const output = calls.reduce((sum, call) => sum + call.output, 0);
+      return [encoding, { input, output, total: input + output, calls }];
+    }),
+  );
+}
 
 export function taskSetSha256(text: string): string {
   return sha(text);
@@ -419,47 +481,71 @@ async function sealed(): Promise<string> {
 }
 
 /** Translate sealed reference edits through the existing edit engine, never hand-write Dense answers. */
-function controlReply(task: AppTask, source: string, reply: string, surface: A0Surface): string {
+export function controlReply(
+  task: AppTask,
+  source: string,
+  reply: string,
+  surface: A0Surface,
+  services?: A0ArmServices,
+  historicalSource = source,
+): string {
   if (surface === 'canonical') return reply;
-  const original = a0Session(source, task).session;
+  // Only sealed controls use the historical reader. Submitted replies never enter this route.
+  const original = a0Session(historicalSource, task).session;
   const before = original.program;
   const after = original.apply(reply);
+  const language = armServices(surface, services);
   const changed = after.functions.filter((fn) => {
     const old = before.byName.get(fn.name);
-    return old === undefined || revision(old) !== revision(fn);
+    return old === undefined || language.revision(old) !== language.revision(fn);
   });
   const removed = before.functions
     .filter((fn) => !after.byName.has(fn.name))
     .map((fn) => `-fn ${fn.name}`);
-  const known = new Map(after.functions.map((fn) => [fn.name, fn.params.length]));
-  const { programHandle } = a0Session(source, task, surface);
-  return `${programHandle}\n${removed.join('\n')}\n${formatDense({ functions: changed }, { known })}`;
+  const { programHandle } = a0Session(source, task, surface, services);
+  return `${programHandle}\n${removed.join('\n')}\n${language.formatControl(after, changed)}`;
 }
 
 export async function selfCheck(
   surface: A0Surface = 'canonical',
+  native?: { readonly services: A0ArmServices; readonly programs: Programs },
+  only?: Side,
 ): Promise<{ ok: boolean; rows: Record<string, unknown>[] }> {
-  const programs = await startPrograms();
-  checkStart(programs);
+  const historical = await startPrograms();
+  checkStart(historical);
+  const programs = native?.programs ?? historical;
+  const language = armServices(surface, native?.services);
   const rows: Record<string, unknown>[] = [];
   let ok = APP_TASKS.length === 14 && new Set(APP_TASKS.map((t) => t.id)).size === 14;
-  const tsStart = await tsFrontEnd(programs.ts);
+  const tsStart = only === 'a0' ? undefined : await tsFrontEnd(programs.ts);
   if (typeof tsStart === 'string') throw new Error(`the TypeScript start program: ${tsStart}`);
-  const start: Record<Side, FrontEnd> = {
-    a0: a0FrontEnd(parseAndValidate(programs.a0)),
-    ts: tsStart,
+  const start: Partial<Record<Side, FrontEnd>> = {
+    a0: a0FrontEnd(language.parse(programs.a0)),
+    ...(tsStart === undefined ? {} : { ts: tsStart }),
   };
   for (const task of APP_TASKS) {
     for (const side of ['a0', 'ts'] as const) {
+      if (only !== undefined && side !== only) continue;
       const reference =
         side === 'a0'
-          ? controlReply(task, programs.a0, task.reference.a0, surface)
+          ? controlReply(
+              task,
+              programs.a0,
+              task.reference.a0,
+              surface,
+              native?.services,
+              historical.a0,
+            )
           : task.reference.ts;
-      const ref = await judge(side, task, programs, reference, surface);
-      const startFails = runTests(start[side], task.tests);
+      const ref = await judge(side, task, programs, reference, surface, native?.services);
+      const frontend = start[side];
+      if (frontend === undefined) throw new Error('missing self-check frontend');
+      const startFails = runTests(frontend, task.tests);
       const wrongReply =
-        side === 'a0' ? controlReply(task, programs.a0, task.wrong.a0, surface) : task.wrong.ts;
-      const wrong = await judge(side, task, programs, wrongReply, surface);
+        side === 'a0'
+          ? controlReply(task, programs.a0, task.wrong.a0, surface, native?.services, historical.a0)
+          : task.wrong.ts;
+      const wrong = await judge(side, task, programs, wrongReply, surface, native?.services);
       const row = {
         task: task.id,
         side,
@@ -494,170 +580,252 @@ async function main(): Promise<void> {
   const surfaces = rawArgs.filter((arg) => arg.startsWith('--surface='));
   if (
     surfaces.length > 1 ||
-    surfaces.some((arg) => !['--surface=canonical', '--surface=dense'].includes(arg))
+    surfaces.some(
+      (arg) => !['--surface=canonical', '--surface=dense', '--surface=native'].includes(arg),
+    )
   )
-    throw new Error(
-      'study surface must be canonical or dense; a unified candidate is not implemented',
-    );
-  const surface: A0Surface = surfaces[0] === '--surface=dense' ? 'dense' : 'canonical';
-  const args = rawArgs.filter((arg) => !arg.startsWith('--surface='));
-  const guidePath = surface === 'dense' ? 'MODEL_GUIDE.dense.txt' : 'MODEL_GUIDE.min.txt';
-  const guide = await readFile(guidePath, 'utf8');
-  if (cmd === 'self-check') {
-    const r = await selfCheck(surface);
-    for (const row of r.rows)
-      console.log(
-        `${String(row.task).padEnd(22)} ${String(row.side).padEnd(3)} ref ${row.referencePasses ? 'pass' : 'FAIL'}  start ${row.startFails ? 'fails' : 'PASSES'}  wrong ${row.wrongFails ? 'fails' : 'PASSES'}${row.wrongApplies ? '' : ' (NOT APPLIED)'}${row.referencePasses ? '' : `  ${JSON.stringify(row.referenceFailures)}`}`,
-      );
-    console.log(`self-check ${r.ok ? 'ok' : 'FAILED'}`);
-    if (args[0] !== undefined)
-      await writeReport(args[0], {
-        generatedAt: new Date().toISOString(),
-        tool: 'tools/app-edit-bench.ts self-check',
-        a0SourceSurface: surface,
-        modelCalls: 0,
-        taskSetSha256: await sealed(),
-        ...r,
-      });
-    if (!r.ok) process.exitCode = 1;
-    return;
+    throw new Error('study surface must be canonical, dense, or native');
+  const surface: A0Surface =
+    surfaces[0] === '--surface=native'
+      ? 'native'
+      : surfaces[0] === '--surface=dense'
+        ? 'dense'
+        : 'canonical';
+  const guides = rawArgs.filter((arg) => arg.startsWith('--guide='));
+  if (guides.length > 1 || guides.some((arg) => arg === '--guide='))
+    throw new Error('provide at most one nonempty --guide=PATH');
+  const args = rawArgs.filter(
+    (arg) => !arg.startsWith('--surface=') && !arg.startsWith('--guide='),
+  );
+  const epoch =
+    cmd === 'dump' || cmd === 'run' || surface === 'native'
+      ? committedTree(process.cwd())
+      : undefined;
+  const historical = await startPrograms();
+  checkStart(historical);
+  let native:
+    | Awaited<ReturnType<typeof import('./app-edit-native.js').nativeAppEditArm>>
+    | undefined;
+  if (surface === 'native') {
+    const directory = process.env.A0_SOURCE_PACKAGE;
+    const manifestSHA256 = process.env.A0_SOURCE_PACKAGE_SHA256;
+    if (!directory || !manifestSHA256)
+      throw new Error('native arm requires A0_SOURCE_PACKAGE and A0_SOURCE_PACKAGE_SHA256');
+    const { nativeAppEditArm } = await import('./app-edit-native.js');
+    native = await nativeAppEditArm(historical, { directory, manifestSHA256 });
   }
-  if (cmd === 'dump') {
-    const out = args[0] as string;
-    const only = sideArg(args[1]);
-    const implementation = committedTree(process.cwd());
-    const taskSha = await sealed();
-    const programs = await startPrograms();
-    checkStart(programs);
-    const dump: Record<string, { system: string; user: string }> = {};
-    for (const task of APP_TASKS)
-      for (const side of ['a0', 'ts'] as const)
-        if (only === undefined || only === side)
-          dump[`${task.id}/${side}/${PROTOCOL[side]}`] = prompt(
-            side,
-            task,
-            programs,
-            guide,
-            surface,
-          );
-    if (JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(implementation))
-      throw new Error('implementation changed during prompt preparation');
-    const text = JSON.stringify(dump, null, 1);
-    await writeFile(out, text);
-    await writeReport(`${out}.manifest.json`, {
-      implementation,
-      runtime: { node: process.version, bun: process.versions.bun ?? null },
-      a0SourceSurface: surface,
-      programViewScope: process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all',
-      taskSetSha256: taskSha,
-      startSha256: START_SHA256,
-      guide: { path: guidePath, sha256: sha(guide) },
-      promptsSha256: sha(text),
-      modelCalls: 0,
-    });
-    console.log(`${Object.keys(dump).length} prompts`);
-    return;
-  }
-  if (cmd === 'run') {
-    const implementation = committedTree(process.cwd());
-    const [repliesPath, out, sideText, model] = args as [
-      string,
-      string,
-      string | undefined,
-      string | undefined,
-    ];
-    const only = sideArg(sideText);
-    const taskSha = await sealed();
-    const programs = await startPrograms();
-    checkStart(programs);
-    const check = await selfCheck(surface);
-    const replies = JSON.parse(await readFile(repliesPath, 'utf8')) as Record<string, string[]>;
-    const trials: Record<string, unknown>[] = [];
-    for (const task of APP_TASKS)
-      for (const side of ['a0', 'ts'] as const) {
-        if (only !== undefined && only !== side) continue;
-        const key = `${task.id}/${side}/${PROTOCOL[side]}`;
-        const p = prompt(side, task, programs, guide, surface);
-        const rs = replies[key] ?? [];
-        const attempts: Record<string, unknown>[] = [];
-        let toolContext = tok(p.user);
-        let output = 0;
-        let accepted: boolean | null = null;
-        let acceptedOneShot: boolean | null = null;
-        let failures: string[] = rs.length === 0 ? ['no reply'] : [];
-        for (const [n, reply] of rs.slice(0, 2).entries()) {
-          output += tok(reply);
-          const r = await judge(side, task, programs, reply, surface);
-          failures = r.failures;
-          const ok = r.failures.length === 0;
-          if (n === 0) acceptedOneShot = ok;
-          accepted = ok;
-          const a: Record<string, unknown> = {
-            status: ok ? 'accepted' : r.error !== undefined ? 'refused' : 'tests',
-            failures: r.failures,
-            outputTokensLocal: { o200k_base: tok(reply) },
-          };
-          if (!ok) {
-            a.repair = rejection(side, r.failures);
-            if (n === 0 && rs.length > 1) toolContext += tok(a.repair as string);
-          }
-          attempts.push(a);
-          if (ok) break;
-        }
-        const calls = attempts.length;
-        const system = tok(p.system);
-        trials.push({
-          task: task.id,
-          representation: side,
-          protocol: PROTOCOL[side],
-          modelCalls: calls,
-          acceptedOneShot,
-          accepted,
-          failures,
-          attempts,
-          setupTokensLocal: { o200k_base: system },
-          tokenBucketsLocal: {
-            languagePrimer: side === 'a0' ? tok(guide.trimEnd()) * calls : 0,
-            workflowPrimer: tok(side === 'a0' ? A0_PROTOCOL : TS_PROTOCOL) * calls,
-            toolContext,
-            output,
-          },
+  try {
+    const guidePath =
+      guides[0]?.slice('--guide='.length) ??
+      (surface === 'native'
+        ? 'experiments/primers/MODEL_GUIDE.native.txt'
+        : surface === 'dense'
+          ? 'MODEL_GUIDE.dense.txt'
+          : 'MODEL_GUIDE.min.txt');
+    const guide = await readFile(guidePath, 'utf8');
+    if (cmd === 'self-check') {
+      const r = await selfCheck(surface, native, sideArg(args[1]));
+      for (const row of r.rows)
+        console.log(
+          `${String(row.task).padEnd(22)} ${String(row.side).padEnd(3)} ref ${row.referencePasses ? 'pass' : 'FAIL'}  start ${row.startFails ? 'fails' : 'PASSES'}  wrong ${row.wrongFails ? 'fails' : 'PASSES'}${row.wrongApplies ? '' : ' (NOT APPLIED)'}${row.referencePasses ? '' : `  ${JSON.stringify(row.referenceFailures)}`}`,
+        );
+      console.log(`self-check ${r.ok ? 'ok' : 'FAILED'}`);
+      if (
+        epoch !== undefined &&
+        JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(epoch)
+      )
+        throw new Error('implementation changed during self-check');
+      if (args[0] !== undefined) {
+        await mkdir(dirname(args[0]), { recursive: true });
+        if (native) await writeFile(`${args[0]}.starter.a0`, native.programs.a0);
+        await writeReport(args[0], {
+          generatedAt: new Date().toISOString(),
+          tool: 'tools/app-edit-bench.ts self-check',
+          a0SourceSurface: surface,
+          modelCalls: 0,
+          taskSetSha256: await sealed(),
+          implementation: epoch ?? null,
+          native: native?.metadata ?? null,
+          guide: { path: guidePath, sha256: sha(guide) },
+          ...r,
         });
       }
-    if (JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(implementation))
-      throw new Error('implementation changed during scoring');
-    await writeReport(out, {
-      generatedAt: new Date().toISOString(),
-      tool: 'tools/app-edit-bench.ts run',
-      preRegistration:
-        surface === 'dense'
-          ? 'docs/history/2026-10-17-unified-controls-preregistration.md'
-          : 'docs/history/2026-10-06-app-edit-preregistration.md',
-      a0SourceSurface: surface,
-      guide: { path: guidePath, sha256: sha(guide) },
-      implementation,
-      runtime: { node: process.version, bun: process.versions.bun ?? null },
-      programViewScope: process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all',
-      model: model ?? null,
-      side: only ?? 'both',
-      taskSetSha256: taskSha,
-      startSha256: START_SHA256,
-      harnessSelfCheck: { ok: check.ok },
-      trials,
-    });
-    console.log(
-      JSON.stringify({
-        trials: trials.length,
-        oneShot: trials.filter((t) => t.acceptedOneShot === true).length,
-        accepted: trials.filter((t) => t.accepted === true).length,
-      }),
+      if (!r.ok) process.exitCode = 1;
+      return;
+    }
+    if (cmd === 'dump') {
+      const out = args[0] as string;
+      const only = sideArg(args[1]);
+      const implementation = epoch;
+      const taskSha = await sealed();
+      const programs = native?.programs ?? historical;
+      const controls = native ? await selfCheck(surface, native, 'a0') : undefined;
+      if (controls && !controls.ok)
+        throw new Error('native arm controls failed; no prompts prepared');
+      const dump: Record<string, { system: string; user: string }> = {};
+      for (const task of APP_TASKS)
+        for (const side of ['a0', 'ts'] as const)
+          if (only === undefined || only === side)
+            dump[`${task.id}/${side}/${PROTOCOL[side]}`] = prompt(
+              side,
+              task,
+              programs,
+              guide,
+              surface,
+              native?.services,
+            );
+      if (JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(implementation))
+        throw new Error('implementation changed during prompt preparation');
+      const text = JSON.stringify(dump, null, 1);
+      await mkdir(dirname(out), { recursive: true });
+      await writeFile(out, text);
+      if (native) await writeFile(`${out}.starter.a0`, native.programs.a0);
+      await writeReport(`${out}.manifest.json`, {
+        implementation,
+        runtime: { node: process.version, bun: process.versions.bun ?? null },
+        a0SourceSurface: surface,
+        programViewScope: process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all',
+        taskSetSha256: taskSha,
+        startSha256: START_SHA256,
+        native: native?.metadata ?? null,
+        harnessSelfCheck: controls ? { ok: controls.ok, rows: controls.rows } : null,
+        guide: { path: guidePath, sha256: sha(guide) },
+        promptsSha256: sha(text),
+        promptSha256: Object.fromEntries(
+          Object.entries(dump).map(([key, value]) => [
+            key,
+            {
+              system: sha(value.system),
+              user: sha(value.user),
+            },
+          ]),
+        ),
+        modelCalls: 0,
+      });
+      console.log(`${Object.keys(dump).length} prompts`);
+      return;
+    }
+    if (cmd === 'run') {
+      const implementation = epoch;
+      const [repliesPath, out, sideText, model] = args as [
+        string,
+        string,
+        string | undefined,
+        string | undefined,
+      ];
+      const only = sideArg(sideText);
+      const taskSha = await sealed();
+      const programs = native?.programs ?? historical;
+      const check = await selfCheck(surface, native, only);
+      if (!check.ok) throw new Error('harness controls failed; no replies scored');
+      const repliesText = await readFile(repliesPath, 'utf8');
+      const replies = JSON.parse(repliesText) as Record<string, string[]>;
+      const trials: Record<string, unknown>[] = [];
+      for (const task of APP_TASKS)
+        for (const side of ['a0', 'ts'] as const) {
+          if (only !== undefined && only !== side) continue;
+          const key = `${task.id}/${side}/${PROTOCOL[side]}`;
+          const p = prompt(side, task, programs, guide, surface, native?.services);
+          const rs = replies[key] ?? [];
+          const attempts: Record<string, unknown>[] = [];
+          const conversation: { reply: string; repair?: string }[] = [];
+          let toolContext = 0;
+          let output = 0;
+          let accepted: boolean | null = null;
+          let acceptedOneShot: boolean | null = null;
+          let failures: string[] = rs.length === 0 ? ['no reply'] : [];
+          for (const [n, reply] of rs.slice(0, 2).entries()) {
+            output += tok(reply);
+            const r = await judge(side, task, programs, reply, surface, native?.services);
+            failures = r.failures;
+            const ok = r.failures.length === 0;
+            if (n === 0) acceptedOneShot = ok;
+            accepted = ok;
+            const a: Record<string, unknown> = {
+              status: ok ? 'accepted' : r.error !== undefined ? 'refused' : 'tests',
+              failures: r.failures,
+              outputTokensLocal: localTokens(reply),
+              providerUsage: null,
+            };
+            const turn: { reply: string; repair?: string } = { reply };
+            if (!ok) {
+              a.repair = rejection(side, r.failures);
+              turn.repair = a.repair as string;
+              if (n === 0 && rs.length > 1) toolContext += tok(reply) + tok(turn.repair);
+            }
+            conversation.push(turn);
+            attempts.push(a);
+            if (ok) break;
+          }
+          const calls = attempts.length;
+          toolContext += tok(p.user) * calls;
+          const languagePrimer = side === 'a0' ? tok(guide.trimEnd()) * calls : 0;
+          trials.push({
+            task: task.id,
+            representation: side,
+            protocol: PROTOCOL[side],
+            modelCalls: calls,
+            acceptedOneShot,
+            accepted,
+            failures,
+            attempts,
+            setupTokensLocal: localTokens(p.system),
+            conversationTokensLocal: conversationCost(p, conversation),
+            providerUsage: null,
+            promptSha256: { system: sha(p.system), user: sha(p.user) },
+            tokenBucketsLocal: {
+              languagePrimer,
+              // Assign separator/boundary tokens here so the legacy bucket total also
+              // equals the complete o200k visible conversation total.
+              workflowPrimer: tok(p.system) * calls - languagePrimer,
+              toolContext,
+              output,
+            },
+          });
+        }
+      if (JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(implementation))
+        throw new Error('implementation changed during scoring');
+      await writeReport(out, {
+        generatedAt: new Date().toISOString(),
+        tool: 'tools/app-edit-bench.ts run',
+        preRegistration:
+          surface === 'native'
+            ? null
+            : surface === 'dense'
+              ? 'docs/history/2026-10-17-unified-controls-preregistration.md'
+              : 'docs/history/2026-10-06-app-edit-preregistration.md',
+        a0SourceSurface: surface,
+        guide: { path: guidePath, sha256: sha(guide) },
+        implementation,
+        runtime: { node: process.version, bun: process.versions.bun ?? null },
+        programViewScope: process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all',
+        model: model ?? null,
+        side: only ?? 'both',
+        taskSetSha256: taskSha,
+        startSha256: START_SHA256,
+        native: native?.metadata ?? null,
+        repliesSha256: sha(repliesText),
+        tokenAccounting:
+          'visible message contents per call; includes prior replies and repair messages; provider framing, cache and reasoning unknown',
+        harnessSelfCheck: { ok: check.ok },
+        trials,
+      });
+      console.log(
+        JSON.stringify({
+          trials: trials.length,
+          oneShot: trials.filter((t) => t.acceptedOneShot === true).length,
+          accepted: trials.filter((t) => t.accepted === true).length,
+        }),
+      );
+      return;
+    }
+    console.error(
+      'usage: bun tools/app-edit-bench.ts self-check [OUT] [a0|ts] | dump OUT [a0|ts] | run REPLIES OUT [a0|ts] [model] [--surface=canonical|dense|native] [--guide=PATH]',
     );
-    return;
+    process.exitCode = 2;
+  } finally {
+    native?.close();
   }
-  console.error(
-    'usage: bun tools/app-edit-bench.ts self-check [OUT] | dump OUT [a0|ts] | run REPLIES OUT [a0|ts] [model] [--surface=canonical|dense]',
-  );
-  process.exitCode = 2;
 }
 
 if (/app-edit-bench.[jt]s$/.test(process.argv[1] ?? '')) await main();
