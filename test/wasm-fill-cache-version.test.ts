@@ -3,7 +3,14 @@ import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { assemble, type CompileOptions, compile, FunctionCache } from '../src/backends.js';
+import {
+  assemble,
+  type CompileOptions,
+  compile,
+  emitFunction,
+  FunctionCache,
+  functionEmissionKey,
+} from '../src/backends.js';
 import { cacheKey, compileCached, DiskCache } from '../src/cache.js';
 import { parseAndValidate } from '../src/core.js';
 
@@ -36,6 +43,68 @@ const zeroOptions: CompileOptions = {
   wasmIo: { module: 'words', read: 'next', write: 'send' },
   wasmExports: ['collect'],
 };
+const fusedFixture = JSON.parse(
+  await readFile('test/fixtures/wasm-read-array-cache/old66-emission.json', 'utf8'),
+) as OldEmission;
+const fusedProgram = parseAndValidate(fusedFixture.source);
+const fusedOptions: CompileOptions = {
+  ioInputCapacity: 7,
+  ioOutputCapacity: 3,
+  wasmExports: ['collect'],
+};
+
+function emittedCalls(body: string): string[] {
+  const record = JSON.parse(body) as {
+    variants: { code: (string | { call?: string })[] }[];
+  };
+  return record.variants.flatMap((variant) =>
+    variant.code.flatMap((part) =>
+      typeof part === 'object' && part.call !== undefined ? [part.call] : [],
+    ),
+  );
+}
+
+/** Independent wrap/EOF oracle, full-width words and borrowed/IO/result canaries. */
+function checkReadFoldExecution(text: string): void {
+  const module = new WebAssembly.Module(Buffer.from(text, 'base64'));
+  assert.deepEqual(WebAssembly.Module.imports(module), []);
+  for (const input of [[], [0xffffffff], [0xffffffff, 0x80000000, 7]])
+    for (const count of [0, 1, 2, 3, 4, 9]) {
+      const instance = new WebAssembly.Instance(module);
+      const memory = instance.exports.memory as WebAssembly.Memory;
+      const heap = Number((instance.exports.__heap_base as WebAssembly.Global).value);
+      if (heap + 1024 > memory.buffer.byteLength) memory.grow(1);
+      const view = new DataView(memory.buffer);
+      const result = heap + 64,
+        array = heap + 256,
+        stream = heap + 512,
+        guard = 0x735a901f;
+      const put = (at: number, value: number) => view.setUint32(at, value, true);
+      const get = (at: number) => view.getUint32(at, true);
+      const snapshot = (at: number, length: number) =>
+        Array.from({ length }, (_, index) => get(at + index * 4));
+      for (let at = heap; at < heap + 1024; at += 4) put(at, guard);
+      const original = [9, 10, 11];
+      for (const [index, word] of original.entries()) put(array + index * 4, word);
+      for (const [index, word] of input.entries()) put(stream + index * 4, word);
+      put(stream + 7 * 4, input.length);
+      put(stream + 8 * 4, 0);
+      put(stream + 12 * 4, 0);
+      const sourceBefore = snapshot(array - 4, 5),
+        inputBefore = snapshot(stream - 4, 9);
+      const expected = [...original];
+      for (let trip = 0; trip < count; trip++) expected[trip % 3] = input[trip] ?? 0;
+      const collect = instance.exports.a0_collect as (...args: number[]) => void;
+      collect(result, array, stream, count);
+      assert.deepEqual(snapshot(result, 4), [...expected, stream]);
+      assert.deepEqual(snapshot(array - 4, 5), sourceBefore, 'borrowed array changed');
+      assert.deepEqual(snapshot(stream - 4, 9), inputBefore, 'IO input changed');
+      assert.equal(get(stream + 8 * 4), Math.min(count, input.length));
+      assert.deepEqual(snapshot(stream + 9 * 4, 3), [guard, guard, guard]);
+      assert.equal(get(stream + 12 * 4), 0);
+      for (const at of [result - 4, result + 16, stream + 13 * 4]) assert.equal(get(at), guard);
+    }
+}
 
 function checkZeroExecution(text: string): void {
   const module = new WebAssembly.Module(Buffer.from(text, 'base64'));
@@ -136,6 +205,49 @@ test('the retained65 zero-loop body reproduces an unintended host read import', 
   assert.throws(() => new WebAssembly.Instance(module), TypeError);
 });
 
+test('retained66 records reproduce fusion and a current-key cache control really reuses them', () => {
+  assert.equal(fusedFixture.provenance.commit, '0ecbfaf0e5f5b66cdabc7ee077e6f4c599844ae1');
+  assert.equal(fusedFixture.provenance.compilerVersion, 'a0c-0.1.66');
+  assert.equal(hash(fusedFixture.source), fusedFixture.sourceSHA256);
+  assert.deepEqual(
+    fusedFixture.records.map((record) => record.name),
+    fusedProgram.functions.map((fn) => fn.name),
+  );
+  const currentKeyControl = new FunctionCache();
+  for (const record of fusedFixture.records) {
+    assert.equal(hash(record.body), record.bodySHA256);
+    assert.equal(cacheKey(`emit|${record.descriptor}`), record.diskKey);
+    const fn = fusedProgram.byName.get(record.name);
+    assert.ok(fn);
+    const currentKey = functionEmissionKey('wasm', fn, fusedOptions);
+    // Exact captured descriptors share the unchanged semantic/options suffix, only version differs.
+    assert.equal(
+      currentKey.replace(/^[^|]+/, fusedFixture.provenance.compilerVersion),
+      record.descriptor,
+    );
+    currentKeyControl.set(currentKey, record.body);
+    if (record.name === 'collect') {
+      assert.ok(emittedCalls(record.body).includes('io:read'));
+      assert.ok(!emittedCalls(record.body).includes('a0o_receive'));
+      const freshCalls = emittedCalls(emitFunction('wasm', fn, fusedOptions));
+      assert.ok(freshCalls.includes('a0o_receive'));
+      assert.ok(!freshCalls.includes('io:read'));
+    }
+  }
+  const retained = assemble(
+    'wasm',
+    fusedFixture.records.map((record) => record.body),
+    fusedProgram,
+    fusedOptions,
+  );
+  const reused = compile(fusedProgram, 'wasm', fusedOptions, currentKeyControl);
+  assert.equal(reused.cacheHits, fusedProgram.functions.length);
+  assert.equal(reused.cacheMisses, 0);
+  assert.equal(reused.text, retained);
+  assert.notEqual(reused.text, compile(fusedProgram, 'wasm', fusedOptions).text);
+  checkReadFoldExecution(reused.text);
+});
+
 for (const control of [
   { name: 'SIMD fill', fixture, program, options: {}, check: checkExecution },
   {
@@ -145,6 +257,13 @@ for (const control of [
     options: zeroOptions,
     check: checkZeroExecution,
   },
+  {
+    name: 'read-array default',
+    fixture: fusedFixture,
+    program: fusedProgram,
+    options: fusedOptions,
+    check: checkReadFoldExecution,
+  },
 ]) {
   test(`${control.name} fix rejects pre-fix in-memory emission cache entries`, () => {
     const cache = new FunctionCache();
@@ -153,6 +272,11 @@ for (const control of [
     control.check(result.text);
     assert.equal(result.cacheHits, 0);
     assert.equal(result.cacheMisses, control.program.functions.length);
+    assert.equal(result.text, compile(control.program, 'wasm', control.options).text);
+    const warm = compile(control.program, 'wasm', control.options, cache);
+    assert.equal(warm.cacheHits, control.program.functions.length);
+    assert.equal(warm.cacheMisses, 0);
+    assert.equal(warm.text, result.text);
   });
 
   test(`${control.name} fix rejects persisted pre-fix emission cache entries`, async () => {
@@ -167,6 +291,16 @@ for (const control of [
       control.check(result.text);
       assert.equal(result.hits, 0);
       assert.equal(result.misses, control.program.functions.length);
+      assert.equal(result.text, compile(control.program, 'wasm', control.options).text);
+      const warm = await compileCached(
+        control.program,
+        'wasm',
+        new DiskCache(directory),
+        control.options,
+      );
+      assert.equal(warm.hits, control.program.functions.length);
+      assert.equal(warm.misses, 0);
+      assert.equal(warm.text, result.text);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
