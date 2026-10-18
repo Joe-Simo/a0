@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
-import { compile } from '../src/backends.js';
+import { type CompileOptions, compile } from '../src/backends.js';
 import { formatProgram, isPrimitive, type Type } from '../src/core.js';
 import { link } from '../src/link.js';
 import type { DirectFunction } from '../src/source-direct.js';
@@ -13,6 +13,8 @@ import { committedTree } from './measurement-checkout.js';
 import { writeReport } from './scrub-results.js';
 
 const args = process.argv.slice(2);
+for (const arg of args)
+  assert.ok(/^--(?:out|sysroot|builtins)=.+$/.test(arg), `unsupported argument ${arg}`);
 const option = (name: string): string | undefined =>
   args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const outArg = option('out'),
@@ -47,13 +49,13 @@ for (const name of names) {
   assert.ok(fn, `missing frontend export ${name}`);
   functions[name] = { params: fn.params.map(value), result: value(fn.result) };
 }
-const frontend = Buffer.from(
-  compile(linked.program, 'wasm', {
-    wasmExports: names,
-    wasmIo: { module: 'a0_arena', read: 'a0_runtime_read', write: 'a0_runtime_write' },
-  }).text,
-  'base64',
-);
+const frontendOptions = {
+  wasmExports: names,
+  wasmSimd: true,
+  optimize: true,
+  wasmIo: { module: 'a0_arena', read: 'a0_runtime_read', write: 'a0_runtime_write' },
+} satisfies CompileOptions;
+const frontend = Buffer.from(compile(linked.program, 'wasm', frontendOptions).text, 'base64');
 assert.ok(WebAssembly.validate(frontend), 'direct frontend is invalid Wasm');
 await mkdir(out, { recursive: true });
 await writeFile(join(out, 'frontend.wasm'), frontend);
@@ -64,7 +66,7 @@ const run = (path: string, commandArgs: string[]): string => {
   assert.ok(result.ok, result.stderr);
   return result.stdout.trim();
 };
-run(toolchain.path, [
+const transportClangFlags = [
   '--target=wasm32-wasi',
   `--sysroot=${sysroot}`,
   '-O3',
@@ -76,7 +78,8 @@ run(toolchain.path, [
   resolve('tools/native'),
   '-o',
   join(out, 'arena.o'),
-]);
+];
+run(toolchain.path, transportClangFlags);
 const exports = [
   'malloc',
   'free',
@@ -87,7 +90,7 @@ const exports = [
   'a0_memory_view',
   'a0_memory_view_length',
 ];
-run(toolchain.wasmLd, [
+const transportLinkerFlags = [
   join(out, 'arena.o'),
   '-L',
   join(sysroot, 'lib/wasm32-wasi'),
@@ -102,7 +105,8 @@ run(toolchain.wasmLd, [
   '--strip-all',
   '-o',
   join(out, 'arena.wasm'),
-]);
+];
+run(toolchain.wasmLd, transportLinkerFlags);
 const arena = await readFile(join(out, 'arena.wasm'));
 assert.deepEqual(WebAssembly.Module.imports(new WebAssembly.Module(arena)), []);
 const hash = (bytes: string | Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -112,6 +116,21 @@ await writeReport(join(out, 'build.json'), {
   backend: 'direct-wasm',
   candidate: identity,
   frontendABI: 3,
+  frontendOptions,
+  transportClangFlags: transportClangFlags.map((arg) =>
+    arg
+      .replace(out, '<artifact>')
+      .replace(sysroot, '<wasi-sysroot>')
+      .replace(builtins, '<wasi-builtins>')
+      .replace(process.cwd(), '<repo>'),
+  ),
+  transportLinkerFlags: transportLinkerFlags.map((arg) =>
+    arg
+      .replace(out, '<artifact>')
+      .replace(sysroot, '<wasi-sysroot>')
+      .replace(builtins, '<wasi-builtins>')
+      .replace(process.cwd(), '<repo>'),
+  ),
   scope:
     'Experimental compiled backend of the same A0 parser/checker; no syntax or shipping cutover claim.',
   entry: 'compiler/source_frontend.a0',
