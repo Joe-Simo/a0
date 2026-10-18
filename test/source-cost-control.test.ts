@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -310,52 +310,57 @@ test('transport proof guard binds the final binary, full recomputation and avail
   );
 });
 
+async function directProvenanceFixture(root: string) {
+  const files: Record<string, string> = {
+    'compiler/source_frontend.a0':
+      'use "state.a0"\nfn exchange io -> io\ninput read p0\nword at input 0\nnext at input 1\nout write next word\nret out\nend\n',
+    'compiler/state.a0': 'fn state (u32x3,bool) -> (u32x3,bool)\nret p0\nend\n',
+  };
+  for (const path of [
+    'src/wasm-words.ts',
+    'tools/native/arena_runtime.c',
+    'tools/native/arena_runtime.h',
+    'tools/native/arena_memory.c',
+    'tools/source-direct-build.ts',
+    'tools/wasm-stack-bound.ts',
+  ])
+    files[path] = await readFile(path, 'utf8');
+  for (const [path, text] of Object.entries(files)) {
+    await mkdir(dirname(join(root, path)), { recursive: true });
+    await writeFile(join(root, path), text);
+  }
+  execFileSync('git', ['init', '--quiet'], { cwd: root });
+  execFileSync('git', ['add', '.'], { cwd: root });
+  const linked = await link(join(root, 'compiler/source_frontend.a0'), (path) =>
+    readFile(path, 'utf8'),
+  );
+  const frontend = Buffer.from(compile(linked.program, 'wasm', options).text, 'base64');
+  const arena = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+  const record: SourceCostBuild = {
+    backend: 'direct-wasm',
+    entry: 'compiler/source_frontend.a0',
+    frontendOptions: options,
+    functionCount: 2,
+    sourceSHA256: sha(formatProgram(linked.program)),
+    functions: {
+      exchange: { params: [{ words: 1, scalar: true }], result: { words: 1, scalar: true } },
+      state: { params: [{ words: 4, scalar: false }], result: { words: 4, scalar: false } },
+    },
+    inputs: Object.entries(files).map(([path, text]) => ({ path, sha256: sha(text) })),
+    frontendSHA256: sha(frontend),
+    frontendBytes: frontend.length,
+    arenaSHA256: sha(arena),
+    arenaBytes: arena.length,
+    totalWasmBytes: frontend.length + arena.length,
+  };
+  const compiler = { compile, formatProgram, link };
+  return { files, record, compiler, frontend, arena };
+}
+
 test('direct provenance re-emits real Wasm and rejects changed inputs, closure, ABI and compiler output', async () => {
   const root = await mkdtemp(join(tmpdir(), 'a0-source-cost-'));
   try {
-    const files: Record<string, string> = {
-      'compiler/source_frontend.a0':
-        'use "state.a0"\nfn exchange io -> io\ninput read p0\nword at input 0\nnext at input 1\nout write next word\nret out\nend\n',
-      'compiler/state.a0': 'fn state (u32x3,bool) -> (u32x3,bool)\nret p0\nend\n',
-    };
-    for (const path of [
-      'src/wasm-words.ts',
-      'tools/native/arena_runtime.c',
-      'tools/native/arena_runtime.h',
-      'tools/native/arena_memory.c',
-      'tools/source-direct-build.ts',
-      'tools/wasm-stack-bound.ts',
-    ])
-      files[path] = await readFile(path, 'utf8');
-    for (const [path, text] of Object.entries(files)) {
-      await mkdir(dirname(join(root, path)), { recursive: true });
-      await writeFile(join(root, path), text);
-    }
-    execFileSync('git', ['init', '--quiet'], { cwd: root });
-    execFileSync('git', ['add', '.'], { cwd: root });
-    const linked = await link(join(root, 'compiler/source_frontend.a0'), (path) =>
-      readFile(path, 'utf8'),
-    );
-    const frontend = Buffer.from(compile(linked.program, 'wasm', options).text, 'base64');
-    const arena = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
-    const record: SourceCostBuild = {
-      backend: 'direct-wasm',
-      entry: 'compiler/source_frontend.a0',
-      frontendOptions: options,
-      functionCount: 2,
-      sourceSHA256: sha(formatProgram(linked.program)),
-      functions: {
-        exchange: { params: [{ words: 1, scalar: true }], result: { words: 1, scalar: true } },
-        state: { params: [{ words: 4, scalar: false }], result: { words: 4, scalar: false } },
-      },
-      inputs: Object.entries(files).map(([path, text]) => ({ path, sha256: sha(text) })),
-      frontendSHA256: sha(frontend),
-      frontendBytes: frontend.length,
-      arenaSHA256: sha(arena),
-      arenaBytes: arena.length,
-      totalWasmBytes: frontend.length + arena.length,
-    };
-    const compiler = { compile, formatProgram, link };
+    const { files, record, compiler, frontend, arena } = await directProvenanceFixture(root);
     await verifyDirectSourceCostBuild(root, record, compiler);
     const reject = (change: SourceCostBuild, message: RegExp) =>
       assert.rejects(
@@ -403,5 +408,50 @@ test('direct provenance re-emits real Wasm and rejects changed inputs, closure, 
     }
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('direct provenance resolves a symlinked checkout without relaxing its exact inventory', async () => {
+  const scratch = join(process.cwd(), '.a0-tmp');
+  await mkdir(scratch, { recursive: true });
+  const directory = await mkdtemp(join(scratch, 'source-cost-symlink-'));
+  try {
+    const root = join(directory, 'checkout'),
+      alias = join(directory, 'checkout-alias');
+    await mkdir(root);
+    const { record, compiler, files } = await directProvenanceFixture(root);
+    await symlink(root, alias, 'dir');
+    const linked = await link(join(alias, 'compiler/source_frontend.a0'), (path) =>
+      readFile(path, 'utf8'),
+    );
+    // Independently establish the mixed spelling that macOS /var and /private/var expose.
+    assert.deepEqual(
+      linked.sources.map((source) => source.path),
+      [await realpath(join(root, 'compiler/state.a0')), join(alias, 'compiler/source_frontend.a0')],
+    );
+    await verifyDirectSourceCostBuild(alias, record, compiler);
+    const inputs = record.inputs as { path: string; sha256: string }[];
+    for (const change of [
+      { inputs: inputs.filter((input) => input.path !== 'compiler/state.a0') },
+      { inputs: [...inputs, inputs[0]] },
+      { functionCount: 3 },
+      { frontendSHA256: sha('different compiler output') },
+    ])
+      await assert.rejects(
+        verifyDirectSourceCostBuild(alias, { ...record, ...change }, compiler),
+        /closure|duplicate|function count|direct Wasm/,
+      );
+    await writeFile(
+      join(root, 'src/wasm-words.ts'),
+      `${files['src/wasm-words.ts']}
+// changed input
+`,
+    );
+    await assert.rejects(
+      verifyDirectSourceCostBuild(alias, record, compiler),
+      /stale direct input src\/wasm-words.ts/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });

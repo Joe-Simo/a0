@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import type * as Backends from '../src/backends.js';
 import type * as Core from '../src/core.js';
@@ -19,6 +19,11 @@ import {
 
 const hash = (bytes: string | Uint8Array): string =>
   createHash('sha256').update(bytes).digest('hex');
+
+/** Compare physical files while retaining every recorded closure member, including duplicates. */
+async function physicalPaths(paths: readonly string[]): Promise<string[]> {
+  return Promise.all(paths.map((path) => realpath(path)));
+}
 
 /** Reuse the subject's existing builder to reproduce its complete native artifact and build proof. */
 export async function rebuildCSourceCostBuild(
@@ -141,8 +146,12 @@ export async function verifyCSourceCostBuild(
     'artifact C differs',
   );
   assert.deepEqual(
-    (record.modules as { path: string }[]).map((module) => resolve(checkout, module.path)).sort(),
-    linked.sources.map((source) => resolve(source.path)).sort(),
+    (
+      await physicalPaths(
+        (record.modules as { path: string }[]).map((module) => resolve(checkout, module.path)),
+      )
+    ).sort(),
+    (await physicalPaths(linked.sources.map((source) => source.path))).sort(),
     'artifact dependency closure differs',
   );
   assert.equal(
@@ -249,18 +258,20 @@ export async function verifyDirectSourceCostBuild(
     'artifact source differs',
   );
   const modules = sourceCostModules(record);
+  const sourcePaths = await physicalPaths(linked.sources.map((source) => source.path));
   assert.deepEqual(
-    modules.map((module) => resolve(checkout, module.path)).sort(),
-    linked.sources.map((source) => resolve(source.path)).sort(),
+    (await physicalPaths(modules.map((module) => resolve(checkout, module.path)))).sort(),
+    [...sourcePaths].sort(),
     'artifact dependency closure differs',
   );
   const tracked = execFileSync('git', ['ls-files', 'src/*.ts'], {
     cwd: checkout,
     encoding: 'utf8',
   }).trim();
+  const physicalCheckout = await realpath(checkout);
   const expected = [
     ...new Set([
-      ...linked.sources.map((source) => relative(checkout, resolve(source.path))),
+      ...sourcePaths.map((path) => relative(physicalCheckout, path)),
       ...(tracked ? tracked.split('\n') : []),
       'tools/native/arena_runtime.c',
       'tools/native/arena_runtime.h',

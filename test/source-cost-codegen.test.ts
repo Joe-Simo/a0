@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
@@ -613,5 +613,35 @@ test('source-algorithm permits only verified A0 closure/count differences with t
     );
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('strict C provenance resolves symlinked checkout roots and retains compiler and closure checks', async () => {
+  const scratch = join(process.cwd(), '.a0-tmp');
+  await mkdir(scratch, { recursive: true });
+  const directory = await mkdtemp(join(scratch, 'source-cost-c-symlink-'));
+  try {
+    const root = join(directory, 'checkout'),
+      alias = join(directory, 'checkout-alias');
+    await mkdir(root);
+    await fixture(root);
+    const record = await manifest(root);
+    const compiler = { link, formatProgram, compile, version: COMPILER_VERSION };
+    await symlink(root, alias, 'dir');
+    await verifyCSourceCostBuild(alias, record, compiler, true);
+    const modules = record.modules as { path: string; sha256: string }[];
+    for (const change of [
+      { modules: modules.slice(1) },
+      { modules: [...modules, modules[0]] },
+      { functions: 3 },
+      { cSHA256: sha('different compiler output') },
+      { compilerInputs: [] },
+    ])
+      await assert.rejects(
+        verifyCSourceCostBuild(alias, { ...record, ...change }, compiler, true),
+        /closure|function count|artifact C|compiler input inventory/,
+      );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });
