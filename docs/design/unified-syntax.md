@@ -276,6 +276,24 @@ and the [macOS full gate](https://github.com/Joe-Simo/a0/actions/runs/3906765549
 `7b34126` tree. Those results supersede the Apple-host availability blocker for that release.
 They do not establish a completed single-syntax frontend or fresh AI acceptance results.
 
+The later compiler foundation is published on the exact tree recorded in
+`results/unified-core-68-platform-publication.json`, with a full macOS gate, Windows C bootstrap
+verification and checked production deployment. Platform verification is available through CI;
+a local Mac is not required to continue this refactor.
+
+The next authoring integration has actual compiled C/direct-Wasm/generated-JS controls, recorded
+in `results/native-authoring-combined-initial.json`. Full signature fragments, per-file formatting,
+native migration and the injected LSP path have been exercised. That initial attempt also retains
+the failed whole-function editing controls: source-less callee diagnostics return a renderer
+transport refusal instead of the required catalog error. The shared A0 renderer must be corrected
+and the controls rerun before this integration is verified. Public CLI/MCP routes still use the
+historical readers and editing paths.
+
+The formal generated-JS frontend cohort is retained in
+`results/source-frontend-js-cost-quiet.json`. Its measured frontend, pipeline, child-wall and
+process-memory losses keep that backend experimental. Correctness across compilation targets
+does not establish a compilation-cost improvement.
+
 ## Fresh controls before selecting the standard syntax
 
 `tools/app-edit-bench.ts --surface=canonical|dense` now uses the same sealed application task set,

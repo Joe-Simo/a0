@@ -75,7 +75,7 @@ must not be read as proof of equal frontend memory. That source revision's corre
 2026-10-16 publication update: first-party A0 source, editor and plugin packages use Apache 2.0 with copyright notices; third-party notices retain their original licenses. The website now includes the corrected independent Codex syntax study and its complete replay archive (`results/unification-codex-v2-replication.json`, `experiments/unification/README.md`). Earlier Dense-guide comparative conclusions are withdrawn (`results/unification-codex-guide-erratum.json`). This publication keeps the current compiler: unified syntax, native frontend performance, migration and the tool cutover remain unfinished. Historical language benchmarks retain their dates and scope.
 
 
-Last updated 2026-10-18, compiler `a0c-0.1.66` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
+Last updated 2026-10-18, compiler `a0c-0.1.68` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
 what exists, what is measured and where the numbers live, what is lost or unknown, how to reproduce it, and what comes next.
 Every number on this page is in the `results/` file named beside it, or is reproduced by the command shown. The long record of
 how the project got here, session by session, is in [docs/history/](docs/history/) (index at the end). Contributing rules are in
@@ -89,6 +89,14 @@ Syntax unification is in progress: the linker now connects parsed programs direc
 validator, and `a0 migrate` creates a verified source-dependency copy using the existing Dense
 printer. Both source readers still exist; the language has not yet met the single-syntax goal.
 Scope, migration instructions and outstanding gates: [unified syntax](docs/design/unified-syntax.md).
+
+The published compiler foundation passed the full macOS gate and Windows C bootstrap checks;
+the production website serves that verified commit. The exact source, artifacts, merge notes and
+deployment checks are recorded in `results/unified-core-68-platform-publication.json` and
+`results/c-arena-stage-windows-674-verification.json`. The newer native authoring integration is
+still staged: its initial combined run passes the LSP/project/migration controls but exposes
+callee-diagnostic rendering failures in whole-function editing
+(`results/native-authoring-combined-initial.json`). This does not complete the public syntax cutover.
 
 The flat candidate builds from `compiler/source_frontend.a0` and shared compiler modules,
 with a portable host that decodes checked IR without a second parser or validator. The committed
