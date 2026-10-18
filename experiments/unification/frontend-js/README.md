@@ -108,6 +108,20 @@ refused stale C-banner metadata before executing any case. No guard was weakened
 Reproduce from sibling checkouts so their package/configuration roots remain independent:
 
 ```sh
+mkdir -p .a0-tmp
+node --input-type=module <<'JS'
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFile,writeFile} from 'node:fs/promises';
+const record=JSON.parse(await readFile('results/source-frontend-js-source-bundle.json','utf8'));
+const bytes=Buffer.from(record.base64,'base64');
+assert.equal(bytes.length,record.bytes);
+assert.equal(createHash('sha256').update(bytes).digest('hex'),record.sha256);
+await writeFile('.a0-tmp/js-proof-source.bundle',bytes);
+JS
+git bundle verify .a0-tmp/js-proof-source.bundle
+git fetch --no-tags .a0-tmp/js-proof-source.bundle \
+  refs/heads/experiment/source-js:refs/experiments/js-proof-final
 git worktree add --detach ../a0-js-control 2f1c1740eb8e3cb63731bd2810c7e98d7da13483
 git worktree add --detach ../a0-js-run a5534a7ea4d468b38a427b02d798db79a2d1c6cd
 (cd ../a0-js-control && bun install --frozen-lockfile && bun run build)
@@ -123,3 +137,11 @@ The loader intentionally requires its recorded clean code checkout; this results
 does not silently retag an existing artifact. Rebuilding on a different clean checkout records
 that checkout's actual identity. The conservative scope still requires the full repository and
 platform gate before a shipping push; the recorded checks do not stand in for that gate.
+
+[The incremental source bundle](../../../results/source-frontend-js-source-bundle.json) retains
+all three exact experimental subjects even when the implementation was integrated by cherry-pick.
+Its sole prerequisite is already-integrated `182c90a86880a211517cb59267a8759ea70b2518`.
+It imports only an experimental ref, with no change to the checkout or production ancestry.
+The record includes all 13 commit/tree/parent identities, decoded size/SHA256 and deterministic
+creation options. Two separate creations produced the same bytes; Git verifies the bundle and
+its prerequisite. Toolchain/dependency requirements remain those in the build records.
