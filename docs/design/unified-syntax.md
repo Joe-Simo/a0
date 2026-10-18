@@ -115,6 +115,12 @@ The executable-section and ABI comparison is recorded in
 `results/unified-native-release-sections.json`. This packaging change does not establish a frontend
 latency improvement or a completed syntax cutover.
 
+The current native graph audit and source-unit controls are recorded in
+`results/unified-native-graph-source-audit.json` and `results/unified-native-graph-unit-audit.json`.
+The own-source comparison and exact build provenance are in
+`results/unified-native-graph-self-source.json` and `results/unified-native-graph-build.json`.
+These are correctness records; measured frontend performance remains a separate cutover gate.
+
 The same native grammar also exposes `nativeSource(module).parseUnit(source)`. This returns
 source IR, imports, comments and specifications without checking external callees or executing
 specifications; `parse(source)` performs the whole-program check. The distinction is a compiler

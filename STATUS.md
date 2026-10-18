@@ -1,5 +1,13 @@
 # A0 status
 
+2026-10-18 native graph checking: the shared dependency loader now parses each source file once,
+composes its native IR and checks the complete graph once. Original and migrated projects pass all
+178 accepted entries (`results/unified-native-graph-source-audit.json`); per-file checks are in
+`results/unified-native-graph-unit-audit.json`. The candidate checks its own 609 functions across
+19 modules with exact normalized IR and optimized C (`results/unified-native-graph-self-source.json`;
+artifact provenance in `results/unified-native-graph-build.json`). This remains an internal candidate;
+full diagnostics, editing integration, performance and public tooling cutover remain open.
+
 2026-10-18 native artifact packaging: the default frontend fixture is 356280 bytes, down from
 417837 bytes with debug metadata. Every standard Wasm section and import/export is byte-identical
 (`results/unified-native-release-sections.json`). `--symbols=keep` retains the debugging build.
