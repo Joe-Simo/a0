@@ -231,6 +231,15 @@ test('worker handoff refuses changed proof, omitted SDK files, stale ignored cod
       readSourceCostWorkerProof(root, proofPath, hash(await readFile(proofPath)), root),
       /inventory incomplete/,
     );
+    const noLoadSampler = clone(proof);
+    noLoadSampler.sdkOutputs = noLoadSampler.sdkOutputs.filter(
+      (input) => input.path !== 'dist/tools/system-load.js',
+    );
+    await writeReport(proofPath, noLoadSampler);
+    await assert.rejects(
+      readSourceCostWorkerProof(root, proofPath, hash(await readFile(proofPath)), root),
+      /inventory incomplete/,
+    );
     const noHistorical = clone(proof);
     noHistorical.historical.outputs = [];
     await writeReport(proofPath, noHistorical);
@@ -245,6 +254,12 @@ test('worker handoff refuses changed proof, omitted SDK files, stale ignored cod
     await writeFile(join(root, first), 'throw new Error("stale ignored code");\n');
     await assert.rejects(read, /SDK output changed/);
     await writeFile(join(root, first), original);
+    await read();
+    const loadSampler = join(root, 'dist/tools/system-load.js');
+    const originalSampler = await readFile(loadSampler);
+    await writeFile(loadSampler, 'export function systemLoad() { return 0; }\n');
+    await assert.rejects(read, /SDK output changed: dist\/tools\/system-load.js/);
+    await writeFile(loadSampler, originalSampler);
     await read();
     const replacement = Buffer.concat([wasm, Uint8Array.of(0, 2, 1, 120)]);
     assert.equal(WebAssembly.validate(replacement), true);

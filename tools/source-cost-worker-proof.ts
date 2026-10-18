@@ -19,6 +19,7 @@ export const SOURCE_COST_WORKER_MODULES = [
   'tools/source-js-artifact',
   'tools/source-js-inputs',
   'tools/measurement-checkout',
+  'tools/system-load',
   'tools/wasm-stack-bound',
 ];
 

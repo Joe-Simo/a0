@@ -17,6 +17,8 @@ contracts remain explicit in the full records. Legacy C manifests remain ineligi
 
 The parent freezes a hashed worker proof containing each exact raw manifest/component snapshot,
 the complete common worker/SDK compiled-output inventory, and the historical SDK output inventory.
+The worker inventory includes the load-sampling helper, so altered load observations cannot evade
+the exact-code checks while leaving application output checksums unchanged.
 Every fresh worker verifies that proof, its clean source identities and actual SDK/component bytes
 before and after module preparation and after execution. `postCheckMs` labels the final proof checks
 outside the frontend/pipeline phases; their cost stays inside child wall.
