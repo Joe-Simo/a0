@@ -122,6 +122,12 @@ const text = (root: string, body: string): CallToolResult => {
   return { content: [{ type: 'text', text: body }] };
 };
 
+/** A mutating tool must validate its response before publishing session state. */
+function boundedOutput(body: string): string {
+  if (body.length > MAX_OUTPUT) throw diag('A0804', [MAX_OUTPUT]);
+  return body;
+}
+
 const jsonValue: z.ZodType<Value> = z.lazy(() =>
   z.union([z.number().int().nonnegative(), z.boolean(), z.array(jsonValue)]),
 );
@@ -211,6 +217,12 @@ export async function createServer(
   const program = async (file: string | undefined): Promise<TypedProgram> =>
     (await sessionFor(file)).session.program;
 
+  const apply = (entry: Opened, edit: string, render: (session: EditSession) => string): string => {
+    const output = entry.session.applyAndPublish(edit, (session) => boundedOutput(render(session)));
+    entry.dirty = true;
+    return output;
+  };
+
   const fileField = z
     .string()
     .optional()
@@ -242,12 +254,14 @@ export async function createServer(
       },
       tool(async ({ file: f, function: name }) => {
         const { session } = await sessionFor(f);
-        const shown = session.open(name, {
-          scope: 'bodies',
-          ...(legacy ? { dense: true } : {}),
-        }).text;
-        const body = shown.slice(shown.indexOf('\n') + 1);
-        return legacy ? typedTargetView(body, session.program, name) : body;
+        return session.openAndPublish(
+          name,
+          { scope: 'bodies', ...(legacy ? { dense: true } : {}) },
+          ({ text }) => {
+            const body = text.slice(text.indexOf('\n') + 1);
+            return boundedOutput(legacy ? typedTargetView(body, session.program, name) : body);
+          },
+        );
       }),
     );
     server.registerTool(
@@ -258,12 +272,12 @@ export async function createServer(
       },
       tool(async ({ file: f, edit }) => {
         const entry = await sessionFor(f);
-        entry.session.apply(edit);
-        entry.dirty = true;
-        const implied = entry.session.impliedHandle;
-        return implied !== undefined
-          ? entry.session.view(implied)
-          : language.formatProgram(entry.session.program);
+        return apply(entry, edit, (session) => {
+          const implied = session.impliedHandle;
+          return implied !== undefined
+            ? session.view(implied)
+            : language.formatProgram(session.program);
+        });
       }),
     );
     server.registerTool(
@@ -309,14 +323,20 @@ export async function createServer(
     tool(async ({ file, function: name, scope, dense, specs, lean }) => {
       const { session } = await sessionFor(file);
       const useDense = legacy && (dense ?? true);
-      const text = session.open(name, {
-        ...(scope === 'full'
-          ? {}
-          : { scope: scope === 'bodies' ? ('bodies' as const) : ('deps' as const) }),
-        ...(useDense ? { dense: true } : {}),
-        ...(specs === undefined ? {} : { specs }),
-      }).text;
-      return (useDense || !legacy) && lean === true ? text.slice(text.indexOf('\n') + 1) : text;
+      return session.openAndPublish(
+        name,
+        {
+          ...(scope === 'full'
+            ? {}
+            : { scope: scope === 'bodies' ? ('bodies' as const) : ('deps' as const) }),
+          ...(useDense ? { dense: true } : {}),
+          ...(specs === undefined ? {} : { specs }),
+        },
+        ({ text }) =>
+          boundedOutput(
+            (useDense || !legacy) && lean === true ? text.slice(text.indexOf('\n') + 1) : text,
+          ),
+      );
     }),
   );
 
@@ -334,10 +354,13 @@ export async function createServer(
     tool(async ({ file, target, dense }) => {
       const { session } = await sessionFor(file);
       const useDense = legacy && (dense ?? true);
-      return session.openProgram({
-        ...(target === undefined ? {} : { scope: 'deps' as const, target }),
-        ...(useDense ? { dense: true } : {}),
-      }).text;
+      return session.openProgramAndPublish(
+        {
+          ...(target === undefined ? {} : { scope: 'deps' as const, target }),
+          ...(useDense ? { dense: true } : {}),
+        },
+        ({ text }) => boundedOutput(text),
+      );
     }),
   );
 
@@ -350,20 +373,23 @@ export async function createServer(
     },
     tool(async ({ file, edit }) => {
       const entry = await sessionFor(file);
-      entry.session.apply(edit);
-      entry.dirty = true;
       const handle = edit
         .split(/\r?\n/)
         .map((l) => l.trim())
         .find((l) => l.length > 0);
-      try {
-        return entry.session.view(handle ?? '');
-      } catch {
-        // a reply without a handle line edited the one open handle: show that view, not the program
-        const implied = entry.session.impliedHandle;
-        if (implied !== undefined) return entry.session.view(implied);
-        return language.formatProgram(entry.session.program);
-      }
+      return apply(entry, edit, (session) => {
+        try {
+          return session.view(handle ?? '');
+        } catch (error) {
+          if (!(error instanceof A0Error) || (error.id !== 'A0611' && error.id !== 'A0613'))
+            throw error;
+          // An implied or removed handle selects the current view; formatting failures propagate.
+          const implied = session.impliedHandle;
+          return implied !== undefined
+            ? session.view(implied)
+            : language.formatProgram(session.program);
+        }
+      });
     }),
   );
 

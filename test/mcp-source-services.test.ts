@@ -6,9 +6,9 @@ import { test } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { formatProgram, formatSource, parseAndValidate } from '../src/core.js';
-import { EditSession, revision } from '../src/edit.js';
+import { EditSession, programRevision, revision } from '../src/edit.js';
 import { link } from '../src/link.js';
-import { createServer, type McpLanguageServices, type McpSurface } from '../src/mcp.js';
+import { createServer, MAX_OUTPUT, type McpLanguageServices, type McpSurface } from '../src/mcp.js';
 import { SYMLINKS } from './vpath.js';
 
 const SOURCE =
@@ -296,3 +296,189 @@ test('MCP supplied services enforce real source paths before reads and writes', 
     }
   });
 });
+
+function publicationServices() {
+  const supplied = services();
+  const controls = {
+    session: undefined as EditSession | undefined,
+    open: false,
+    program: false,
+    view: 'ok' as 'ok' | 'large' | 'refuse',
+    print: 'ok' as 'ok' | 'large' | 'refuse',
+    revision: false,
+    views: 0,
+  };
+  class Session extends EditSession {
+    override open(name: string, options: Parameters<EditSession['open']>[1] = {}) {
+      const view = super.open(name, options);
+      return controls.open ? { ...view, text: 'x'.repeat(MAX_OUTPUT + 1) } : view;
+    }
+    override openProgram(options: Parameters<EditSession['openProgram']>[0] = {}) {
+      const view = super.openProgram(options);
+      return controls.program ? { ...view, text: 'x'.repeat(MAX_OUTPUT + 1) } : view;
+    }
+    override view(handle: string): string {
+      controls.views++;
+      if (controls.view === 'refuse') throw new Error('formatter allocation refused');
+      const output = super.view(handle);
+      return controls.view === 'large' ? 'x'.repeat(MAX_OUTPUT + 1) : output;
+    }
+  }
+  const language: McpLanguageServices = {
+    ...supplied.language,
+    createSession(program) {
+      const session = new Session(program);
+      controls.session = session;
+      return session;
+    },
+    formatProgram(program) {
+      if (controls.print === 'refuse') throw new Error('program formatter unavailable');
+      return controls.print === 'large'
+        ? 'x'.repeat(MAX_OUTPUT + 1)
+        : supplied.language.formatProgram(program);
+    },
+    revision(fn) {
+      if (controls.revision) throw new Error('revision resource refused');
+      return supplied.language.revision(fn);
+    },
+  };
+  return { language, controls };
+}
+
+for (const surface of ['full', 'compact'] as const) {
+  test(`MCP ${surface}: refused open publication preserves handle capacity and counters`, async () => {
+    await directory(async (root) => {
+      const { language, controls } = publicationServices();
+      const client = await protocol(join(root, 'm.a0'), language, surface);
+      try {
+        controls.open = true;
+        const refused = await call(client, 'a0_open', { function: 'f' });
+        assert.equal(refused.error, true, refused.text);
+        assert.equal(JSON.parse(refused.text).id, 'A0804');
+        assert.equal(controls.session?.openHandles, 0);
+        controls.open = false;
+        const opened = await call(client, 'a0_open', { function: 'f' });
+        assert.equal(opened.error, false, opened.text);
+        assert.equal(controls.session?.impliedHandle, 'e0');
+        assert.equal(controls.session?.openHandles, 1);
+        if (surface === 'full') {
+          controls.program = true;
+          const program = await call(client, 'a0_program');
+          assert.equal(program.error, true, program.text);
+          assert.equal(JSON.parse(program.text).id, 'A0804');
+          assert.equal(controls.session?.openHandles, 1);
+          controls.program = false;
+          const retried = await call(client, 'a0_program');
+          assert.equal(retried.error, false, retried.text);
+          assert.ok(retried.text.startsWith('g0\n'));
+        }
+        assert.equal(await readFile(join(root, 'm.a0'), 'utf8'), SOURCE);
+        assert.equal(JSON.parse((await call(client, 'a0_save')).text).id, 'A0806');
+      } finally {
+        await client.close();
+      }
+    });
+  });
+
+  test(`MCP ${surface}: formatter and output refusals roll back edits, revisions and repair context`, async () => {
+    await directory(async (root) => {
+      const { language, controls } = publicationServices();
+      const client = await protocol(join(root, 'm.a0'), language, surface);
+      try {
+        await call(client, 'a0_open', { function: 'f' });
+        const session = controls.session;
+        assert.ok(session);
+        const before = programRevision(session.program);
+        const bad = await call(client, 'a0_apply', { edit: 'b ADD p0 2' });
+        assert.equal(bad.error, true, bad.text);
+        assert.equal(JSON.parse(bad.text).id, 'A0011');
+        controls.view = 'refuse';
+        const views = controls.views;
+        const refused = await call(client, 'a0_apply', { edit: 'e0\nb add p0 3' });
+        assert.equal(refused.error, true, refused.text);
+        assert.equal(JSON.parse(refused.text).id, 'A0809');
+        assert.equal(
+          controls.views,
+          views + 1,
+          'a formatter refusal is not retried as a missing handle',
+        );
+        assert.equal(programRevision(session.program), before);
+        assert.equal(session.openHandles, 1);
+        assert.equal(session.impliedHandle, 'e0');
+        assert.equal(JSON.parse((await call(client, 'a0_save')).text).id, 'A0806');
+        assert.equal(await readFile(join(root, 'm.a0'), 'utf8'), SOURCE);
+        controls.view = 'large';
+        const tooLarge = await call(client, 'a0_apply', { edit: 'e0\nb add p0 4' });
+        assert.equal(tooLarge.error, true, tooLarge.text);
+        assert.equal(JSON.parse(tooLarge.text).id, 'A0804');
+        assert.equal(programRevision(session.program), before);
+        if (surface === 'full') {
+          controls.revision = true;
+          const check = await call(client, 'a0_check');
+          assert.equal(check.error, true, check.text);
+          assert.equal(JSON.parse(check.text).id, 'A0809');
+          assert.equal(programRevision(session.program), before);
+          controls.revision = false;
+          assert.equal((await call(client, 'a0_check')).error, false);
+        }
+        controls.view = 'ok';
+        const repaired = await call(client, 'a0_apply', { edit: 'fix all' });
+        assert.equal(repaired.error, false, repaired.text);
+        assert.match(repaired.text, /b add p0 2/);
+        assert.equal((await call(client, 'a0_save')).error, false);
+        const saved = await readFile(join(root, 'm.a0'), 'utf8');
+        assert.match(saved, /b add p0 2/);
+        assert.doesNotMatch(saved, /b add p0 [34]/);
+
+        // A later publication failure also preserves an already-dirty accepted edit.
+        assert.equal((await call(client, 'a0_apply', { edit: 'e0\nb add p0 5' })).error, false);
+        const dirty = programRevision(session.program);
+        controls.view = 'refuse';
+        assert.equal((await call(client, 'a0_apply', { edit: 'e0\nb add p0 6' })).error, true);
+        assert.equal(programRevision(session.program), dirty);
+        controls.view = 'ok';
+        assert.equal((await call(client, 'a0_save')).error, false);
+        assert.match(await readFile(join(root, 'm.a0'), 'utf8'), /b add p0 5/);
+      } finally {
+        await client.close();
+      }
+    });
+  });
+
+  test(`MCP ${surface}: failed fallback program printing restores removed functions and handles`, async () => {
+    await directory(async (root) => {
+      const { language, controls } = publicationServices();
+      const client = await protocol(join(root, 'm.a0'), language, surface);
+      try {
+        await call(client, 'a0_open', { function: 'f' });
+        const session = controls.session;
+        assert.ok(session);
+        const before = programRevision(session.program);
+        for (const refusal of ['refuse', 'large'] as const) {
+          controls.print = refusal;
+          const result = await call(client, 'a0_apply', { edit: '-fn f' });
+          assert.equal(result.error, true, result.text);
+          assert.equal(JSON.parse(result.text).id, refusal === 'large' ? 'A0804' : 'A0809');
+          assert.equal(programRevision(session.program), before);
+          assert.equal(session.impliedHandle, 'e0');
+          assert.equal(session.openHandles, 1);
+          assert.equal(JSON.parse((await call(client, 'a0_save')).text).id, 'A0806');
+        }
+        controls.print = 'ok';
+        const retry = await call(client, 'a0_apply', { edit: '-fn f' });
+        assert.equal(retry.error, false, retry.text);
+        assert.equal(session.program.byName.has('f'), false);
+        assert.equal(session.openHandles, 0);
+        assert.equal((await call(client, 'a0_save')).error, false);
+        assert.deepEqual(
+          parseAndValidate(await readFile(join(root, 'm.a0'), 'utf8')).functions.map(
+            (fn) => fn.name,
+          ),
+          ['sq'],
+        );
+      } finally {
+        await client.close();
+      }
+    });
+  });
+}
