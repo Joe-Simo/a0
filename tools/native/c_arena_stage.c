@@ -48,7 +48,7 @@ static bool number(const stage_path *text, uint32_t *out) {
   return true;
 }
 
-static void send(uint32_t op, uint32_t count, const uint32_t *words) {
+static void cstage_send(uint32_t op, uint32_t count, const uint32_t *words) {
   a0_runtime_write(session, op);
   a0_runtime_write(session, count);
   for (uint32_t i = 0; i < count; i++) a0_runtime_write(session, words[i]);
@@ -63,7 +63,7 @@ static uint32_t reply(uint32_t count) {
 
 static uint32_t upload(const unsigned char *bytes) {
   uint32_t n = length ? length : 1;
-  send(A0_ARENA_ALLOC, 1, &n);
+  cstage_send(A0_ARENA_ALLOC, 1, &n);
   uint32_t code = reply(1);
   if (code) return code;
   handle = a0_runtime_read(session);
@@ -71,7 +71,7 @@ static uint32_t upload(const unsigned char *bytes) {
     n = length - i > A0_ARENA_BULK_MAX ? A0_ARENA_BULK_MAX : length - i;
     uint32_t words[3 + A0_ARENA_BULK_MAX] = {handle, i, n};
     for (uint32_t j = 0; j < n; j++) words[3 + j] = bytes[i + j];
-    send(A0_ARENA_STORE, n + 3, words);
+    cstage_send(A0_ARENA_STORE, n + 3, words);
     code = reply(0);
     if (code) return code;
     i += n;
