@@ -7,3 +7,5 @@ Each guide describes its actual parser and the shared edit protocol. The Dense g
 `check-guides.mjs` executes independently authored, equivalent programs through all three readers and checks the same aggregate result, predicate-limited loop, unused parameter and handled edit. It separately checks a Dense keyword used as an escaped ID. Set `A0_SOURCE_PACKAGE` and `A0_SOURCE_PACKAGE_SHA256` to a verified runtime package before running it with Bun. These checks are language controls, not AI success trials or a complete grammar specification.
 
 The previous default guides and the sealed 14-task application corpus remain unchanged. Additional application controls and a frozen protocol are still required before the next study starts.
+
+The frozen pre-model control run and initial prompt token counts are recorded in [three-arm-guide-controls.json](../../../results/three-arm-guide-controls.json). Its archive retains the three prompt maps, their manifests, guide bytes, control logs and pinned runtime assets. These prompt counts exclude replies, repairs and provider overhead.
