@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "status": "static-frame-proof",
+  "source": {
+    "commit": "85bec89120489f868abddf4577d254e1f99f4733",
+    "tree": "024aa75d6597e6a4e25934b73c74f12b0765b482",
+    "cleanAtProof": true,
+    "inputs": [
+      {
+        "path": "tools/wasm-stack-bound.ts",
+        "sha256": "3ca96c8abb584f7f107fd18c511c56274de0109698c17e16d6b2f2600a0b3365"
+      },
+      {
+        "path": "test/wasm-stack-bound.test.ts",
+        "sha256": "7f81c4b867461e6bc8778b936097d17256d942b6065aa71ceee110aabb7ff09d"
+      }
+    ]
+  },
+  "change": "One existing analyzer now accepts LLVM void-return epilogues using the same fixed-frame, global-access, immutable-local and outermost-restoration checks as scalar returns.",
+  "scope": "Every final linked instruction and every direct-call function, including libc. This is a conservative bound on the linear-memory C stack per invocation, not measured runtime stack use.",
+  "artifacts": [
+    {
+      "name": "combined",
+      "path": "artifacts/combined/frontend.wasm",
+      "bytes": 359944,
+      "sha256": "ed1de3810216510b88fe318d56dd519c44fd79ffbfce5fe776bea7305b96c147",
+      "buildPath": "artifacts/combined/build.json",
+      "buildSHA256": "17554161dadfbb44e0c9e63081e3afc3b124bf01d04d68ddcb2e95490c7040cb",
+      "originalBuildCheckout": {
+        "commit": "3094cd4edd456e14910fb49cdfe724b8000345a1",
+        "tree": "d4caa9ac3f637f09c5edc24aafb44715275167ad",
+        "dirty": false
+      },
+      "diagnosticPorts": "arena-v1",
+      "recordedInputs": 116,
+      "recordedInputsMatchSource": true,
+      "originalStackBytes": 16777216,
+      "proofPath": "proofs/combined.json",
+      "functions": 109,
+      "conservativeLinearStackBoundBytes": 127888,
+      "conservativeCallDepth": 14,
+      "stackGlobal": {
+        "index": 0,
+        "initialValue": 16785440
+      },
+      "baselineRefusal": "Wasm stack bound: unsupported epilogue in function 18"
+    },
+    {
+      "name": "bundled",
+      "path": "artifacts/bundled/frontend.wasm",
+      "bytes": 359424,
+      "sha256": "b879902b3974407208f71aa3ea1a2202bc491c7d195ac98c962f14d73d6e9187",
+      "buildPath": "artifacts/bundled/build.json",
+      "buildSHA256": "3b392a5c86bb445e53a0588a430806fddcbd9de031e2ece11e21b16b5903e51e",
+      "originalBuildCheckout": {
+        "commit": "f365aa1e5921e72ffa4e9e23bf809888f1093ad8",
+        "tree": "bcd42ba6770039ebd6eebb80a89de3b2d99c7827",
+        "dirty": false
+      },
+      "diagnosticPorts": "disabled",
+      "recordedInputs": 115,
+      "recordedInputsMatchSource": true,
+      "originalStackBytes": 16777216,
+      "proofPath": "proofs/bundled.json",
+      "functions": 102,
+      "conservativeLinearStackBoundBytes": 127888,
+      "conservativeCallDepth": 14,
+      "stackGlobal": {
+        "index": 0,
+        "initialValue": 16782368
+      },
+      "baselineRefusal": "Wasm stack bound: unsupported epilogue in function 17"
+    }
+  ],
+  "unitControls": {
+    "tests": 8,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "log": "logs/unit.log",
+    "coverage": [
+      "mixed void/scalar and frameless call chains",
+      "mismatched restoration and modified frame locals",
+      "hidden global accesses",
+      "early returns and function-target br/br_if/br_table",
+      "both explicit/default unsafe br_table target orders",
+      "self/mutual and unexported private recursion",
+      "host imports, indirect calls, unsupported opcodes/features and malformed binaries"
+    ]
+  },
+  "independentChecks": {
+    "sourceReview": "Independent read-only peer review found no unsafe acceptance in the generic void-epilogue extension. Suggested br_table coverage was added.",
+    "disassembly": {
+      "tool": "1.0.32",
+      "scope": "Independent disassembly frame/global/call inventories and chain arithmetic; control-flow safety remains the binary analyzer's proof.",
+      "results": [
+        {
+          "artifact": "combined",
+          "functions": 109,
+          "epilogues": {
+            "frameless": 54,
+            "void": 47,
+            "scalar-local": 8
+          },
+          "maxLinearStackBytes": 127888,
+          "maxCallDepth": 14
+        },
+        {
+          "artifact": "bundled",
+          "functions": 102,
+          "epilogues": {
+            "frameless": 47,
+            "void": 47,
+            "scalar-local": 8
+          },
+          "maxLinearStackBytes": 127888,
+          "maxCallDepth": 14
+        }
+      ]
+    }
+  },
+  "checks": {
+    "build": "pass",
+    "lint": "pass",
+    "typecheck": "pass",
+    "scopedPrereview": {
+      "findings": [],
+      "score": 0,
+      "verdict": "ok"
+    },
+    "fullRepositoryGate": "not run for this isolated increment"
+  },
+  "policy": {
+    "buildersChanged": false,
+    "stackDefaultsChanged": false,
+    "sourceArtifactsChanged": false,
+    "A0OrSeedChanged": false,
+    "loweredStackArtifactBuilt": false
+  },
+  "limits": [
+    "No timing, RSS, memory, execution or binary-size improvement is established.",
+    "The engine operand/call stack, heap and process memory are outside the linear C-frame bound.",
+    "Normal returns restore the stack global; arbitrary trapping invocation reuse is not authorized.",
+    "Both analyzed artifacts retain their original 16MiB stack reservations and build records. They were not rebuilt at the analyzer commit.",
+    "Every recorded original input digest matches the analyzer checkout; historical inventories are not relabelled as fresh current compiler inventories.",
+    "No builder/release adoption: independent smaller-stack semantic/lifecycle controls, complete gates and RSS/latency studies remain required.",
+    "All existing frontend cost losses and the unfinished universal-source cutover remain binding."
+  ],
+  "archive": {
+    "path": "results/source-frontend-c-stack-artifacts.zip",
+    "bytes": 297712,
+    "sha256": "746c76d3d21c13c5ec8ab304a7f79143964e24cd379f41c1dcc4b108d803324c",
+    "members": 14,
+    "digestPolicy": "All artifacts, full original build records, proofs, baseline source and logs are byte-preserved; members.json binds every other member. No metadata path normalization was needed."
+  }
+}
