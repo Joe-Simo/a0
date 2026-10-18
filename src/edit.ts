@@ -47,6 +47,12 @@ import {
 import { formatDenseFunction, formatDenseSignature, parseDenseHeader } from './dense.js';
 import { COMPACT_EDIT_STYLE, denseEditBody } from './dense-edit.js';
 import { diag } from './diagnostics.js';
+import {
+  cleanEditSource,
+  type EditSourceLine,
+  editSourceJoin,
+  editSourceText,
+} from './edit-source.js';
 import { fixAll } from './fix.js';
 import { constructLegend, lazyDiagnostic, lazyHints } from './lazy.js';
 import { programRevision, revision } from './revision.js';
@@ -293,7 +299,7 @@ export function parseEditOps(
   return parseEditOpsWithLanguage(
     lines,
     firstLine,
-    { node: parseNode, ret: legacyEditReturn, spec: specEditOf },
+    { node: parseNode, ret: legacyEditReturn, spec: (match) => specEditOf(match) },
     taken,
   );
 }
@@ -517,11 +523,12 @@ export function semanticRevision(fn: TypedFunc): string {
  * to just before `target`, in their order, so the handled function may call a function added in
  * the same reply (callees precede callers). Other functions keep their places.
  */
-function placeNewCallees(
+export function placeNewCalleesWithLanguage(
   before: TypedProgram,
   program: TypedProgram,
   target: string,
   edits: readonly EditOp[],
+  language: Pick<ProgramEditLanguage, 'check' | 'failure'>,
 ): TypedProgram {
   const called = new Set(
     edits.flatMap((e) =>
@@ -535,9 +542,25 @@ function placeNewCallees(
   if (moved.length === 0) return program;
   const rest = program.functions.filter((f) => !moved.includes(f));
   const k = rest.findIndex((f) => f.name === target);
-  return validateOrdered({
-    ...profileField(program),
-    functions: [...rest.slice(0, k), ...moved, ...rest.slice(k)],
+  return validateOrderedWith(
+    {
+      ...profileField(program),
+      functions: [...rest.slice(0, k), ...moved, ...rest.slice(k)],
+    },
+    language.check,
+    language.failure,
+  );
+}
+
+function placeNewCallees(
+  before: TypedProgram,
+  program: TypedProgram,
+  target: string,
+  edits: readonly EditOp[],
+): TypedProgram {
+  return placeNewCalleesWithLanguage(before, program, target, edits, {
+    check: validate,
+    failure: legacyProgramEditFailure,
   });
 }
 
@@ -589,7 +612,7 @@ export interface ProgramEditFailure {
 }
 
 export interface ProgramEditLanguage {
-  parseUnit(text: string): Program;
+  parseUnit(text: string, sourceRows?: readonly EditSourceLine[]): Program;
   check(program: Program): TypedProgram;
   signature(fn: Func): string;
   /** Presence identifies a genuine semantic rejection; absence preserves a raw refusal. */
@@ -823,8 +846,15 @@ function isSpecEdit(t: string, named: boolean): boolean {
   return !named && (m[2] === '+' || (m[4] ?? '').trim() !== '');
 }
 
-function specEditOf(m: RegExpExecArray): SpecEdit {
-  return { sign: m[2] as '+' | '-', word: m[3] as SpecWord, rest: (m[4] ?? '').trim() };
+function specEditOf(m: RegExpExecArray, source?: EditSourceLine): SpecEdit {
+  return {
+    sign: m[2] as '+' | '-',
+    word: m[3] as SpecWord,
+    rest: (m[4] ?? '').trim(),
+    ...(source === undefined
+      ? {}
+      : { source, ...(source.origin === undefined ? {} : { line: source.origin.line }) }),
+  };
 }
 
 /** `N line`, `N-`, `N+ line`, each optionally prefixed with `f:` (a function name). */
@@ -837,21 +867,22 @@ const LINE_EDIT = /^(?:([a-z][a-z0-9_]*):)?(0|[1-9][0-9]*)([+-]?)(?:\s+(.*))?$/;
  * Unambiguous: instruction ids start with a letter.
  */
 function splitLineEdits(
-  lines: readonly string[],
+  lines: readonly EditSourceLine[],
   isSpec: (line: string) => boolean,
-): { edits: string[]; rest: string[] } {
-  const edits: string[] = [];
-  const rest: string[] = [];
+  protocolLine: (row: EditSourceLine, text: string) => EditSourceLine,
+): { edits: EditSourceLine[]; rest: EditSourceLine[] } {
+  const edits: EditSourceLine[] = [];
+  const rest: EditSourceLine[] = [];
   let open = false;
   for (const raw of lines) {
-    const t = stripComment(raw).trim();
+    const t = stripComment(raw.text).trim();
     if (/^-?fn\s/.test(t) || isProfileEdit(t)) {
       open = t.startsWith('fn') && !/\send$/.test(t);
       rest.push(raw);
     } else if (open) {
       if (t === 'end') open = false;
-      rest.push(t.replace(/^(0|[1-9][0-9]*)\s+(?=[a-z])/, ''));
-    } else if (LINE_EDIT.test(t) || isSpec(t)) edits.push(t);
+      rest.push(protocolLine(raw, t.replace(/^(0|[1-9][0-9]*)\s+(?=[a-z])/, '')));
+    } else if (LINE_EDIT.test(t) || isSpec(t)) edits.push(protocolLine(raw, t));
     else rest.push(raw);
   }
   return { edits, rest };
@@ -864,16 +895,28 @@ function splitLineEdits(
  * deleted at most once. The blocks then go through the ordinary whole-function path, so the
  * result is parsed and the whole program validated before anything is committed.
  */
-export function lineEditBlocks(
+/** Internal source services for the existing numbered mutation/validation loop. */
+export interface LineEditLanguage {
+  render(fn: Func): EditSourceLine[];
+  protocolLine(row: EditSourceLine, text: string): EditSourceLine;
+  parse(lines: readonly EditSourceLine[], original: Func): Func;
+  specs(fn: Func, edits: readonly SpecEdit[]): Spec | undefined;
+}
+
+export function lineEditBlocksWithLanguage(
   program: TypedProgram,
-  lines: readonly string[],
+  lines: readonly EditSourceLine[],
   defaultFn: string | undefined,
-): string[] {
-  const byFn = new Map<string, { at: Map<number, string | null>; after: Map<number, string[]> }>();
+  language: LineEditLanguage,
+): EditSourceLine[][] {
+  const byFn = new Map<
+    string,
+    { at: Map<number, EditSourceLine | null>; after: Map<number, EditSourceLine[]> }
+  >();
   const specByFn = new Map<string, SpecEdit[]>();
-  const expanded: string[] = [];
+  const expanded: EditSourceLine[] = [];
   for (const raw of lines) {
-    const t = stripComment(raw).trim();
+    const t = stripComment(raw.text).trim();
     const sm = SPEC_EDIT.exec(t);
     if (sm === null) {
       expanded.push(raw);
@@ -882,54 +925,77 @@ export function lineEditBlocks(
     const name = sm[1] ?? defaultFn;
     if (name === undefined) throw diag('A0510', [t]);
     if (!program.byName.has(name)) throw diag('A0511', [t, name]);
-    specByFn.set(name, [...(specByFn.get(name) ?? []), specEditOf(sm)]);
+    specByFn.set(name, [...(specByFn.get(name) ?? []), specEditOf(sm, raw)]);
   }
   for (const raw of expanded) {
-    const t = stripComment(raw).trim();
+    const t = stripComment(raw.text).trim();
     const m = LINE_EDIT.exec(t);
     if (m === null) throw diag('A0509', [t]);
     const name = m[1] ?? defaultFn;
     if (name === undefined) throw diag('A0510', [t]);
     const fn = program.byName.get(name);
     if (fn === undefined) throw diag('A0511', [t, name]);
-    const size = formatFunction(fn).split('\n').length - 2;
+    const size = language.render(fn).length - 2;
     const n = Number(m[2]);
     const mode = m[3] ?? '';
     const text = (m[4] ?? '').trim();
+    const payload = language.protocolLine(raw, text);
     const entry = byFn.get(name) ?? { at: new Map(), after: new Map() };
     byFn.set(name, entry);
     if (mode === '+') {
       if (n > size || text === '') throw diag('A0512', [t, size]);
-      entry.after.set(n, [...(entry.after.get(n) ?? []), text]);
+      entry.after.set(n, [...(entry.after.get(n) ?? []), payload]);
       continue;
     }
     if (n < 1 || n > size) throw diag('A0513', [t, name, size]);
     if (entry.at.has(n)) throw diag('A0514', [t, n]);
     if (mode === '' && text === '') throw diag('A0515', [t, n]);
-    entry.at.set(n, mode === '-' ? null : text);
+    entry.at.set(n, mode === '-' ? null : payload);
   }
-  const block = (name: string): string => {
+  const block = (name: string): EditSourceLine[] => {
     const edit = byFn.get(name);
     const fn = program.byName.get(name) as TypedFunc;
-    const src = formatFunction(fn).split('\n');
-    let text = src.join('\n');
+    const src = language.render(fn);
+    let text = src;
     if (edit !== undefined) {
       const body = src.slice(1, -1);
-      const out: string[] = [...(edit.after.get(0) ?? [])];
+      const out: EditSourceLine[] = [...(edit.after.get(0) ?? [])];
       body.forEach((line, i) => {
         const edited = edit.at.has(i + 1) ? edit.at.get(i + 1) : line;
         if (edited !== null && edited !== undefined) out.push(edited);
         out.push(...(edit.after.get(i + 1) ?? []));
       });
-      text = [src[0] ?? '', ...out, 'end'].join('\n');
+      text = [src[0] ?? { text: '' }, ...out, src[src.length - 1] ?? { text: 'end' }];
     }
     const specEdits = specByFn.get(name);
     if (specEdits === undefined) return text;
     // Spec edits apply to the function the line edits produced, by what the lines say.
-    const edited = parse(text).functions[0] as Func;
-    return formatFunction(withSpec(edited, applySpecEdits(edited, specEdits)));
+    const edited = language.parse(text, fn);
+    return language.render(withSpec(edited, language.specs(edited, specEdits)));
   };
   return [...new Set([...byFn.keys(), ...specByFn.keys()])].map(block);
+}
+
+/** Existing host wrapper; numbering and mutation policy live in the shared loop above. */
+export function lineEditBlocks(
+  program: TypedProgram,
+  lines: readonly string[],
+  defaultFn: string | undefined,
+): string[] {
+  return lineEditBlocksWithLanguage(
+    program,
+    lines.map((text) => ({ text })),
+    defaultFn,
+    {
+      protocolLine: editSourceText,
+      render: (fn) =>
+        formatFunction(fn)
+          .split('\n')
+          .map((text) => ({ text })),
+      parse: (rows) => parse(editSourceJoin(rows)).functions[0] as Func,
+      specs: applySpecEdits,
+    },
+  ).map(editSourceJoin);
 }
 
 /**
@@ -1113,18 +1179,18 @@ export function scopedProgramView(program: TypedProgram, target: string, dense =
  * `-fn` line or at the end of the reply, so its trailing `end` is optional. Unambiguous because
  * `fn` and `end` are reserved and never start an instruction line.
  */
-function closeBlocks(lines: readonly string[]): string[] {
-  const out: string[] = [];
+function closeSourceBlocks(lines: readonly EditSourceLine[]): EditSourceLine[] {
+  const out: EditSourceLine[] = [];
   let open = false;
   for (const raw of lines) {
-    const t = stripComment(raw).trim();
+    const t = stripComment(raw.text).trim();
     if (/^-?fn\s/.test(t) || isProfileEdit(t)) {
-      if (open) out.push('end');
+      if (open) out.push({ text: 'end' });
       open = t.startsWith('fn') && !/\send$/.test(t);
     } else if (t === 'end') open = false;
     out.push(raw);
   }
-  if (open) out.push('end');
+  if (open) out.push({ text: 'end' });
   return out;
 }
 
@@ -1167,17 +1233,19 @@ const LEGACY_PROGRAM_EDIT_LANGUAGE: ProgramEditLanguage = {
 /** Internal transaction kernel; all source interpretation belongs to the supplied language. */
 export function editProgramWithLanguage(
   program: TypedProgram,
-  text: string,
+  text: string | readonly EditSourceLine[],
   language: ProgramEditLanguage,
   /** A replaced function written without spec lines keeps the ones it had (a view that hid them). */
   keepSpecs = false,
 ): TypedProgram {
-  const lines = closeBlocks(text.split(/\r?\n/));
+  const lines = closeSourceBlocks(
+    typeof text === 'string' ? text.split(/\r?\n/).map((text) => ({ text })) : text,
+  );
   const removals = new Set<string>();
-  const kept: string[] = [];
+  const kept: EditSourceLine[] = [];
   let profile: 'strict' | undefined = program.profile;
   for (const raw of lines) {
-    const line = stripComment(raw).trim();
+    const line = stripComment(raw.text).trim();
     if (isProfileEdit(line)) {
       profile = line === '-profile' ? undefined : 'strict';
       continue;
@@ -1201,7 +1269,7 @@ export function editProgramWithLanguage(
     } else if (isSignatureEcho(line, program)) continue;
     else kept.push(raw);
   }
-  const incoming = orderFunctionsByCalls(language.parseUnit(kept.join('\n')).functions);
+  const incoming = orderFunctionsByCalls(language.parseUnit(editSourceJoin(kept), kept).functions);
   const byName = new Map(incoming.map((f) => [f.name, f] as const));
   for (const name of removals) {
     if (!program.byName.has(name)) throw diag('A0517', [name]);
@@ -1286,27 +1354,103 @@ function denseDiagnostic(
  * shows only as a signature) as bare lines, which always belong to the function the view opened.
  * Say so, with the block that rewrites the other function.
  */
-function stubHint(e: A0Error, program: TypedProgram): A0Error {
+function stubHint(e: A0Error, program: TypedProgram, signature = formatSignature): A0Error {
   if (e.id !== 'A0105') return e;
   const m = /^([a-z][a-z0-9_]*)\.\S+: parameter p(\d+) out of range/.exec(e.detail);
   if (m === null) return e;
   const others = program.functions.filter((f) => f.name !== m[1] && f.params.length > Number(m[2]));
   if (others.length === 0) return e;
-  const blocks = others.map((f) => `\`${formatSignature(f)}\``).join(' or ');
+  const blocks = others.map((f) => `\`${signature(f)}\``).join(' or ');
   const hint = `; bare lines edit ${m[1]} only: to write the lines of another function, reply a block ${blocks} followed by its lines`;
   return e.reworded(e.detail, e.line, `${e.fix ?? ''}${hint}`);
 }
+
+/** Internal staging dependency: one transaction engine, one complete supplied language authority. */
+export interface EditSessionLanguage {
+  revision(fn: Func): string;
+  programRevision(program: TypedProgram): string;
+  signature(fn: Func): string;
+  acceptView(options: ViewOptions | ProgramViewOptions): void;
+  beginReply(raw: string): void;
+  bodyLines(lines: readonly EditSourceLine[]): EditSourceLine[];
+  protocolLine(row: EditSourceLine, text: string): EditSourceLine;
+  functionView(program: TypedProgram, fn: TypedFunc, options: ViewOptions): string;
+  programView(program: TypedProgram, target: string | undefined, dense: boolean): string;
+  lineBlocks(
+    program: TypedProgram,
+    lines: readonly EditSourceLine[],
+    defaultFn: string | undefined,
+  ): EditSourceLine[][];
+  editProgram(
+    program: TypedProgram,
+    lines: readonly EditSourceLine[],
+    keepSpecs: boolean,
+  ): TypedProgram;
+  editNodes(
+    previous: TypedProgram,
+    program: TypedProgram,
+    fn: TypedFunc,
+    lines: readonly EditSourceLine[],
+  ): TypedProgram;
+}
+
+const LEGACY_SESSION_LANGUAGE: EditSessionLanguage = {
+  revision,
+  programRevision,
+  signature: formatSignature,
+  acceptView() {},
+  beginReply() {},
+  protocolLine: editSourceText,
+  bodyLines: (lines) =>
+    lines
+      .map((row) => editSourceText(row, stripComment(row.text).trim()))
+      .filter((row) => row.text !== ''),
+  functionView(program, fn, options) {
+    const { scope, numbered = false, dense = false, compact = false } = options;
+    const hideSpecs = options.specs === 'hide';
+    if (dense) return scopedViewDense(fn, program, scope ?? 'function', hideSpecs, compact);
+    if (scope === 'deps' || scope === 'bodies') return scopedView(fn, numbered, hideSpecs);
+    return numbered ? numberedFunction(fn) : formatFunction(hideSpecs ? withoutSpec(fn) : fn);
+  },
+  programView: (program, target, dense) =>
+    target !== undefined && program.byName.has(target)
+      ? scopedProgramView(program, target, dense)
+      : programView(program, dense),
+  lineBlocks: (program, lines, defaultFn) =>
+    lineEditBlocks(
+      program,
+      lines.map((row) => row.text),
+      defaultFn,
+    ).map((text) => text.split('\n').map((text) => ({ text }))),
+  editProgram: (program, lines, keepSpecs) =>
+    editProgram(program, editSourceJoin(lines), keepSpecs),
+  editNodes(previous, program, fn, lines) {
+    const nodes = parseReplacementNodes(
+      lines.map((row) => row.text),
+      2,
+      new Set(fn.nodes.map((n) => n.id)),
+    );
+    const placed = placeNewCallees(previous, program, fn.name, nodes);
+    return commit(placed, replaceNodes(placed, placed.byName.get(fn.name) ?? fn, nodes));
+  },
+};
 
 export class EditSession {
   #program: TypedProgram;
   readonly #handles = new Map<string, OpenHandle>();
   readonly #maxOpen: number;
+  readonly #language: EditSessionLanguage;
   #nextFn = 0;
   #nextProgram = 0;
   /** The last reply this session rejected, for `fix all`. */
   #rejected: string | undefined;
 
-  constructor(program: TypedProgram, options: SessionOptions = {}) {
+  constructor(
+    program: TypedProgram,
+    options: SessionOptions = {},
+    language: EditSessionLanguage = LEGACY_SESSION_LANGUAGE,
+  ) {
+    this.#language = language;
     this.#program = program;
     this.#maxOpen = options.maxOpenHandles ?? 64;
   }
@@ -1335,6 +1479,7 @@ export class EditSession {
    * with `scope: 'deps'` only those around `target` (the handle still edits any function).
    */
   openProgram(options: ProgramViewOptions = {}): View {
+    this.#language.acceptView(options);
     const target = options.scope === 'deps' ? options.target : undefined;
     if (options.scope === 'deps' && (target === undefined || !this.#program.byName.has(target)))
       throw diag('A0610', [target ?? ''], {
@@ -1344,7 +1489,7 @@ export class EditSession {
       throw diag('A0520', [this.#maxOpen]);
     }
     const handle = `g${this.#nextProgram}`;
-    const rev = programRevision(this.#program);
+    const rev = this.#language.programRevision(this.#program);
     const dense = options.dense === true;
     const text = `${handle}\n${this.#programText(target, dense)}`;
     this.#handles.set(handle, {
@@ -1365,20 +1510,19 @@ export class EditSession {
 
   /** A scoped program view whose target was removed falls back to the full listing. */
   #programText(target: string | undefined, dense = false): string {
-    return target !== undefined && this.#program.byName.has(target)
-      ? scopedProgramView(this.#program, target, dense)
-      : programView(this.#program, dense);
+    return this.#language.programView(this.#program, target, dense);
   }
 
   /** Open a view of one function and return a short handle bound to its current revision. */
   open(functionName: string, options: ViewOptions = {}): View {
+    this.#language.acceptView(options);
     const fn = this.#program.byName.get(functionName);
     if (fn === undefined) throw diag('A0610', [functionName]);
     if (this.#handles.size >= this.#maxOpen) {
       throw diag('A0520', [this.#maxOpen]);
     }
     const handle = `e${this.#nextFn}`;
-    const rev = revision(fn);
+    const rev = this.#language.revision(fn);
     const numbered = options.numbered === true;
     const dense = options.dense === true;
     const compact = dense && options.compact === true;
@@ -1432,9 +1576,13 @@ export class EditSession {
     hideSpecs: boolean,
     compact = false,
   ): string {
-    if (dense) return scopedViewDense(fn, this.#program, scope ?? 'function', hideSpecs, compact);
-    if (scope === 'deps' || scope === 'bodies') return scopedView(fn, numbered, hideSpecs);
-    return numbered ? numberedFunction(fn) : formatFunction(hideSpecs ? withoutSpec(fn) : fn);
+    return this.#language.functionView(this.#program, fn, {
+      ...(scope === undefined ? {} : { scope }),
+      numbered,
+      dense,
+      compact,
+      ...(hideSpecs ? { specs: 'hide' as const } : {}),
+    });
   }
 
   /**
@@ -1444,7 +1592,7 @@ export class EditSession {
    * that is no longer current.
    */
   #rebind(program: TypedProgram): void {
-    const progRev = programRevision(program);
+    const progRev = this.#language.programRevision(program);
     const handles = new Map<string, OpenHandle>();
     for (const [handle, bound] of this.#handles) {
       if (bound.functionName === '*') {
@@ -1452,7 +1600,8 @@ export class EditSession {
         continue;
       }
       const fn = program.byName.get(bound.functionName);
-      if (fn !== undefined) handles.set(handle, { ...bound, revision: revision(fn) });
+      if (fn !== undefined)
+        handles.set(handle, { ...bound, revision: this.#language.revision(fn) });
     }
     this.#program = program;
     this.#handles.clear();
@@ -1593,7 +1742,7 @@ export class EditSession {
       return this.#applyOrFix(text);
     } catch (e) {
       if (!(e instanceof A0Error)) throw e;
-      const hinted = stubHint(e, this.#program);
+      const hinted = stubHint(e, this.#program, this.#language.signature);
       if (!lazyHints()) throw denseDiagnostic(hinted, this.#denseNames);
       const first = !this.#ruleCardShown;
       this.#ruleCardShown = true;
@@ -1650,25 +1799,30 @@ export class EditSession {
     return this.#program;
   }
 
-  #apply(raw: string): TypedProgram {
+  #apply(raw: string, prepared?: readonly EditSourceLine[]): TypedProgram {
+    if (prepared === undefined) this.#language.beginReply(raw);
     const text = stripCodeFences(raw);
     if (utf8Length(text) > LIMITS.maxSourceBytes) throw diag('A0502');
-    const rawLines = text.split(/\r?\n/);
+    const rawLines = prepared === undefined ? cleanEditSource(raw) : [...prepared];
     // The handle line may be left out when it is implied: the reply then edits the one open
     // function handle (which also takes whole `fn` blocks and `-fn` lines), or, with no
     // function handle open, the one open program handle.
-    const firstLine = rawLines.map((l) => stripComment(l).trim()).find((l) => l.length > 0) ?? '';
+    const firstLine =
+      rawLines.map((l) => stripComment(l.text).trim()).find((l) => l.length > 0) ?? '';
     if (!HANDLE.test(firstLine) && !PROGRAM_HANDLE.test(firstLine)) {
       const open = [...this.#handles.keys()];
       const fnHandles = open.filter((h) => HANDLE.test(h));
       const implied = fnHandles.length > 0 ? fnHandles : open;
       if (implied.length !== 1) throw diag('A0612', [firstLine], { line: 1 });
-      return this.#apply(`${implied[0] as string}\n${text}`);
+      return this.#apply(`${implied[0] as string}\n${text}`, [
+        { text: implied[0] as string },
+        ...rawLines,
+      ]);
     }
     // A reply may carry several sections, each headed by an open handle; they apply in
     // order as one atomic edit (all or nothing).
     const heads = rawLines
-      .map((l, i) => [stripComment(l).trim(), i] as const)
+      .map((l, i) => [stripComment(l.text).trim(), i] as const)
       .filter(([l]) => /^[eg][0-9]+$/.test(l) && this.#handles.has(l));
     if (heads.length > 1) {
       const savedProgram = this.#program;
@@ -1681,10 +1835,10 @@ export class EditSession {
           // A section that only echoes signatures (or is empty) carries no change.
           const body = section
             .slice(1)
-            .map((l) => stripComment(l).trim())
+            .map((l) => stripComment(l.text).trim())
             .filter((l) => l.length > 0);
           if (body.every((l) => l === 'end' || isSignatureEcho(l, this.#program))) continue;
-          this.#apply(section.join('\n'));
+          this.#apply(editSourceJoin(section), section);
         }
       } catch (e) {
         this.#program = savedProgram;
@@ -1694,7 +1848,7 @@ export class EditSession {
       }
       return this.#program;
     }
-    const lines = rawLines.map((l) => stripComment(l).trim()).filter((l) => l.length > 0);
+    const lines = rawLines.map((l) => stripComment(l.text).trim()).filter((l) => l.length > 0);
     const handle = lines[0] ?? '';
     if (!HANDLE.test(handle) && !PROGRAM_HANDLE.test(handle)) {
       throw diag('A0612', [handle], { line: 1 });
@@ -1702,50 +1856,68 @@ export class EditSession {
     const bound = this.#handles.get(handle);
     if (bound === undefined) throw diag('A0611', [handle], { line: 1 });
     if (bound.functionName === '*') {
-      if (programRevision(this.#program) !== bound.revision) {
+      if (this.#language.programRevision(this.#program) !== bound.revision) {
         throw diag('A0614', [handle]);
       }
-      let rawBody = text
-        .split(/\r?\n/)
-        .slice(text.split(/\r?\n/).findIndex((l) => stripComment(l).trim() === handle) + 1);
+      let rawBody = rawLines.slice(
+        rawLines.findIndex((l) => stripComment(l.text).trim() === handle) + 1,
+      );
       if (bound.dense === true)
         rawBody = denseEditBody(
-          rawBody.map((l) => stripComment(l).trim()).filter((l) => l.length > 0),
+          rawBody.map((l) => stripComment(l.text).trim()).filter((l) => l.length > 0),
           this.#program,
           undefined,
           this.#denseNames,
-        );
-      const { edits, rest } = splitLineEdits(rawBody, (t) => isSpecEdit(t, false));
-      const blocks = lineEditBlocks(this.#program, edits, undefined);
-      this.#rebind(editProgram(this.#program, [...closeBlocks(rest), ...blocks].join('\n')));
+        ).map((text) => ({ text }));
+      const { edits, rest } = splitLineEdits(
+        rawBody,
+        (t) => isSpecEdit(t, false),
+        this.#language.protocolLine,
+      );
+      const blocks = this.#language.lineBlocks(this.#program, edits, undefined);
+      this.#rebind(
+        this.#language.editProgram(
+          this.#program,
+          [...closeSourceBlocks(rest), ...blocks.flat()],
+          false,
+        ),
+      );
       return this.#program;
     }
     const fn = this.#program.byName.get(bound.functionName);
     if (fn === undefined) throw diag('A0613', [handle]);
-    if (revision(fn) !== bound.revision) {
+    if (this.#language.revision(fn) !== bound.revision) {
       throw diag('A0615', [handle, fn.name]);
     }
-    let body = lines.slice(1);
+    let body = this.#language.bodyLines(
+      rawLines.slice(rawLines.findIndex((l) => stripComment(l.text).trim() === handle) + 1),
+    );
     // The rest of the view echoed back (another handle line followed only by signature
     // lines) carries no change: drop it.
-    const echoAt = body.findIndex((l) => /^[eg][0-9]+$/.test(stripComment(l).trim()));
+    const echoAt = body.findIndex((l) => /^[eg][0-9]+$/.test(stripComment(l.text).trim()));
     if (
       echoAt >= 0 &&
       body.slice(echoAt + 1).every((l) => {
-        const t = stripComment(l).trim();
+        const t = stripComment(l.text).trim();
         return t === '' || isSignatureEcho(t, this.#program);
       })
     )
       body = body.slice(0, echoAt);
     // A trailing `end` mirrors the view and carries no information: accept it.
-    while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === 'end')
+    while (body.length > 0 && stripComment(body[body.length - 1]?.text ?? '').trim() === 'end')
       body = body.slice(0, -1);
-    while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === '')
+    while (body.length > 0 && (body[body.length - 1]?.text ?? '').trim() === '')
       body = body.slice(0, -1);
     if (bound.dense === true)
-      body = denseEditBody(body, this.#program, fn, this.#denseNames, {
-        compact: bound.compact === true,
-      });
+      body = denseEditBody(
+        body.map((row) => row.text),
+        this.#program,
+        fn,
+        this.#denseNames,
+        {
+          compact: bound.compact === true,
+        },
+      ).map((text) => ({ text }));
     // Whole `fn ... end` blocks are program-level edits wherever they appear: the handled
     // function sent back whole replaces itself, and any other function is added or replaced
     // exactly as under a program handle. Edit lines before the first block apply to the
@@ -1757,21 +1929,21 @@ export class EditSession {
     // before this reply; each edited function becomes a whole block, validated with the rest.
     // Spec edits of the handled function (`+ex ...`, `-pre`) go with its node edits, validated as
     // one change; only a line that names another function (`g:+ex ...`) is a block of its own.
-    const split = splitLineEdits(body, (t) => isSpecEdit(t, true));
-    const lineBlocks = lineEditBlocks(this.#program, split.edits, fn.name);
+    const split = splitLineEdits(body, (t) => isSpecEdit(t, true), this.#language.protocolLine);
+    const lineBlocks = this.#language.lineBlocks(this.#program, split.edits, fn.name);
     body = split.rest;
-    const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l).trim()));
+    const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l.text).trim()));
     const head = blockAt < 0 ? body : body.slice(0, blockAt);
-    const isRemoval = (l: string): boolean => {
-      const t = stripComment(l).trim();
+    const isRemoval = (l: EditSourceLine): boolean => {
+      const t = stripComment(l.text).trim();
       return /^-fn\s/.test(t) || isProfileEdit(t);
     };
     // An `end` before the first block closes the handled function's lines, as in the view.
-    const editLines = head.filter((l) => !isRemoval(l) && stripComment(l).trim() !== 'end');
+    const editLines = head.filter((l) => !isRemoval(l) && stripComment(l.text).trim() !== 'end');
     const programLines = head.filter(isRemoval);
     let open = false;
     for (const l of blockAt < 0 ? [] : body.slice(blockAt)) {
-      const t = stripComment(l).trim();
+      const t = stripComment(l.text).trim();
       if (/^fn\s/.test(t)) open = !/\send$/.test(t);
       else if (t === 'end' || isRemoval(l)) open = false;
       else if (!open && t !== '') {
@@ -1782,21 +1954,16 @@ export class EditSession {
     }
     let program = this.#program;
     if (programLines.length > 0 || lineBlocks.length > 0) {
-      program = editProgram(
+      program = this.#language.editProgram(
         program,
-        [...closeBlocks(programLines), ...lineBlocks].join('\n'),
+        [...closeSourceBlocks(programLines), ...lineBlocks.flat()],
         bound.hideSpecs === true,
       );
     }
-    if (editLines.length > 0) {
+    if (editLines.some((row) => stripComment(row.text).trim() !== '')) {
       const target = program.byName.get(fn.name);
       if (target === undefined) throw diag('A0519', [handle, fn.name]);
-      const nodes = parseReplacementNodes(editLines, 2, new Set(target.nodes.map((n) => n.id)));
-      program = placeNewCallees(this.#program, program, fn.name, nodes);
-      program = commit(
-        program,
-        replaceNodes(program, program.byName.get(fn.name) ?? target, nodes),
-      );
+      program = this.#language.editNodes(this.#program, program, target, editLines);
     }
     this.#rebind(program);
     return this.#program;

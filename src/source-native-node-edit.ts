@@ -16,8 +16,11 @@ import {
   replaceNodesWithLanguage,
   validateOrderedWith,
 } from './edit.js';
+import type { EditSourceLine } from './edit-source.js';
 import type { NativeUnitResult, nativeSource } from './source-native.js';
 import { nativeEditLanguage } from './source-native-edit.js';
+import { nativeEditContext } from './source-native-edit-context.js';
+import { throwNativeEditSource } from './source-native-edit-source.js';
 import { NativeSourceError } from './source-native-link.js';
 import { losslessSourceString } from './source-utf8.js';
 import type { Spec, SpecEdit } from './spec.js';
@@ -149,44 +152,20 @@ function removeContracts(fn: Func, edits: readonly SpecEdit[]): Spec | undefined
  * Each payload is a complete contextual function with the original declared signature.
  * This costs one parseUnit invocation per node/return payload; no latency claim is made.
  */
-export function editNativeNodes(
-  program: TypedProgram,
+export function parseNativeNodeEditOps(
   fn: TypedFunc,
   raw: string,
   frontend: Frontend,
-): TypedProgram {
-  if (program.byName.get(fn.name) !== fn)
-    throw new Error('native node edit target must belong to the supplied program');
+  sourceRows?: readonly EditSourceLine[],
+  spec?: (match: RegExpExecArray, line: number, index: number, source?: EditSourceLine) => SpecEdit,
+): EditOp[] {
   const text = losslessSourceString(raw, 'native node edit reply');
   if (utf8Length(text) > LIMITS.maxSourceBytes) throw diag('A0502');
-  const entries = replyLines(text),
-    language = nativeEditLanguage(frontend);
+  const entries = replyLines(text);
   let context: { header: string; ret: string } | undefined;
   const originalContext = (): { header: string; ret: string } => {
     if (context !== undefined) return context;
-    const active = frontend.activateProgramForFormat({ functions: [fn] });
-    if (!active.ok)
-      throw new Error(
-        `native node edit context activation refused: ${'reason' in active ? active.reason : active.status}`,
-      );
-    const signature = frontend.format(active.input, { scope: 'signature' }),
-      body = frontend.format(active.input, { scope: 'function', mapping: true });
-    if (!signature.ok || !body.ok) throw new Error('native node edit context formatting refused');
-    const returns: string[] = [];
-    for (let at = 0; at < body.events.length; at += 6) {
-      if (body.events[at] !== 10) continue;
-      const start = body.events[at + 3] as number,
-        length = body.events[at + 4] as number;
-      if (start > body.bytes.length || length > body.bytes.length - start)
-        throw new Error('invalid native node edit return range');
-      returns.push(
-        new TextDecoder('utf-8', { fatal: true }).decode(
-          body.bytes.subarray(start, start + length),
-        ),
-      );
-    }
-    if (returns.length !== 1) throw new Error('invalid native node edit return mapping');
-    context = { header: signature.text, ret: returns[0] as string };
+    context = nativeEditContext(frontend, fn);
     return context;
   };
   const parsePayload = (index: number, code: string, isReturn: boolean): Func => {
@@ -216,20 +195,41 @@ export function editNativeNodes(
         generatedUtf16Start: original.header.length,
       };
     const unit = frontend.parseUnit(generatedSource);
-    if (!unit.ok) parsedFailure(unit, origin, anchored);
+    if (!unit.ok) {
+      if (sourceRows !== undefined) {
+        const payloadRows = sourceRows.slice(entry.line - prefixLines - 1, entry.line);
+        const last = payloadRows[payloadRows.length - 1];
+        if (last === undefined) throw new Error('missing mapped native node payload');
+        payloadRows[payloadRows.length - 1] = { ...last, text: source };
+        throwNativeEditSource(unit, [
+          ...original.header
+            .trimEnd()
+            .split('\n')
+            .map((text) => ({ text })),
+          ...payloadRows,
+          ...(isReturn ? [] : [{ text: original.ret.trimEnd() }]),
+          { text: 'end' },
+        ]);
+      }
+      parsedFailure(unit, origin, anchored);
+    }
     const parsed = unit.program.functions[0];
     if (unit.program.functions.length !== 1 || parsed === undefined || parsed.name !== fn.name)
       throw new NativeNodeEditRefusal('instruction-shape');
     if (parsed.spec !== undefined) throw new NativeNodeEditRefusal('source-spec');
     return parsed;
   };
-  const edits = parseEditOpsWithLanguage(
+  return parseEditOpsWithLanguage(
     entries.map((entry) => entry.code),
     1,
     {
-      line: (index) => entries[index]?.line ?? index + 1,
-      spec() {
-        throw new NativeNodeEditRefusal('signed-spec');
+      line: (index) =>
+        sourceRows?.[(entries[index]?.line ?? index + 1) - 1]?.origin?.line ??
+        entries[index]?.line ??
+        index + 1,
+      spec(match, line, index) {
+        if (spec === undefined) throw new NativeNodeEditRefusal('signed-spec');
+        return spec(match, line, index, sourceRows?.[(entries[index]?.line ?? index + 1) - 1]);
       },
       node(code, _line, index) {
         const parsed = parsePayload(index, code, false);
@@ -256,6 +256,19 @@ export function editNativeNodes(
     },
     new Set(fn.nodes.map((node) => node.id)),
   );
+}
+
+/** Existing bounded raw node adapter; sessions inject their complete signed-spec services separately. */
+export function editNativeNodes(
+  program: TypedProgram,
+  fn: TypedFunc,
+  raw: string,
+  frontend: Frontend,
+): TypedProgram {
+  if (program.byName.get(fn.name) !== fn)
+    throw new Error('native node edit target must belong to the supplied program');
+  const language = nativeEditLanguage(frontend);
+  const edits = parseNativeNodeEditOps(fn, raw, frontend);
   return replaceNodesWithLanguage(fn, edits, {
     specs: removeContracts,
     check(replaced) {

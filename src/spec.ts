@@ -1,4 +1,5 @@
 import { aggregate } from './aggregate.js';
+import type { EditSourceLine } from './edit-source.js';
 /**
  * Spec lines: opt-in one-line contracts and executable examples that sit between a `fn` header and
  * its first node.
@@ -454,18 +455,32 @@ export interface SpecEdit {
   readonly word: SpecWord;
   readonly rest: string;
   readonly line?: number;
+  /** Original protocol row when retained by the session boundary. */
+  readonly source?: EditSourceLine;
 }
 
-/** The spec of `fn` after the edits, in order (A0714 for a malformed line, A0720 for a missing one). */
-export function applySpecEdits(fn: Func, edits: readonly SpecEdit[]): Spec | undefined {
+/** Internal source services for the single spec mutation loop. */
+export interface SpecEditLanguage {
+  example(fn: Func, edit: SpecEdit): SpecExample;
+  expression(fn: Func, edit: SpecEdit & { readonly word: 'pre' | 'post' }): Node;
+  exampleText(fn: Func, example: SpecExample): string;
+  expressionText(fn: Func, expression: Node): string;
+}
+
+/** The spec of `fn` after the edits, in order; source interpretation belongs to `language`. */
+export function applySpecEditsWithLanguage(
+  fn: Func,
+  edits: readonly SpecEdit[],
+  language: SpecEditLanguage,
+): Spec | undefined {
   const examples = [...(fn.spec?.examples ?? [])];
   let pre = fn.spec?.pre;
   let post = fn.spec?.post;
   for (const e of edits) {
     if (e.word === 'ex') {
-      const ex = parseExample(e.rest, fn.name, e.line);
-      const text = formatExample(ex);
-      const at = examples.findIndex((x) => formatExample(x) === text);
+      const ex = language.example(fn, e);
+      const text = language.exampleText(fn, ex);
+      const at = examples.findIndex((x) => language.exampleText(fn, x) === text);
       if (e.sign === '+') {
         if (at < 0) examples.push(ex);
       } else if (at < 0) throw diag('A0720', [fn.name, text]);
@@ -474,11 +489,17 @@ export function applySpecEdits(fn: Func, edits: readonly SpecEdit[]): Spec | und
     }
     const current = e.word === 'pre' ? pre : post;
     let next: Node | undefined;
-    if (e.sign === '+') next = parseExpression(e.word, e.rest, fn.name, e.line);
+    const expressionEdit = { ...e, word: e.word };
+    if (e.sign === '+') next = language.expression(fn, expressionEdit);
     else {
       const shown =
-        e.rest === '' ? undefined : formatNode(parseExpression(e.word, e.rest, fn.name, e.line));
-      if (current === undefined || (shown !== undefined && shown !== formatNode(current)))
+        e.rest === ''
+          ? undefined
+          : language.expressionText(fn, language.expression(fn, expressionEdit));
+      if (
+        current === undefined ||
+        (shown !== undefined && shown !== language.expressionText(fn, current))
+      )
         throw diag('A0720', [fn.name, shown ?? e.word]);
     }
     if (e.word === 'pre') pre = next;
@@ -490,6 +511,16 @@ export function applySpecEdits(fn: Func, edits: readonly SpecEdit[]): Spec | und
     ...(pre === undefined ? {} : { pre }),
     ...(post === undefined ? {} : { post }),
   };
+}
+
+/** Existing host wrapper while source-native session integration remains staged. */
+export function applySpecEdits(fn: Func, edits: readonly SpecEdit[]): Spec | undefined {
+  return applySpecEditsWithLanguage(fn, edits, {
+    example: (target, edit) => parseExample(edit.rest, target.name, edit.line),
+    expression: (target, edit) => parseExpression(edit.word, edit.rest, target.name, edit.line),
+    exampleText: (_target, example) => formatExample(example),
+    expressionText: (_target, expression) => formatNode(expression),
+  });
 }
 
 // ---------------------------------------------------------------------------
