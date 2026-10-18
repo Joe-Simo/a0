@@ -38,8 +38,32 @@ export function sourceCostControlMode(
   crossBackend: boolean,
   controlArtifact?: string,
   controlCheckout?: string,
+  compilerCodegen = false,
+  sourceAlgorithm = false,
 ) {
+  assert.ok(
+    !(crossBackend && compilerCodegen),
+    '--compiler-codegen conflicts with --cross-backend',
+  );
+  assert.ok(
+    !(sourceAlgorithm && (crossBackend || compilerCodegen)),
+    '--source-algorithm conflicts with --cross-backend and --compiler-codegen',
+  );
   assert.ok(!controlCheckout || controlArtifact, '--control-checkout requires --control-artifact');
+  if (sourceAlgorithm) {
+    assert.ok(
+      controlArtifact && controlCheckout,
+      '--source-algorithm requires --control-artifact and --control-checkout',
+    );
+    return 'same-compiler-source-algorithm';
+  }
+  if (compilerCodegen) {
+    assert.ok(
+      controlArtifact && controlCheckout,
+      '--compiler-codegen requires --control-artifact and --control-checkout',
+    );
+    return 'same-a0-source-compiler-codegen';
+  }
   if (crossBackend) {
     assert.ok(
       controlArtifact && controlCheckout,
@@ -50,6 +74,266 @@ export function sourceCostControlMode(
   return controlCheckout === undefined
     ? 'wasm-build-options'
     : 'same-a0-source-separate-native-transport';
+}
+
+/** C compiler experiments require explicit options; legacy manifests are deliberately ineligible. */
+export function sourceCostCFrontendOptions(build: SourceCostBuild): CompileOptions {
+  const options = build.frontendOptions;
+  assert.ok(
+    options && typeof options === 'object' && !Array.isArray(options),
+    'missing C frontendOptions',
+  );
+  assert.deepEqual(
+    Object.keys(options).sort(),
+    ['cIo', 'optimize'],
+    'unsupported C frontendOptions',
+  );
+  const value = options as Record<string, unknown>;
+  assert.equal(value.cIo, 'host', 'invalid C frontendOptions.cIo');
+  assert.equal(typeof value.optimize, 'boolean', 'missing C frontendOptions.optimize');
+  return options as CompileOptions;
+}
+
+/** Record all compiler implementation differences, including additions and removals. */
+export function sourceCostCompilerDifferences(
+  candidate: SourceCostBuild,
+  control: SourceCostBuild,
+) {
+  return inputDifferences(
+    sourceCostInputs(candidate.compilerInputs, 'compiler input'),
+    sourceCostInputs(control.compilerInputs, 'compiler input'),
+  );
+}
+
+function inputDifferences(
+  candidate: readonly SourceCostInput[],
+  control: readonly SourceCostInput[],
+) {
+  const a = new Map(candidate.map((x) => [x.path, x.sha256]));
+  const b = new Map(control.map((x) => [x.path, x.sha256]));
+  return [...new Set([...a.keys(), ...b.keys()])].sort().flatMap((path) =>
+    a.get(path) === b.get(path)
+      ? []
+      : [
+          {
+            path,
+            candidateSHA256: a.get(path) ?? null,
+            controlSHA256: b.get(path) ?? null,
+          },
+        ],
+  );
+}
+
+/** Source differences are recorded explicitly; they never enter compiler-codegen controls. */
+export function sourceCostAlgorithmDifferences(
+  candidate: SourceCostBuild,
+  control: SourceCostBuild,
+) {
+  return {
+    candidateSourceSHA256: candidate.sourceSHA256,
+    controlSourceSHA256: control.sourceSHA256,
+    candidateFunctions: candidate.functions,
+    controlFunctions: control.functions,
+    modules: inputDifferences(sourceCostModules(candidate), sourceCostModules(control)),
+  };
+}
+
+/** Require complete structural types, not only ABI word counts or a matching API name. */
+export function sourceCostFunctionSignatures(build: SourceCostBuild) {
+  assert.ok(
+    Array.isArray(build.frontendFunctions) && build.frontendFunctions.length > 0,
+    'missing frontendFunctions',
+  );
+  const functions = build.frontendFunctions as { name: string; params: string[]; result: string }[];
+  assert.ok(
+    functions.every(
+      (fn) =>
+        fn &&
+        typeof fn.name === 'string' &&
+        /^[A-Za-z_][A-Za-z0-9_]*$/.test(fn.name) &&
+        Array.isArray(fn.params) &&
+        fn.params.every((type) => typeof type === 'string' && type.length > 0) &&
+        typeof fn.result === 'string' &&
+        fn.result.length > 0,
+    ),
+    'invalid frontendFunctions',
+  );
+  const names = functions.map((fn) => fn.name);
+  assert.deepEqual(names, [...new Set(names)].sort(), 'invalid frontendFunctions order');
+  return functions;
+}
+
+function verifyStrictNative(
+  candidate: SourceCostBuild,
+  control: SourceCostBuild,
+  sourceAlgorithm = false,
+): void {
+  const mode = sourceAlgorithm ? 'source-algorithm' : 'compiler-codegen';
+  for (const build of [candidate, control]) {
+    assert.equal(build.backend, undefined, `${mode} requires two C-derived frontends`);
+    assert.equal(build.symbols, 'strip', 'strict native comparisons require symbols=strip');
+    if (Object.hasOwn(build, 'diagnosticPorts'))
+      assert.ok(
+        ['disabled', 'arena-v1'].includes(build.diagnosticPorts as string),
+        'invalid diagnosticPorts',
+      );
+    sourceCostCFrontendOptions(build);
+    const inputs = sourceCostInputs(build.compilerInputs, 'compiler input');
+    assert.ok(Array.isArray(build.compilerConfiguration), 'missing compilerConfiguration');
+    const configuration = build.compilerConfiguration;
+    assert.deepEqual(
+      configuration,
+      [...new Set(configuration)].sort(),
+      'invalid compilerConfiguration',
+    );
+    for (const path of ['package.json', 'bun.lock', 'tsconfig.json'])
+      assert.ok(configuration.includes(path), `missing compiler configuration ${path}`);
+    for (const path of configuration)
+      assert.ok(
+        inputs.some((input) => input.path === path),
+        'compiler configuration missing from inventory',
+      );
+    const versions = build.compilerBuild as Record<string, unknown> | undefined;
+    for (const field of ['node', 'typescript'])
+      assert.ok(
+        versions && typeof versions[field] === 'string' && versions[field].length > 0,
+        `missing compilerBuild.${field}`,
+      );
+    const checkout = build.compilerCheckout as Record<string, unknown> | undefined;
+    for (const field of ['commit', 'tree'])
+      assert.ok(
+        checkout && typeof checkout[field] === 'string' && /^[0-9a-f]{40}$/.test(checkout[field]),
+        `missing compilerCheckout.${field}`,
+      );
+    assert.equal(checkout?.dirty, false, 'compiler checkout was not clean');
+    assert.ok(
+      typeof build.compilerVersion === 'string' &&
+        /^a0c-\d+\.\d+\.\d+$/.test(build.compilerVersion),
+      'missing compilerVersion',
+    );
+    for (const field of ['compileFlags', 'linkerFlags'])
+      assert.ok(
+        Array.isArray(build[field]) &&
+          build[field].length > 0 &&
+          build[field].every((value) => typeof value === 'string'),
+        `missing ${field}`,
+      );
+    assert.ok(
+      typeof build.effectiveCompileSHA256 === 'string' &&
+        /^[0-9a-f]{64}$/.test(build.effectiveCompileSHA256),
+      'missing effectiveCompileSHA256',
+    );
+    const headers = sourceCostInputs(build.nativeCompileInputs, 'native compile input');
+    for (const [path, digest] of [
+      ['<artifact>/module.c', build.cSHA256],
+      ['<artifact>/driver.c', build.driverSHA256],
+    ] as const)
+      assert.equal(
+        headers.find((input) => input.path === path)?.sha256,
+        digest,
+        `native compile input differs: ${path}`,
+      );
+    assert.ok(
+      headers.some((input) => input.path === '<artifact>/api.h'),
+      'missing generated api header',
+    );
+    sourceCostComponents(build);
+    if (sourceAlgorithm) {
+      assert.ok(
+        typeof build.sourceSHA256 === 'string' && /^[0-9a-f]{64}$/.test(build.sourceSHA256),
+        'missing sourceSHA256',
+      );
+      assert.ok(
+        typeof build.functions === 'number' &&
+          Number.isSafeInteger(build.functions) &&
+          build.functions > 0,
+        'missing function count',
+      );
+      sourceCostFunctionSignatures(build);
+      sourceCostModules(build);
+    }
+  }
+  for (const field of [
+    'entry',
+    ...(sourceAlgorithm
+      ? ['frontendFunctions', 'compilerVersion', 'compilerInputs', 'compilerHost']
+      : ['sourceSHA256', 'functions', 'modules']),
+    'frontendABI',
+    'aggregateBytes',
+    'stackBytes',
+    'driverSHA256',
+    'libcSHA256',
+    'builtinsSHA256',
+    'clang',
+    'linker',
+    'clangFlags',
+    'requiredWasmFeatures',
+    'optimization',
+    'symbols',
+    'symbolFlags',
+    'frontendOptions',
+    'compilerConfiguration',
+    'compilerBuild',
+    'compileFlags',
+    'linkerFlags',
+    'effectiveCompileSHA256',
+  ]) {
+    assert.ok(
+      Object.hasOwn(candidate, field) && candidate[field] !== undefined,
+      `candidate lacks ${field}`,
+    );
+    assert.ok(
+      Object.hasOwn(control, field) && control[field] !== undefined,
+      `control lacks ${field}`,
+    );
+    assert.deepEqual(control[field], candidate[field], `control differs in ${field}`);
+  }
+  for (const path of candidate.compilerConfiguration as string[]) {
+    const find = (build: SourceCostBuild) =>
+      sourceCostInputs(build.compilerInputs, 'compiler input').find((input) => input.path === path)
+        ?.sha256;
+    assert.equal(
+      find(candidate),
+      find(control),
+      `control differs in compiler configuration ${path}`,
+    );
+  }
+  const runtime = (build: SourceCostBuild) => {
+    const inputs = sourceCostInputs(build.nativeInputs, 'native input');
+    const result = inputs
+      .filter((input) => input.path !== 'tools/source-native-build.ts')
+      .sort((a, b) => a.path.localeCompare(b.path));
+    assert.deepEqual(
+      result.map((input) => input.path),
+      [
+        'tools/native/arena_runtime.c',
+        'tools/native/arena_runtime.h',
+        'tools/native/source_frontend.c',
+      ],
+      `${mode} runtime inventory differs`,
+    );
+    return result;
+  };
+  assert.deepEqual(runtime(candidate), runtime(control), 'control differs in native runtime');
+  assert.equal(
+    Object.hasOwn(candidate, 'diagnosticPorts'),
+    Object.hasOwn(control, 'diagnosticPorts'),
+    'control differs in diagnosticPorts presence',
+  );
+  assert.equal(
+    candidate.diagnosticPorts,
+    control.diagnosticPorts,
+    'control differs in diagnosticPorts',
+  );
+  const headers = (build: SourceCostBuild) =>
+    sourceCostInputs(build.nativeCompileInputs, 'native compile input').filter(
+      (input) => !['<artifact>/module.c', '<artifact>/api.h'].includes(input.path),
+    );
+  assert.deepEqual(
+    headers(candidate),
+    headers(control),
+    'control differs in native compilation headers',
+  );
 }
 
 /** Complete artifact accounting; a direct frontend also requires its generic arena module. */
@@ -286,8 +570,16 @@ function verifyCompiledBackends(candidate: SourceCostBuild, control: SourceCostB
 export function verifySourceCostControl(
   candidate: SourceCostBuild,
   control: SourceCostBuild,
-  transport: boolean | 'compiled-backends',
+  transport: boolean | 'compiled-backends' | 'compiler-codegen' | 'source-algorithm',
 ): void {
+  if (transport === 'source-algorithm') {
+    verifyStrictNative(candidate, control, true);
+    return;
+  }
+  if (transport === 'compiler-codegen') {
+    verifyStrictNative(candidate, control);
+    return;
+  }
   if (transport === 'compiled-backends') {
     verifyCompiledBackends(candidate, control);
     return;

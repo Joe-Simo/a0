@@ -3,11 +3,17 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
-import { compile } from '../src/backends.js';
+import { C_LARGE_BYTES, COMPILER_VERSION, compile } from '../src/backends.js';
 import { formatProgram } from '../src/core.js';
 import { link } from '../src/link.js';
 import { findWasmClang, runTool } from '../src/toolchain.js';
 import { writeReport } from './scrub-results.js';
+import {
+  nativeCompileCommandSHA256,
+  nativeCompileInputs,
+  sourceCompilerInputs,
+  sourceFunctionSignatures,
+} from './source-compiler-inputs.js';
 
 const options = new Map(
   process.argv.slice(2).map((arg) => {
@@ -52,11 +58,24 @@ const sysroot = resolve(options.get('sysroot') as string);
 const builtins = resolve(options.get('builtins') as string);
 const clang = findWasmClang();
 assert.ok(clang.path && clang.wasmLd, 'Wasm clang and wasm-ld are required');
+const nativeEnvironment = { ...process.env };
 const hash = (bytes: string | Uint8Array): string =>
   createHash('sha256').update(bytes).digest('hex');
+const compiler = await sourceCompilerInputs(process.cwd());
+const frontendOptions = { cIo: 'host', optimize: true } as const;
 const linked = await link('compiler/source_frontend.a0', (path) => readFile(path, 'utf8'));
+const frontendFunctions = sourceFunctionSignatures(linked.program, [
+  'arena_parse_verify_begin',
+  'arena_source_unit',
+  'arena_verify_resume',
+  'arena_verify_status',
+  'arena_verify_begin',
+  'source_ir_init',
+  'source_ir_symbol',
+  'source_ir_type',
+]);
 const source = formatProgram(linked.program);
-const c = compile(linked.program, 'c', { cIo: 'host' }).text;
+const c = compile(linked.program, 'c', frontendOptions).text;
 const normal = /^(a0t_[A-Za-z0-9_]+) a0_arena_verify_begin\(/m.exec(c);
 const large = /^void a0_arena_verify_begin\((a0t_[A-Za-z0-9_]+) \*out/m.exec(c);
 assert.ok(normal || large, 'unsupported C ABI');
@@ -80,12 +99,13 @@ await writeFile(
 #define FRONTEND_STATUS(m) ${normal ? 'a0_arena_verify_status(m)' : 'a0_arena_verify_status(&(m))'}
 `,
 );
-function tool(path: string, args: string[]): string {
-  const result = runTool(path, args, { timeoutMs: 300_000 });
+function checkedTool(path: string, args: string[]) {
+  const result = runTool(path, args, { timeoutMs: 300_000, env: nativeEnvironment });
   assert.ok(result.ok, `${path}: ${result.stderr}`);
-  return result.stdout.trim();
+  return result;
 }
-tool(clang.path, [
+const tool = (path: string, args: string[]) => checkedTool(path, args).stdout.trim();
+const compileFlags = [
   '--target=wasm32-wasi',
   `--sysroot=${sysroot}`,
   `-${optimization}`,
@@ -93,13 +113,23 @@ tool(clang.path, [
   '-flto',
   '-DNDEBUG',
   ...diagnosticFlags,
+  '-v',
+  '-H',
   '-c',
   join(out, 'driver.c'),
   '-I',
   resolve('tools/native'),
   '-o',
   join(out, 'frontend.o'),
-]);
+];
+const roots = {
+  checkout: process.cwd(),
+  artifact: out,
+  sysroot,
+  resource: tool(clang.path, ['-print-resource-dir']),
+};
+const compiled = checkedTool(clang.path, compileFlags);
+const compileInputs = await nativeCompileInputs(compiled.stderr, roots);
 const exports = [
   'frontend_ir_init',
   'frontend_ir_upload',
@@ -123,7 +153,7 @@ const exports = [
     ? ['a0_runtime_read', 'a0_runtime_write', 'frontend_arena_token']
     : []),
 ];
-tool(clang.wasmLd, [
+const linkerFlags = [
   join(out, 'frontend.o'),
   '-L',
   join(sysroot, 'lib/wasm32-wasi'),
@@ -138,7 +168,16 @@ tool(clang.wasmLd, [
   ...(symbols === 'strip' ? ['--strip-all'] : []),
   '-o',
   join(out, 'frontend.wasm'),
-]);
+];
+tool(clang.wasmLd, linkerFlags);
+const portableFlags = (flags: readonly string[]) =>
+  flags.map((flag) =>
+    flag
+      .replaceAll(builtins, '<builtins>')
+      .replaceAll(out, '<artifact>')
+      .replaceAll(sysroot, '<wasi-sysroot>')
+      .replaceAll(process.cwd(), '<repo>'),
+  );
 const wasm = await readFile(join(out, 'frontend.wasm'));
 assert.deepEqual(WebAssembly.Module.imports(new WebAssembly.Module(wasm)), []);
 await writeReport(join(out, 'build.json'), {
@@ -147,6 +186,15 @@ await writeReport(join(out, 'build.json'), {
   entry: 'compiler/source_frontend.a0',
   frontendABI: 3,
   diagnosticPorts,
+  frontendOptions,
+  frontendFunctions,
+  compilerVersion: COMPILER_VERSION,
+  compilerInputs: compiler.inputs,
+  compilerConfiguration: compiler.configuration,
+  compilerBuild: compiler.build,
+  compilerCheckout: compiler.checkout,
+  nativeCompileInputs: compileInputs,
+  effectiveCompileSHA256: nativeCompileCommandSHA256(compiled.stderr, roots),
   nativeInputs: await Promise.all(
     [
       'tools/native/source_frontend.c',
@@ -170,12 +218,14 @@ await writeReport(join(out, 'build.json'), {
     '-DNDEBUG',
     ...diagnosticFlags,
   ],
+  compileFlags: portableFlags(compileFlags),
+  linkerFlags: portableFlags(linkerFlags),
   requiredWasmFeatures: wasmFeatures === 'bulk-memory' ? ['bulk-memory'] : [],
   optimization,
   symbols,
   symbolFlags: symbols === 'strip' ? ['--strip-all'] : [],
   compilerHost: 'Node >=22 or a WebAssembly engine supporting the recorded required features',
-  aggregateBytes: 4096,
+  aggregateBytes: C_LARGE_BYTES,
   stackBytes: 16777216,
   wasmBytes: wasm.length,
   modules: await Promise.all(

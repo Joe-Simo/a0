@@ -1,22 +1,161 @@
 /** Provenance checks shared by source-cost preparation and its independent regressions. */
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import type * as Backends from '../src/backends.js';
 import type * as Core from '../src/core.js';
 import type * as Link from '../src/link.js';
 import {
   type SourceCostBuild,
+  sourceCostCFrontendOptions,
   sourceCostComponents,
   sourceCostFrontendOptions,
+  sourceCostFunctionSignatures,
   sourceCostInputs,
   sourceCostModules,
 } from './source-cost-control.js';
 
 const hash = (bytes: string | Uint8Array): string =>
   createHash('sha256').update(bytes).digest('hex');
+
+/** Reuse the subject's existing builder to reproduce its complete native artifact and build proof. */
+export async function rebuildCSourceCostBuild(
+  checkout: string,
+  record: SourceCostBuild,
+  toolchain: { readonly sysroot: string; readonly builtins: string },
+) {
+  assert.equal(record.symbols, 'strip', 'strict native comparisons require symbols=strip');
+  assert.ok(
+    ['O2', 'O3', 'Os', 'Oz'].includes(record.optimization as string),
+    'unsupported native optimization',
+  );
+  assert.ok(Array.isArray(record.requiredWasmFeatures), 'missing native feature record');
+  const features = record.requiredWasmFeatures;
+  assert.ok(
+    features.length === 0 || (features.length === 1 && features[0] === 'bulk-memory'),
+    'unsupported native features',
+  );
+  const scratch = join(checkout, '.a0-tmp');
+  await mkdir(scratch, { recursive: true });
+  const out = await mkdtemp(join(scratch, 'source-cost-rebuild-'));
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(checkout, 'dist/tools/source-native-build.js'),
+        `--out=${out}`,
+        `--sysroot=${toolchain.sysroot}`,
+        `--builtins=${toolchain.builtins}`,
+        `--opt-level=${record.optimization}`,
+        '--symbols=strip',
+        `--wasm-features=${features.length === 0 ? 'mvp' : 'bulk-memory'}`,
+        ...(record.diagnosticPorts === undefined
+          ? []
+          : [`--diagnostic-ports=${record.diagnosticPorts}`]),
+      ],
+      { cwd: checkout, encoding: 'utf8', timeout: 300_000, maxBuffer: 8 * 1024 * 1024 },
+    );
+    assert.equal(
+      result.status,
+      0,
+      `native rebuild failed: ${result.error ?? ''}\n${result.stderr}`,
+    );
+    const actual = await sourceCostArtifact(out);
+    assert.deepEqual(actual.build, record, 'fresh native build record differs');
+    assert.equal(
+      hash(await readFile(join(out, 'module.c'))),
+      record.cSHA256,
+      'fresh native C differs',
+    );
+    return { cSHA256: record.cSHA256, ...actual.preload };
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
+}
+
+/** Re-emit C with the subject's own freshly built compiler; strict codegen mode binds its inputs. */
+export async function verifyCSourceCostBuild(
+  checkout: string,
+  record: SourceCostBuild,
+  compiler: {
+    readonly link: typeof Link.link;
+    readonly formatProgram: typeof Core.formatProgram;
+    readonly compile: typeof Backends.compile;
+    readonly version: string;
+  },
+  compilerCodegen = false,
+): Promise<void> {
+  assert.equal(record.backend, undefined, 'unsupported frontend backend');
+  const options = compilerCodegen ? sourceCostCFrontendOptions(record) : ({ cIo: 'host' } as const);
+  if (compilerCodegen) {
+    const { sourceCompilerInputs } = await import('./source-compiler-inputs.js');
+    const actual = await sourceCompilerInputs(checkout);
+    assert.equal(actual.checkout.dirty, false, 'compiler checkout is not clean');
+    assert.deepEqual(record.compilerInputs, actual.inputs, 'compiler input inventory differs');
+    assert.deepEqual(
+      record.compilerConfiguration,
+      actual.configuration,
+      'compiler configuration differs',
+    );
+    assert.deepEqual(record.compilerBuild, actual.build, 'compiler build versions differ');
+    assert.deepEqual(
+      record.compilerCheckout,
+      actual.checkout,
+      'compiler checkout identity differs',
+    );
+    assert.equal(record.compilerVersion, compiler.version, 'compiler version differs');
+  }
+  const { verifyNativeInputs } = await import('./source-native-artifact.js');
+  await verifyNativeInputs(checkout, record.nativeInputs as { path: string; sha256: string }[]);
+  assert.equal(record.entry, 'compiler/source_frontend.a0');
+  const linked = await compiler.link(join(checkout, record.entry), (path) =>
+    readFile(path, 'utf8'),
+  );
+  if (Object.hasOwn(record, 'frontendFunctions')) {
+    const { sourceFunctionSignatures } = await import('./source-compiler-inputs.js');
+    const signatures = sourceCostFunctionSignatures(record);
+    assert.deepEqual(
+      record.frontendFunctions,
+      sourceFunctionSignatures(
+        linked.program,
+        signatures.map((fn) => fn.name),
+      ),
+      'consumed A0 API signatures differ',
+    );
+  }
+  assert.equal(
+    linked.program.functions.length,
+    record.functions,
+    'artifact function count differs',
+  );
+  assert.equal(
+    hash(compiler.formatProgram(linked.program)),
+    record.sourceSHA256,
+    'artifact source differs',
+  );
+  assert.equal(
+    hash(compiler.compile(linked.program, 'c', options).text),
+    record.cSHA256,
+    'artifact C differs',
+  );
+  assert.deepEqual(
+    (record.modules as { path: string }[]).map((module) => resolve(checkout, module.path)).sort(),
+    linked.sources.map((source) => resolve(source.path)).sort(),
+    'artifact dependency closure differs',
+  );
+  assert.equal(
+    hash(await readFile(join(checkout, 'tools/native/source_frontend.c'))),
+    record.driverSHA256,
+  );
+  for (const module of record.modules as { path: string; sha256: string }[])
+    assert.equal(
+      hash(await readFile(join(checkout, module.path))),
+      module.sha256,
+      `stale module ${module.path}`,
+    );
+}
 
 /** Hash every component; the ordered concatenation is the direct loader's artifact identity. */
 export async function sourceCostArtifact(directory: string) {

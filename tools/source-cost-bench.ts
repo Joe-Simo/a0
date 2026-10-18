@@ -2,7 +2,9 @@
  * Matched historical-input controls for the modular A0 frontend; no shipping-CLI or AI claim.
  * --cross-backend explicitly compares C/direct builds and requires --control-artifact=DIR and
  * --control-checkout=DIR. --prepare-only verifies provenance and frozen inputs without timing.
- * Without --cross-backend, the existing C build-option / separate-transport controls apply.
+ * --compiler-codegen compares two freshly recorded C emitters with identical runtime/build options.
+ * --source-algorithm compares different A0 closures with an identical compiler/host/runtime/toolchain.
+ * Without an explicit mode, the existing C build-option / separate-transport controls apply.
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -20,12 +22,16 @@ import type * as Link from '../src/link.js';
 import { committedTree } from './measurement-checkout.js';
 import { writeReport } from './scrub-results.js';
 import {
+  rebuildCSourceCostBuild,
   sourceCostArtifact,
+  verifyCSourceCostBuild,
   verifyDirectSourceCostBuild,
   verifySourceCostStackProof,
 } from './source-cost-artifact.js';
 import {
   SOURCE_COST_FROZEN_C_BANNER,
+  sourceCostAlgorithmDifferences,
+  sourceCostCompilerDifferences,
   sourceCostControlMode,
   verifySourceCostControl,
   verifySourceCostFrozenC,
@@ -40,7 +46,27 @@ const controlArtifact = controlArtifactArg === undefined ? undefined : resolve(c
 const controlCheckoutArg = option('control-checkout');
 const controlCheckout = controlCheckoutArg === undefined ? undefined : resolve(controlCheckoutArg);
 const crossBackend = args.includes('--cross-backend');
-const controlMode = sourceCostControlMode(crossBackend, controlArtifact, controlCheckout);
+const compilerCodegen = args.includes('--compiler-codegen');
+const sourceAlgorithm = args.includes('--source-algorithm');
+const strictNative = compilerCodegen || sourceAlgorithm;
+const controlMode = sourceCostControlMode(
+  crossBackend,
+  controlArtifact,
+  controlCheckout,
+  compilerCodegen,
+  sourceAlgorithm,
+);
+const sysrootArg = option('sysroot'),
+  builtinsArg = option('builtins');
+assert.ok(
+  !strictNative || (sysrootArg && builtinsArg),
+  `${sourceAlgorithm ? '--source-algorithm' : '--compiler-codegen'} requires --sysroot and --builtins`,
+);
+const nativeToolchain =
+  sysrootArg && builtinsArg
+    ? { sysroot: resolve(sysrootArg), builtins: resolve(builtinsArg) }
+    : undefined;
+const nativeRebuilds: Record<string, unknown> = {};
 const baselineArg = option('baseline'),
   artifactArg = option('artifact'),
   outArg = option('out');
@@ -65,10 +91,9 @@ for (const checkout of new Set([baseline, root, ...(controlCheckout ? [controlCh
 assert.deepEqual(committedTree(root), identity);
 assert.deepEqual(committedTree(baseline), baselineIdentity);
 // Load every compiler dependency only after the fresh build; Node caches earlier static imports.
-const { compile } = await import('../src/backends.js');
+const { compile, COMPILER_VERSION } = await import('../src/backends.js');
 const { formatProgram } = await import('../src/core.js');
 const { link } = await import('../src/link.js');
-const { verifyNativeInputs } = await import('./source-native-artifact.js');
 const oldCore = (await import(
   pathToFileURL(join(baseline, 'dist/src/core.js')).href
 )) as typeof Core;
@@ -103,6 +128,7 @@ async function verifyBuild(
   linker: typeof Link.link = link,
   formatter: typeof Core.formatProgram = formatProgram,
   emitter: typeof Backends.compile = compile,
+  version: string = COMPILER_VERSION,
 ): Promise<void> {
   if (record.backend === 'direct-wasm') {
     assert.ok(crossBackend, 'direct frontend requires --cross-backend');
@@ -121,36 +147,25 @@ async function verifyBuild(
     );
     return;
   }
-  assert.equal(record.backend, undefined, 'unsupported frontend backend');
-  await verifyNativeInputs(checkout, record.nativeInputs as { path: string; sha256: string }[]);
-  assert.equal(record.entry, 'compiler/source_frontend.a0');
-  const linked = await linker(join(checkout, record.entry), (path) => readFile(path, 'utf8'));
-  assert.equal(
-    linked.program.functions.length,
-    record.functions,
-    'artifact function count differs',
+  await verifyCSourceCostBuild(
+    checkout,
+    record,
+    {
+      link: linker,
+      formatProgram: formatter,
+      compile: emitter,
+      version,
+    },
+    strictNative,
   );
-  assert.equal(hash(formatter(linked.program)), record.sourceSHA256, 'artifact source differs');
-  assert.equal(
-    hash(emitter(linked.program, 'c', { cIo: 'host' }).text),
-    record.cSHA256,
-    'artifact C differs',
-  );
-  assert.deepEqual(
-    (record.modules as { path: string }[]).map((module) => resolve(checkout, module.path)).sort(),
-    linked.sources.map((source) => resolve(source.path)).sort(),
-    'artifact dependency closure differs',
-  );
-  assert.equal(
-    hash(await readFile(join(checkout, 'tools/native/source_frontend.c'))),
-    record.driverSHA256,
-  );
-  for (const module of record.modules as { path: string; sha256: string }[])
-    assert.equal(
-      hash(await readFile(join(checkout, module.path))),
-      module.sha256,
-      `stale module ${module.path}`,
+  if (strictNative) {
+    assert.ok(nativeToolchain);
+    nativeRebuilds[checkout === root ? 'candidate' : 'control'] = await rebuildCSourceCostBuild(
+      checkout,
+      record,
+      nativeToolchain,
     );
+  }
 }
 await verifyBuild(root, build, artifact);
 let controlSnapshot: Awaited<ReturnType<typeof sourceCostArtifact>> | undefined;
@@ -161,7 +176,13 @@ if (controlArtifact !== undefined) {
   verifySourceCostControl(
     build,
     controlBuild,
-    crossBackend ? 'compiled-backends' : controlCheckout !== undefined,
+    sourceAlgorithm
+      ? 'source-algorithm'
+      : compilerCodegen
+        ? 'compiler-codegen'
+        : crossBackend
+          ? 'compiled-backends'
+          : controlCheckout !== undefined,
   );
   if (controlCheckout !== undefined) {
     const controlCore = (await import(
@@ -180,10 +201,19 @@ if (controlArtifact !== undefined) {
       controlLink.link,
       controlCore.formatProgram,
       controlBackends.compile,
+      controlBackends.COMPILER_VERSION,
     );
     assert.deepEqual(committedTree(controlCheckout), controlIdentity);
   } else await verifyBuild(root, controlBuild, controlArtifact);
 }
+const compilerInputDifferences =
+  strictNative && controlBuild !== undefined
+    ? sourceCostCompilerDifferences(build, controlBuild)
+    : undefined;
+const sourceAlgorithmDifferences =
+  sourceAlgorithm && controlBuild !== undefined
+    ? sourceCostAlgorithmDifferences(build, controlBuild)
+    : undefined;
 await mkdir(out, { recursive: true });
 const tokenizers = ['o200k_base', 'cl100k_base'].map(
   (name) => [name, getEncoding(name as 'o200k_base' | 'cl100k_base')] as const,
@@ -283,6 +313,15 @@ if (args.includes('--prepare-only')) {
     baseline: baselineIdentity,
     control: controlIdentity,
     controlMode,
+    compilerInputDifferences,
+    sourceAlgorithmDifferences,
+    ...(strictNative
+      ? {
+          nativeRebuilds,
+          restriction:
+            'Strict native comparisons require stripped symbols; keep is refused because debug paths are not reproducible across output directories.',
+        }
+      : {}),
     scope: 'Provenance and frozen-input checks only; no timing samples or performance conclusion.',
     nativeBuild: build,
     controlBuild,
@@ -397,12 +436,26 @@ await writeReport(join(out, 'results.json'), {
   baseline: baselineIdentity,
   control: controlIdentity,
   controlMode,
+  compilerInputDifferences,
+  sourceAlgorithmDifferences,
+  ...(strictNative
+    ? {
+        nativeRebuilds,
+        restriction:
+          'Strict native comparisons require stripped symbols; keep is refused because debug paths are not reproducible across output directories.',
+      }
+    : {}),
   startedAt,
   finishedAt: new Date().toISOString(),
   scope:
     'Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and compiled A0 frontend. Parser/checker plus one historical C text emitter. Frontend instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter, model inference and generated-target execution excluded. Every fresh process preloads the common candidate SDK and its selected artifact; candidate artifact also preloaded for historical and TS controls. Per-sample preload records identify every Wasm component, hash and size. Artifact validation and Wasm module compilation are outside frontend/pipeline phases; fresh-child wall time includes process startup and preparation. No official source cutover or no-regression conclusion is implied.',
   protocol:
-    'Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every arm uses the historical baseline C text emitter, so frontend IR is compared through one fixed backend even when frontend artifact code generation changes. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution. Compiled-backend mode requires the same A0 source closure/count, generic arena runtime hashes, libc/builtins and Clang/LLD versions; backend code generation, feature requirements and stack settings are separately recorded in the complete build manifests and are not claimed matched.',
+    'Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every arm uses the historical baseline C text emitter, so frontend IR is compared through one fixed backend even when frontend artifact code generation changes. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution. ' +
+    (sourceAlgorithm
+      ? 'Source-algorithm mode requires two freshly recorded C-derived artifacts with identical compiler/host inputs, compiler version, consumed structural API signatures, ABI, runtime, libraries, toolchain, headers, effective compiler command, frontend emission options and complete compile/link flags. Only A0 source closure, normalized source hash and function count may differ and all differences are recorded. Both artifacts reproduce their own exact C and complete Wasm/build record through their existing fresh builders. Legacy manifests are ineligible.'
+      : compilerCodegen
+        ? 'Compiler-codegen mode requires two freshly recorded C-derived artifacts: identical A0 source closure/count, ABI, runtime, libraries, Clang/LLD and compiler build versions, frontend emission options and complete normalized compile/link flags. Both artifacts reproduce exact C through their own fresh compilers; complete compiler inventories and all differing inputs are recorded. Legacy manifests are ineligible.'
+        : 'Compiled-backend mode requires the same A0 source closure/count, generic arena runtime hashes, libc/builtins and Clang/LLD versions; backend code generation, feature requirements and stack settings are separately recorded in the complete build manifests and are not claimed matched.'),
   workerSha256: workerSHA256,
   historicalEmitterBanner,
   frozenEmitterBanner,
