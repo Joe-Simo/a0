@@ -13,9 +13,11 @@ import { compile } from '../src/backends.js';
 import type * as Core from '../src/core.js';
 import { formatProgram } from '../src/core.js';
 import type * as Dense from '../src/dense.js';
+import type * as Link from '../src/link.js';
 import { link } from '../src/link.js';
 import { committedTree } from './measurement-checkout.js';
 import { writeReport } from './scrub-results.js';
+import { verifyNativeInputs } from './source-native-artifact.js';
 import { loadSource, systemLoadTriple } from './system-load.js';
 
 const args = process.argv.slice(2);
@@ -23,6 +25,9 @@ const option = (name: string): string | undefined =>
   args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const controlArtifactArg = option('control-artifact');
 const controlArtifact = controlArtifactArg === undefined ? undefined : resolve(controlArtifactArg);
+const controlCheckoutArg = option('control-checkout');
+const controlCheckout = controlCheckoutArg === undefined ? undefined : resolve(controlCheckoutArg);
+assert.ok(!controlCheckout || controlArtifact, '--control-checkout requires --control-artifact');
 const baselineArg = option('baseline'),
   artifactArg = option('artifact'),
   outArg = option('out');
@@ -36,7 +41,8 @@ const baseline = resolve(baselineArg),
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const identity = committedTree(root),
   baselineIdentity = committedTree(baseline);
-for (const checkout of [baseline, root]) {
+const controlIdentity = controlCheckout === undefined ? undefined : committedTree(controlCheckout);
+for (const checkout of new Set([baseline, root, ...(controlCheckout ? [controlCheckout] : [])])) {
   const built = spawnSync('bun', ['x', 'tsc', '-p', 'tsconfig.json', '--incremental', 'false'], {
     cwd: checkout,
     encoding: 'utf8',
@@ -65,45 +71,103 @@ const units = JSON.parse(await readFile(join(experiment, 'inputs/index.json'), '
   outputSHA256: string;
   inputSHA256: string;
 }[];
-const build = JSON.parse(await readFile(join(artifact, 'build.json'), 'utf8'));
+const buildText = await readFile(join(artifact, 'build.json'), 'utf8');
+const build = JSON.parse(buildText);
 assert.equal(hash(await readFile(join(artifact, 'frontend.wasm'))), build.wasmSHA256);
-assert.equal(build.entry, 'compiler/source_frontend.a0');
-const linked = await link(join(root, build.entry), (path) => readFile(path, 'utf8'));
-assert.equal(hash(formatProgram(linked.program)), build.sourceSHA256, 'artifact source differs');
-assert.equal(
-  hash(compile(linked.program, 'c', { cIo: 'host' }).text),
-  build.cSHA256,
-  'artifact C differs',
-);
-assert.deepEqual(
-  build.modules.map((module: { path: string }) => resolve(root, module.path)).sort(),
-  linked.sources.map((source) => resolve(source.path)).sort(),
-  'artifact dependency closure differs',
-);
-assert.equal(
-  hash(await readFile(join(root, 'tools/native/source_frontend.c'))),
-  build.driverSHA256,
-);
-for (const module of build.modules as { path: string; sha256: string }[]) {
+async function verifyBuild(
+  checkout: string,
+  record: typeof build,
+  linker: typeof Link.link = link,
+  formatter: typeof Core.formatProgram = formatProgram,
+  emitter: typeof Backends.compile = compile,
+): Promise<void> {
+  await verifyNativeInputs(checkout, record.nativeInputs);
+  assert.equal(record.entry, 'compiler/source_frontend.a0');
+  const linked = await linker(join(checkout, record.entry), (path) => readFile(path, 'utf8'));
+  assert.equal(hash(formatter(linked.program)), record.sourceSHA256, 'artifact source differs');
   assert.equal(
-    hash(await readFile(join(root, module.path))),
-    module.sha256,
-    `stale module ${module.path}`,
+    hash(emitter(linked.program, 'c', { cIo: 'host' }).text),
+    record.cSHA256,
+    'artifact C differs',
   );
+  assert.deepEqual(
+    record.modules.map((module: { path: string }) => resolve(checkout, module.path)).sort(),
+    linked.sources.map((source) => resolve(source.path)).sort(),
+    'artifact dependency closure differs',
+  );
+  assert.equal(
+    hash(await readFile(join(checkout, 'tools/native/source_frontend.c'))),
+    record.driverSHA256,
+  );
+  for (const module of record.modules as { path: string; sha256: string }[])
+    assert.equal(
+      hash(await readFile(join(checkout, module.path))),
+      module.sha256,
+      `stale module ${module.path}`,
+    );
 }
+await verifyBuild(root, build);
 let controlBuild: typeof build | undefined;
+let controlBuildText: string | undefined;
 if (controlArtifact !== undefined) {
-  controlBuild = JSON.parse(await readFile(join(controlArtifact, 'build.json'), 'utf8'));
+  controlBuildText = await readFile(join(controlArtifact, 'build.json'), 'utf8');
+  controlBuild = JSON.parse(controlBuildText);
   assert.equal(
     hash(await readFile(join(controlArtifact, 'frontend.wasm'))),
     controlBuild.wasmSHA256,
   );
-  for (const field of ['sourceSHA256', 'cSHA256', 'driverSHA256', 'aggregateBytes', 'stackBytes'])
-    assert.equal(
-      controlBuild[field],
-      build[field],
-      `control differs in ${field}; this comparison permits only Wasm build changes`,
+  if (controlCheckout === undefined) {
+    for (const field of [
+      'sourceSHA256',
+      'cSHA256',
+      'driverSHA256',
+      'aggregateBytes',
+      'stackBytes',
+      'frontendABI',
+      'nativeInputs',
+      'modules',
+      'libcSHA256',
+      'builtinsSHA256',
+    ])
+      assert.deepEqual(
+        controlBuild[field],
+        build[field],
+        `control differs in ${field}; this comparison permits only Wasm build changes`,
+      );
+  } else {
+    const controlCore = (await import(
+      pathToFileURL(join(controlCheckout, 'dist/src/core.js')).href
+    )) as typeof Core;
+    const controlLink = (await import(
+      pathToFileURL(join(controlCheckout, 'dist/src/link.js')).href
+    )) as typeof Link;
+    const controlBackends = (await import(
+      pathToFileURL(join(controlCheckout, 'dist/src/backends.js')).href
+    )) as typeof Backends;
+    await verifyBuild(
+      controlCheckout,
+      controlBuild,
+      controlLink.link,
+      controlCore.formatProgram,
+      controlBackends.compile,
     );
+    for (const field of [
+      'sourceSHA256',
+      'modules',
+      'frontendABI',
+      'aggregateBytes',
+      'stackBytes',
+      'libcSHA256',
+      'builtinsSHA256',
+      'clangFlags',
+      'requiredWasmFeatures',
+      'optimization',
+      'symbols',
+      'symbolFlags',
+    ])
+      assert.deepEqual(controlBuild[field], build[field], `transport control differs in ${field}`);
+    assert.deepEqual(committedTree(controlCheckout), controlIdentity);
+  }
 }
 await mkdir(out, { recursive: true });
 const tokenizers = ['o200k_base', 'cl100k_base'].map(
@@ -153,6 +217,21 @@ for (const unit of units) {
   const prepared = JSON.stringify(input);
   preparedInputs.set(unit.input, hash(prepared));
   await writeFile(join(out, unit.input), prepared);
+}
+if (args.includes('--prepare-only')) {
+  await writeReport(join(out, 'preparation.json'), {
+    schema: 1,
+    candidate: identity,
+    baseline: baselineIdentity,
+    control: controlIdentity,
+    scope: 'Provenance and frozen-input checks only; no timing samples or performance conclusion.',
+    nativeBuild: build,
+    controlBuild,
+    preparedInputs: Object.fromEntries(preparedInputs),
+    inputs,
+  });
+  console.log(`PASS prepared ${units.length} inputs; artifact provenance verified; no timing run`);
+  process.exit(0);
 }
 const arms = ['old-canonical', 'old-dense', 'flat-ts-control', 'flat-a0'];
 if (controlArtifact !== undefined) arms.push('flat-a0-control');
@@ -206,10 +285,21 @@ for (let round = -1; round < 7; round++) {
 }
 assert.deepEqual(committedTree(root), identity, 'candidate changed during measurement');
 assert.deepEqual(committedTree(baseline), baselineIdentity, 'baseline changed during measurement');
+if (controlCheckout !== undefined)
+  assert.deepEqual(
+    committedTree(controlCheckout),
+    controlIdentity,
+    'control checkout changed during measurement',
+  );
 assert.equal(
   hash(await readFile(join(artifact, 'frontend.wasm'))),
   build.wasmSHA256,
   'artifact changed',
+);
+assert.equal(
+  await readFile(join(artifact, 'build.json'), 'utf8'),
+  buildText,
+  'build record changed',
 );
 assert.equal(hash(await readFile(workerPath)), workerSHA256, 'worker changed');
 for (const [file, digest] of preparedInputs)
@@ -251,16 +341,27 @@ const rows = units.map((unit) => ({
     ]),
   ),
 }));
-if (controlArtifact !== undefined)
+if (controlArtifact !== undefined) {
   assert.equal(
     hash(await readFile(join(controlArtifact, 'frontend.wasm'))),
     controlBuild.wasmSHA256,
     'control artifact changed',
   );
+  assert.equal(
+    await readFile(join(controlArtifact, 'build.json'), 'utf8'),
+    controlBuildText,
+    'control build record changed',
+  );
+}
 await writeReport(join(out, 'results.json'), {
   schema: 1,
   candidate: identity,
   baseline: baselineIdentity,
+  control: controlIdentity,
+  controlMode:
+    controlCheckout === undefined
+      ? 'wasm-build-options'
+      : 'same-a0-source-separate-native-transport',
   startedAt,
   finishedAt: new Date().toISOString(),
   scope:
