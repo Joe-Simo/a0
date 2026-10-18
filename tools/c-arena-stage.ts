@@ -25,6 +25,13 @@ export const C_STAGE_RESOURCES = {
   stackBytes: 1 << 30,
 };
 export type StageResources = typeof C_STAGE_RESOURCES;
+export interface BootstrappedCStage {
+  readonly exe: string;
+  readonly source: string;
+  readonly sourcePath: string;
+  readonly seedSHA256: string;
+  readonly chunks: number;
+}
 const sha = (text: string | Uint8Array): string => createHash('sha256').update(text).digest('hex');
 
 export function runCStage(
@@ -33,7 +40,17 @@ export function runCStage(
   output: string,
   resources: StageResources = C_STAGE_RESOURCES,
 ): ReturnType<typeof runTool> {
-  return runTool(exe, [source, output, ...Object.values(resources).map(String)], {
+  const values = [
+    resources.arenaWords,
+    resources.outputWords,
+    resources.quantum,
+    resources.resumes,
+    resources.inputCapacity,
+    resources.outputCapacity,
+    resources.flags,
+    resources.stackBytes,
+  ];
+  return runTool(exe, [source, output, ...values.map(String)], {
     timeoutMs: 900_000,
   });
 }
@@ -81,12 +98,7 @@ export function buildCStage(
 export async function bootstrapCStage(
   dir: string,
   clang = findClang(),
-): Promise<{
-  readonly exe: string;
-  readonly source: string;
-  readonly seedSHA256: string;
-  readonly chunks: number;
-}> {
+): Promise<BootstrappedCStage> {
   await mkdir(dir, { recursive: true });
   const linked = await link('compiler/c_stage_arena.a0', (path) => readFile(path, 'utf8'));
   const source = closure(linked.program.functions, C_STAGE_ENTRY);
@@ -94,16 +106,24 @@ export async function bootstrapCStage(
   const [seedExe] = await buildStage(clang, 'verified-seed', seed.c, 'emitchunkio', dir);
   const emitted = emitChunked(source, (chunk, bounds) => runStageChunk(seedExe, chunk, bounds));
   assert.equal(emitted.code, 0, `verified seed rejected ${emitted.failed?.own.join(',')}`);
-  await writeFile(join(dir, 'compiler-source.a0'), source);
+  const sourcePath = join(dir, 'compiler-source.a0');
+  await writeFile(sourcePath, source);
   await writeFile(join(dir, 'module.c'), emitted.text);
   const exe = buildCStage(clang, dir);
-  return { exe, source, seedSHA256: sha(seed.c), chunks: emitted.chunks };
+  return { exe, source, sourcePath, seedSHA256: sha(seed.c), chunks: emitted.chunks };
 }
 
-export async function reproduceCStage(dir: string): Promise<void> {
+export async function reproduceCStage(dir: string, prepared?: BootstrappedCStage): Promise<void> {
   const clang = findClang();
-  const initial = await bootstrapCStage(join(dir, 'stage1'), clang);
-  const frozen = join(dir, 'stage1', 'compiler-source.a0');
+  const shimFiles = ['c_arena_stage.c', 'arena_runtime.c', 'arena_runtime.h'];
+  const shim = await Promise.all(
+    shimFiles.map(async (file) => ({
+      file,
+      sha256: sha(await readFile(resolve('tools/native', file))),
+    })),
+  );
+  const initial = prepared ?? (await bootstrapCStage(join(dir, 'stage1'), clang));
+  const frozen = initial.sourcePath;
   const rows: Record<string, unknown>[] = [];
   let exe = initial.exe;
   let previous: Buffer | undefined;
@@ -114,7 +134,12 @@ export async function reproduceCStage(dir: string): Promise<void> {
     const module = join(next, 'module.c');
     const ran = runCStage(exe, frozen, module);
     await writeFile(join(next, 'stderr.log'), ran.stderr);
-    rows.push({ stage, accepted: ran.ok, stdout: ran.stdout, stderr: ran.stderr });
+    rows.push({
+      stage,
+      accepted: ran.ok,
+      stdout: ran.stdout.replaceAll(dir, '<artifact>'),
+      stderr: ran.stderr.replaceAll(dir, '<artifact>'),
+    });
     if (!ran.ok) {
       failure = `stage ${stage} rejected the frozen original input`;
       break;
@@ -140,6 +165,13 @@ export async function reproduceCStage(dir: string): Promise<void> {
     }
   }
   assert.equal(sha(await readFile(frozen)), sha(initial.source), 'original source is immutable');
+  for (const file of shim) {
+    assert.equal(
+      sha(await readFile(resolve('tools/native', file.file))),
+      file.sha256,
+      'same immutable shim/runtime',
+    );
+  }
   await writeReport(join(dir, 'proof.json'), {
     status: failure === undefined ? 'passed' : 'failed',
     failure,
@@ -150,6 +182,7 @@ export async function reproduceCStage(dir: string): Promise<void> {
     sourceSHA256: sha(initial.source),
     seedSHA256: initial.seedSHA256,
     bootstrapChunks: initial.chunks,
+    shim,
     resources: C_STAGE_RESOURCES,
     rows,
   });

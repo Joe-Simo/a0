@@ -1,0 +1,164 @@
+{
+  "status": "passed",
+  "scope": "Internal C-only stage foundation; public readers, seed, ARM64 and formatter defaults unchanged",
+  "baseCommit": "e1be677b97782b907d313237ef8b60b7bc4b8a3a",
+  "facadeCommit": "c0a6028",
+  "emitterFixCommit": "75ce5efe00e32298fe982144c859677eb0fc4470",
+  "proof": {
+    "status": "passed",
+    "entry": "arena_c_stage",
+    "bootstrap": "verified native A0 seed; TS only links and plans this fixed implementation",
+    "stageExecution": "C + POSIX; raw original source, A0 service, same generic shim, verbatim C",
+    "sourceBytes": 439967,
+    "sourceSHA256": "289d3fab2ff8c56b3380d18db5d748e8e6a0059c39f745d209563cb553ac06e5",
+    "seedSHA256": "3ed1284a3ba79243079fd39c5792a8de671f31e76dccecbc4ffe6adc06cd2660",
+    "bootstrapChunks": 11,
+    "shim": [
+      {
+        "file": "c_arena_stage.c",
+        "sha256": "b17e8812a064ceac922d4791c580d80b047334799966b652eb035f277f66bbfc"
+      },
+      {
+        "file": "arena_runtime.c",
+        "sha256": "ff4ab723d8976ec7982589756a500740a7e804252e0091cd5d6f08e6ba15acba"
+      },
+      {
+        "file": "arena_runtime.h",
+        "sha256": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9"
+      }
+    ],
+    "resources": {
+      "arenaWords": 100000000,
+      "outputWords": 100000000,
+      "quantum": 97,
+      "resumes": 10000000,
+      "inputCapacity": 1,
+      "outputCapacity": 1,
+      "flags": 0,
+      "stackBytes": 1073741824
+    },
+    "rows": [
+      {
+        "stage": 2,
+        "accepted": true,
+        "stdout": "",
+        "stderr": "",
+        "cBytes": 2453258,
+        "cSHA256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+        "identicalToPrevious": null,
+        "nativeBuilt": true
+      },
+      {
+        "stage": 3,
+        "accepted": true,
+        "stdout": "",
+        "stderr": "",
+        "cBytes": 2453258,
+        "cSHA256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+        "identicalToPrevious": true,
+        "nativeBuilt": true
+      },
+      {
+        "stage": 4,
+        "accepted": true,
+        "stdout": "",
+        "stderr": "",
+        "cBytes": 2453258,
+        "cSHA256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+        "identicalToPrevious": true,
+        "nativeBuilt": true
+      }
+    ]
+  },
+  "standalone": {
+    "emptyEnvironment": true,
+    "executableSearchPathUnavailable": true,
+    "accepted": true,
+    "cSHA256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3"
+  },
+  "originalFailure": {
+    "status": "failed",
+    "failure": "Stage1 accepted original source and published stage2 C; native stage2 build fails on repeated field0 in large record constructors",
+    "sourceBytes": 439953,
+    "sourceSHA256": "b3a9340b2e55eb83070eb08675882c3cacc10d8ba51f20349e1a703da2b53950",
+    "stage1CBytes": 1935976,
+    "stage1CSHA256": "56c76361adbdc3eec17b5057bd9ca1dab60d2fbbe8155859aad547d987d74018",
+    "stage2CBytes": 2453142,
+    "stage2CSHA256": "a7010432fdec244bb8dd1ea69e77252fb4c06e8bdb45846b415781266cf4ec70",
+    "nativeErrors": "reproduction.log",
+    "originalInputRetained": true,
+    "stage2CVerbatim": true,
+    "stage3Run": false,
+    "stage4Run": false
+  },
+  "originalLargeArrayFailure": {
+    "sourceSHA256": "13e3323337a73092a863e48c3d6af4469798f594f0647f831a8ab303b7e0f1ae",
+    "cSHA256": "3a91382f49d3058f5965281ed792abadf79d8a07bc58b284b279d69c6b31f912",
+    "independentChecksum": 1808984579,
+    "optimizations": [
+      {
+        "level": 0,
+        "nativeBuilt": true,
+        "checksumAccepted": false
+      },
+      {
+        "level": 2,
+        "nativeBuilt": true,
+        "checksumAccepted": false
+      }
+    ]
+  },
+  "validation": {
+    "cStageRegression": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "rawSourceCRegression": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "generatedCExecution": {
+      "optimizationLevels": [
+        0,
+        2
+      ],
+      "undefinedBehaviorSanitizer": true,
+      "warningsAreErrors": true
+    },
+    "sourceBoundary": {
+      "acceptedBytes": 2097152,
+      "refusedBytes": 2097153,
+      "refusalCode": 6
+    },
+    "transportFaults": [
+      "LOAD status5",
+      "ALLOC status4",
+      "malformed FINISH acknowledgement",
+      "nonbyte output"
+    ],
+    "behaviorTargets": [
+      "c-clang",
+      "c-gcc",
+      "cpp",
+      "c-parallel",
+      "selfhost-c"
+    ],
+    "behaviorStatus": "passed",
+    "lint": "passed",
+    "typecheck": "passed",
+    "prereviewScore": 0,
+    "checkedInSeed": {
+      "stage2Equals3": true,
+      "stage3Equals4": true,
+      "cBytes": 536911,
+      "seedFilesChanged": false
+    }
+  },
+  "limits": [
+    "Resume budget bounds scheduling calls; parse/lower/emission are not preemptible",
+    "Existing C service capability restrictions remain; no public frontend cutover",
+    "No compilation speed, execution speed or memory superiority claim"
+  ]
+}

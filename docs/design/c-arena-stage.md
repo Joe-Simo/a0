@@ -44,3 +44,9 @@ imports need a linked service; flags are currently zero; strict operations need
 the emitter's proof or checked-operation support. This stage does not alter
 ARM64, native CLI graph policy, diagnostics, private revision serialization,
 the public formatter, or bootstrap defaults.
+
+The retained [internal stage proof](../../results/c-arena-stage.json) records
+exact original-input and generated-C hashes, the initial large-constructor
+failure, the generic repair, and the successful repeated stages. It is a
+correctness result for this bounded stage, without performance or public
+cutover claims.

@@ -3,8 +3,15 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { after, test } from 'node:test';
+import { LIMITS } from '../src/core.js';
 import { findClang, runTool } from '../src/toolchain.js';
-import { bootstrapCStage, C_STAGE_RESOURCES, runCStage } from '../tools/c-arena-stage.js';
+import {
+  type BootstrappedCStage,
+  bootstrapCStage,
+  C_STAGE_RESOURCES,
+  reproduceCStage,
+  runCStage,
+} from '../tools/c-arena-stage.js';
 
 const clang = findClang();
 const skip =
@@ -14,16 +21,16 @@ const skip =
       ? 'POSIX stage'
       : false;
 let scratch: string | undefined;
-let prepared: Promise<{ exe: string; dir: string }> | undefined;
+let prepared: Promise<BootstrappedCStage & { dir: string }> | undefined;
 after(async () => {
   if (scratch) await rm(scratch, { recursive: true, force: true });
 });
-function prepare(): Promise<{ exe: string; dir: string }> {
+function prepare(): Promise<BootstrappedCStage & { dir: string }> {
   prepared ??= (async () => {
     const dir = await mkdtemp(join(tmpdir(), 'a0-c-arena-stage-'));
     scratch = dir;
     const built = await bootstrapCStage(dir, clang);
-    return { exe: built.exe, dir };
+    return { ...built, dir };
   })();
   return prepared;
 }
@@ -41,7 +48,7 @@ test('C arena stage preserves source/spec/strict/IO semantics and atomic refusal
     await writeFile(input, source);
     await writeFile(output, 'keep prior artifact\n');
     const ran = runCStage(exe, input, output, { ...C_STAGE_RESOURCES, ...resources });
-    assert.equal(ran.status, code, `${source}\n${ran.stderr}`);
+    assert.equal(ran.status, code, `${input}\n${ran.stderr}`);
     assert.equal(await readFile(input, 'utf8'), source, 'immutable original bytes');
     const bytes = await readFile(output, 'utf8');
     if (code)
@@ -120,6 +127,17 @@ test('C arena stage preserves source/spec/strict/IO semantics and atomic refusal
     ['fn bad u32 -> u32\nex 7 ->8\nret p0\nend\nfn malformed\nx add\nret x\nend\n', 6, {}],
   ] as const)
     await compile(source, code, resources);
+  const atLimit = small.padEnd(LIMITS.maxSourceBytes, ' ');
+  await compile(atLimit);
+  await compile(`${atLimit} `, 6);
+});
+
+test('C arena stage reproduces the frozen original input through stages 2, 3 and 4', {
+  skip,
+  timeout: 900_000,
+}, async () => {
+  const initial = await prepare();
+  await reproduceCStage(join(initial.dir, 'reproduction'), initial);
 });
 
 test('C arena stage refuses transport corruption and incomplete FINISH before publication', {
