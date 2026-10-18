@@ -1,0 +1,163 @@
+use "arena_shared.a0"
+use "lex_arena_shared.a0"
+
+fn sp_fail (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 ne p1 0
+go and q1 q2
+q3 get p 0
+q4 select go 6 q3
+a set p 0 q4
+q5 get p 1
+q6 select go p1 q5
+b set a 1 q6
+q7 get p 2
+q8 select go p2 q7
+c set b 2 q8
+q9 get p 3
+q10 select go p3 q9
+d set c 3 q10
+q11 at p0 1
+q12 at p0 2
+q13 rec d q11 q12
+ret q13
+end
+
+fn sp_fill (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 8
+q1 get p 9
+left sub q0 q1
+q2 gt left 128
+n select q2 128 left
+q3 at p0 2
+q4 get p 6
+q5 get p 9
+r call arena_load q3 q4 q5 n
+q6 at r 0
+a set p 0 q6
+q7 get p 9
+b set a 10 q7
+q8 gt n 126
+q9 select q8 126 n
+c set b 11 q9
+q10 at r 1
+q11 at r 2
+q12 rec c q10 q11
+ret q12
+end
+
+fn sp_peek (u32x128,u32x128,io) -> (u32x128,u32x128,io)
+p at p0 0
+q0 get p 9
+q1 get p 10
+q2 ge q0 q1
+q3 get p 9
+q4 get p 10
+q5 sub q3 q4
+q6 get p 11
+q7 lt q5 q6
+cached and q2 q7
+q8 get p 0
+q9 eq q8 0
+q10 get p 9
+q11 get p 8
+q12 lt q10 q11
+q13 and q9 q12
+q14 xor cached true
+go and q13 q14
+q15 select go 1 0
+q16 fold sp_fill q15 p0
+ret q16
+end
+
+fn sp_char u32x128 u32x128 -> u32
+q0 get p0 9
+q1 get p0 8
+q2 lt q0 q1
+q3 get p0 9
+q4 get p0 10
+q5 sub q3 q4
+q6 get p1 q5
+q7 select q2 q6 0
+ret q7
+end
+
+fn sp_space u32x128 u32x128 -> u32
+q0 get p0 9
+q1 get p0 10
+at sub q0 q1
+q2 get p0 8
+q3 get p0 9
+left sub q2 q3
+c call sp_char p0 p1
+n call al_white p1 at left
+q4 get p0 9
+q5 get p0 8
+q6 ge q4 q5
+q7 eq c 10
+q8 select q7 1 n
+q9 select q6 0 q8
+ret q9
+end
+
+fn sp_digit u32 -> bool
+q0 ge p0 48
+q1 le p0 57
+q2 and q0 q1
+ret q2
+end
+
+fn sp_copyok (u32x128,u32x128,io) u32 (u32,u32,u32) u32 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+
+fn sp_startscalar (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q set p 14 p2
+q0 get p 9
+q_1 set q 15 q0
+q1 eq p2 2
+q2 select q1 3 0
+q_2 set q_1 16 q2
+q_3 set q_2 17 0
+q_4 set q_3 18 0
+q_5 set q_4 19 0
+q3 at p0 1
+q4 at p0 2
+q5 rec q_5 q3 q4
+ret q5
+end
+
+fn sp_exok (u32x128,u32x128,io) u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 get p 12
+q3 ne q2 2
+q4 get p 9
+q5 get p 8
+q6 lt q4 q5
+q7 or q3 q6
+q8 and q1 q7
+ret q8
+end
+
+fn sp_wordsok (u32x128,u32x128,io) u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 get p 9
+q3 get p 8
+q4 lt q2 q3
+q5 get p 14
+q6 ne q5 0
+q7 or q4 q6
+q8 and q1 q7
+ret q8
+end

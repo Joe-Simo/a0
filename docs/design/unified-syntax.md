@@ -97,6 +97,24 @@ The native A0 frontend experiment is reusable, but its recorded performance/reso
 must be resolved and the compiler, editor and MCP entry points must cut over before the historical
 readers and public modes can be removed. This is still an incomplete migration.
 
+The native candidate now has a compiler entry at `compiler/source_frontend.a0`. Grammar-independent
+storage, type checking, evaluation and specification verification live in shared compiler modules;
+existing bootstrap modules import those same definitions. `tools/source-native-build.ts` builds
+that entry through the public C backend and a generic arena transport. It does not load a source
+implementation from the archived experiment. The portable `src/source-native.ts` host reads checked
+IR directly, preserves callee/type identity, and decodes type rows iteratively. It does not call
+the TypeScript source parser or validator. `tools/source-audit.ts --native-artifact=DIR` checks this
+host and artifact against the source migration controls. The existing TypeScript compiler remains
+the public default until the integration and performance gates pass.
+
+Build the internal candidate with an installed Clang/WASI toolchain (no downloads are performed):
+
+```sh
+bun run build
+node dist/tools/source-native-build.js --out=.a0-tmp/source-frontend \
+  --sysroot=/path/to/wasi/usr --builtins=/path/to/libclang_rt.builtins-wasm32.a
+```
+
 ## Measurements
 
 `tools/frontend-baseline.ts` compares built checkouts on identical input snapshots:

@@ -1,0 +1,113 @@
+use "lines_arena_shared.a0"
+use "symbol_arena_shared.a0"
+use "types_arena_shared.a0"
+
+fn ap_lineok (u32x128,io) u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+
+fn ap_initlines (u32x128,io) u32 -> (u32x128,io)
+p at p0 0
+q0 at p0 1
+q1 get p 6
+q2 get p 7
+r call parser_lines q0 q1 q2
+q3 at r 1
+q4 at q3 0
+m0_a set p 32 q4
+q5 at q3 1
+m0_b set m0_a 33 q5
+q6 at q3 2
+q7 set m0_b 34 q6
+q8 at r 2
+q9 at q8 0
+m1_a set q7 35 q9
+q10 at q8 1
+m1_b set m1_a 36 q10
+q11 at q8 2
+q12 set m1_b 37 q11
+q13 at r 3
+q14 at q13 0
+m2_a set q12 38 q14
+q15 at q13 1
+m2_b set m2_a 39 q15
+q16 at q13 2
+q17 set m2_b 40 q16
+q18 at r 4
+q set q17 25 q18
+q19 at r 5
+q_1 set q 26 q19
+q20 at r 0
+q21 set q_1 0 q20
+q22 at r 6
+q23 rec q21 q22
+ret q23
+end
+
+fn ap_initsymbols (u32x128,io) u32 -> (u32x128,io)
+q0 at p0 1
+r call si_new q0
+q1 at p0 0
+q2 at r 1
+q3 at q2 0
+q4 at q3 0
+m1_a set q1 62 q4
+q5 at q3 1
+m1_b set m1_a 63 q5
+q6 at q3 2
+q7 set m1_b 64 q6
+q8 at q2 1
+m0_b set q7 65 q8
+q9 at q2 2
+m0_c set m0_b 66 q9
+q10 at q2 3
+q11 set m0_c 67 q10
+q12 at r 0
+q13 set q11 0 q12
+q14 at r 2
+q15 rec q13 q14
+ret q15
+end
+
+fn ap_inittypes (u32x128,io) u32 -> (u32x128,io)
+q0 at p0 1
+r call tp_new q0
+q1 at p0 0
+q2 at r 1
+q3 at q2 0
+q4 at q3 0
+m1_a set q1 68 q4
+q5 at q3 1
+m1_b set m1_a 69 q5
+q6 at q3 2
+q7 set m1_b 70 q6
+q8 at q2 1
+q9 at q8 0
+m2_a set q7 71 q9
+q10 at q8 1
+m2_b set m2_a 72 q10
+q11 at q8 2
+q12 set m2_b 73 q11
+m0_si at q2 2
+q13 at m0_si 0
+q14 at q13 0
+m3_a set q12 74 q14
+q15 at q13 1
+m3_b set m3_a 75 q15
+q16 at q13 2
+q17 set m3_b 76 q16
+q18 at m0_si 1
+m0_d set q17 77 q18
+q19 at m0_si 2
+m0_e set m0_d 78 q19
+q20 at m0_si 3
+q21 set m0_e 79 q20
+q22 at r 0
+q23 set q21 0 q22
+q24 at r 2
+q25 rec q23 q24
+ret q25
+end
