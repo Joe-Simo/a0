@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 import type * as Backends from '../src/backends.js';
@@ -10,11 +10,15 @@ import type * as Core from '../src/core.js';
 import { validate } from '../src/core.js';
 import type * as Dense from '../src/dense.js';
 import { parseSource } from '../src/source.js';
-import { nativeSource } from '../src/source-native.js';
+import { sourceCostComponents } from './source-cost-control.js';
+import { prepareSourceFrontend } from './source-native-load.js';
 import { systemLoad } from './system-load.js';
 
-const [arm, inputPath, artifact, baseline] = process.argv.slice(2);
-assert.ok(arm && inputPath && artifact && baseline);
+const [arm, inputArg, artifactArg, baselineArg, artifactCheckout] = process.argv.slice(2);
+assert.ok(arm && inputArg && artifactArg && baselineArg);
+const inputPath = resolve(inputArg),
+  artifact = resolve(artifactArg),
+  baseline = resolve(baselineArg);
 const oldCore = (await import(
   pathToFileURL(join(baseline, 'dist/src/core.js')).href
 )) as typeof Core;
@@ -29,10 +33,20 @@ const input = JSON.parse(await readFile(inputPath, 'utf8')) as {
   dense: string;
   unified: string;
 };
-const module = new WebAssembly.Module(await readFile(join(artifact, 'frontend.wasm')));
+// Direct build inputs are relative to their immutable checkout; every arm uses the same SDK.
+if (artifactCheckout !== undefined) process.chdir(resolve(artifactCheckout));
+const prepared = await prepareSourceFrontend(artifact);
+const components = sourceCostComponents(prepared.build);
+const preload = {
+  backend: prepared.build.backend ?? 'clang-wasm',
+  components,
+  componentCount: components.length,
+  totalWasmBytes: prepared.bytes,
+  artifactSha256: prepared.artifactSha256,
+};
 const initialMemory = process.memoryUsage();
 const initialPeakRssBytes = process.resourceUsage().maxRSS * 1024;
-let engine: ReturnType<typeof nativeSource> | undefined;
+let engine: ReturnType<typeof prepared.instantiate> | undefined;
 let program: Core.TypedProgram;
 const loadBefore = systemLoad(),
   cpuBefore = process.cpuUsage(),
@@ -42,7 +56,7 @@ else if (arm === 'old-dense') program = oldCore.validate(oldDense.parseDense(inp
 else if (arm === 'flat-ts-control') program = validate(parseSource(input.unified));
 else {
   assert.ok(arm === 'flat-a0' || arm === 'flat-a0-control');
-  engine = nativeSource(module);
+  engine = prepared.instantiate();
   const result = engine.parse(input.unified);
   assert.ok(result.ok, `native status ${result.status}`);
   program = result.typed;
@@ -74,6 +88,7 @@ console.log(
     heapUsedBytes: memory.heapUsed,
     externalBytes: memory.external,
     wasmLinearMemoryBytes: engine?.memoryBytes ?? 0,
+    preload,
     outputBytes: Buffer.byteLength(output),
     outputSha256: createHash('sha256').update(output).digest('hex'),
   }),

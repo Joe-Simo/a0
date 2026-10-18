@@ -1,4 +1,9 @@
-/** Matched historical-input controls for the modular A0 frontend; no shipping-CLI or AI claim. */
+/**
+ * Matched historical-input controls for the modular A0 frontend; no shipping-CLI or AI claim.
+ * --cross-backend explicitly compares C/direct builds and requires --control-artifact=DIR and
+ * --control-checkout=DIR. --prepare-only verifies provenance and frozen inputs without timing.
+ * Without --cross-backend, the existing C build-option / separate-transport controls apply.
+ */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -14,7 +19,13 @@ import type * as Dense from '../src/dense.js';
 import type * as Link from '../src/link.js';
 import { committedTree } from './measurement-checkout.js';
 import { writeReport } from './scrub-results.js';
-import { verifySourceCostControl } from './source-cost-control.js';
+import { sourceCostArtifact, verifyDirectSourceCostBuild } from './source-cost-artifact.js';
+import {
+  SOURCE_COST_FROZEN_C_BANNER,
+  sourceCostControlMode,
+  verifySourceCostControl,
+  verifySourceCostFrozenC,
+} from './source-cost-control.js';
 import { loadSource, systemLoadTriple } from './system-load.js';
 
 const args = process.argv.slice(2);
@@ -24,7 +35,8 @@ const controlArtifactArg = option('control-artifact');
 const controlArtifact = controlArtifactArg === undefined ? undefined : resolve(controlArtifactArg);
 const controlCheckoutArg = option('control-checkout');
 const controlCheckout = controlCheckoutArg === undefined ? undefined : resolve(controlCheckoutArg);
-assert.ok(!controlCheckout || controlArtifact, '--control-checkout requires --control-artifact');
+const crossBackend = args.includes('--cross-backend');
+const controlMode = sourceCostControlMode(crossBackend, controlArtifact, controlCheckout);
 const baselineArg = option('baseline'),
   artifactArg = option('artifact'),
   outArg = option('out');
@@ -63,28 +75,41 @@ const oldBackends = (await import(
   pathToFileURL(join(baseline, 'dist/src/backends.js')).href
 )) as typeof Backends;
 const expectedOutputs = new Map<string, string>();
+let historicalEmitterBanner: string | undefined;
+const frozenEmitterBanner = SOURCE_COST_FROZEN_C_BANNER;
 const hash = (bytes: string | Uint8Array): string =>
   createHash('sha256').update(bytes).digest('hex');
 const experiment = join(root, 'experiments/unification/frontend-a0');
-const units = JSON.parse(await readFile(join(experiment, 'inputs/index.json'), 'utf8')) as {
+const inputIndexPath = join(experiment, 'inputs/index.json');
+const inputIndexSHA256 = hash(await readFile(inputIndexPath));
+const units = JSON.parse(await readFile(inputIndexPath, 'utf8')) as {
   id: number;
   unit: string;
   input: string;
   outputSHA256: string;
   inputSHA256: string;
 }[];
-const buildText = await readFile(join(artifact, 'build.json'), 'utf8');
-const build = JSON.parse(buildText);
-assert.equal(hash(await readFile(join(artifact, 'frontend.wasm'))), build.wasmSHA256);
-assert.equal((await readFile(join(artifact, 'frontend.wasm'))).length, build.wasmBytes);
+const candidateArtifact = await sourceCostArtifact(artifact);
+const build = candidateArtifact.build;
+assert.ok(crossBackend || build.backend === undefined, 'direct frontend requires --cross-backend');
 async function verifyBuild(
   checkout: string,
-  record: typeof build,
+  record: Readonly<Record<string, unknown>>,
   linker: typeof Link.link = link,
   formatter: typeof Core.formatProgram = formatProgram,
   emitter: typeof Backends.compile = compile,
 ): Promise<void> {
-  await verifyNativeInputs(checkout, record.nativeInputs);
+  if (record.backend === 'direct-wasm') {
+    assert.ok(crossBackend, 'direct frontend requires --cross-backend');
+    await verifyDirectSourceCostBuild(checkout, record, {
+      link: linker,
+      formatProgram: formatter,
+      compile: emitter,
+    });
+    return;
+  }
+  assert.equal(record.backend, undefined, 'unsupported frontend backend');
+  await verifyNativeInputs(checkout, record.nativeInputs as { path: string; sha256: string }[]);
   assert.equal(record.entry, 'compiler/source_frontend.a0');
   const linked = await linker(join(checkout, record.entry), (path) => readFile(path, 'utf8'));
   assert.equal(
@@ -99,7 +124,7 @@ async function verifyBuild(
     'artifact C differs',
   );
   assert.deepEqual(
-    record.modules.map((module: { path: string }) => resolve(checkout, module.path)).sort(),
+    (record.modules as { path: string }[]).map((module) => resolve(checkout, module.path)).sort(),
     linked.sources.map((source) => resolve(source.path)).sort(),
     'artifact dependency closure differs',
   );
@@ -115,20 +140,16 @@ async function verifyBuild(
     );
 }
 await verifyBuild(root, build);
+let controlSnapshot: Awaited<ReturnType<typeof sourceCostArtifact>> | undefined;
 let controlBuild: typeof build | undefined;
-let controlBuildText: string | undefined;
 if (controlArtifact !== undefined) {
-  controlBuildText = await readFile(join(controlArtifact, 'build.json'), 'utf8');
-  controlBuild = JSON.parse(controlBuildText);
-  assert.equal(
-    hash(await readFile(join(controlArtifact, 'frontend.wasm'))),
-    controlBuild.wasmSHA256,
+  controlSnapshot = await sourceCostArtifact(controlArtifact);
+  controlBuild = controlSnapshot.build;
+  verifySourceCostControl(
+    build,
+    controlBuild,
+    crossBackend ? 'compiled-backends' : controlCheckout !== undefined,
   );
-  assert.equal(
-    (await readFile(join(controlArtifact, 'frontend.wasm'))).length,
-    controlBuild.wasmBytes,
-  );
-  verifySourceCostControl(build, controlBuild, controlCheckout !== undefined);
   if (controlCheckout !== undefined) {
     const controlCore = (await import(
       pathToFileURL(join(controlCheckout, 'dist/src/core.js')).href
@@ -147,7 +168,7 @@ if (controlArtifact !== undefined) {
       controlBackends.compile,
     );
     assert.deepEqual(committedTree(controlCheckout), controlIdentity);
-  }
+  } else await verifyBuild(root, controlBuild);
 }
 await mkdir(out, { recursive: true });
 const tokenizers = ['o200k_base', 'cl100k_base'].map(
@@ -156,7 +177,12 @@ const tokenizers = ['o200k_base', 'cl100k_base'].map(
 const preparedInputs = new Map<string, string>();
 const workerPath = join(root, 'dist/tools/source-cost-worker.js');
 const workerSHA256 = hash(await readFile(workerPath));
-const inputs: { unit: string; hashes: Record<string, string>; tokens: unknown }[] = [];
+const inputs: {
+  unit: string;
+  rawInputSHA256: string;
+  hashes: Record<string, string>;
+  tokens: unknown;
+}[] = [];
 for (const unit of units) {
   const frozenInput = await readFile(join(experiment, 'inputs', unit.input), 'utf8');
   assert.equal(hash(frozenInput), unit.inputSHA256, 'frozen input changed');
@@ -173,17 +199,15 @@ for (const unit of units) {
     'Dense control IR differs',
   );
   const output = oldBackends.compile(control, 'c').text;
-  // The archive predates the compiler version bump; require exact bytes after this banner-only substitution.
-  assert.ok(output.startsWith('/* Generated by A0 a0c-0.1.63. Exact u32/bool semantics. */'));
-  assert.equal(
-    hash(output.replace('/* Generated by A0 a0c-0.1.63.', '/* Generated by A0 a0c-0.1.62.')),
-    unit.outputSHA256,
-    'frozen output differs beyond the recorded version banner',
-  );
+  // The archive predates compiler version bumps. Only its first generated-version banner may differ.
+  const currentBanner = verifySourceCostFrozenC(output, unit.outputSHA256);
+  historicalEmitterBanner ??= currentBanner;
+  assert.equal(currentBanner, historicalEmitterBanner, 'historical emitter changed between inputs');
   expectedOutputs.set(unit.unit, hash(output));
   const texts = { canonical: input.canonical, dense: input.dense, flat: input.unified };
   inputs.push({
     unit: unit.unit,
+    rawInputSHA256: unit.inputSHA256,
     hashes: Object.fromEntries(Object.entries(texts).map(([name, text]) => [name, hash(text)])),
     tokens: Object.fromEntries(
       tokenizers.map(([name, encoding]) => [
@@ -198,15 +222,61 @@ for (const unit of units) {
   preparedInputs.set(unit.input, hash(prepared));
   await writeFile(join(out, unit.input), prepared);
 }
+async function verifyUnchanged(): Promise<void> {
+  assert.deepEqual(committedTree(root), identity, 'candidate changed during measurement');
+  assert.deepEqual(
+    committedTree(baseline),
+    baselineIdentity,
+    'baseline changed during measurement',
+  );
+  if (controlCheckout !== undefined)
+    assert.deepEqual(
+      committedTree(controlCheckout),
+      controlIdentity,
+      'control checkout changed during measurement',
+    );
+  assert.deepEqual(
+    await sourceCostArtifact(artifact),
+    candidateArtifact,
+    'candidate artifact or build record changed',
+  );
+  if (controlArtifact !== undefined)
+    assert.deepEqual(
+      await sourceCostArtifact(controlArtifact),
+      controlSnapshot,
+      'control artifact or build record changed',
+    );
+  assert.equal(hash(await readFile(workerPath)), workerSHA256, 'worker changed');
+  assert.equal(
+    hash(await readFile(inputIndexPath)),
+    inputIndexSHA256,
+    'frozen input index changed',
+  );
+  for (const unit of units)
+    assert.equal(
+      hash(await readFile(join(experiment, 'inputs', unit.input))),
+      unit.inputSHA256,
+      'frozen input changed',
+    );
+  for (const [file, digest] of preparedInputs)
+    assert.equal(hash(await readFile(join(out, file))), digest, 'prepared input changed');
+}
 if (args.includes('--prepare-only')) {
+  await verifyUnchanged();
   await writeReport(join(out, 'preparation.json'), {
     schema: 1,
     candidate: identity,
     baseline: baselineIdentity,
     control: controlIdentity,
+    controlMode,
     scope: 'Provenance and frozen-input checks only; no timing samples or performance conclusion.',
     nativeBuild: build,
     controlBuild,
+    artifact: candidateArtifact.preload,
+    controlArtifact: controlSnapshot?.preload,
+    inputIndexSHA256,
+    historicalEmitterBanner,
+    frozenEmitterBanner,
     preparedInputs: Object.fromEntries(preparedInputs),
     inputs,
   });
@@ -232,6 +302,7 @@ for (let round = -1; round < 7; round++) {
           join(out, unit.input),
           arm === 'flat-a0-control' ? (controlArtifact as string) : artifact,
           baseline,
+          arm === 'flat-a0-control' ? (controlCheckout ?? root) : root,
         ],
         {
           encoding: 'utf8',
@@ -241,6 +312,11 @@ for (let round = -1; round < 7; round++) {
       );
       assert.equal(child.status, 0, `${unit.unit}/${arm}: ${child.error ?? ''}\n${child.stderr}`);
       const measurement = JSON.parse(child.stdout);
+      assert.deepEqual(
+        measurement.preload,
+        arm === 'flat-a0-control' ? controlSnapshot?.preload : candidateArtifact.preload,
+        'subject artifact preload differs',
+      );
       assert.equal(
         measurement.outputSha256,
         expectedOutputs.get(unit.unit),
@@ -263,27 +339,7 @@ for (let round = -1; round < 7; round++) {
     }
   console.log(`round ${round} complete`);
 }
-assert.deepEqual(committedTree(root), identity, 'candidate changed during measurement');
-assert.deepEqual(committedTree(baseline), baselineIdentity, 'baseline changed during measurement');
-if (controlCheckout !== undefined)
-  assert.deepEqual(
-    committedTree(controlCheckout),
-    controlIdentity,
-    'control checkout changed during measurement',
-  );
-assert.equal(
-  hash(await readFile(join(artifact, 'frontend.wasm'))),
-  build.wasmSHA256,
-  'artifact changed',
-);
-assert.equal(
-  await readFile(join(artifact, 'build.json'), 'utf8'),
-  buildText,
-  'build record changed',
-);
-assert.equal(hash(await readFile(workerPath)), workerSHA256, 'worker changed');
-for (const [file, digest] of preparedInputs)
-  assert.equal(hash(await readFile(join(out, file))), digest, 'prepared input changed');
+await verifyUnchanged();
 const median = (values: number[]): number =>
   values.sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
 const fields = [
@@ -321,37 +377,31 @@ const rows = units.map((unit) => ({
     ]),
   ),
 }));
-if (controlArtifact !== undefined) {
-  assert.equal(
-    hash(await readFile(join(controlArtifact, 'frontend.wasm'))),
-    controlBuild.wasmSHA256,
-    'control artifact changed',
-  );
-  assert.equal(
-    await readFile(join(controlArtifact, 'build.json'), 'utf8'),
-    controlBuildText,
-    'control build record changed',
-  );
-}
 await writeReport(join(out, 'results.json'), {
   schema: 1,
   candidate: identity,
   baseline: baselineIdentity,
   control: controlIdentity,
-  controlMode:
-    controlCheckout === undefined
-      ? 'wasm-build-options'
-      : 'same-a0-source-separate-native-transport',
+  controlMode,
   startedAt,
   finishedAt: new Date().toISOString(),
   scope:
-    'Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and modular A0 frontend. Parser/checker plus the same historical C text emitter. Native instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter and model inference excluded. Compiler modules are preloaded in every fresh process. Each native arm preloads its own recorded Wasm artifact; memory includes that artifact and the input. Wasm module compilation is excluded, instantiation is included. No official source cutover or no-regression conclusion is implied.',
+    'Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and compiled A0 frontend. Parser/checker plus one historical C text emitter. Frontend instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter, model inference and generated-target execution excluded. Every fresh process preloads the common candidate SDK and its selected artifact; candidate artifact also preloaded for historical and TS controls. Per-sample preload records identify every Wasm component, hash and size. Artifact validation and Wasm module compilation are outside frontend/pipeline phases; fresh-child wall time includes process startup and preparation. No official source cutover or no-regression conclusion is implied.',
   protocol:
-    'Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every arm uses the historical baseline C text emitter, so frontend IR is compared through one fixed backend even when native artifact code generation changes. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution.',
+    'Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every arm uses the historical baseline C text emitter, so frontend IR is compared through one fixed backend even when frontend artifact code generation changes. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution. Compiled-backend mode requires the same A0 source closure/count, generic arena runtime hashes, libc/builtins and Clang/LLD versions; backend code generation, feature requirements and stack settings are separately recorded in the complete build manifests and are not claimed matched.',
   workerSha256: workerSHA256,
+  historicalEmitterBanner,
+  frozenEmitterBanner,
   preparedInputs: Object.fromEntries(preparedInputs),
-  artifact: { sha256: build.wasmSHA256, sourceSha256: build.sourceSHA256, bytes: build.wasmBytes },
+  inputIndexSHA256,
+  artifact: {
+    sha256: candidateArtifact.preload.artifactSha256,
+    sourceSha256: build.sourceSHA256,
+    bytes: candidateArtifact.preload.totalWasmBytes,
+    ...candidateArtifact.preload,
+  },
   controlArtifact: controlBuild,
+  controlPreload: controlSnapshot?.preload,
   nativeBuild: build,
   memoryMethod:
     'Live frontend RSS/heap/external memory captured before emission. Initial peak/live RSS exposes any inherited launch or preload floor; maxRSS alone cannot establish small-cell frontend parity.',
@@ -373,8 +423,7 @@ await writeReport(join(out, 'results.json'), {
     unit: unit.unit,
     frozenSHA256: unit.outputSHA256,
     expectedSHA256: expectedOutputs.get(unit.unit),
-    difference:
-      'Only the first compiler banner changes from a0c-0.1.62 to a0c-0.1.63; exact frozen hash verified after that explicit substitution.',
+    difference: `Only the first compiler banner changes from ${frozenEmitterBanner} to ${historicalEmitterBanner}; exact frozen hash verified after that explicit substitution.`,
   })),
   inputs,
   rows,
