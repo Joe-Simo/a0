@@ -128,6 +128,7 @@ const emitStart = performance.now();
 const frontendPeakRssBytes = process.resourceUsage().maxRSS * 1024;
 const output = commonEmitter.compile(program, 'c').text,
   end = performance.now();
+const pipelineCpu = process.cpuUsage(cpuBefore);
 const memory = process.memoryUsage();
 const peakRssBytes = process.resourceUsage().maxRSS * 1024;
 const wasmLinearMemoryBytes = engine?.memoryBytes ?? 0;
@@ -156,6 +157,8 @@ console.log(
     emitCMs: end - emitStart,
     pipelineMs: end - start,
     frontendCpu,
+    pipelineCpu,
+    processCpu: process.cpuUsage(),
     loadBefore,
     loadAfter: systemLoad(),
     initialPeakRssBytes,
