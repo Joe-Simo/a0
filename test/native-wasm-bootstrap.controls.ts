@@ -1,7 +1,7 @@
 /** Explicit runtime-package control: native source authority feeds the existing
  * A0 table optimizer/emitter, with independent old setup and execution oracles. */
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
@@ -35,8 +35,10 @@ const packageArtifact = await loadNativeSourcePackage(packageBytes, identity, (n
 );
 const clang = findClang();
 assert.ok(clang.path, 'C compiler required');
-const scratch = resolve('.a0-tmp/native-wasm-bootstrap-controls');
-await mkdir(scratch, { recursive: true });
+const controlRoot = resolve('.a0-tmp/native-wasm-bootstrap-controls');
+await mkdir(controlRoot, { recursive: true });
+const scratch = await mkdtemp(join(controlRoot, 'run-'));
+await writeFile('.a0-tmp/native-wasm-bootstrap-latest.txt', scratch);
 const cache = openCache({ dir: join(scratch, 'cache') });
 const nativeDir = join(scratch, 'native');
 const legacyDir = join(scratch, 'verified-seed');

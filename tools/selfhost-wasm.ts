@@ -204,7 +204,10 @@ export async function buildWasmToolFromIR(
   buildDir = join(BUILD_DIR, 'native-source'),
 ): Promise<NativeWasmTool> {
   const start = performance.now();
-  const c = compile(source.program, 'c').text;
+  const c = compile(source.program, 'c', {
+    ioInputCapacity: WASM_TOOL_INPUT,
+    ioOutputCapacity: WASM_TOOL_OUTPUT,
+  }).text;
   const emitMs = Math.round(performance.now() - start);
   const built = await buildWasmExecutable(clang, c, buildDir);
   await writeFile(join(buildDir, 'a0w', 'compiler-source.a0'), source.source, 'utf8');
