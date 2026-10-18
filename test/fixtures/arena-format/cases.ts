@@ -2,15 +2,19 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
   A0Error,
+  ALL_OPS,
+  type Func,
   formatFunction,
   formatProgram,
-  formatSource,
+  type Node,
+  type Program,
   parse,
   parseAndValidate,
   type TypedFunc,
 } from '../../../src/core.js';
 import { semanticRevision } from '../../../src/edit.js';
 import { programRevision, revision } from '../../../src/revision.js';
+import { formatSource } from '../../../src/source.js';
 import { withoutSpec } from '../../../src/spec.js';
 import { KERNELS } from '../../../tools/exec-bench-kernels.js';
 import { fixturesFor } from '../arena-js/fixtures.js';
@@ -27,6 +31,7 @@ export interface Request {
   readonly status: number;
   readonly expected?: string;
   readonly largeOperandMap?: number;
+  readonly literalMapCount?: number;
   readonly expectedEvents?: readonly {
     readonly kind: number;
     readonly subject: number;
@@ -41,8 +46,45 @@ export interface SourceCase {
   readonly initial: number;
   readonly diagnostic?: number;
   readonly requests: readonly Request[];
+  readonly roundTrip?: boolean;
 }
 const sha = (text: string): string => createHash('sha256').update(text).digest('hex');
+const bareNode = (node: Node): Node => ({
+  id: node.id,
+  op: node.op,
+  args: node.args,
+  ...(node.callee === undefined ? {} : { callee: node.callee }),
+  ...(node.pred === undefined ? {} : { pred: node.pred }),
+  ...(node.text === undefined ? {} : { text: node.text }),
+});
+function bareFunction(fn: Func): Func {
+  return {
+    name: fn.name,
+    params: fn.params,
+    result: fn.result,
+    nodes: fn.nodes.map(bareNode),
+    ret: fn.ret,
+    ...(fn.spec === undefined
+      ? {}
+      : {
+          spec: {
+            examples: fn.spec.examples.map(({ args, result }) => ({ args, result })),
+            ...(fn.spec.pre === undefined ? {} : { pre: bareNode(fn.spec.pre) }),
+            ...(fn.spec.post === undefined ? {} : { post: bareNode(fn.spec.post) }),
+          },
+        }),
+  };
+}
+/** Scope selection only: all spelling comes from the independent flat source oracle. */
+function flatComponent(program: Program, mode: number, id: number): string {
+  if (mode === 2) return formatSource(program);
+  const functions = mode === 0 ? [program.functions[id] as Func] : program.functions;
+  const text = formatSource({
+    functions: functions.map(bareFunction),
+    ...(mode !== 0 && program.profile === 'strict' ? { profile: 'strict' as const } : {}),
+  });
+  return mode === 0 ? text.slice(0, -1) : text;
+}
 const format = (
   mode: number,
   id: number,
@@ -139,6 +181,21 @@ const MANUAL_SOURCES = [
     '9'.repeat(400) +
     '\nend\n',
 ];
+const FLAT_SOURCES = [
+  'fn unused u32 u32 -> u32\nret p0\nend\n',
+  'fn contracts u32 u32 u32 -> u32\npre lt p2 10\npost eq p0 r\nret p0\nend\n',
+  'fn holes u32 u32 u32 -> u32\nx add p2 1\nret x\nend\n',
+  `fn params ${Array(64).fill('u32').join(' ')} -> u32\na add p0 p25\nb add p26 p63\nc add a b\nret c\nend\n`,
+  'fn examples u32 -> u32\nex 7 -> 7\nret 7\nend\n',
+  'fn literals -> (u32x3,(u32),u32x2)\nex -> ([7;7;7];(2;);[8;8])\na arr 7 7 7\nb rec 2\nc arr 8 8\nd rec a b c\nret d\nend\n',
+  'fn nested -> u32\nex -> [(1;[2;2;2]);(1;[2;2;2]);(1;[2;2;2])]\nex -> [(1;[2;2;2]);(1;[2;2;3]);(1;[2;2;2])]\nret 0\nend\n',
+  'fn rounded -> u32\na arr p9007199254740992 p9007199254740993 p9007199254740992\nb arr p4294967296 p4294967297 p4294967296\nret 0\nend\n',
+  'fn aliases u32 -> u32\na shl p0 1\nb shr a 2\nret b\nend\n',
+  ...[...ALL_OPS, 'udiv', 'urem', 'text', 'pre', 'profile', 'p0'].map(
+    (name) =>
+      `fn ${name} u32 -> u32\nret p0\nend\nfn caller u32 -> u32\nx call ${name} p0\nret x\nend\n`,
+  ),
+];
 
 function revisionSources(): string[] {
   const ident = (name: string, value = 1) =>
@@ -177,7 +234,7 @@ function revisionSources(): string[] {
 
 /** Existing independent source corpora plus formatter-specific byte grammar cases. */
 export function formattingCases(): SourceCase[] {
-  return [...MATRIX_SOURCES, ...MANUAL_SOURCES].map((source, index) => {
+  return [...MATRIX_SOURCES, ...MANUAL_SOURCES, ...FLAT_SOURCES].map((source, index) => {
     let program: ReturnType<typeof parse>;
     try {
       program = parse(source);
@@ -200,14 +257,7 @@ export function formattingCases(): SourceCase[] {
           ? { ...program, functions: program.functions.map(withoutSpec) }
           : program;
         for (const id of mode === 0 ? selected.functions.map((_, i) => i) : [0]) {
-          const fn = selected.functions[id];
-          let text: string;
-          if (mode === 0) {
-            assert.ok(fn);
-            text = formatFunction(fn);
-          } else {
-            text = mode === 1 ? formatProgram(selected) : formatSource(selected);
-          }
+          const text = flatComponent(selected, mode, id);
           requests.push(format(mode, id, skip, true, text));
         }
       }
@@ -217,6 +267,7 @@ export function formattingCases(): SourceCase[] {
       checked: false,
       initial: program.functions.some((fn) => fn.spec !== undefined) ? 7 : 0,
       requests,
+      ...(FLAT_SOURCES.includes(source) ? { roundTrip: true } : {}),
     };
   });
 }
@@ -353,11 +404,11 @@ export function resourceCases(): SourceCase[] {
         ...format(2, 0, false, true, expected),
         expectedEvents: [
           { kind: 21, subject: 0, field: 0, spelling: 'f' },
-          { kind: 2, subject: 0, field: 0, spelling: 'u32' },
-          { kind: 3, subject: 0, field: 0, spelling: 'u32' },
+          { kind: 2, subject: 0, field: 0, spelling: '' },
+          { kind: 3, subject: 0, field: 0, spelling: '' },
           { kind: 5, subject: 0, field: 0, spelling: 'x' },
           { kind: 6, subject: 0, field: 0, spelling: 'add' },
-          { kind: 9, subject: 0, field: 0, spelling: 'p0' },
+          { kind: 9, subject: 0, field: 0, spelling: 'A' },
           { kind: 9, subject: 1, field: 1, spelling: '1' },
           { kind: 11, subject: 2, field: 0, spelling: 'x' },
           { kind: 13, subject: 0, field: 0, spelling: '2' },
@@ -367,6 +418,67 @@ export function resourceCases(): SourceCase[] {
       format(2, 0, false, false, expected),
     ],
   });
+  const nested = 'fn nested -> u32\nex -> [(1;[2;2;2]);(1;[2;2;2]);(1;[2;2;2])]\nret 0\nend\n';
+  const nestedText = formatSource(parse(nested));
+  // PS appends each literal after its children. All three explicitly written records
+  // have distinct AST IDs, including their nested repeated scalar children.
+  const literalSpelling = [
+    '1',
+    '2',
+    '2',
+    '2',
+    '[2*3]',
+    '(1 [2*3])',
+    '1',
+    '2',
+    '2',
+    '2',
+    '[2*3]',
+    '(1 [2*3])',
+    '1',
+    '2',
+    '2',
+    '2',
+    '[2*3]',
+    '(1 [2*3])',
+    '[(1 [2*3])*3]',
+  ];
+  rows.push({
+    name: 'nested repetition retains every distinct literal origin',
+    source: nested,
+    checked: false,
+    initial: 7,
+    roundTrip: true,
+    requests: [
+      {
+        ...format(2, 0, false, true, nestedText),
+        literalMapCount: literalSpelling.length,
+        expectedEvents: literalSpelling.map((spelling, subject) => ({
+          kind: 13,
+          subject,
+          field: 0,
+          spelling,
+        })),
+      },
+      format(2, 0, false, false, nestedText),
+    ],
+  });
+  for (const [target, source, initial] of [
+    [1, nested, 7],
+    [2, SIMPLE, 0],
+    [3, 'fn f -> u32\nret p9007199254740993\nend\n', 0],
+  ] as const)
+    rows.push({
+      name: `late storage failure at ${['', 'literal comparison', 'event close', 'parameter prefix'][target]}`,
+      source,
+      checked: false,
+      initial,
+      requests: [1, 2, 3, 4, 5].map((status) => ({
+        ...format(2, 0, false, true, ''),
+        fault: (target << 8) | status,
+        status,
+      })),
+    });
   return rows;
 }
 
@@ -384,34 +496,39 @@ export function pressureCases(): SourceCase[] {
       '4096 nested record types',
       `fn deep ${type} -> ${type}\nret p0\nend\n`,
       `fn deep ${type} -> ${type}\nret p0\nend`,
+      `fn deep ${type.replace('u32', '_')} -> ${type.replace('u32', '_')}\nret A\nend`,
       0,
     ],
     [
       '4096 nested singleton literals',
       `fn deep -> u32\nex -> ${literal}\nret 7\nend\n`,
       `fn deep -> u32\nex -> ${literal}\nret 7\nend`,
+      `fn deep\nex -> ${literal.replaceAll(';)', ',)')}\nret 7\nend`,
       7,
     ],
     [
       '70017 operands and mapped row IDs',
       `fn wide -> u32\na arr ${values}\nret 7\nend\n`,
       `fn wide -> u32\na arr ${values}\nret 7\nend`,
+      `fn wide\na [7*${count}]\nret 7\nend`,
       0,
     ],
     [
       '64 byte exact maximum legal symbol name',
       `fn ${name} -> u32\nret 7\nend\n`,
       `fn ${name} -> u32\nret 7\nend`,
+      `fn ${name}\nret 7\nend`,
       0,
     ],
     [
       'oversized parameter span beyond 131072',
       `${padding}fn wide -> u32\nret p9007199254740993\nend\n`,
       'fn wide -> u32\nret p9007199254740992\nend',
+      'fn wide -> _\nret p9007199254740992\nend',
       0,
     ],
   ] as const;
-  return inputs.map(([name, source, expected, initial]) => ({
+  return inputs.map(([name, source, historical, expected, initial]) => ({
     name: `pressure ${name}`,
     source,
     checked: false,
@@ -420,7 +537,7 @@ export function pressureCases(): SourceCase[] {
       name.includes('70017')
         ? { ...format(0, 0, false, true, expected), largeOperandMap: count }
         : format(0, 0, false, true, expected),
-      hash(0, 0, sha(expected)),
+      hash(0, 0, sha(historical)),
     ],
   }));
 }
@@ -430,6 +547,10 @@ export function selfCase(source: string): SourceCase {
     source,
     checked: false,
     initial: 0,
-    requests: [format(1, 0, false, false, source), hash(1, 0, sha(source))],
+    roundTrip: true,
+    requests: [
+      format(1, 0, false, false, flatComponent(parse(source), 1, 0)),
+      hash(1, 0, sha(source)),
+    ],
   };
 }

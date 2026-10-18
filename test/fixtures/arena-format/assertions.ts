@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { formatProgram, parse } from '../../../src/core.js';
+import { formatSource, parseSource } from '../../../src/source.js';
+import { withoutSpec } from '../../../src/spec.js';
 import type { SourceCase } from './cases.js';
 import type { NativeResult } from './transport.js';
 
@@ -20,6 +23,32 @@ export function assertCase(row: SourceCase, actual: NativeResult): void {
       assert.deepEqual(got.bytes, Buffer.from(expected.expected), `${row.name}: bytes`);
     }
     if (expected.operation !== 0) continue;
+    if (row.roundTrip && expected.status === 0) {
+      const before = parse(row.source);
+      const selected = expected.skip ? before.functions.map(withoutSpec) : before.functions;
+      let functions = selected;
+      if (expected.mode === 0) {
+        const fn = selected[expected.id];
+        assert.ok(fn);
+        functions = [fn];
+      }
+      const scoped = {
+        functions,
+        ...(expected.mode !== 0 && before.profile === 'strict'
+          ? { profile: 'strict' as const }
+          : {}),
+      };
+      const after = parseSource(got.text);
+      assert.equal(formatProgram(after), formatProgram(scoped), `${row.name}: full IR`);
+      if (expected.mode === 2)
+        assert.deepEqual(after.uses ?? [], before.uses ?? [], `${row.name}: imports`);
+      const fixed = formatSource(after);
+      assert.equal(
+        expected.mode === 0 ? fixed.slice(0, -1) : fixed,
+        got.text,
+        `${row.name}: flat fixed point`,
+      );
+    }
     const facts = got.facts;
     assert.equal(facts[0], got.code);
     assert.equal(facts[9], got.bytes.length);
@@ -41,7 +70,9 @@ export function assertCase(row: SourceCase, actual: NativeResult): void {
       assert.deepEqual(facts.slice(4, 7), [0, 0, 0]);
     }
     let maxOperand = 0,
-      operands = 0;
+      operands = 0,
+      literals = 0;
+    const lastStart = new Map<number, number>();
     for (let j = 0; j < got.events.length; j += 6) {
       const kind = got.events[j],
         subject = got.events[j + 1],
@@ -50,6 +81,8 @@ export function assertCase(row: SourceCase, actual: NativeResult): void {
         parent = got.events[j + 5];
       assert.ok(start !== undefined && length !== undefined && parent !== undefined);
       assert.ok(start <= got.bytes.length && length <= got.bytes.length - start);
+      assert.ok(start >= (lastStart.get(parent) ?? 0), `${row.name}: sibling order`);
+      lastStart.set(parent, start);
       if (parent !== 0xffffffff) {
         assert.ok(parent < j / 6);
         const parentStart = got.events[parent * 6 + 3],
@@ -62,6 +95,7 @@ export function assertCase(row: SourceCase, actual: NativeResult): void {
         operands++;
         maxOperand = Math.max(maxOperand, subject);
       }
+      if (kind === 13) literals++;
     }
     for (const wanted of expected.expectedEvents ?? []) {
       const spellings: string[] = [];
@@ -83,5 +117,7 @@ export function assertCase(row: SourceCase, actual: NativeResult): void {
       assert.equal(operands, expected.largeOperandMap);
       assert.ok(maxOperand > 65535);
     }
+    if (expected.literalMapCount !== undefined)
+      assert.equal(literals, expected.literalMapCount, `${row.name}: complete literal origins`);
   }
 }

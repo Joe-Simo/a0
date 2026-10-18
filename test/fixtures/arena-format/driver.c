@@ -12,11 +12,21 @@
 #endif
 #include "arena_runtime.c"
 static a0_arena_session *session;
-static uint32_t inject_status;
+static uint32_t inject_status,inject_target,inject_seen,inject_ordinal;
+static uint32_t original_allocations,literal_handle;
 static uint32_t proof_read(void) {
   if(inject_status && session->response_position==0 && session->response_count>=2){
-    session->response[0]=inject_status;session->response[1]=0;
-    session->response_count=2;inject_status=0;
+    uint32_t op=session->request_op,*a=session->arguments;
+    /* Target an original literal row, an A0FT function-name event, or the
+     * canonical big-parameter prefix. Fresh allocation alone also matches copies. */
+    int match=inject_target==0 ||
+      (inject_target==1&&op==A0_ARENA_LOAD&&a[0]==literal_handle&&a[2]==6) ||
+      (inject_target==2&&op==A0_ARENA_LOAD&&a[0]>original_allocations&&a[2]==6&&session->response_count==8&&session->response[2]==21) ||
+      (inject_target==3&&op==A0_ARENA_STORE&&a[0]>original_allocations&&a[2]==1&&a[3]==112);
+    if(match&&++inject_seen==inject_ordinal){
+      session->response[0]=inject_status;session->response[1]=0;
+      session->response_count=2;inject_status=0;
+    }
   }
   return a0_runtime_read(session);
 }
@@ -96,13 +106,22 @@ int main(void){
     uint32_t oldmax=session->max_words;
     if(budget!=0xffffffffu){uint64_t cap=(uint64_t)session->allocated_words+budget;session->max_words=cap>0xffffffffu?0xffffffffu:(uint32_t)cap;}
     uint32_t count;allocation *copy=keep(&count);uint32_t original_m[128],original_ps[128];memcpy(original_m,current.f1.e,sizeof original_m);memcpy(original_ps,grammar.f1.e,sizeof original_ps);
+    inject_target=0;inject_seen=0;inject_ordinal=1;
     if(fault>=21&&fault<=25)inject_status=fault-20;
+    if(fault>=256&&fault<1024){
+      inject_target=fault>>8;inject_status=fault&255;
+      if(!inject_status||inject_status>5)die("late fault status");
+      /* The root literal is read before comparing its first distinct child. */
+      inject_ordinal=inject_target==1?2:1;
+      original_allocations=count;literal_handle=grammar.f1.e[32];
+    }
     uint32_t code=initial,handle=0,len=0,events=0,eventh=0,facts[128]={0};
     if(initial==0||(!checked&&initial==7)){
       if(operation==0){FORMATTED r=a0_arena_format_described(&io,current.f1,grammar.f1,mode,id,skip!=0,mapping!=0);code=r.f0;handle=r.f1.f0;len=r.f1.f1;memcpy(facts,r.f2.e,sizeof facts);eventh=r.f2.e[4];events=r.f2.e[5];if(r.f3!=&io)die("format IO");if(code&&(r.f1.f0||r.f1.f1||r.f1.f2||events||r.f2.e[6]||r.f2.e[9]))die("failed format exposed output");}
       else if(operation==1){REVISION r=a0_arena_revision(&io,current.f1,grammar.f1,mode,id);code=r.f0;handle=r.f1.f0;len=r.f1.f1;if(r.f2!=&io)die("revision IO");if(code&&(r.f1.f0||r.f1.f1||r.f1.f2))die("failed revision exposed output");}
       else die("unknown test request");
     }
+    if(inject_target&&inject_status)die("selected late fault did not occur");
     inject_status=0;
     if(memcmp(&io,&before,sizeof io)||memcmp(original_m,current.f1.e,sizeof original_m)||memcmp(original_ps,grammar.f1.e,sizeof original_ps))die("component input changed");
     unchanged(copy,count);

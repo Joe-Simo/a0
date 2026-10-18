@@ -1,7 +1,8 @@
-raw # Full-word canonical formatting over immutable parser/grammar schema1.
+raw # Flat source formatting and private revision serialization over immutable schema1.
 raw use "diagnostics_arena.a0"
 raw use "number_integer.a0"
 raw use "sha256_arena.a0"
+raw use "word_classify_shared.a0"
 extern arena_zero() -> u32x128
 extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
 extern av_load(io,(u32,u32,u32),u32,u32) -> (u32,u32x128,io)
@@ -15,6 +16,7 @@ extern ad_append((u32,(u32,u32,u32),io),u32,u32x128) -> (u32,(u32,u32,u32),io)
 extern ad_symbol((u32,(u32,u32,u32),io),u32x128,u32) -> (u32,(u32,u32,u32),io)
 extern number_integer(io,u32,u32,u32) -> (u32,(u32,u32),(u32,u32,u32),io)
 extern arena_sha256_hex(io,u32,u32) -> (u32,(u32,u32,u32),io)
+extern ap_scanword(io,u32,u32,u32) -> (u32,u32x128,io)
 def af_vec(m:u32x128,o:u32) -> (u32,u32,u32)
  return (m[o],m[o+1],m[o+2])
 end
@@ -26,6 +28,9 @@ end
 
 def af_s(k:(u32,(u32,u32,u32),u32x128,io)) -> (u32,(u32,u32,u32),io)
  return (k#0,k#1,k#3)
+end
+def af_internal(k:(u32,(u32,u32,u32),u32x128,io)) -> bool
+ return get(k#2,15)!=0
 end
 fn af_k(s:(u32,(u32,u32,u32),io),d:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
  return (s#0,s#1,d,s#2)
@@ -43,6 +48,12 @@ end
 fn af_num(k:(u32,(u32,u32,u32),u32x128,io),value:u32) -> (u32,(u32,u32,u32),u32x128,io)
  let d=k#2
  return af_k(ad_number(af_s(k),value),d)
+end
+fn af_cbyte(k:(u32,(u32,u32,u32),u32x128,io),i:u32,value:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ return af_byte(k,value)
+end
+fn af_cnum(k:(u32,(u32,u32,u32),u32x128,io),i:u32,value:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ return af_num(k,value)
 end
 fn af_row_load(r:((u32,(u32,u32,u32),u32x128,io),u32x128),i:u32,v:(u32,u32,u32),index:u32,width:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32x128)
  let k=r#0
@@ -92,19 +103,40 @@ end
 fn af_begin(k:(u32,(u32,u32,u32),u32x128,io),kind:u32,subject:u32,field:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32)
  return fold(af_event_new,(k#0==0)&(get(k#2,3)!=0)?1:0,(k,4294967295),kind,subject,field)
 end
+fn af_event_store(k:(u32,(u32,u32,u32),u32x128,io),i:u32,id:u32,row:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=k#2
+ let out=k#1
+ let length=out#1-row[3]
+ let page=set(row,4,length)
+ let stored=av_store(k#3,af_vec(d,4),id*6,6,page)
+ return (stored#0,out,set(d,8,row[5]),stored#1)
+end
 fn af_event_end(k:(u32,(u32,u32,u32),u32x128,io),i:u32,id:u32) -> (u32,(u32,u32,u32),u32x128,io)
  let r=af_row(k,af_vec(k#2,4),id,6)
  let a=r#0
- let row=r#1
- let d=a#2
- let out=a#1
- let length=out#1-row[3]
- let page=set(row,4,length)
- let stored=av_store(a#3,af_vec(d,4),id*6,6,page)
- return (stored#0,out,set(d,8,row[5]),stored#1)
+ return fold(af_event_store,a#0==0?1:0,a,id,r#1)
 end
 fn af_end(k:(u32,(u32,u32,u32),u32x128,io),id:u32) -> (u32,(u32,u32,u32),u32x128,io)
  return fold(af_event_end,(k#0==0)&(id!=4294967295)?1:0,k,id)
+end
+fn af_alias_append(k:(u32,(u32,u32,u32),u32x128,io),i:u32,kind:u32,subject:u32,field:u32,start:u32,length:u32,parent:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let d=k#2
+ let out=k#1
+ let v=af_vec(d,4)
+ let valid=(start<=out#1)&(length<=out#1-start)&((parent==4294967295)|(parent<v#1/6))
+ let a=af_fail(k,valid?0:7)
+ let page=arena_zero()
+ let page=set(page,0,kind)
+ let page=set(page,1,subject)
+ let page=set(page,2,field)
+ let page=set(page,3,start)
+ let page=set(page,4,length)
+ let page=set(page,5,parent)
+ let r=av_append(a#3,v,6,page)
+ return (a#0==0?r#0:a#0,out,af_setvec(d,4,r#1),r#2)
+end
+fn af_alias(k:(u32,(u32,u32,u32),u32x128,io),kind:u32,subject:u32,field:u32,start:u32,length:u32,parent:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ return fold(af_alias_append,(k#0==0)&(get(k#2,3)!=0)?1:0,k,kind,subject,field,start,length,parent)
 end
 
 fn af_lit_fnword(k:(u32,(u32,u32,u32),u32x128,io),unused:u32) -> (u32,(u32,u32,u32),u32x128,io)
@@ -306,19 +338,19 @@ end
 
 fn af_lit_op8(k:(u32,(u32,u32,u32),u32x128,io),unused:u32) -> (u32,(u32,u32,u32),u32x128,io)
  let page=arena_zero()
- let page=set(page,0,115)
- let page=set(page,1,104)
+ let page=set(page,0,af_internal(k)?115:60)
+ let page=set(page,1,af_internal(k)?104:60)
  let page=set(page,2,108)
- let s=ad_append(af_s(k),3,page)
+ let s=ad_append(af_s(k),af_internal(k)?3:2,page)
  return af_k(s,k#2)
 end
 
 fn af_lit_op9(k:(u32,(u32,u32,u32),u32x128,io),unused:u32) -> (u32,(u32,u32,u32),u32x128,io)
  let page=arena_zero()
- let page=set(page,0,115)
- let page=set(page,1,104)
+ let page=set(page,0,af_internal(k)?115:62)
+ let page=set(page,1,af_internal(k)?104:62)
  let page=set(page,2,114)
- let s=ad_append(af_s(k),3,page)
+ let s=ad_append(af_s(k),af_internal(k)?3:2,page)
  return af_k(s,k#2)
 end
 
@@ -630,13 +662,19 @@ fn af_operand_node(k:(u32,(u32,u32,u32),u32x128,io),unused:u32,m:u32x128,row:u32
  return af_symbol(k,m,row[1])
 end
 fn af_operand_smallparam(k:(u32,(u32,u32,u32),u32x128,io),unused:u32,m:u32x128,row:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
- return af_num(af_byte(k,112),row[1])
+ let short=!af_internal(k)&(row[1]<26)
+ let a=fold(af_cbyte,short?1:0,k,65+row[1])
+ let b=fold(af_cbyte,short?0:1,a,112)
+ return fold(af_cnum,short?0:1,b,row[1])
+end
+fn af_operand_bigparam_number(k:(u32,(u32,u32,u32),u32x128,io),unused:u32,m:u32x128,row:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
+ let s=af_s(k)
+ let n=number_integer(s#2,m[6],row[2]+1,row[3]-1)
+ return af_k(ad_string((n#0,s#1,n#3),n#2),k#2)
 end
 fn af_operand_bigparam_do(k:(u32,(u32,u32,u32),u32x128,io),unused:u32,m:u32x128,row:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
  let a=af_byte(k,112)
- let s=af_s(a)
- let n=number_integer(s#2,m[6],row[2]+1,row[3]-1)
- return af_k(ad_string((n#0,s#1,n#3),n#2),a#2)
+ return fold(af_operand_bigparam_number,a#0==0?1:0,a,m,row)
 end
 fn af_operand_bigparam(k:(u32,(u32,u32,u32),u32x128,io),unused:u32,m:u32x128,row:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
  let valid=(row[3]>=2)&(row[2]<=m[7])&(row[3]<=m[7]-row[2])
@@ -716,6 +754,108 @@ fn af_node_arguments(k:(u32,(u32,u32,u32),u32x128,io),unused:u32,m:u32x128,args:
  let b=fold(af_node_callee,row[4]!=4294967295?1:0,a,m,row,id,tag)
  return loop(af_args_ok,af_argument,row[3],b,m,args,row[2],tag)
 end
+fn af_direct_scan(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,row:u32x128) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let old=r#0
+ let word=ap_scanword(old#3,row[0],row[1],row[2])
+ let k=af_k((old#0==0?word#0:old#0,old#1,word#2),old#2)
+ let info=word#1
+ return (k,(info[0]!=0)&(info[8]==0)&(info[9]!=10))
+end
+fn af_direct(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,m:u32x128,symbol:u32) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let a=af_row(r#0,af_vec(m,62),symbol,5)
+ let k=a#0
+ return fold(af_direct_scan,k#0==0?1:0,(k,false),a#1)
+end
+fn af_bigkey_read(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),i:u32,m:u32x128,row:u32x128) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+ let k=r#0
+ let n=number_integer(k#3,m[6],row[2]+1,row[3]-1)
+ return ((k#0==0?n#0:k#0,k#1,k#2,n#3),n#2)
+end
+fn af_bigkey_do(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),i:u32,m:u32x128,row:u32x128) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+ let valid=(row[3]>=2)&(row[2]<=m[7])&(row[3]<=m[7]-row[2])
+ let k=af_fail(r#0,valid?0:7)
+ return fold(af_bigkey_read,k#0==0?1:0,(k,r#1),m,row)
+end
+fn af_bigkey(k:(u32,(u32,u32,u32),u32x128,io),m:u32x128,row:u32x128) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+ return af_bigkey_do((k,(0,0,0)),0,m,row)
+end
+fn af_keybyte(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,a:(u32,u32,u32),b:(u32,u32,u32)) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let x=af_row(r#0,a,i,1)
+ let y=af_row(x#0,b,i,1)
+ return (y#0,get(x#1,0)==get(y#1,0))
+end
+fn af_keymore(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,a:(u32,u32,u32),b:(u32,u32,u32)) -> bool
+ return (r#0#0==0)&r#1
+end
+fn af_obig(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,m:u32x128,row:u32x128,key:(u32,u32,u32)) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let a=af_bigkey(r#0,m,row)
+ let equal=key#1==a#1#1
+ return loop(af_keymore,af_keybyte,equal?key#1:0,(a#0,equal),key,a#1)
+end
+fn af_onext(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,m:u32x128,args:(u32,u32,u32),first:u32,head:u32x128,key:(u32,u32,u32)) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let a=af_row(r#0,args,first+i+1,5)
+ let row=a#1
+ let big=(row[0]==1)&((row[4]&4)!=0)
+ let headbig=(head[0]==1)&((head[4]&4)!=0)
+ let same=(row[0]==head[0])&(big==headbig)
+ let equal=same&(big|(row[1]==head[1]))
+ return fold(af_obig,equal&big?1:0,(a#0,equal),m,row,key)
+end
+fn af_omore(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,m:u32x128,args:(u32,u32,u32),first:u32,head:u32x128,key:(u32,u32,u32)) -> bool
+ return (r#0#0==0)&r#1
+end
+fn af_ofirst(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,m:u32x128,args:(u32,u32,u32),first:u32,count:u32) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let a=af_row(r#0,args,first,5)
+ let head=a#1
+ let big=(head[0]==1)&((head[4]&4)!=0)
+ let b=fold(af_bigkey_do,big?1:0,(a#0,(0,0,0)),m,head)
+ return loop(af_omore,af_onext,count-1,(b#0,true),m,args,first,head,b#1)
+end
+fn af_agg_arg(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,args:(u32,u32,u32),first:u32,tag:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let a=fold(af_cbyte,i==0?0:1,k,32)
+ return af_operand_region(a,m,args,first+i,tag==0?9:15,i)
+end
+fn af_oalias(k:(u32,(u32,u32,u32),u32x128,io),i:u32,first:u32,tag:u32,start:u32,length:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ return af_alias(k,tag==0?9:15,first+i+1,i+1,start,length,get(k#2,8))
+end
+fn af_orepeated(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,args:(u32,u32,u32),row:u32x128,tag:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let start=k#1#1
+ let a=af_operand_region(k,m,args,row[2],tag==0?9:15,0)
+ let length=a#1#1-start
+ let b=af_num(af_byte(a,42),row[3])
+ return fold(af_oalias,(b#0==0)&(get(b#2,3)!=0)?row[3]-1:0,b,row[2],tag,start,length)
+end
+fn af_aggregate(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,args:(u32,u32,u32),row:u32x128,id:u32,tag:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let array=row[1]==22
+ let op=af_begin(k,6,id,tag)
+ let a=af_byte(op#0,array?91:40)
+ let opened=af_end(a,op#1)
+ let repeat=fold(af_ofirst,(opened#0==0)&array&(row[3]>=3)?1:0,(opened,false),m,args,row[2],row[3])
+ let b=fold(af_orepeated,repeat#1?1:0,repeat#0,m,args,row,tag)
+ let c=loop(af_args_ok,af_agg_arg,repeat#1?0:row[3],b,m,args,row[2],tag)
+ let d=fold(af_cbyte,!array&(row[3]==1)?1:0,c,44)
+ return af_byte(d,array?93:41)
+end
+fn af_flattext(k:(u32,(u32,u32,u32),u32x128,io),i:u32,args:(u32,u32,u32),row:u32x128,id:u32,tag:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let op=af_begin(k,6,id,tag)
+ let a=af_end(af_byte(op#0,34),op#1)
+ let b=loop(af_text_ok,af_textbyte,row[3],a,args,row[2],tag)
+ return af_byte(b,34)
+end
+fn af_directcall(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,args:(u32,u32,u32),row:u32x128,id:u32,tag:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let op=af_begin(k,6,id,tag)
+ let callee=af_begin(op#0,7,id,tag)
+ let a=af_symbol(callee#0,m,row[4])
+ let b=af_end(af_end(a,callee#1),op#1)
+ return loop(af_args_ok,af_argument,row[3],b,m,args,row[2],tag)
+end
+fn af_regular(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,args:(u32,u32,u32),row:u32x128,id:u32,tag:u32,text:bool) -> (u32,(u32,u32,u32),u32x128,io)
+ let op=af_begin(k,6,id,tag)
+ let spelled=af_opcode(op#0,text?24:row[1])
+ let d=af_end(spelled,op#1)
+ let e=fold(af_text,text?1:0,d,args,row,tag)
+ return fold(af_node_arguments,text?0:1,e,m,args,row,id,tag)
+end
 fn af_node(k:(u32,(u32,u32,u32),u32x128,io),m:u32x128,nodes:(u32,u32,u32),args:(u32,u32,u32),id:u32,tag:u32) -> (u32,(u32,u32,u32),u32x128,io)
  let b=af_begin(k,tag==0?4:14,id,0)
  let r=af_row(b#0,nodes,id,14)
@@ -727,12 +867,14 @@ fn af_node(k:(u32,(u32,u32,u32),u32x128,io),m:u32x128,nodes:(u32,u32,u32),args:(
  let named=af_symbol(name#0,m,row[0])
  let c=af_byte(af_end(named,name#1),32)
  let text=(row[1]==24)|((row[11]&2)!=0)
- let op=af_begin(c,6,id,tag)
- let spelled=af_opcode(op#0,text?24:row[1])
- let d=af_end(spelled,op#1)
- let e=fold(af_text,text?1:0,d,args,row,tag)
- let f=fold(af_node_arguments,text?0:1,e,m,args,row,id,tag)
- return af_end(f,b#1)
+ let flat=!af_internal(c)
+ let direct=fold(af_direct,(c#0==0)&flat&!text&(row[1]==19)&(row[4]!=4294967295)?1:0,(c,false),m,row[4])
+ let aggregate=flat&!text&((row[1]==22)|(row[1]==23))
+ let d=fold(af_aggregate,aggregate?1:0,direct#0,m,args,row,id,tag)
+ let e=fold(af_flattext,flat&text?1:0,d,args,row,id,tag)
+ let f=fold(af_directcall,direct#1?1:0,e,m,args,row,id,tag)
+ let g=fold(af_regular,!aggregate&!(flat&text)&!direct#1?1:0,f,m,args,row,id,tag,text)
+ return af_end(g,b#1)
 end
 
 fn af_lpush_do(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),unused:u32,kind:u32,value:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
@@ -748,7 +890,12 @@ fn af_lpush(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),kind:u32,value:u32)
  return fold(af_lpush_do,k#0==0?1:0,(k,stack),kind,value)
 end
 fn af_lsemicolon(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),unused:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
- return af_lpush(l,1,59)
+ let k=l#0
+ return af_lpush((k,l#1),1,af_internal(k)?59:32)
+end
+fn af_lsingle(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),unused:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+ let k=l#0
+ return af_lpush((k,l#1),1,af_internal(k)?59:44)
 end
 fn af_lchildren_ok(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),i:u32,ps:u32x128,first:u32,count:u32) -> bool
  return l#0#0==0
@@ -772,15 +919,80 @@ fn af_lscalar(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),unused:u32,ps:u32
  let b=fold(af_lbool,row[0]==2?1:0,a,row)
  return (af_end(b,event),l#1)
 end
+fn af_echild(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),bool),i:u32,ps:u32x128,left:u32,right:u32,count:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),bool)
+ let index=count-1-i
+ let a=af_row(r#0,af_vec(ps,35),left+index,1)
+ let b=af_row(a#0,af_vec(ps,35),right+index,1)
+ let c=af_lpush((b#0,r#1),get(a#1,0),get(b#1,0))
+ return (c#0,c#1,r#2)
+end
+fn af_echildren(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),bool),i:u32,ps:u32x128,left:u32,right:u32,count:u32) -> bool
+ return (r#0#0==0)&r#2
+end
+fn af_epair(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),bool),i:u32,ps:u32x128,left:u32,right:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),bool)
+ let a=af_row(r#0,af_vec(ps,32),left,6)
+ let b=af_row(a#0,af_vec(ps,32),right,6)
+ let x=a#1
+ let y=b#1
+ let kind=(x[0]>=1)&(x[0]<=4)&(y[0]>=1)&(y[0]<=4)
+ let k=af_fail(b#0,kind?0:6)
+ let container=x[0]>=3
+ let equal=(x[0]==y[0])&(container?(x[3]==y[3]):(x[1]==y[1]))
+ let valid=(x[2]<=ps[36])&(x[3]<=ps[36]-x[2])&(y[2]<=ps[36])&(y[3]<=ps[36]-y[2])
+ let c=af_fail(k,equal&container&!valid?7:0)
+ return loop(af_echildren,af_echild,equal&container?x[3]:0,(c,r#1,equal),ps,x[2],y[2],x[3])
+end
+fn af_estep(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),bool),i:u32,ps:u32x128) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),bool)
+ let a=af_row(r#0,r#1,r#1#1/2-1,2)
+ let row=a#1
+ let popped=(a#0,(r#1#0,r#1#1-2,r#1#2),r#2)
+ return fold(af_epair,row[0]==row[1]?0:1,popped,ps,row[0],row[1])
+end
+fn af_emore(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),bool),i:u32,ps:u32x128) -> bool
+ return (r#0#0==0)&r#2&(r#1#1!=0)
+end
+fn af_lequal(k:(u32,(u32,u32,u32),u32x128,io),ps:u32x128,left:u32,right:u32) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let a=af_lpush((k,(0,0,0)),left,right)
+ let b=loop(af_emore,af_estep,0-ps[92],(a#0,a#1,true),ps)
+ return (af_fail(b#0,b#2&(b#1#1!=0)?7:0),b#2)
+end
+fn af_lrnext(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,ps:u32x128,first:u32,head:u32) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let a=af_row(r#0,af_vec(ps,35),first+i+1,1)
+ return af_lequal(a#0,ps,head,get(a#1,0))
+end
+fn af_lrmore(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,ps:u32x128,first:u32,head:u32) -> bool
+ return (r#0#0==0)&r#1
+end
+fn af_lrepeat(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,ps:u32x128,row:u32x128) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let a=af_row(r#0,af_vec(ps,35),row[2],1)
+ return loop(af_lrmore,af_lrnext,row[3]-1,(a#0,true),ps,row[2],get(a#1,0))
+end
+fn af_lrepsave_do(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),i:u32,ps:u32x128,row:u32x128) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+ let k=l#0
+ let d=k#2
+ let meta=af_vec(d,16)
+ let page=set(set(set(arena_zero(),0,row[2]),1,row[3]),2,d[5]/6)
+ let r=av_append(k#3,meta,3,page)
+ let a=(r#0,k#1,af_setvec(d,16,r#1),r#2)
+ let b=af_lpush((a,l#1),3,meta#1/3)
+ let child=af_row(b#0,af_vec(ps,35),row[2],1)
+ return af_lpush((child#0,b#1),0,get(child#1,0))
+end
+fn af_lrepsave(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),i:u32,ps:u32x128,row:u32x128) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+ let k=l#0
+ return fold(af_lrepsave_do,k#0==0?1:0,(k,l#1),ps,row)
+end
 fn af_lcontainer(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),unused:u32,ps:u32x128,row:u32x128,event:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
  let children=af_vec(ps,35)
  let valid=(row[3]!=0)&(row[2]<=children#1)&(row[3]<=children#1-row[2])
  let k=af_fail(l#0,valid?0:7)
  let opened=af_byte(k,row[0]==3?91:40)
- let a=af_lpush((opened,l#1),2,event)
+ let repeat=fold(af_lrepeat,(opened#0==0)&!af_internal(opened)&(row[0]==3)&(row[3]>=3)?1:0,(opened,false),ps,row)
+ let a=af_lpush((repeat#0,l#1),2,event)
  let b=af_lpush(a,1,row[0]==3?93:41)
- let c=fold(af_lsemicolon,(row[0]==4)&(row[3]==1)?1:0,b)
- return loop(af_lchildren_ok,af_lchildren,row[3],c,ps,row[2],row[3])
+ let c=fold(af_lsingle,(row[0]==4)&(row[3]==1)?1:0,b)
+ let d=fold(af_lrepsave,repeat#1?1:0,c,ps,row)
+ return loop(af_lchildren_ok,af_lchildren,repeat#1?0:row[3],d,ps,row[2],row[3])
 end
 fn af_lvalue(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),unused:u32,ps:u32x128,id:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
  let r=af_row(l#0,af_vec(ps,32),id,6)
@@ -796,6 +1008,55 @@ end
 fn af_lend(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),unused:u32,ps:u32x128,event:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
  return (af_end(l#0,event),l#1)
 end
+fn af_acchild(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),u32,u32,u32,u32),i:u32,ps:u32x128,first:u32,count:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),u32,u32,u32,u32)
+ let a=af_row(r#0,af_vec(ps,35),first+count-1-i,1)
+ let b=af_lpush((a#0,r#1),0,get(a#1,0))
+ return (b#0,b#1,r#2,r#3,r#4,r#5)
+end
+fn af_acmore(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),u32,u32,u32,u32),i:u32,ps:u32x128,first:u32,count:u32) -> bool
+ return r#0#0==0
+end
+fn af_astep(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),u32,u32,u32,u32),i:u32,ps:u32x128) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),u32,u32,u32,u32)
+ let task=af_row(r#0,r#1,r#1#1/2-1,2)
+ let id=get(task#1,1)
+ let a=af_row(task#0,af_vec(ps,32),id,6)
+ let row=a#1
+ let old=a#0
+ let ref=af_row(old,af_vec(old#2,4),r#2,6)
+ let event=ref#1
+ let root=r#2==r#3
+ let parent=root?r#5:r#4+event[5]-r#3
+ let valid=(event[0]==13)&(root|((event[5]>=r#3)&(event[5]<r#2)))
+ let checked=af_fail(ref#0,valid?0:7)
+ let b=af_alias(checked,13,id,0,event[3],event[4],parent)
+ let stack=(r#1#0,r#1#1-2,r#1#2)
+ let container=row[0]>=3
+ let children=(row[2]<=ps[36])&(row[3]<=ps[36]-row[2])
+ let c=af_fail(b,container&!children?7:0)
+ return loop(af_acmore,af_acchild,container?row[3]:0,(c,stack,r#2+1,r#3,r#4,r#5),ps,row[2],row[3])
+end
+fn af_amore(r:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),u32,u32,u32,u32),i:u32,ps:u32x128) -> bool
+ return (r#0#0==0)&(r#1#1!=0)
+end
+fn af_lalias(k:(u32,(u32,u32,u32),u32x128,io),ps:u32x128,id:u32,reference:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let base=get(k#2,5)/6
+ let parent=get(k#2,8)
+ let a=af_lpush((k,(0,0,0)),0,id)
+ let b=loop(af_amore,af_astep,0-ps[92],(a#0,a#1,reference,reference,base,parent),ps)
+ return af_fail(b#0,b#1#1==0?0:7)
+end
+fn af_lagain(k:(u32,(u32,u32,u32),u32x128,io),i:u32,ps:u32x128,row:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
+ let a=af_row(k,af_vec(ps,35),row[0]+i+1,1)
+ return af_lalias(a#0,ps,get(a#1,0),row[2])
+end
+fn af_lrepeat_end(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),i:u32,ps:u32x128,id:u32) -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
+ let old=l#0
+ let a=af_row(old,af_vec(old#2,16),id,3)
+ let row=a#1
+ let b=af_num(af_byte(a#0,42),row[1])
+ let c=fold(af_lagain,(b#0==0)&(get(b#2,3)!=0)?row[1]-1:0,b,ps,row)
+ return (c,l#1)
+end
 fn af_lmore(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),i:u32,ps:u32x128) -> bool
  return (l#0#0==0)&(l#1#1!=0)
 end
@@ -803,11 +1064,12 @@ fn af_lstep(l:((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)),i:u32,ps:u32x128) -
  let stack=l#1
  let r=af_row(l#0,stack,stack#1/2-1,2)
  let row=r#1
- let a=af_fail(r#0,row[0]<=2?0:6)
+ let a=af_fail(r#0,row[0]<=3?0:6)
  let popped=(a,(stack#0,stack#1-2,stack#2))
  let b=fold(af_lvalue,row[0]==0?1:0,popped,ps,row[1])
  let c=fold(af_lbyte,row[0]==1?1:0,b,ps,row[1])
- return fold(af_lend,row[0]==2?1:0,c,ps,row[1])
+ let d=fold(af_lend,row[0]==2?1:0,c,ps,row[1])
+ return fold(af_lrepeat_end,row[0]==3?1:0,d,ps,row[1])
 end
 fn af_literal(k:(u32,(u32,u32,u32),u32x128,io),ps:u32x128,id:u32) -> (u32,(u32,u32,u32),u32x128,io)
  let start=af_lpush((k,(0,0,0)),0,id)
@@ -816,7 +1078,8 @@ fn af_literal(k:(u32,(u32,u32,u32),u32x128,io),ps:u32x128,id:u32) -> (u32,(u32,u
 end
 
 fn af_tprimitive(k:(u32,(u32,u32,u32),u32x128,io),unused:u32,row:u32x128) -> (u32,(u32,u32,u32),u32x128,io)
- let a=fold(af_lit_type_u32,row[0]==0?1:0,k)
+ let a0=fold(af_lit_type_u32,(row[0]==0)&af_internal(k)?1:0,k)
+ let a=fold(af_cbyte,(row[0]==0)&!af_internal(k)?1:0,a0,95)
  let b=fold(af_lit_type_bool,row[0]==1?1:0,a)
  return fold(af_lit_type_io,row[0]==2?1:0,b)
 end
@@ -935,26 +1198,6 @@ fn af_parameter(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,first:u32,id:u3
  let c=af_printtype(b#0,m,get(r#1,0))
  return af_end(c,b#1)
 end
-fn af_header(k:(u32,(u32,u32,u32),u32x128,io),m:u32x128,id:u32,comments:bool) -> (u32,(u32,u32,u32),u32x128,io)
- let r=af_row(k,af_vec(m,41),id,14)
- let row=r#1
- let a=fold(af_before_part,comments?1:0,r#0,m,row[7])
- let h=af_begin(a,1,id,0)
- let b=af_lit_fnword(h#0,0)
- let name=af_begin(b,21,id,0)
- let c=af_symbol(name#0,m,row[0])
- let d=af_end(c,name#1)
- let total=m[51]
- let valid=(row[1]<=total)&(row[2]<=total-row[1])
- let e=af_fail(d,valid?0:7)
- let f=loop(af_parameter_ok,af_parameter,row[2],e,m,row[1],id)
- let g=af_lit_arrow(f,0)
- let result=af_begin(g,3,id,0)
- let typed=af_printtype(result#0,m,row[3])
- let finished=af_end(af_end(typed,result#1),h#1)
- let after=fold(af_after_part,comments?1:0,finished,m,row[7])
- return af_byte(after,10)
-end
 fn af_find_more(r:((u32,(u32,u32,u32),u32x128,io),u32x128,u32,u32),i:u32,ps:u32x128,id:u32) -> bool
  return (r#0#0==0)&(r#2<r#3)&(get(r#1,5)==0)
 end
@@ -972,6 +1215,95 @@ fn af_find_spec(k:(u32,(u32,u32,u32),u32x128,io),ps:u32x128,id:u32) -> ((u32,(u3
  let empty=set(set(arena_zero(),3,4294967295),4,4294967295)
  let r=loop(af_find_more,af_find_step,33,(k,empty,0,ps[63]/5),ps,id)
  return (r#0,r#1)
+end
+fn af_href(r:((u32,(u32,u32,u32),u32x128,io),u32,bool),args:(u32,u32,u32),id:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32,bool)
+ let a=af_row(r#0,args,id,5)
+ let row=a#1
+ let param=row[0]==1
+ let bounded=((row[4]&4)==0)&(row[1]!=4294967295)
+ let next=row[1]+1
+ let max=param&(next>r#1)?next:r#1
+ return (a#0,max,r#2&(!param|bounded))
+end
+fn af_harg(r:((u32,(u32,u32,u32),u32x128,io),u32,bool),i:u32,args:(u32,u32,u32),first:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32,bool)
+ return af_href(r,args,first+i)
+end
+fn af_hmore(r:((u32,(u32,u32,u32),u32x128,io),u32,bool),i:u32,args:(u32,u32,u32),first:u32) -> bool
+ return (r#0#0==0)&r#2
+end
+fn af_hnode(r:((u32,(u32,u32,u32),u32x128,io),u32,bool),i:u32,nodes:(u32,u32,u32),args:(u32,u32,u32),first:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32,bool)
+ let a=af_row(r#0,nodes,first+i,14)
+ let row=a#1
+ let valid=(row[2]<=args#1/5)&(row[3]<=args#1/5-row[2])
+ let k=af_fail(a#0,valid?0:7)
+ return loop(af_hmore,af_harg,row[3],(k,r#1,r#2),args,row[2])
+end
+fn af_hnodes(r:((u32,(u32,u32,u32),u32x128,io),u32,bool),i:u32,nodes:(u32,u32,u32),args:(u32,u32,u32),first:u32) -> bool
+ return (r#0#0==0)&r#2
+end
+fn af_htype(r:((u32,(u32,u32,u32),u32x128,io),u32,bool),i:u32,m:u32x128,first:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32,bool)
+ let a=af_row(r#0,af_vec(m,50),first+i,1)
+ let b=af_row(a#0,af_vec(m,68),get(a#1,0),5)
+ return (b#0,r#1,r#2&(get(b#1,0)==0))
+end
+fn af_htypes(r:((u32,(u32,u32,u32),u32x128,io),u32,bool),i:u32,m:u32x128,first:u32) -> bool
+ return (r#0#0==0)&r#2
+end
+fn af_hcontract(r:((u32,(u32,u32,u32),u32x128,io),u32,bool),i:u32,ps:u32x128,id:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32,bool)
+ let a=af_row(r#0,af_vec(ps,44),id,7)
+ return af_hnode((a#0,r#1,r#2),0,af_vec(ps,47),af_vec(ps,50),get(a#1,3))
+end
+fn af_hspec(r:((u32,(u32,u32,u32),u32x128,io),u32,bool),i:u32,ps:u32x128,id:u32) -> ((u32,(u32,u32,u32),u32x128,io),u32,bool)
+ let a=af_find_spec(r#0,ps,id)
+ let row=a#1
+ let b=fold(af_hcontract,(row[3]!=4294967295)&r#2?1:0,(a#0,r#1,r#2),ps,row[3])
+ return fold(af_hcontract,(row[4]!=4294967295)&b#2?1:0,b,ps,row[4])
+end
+fn af_hinfer(r:((u32,(u32,u32,u32),u32x128,io),bool),i:u32,m:u32x128,ps:u32x128,row:u32x128,id:u32,skip:bool) -> ((u32,(u32,u32,u32),u32x128,io),bool)
+ let result=af_row(r#0,af_vec(m,68),row[3],5)
+ let a=loop(af_htypes,af_htype,row[2],(result#0,0,get(result#1,0)==0),m,row[1])
+ let count=m[45]/14
+ let valid=(row[4]<=count)&(row[5]<=count-row[4])
+ let b=af_fail(a#0,valid?0:7)
+ let c=loop(af_hnodes,af_hnode,row[5],(b,a#1,a#2),af_vec(m,44),af_vec(m,47),row[4])
+ let d=af_href(c,af_vec(m,47),row[6])
+ let e=fold(af_hspec,!skip&(m[57]!=0)&d#2?1:0,d,ps,id)
+ return (e#0,e#2&(e#1==row[2]))
+end
+fn af_hfull(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,row:u32x128,id:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let a=loop(af_parameter_ok,af_parameter,row[2],k,m,row[1],id)
+ let b=af_lit_arrow(a,0)
+ let result=af_begin(b,3,id,0)
+ let typed=af_printtype(result#0,m,row[3])
+ return af_end(typed,result#1)
+end
+fn af_hanchor(k:(u32,(u32,u32,u32),u32x128,io),i:u32,id:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let b=af_begin(k,2,id,i)
+ return af_end(b#0,b#1)
+end
+fn af_hanchors(k:(u32,(u32,u32,u32),u32x128,io),i:u32,count:u32,id:u32) -> (u32,(u32,u32,u32),u32x128,io)
+ let a=fold(af_hanchor,count,k,id)
+ let b=af_begin(a,3,id,0)
+ return af_end(b#0,b#1)
+end
+fn af_header(k:(u32,(u32,u32,u32),u32x128,io),m:u32x128,ps:u32x128,id:u32,comments:bool,skip:bool) -> (u32,(u32,u32,u32),u32x128,io)
+ let r=af_row(k,af_vec(m,41),id,14)
+ let row=r#1
+ let a=fold(af_before_part,comments?1:0,r#0,m,row[7])
+ let h=af_begin(a,1,id,0)
+ let b=af_lit_fnword(h#0,0)
+ let name=af_begin(b,21,id,0)
+ let c=af_symbol(name#0,m,row[0])
+ let d=af_end(c,name#1)
+ let total=m[51]
+ let valid=(row[1]<=total)&(row[2]<=total-row[1])
+ let e=af_fail(d,valid?0:7)
+ let inferred=fold(af_hinfer,!af_internal(e)?1:0,(e,false),m,ps,row,id,skip)
+ let f=fold(af_hfull,inferred#1?0:1,inferred#0,m,row,id)
+ let g=fold(af_hanchors,inferred#1?1:0,f,row[2],id)
+ let finished=af_end(g,h#1)
+ let after=fold(af_after_part,comments?1:0,finished,m,row[7])
+ return af_byte(after,10)
 end
 fn af_exarg_ok(k:(u32,(u32,u32,u32),u32x128,io),i:u32,ps:u32x128,first:u32) -> bool
  return k#0==0
@@ -1056,7 +1388,7 @@ fn af_function(k:(u32,(u32,u32,u32),u32x128,io),m:u32x128,ps:u32x128,id:u32,comm
  let begin=af_begin(k,19,id,0)
  let r=af_row(begin#0,af_vec(m,41),id,14)
  let row=r#1
- let a=af_header(r#0,m,id,comments)
+ let a=af_header(r#0,m,ps,id,comments,skip)
  let b=fold(af_specs,!skip&(m[57]!=0)?1:0,a,m,ps,id,comments)
  let count=m[45]/14
  let valid=(row[4]<=count)&(row[5]<=count-row[4])
@@ -1100,9 +1432,9 @@ fn af_format_one(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,ps:u32x128,id:
 end
 fn af_format_program(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,ps:u32x128,id:u32,skip:bool) -> (u32,(u32,u32,u32),u32x128,io)
  let a=fold(af_profile,m[8]==1?1:0,k,m,false)
- let b=fold(af_newline,m[8]==1?1:0,a)
+ let b=fold(af_newline,(m[8]==1)&(af_internal(k)|(m[42]!=0))?1:0,a)
  let c=loop(af_functions_ok,af_functions,m[42]/14,b,m,ps,false,skip)
- return af_byte(c,10)
+ return fold(af_newline,af_internal(k)|(m[42]!=0)?1:0,c)
 end
 fn af_source_body(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,ps:u32x128,skip:bool) -> (u32,(u32,u32,u32),u32x128,io)
  let a=loop(af_functions_ok,af_functions,m[42]/14,k,m,ps,true,skip)
@@ -1153,7 +1485,7 @@ fn af_run(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,ps:u32x128,mode:u32,i
  let b=fold(af_format_program,mode==1?1:0,a,m,ps,id,skip)
  return fold(af_format_source,mode==2?1:0,b,m,ps,id,skip)
 end
-fn arena_format_described(t:io,m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool,mapping:bool) -> (u32,(u32,u32,u32),u32x128,io)
+fn af_format_start(t:io,m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool,mapping:bool,internal:bool) -> (u32,(u32,u32,u32),u32x128,io)
  let d=arena_zero()
  let d=set(d,1,0x41304654)
  let d=set(d,2,1)
@@ -1164,6 +1496,7 @@ fn arena_format_described(t:io,m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool,ma
  let d=set(d,12,skip?1:0)
  let d=set(d,13,m[6])
  let d=set(d,14,m[7])
+ let d=set(d,15,internal?1:0)
  let start=(0,(0,0,0),d,t)
  let checked=af_schema(start,m,ps,mode,id)
  let out=fold(af_run,checked#0==0?1:0,checked,m,ps,mode,id,skip)
@@ -1171,6 +1504,13 @@ fn arena_format_described(t:io,m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool,ma
  let d=set(d,9,out#0==0?out#1#1:0)
  let public=out#0==0?d:af_setvec(d,4,(0,0,0))
  return (out#0,out#0==0?out#1:(0,0,0),public,out#3)
+end
+fn arena_format_described(t:io,m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool,mapping:bool) -> (u32,(u32,u32,u32),u32x128,io)
+ return af_format_start(t,m,ps,mode,id,skip,mapping,false)
+end
+fn af_revision_text(t:io,m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool) -> (u32,(u32,u32,u32),io)
+ let r=af_format_start(t,m,ps,mode,id,skip,false,true)
+ return (r#0,r#1,r#3)
 end
 fn arena_format(t:io,m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool) -> (u32,(u32,u32,u32),io)
  let r=arena_format_described(t,m,ps,mode,id,skip,false)

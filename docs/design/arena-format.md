@@ -1,4 +1,4 @@
-# A0 canonical text and revisions, schema 1
+# A0 source formatting and internal revisions, schema 1
 
 This shared component passed an isolated native proof at O0 and O2; [results](../../results/arena-format-native.json) record every output. It is not yet routed through the public CLI or editor, and has no host formatting/hash fallback. Inputs are original full-word schema1 parser/checker states, not optimized backend contexts. Source bytes are the frozen valid UTF-8 snapshot; raw malformed-byte/unpaired-surrogate decoding remains a separate boundary.
 
@@ -8,8 +8,10 @@ This shared component passed an isolated native proof at O0 and O2; [results](..
 `arena_format_described(io,M128,PS128,mode,functionID,skipSpecs,mapping) -> (status,V3,F128,io)`.
 Modes 0/1/2 mean `formatFunction`, `formatProgram`, `formatSource`. Function ID is used only for mode0. V3 is `(handle,lengthWords,capacityWords)` containing UTF-8 bytes, one per cell. Mode0 omits final LF; program/source match reference empty/profile/comment/import/blank-line behavior. Content modes can format unchecked syntactically valid input, including out-of-range parameter decimals canonically represented through `number_integer`.
 
+The component formatter emits the flat source spelling in every scope: `A` through `Z` then `pN` parameters, `_` scalar types, safely inferred scalar signatures, aggregate literals, quoted text, `<<`/`>>` shifts and unambiguous direct calls. Program/source formatting of an empty program is empty. These components remain outside the public CLI/editor routes until the source migration gates pass. Revision serialization uses a private entry into the same emitter and traversal; its historical full headers and spelling, including the empty-program LF, remain byte-stable. This internal hash representation is not another source mode.
+
 `arena_revision(io,M128,PS128,mode,functionID) -> (status,hexV3,io)`.
-Modes 0/1 mean SHA-256 of canonical function/program bytes including specs. Mode2 is the semantic revision of a checked function. It hashes the own function without specs, then hashes that hex string with an optional `profile strict|` prefix and ASCII-sorted, unique body callee/predicate entries `|name=semanticHash`. Every dependency must precede its caller. Even a leaf is double hashed. Contracts are not body dependencies. Hex is exactly 64 lowercase ASCII bytes.
+Modes 0/1 mean SHA-256 of internal function/program serialization bytes including specs. Mode2 is the semantic revision of a checked function. It hashes the own function without specs, then hashes that hex string with an optional `profile strict|` prefix and ASCII-sorted, unique body callee/predicate entries `|name=semanticHash`. Every dependency must precede its caller. Even a leaf is double hashed. Contracts are not body dependencies. Hex is exactly 64 lowercase ASCII bytes.
 
 Semantic revision requires successful ordered verification supplied by the caller; M96 alone is not a verifier-completion credential. It rejects parse-only/pending states and incomplete resolution-vector geometry. No helper silently strips specs or promotes pending verification. The current algorithm computes earlier functions in order and retains their scratch; a later target with many unrelated earlier functions can consume more work/storage than the reference's reachable recursion. Insertion sorting distinct dependency names is quadratic. No performance equivalence is claimed.
 
@@ -52,6 +54,8 @@ Each event is `[kind,subjectID,fieldIndex,outputStart,outputLength,parentEventID
 | 22 | end keyword / function ID |
 
 Text byte operand events9/15 cover the output byte or complete escaped spelling of that decoded byte. Generated inline-return names remain distinct name events; the printer assigns no invented exact original name span. Types are whole tokens; this API does not parse type spellings a second time. Event coordinates are canonical output byte offsets, independent of source UTF16/byte origin relations.
+
+Flat spelling can omit a token or represent several origins with one printed value. Inferred parameter/result types retain their existing event identities as zero-length anchors after the function name, inside the header event. Implicit aggregate/text opcodes cover their opening delimiter, and an implicit direct-call opcode covers the callee token alongside the callee event. Repeated aggregate elements retain every operand/literal event identity and alias the corresponding range in the first printed element, including all nested literal origins. These ranges describe the emitted representation, not an exact source-token match. Parent IDs still precede children and contain their ranges; output starts are nondecreasing within a parent, with equal starts and overlapping ranges permitted. Consumers must not require disjoint ranges or strictly increasing starts. Mapping never changes the emitted bytes.
 
 ## Validation and integration status
 
