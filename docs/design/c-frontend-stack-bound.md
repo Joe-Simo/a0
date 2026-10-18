@@ -36,3 +36,18 @@ function, independent source/check/spec/IR and lifecycle controls, the applicabl
 repository and platform gates, and RSS/latency measurements. Existing frontend
 cost losses remain binding. This analyzer change does not alter the source
 grammar, compiler frontend, seed or public defaults.
+
+The [isolated relink experiment](../../results/source-frontend-c-stack-relink.json)
+subsequently reproduced the original frontend from the exact retained object,
+then changed only its link-time stack reservation to 131072 bytes. The final
+module retains the same 127888-byte bound across all 109 linked functions.
+All eleven control groups passed, including six sealed applications, exact
+retained state and arena payload comparisons, frozen C emissions, allocation
+refusals, lifetimes and the unchanged formatter/diagnostic companions. The
+archive retains an initial fixture failure and its correction.
+
+This establishes correctness for the recorded experiment. Its smaller linear
+buffer capacities and heap offsets do not establish lower process RSS or faster
+execution. Production builders and released artifacts still reserve 16MiB;
+platform gates and independent RSS/latency measurements remain pending before
+any adoption.
