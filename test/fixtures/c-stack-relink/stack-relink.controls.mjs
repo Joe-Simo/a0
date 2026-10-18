@@ -10,6 +10,7 @@ import { loadNativeSourcePackage } from '../../../dist/src/source-native-package
 import { readWasmWords } from '../../../dist/src/wasm-words.js';
 import { writeReport } from '../../../dist/tools/scrub-results.js';
 import { verifySourceCostFrozenC } from '../../../dist/tools/source-cost-control.js';
+import { cases as specCases } from '../arena-spec-verifier/cases.mjs';
 import { configuration, hash, identity, relinkStack } from './stack-relink.mjs';
 
 const paths = configuration();
@@ -35,6 +36,21 @@ for (const file of ['format.wasm', 'diagnostic.wasm']) {
   companions[file] = { bytes, module: new WebAssembly.Module(bytes) };
 }
 const observations = [];
+// These A0 evaluator faults return normally; they are not arbitrary Wasm traps.
+const diagnosticCases = [
+  ['unknown-call', 'fn bad\nx missing A\nret x\nend\n', 'A0102'],
+  ['spec-mismatch', '# Ω😀\nfn twice\nex 7 -> 15\nret mul A 2\nend\n', 'A0715'],
+  ...[
+    'all-example-types-before-first-value',
+    'pre-false',
+    'strict-body-trap',
+    'body-fuel-refusal',
+  ].map((name) => {
+    const value = specCases.find((item) => item.name === name);
+    assert.ok(value, name);
+    return [name, value.nativeSource ?? value.source, `A${String(value.id).padStart(4, '0')}`];
+  }),
+];
 
 function engine(module, companion = false) {
   const api = new WebAssembly.Instance(module).exports;
@@ -206,9 +222,8 @@ test('stack relink: malformed syntax, unknown calls and spec faults retain compl
   const engines = pair(true);
   try {
     for (const [name, text, id] of [
-      ['unknown-call', 'fn bad\nx missing A\nret x\nend\n', 'A0102'],
+      ...diagnosticCases,
       ['unfinished-aggregate', 'fn f -> u32x2\nex -> [1,\nret fill 1\nend\n'],
-      ['spec-mismatch', '# Ω😀\nfn twice\nex 7 -> 15\nret mul A 2\nend\n', 'A0714'],
       ['missing-return', 'fn f\nx add A 1\nend\n'],
     ]) {
       const result = action(engines, name, (host) => host.parse(text));
@@ -390,10 +405,7 @@ test('stack relink: unchanged package formatter, revisions and verified diagnost
     const revisions = engines.map((host, i) => host.revision(parsed[i], { kind: 'semantic' }));
     assert.deepEqual(...revisions);
     assert.ok(revisions[0].ok);
-    for (const [name, text, id] of [
-      ['unknown', 'fn bad\nx missing A\nret x\nend\n', 'A0102'],
-      ['spec', 'fn twice\nex 7 -> 15\nret mul A 2\nend\n', 'A0714'],
-    ]) {
+    for (const [name, text, id] of diagnosticCases) {
       const result = engines.map((host) => host.parse(text));
       sameResult(...result);
       for (const value of result) {
