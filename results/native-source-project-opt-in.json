@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "baseCommit": "874436b",
+  "testedCodeCommit": "dbf2202e9473e459f10f086d63cfccbef101d937",
+  "testedCodeTree": "3671a143974b2de7d276d69d0e29ae03b2f53d46",
+  "status": "Retained project sessions now require explicit openNativeSourceProject; ordinary linkNativeSource returns ephemeral Linked output. No quantitative memory, timing, full-gate or public cutover claim.",
+  "sourceFiles": [
+    {
+      "path": "src/source-native-link.ts",
+      "sha256": "5032b8d27cfe9bc25a6ab8407066638d71c7666a397f45cb51bdca8bd67286f3"
+    },
+    {
+      "path": "test/source-native-project.controls.ts",
+      "sha256": "1d8e8c11f4936a89a3b306a39e15895822c6e7f496d0dfde0865c0e6693499cd"
+    },
+    {
+      "path": "test/fixtures/arena-format/program-activation.ts",
+      "sha256": "b7cfa03afdd0982fa4bc876d3b6f25bb6764147ebe1cb8ad2961b3dc977ffccc"
+    },
+    {
+      "path": "docs/design/native-source-project.md",
+      "sha256": "ddddef5cf6502bd0d3dbfa1899d08bd8d8320e95d42cefc0875b195448617473"
+    }
+  ],
+  "architecture": {
+    "sharedImplementation": "One private loadNativeSource invokes existing linkProject preparation, native unit parse/check and origin mapping. Both exported operations use that single path.",
+    "ephemeral": "linkNativeSource:Promise<Linked> returns only the linked object. It never constructs sourceProject/file handles; private successful-unit wrappers and checked bookkeeping have no retained library owner after return.",
+    "retained": "openNativeSourceProject:Promise<NativeLinkedSource> explicitly calls sourceProject and retains authentic units/file identities for activation and graph rechecks until close.",
+    "borrowedFrontend": "Both operations borrow the injected frontend. The engine keeps its ordinary current arena until reset/close; includeUnits:true still requests detached host migration Programs. Neither absence of .native nor this report is a heap-free or zero-native-memory claim.",
+    "semantics": "Path confinement, injected read, profile agreement/override, diagnostics, parser, checker and compiler targets share the unchanged pipeline.",
+    "defaultCLIChanged": false,
+    "compilerA0Changed": false
+  },
+  "components": {
+    "frontend": {
+      "build": "Existing unchanged C-derived frontend from results/native-source-project.json; no duplicate Clang build performed.",
+      "bytes": 358579,
+      "sha256": "e14da183e6301c667a24ec351101c6e014d706f11967f29f7e326b8e4678e076",
+      "normalizedSourceSha256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+      "currentNormalizedA0SourceSha256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+      "sourceEqualityChecked": true
+    },
+    "companions": [
+      {
+        "name": "format",
+        "build": "Fresh current companion with strict current source-inventory loader validation",
+        "sha256": "5ab1ac6b1a141f3b283bb0395f02d0c795102e02b49be7e45747c0f801200a30",
+        "manifestSha256": "ebe551a0bd380c8b44acc1d563f6ce98256cf6a176417b83e71a6b0c43ffdf1f"
+      },
+      {
+        "name": "diagnostic",
+        "build": "Fresh current companion with strict current source-inventory loader validation",
+        "sha256": "76026e10f59f31c2548ce10d66c630ffe81dfc6768b30b2675f9bc55099d47b1",
+        "manifestSha256": "35e67ea5caa43b710c0b681aad8f6ae4735d65d99614c667548aa2702b403d45"
+      }
+    ]
+  },
+  "completedChecks": [
+    {
+      "command": "bun run build",
+      "exitCode": 0
+    },
+    {
+      "command": "source-format-build; source-diagnostic-build",
+      "exitCode": 0
+    },
+    {
+      "command": "node --test dist/test/source-native-project.controls.js",
+      "exitCode": 0,
+      "tests": 10,
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "additionalControl": "Canonical and strict one-shot linking has no .native/project methods, parses four files/checks once, preserves independent outputs/source origins and detached data across resets; explicit opener retains its existing authority/lifecycle."
+    },
+    {
+      "command": "node --test dist/test/source-native-program-format.controls.js",
+      "exitCode": 0,
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "additionalControl": "Shared Program-format graph fixture explicitly opts into the retained project when its authentic graph is needed for semantic revision."
+    },
+    {
+      "command": "node --test dist/test/source-native-graph.test.js dist/test/source-native-format.test.js dist/test/link-paths.test.js",
+      "exitCode": 0,
+      "tests": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "bun run lint",
+      "exitCode": 0,
+      "existingWarnings": 18,
+      "existingInfos": 164
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0
+    },
+    {
+      "command": "a0-dev prereview --base=874436b --json",
+      "exitCode": 0,
+      "score": 0,
+      "findings": [],
+      "classification": "Deterministic review aid, not runtime proof"
+    },
+    {
+      "command": "a0-dev scope --base=874436b --json",
+      "exitCode": 0,
+      "decision": "All gate steps selected conservatively; no waiver"
+    },
+    {
+      "command": "git diff --cached --check",
+      "exitCode": 0
+    }
+  ],
+  "independentReadOnlyReview": {
+    "findings": [],
+    "scope": "Source ownership/lifetime, shared loader/check/error policy, caller inventory, explicit opener use and distinction between authentic unit wrappers and optional host unit Programs.",
+    "runtimeProof": "Targeted runtime controls above were run by implementation owner; peer review did not replace them."
+  },
+  "logs": [
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-build.log",
+      "sha256": "5aafe095f318850006c85d11866ad2679cd9b530f533c78440f619f6ce89d411"
+    },
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-format-build.log",
+      "sha256": "f2c519dcd1de55317e0ba5a2c655e84a455ed226019fcea183e5443d2b73aa83"
+    },
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-diagnostic-build.log",
+      "sha256": "6e9e019c432ebdf744da6408bc20b0f1775ffbeddd130d7582ac1078cd40944a"
+    },
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-controls.log",
+      "sha256": "a98de95dcde800c1d40a0b43790ea4399be1e31a8f55569d7cf70639ec726743"
+    },
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-program-controls.log",
+      "sha256": "818d61650423f490cc0630b095c69d8b0c97f8051c60da505c953938374e9fbc"
+    },
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-host.log",
+      "sha256": "761b91057c04ffa2cb960e4aac0fc7859951aac39f41e067e136b48a69df8a0b"
+    },
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-lint.log",
+      "sha256": "4a41e43755392f348ad04795c40c7f230222f4b11cbd2e00d0db90661b4c3b9f"
+    },
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-typecheck.log",
+      "sha256": "38ac890c60e7f38d59ddfb410325cdfb5fca83c9411765c5481754e01c021630"
+    },
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-prereview.json",
+      "sha256": "9e5a8282c19e6004567a2f9f578e27697a6b414f0287ea68eea3d478e8369349"
+    },
+    {
+      "path": "<repo>/.a0-tmp/project-opt-in-scope.json",
+      "sha256": "d4fbab999c03806583c95b3cd2b35376926b783d47ee511702e026c85b122485"
+    }
+  ],
+  "remaining": [
+    "Rebuild final integrated C/direct/JS artifacts and run applicable combined controls/full gate",
+    "Use ephemeral link in the separate native migration adapter",
+    "Public CLI/editor cutover remains separate"
+  ],
+  "claims": {
+    "quantitativeMemoryImprovement": false,
+    "timingImprovement": false,
+    "fullGatePass": false,
+    "publicCutoverCompleted": false,
+    "deployment": false
+  }
+}
