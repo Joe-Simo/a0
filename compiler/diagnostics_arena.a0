@@ -13987,7 +13987,12 @@ fn ad_args io u32x128 u32 -> (u32,u32x128,io)
 q0 get p1 1
 q1 get p1 0
 q2 eq q1 8
-q3 select q2 1 0
+# Whole-program limits have no function row and do not use a location argument.
+# Contextual diagnostics still require their original function/table metadata.
+global eq q0 29
+contextual xor global true
+located and q2 contextual
+q3 select located 1 0
 q4 rec 0 0 0
 q5 rec 0 q4 p0
 where fold ad_where q3 q5 p1
