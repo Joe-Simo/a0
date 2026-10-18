@@ -1,0 +1,39 @@
+// Run from repository root: node --input-type=module - SCRATCH < this-file
+import {readFile,writeFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {join} from 'node:path';
+import {writeReport} from './tools/scrub-results.ts';
+const scratch=process.argv[2];
+if(!scratch)throw Error('scratch directory required');
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+const report=JSON.parse(await readFile(join(scratch,'summary.json'),'utf8'));
+const recipes=['exact-span-prepare.py.txt','exact-span-count.py.txt','exact-span-verify.py.txt','exact-span-report.mjs.txt','exact-span.md'];
+report.recipeSnapshot={
+  commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),
+  tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(),
+  trackedSourcesClean:execFileSync('git',['status','--porcelain=v1','--untracked-files=no'],{encoding:'utf8'}).trim()==='',
+  files:await Promise.all(recipes.map(async name=>{
+    const path='experiments/unification/frontend-cost/'+name,bytes=await readFile(path);
+    return {path,bytes:bytes.length,sha256:sha(bytes)};
+  })),
+};
+if(!report.recipeSnapshot.trackedSourcesClean)throw Error('commit the source recipe before final report');
+report.executables.compiler=execFileSync(process.env.A0_CLANG??'clang-19',['--version'],{encoding:'utf8'}).split('\n')[0];
+report.executables.host={platform:process.platform,architecture:process.arch};
+report.derivedCountLimitations=[
+ 'Classifier call count and prefix fold count are captured freshly; total scanbyte steps are sum(fullLength), verified against prior semantic counters for these successful applications.',
+ 'Cache probes, hits, misses, publications, evictions and LRU touches are offline policy operations, not generated machine instructions or a running compiler cache.',
+ 'Entry capacity excludes code, key lookup, context copying, private stack, compiler analysis, binary and whole-package costs; none is measured or predicted.',
+ 'No transport request, payload read, drain or classifier call is removed by this experiment.',
+ 'Fault-stage partial facts, mutated source rejection, public ABI and private cache lowering require a later independent implementation proof.',
+];
+report.verification={completeOutputsComparedByteForByte:true,completeDumpHashesMatchCommittedSixInputs:true,
+  everyRepeatedExactKeyHasIdenticalTwelvePrefixFacts:true,
+  independentDictionaryLRUReplay:'pass; exact-span-verify.py.txt on the saved archive and summary',
+  formalTiming:false,productionImplementation:false,defaultActivation:false};
+const archive=await readFile(join(scratch,'source-frontend-exact-span-counts.zip'));
+if(sha(archive)!==report.archive.sha256)throw Error('archive hash mismatch');
+await writeFile('results/source-frontend-exact-span-counts.zip',archive);
+await writeReport('results/source-frontend-exact-span-counts.json',report);
+console.log(JSON.stringify({rows:report.rows.length,archiveBytes:archive.length,archiveSHA256:sha(archive)}));

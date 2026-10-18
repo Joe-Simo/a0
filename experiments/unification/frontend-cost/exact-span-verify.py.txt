@@ -1,0 +1,60 @@
+"""Independent raw-archive replay using dictionary insertion order, not list lookup.
+Usage: python3 exact-span-verify.py.txt ARCHIVE SUMMARY
+Checks ZIP CRC, member hashes, exact records and simulated hit/publication totals.
+"""
+import gzip, hashlib, json, struct, sys, zipfile
+from pathlib import Path
+
+archive, summary = map(Path, sys.argv[1:])
+report=json.loads(summary.read_text())
+sha=lambda data:hashlib.sha256(data).hexdigest()
+assert sha(archive.read_bytes())==report['archive']['sha256']
+assert archive.stat().st_size==report['archive']['bytes']
+with zipfile.ZipFile(archive) as z:
+    assert z.testzip() is None
+    manifest=json.loads(z.read('manifest.json'))
+    assert len(manifest['fields'])==22 and z.namelist()==sorted(report['archive']['members'])
+    assert len(manifest['rows'])==len(report['rows'])==6
+    for item,expected in zip(manifest['rows'],report['rows']):
+        assert item['unit']==expected['unit']
+        data=z.read(item['member']);assert sha(data)==item['gzipSHA256']==expected['trace']['gzipSHA256']
+        raw=gzip.decompress(data);assert sha(raw)==item['sha256']==expected['trace']['sha256']
+        assert len(raw)==item['bytes']==expected['trace']['bytes']
+        assert raw[:8]==b'A0SPAN01' and (len(raw)-8)%88==0
+        caches={c:{} for c in [1,2,3]};stats={c:dict(hits=0,misses=0,successfulMissPublications=0,
+                  evictions=0,lruTouches=0,crossSiteHits=0,avoidedPrefixScanSteps=0)for c in caches}
+        invocation=0;calls=0;known={};invocations=[];sites={1:0,2:0,3:0}
+        for row in struct.iter_unpack('<22I',raw[8:]):
+            if row[0]==1:
+                assert row[1]==invocation+1;invocation=row[1]
+                caches={c:{} for c in caches};invocations.append(dict(calls=0,hits={str(c):0 for c in caches}))
+                continue
+            assert row[0]==2 and row[1]==invocation and row[3] in sites
+            calls+=1;sites[row[3]]+=1;invocations[-1]['calls']+=1
+            key=tuple(row[4:7]);facts=tuple(row[10:])
+            if row[7]==0:
+                assert known.setdefault(key,facts)==facts
+            for c,cache in caches.items():
+                if row[7]!=0:continue
+                if key in cache:
+                    old_facts,published_site=cache[key];assert old_facts==facts
+                    if next(reversed(cache))!=key:stats[c]['lruTouches']+=1
+                    del cache[key];cache[key]=(old_facts,published_site)
+                    stats[c]['hits']+=1;stats[c]['avoidedPrefixScanSteps']+=row[9]
+                    stats[c]['crossSiteHits']+=int(published_site!=row[3])
+                    invocations[-1]['hits'][str(c)]+=1
+                else:
+                    stats[c]['misses']+=1
+                    if row[8]==0:
+                        stats[c]['successfulMissPublications']+=1
+                        if len(cache)==c:del cache[next(iter(cache))];stats[c]['evictions']+=1
+                        cache[key]=(facts,row[3])
+        assert calls==expected['counts']['actualClassifierCalls']
+        assert invocation==expected['counts']['invocationCount']
+        for c,value in stats.items():
+            for key,number in value.items():assert number==expected['counts']['simulations'][str(c)]['total'][key],(item['unit'],c,key)
+        for actual,saved in zip(invocations,expected['counts']['invocations']):
+            assert actual['calls']==saved['calls'] and actual['hits']==saved['hits']
+        for site,total in sites.items():
+            assert total==expected['counts']['simulations']['1']['bySite'][manifest['site'][str(site)]]['calls']
+print('ZIP CRC, six raw trace digests, exact prefix facts and independent LRU replay: pass')

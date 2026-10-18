@@ -1,0 +1,150 @@
+"""Run/replay the six frozen count-only subjects and simulate private LRU contexts.
+
+Usage: python3 exact-span-count.py.txt INPUTS BASELINE_PROBE TRACED_PROBE OUTPUT
+The simulated cache never executes in the frontend. Complete outputs must match.
+"""
+from pathlib import Path
+import gzip, hashlib, json, struct, subprocess, sys, zipfile
+
+inputs, baseline, traced, output = map(Path, sys.argv[1:])
+baseline, traced, output = baseline.resolve(), traced.resolve(), output.resolve()
+output.mkdir(parents=True, exist_ok=False)
+root = Path(__file__).resolve().parents[3]
+recorded = json.loads((root/'results/source-frontend-bottleneck-diagnostic.json').read_text())
+index = json.loads((inputs/'index.json').read_text())
+sha = lambda value: hashlib.sha256(value).hexdigest()
+sites = {1:'ap_wordscan',2:'sp_atom_done',3:'ac_name_scan'}
+fields = ['kind','invocation','phase','site','handle','start','length','prefixStatus','status','prefixCount']
+fields += ['prefixState'+str(i) for i in range(1,10)] + ['keyword','opcode','firstWord']
+
+def fresh():
+    return dict(calls=0,eligible=0,hits=0,misses=0,prefixFailureBypasses=0,keyComparisons=0,
+                successfulMissPublications=0,evictions=0,lruTouches=0,crossSiteHits=0,
+                avoidedPrefixScanSteps=0,avoidedKeywordCalls=0,avoidedOpcodeCalls=0,
+                shortSpanHits=0,longSpanHits=0)
+
+def analyze(raw, expected):
+    assert raw[:8] == b'A0SPAN01' and (len(raw)-8)%88 == 0
+    counters = {c:fresh() for c in [1,2,3]}
+    by_site = {c:{s:fresh() for s in sites.values()} for c in counters}
+    by_phase = {c:{'parser':fresh(),'verifier':fresh()} for c in counters}
+    caches = {c:[] for c in counters}
+    invocations=[];current=None;all_keys=set();local_keys=set();lengths={}
+    calls=prefix_steps=total_length=length_mismatch=prefix_failures=failures=long_calls=0
+    prefix_fact_checks=0;max_length=0
+    exact_prefix = {}
+    for row in struct.iter_unpack('<22I', raw[8:]):
+        kind, inv, phase, site, handle, start, length, prefix_status, status, count = row[:10]
+        if kind == 1:
+            assert inv == len(invocations)+1 and phase in [1,2] and all(x==0 for x in row[3:])
+            current=dict(invocation=inv,phase='parser' if phase==1 else 'verifier',calls=0,
+                         uniqueExactKeys=0,sites={s:0 for s in sites.values()},hits={str(c):0 for c in counters})
+            invocations.append(current);local_keys=set();caches={c:[] for c in counters}
+            continue
+        assert kind == 2 and current and inv == current['invocation'] and site in sites
+        assert phase == (1 if current['phase']=='parser' else 2)
+        assert count == (min(length,128) if prefix_status==0 else 0)
+        assert handle == 1 and start <= expected['sourceBytes'] and length <= expected['sourceBytes']-start
+        key=(handle,start,length); facts=tuple(row[10:]); assert len(facts)==12
+        if prefix_status==0:
+            old=exact_prefix.setdefault(key,facts);assert old==facts,('same-key-facts-changed',key)
+            prefix_fact_checks+=1
+        if (handle,start) in lengths and lengths[handle,start]!=length:length_mismatch+=1
+        lengths[handle,start]=length
+        all_keys.add(key);local_keys.add(key)
+        calls+=1;prefix_steps+=count;total_length+=length
+        prefix_failures+=int(prefix_status!=0);failures+=int(status!=0)
+        long_calls+=int(length>128);max_length=max(max_length,length)
+        current['calls']+=1;current['uniqueExactKeys']=len(local_keys);current['sites'][sites[site]]+=1
+        for capacity in counters:
+            stats=[counters[capacity],by_site[capacity][sites[site]],by_phase[capacity][current['phase']]]
+            def add(field,value=1):
+                for target in stats:target[field]+=value
+            add('calls')
+            if prefix_status!=0:
+                add('prefixFailureBypasses');continue
+            add('eligible');hit=None
+            for i,entry in enumerate(caches[capacity]):
+                add('keyComparisons')
+                if entry[0]==key:hit=i;break
+            if hit is not None:
+                entry=caches[capacity].pop(hit);assert entry[1]==facts
+                caches[capacity].insert(0,entry)
+                add('hits');add('avoidedPrefixScanSteps',count);add('avoidedKeywordCalls');add('avoidedOpcodeCalls')
+                add('shortSpanHits' if length<=128 else 'longSpanHits')
+                if hit:add('lruTouches')
+                if entry[2]!=site:add('crossSiteHits')
+                current['hits'][str(capacity)]+=1
+            else:
+                add('misses')
+                if status==0:
+                    add('successfulMissPublications')
+                    if len(caches[capacity])==capacity:caches[capacity].pop();add('evictions')
+                    caches[capacity].insert(0,(key,facts,site))
+    assert calls == expected['functionCounts']['ap_scanword']
+    assert total_length == expected['functionCounts']['ap_scanbyte'] # All six accepted subjects have successful reads.
+    assert failures == prefix_failures == 0
+    assert length_mismatch == expected['counts']['lexicalSpans']['lengthMismatch']
+    for stats in counters.values():
+        assert stats['calls']==stats['eligible']+stats['prefixFailureBypasses']
+        assert stats['eligible']==stats['hits']+stats['misses']
+        assert stats['successfulMissPublications']==stats['misses']
+    return dict(actualClassifierCalls=calls,actualScanbyteSteps=total_length,
+                actualPrefixScanSteps=prefix_steps,actualTailScanSteps=total_length-prefix_steps,
+                prefixFailures=prefix_failures,classifierFailures=failures,
+                distinctExactKeysInSession=len(all_keys),repeatedExactKeyVisitsInSession=calls-len(all_keys),
+                distinctExactKeysSummedAcrossInvocations=sum(x['uniqueExactKeys']for x in invocations),
+                offsetOnlyDifferingLengthRepeatEvents=length_mismatch,
+                longSpanCalls=long_calls,maxSpanLength=max_length,successfulPrefixFactEqualityChecks=prefix_fact_checks,
+                invocationCount=len(invocations),parserInvocations=sum(x['phase']=='parser'for x in invocations),
+                verifierInvocations=sum(x['phase']=='verifier'for x in invocations),
+                simulations={str(c):dict(total=counters[c],bySite=by_site[c],byPhase=by_phase[c])for c in counters},
+                invocations=invocations)
+
+rows=[];members={}
+for i,item in enumerate(index):
+    source=json.loads((inputs/item['input']).read_text())['unified'].encode()
+    expected=recorded['rows'][i];assert expected['unit']==item['unit']
+    assert sha(source)==expected['sourceSHA256']
+    observations=[]
+    for name,executable in [('baseline',baseline),('traced',traced)]:
+        run=subprocess.run([str(executable)],input=source,cwd=executable.parent,capture_output=True)
+        assert run.returncode==0 and not run.stderr,(name,run.returncode,run.stderr.decode())
+        observations.append(run.stdout)
+    assert observations[0]==observations[1]
+    assert len(observations[0])==expected['dumpBytes'] and sha(observations[0])==expected['exactDumpSHA256']
+    raw=(traced.parent/'span-trace.bin').read_bytes();compressed=gzip.compress(raw,compresslevel=9,mtime=0)
+    name=f'u{i}.span.bin.gz';members[name]=compressed
+    row=dict(unit=item['unit'],input=item['input'],sourceBytes=len(source),sourceSHA256=sha(source),
+             completeOutputBytes=len(observations[0]),completeOutputSHA256=sha(observations[0]),
+             completeBaselineAndTracedOutputsEqual=True,
+             trace=dict(member=name,bytes=len(raw),sha256=sha(raw),gzipBytes=len(compressed),gzipSHA256=sha(compressed)),
+             counts=analyze(raw,expected))
+    rows.append(row)
+    print(item['unit'],row['counts']['actualClassifierCalls'],
+          {c:s['total']['hits']for c,s in row['counts']['simulations'].items()},flush=True)
+
+manifest=dict(schema=1,format='A0SPAN01 followed by fixed22 little-endian u32 fields per record',fields=fields,
+              kind={'1':'invocation entry; unused fields zero','2':'completed original classifier'},
+              phase={'1':'arena_parse','2':'arena_verify_resume'},site=sites,
+              rows=[dict(unit=r['unit'],sourceSHA256=r['sourceSHA256'],completeOutputSHA256=r['completeOutputSHA256'],**r['trace'])for r in rows])
+members['manifest.json']=(json.dumps(manifest,indent=2)+'\n').encode()
+archive=output/'source-frontend-exact-span-counts.zip'
+with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_STORED) as z:
+    for name,data in sorted(members.items()):
+        info=zipfile.ZipInfo(name,date_time=(1980,1,1,0,0,0));info.create_system=3;info.external_attr=0o100644<<16
+        z.writestr(info,data)
+result=dict(schema=1,scope='Count-only trace and offline simulation of successful first-page classification-fact reuse. No cache executes in the compiler; no timings, memory measurement, gain prediction or production/default change.',
+            sourceIdentity=recorded['sourceIdentity'],
+            policy=dict(capacities=[1,2,3],replacement='Fully associative LRU; MRU first; hit touches only; successful miss publishes after complete classifier status0.',
+                        key=['lexical invocation/session ownership','handle','start','fullLength'],
+                        siteIsPartOfKey=False,reset='Empty context at every arena_parse and arena_verify_resume call, including zero-classifier invocations.',
+                        cachedFacts='Nine scan-accumulator fields after original first-page fold, keyword, opcode, first full-word source cell.',
+                        entryWords=16,wholeSpanMemoization=False,transportElision=False,
+                        hits='Hypothetical pure-prefix reuse only. Every observed LOAD, framing/drain, tail scan and diagnostic remains original.',
+                        failureLimit='Six accepted applications have no classifier/transport failures; fault law is design-only and not tested by this trace.'),
+            instrumentation=json.loads((traced.parent/'instrumentation.json').read_text()),
+            executables=dict(baselineSHA256=sha(baseline.read_bytes()),tracedSHA256=sha(traced.read_bytes()),
+                             flags=['-std=c11','-O2','-DNDEBUG']),
+            archive=dict(bytes=archive.stat().st_size,sha256=sha(archive.read_bytes()),members=sorted(members)),rows=rows)
+(output/'summary.json').write_text(json.dumps(result,indent=2)+'\n')

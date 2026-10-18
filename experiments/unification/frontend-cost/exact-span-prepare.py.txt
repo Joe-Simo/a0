@@ -1,0 +1,94 @@
+"""Copy the frozen generated artifact and add observation-only lexical tracing.
+
+Usage: python3 exact-span-prepare.py.txt ARTIFACT RUNTIME OUTPUT
+No source-language implementation, cache, transport, or production file changes.
+"""
+from pathlib import Path
+import hashlib, json, re, shutil, sys
+
+artifact, runtime, output = map(Path, sys.argv[1:])
+output.mkdir(parents=True, exist_ok=False)
+expected_c = '02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998'
+expected_source = '0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0'
+module = (artifact / 'module.c').read_text()
+assert hashlib.sha256(module.encode()).hexdigest() == expected_c
+build = json.loads((artifact / 'build.json').read_text())
+assert build['sourceSHA256'] == expected_source and build['functions'] == 612
+assert len(build['modules']) == 23
+for name in ['driver.c', 'api.h', 'build.json']:
+    shutil.copyfile(artifact / name, output / name)
+for name in ['arena_runtime.c', 'arena_runtime.h']:
+    shutil.copyfile(runtime / name, output / name)
+
+prelude = r'''
+#include <stdint.h>
+#include <stdlib.h>
+static FILE *span_trace;
+static uint32_t span_invocation, span_phase, span_site;
+static void span_row(const uint32_t words[22]) {
+    uint8_t bytes[88];
+    for (uint32_t i=0;i<22;i++)
+        for (uint32_t j=0;j<4;j++) bytes[i*4+j]=(uint8_t)(words[i]>>(j*8));
+    if (fwrite(bytes,1,sizeof bytes,span_trace)!=sizeof bytes) exit(74);
+}
+static void span_begin(uint32_t phase) {
+    span_invocation++; span_phase=phase; span_site=0;
+    uint32_t row[22]={1,span_invocation,phase}; span_row(row);
+}
+static void span_scan(uint32_t handle,uint32_t start,uint32_t length,
+                      uint32_t prefix_status,uint32_t status,uint32_t count,
+                      const uint32_t prefix[9],uint32_t keyword,uint32_t opcode,uint32_t first) {
+    uint32_t row[22]={2,span_invocation,span_phase,span_site,handle,start,length,
+                     prefix_status,status,count};
+    for(uint32_t i=0;i<9;i++)row[10+i]=prefix[i];
+    row[19]=keyword;row[20]=opcode;row[21]=first;span_row(row);
+}
+'''
+
+definitions = {}
+lines = []
+for line in module.splitlines(True):
+    lines.append(line)
+    match = re.match(r'^.*\b(a0[orv]?_([A-Za-z0-9_]+))\([^\n]*\) \{\n$', line)
+    if not match:
+        continue
+    name = match[2]
+    if name in ['arena_parse', 'arena_verify_resume', 'ap_wordscan', 'sp_atom_done', 'ac_name_scan']:
+        definitions[name] = definitions.get(name, 0) + 1
+    if name == 'arena_parse':
+        lines.append('  span_begin(1);\n')
+    elif name == 'arena_verify_resume':
+        lines.append('  span_begin(2);\n')
+    elif name in ['ap_wordscan', 'sp_atom_done', 'ac_name_scan']:
+        lines.append('  span_site=%du;\n' % (['ap_wordscan','sp_atom_done','ac_name_scan'].index(name)+1))
+assert definitions == {'ac_name_scan': 2, 'arena_verify_resume': 2, 'sp_atom_done': 2, 'ap_wordscan': 2, 'arena_parse': 1}, definitions
+module = ''.join(lines)
+start = module.index('a0t_r3_u_a128_u_io a0_ap_scanword(')
+end = module.index('\n}', start) + 2
+body = module[start:end]
+anchor = '  const bool n_has_pages = (n_pages > 0u);\n'
+snapshot = '  const uint32_t span_prefix[9]={' + ','.join('n_q15.f%d' % i for i in range(1,10)) + '};\n'
+assert body.count(anchor) == 1
+body = body.replace(anchor, snapshot + anchor)
+anchor = '  return n_q52;\n'
+record = '  span_scan(p1,p2,p3,n_prefix.f0,n_q52.f0,n_prefix_count,span_prefix,n_z.e[9],n_z.e[8],n_z.e[10]);\n'
+assert body.count(anchor) == 1
+body = body.replace(anchor, record + anchor)
+module = module[:start] + body + module[end:]
+(output / 'module.c').write_text(module)
+harness = Path(__file__).with_name('harness.c.txt').read_text()
+assert harness.count('#include "driver.c"') == 1
+harness = harness.replace('#include "driver.c"', prelude + '\n#include "driver.c"')
+anchor = '    uint32_t status = frontend_parse(bytes, (uint32_t)size, budget);'
+assert harness.count(anchor) == 1
+harness = harness.replace(anchor, '''    span_trace=fopen("span-trace.bin","wb");
+    if(!span_trace || fwrite("A0SPAN01",1,8,span_trace)!=8)return 74;
+''' + anchor + '\n    if(fclose(span_trace)!=0)return 74;')
+(output / 'harness.c').write_text(harness)
+manifest = {'schema':1,'sourceSHA256':expected_source,'generatedC_SHA256':expected_c,
+            'scope':'Observation-only function-entry and completed-classifier tracing; no cache executes.',
+            'definitionsInstrumented':definitions,
+            'files':{name:hashlib.sha256((output/name).read_bytes()).hexdigest()
+                     for name in ['module.c','driver.c','api.h','build.json','arena_runtime.c','arena_runtime.h','harness.c']}}
+(output / 'instrumentation.json').write_text(json.dumps(manifest,indent=2)+'\n')
+print(json.dumps(manifest))
