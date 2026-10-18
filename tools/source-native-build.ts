@@ -17,9 +17,18 @@ const options = new Map(
   }),
 );
 for (const name of options.keys())
-  assert.ok(['out', 'sysroot', 'builtins'].includes(name), `unknown argument ${name}`);
+  assert.ok(
+    ['out', 'sysroot', 'builtins', 'wasm-features'].includes(name),
+    `unknown argument ${name}`,
+  );
 for (const name of ['out', 'sysroot', 'builtins'])
   assert.ok(options.get(name), `required: --${name}=PATH`);
+const wasmFeatures = options.get('wasm-features') ?? 'mvp';
+assert.ok(
+  ['mvp', 'bulk-memory'].includes(wasmFeatures),
+  'wasm-features must be mvp or bulk-memory',
+);
+const featureFlags = wasmFeatures === 'bulk-memory' ? ['-mbulk-memory'] : [];
 const out = resolve(options.get('out') as string);
 const sysroot = resolve(options.get('sysroot') as string);
 const builtins = resolve(options.get('builtins') as string);
@@ -57,7 +66,7 @@ tool(clang.path, [
   '--target=wasm32-wasi',
   `--sysroot=${sysroot}`,
   '-O3',
-  '-mbulk-memory',
+  ...featureFlags,
   '-flto',
   '-DNDEBUG',
   '-c',
@@ -105,9 +114,9 @@ await writeReport(join(out, 'build.json'), {
   wasmSHA256: hash(wasm),
   driverSHA256: hash(driver),
   functions: linked.program.functions.length,
-  clangFlags: ['--target=wasm32-wasi', '-O3', '-mbulk-memory', '-flto', '-DNDEBUG'],
-  requiredWasmFeatures: ['bulk-memory'],
-  compilerHost: 'Node >=22 or a WebAssembly engine supporting standard bulk memory operations',
+  clangFlags: ['--target=wasm32-wasi', '-O3', ...featureFlags, '-flto', '-DNDEBUG'],
+  requiredWasmFeatures: wasmFeatures === 'bulk-memory' ? ['bulk-memory'] : [],
+  compilerHost: 'Node >=22 or a WebAssembly engine supporting the recorded required features',
   aggregateBytes: 4096,
   stackBytes: 16777216,
   wasmBytes: wasm.length,

@@ -120,11 +120,12 @@ still pending. The source-unit and full-frontend audit records for this stage ar
 `results/unified-source-unit-audit.json`, `results/unified-source-unit-frontend-audit.json` and
 `results/unified-source-unit-build.json`.
 
-The candidate compiler artifact uses standard WebAssembly bulk-memory operations, supported by
-the repository's Node >=22 compiler host requirement. Other hosts must support that WebAssembly
-feature. This build setting changes generated frontend machine code; source syntax and the
-application backend targets are unchanged. The build report records its Clang flags and required
-features.
+The artifact builder defaults to the WebAssembly MVP instruction set. The explicit research build
+option `--wasm-features=bulk-memory` enables standard bulk-memory code generation on compatible
+compiler hosts. This is a backend feature setting, not a source dialect. The matched six-workload
+comparison did not establish a consistent time/memory improvement, so it is not the default
+(`results/unified-source-bulk-memory.json`). The build report records the Clang flags and required
+features. Application target semantics are unchanged.
 
 Build the internal candidate with an installed Clang/WASI toolchain (no downloads are performed):
 

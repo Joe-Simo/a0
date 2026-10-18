@@ -1,5 +1,12 @@
 # A0 status
 
+2026-10-18 bulk-memory control: all 240 backend hashes match in the paired six-workload run,
+but the result is mixed. Boot native time falls from 1270.91 to 1187.97 ms; frame rises from
+23.74 to 24.35 ms and boot live frontend RSS rises from 143.69 to 156.58 MiB. The artifact builder
+therefore keeps MVP code generation as its default; bulk memory remains an explicit research
+option. Neither native build clears the old Canonical control (`results/unified-source-bulk-memory.json`,
+raw cells in `results/unified-source-bulk-memory-samples.json`).
+
 2026-10-18 source-cost control: the native candidate remains ineligible for cutover. The matched
 192-cell run has identical backend outputs and maximum recorded load 2, but the boot frontend
 median is 1269.10 ms versus 184.44 ms for old Canonical; the parser/checker plus C emitter takes
