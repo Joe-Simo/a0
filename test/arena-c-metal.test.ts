@@ -149,3 +149,12 @@ test(
     assert.equal(evidence.results.length, 72);
   },
 );
+
+test('native A0 C host I/O hooks preserve streams and real arena services', options, async () => {
+  const evidence = await fixture('host-io.mjs', 'native-host-io.json');
+  assert.equal(evidence.results.length, 16);
+  assert.equal(
+    evidence.results.reduce((n, r) => n + (r.cases ?? 0), 0),
+    28,
+  );
+});
