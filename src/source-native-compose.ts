@@ -1,10 +1,17 @@
 /** Rebase parsed source-unit IR. Source grammar, interning and checking remain in A0. */
 
 import {
+  type CommentMetadata,
   type ComposedComments,
+  composeCommentMetadata,
   composeSourceComments,
+  type SourceUnitCommentMetadata,
   type SourceUnitComments,
 } from './source-metadata.js';
+import type {
+  NativeAuthoringAvailability,
+  NativeMetadataOwnership,
+} from './source-native-authoring.js';
 import type { NativeTables } from './source-native-ir.js';
 
 export const PARSED_VECTOR_WIDTHS = [
@@ -39,6 +46,7 @@ export interface NativeUnitSnapshot {
   readonly typeRows: Uint32Array;
   readonly typeFields: Uint32Array;
   readonly comments: SourceUnitComments;
+  readonly metadata?: NativeMetadataOwnership;
 }
 export interface NativeIrBuilder {
   initialize(source: string, strict: boolean): void;
@@ -47,6 +55,7 @@ export interface NativeIrBuilder {
   upload(words: Uint32Array): number;
   get(index: number): number;
   set(index: number, value: number): void;
+  authoring?(availability: NativeAuthoringAvailability): void;
 }
 export interface NativeUnitOrigin {
   readonly firstLine: number;
@@ -71,6 +80,102 @@ function add(a: number, b: number): number {
   if (!Number.isSafeInteger(value) || value < 0 || value > NONE)
     throw new Error('source-unit IR exceeds a u32 extent');
   return value;
+}
+
+function nativeCommentIds(
+  unit: NativeUnitSnapshot,
+  base: number,
+): SourceUnitCommentMetadata<number> {
+  if (unit.metadata === undefined) throw new Error('missing native authoring ownership');
+  const lineRows = table(unit.tables, 32),
+    comments = table(unit.tables, 38);
+  const count = comments.length / 3;
+  const range = (first: number, length: number): number[] => {
+    if (first > count || length > count - first) throw new Error('invalid native comment range');
+    return Array.from({ length }, (_, index) => add(base, first + index));
+  };
+  const line = (id: number): CommentMetadata<number> | undefined => {
+    if (id >= lineRows.length / 10) throw new Error('invalid native comment line');
+    const start = id * 10;
+    const leading = range(word(lineRows, start + 8), word(lineRows, start + 9));
+    const trailing = word(lineRows, start + 7);
+    if (trailing !== NONE && trailing >= count) throw new Error('invalid native trailing comment');
+    return leading.length || trailing !== NONE
+      ? {
+          ...(leading.length ? { leading } : {}),
+          ...(trailing === NONE ? {} : { trailing: add(base, trailing) }),
+        }
+      : undefined;
+  };
+  const functions = table(unit.tables, 41),
+    uses = table(unit.tables, 53);
+  const tail = range(unit.metadata.tailFirst, unit.metadata.tailCount);
+  const profile = unit.metadata.profileLine === NONE ? undefined : line(unit.metadata.profileLine);
+  return {
+    ...(profile === undefined ? {} : { profileComments: profile }),
+    useComments: Array.from({ length: uses.length / 3 }, (_, index) =>
+      line(word(uses, index * 3 + 2)),
+    ),
+    functions: Array.from({ length: functions.length / 14 }, (_, index) => {
+      const comments = line(word(functions, index * 14 + 7));
+      return {
+        ...(comments === undefined ? {} : { comments }),
+        ...(index + 1 === functions.length / 14 && tail.length ? { afterComments: tail } : {}),
+      };
+    }),
+    ...(!functions.length && tail.length ? { tailComments: tail } : {}),
+  };
+}
+
+/** Clone real comment spans into contiguous ownership ranges; original source coordinates survive. */
+function publishComposedComments(
+  tables: Map<number, Uint32Array>,
+  units: readonly SourceUnitCommentMetadata<number>[],
+  strict: boolean,
+): NativeMetadataOwnership {
+  const metadata = composeCommentMetadata(units);
+  const original = table(tables, 38),
+    comments = Array.from(original);
+  const lines = Array.from(table(tables, 32)),
+    functions = table(tables, 41);
+  if (metadata.functions.length !== functions.length / 14)
+    throw new Error('native composed metadata function count mismatch');
+  const clone = (ids: readonly number[]): readonly [number, number] => {
+    if (!ids.length) return [0, 0];
+    const start = ids[0] as number;
+    if (
+      start < original.length / 3 &&
+      ids.length <= original.length / 3 - start &&
+      ids.every((id, index) => id === start + index)
+    )
+      return [start, ids.length];
+    const first = comments.length / 3;
+    for (const id of ids) {
+      if (id >= original.length / 3) throw new Error('invalid composed comment reference');
+      add(comments.length, 3);
+      comments.push(word(original, id * 3), word(original, id * 3 + 1), word(original, id * 3 + 2));
+    }
+    return [first, ids.length];
+  };
+  for (const [index, fn] of metadata.functions.entries()) {
+    const line = word(functions, index * 14 + 7);
+    if (line >= lines.length / 10) throw new Error('invalid composed function header line');
+    const [first, count] = clone(fn.comments?.leading ?? []);
+    lines[line * 10 + 7] = fn.comments?.trailing ?? NONE;
+    lines[line * 10 + 8] = first;
+    lines[line * 10 + 9] = count;
+  }
+  const [tailFirst, tailCount] = clone(
+    metadata.functions.at(-1)?.afterComments ?? metadata.tailComments ?? [],
+  );
+  const profileLine = strict ? lines.length / 10 : NONE;
+  if (strict) {
+    add(lines.length, 10);
+    lines.push(0, 0, 0, 0, 0, 0, 0, NONE, 0, 0);
+  }
+  tables.set(32, Uint32Array.from(lines));
+  tables.set(38, Uint32Array.from(comments));
+  return { profileLine, tailFirst, tailCount };
 }
 function shift(row: Uint32Array, index: number, base: number): void {
   row[index] = add(word(row, index), base);
@@ -117,6 +222,7 @@ export function composeNativeUnits(
   const knownSymbols = new Map<string, number>(),
     knownTypes = new Map<string, number>();
   const origins: NativeUnitOrigin[] = [];
+  const commentUnits: SourceUnitCommentMetadata<number>[] = [];
   let byteBase = 0,
     physicalBase = 0;
   const symbol = (name: string): number => {
@@ -159,6 +265,7 @@ export function composeNativeUnits(
     const lineBase = at(32, 10),
       wordBase = at(35, 2),
       commentBase = at(38, 3);
+    if (builder.authoring) commentUnits.push(nativeCommentIds(unit, commentBase));
     const fnBase = at(41, 14),
       nodeBase = at(44, 14),
       argBase = at(47, 5),
@@ -304,7 +411,10 @@ export function composeNativeUnits(
     byteBase = add(byteBase, add(unit.byteLength, unitIndex + 1 < units.length ? 1 : 0));
     physicalBase = add(physicalBase, lineCount);
   }
-  installNativeVectors(builder, tables, specs);
+  const metadata = builder.authoring
+    ? publishComposedComments(tables, commentUnits, strict)
+    : undefined;
+  installNativeVectors(builder, tables, specs, metadata);
   return {
     source,
     comments: composeSourceComments(units.map((unit) => unit.comments)),
@@ -317,6 +427,7 @@ export function installNativeVectors(
   builder: NativeIrBuilder,
   tables: ReadonlyMap<number, Uint32Array | readonly number[]>,
   specs: ReadonlyMap<number, Uint32Array | readonly number[]>,
+  metadata?: NativeMetadataOwnership,
 ): void {
   const upload = (words: Uint32Array | readonly number[]): number =>
     builder.upload(words instanceof Uint32Array ? words : Uint32Array.from(words));
@@ -340,6 +451,7 @@ export function installNativeVectors(
   const raw = tables.get(56);
   if (raw === undefined) throw new Error('missing native specification rows');
   builder.set(30, raw.length ? 1 : 0);
-  builder.set(25, 0);
-  builder.set(26, 0);
+  if (metadata !== undefined) builder.set(24, metadata.profileLine);
+  builder.set(25, metadata?.tailFirst ?? 0);
+  builder.set(26, metadata?.tailCount ?? 0);
 }

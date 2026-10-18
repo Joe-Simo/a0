@@ -1,5 +1,9 @@
 /** Optional formatting/revision capability implemented only by the shared A0 emitters. */
 import { sourceComponent, sourceComponentVector } from './source-component.js';
+import type {
+  NativeSourceMetadataIssue,
+  NativeTextMetadataIssue,
+} from './source-native-authoring.js';
 import type { NativeDiagnosticPorts } from './source-native-render.js';
 import { decodeSourceUtf8 } from './source-utf8.js';
 
@@ -19,6 +23,11 @@ export interface NativeRevisionRequest {
 }
 export type NativeCapabilityRefusal =
   | { readonly ok: false; readonly reason: 'unavailable' | 'no-arena' }
+  | {
+      readonly ok: false;
+      readonly reason: 'authoring-metadata';
+      readonly detail: NativeSourceMetadataIssue | NativeTextMetadataIssue;
+    }
   | {
       readonly ok: false;
       readonly reason: 'incomplete-ir';

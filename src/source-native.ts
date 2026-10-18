@@ -1,6 +1,7 @@
 /** Portable host for the candidate A0 frontend. Parsing, typing and specs execute in A0. */
 import type { Comments, Profile, Program, TypedProgram } from './core.js';
 import type { SourceUnitComments } from './source-metadata.js';
+import type { NativeAuthoringAvailability } from './source-native-authoring.js';
 import {
   composeNativeUnits,
   type NativeIrBuilder,
@@ -145,15 +146,23 @@ export function nativeSourceApi(
     diagnostics === undefined ? undefined : nativeDiagnosticRenderer(api, diagnostics);
   const formatter = formatting === undefined ? undefined : nativeSourceFormatter(api, formatting);
   let generation = 0;
+  let authoring: NativeAuthoringAvailability = {};
   let formatStates = new WeakMap<
     object,
-    { generation: number; sourceStatus: number; parsed: Uint32Array; specs: Uint32Array }
+    {
+      generation: number;
+      sourceStatus: number;
+      parsed: Uint32Array;
+      specs: Uint32Array;
+      authoring: NativeAuthoringAvailability;
+    }
   >();
   const remember = <T extends NativeState>(result: T): T => {
     if (formatter)
       formatStates.set(result, {
         generation,
         sourceStatus: result.status,
+        authoring: { ...authoring },
         parsed: Uint32Array.from(result.state),
         specs: Uint32Array.from(result.specState),
       });
@@ -228,6 +237,7 @@ export function nativeSourceApi(
     checkBudget(budget);
     const result = withSource(source, (pointer, length) => {
       generation++;
+      authoring = {};
       return unit
         ? api.frontend_parse_unit(pointer, length, budget)
         : api.frontend_parse(pointer, length, budget);
@@ -264,11 +274,19 @@ export function nativeSourceApi(
       checked(
         withSource(source, (pointer, length) => {
           generation++;
+          authoring = {};
           return api.frontend_ir_init(pointer, length, budget, strict ? 1 : 0);
         }).value,
       );
     },
     upload,
+    ...(formatter === undefined
+      ? {}
+      : {
+          authoring(value: NativeAuthoringAvailability) {
+            authoring = { ...value };
+          },
+        }),
     symbol(name) {
       const bytes = new TextEncoder().encode(name),
         // Empty identities still need a valid zero-length span for native classification.
@@ -348,6 +366,15 @@ export function nativeSourceApi(
         typeRows: Uint32Array.from(tables.get(68) as Uint32Array),
         typeFields: Uint32Array.from(tables.get(71) as Uint32Array),
         comments: commentSnapshot(program),
+        ...(formatter === undefined
+          ? {}
+          : {
+              metadata: {
+                profileLine: state.state[24] as number,
+                tailFirst: state.state[25] as number,
+                tailCount: state.state[26] as number,
+              },
+            }),
       });
       return remember(parsed);
     },
@@ -406,6 +433,11 @@ export function nativeSourceApi(
         throw new Error('expected a current result owned by this frontend');
       if (state.parsed[93] === 0)
         return { ok: false, reason: 'incomplete-ir', sourceStatus: state.sourceStatus };
+      const detail =
+        state.authoring.text ??
+        ((request?.scope ?? 'source') === 'source' ? state.authoring.source : undefined);
+      if (state.sourceStatus === 0 && detail !== undefined)
+        return { ok: false, reason: 'authoring-metadata', detail };
       return formatter.format(state.parsed, state.specs, request);
     },
     revision(result, request) {
@@ -416,6 +448,8 @@ export function nativeSourceApi(
         throw new Error('expected a current result owned by this frontend');
       if (state.parsed[93] === 0)
         return { ok: false, reason: 'incomplete-ir', sourceStatus: state.sourceStatus };
+      if (state.sourceStatus === 0 && state.authoring.text !== undefined)
+        return { ok: false, reason: 'authoring-metadata', detail: state.authoring.text };
       return formatter.revision(state.parsed, state.specs, request);
     },
     close() {

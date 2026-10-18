@@ -9,6 +9,7 @@ import type {
   TypedFunc,
   TypedProgram,
 } from './core.js';
+import { type NativeTextMetadataIssue, nativeCommentEncoder } from './source-native-authoring.js';
 import {
   installNativeVectors,
   type NativeIrBuilder,
@@ -73,9 +74,17 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     spans.set(value, extent);
     return extent;
   };
-  for (const path of program.uses ?? []) {
+  const metadata = builder.authoring === undefined ? undefined : nativeCommentEncoder(span);
+  if (metadata) {
+    tables.set(32, metadata.lines);
+    tables.set(38, metadata.comments);
+    metadata.line(); // A location-free line for IR fields without authoring ownership.
+  } else append(table(32), [0, 0, 0, 0, 0, 0, 0, NONE, 0, 0]);
+  const profileLine =
+    metadata && program.profile === 'strict' ? metadata.line(program.profileComments) : NONE;
+  for (const [index, path] of (program.uses ?? []).entries()) {
     const [start, count] = span(path);
-    append(table(53), [start, count, 0]);
+    append(table(53), [start, count, metadata?.line(program.useComments?.[index]) ?? 0]);
   }
   const rememberOperand = (value: Operand): void => {
     if (value.kind === 'node') span(value.id);
@@ -89,10 +98,61 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     ])
       for (const argument of entry.args) rememberOperand(argument);
   }
+  let textIssue: NativeTextMetadataIssue | undefined;
+  const textFlags = metadata === undefined ? undefined : new Map<Node, number>();
+  const line = (entry: Node): number => {
+    if (entry.text !== undefined) {
+      let text: string | undefined;
+      try {
+        text = losslessSourceString(entry.text, 'native authoring text');
+      } catch {
+        textIssue ??= 'unrepresentable-text';
+      }
+      if (text !== undefined) {
+        const bytes = new TextEncoder().encode(text);
+        const matching =
+          entry.op === 'arr' &&
+          entry.args.length === bytes.length &&
+          entry.args.every(
+            (argument, index) => argument.kind === 'u32' && argument.value === bytes[index],
+          );
+        if (matching) textFlags?.set(entry, 2);
+        else textIssue ??= 'text-mismatch';
+      }
+    }
+    return metadata?.line(entry.comments) ?? 0;
+  };
+  const authoring =
+    metadata === undefined
+      ? undefined
+      : program.functions.map((fn, index) => {
+          const header = metadata.line(fn.comments);
+          const examples = (fn.spec?.examples ?? []).map((example) =>
+            metadata.line(example.comments),
+          );
+          const pre = fn.spec?.pre === undefined ? 0 : line(fn.spec.pre);
+          const post = fn.spec?.post === undefined ? 0 : line(fn.spec.post);
+          const nodes = fn.nodes.map(line);
+          const ret = metadata.line(fn.retComments),
+            end = metadata.line(fn.endComments);
+          if (fn.afterComments !== undefined) {
+            if (index + 1 !== program.functions.length) metadata.refuse('intermediate-tail');
+            else if (!fn.afterComments.length) metadata.refuse('empty-tail');
+          }
+          return { header, examples, pre, post, nodes, ret, end };
+        });
+  if (program.functions.length && program.tailComments?.length) metadata?.refuse('program-tail');
+  const [tailFirst, tailCount] = metadata?.tail(
+    program.functions.length
+      ? (program.functions.at(-1)?.afterComments ?? [])
+      : (program.tailComments ?? []),
+  ) ?? [0, 0];
   const source = strings.join('');
   builder.initialize(source, program.profile === 'strict');
-  // One synthetic IR location suffices: metadata is restored separately after checking.
-  append(table(32), [0, 0, 0, 0, 0, 0, 0, NONE, 0, 0]);
+  builder.authoring?.({
+    ...(metadata?.issue === undefined ? {} : { source: metadata.issue }),
+    ...(textIssue === undefined ? {} : { text: textIssue }),
+  });
   const symbols = new Map<string, number>();
   const symbol = (name: string): number => {
     transportString(name);
@@ -162,7 +222,7 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     else fail('unknown operand kind');
     return id;
   };
-  const node = (value: Node, spec = false): number => {
+  const node = (value: Node, lineId: number, spec = false): number => {
     const first = table(spec ? 50 : 47, spec).length / 5;
     for (const argument of value.args) operand(argument, spec);
     const op = irOp(value.op);
@@ -175,12 +235,12 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
         value.args.length,
         value.callee === undefined ? NONE : symbol(value.callee),
         value.pred === undefined ? NONE : symbol(value.pred),
+        lineId,
         0,
         0,
         0,
         0,
-        0,
-        0,
+        textFlags?.get(value) ?? 0,
         0,
         0,
       ]) / 14
@@ -226,23 +286,37 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     for (const parameter of fn.params) append(table(50), [type(parameter)]);
     const result = type(fn.result);
     const first = table(44).length / 14;
-    for (const entry of fn.nodes) node(entry);
+    const locations = authoring?.[index];
+    for (const [nodeIndex, entry] of fn.nodes.entries())
+      node(entry, locations?.nodes[nodeIndex] ?? 0);
     const returned = operand(fn.ret);
     const rawStart = table(56).length / 6;
     const exampleStart = table(41, true).length / 8;
-    const contract = (entry: Node | undefined, kind: number): number => {
+    const contract = (entry: Node | undefined, kind: number, lineId: number): number => {
       if (entry === undefined) return NONE;
-      const raw = append(table(56), [kind, index, 0, 0, 0, 0]) / 6;
-      return append(table(44, true), [kind, index, 0, node(entry, true), raw, 0, 0]) / 7;
+      const raw = append(table(56), [kind, index, lineId, 0, 0, lineId]) / 6;
+      return (
+        append(table(44, true), [kind, index, lineId, node(entry, lineId, true), raw, 0, 0]) / 7
+      );
     };
-    for (const example of fn.spec?.examples ?? []) {
-      const raw = append(table(56), [1, index, 0, 0, 0, 0]) / 6;
+    for (const [exampleIndex, example] of (fn.spec?.examples ?? []).entries()) {
+      const lineId = locations?.examples[exampleIndex] ?? 0;
+      const raw = append(table(56), [1, index, lineId, 0, 0, lineId]) / 6;
       const args = example.args.map(literal);
       const start = append(table(38, true), args);
-      append(table(41, true), [index, raw, start, args.length, literal(example.result), 0, 0, 0]);
+      append(table(41, true), [
+        index,
+        raw,
+        start,
+        args.length,
+        literal(example.result),
+        lineId,
+        0,
+        0,
+      ]);
     }
-    const pre = contract(fn.spec?.pre, 2),
-      post = contract(fn.spec?.post, 3);
+    const pre = contract(fn.spec?.pre, 2, locations?.pre ?? 0),
+      post = contract(fn.spec?.post, 3, locations?.post ?? 0);
     if (fn.spec !== undefined)
       append(table(62, true), [index, exampleStart, fn.spec.examples.length, pre, post]);
     append(table(41), [
@@ -253,16 +327,21 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
       first,
       fn.nodes.length,
       returned,
-      0,
-      0,
-      0,
+      locations?.header ?? 0,
+      locations?.ret ?? 0,
+      locations?.end ?? 0,
       rawStart,
       table(56).length / 6 - rawStart,
       0,
       0,
     ]);
   }
-  installNativeVectors(builder, tables, specs);
+  installNativeVectors(
+    builder,
+    tables,
+    specs,
+    metadata ? { profileLine, tailFirst, tailCount } : undefined,
+  );
   return source;
 }
 
