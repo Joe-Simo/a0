@@ -1,0 +1,39 @@
+{
+  "schema": "a0-read-array-loop-history-v1",
+  "purpose": "Retain the exact measured runner and compiler commit objects when only the evidence report is cherry-picked. This follow-up does not change the original archive or measurements.",
+  "bundle": {
+    "path": "experiments/unification/wasm-read-array-66/controls.bundle",
+    "sha256": "bcf712292fd7e9ff41e8d82405a815cc56ff81f6d0200aff9465abae9422c08a",
+    "bytes": 97122,
+    "excludedReachableHistory": "1b1fc66f850df2a124b1b67d356364b23097c938",
+    "prerequisites": [
+      "6161963fcc166fd9defed9447bb04292f2b492ec",
+      "8298161e4bd023b23da1b9a107fbc0eea200ce2a"
+    ],
+    "prerequisitesReachableFromExcludedCommit": true
+  },
+  "refs": {
+    "refs/evidence/read-array-original/runner": "8d1a2afadbb31351550a19a1e347bb7db6b22f10",
+    "refs/evidence/read-array-original/old64": "aa7a2f3802a39271ac05af38d8120ab1c9dd22b2",
+    "refs/evidence/read-array-original/new66": "0ecbfaf0e5f5b66cdabc7ee077e6f4c599844ae1"
+  },
+  "verification": "Verified bundle prerequisites and all three fetched heads in a new bare repository initialized with only the excluded commit and its reachable history.",
+  "recipe": [
+    "Start in a repository containing commit 1b1fc66f850df2a124b1b67d356364b23097c938 and the archived evidence files.",
+    "git bundle verify experiments/unification/wasm-read-array-66/controls.bundle",
+    "git fetch experiments/unification/wasm-read-array-66/controls.bundle 'refs/evidence/read-array-original/*:refs/evidence/read-array-original/*'",
+    "git worktree add --detach ../read-array-runner refs/evidence/read-array-original/runner",
+    "git worktree add --detach ../read-array-old64 refs/evidence/read-array-original/old64",
+    "git worktree add --detach ../read-array-new66 refs/evidence/read-array-original/new66",
+    "Install locked dependencies and run bun run build in each worktree, with Node >=22 and the recorded compiler toolchain. Check source and generated JavaScript against the archived inventories before timing.",
+    "Extract original-run.tar.gz under a new local scratch folder. Its read-array-loop-controls/prepared.json and read-array-timing-run-8d1a2af/selection.json contain the immutable source/options/module and alias inventories.",
+    "To regenerate the selection without timing, run the exact original dist/tools/wasm-read-array-timing.js --prepare-only with --prepared pointing to the extracted prepared.json, --baseline and --candidate pointing to the two exact compiler worktrees, and --out pointing to a fresh local directory.",
+    "Compare regenerated selection.json SHA-256 with bd75c17e2740f2373547ba88a2282f289534a692c35143765293b5837c0f18a9. Require all frozen source/compiler/module identities to pass before any separately authorized quiet run."
+  ],
+  "originalArchive": {
+    "path": "experiments/unification/wasm-read-array-66/original-run.tar.gz",
+    "sha256": "d54e9501807b74efe9754843dffe104635be79e36540596878ab6acb776ba1b9",
+    "unchanged": true
+  },
+  "note": "Neither compiler commit is an ancestor of the excluded commit; both are therefore retained explicitly. The bundle carries Git commit metadata as required to preserve exact identities; no runtime sample is duplicated or replaced."
+}
