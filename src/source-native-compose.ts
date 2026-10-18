@@ -438,6 +438,8 @@ export function installNativeVectors(
   }
   const directory = new Uint32Array(128);
   directory[6] = builder.get(6);
+  // Match the A0 spec directory: a spec page has no profile declaration line.
+  directory[24] = NONE;
   directory[92] = 1;
   for (const [slot, words] of specs) {
     directory[slot] = upload(words);
