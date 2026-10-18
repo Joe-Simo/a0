@@ -27,6 +27,8 @@ import {
   type Location,
   type Position,
   type Range,
+  ResponseError,
+  LSPErrorCodes,
   SymbolKind,
   TextDocumentSyncKind,
   TextDocuments,
@@ -49,6 +51,8 @@ import { applyEdit } from './fix.js';
 import { isDensePath, link, parseFile } from './link.js';
 import { confine } from './mcp.js';
 import { protectionPolicy } from './protection-policy.js';
+import type { nativeSource } from './source-native.js';
+import { decodeSourceUtf8 } from './source-utf8.js';
 import { type SpecWord, specWordOf } from './spec.js';
 import { A0_VERSION } from './version.js';
 
@@ -222,16 +226,54 @@ function wordAt(text: string, pos: Position): string | undefined {
   return a < b ? l.slice(a, b) : undefined;
 }
 
+export interface LspOptions {
+  /** Staged dependency replacement; the caller owns this shared A0 frontend and its capabilities. */
+  readonly frontend?: ReturnType<typeof nativeSource>;
+}
+
 /** Wire the A0 language services onto `connection` for files inside `launch`. */
-export async function startServer(connection: Connection, launch: string): Promise<void> {
+export async function startServer(
+  connection: Connection,
+  launch: string,
+  options: LspOptions = {},
+): Promise<void> {
   const launched = await realpath(resolve(launch));
   protectionPolicy(launched);
   const root = (await stat(launched)).isDirectory() ? launched : dirname(launched);
   const documents = new TextDocuments(TextDocument);
+  const frontend = options.frontend;
+  const native = frontend === undefined ? undefined : {
+    frontend,
+    source: await import('./source-native-link.js'),
+  };
+  let documentEpoch = 0;
+  let stopping = false;
+  const pendingPublications = new Set<Promise<void>>();
   /** Real (confined) path of each open document, by URI. */
   const paths = new Map<string, string>();
 
-  const scrub = (s: string): string => s.split(`${root}${sep}`).join('');
+  const scrub = (s: string): string => {
+    const shown = s.split(`${root}${sep}`).join('');
+    return frontend === undefined ? shown : shown.split(root).join('.');
+  };
+  const confineNativePath = async (path: string): Promise<string> => {
+    try {
+      return await confine(root, path, true);
+    } catch (error) {
+      // Redact host policy wording only; no semantic/native diagnostic ID is interpreted here.
+      if (error instanceof A0Error && error.id === 'A0801')
+        throw error.rewrite('path is outside the server root');
+      throw error;
+    }
+  };
+  const canonicalNativePath = async (path: string): Promise<string> => {
+    // linkProject canonicalizes the root directory before any source file.
+    if (path === root) {
+      if (await realpath(root) !== root) throw new Error('language service root changed');
+      return root;
+    }
+    return confineNativePath(path);
+  };
 
   /** Confined real path of a document URI, or undefined when it is not a file inside the root. */
   const pathOf = async (uri: string): Promise<string | undefined> => {
@@ -252,6 +294,23 @@ export async function startServer(connection: Connection, launch: string): Promi
         if (doc !== undefined) return doc.getText();
       }
     return readFile(real, 'utf8');
+  };
+
+  /** Capture original open-buffer strings together; later graph IO cannot mix buffer versions. */
+  const nativeReadSnapshot = async (entry: string, entryText: string): Promise<(path: string) => Promise<string>> => {
+    const buffers = documents.all().map((doc) => ({ uri: doc.uri, text: doc.getText() }));
+    const resolved = await Promise.all(buffers.map(async ({ uri, text }) => ({
+      path: paths.get(uri) ?? await pathOf(uri), text,
+    })));
+    const captured = new Map<string, string>();
+    for (const { path, text } of resolved)
+      if (path !== undefined && !captured.has(path)) captured.set(path, text);
+    captured.set(entry, entryText);
+    return async (path: string): Promise<string> => {
+      const confined = await confineNativePath(path);
+      const text = captured.get(confined);
+      return text === undefined ? decodeSourceUtf8(await readFile(confined)) : text;
+    };
   };
 
   /** The file and every file it transitively `use`s (each once), skipping unreadable ones. */
@@ -296,11 +355,37 @@ export async function startServer(connection: Connection, launch: string): Promi
           message: 'file is outside the language server root; no checks run',
         },
       ];
+    if (frontend !== undefined && !path.endsWith('.a0'))
+      return [{
+        range: lineRange(text, 0), severity: DiagnosticSeverity.Error, code: 'service', source: 'a0',
+        message: 'Migrate historical source before using language services.',
+        data: { native: { reason: 'source-path' } },
+      }];
     try {
-      await link(path, read, { root });
+      if (native === undefined) await link(path, read, { root });
+      else await native.source.linkNativeSource(path, await nativeReadSnapshot(path, text), native.frontend, {
+        root,
+        canonicalPath: canonicalNativePath,
+      });
       return [];
     } catch (e) {
-      const err = e instanceof A0Error ? e : new A0Error('internal error', undefined);
+      // Native semantic details come only from the actual A0 renderer, never host reclassification.
+      const failure = native !== undefined && e instanceof native.source.NativeSourceError ? e : undefined;
+      const rendered = failure?.a0Error;
+      if (native !== undefined && !(e instanceof A0Error) && rendered === undefined) {
+        const facts = failure !== undefined
+          ? { status: failure.status, diagnostic: failure.diagnostic }
+          : { reason: typeof (e as { code?: unknown })?.code === 'string' ? (e as { code: string }).code : 'service-unavailable' };
+        return [{
+          range: lineRange(text, Math.max(0, (failure !== undefined && failure.path === path ? failure.line ?? 1 : 1) - 1)),
+          severity: DiagnosticSeverity.Error,
+          code: 'service',
+          source: 'a0',
+          message: failure !== undefined ? 'Source checking refused.' : 'Language service unavailable.',
+          data: { native: facts },
+        }];
+      }
+      const err = rendered ?? (e instanceof A0Error ? e : new A0Error('internal error', undefined));
       const at = LINKED_AT.exec(err.message);
       const body = at === null ? err.message : err.message.slice(at[0].length);
       let line = 0;
@@ -337,9 +422,34 @@ export async function startServer(connection: Connection, launch: string): Promi
     }
   };
 
-  const publish = async (doc: TextDocument): Promise<void> => {
-    await connection.sendDiagnostics({ uri: doc.uri, diagnostics: await diagnose(doc) });
+  const publishCurrent = async (doc: TextDocument): Promise<void> => {
+    if (frontend !== undefined && (stopping || documents.get(doc.uri) !== doc)) return;
+    const epoch = documentEpoch, version = doc.version;
+    const diagnostics = await diagnose(doc);
+    if (frontend !== undefined &&
+      (stopping || documentEpoch !== epoch || documents.get(doc.uri) !== doc || doc.version !== version)) return;
+    await connection.sendDiagnostics({
+      uri: doc.uri,
+      diagnostics,
+      ...(frontend === undefined ? {} : { version }),
+    });
   };
+
+  const publish = (doc: TextDocument): Promise<void> => {
+    const task = publishCurrent(doc);
+    if (frontend !== undefined) {
+      pendingPublications.add(task);
+      const completed = (): void => { pendingPublications.delete(task); };
+      void task.then(completed, completed);
+    }
+    return task;
+  };
+  if (frontend !== undefined)
+    connection.onShutdown(async () => {
+      stopping = true;
+      documentEpoch++;
+      await Promise.allSettled([...pendingPublications]);
+    });
 
   connection.onInitialize(() => ({
     capabilities: {
@@ -355,17 +465,23 @@ export async function startServer(connection: Connection, launch: string): Promi
   }));
 
   documents.onDidOpen(async ({ document }) => {
+    documentEpoch++;
     const path = await pathOf(document.uri);
+    if (frontend !== undefined && documents.get(document.uri) !== document) return;
     if (path !== undefined) paths.set(document.uri, path);
   });
   documents.onDidClose(({ document }) => {
+    documentEpoch++;
     paths.delete(document.uri);
-    void connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
+    if (frontend === undefined || !stopping)
+      void connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
   });
   // An edit can break or fix any open file that uses this one: recheck them all.
   documents.onDidChangeContent(async ({ document }) => {
+    documentEpoch++;
     if (!paths.has(document.uri)) {
       const path = await pathOf(document.uri);
+      if (frontend !== undefined && documents.get(document.uri) !== document) return;
       if (path !== undefined) paths.set(document.uri, path);
     }
     await publish(document);
@@ -448,11 +564,34 @@ export async function startServer(connection: Connection, launch: string): Promi
 
   connection.onDocumentFormatting(async ({ textDocument }): Promise<TextEdit[] | null> => {
     const doc = documents.get(textDocument.uri);
-    const path = paths.get(textDocument.uri);
-    if (doc === undefined || path === undefined) return null;
-    const text = doc.getText();
+    if (doc === undefined) return null;
+    const epoch = documentEpoch, version = doc.version, text = doc.getText();
+    const path = paths.get(textDocument.uri) ?? (frontend === undefined ? undefined : await pathOf(textDocument.uri));
+    if (frontend !== undefined && stopping)
+      throw new ResponseError(LSPErrorCodes.RequestFailed, 'Language service unavailable.', { reason: 'service-unavailable' });
+    if (frontend !== undefined &&
+      (documentEpoch !== epoch || documents.get(textDocument.uri) !== doc || doc.version !== version))
+      throw new ResponseError(LSPErrorCodes.ContentModified, 'Document changed during formatting.', { reason: 'content-modified' });
+    if (path === undefined) return null;
     let formatted: string;
-    try {
+    if (frontend !== undefined) {
+      try {
+      if (!path.endsWith('.a0'))
+        throw new ResponseError(LSPErrorCodes.RequestFailed, 'Formatting requires migrated .a0 source.', { reason: 'source-path' });
+      const unit = frontend.parseUnit(text);
+      if (!unit.ok)
+        throw new ResponseError(LSPErrorCodes.RequestFailed, 'Source parsing refused.', { status: unit.status, diagnostic: unit.state[1] });
+      const output = frontend.format(unit);
+      if (!output.ok)
+        throw new ResponseError(LSPErrorCodes.RequestFailed, 'Source formatting refused.', output);
+      formatted = output.text;
+      } catch (error) {
+        if (error instanceof ResponseError) throw error;
+        throw new ResponseError(LSPErrorCodes.RequestFailed, 'Language service unavailable.', {
+          reason: typeof (error as { code?: unknown })?.code === 'string' ? (error as { code: string }).code : 'service-unavailable',
+        });
+      }
+    } else try {
       if (isDensePath(path)) {
         // Dense text is formatted through the dense printer, with the parameter counts of
         // the files it uses (a call's arity comes from its callee).
