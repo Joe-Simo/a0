@@ -1,5 +1,12 @@
 # A0 status
 
+2026-10-18 size-optimization control: all 240 backend hashes match at maximum recorded load 2.96,
+but `-Os` is slower on the larger programs. Boot rises from 1277.79 to 1501.35 ms; page rises from
+203.27 to 225.75 ms. The artifact shrinks from 356280 to 204765 bytes and the two small programs
+improve, so the result is mixed. The default remains `-O3` (`results/unified-source-opt-size.json`,
+raw cells in `results/unified-source-opt-size-samples.json`). These measurements do not clear the
+old Canonical control or establish a shipping frontend improvement.
+
 2026-10-18 native artifact packaging: the default frontend fixture is 356280 bytes, down from
 417837 bytes with debug metadata. Every standard Wasm section and import/export is byte-identical
 (`results/unified-native-release-sections.json`). `--symbols=keep` retains the debugging build.
