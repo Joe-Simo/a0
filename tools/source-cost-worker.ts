@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
-import { compile } from '../src/backends.js';
+import type * as Backends from '../src/backends.js';
 import type * as Core from '../src/core.js';
 import { validate } from '../src/core.js';
 import type * as Dense from '../src/dense.js';
@@ -21,6 +21,9 @@ const oldCore = (await import(
 const oldDense = (await import(
   pathToFileURL(join(baseline, 'dist/src/dense.js')).href
 )) as typeof Dense;
+const commonEmitter = (await import(
+  pathToFileURL(join(baseline, 'dist/src/backends.js')).href
+)) as typeof Backends;
 const input = JSON.parse(await readFile(inputPath, 'utf8')) as {
   canonical: string;
   dense: string;
@@ -49,7 +52,7 @@ const frontendEnd = performance.now(),
 const frontendMemory = process.memoryUsage();
 const emitStart = performance.now();
 const frontendPeakRssBytes = process.resourceUsage().maxRSS * 1024;
-const output = compile(program, 'c').text,
+const output = commonEmitter.compile(program, 'c').text,
   end = performance.now();
 const memory = process.memoryUsage();
 console.log(

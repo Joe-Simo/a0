@@ -27,6 +27,30 @@ interface Build {
 
 const root = defaultRepo();
 const sha = (data: string | Uint8Array): string => createHash('sha256').update(data).digest('hex');
+
+/** Bind every native transport input, including the arena implementation, to the build record. */
+export async function verifyNativeInputs(
+  checkout: string,
+  inputs: readonly { readonly path: string; readonly sha256: string }[],
+): Promise<void> {
+  assert.deepEqual(
+    inputs.map((input) => input.path).sort(),
+    [
+      'tools/native/source_frontend.c',
+      'tools/native/arena_runtime.c',
+      'tools/native/arena_runtime.h',
+      'tools/source-native-build.ts',
+    ].sort(),
+    'native input inventory differs',
+  );
+  for (const input of inputs)
+    assert.equal(
+      sha(await readFile(join(checkout, input.path))),
+      input.sha256,
+      `stale frontend fixture: ${input.path}; regenerate seed/source-frontend`,
+    );
+}
+
 let artifact: Promise<WebAssembly.Module> | undefined;
 export function nativeSourceArtifact(): Promise<WebAssembly.Module> {
   artifact ??= (async () => {
@@ -47,16 +71,8 @@ export function nativeSourceArtifact(): Promise<WebAssembly.Module> {
     assert.deepEqual(build.symbolFlags, ['--strip-all']);
     assert.match(build.libcSHA256, /^[0-9a-f]{64}$/);
     assert.match(build.builtinsSHA256, /^[0-9a-f]{64}$/);
-    assert.deepEqual(
-      build.nativeInputs.map((input) => input.path).sort(),
-      [
-        'tools/native/source_frontend.c',
-        'tools/native/arena_runtime.c',
-        'tools/native/arena_runtime.h',
-        'tools/source-native-build.ts',
-      ].sort(),
-    );
-    for (const input of [...build.modules, ...build.nativeInputs])
+    await verifyNativeInputs(root, build.nativeInputs);
+    for (const input of build.modules)
       assert.equal(
         sha(await readFile(join(root, input.path))),
         input.sha256,

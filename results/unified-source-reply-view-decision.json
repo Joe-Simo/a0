@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "decision": "reject",
+  "scope": "Internal native A0 frontend transport experiment; no official source cutover or shipping runtime claim.",
+  "evidence": "results/unified-source-reply-view.json",
+  "sourceCommit": "def9cdf",
+  "controlCommit": "768375accc9949f00c069a71bf3b9ff7af717704",
+  "reason": "All six matched frontend medians and live RSS medians worsened; executable artifact grew from 356280 to 407914 bytes. Retain the existing runtime.",
+  "grammarControls": {
+    "cases": 3168,
+    "status": "pass",
+    "scope": "Matched native parse/parseUnit status, leading diagnostic state and accepted IR across malformed token/shape/profile/newline controls."
+  },
+  "protocolControls": {
+    "casesPerRun": 2437317,
+    "status": "pass",
+    "levels": [
+      "O0",
+      "O2"
+    ],
+    "sanitizers": [
+      "address",
+      "undefined"
+    ],
+    "scope": "Independent wire oracle also passed unchanged baseline."
+  },
+  "limitations": "Flattened source inputs and one fixed historical C text emitter. Graph correctness is audited separately; target execution, CLI startup and AI edit success are not measured by this cost run."
+}
