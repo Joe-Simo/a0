@@ -12,7 +12,8 @@ export interface NativeFormatOptions {
   readonly load: () => WebAssembly.Module;
 }
 export interface NativeFormatRequest {
-  readonly scope?: 'function' | 'program' | 'source';
+  /** Signature emits one complete declared header, without a body or source comments. */
+  readonly scope?: 'function' | 'program' | 'source' | 'signature';
   readonly functionIndex?: number;
   readonly skipSpecs?: boolean;
   readonly mapping?: boolean;
@@ -63,7 +64,7 @@ export type NativeRevisionResult =
 const PAGE = 128;
 const FORMAT_WORDS = 1 + 3 + PAGE + 1;
 const REVISION_WORDS = 1 + 3 + 1;
-const FORMATS = ['function', 'program', 'source'] as const;
+const FORMATS = ['function', 'program', 'source', 'signature'] as const;
 const REVISIONS = ['function', 'program', 'semantic'] as const;
 
 function functionIndex(value: number | undefined): number {

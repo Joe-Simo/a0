@@ -350,7 +350,7 @@ function control(
 export function resourceCases(): SourceCase[] {
   const rows = [
     control('allocation', { budget: 0, status: 4 }),
-    control('mode', { mode: 3, status: 6 }),
+    control('mode', { mode: 4, status: 6 }),
     control('function', { id: 0xffffffff, status: 6 }),
     control('schema', { fault: 1, status: 6 }),
     control('parser failure', { fault: 13, status: 6 }),

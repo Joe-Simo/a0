@@ -56,6 +56,7 @@ await writeFile(join(out, 'format.wasm'), bytes);
 await writeReport(join(out, 'build.json'), {
   schema: 1,
   capability: 'arena-format-v2',
+  formatScopes: ['function', 'program', 'source', 'signature'],
   authoringSchema: 1,
   authoringWords: 128,
   entry: 'compiler/revision_arena.a0',

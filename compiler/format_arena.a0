@@ -3333,7 +3333,7 @@ q1 at b 1
 q2 call af_end q0 q1
 ret q2
 end
-fn af_header (u32,(u32,u32,u32),u32x128,io) u32x128 u32x128 u32 bool bool -> (u32,(u32,u32,u32),u32x128,io)
+fn af_header (u32,(u32,u32,u32),u32x128,io) u32x128 u32x128 u32 bool bool bool -> (u32,(u32,u32,u32),u32x128,io)
 q0 get p1 41
 q1 get p1 42
 q2 get p1 43
@@ -3367,7 +3367,9 @@ q19 at e 2
 q20 get q19 15
 q21 ne q20 0
 q22 xor q21 true
-q23 select q22 1 0
+compact xor p6 true
+allowinfer and q22 compact
+q23 select allowinfer 1 0
 q24 rec e false
 inferred fold af_hinfer q23 q24 p1 p2 row p3 p5
 q25 at inferred 1
@@ -3644,7 +3646,7 @@ q4 rec q1 q2 q3
 r call af_row q0 q4 p3 14
 row at r 1
 q5 at r 0
-a call af_header q5 p1 p2 p3 p4 p5
+a call af_header q5 p1 p2 p3 p4 p5 false
 q6 xor p5 true
 q7 get p1 57
 q8 ne q7 0
@@ -3749,6 +3751,10 @@ end
 fn af_format_one (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
 q0 call af_function p0 p2 p3 p4 false p5
 ret q0
+end
+fn af_format_signature (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+out call af_header p0 p2 p3 p4 false p5 true
+ret out
 end
 fn af_format_program (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
 q0 get p2 8
@@ -3939,7 +3945,7 @@ q12 and q6 q11
 q13 get p1 8
 q14 le q13 1
 q15 and q12 q14
-q16 le p3 2
+q16 le p3 3
 shape and q15 q16
 q17 get p1 33
 q18 rem q17 10
@@ -3980,7 +3986,9 @@ a call af_fail p0 status
 q51 and shape valid
 q52 select q51 0 6
 b call af_fail a q52
-q53 ne p3 0
+wholeprogram eq p3 1
+sourceunit eq p3 2
+q53 or wholeprogram sourceunit
 q54 get p1 42
 q55 div q54 14
 q56 lt p4 q55
@@ -4013,7 +4021,10 @@ b fold af_format_program q3 a p2 p3 p5 p6
 q4 eq p4 2
 q5 select q4 1 0
 q6 fold af_format_source q5 b p2 p3 p5 p6
-ret q6
+signature eq p4 3
+once select signature 1 0
+out fold af_format_signature once q6 p2 p3 p5 p6
+ret out
 end
 fn af_authoring_copy u32x128 u32 u32x128 u32 -> u32x128
 q0 add p1 p3
