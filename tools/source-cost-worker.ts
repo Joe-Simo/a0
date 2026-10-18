@@ -27,6 +27,8 @@ const input = JSON.parse(await readFile(inputPath, 'utf8')) as {
   unified: string;
 };
 const module = new WebAssembly.Module(await readFile(join(artifact, 'frontend.wasm')));
+const initialMemory = process.memoryUsage();
+const initialPeakRssBytes = process.resourceUsage().maxRSS * 1024;
 let engine: ReturnType<typeof nativeSource> | undefined;
 let program: Core.TypedProgram;
 const loadBefore = systemLoad(),
@@ -36,7 +38,7 @@ if (arm === 'old-canonical') program = oldCore.parseAndValidate(input.canonical)
 else if (arm === 'old-dense') program = oldCore.validate(oldDense.parseDense(input.dense));
 else if (arm === 'flat-ts-control') program = validate(parseSource(input.unified));
 else {
-  assert.equal(arm, 'flat-a0');
+  assert.ok(arm === 'flat-a0' || arm === 'flat-a0-control');
   engine = nativeSource(module);
   const result = engine.parse(input.unified);
   assert.ok(result.ok, `native status ${result.status}`);
@@ -44,6 +46,8 @@ else {
 }
 const frontendEnd = performance.now(),
   frontendCpu = process.cpuUsage(cpuBefore);
+const frontendMemory = process.memoryUsage();
+const emitStart = performance.now();
 const frontendPeakRssBytes = process.resourceUsage().maxRSS * 1024;
 const output = compile(program, 'c').text,
   end = performance.now();
@@ -51,11 +55,16 @@ const memory = process.memoryUsage();
 console.log(
   JSON.stringify({
     frontendMs: frontendEnd - start,
-    emitCMs: end - frontendEnd,
+    emitCMs: end - emitStart,
     pipelineMs: end - start,
     frontendCpu,
     loadBefore,
     loadAfter: systemLoad(),
+    initialPeakRssBytes,
+    initialRssBytes: initialMemory.rss,
+    frontendRssBytes: frontendMemory.rss,
+    frontendHeapUsedBytes: frontendMemory.heapUsed,
+    frontendExternalBytes: frontendMemory.external,
     frontendPeakRssBytes,
     peakRssBytes: process.resourceUsage().maxRSS * 1024,
     rssBytes: memory.rss,

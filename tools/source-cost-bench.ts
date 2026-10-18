@@ -9,6 +9,7 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { getEncoding } from 'js-tiktoken';
 import type * as Backends from '../src/backends.js';
+import { compile } from '../src/backends.js';
 import type * as Core from '../src/core.js';
 import { formatProgram } from '../src/core.js';
 import type * as Dense from '../src/dense.js';
@@ -20,6 +21,8 @@ import { loadSource, systemLoadTriple } from './system-load.js';
 const args = process.argv.slice(2);
 const option = (name: string): string | undefined =>
   args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
+const controlArtifactArg = option('control-artifact');
+const controlArtifact = controlArtifactArg === undefined ? undefined : resolve(controlArtifactArg);
 const baselineArg = option('baseline'),
   artifactArg = option('artifact'),
   outArg = option('out');
@@ -67,6 +70,11 @@ assert.equal(hash(await readFile(join(artifact, 'frontend.wasm'))), build.wasmSH
 assert.equal(build.entry, 'compiler/source_frontend.a0');
 const linked = await link(join(root, build.entry), (path) => readFile(path, 'utf8'));
 assert.equal(hash(formatProgram(linked.program)), build.sourceSHA256, 'artifact source differs');
+assert.equal(
+  hash(compile(linked.program, 'c', { cIo: 'host' }).text),
+  build.cSHA256,
+  'artifact C differs',
+);
 assert.deepEqual(
   build.modules.map((module: { path: string }) => resolve(root, module.path)).sort(),
   linked.sources.map((source) => resolve(source.path)).sort(),
@@ -83,10 +91,27 @@ for (const module of build.modules as { path: string; sha256: string }[]) {
     `stale module ${module.path}`,
   );
 }
+let controlBuild: typeof build | undefined;
+if (controlArtifact !== undefined) {
+  controlBuild = JSON.parse(await readFile(join(controlArtifact, 'build.json'), 'utf8'));
+  assert.equal(
+    hash(await readFile(join(controlArtifact, 'frontend.wasm'))),
+    controlBuild.wasmSHA256,
+  );
+  for (const field of ['sourceSHA256', 'cSHA256', 'driverSHA256', 'aggregateBytes', 'stackBytes'])
+    assert.equal(
+      controlBuild[field],
+      build[field],
+      `control differs in ${field}; this comparison permits only Wasm build changes`,
+    );
+}
 await mkdir(out, { recursive: true });
 const tokenizers = ['o200k_base', 'cl100k_base'].map(
   (name) => [name, getEncoding(name as 'o200k_base' | 'cl100k_base')] as const,
 );
+const preparedInputs = new Map<string, string>();
+const workerPath = join(root, 'dist/tools/source-cost-worker.js');
+const workerSHA256 = hash(await readFile(workerPath));
 const inputs: { unit: string; hashes: Record<string, string>; tokens: unknown }[] = [];
 for (const unit of units) {
   const frozenInput = await readFile(join(experiment, 'inputs', unit.input), 'utf8');
@@ -125,9 +150,12 @@ for (const unit of units) {
       ]),
     ),
   });
-  await writeFile(join(out, unit.input), JSON.stringify(input));
+  const prepared = JSON.stringify(input);
+  preparedInputs.set(unit.input, hash(prepared));
+  await writeFile(join(out, unit.input), prepared);
 }
 const arms = ['old-canonical', 'old-dense', 'flat-ts-control', 'flat-a0'];
+if (controlArtifact !== undefined) arms.push('flat-a0-control');
 const samples: Record<string, unknown>[] = [];
 const startedAt = new Date().toISOString();
 for (let round = -1; round < 7; round++) {
@@ -140,10 +168,10 @@ for (let round = -1; round < 7; round++) {
       const child = spawnSync(
         process.execPath,
         [
-          join(root, 'dist/tools/source-cost-worker.js'),
+          workerPath,
           arm,
           join(out, unit.input),
-          artifact,
+          arm === 'flat-a0-control' ? (controlArtifact as string) : artifact,
           baseline,
         ],
         {
@@ -183,6 +211,9 @@ assert.equal(
   build.wasmSHA256,
   'artifact changed',
 );
+assert.equal(hash(await readFile(workerPath)), workerSHA256, 'worker changed');
+for (const [file, digest] of preparedInputs)
+  assert.equal(hash(await readFile(join(out, file))), digest, 'prepared input changed');
 const median = (values: number[]): number =>
   values.sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
 const fields = [
@@ -190,6 +221,11 @@ const fields = [
   'emitCMs',
   'pipelineMs',
   'wallMs',
+  'initialPeakRssBytes',
+  'initialRssBytes',
+  'frontendRssBytes',
+  'frontendHeapUsedBytes',
+  'frontendExternalBytes',
   'frontendPeakRssBytes',
   'peakRssBytes',
   'rssBytes',
@@ -215,6 +251,12 @@ const rows = units.map((unit) => ({
     ]),
   ),
 }));
+if (controlArtifact !== undefined)
+  assert.equal(
+    hash(await readFile(join(controlArtifact, 'frontend.wasm'))),
+    controlBuild.wasmSHA256,
+    'control artifact changed',
+  );
 await writeReport(join(out, 'results.json'), {
   schema: 1,
   candidate: identity,
@@ -225,8 +267,13 @@ await writeReport(join(out, 'results.json'), {
     'Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and modular A0 frontend. Parser/checker plus the same optimized C text emitter. Native instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter and model inference excluded. Equal module and compiled-Wasm preloads in every fresh process; memory includes those preloads and the input. No official source cutover or no-regression conclusion is implied.',
   protocol:
     'Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution.',
-  workerSha256: hash(await readFile(join(root, 'dist/tools/source-cost-worker.js'))),
+  workerSha256: workerSHA256,
+  preparedInputs: Object.fromEntries(preparedInputs),
   artifact: { sha256: build.wasmSHA256, sourceSha256: build.sourceSHA256, bytes: build.wasmBytes },
+  controlArtifact: controlBuild,
+  nativeBuild: build,
+  memoryMethod:
+    'Live frontend RSS/heap/external memory captured before emission. Initial peak/live RSS exposes any inherited launch or preload floor; maxRSS alone cannot establish small-cell frontend parity.',
   node: process.version,
   cpu: cpus()[0]?.model,
   availableParallelism: availableParallelism(),
