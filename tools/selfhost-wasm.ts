@@ -63,6 +63,7 @@ import {
 } from '../src/core.js';
 import { link } from '../src/link.js';
 import { optimizeFunction } from '../src/optimize.js';
+import type { nativeSource } from '../src/source-native.js';
 import { findClang, runTool, spawnWithInput, type ToolInfo } from '../src/toolchain.js';
 import { type WasmLayout, wasmModuleBytes } from '../src/wasm.js';
 import { BEHAVIOR_SPEC } from './behavior-spec.js';
@@ -77,6 +78,7 @@ import {
   planChunks,
   runStageChunk,
 } from './bootstrap.js';
+import { loadNativeBootstrapProgram, type NativeBootstrapProgram } from './bootstrap-source.js';
 import { generateCorpus } from './corpus.js';
 import { KERNELS } from './exec-bench-kernels.js';
 import { frontEndFits, IR_OPS, irOp } from './ref-parse.js';
@@ -145,16 +147,84 @@ int main(void) {
 }
 `;
 
-export interface WasmTool {
+interface WasmToolBuild {
   readonly exe: string;
-  /** The C seed that compiled it (tools/bootstrap.ts `emitchunkio`). */
-  readonly stage1: string;
   readonly functions: number;
   readonly sourceBytes: number;
   readonly cBytes: number;
   readonly chunks: number;
   readonly emitMs: number;
   readonly buildMs: number;
+}
+export interface WasmTool extends WasmToolBuild {
+  /** The C seed that compiled it (tools/bootstrap.ts `emitchunkio`). */
+  readonly stage1: string;
+}
+export interface NativeWasmTool extends WasmToolBuild {
+  readonly bootstrap: 'native-checked-ir';
+}
+
+/** Build exactly the supplied C, without source rewriting or aggregate-name extraction. */
+async function buildWasmExecutable(
+  clang: ToolInfo,
+  c: string,
+  buildDir: string,
+): Promise<{ exe: string; buildMs: number }> {
+  const dir = join(buildDir, 'a0w');
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'emitter.c'), c, 'utf8');
+  await writeFile(join(dir, 'main.c'), toolMain, 'utf8');
+  const start = performance.now();
+  const r = runTool(clang.path as string, [...CLANG_BUILD, '-o', 'a0w', 'main.c'], {
+    cwd: dir,
+    timeoutMs: 1_800_000,
+  });
+  if (!r.ok) throw new Error(`a0w build failed:\n${r.stderr.slice(0, 4000)}`);
+  return { exe: join(dir, 'a0w'), buildMs: Math.round(performance.now() - start) };
+}
+
+/** One native graph check, followed by the shared checked-IR closure/formatter handoff. */
+export function prepareNativeWasmTool(frontend: ReturnType<typeof nativeSource>) {
+  return loadNativeBootstrapProgram(
+    'compiler/boot.a0',
+    ['emitwasmio'],
+    (path) => readFile(path, 'utf8'),
+    frontend,
+    { root: process.cwd() },
+  );
+}
+
+/** Explicit stage-1 setup from native checked IR. The existing TS C backend
+ * emits the implementation; all table optimization/emission still executes
+ * through the existing A0 protocol. The artifact retains historical source
+ * mode 1, which this bridge does not call or claim to retire. */
+export async function buildWasmToolFromIR(
+  clang: ToolInfo,
+  source: NativeBootstrapProgram,
+  buildDir = join(BUILD_DIR, 'native-source'),
+): Promise<NativeWasmTool> {
+  const start = performance.now();
+  const c = compile(source.program, 'c').text;
+  const emitMs = Math.round(performance.now() - start);
+  const built = await buildWasmExecutable(clang, c, buildDir);
+  await writeFile(join(buildDir, 'a0w', 'compiler-source.a0'), source.source, 'utf8');
+  return {
+    ...built,
+    bootstrap: 'native-checked-ir',
+    functions: source.program.functions.length,
+    sourceBytes: Buffer.byteLength(source.source),
+    cBytes: Buffer.byteLength(c),
+    chunks: 1,
+    emitMs,
+  };
+}
+
+export async function buildNativeWasmTool(
+  clang: ToolInfo,
+  frontend: ReturnType<typeof nativeSource>,
+  buildDir = join(BUILD_DIR, 'native-source'),
+): Promise<NativeWasmTool> {
+  return buildWasmToolFromIR(clang, await prepareNativeWasmTool(frontend), buildDir);
 }
 
 /** The verified A0-generated C seed compiles `emitwasmio`; clang builds `a0w`. */
@@ -170,30 +240,41 @@ export async function buildWasmTool(
   const e = emitChunked(source, (c, b) => runStageChunk(stage1, c, b));
   if (e.code !== 0)
     throw new Error(`a0c-seed rejected emitwasmio: code ${e.code} (${e.failed?.own.join(' ')})`);
-  const dir = join(buildDir, 'a0w');
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, 'emitter.c'), e.text, 'utf8');
-  await writeFile(join(dir, 'main.c'), toolMain, 'utf8');
-  const start = performance.now();
-  const r = runTool(clang.path as string, [...CLANG_BUILD, '-o', 'a0w', 'main.c'], {
-    cwd: dir,
-    timeoutMs: 1_800_000,
-  });
-  if (!r.ok) throw new Error(`a0w build failed:\n${r.stderr.slice(0, 4000)}`);
+  const built = await buildWasmExecutable(clang, e.text, buildDir);
   return {
-    exe: join(dir, 'a0w'),
+    ...built,
     stage1,
     functions: parseAndValidate(source).functions.length,
     sourceBytes: Buffer.byteLength(source),
     cBytes: Buffer.byteLength(e.text),
     chunks: e.chunks,
     emitMs: Math.round(e.ms),
-    buildMs: Math.round(performance.now() - start),
   };
 }
 
+export interface WasmToolReply {
+  readonly code: number;
+  readonly out: Uint32Array;
+}
+/** Internal word transport for the same A0 optimizer/emitter protocol. Native
+ * executables remain the default; a compiled Wasm implementation can supply
+ * its words without another encoder or source frontend. */
+export type WasmToolTransport = string | ((words: readonly number[]) => WasmToolReply);
+
 /** Run `a0w` on the input words: (result code, output words). */
-function runTool32(exe: string, words: readonly number[]): { code: number; out: Uint32Array } {
+function runTool32(exe: WasmToolTransport, words: readonly number[]): WasmToolReply {
+  if (typeof exe === 'function') {
+    const result = exe(words.slice());
+    if (
+      !result ||
+      !Number.isInteger(result.code) ||
+      result.code < 0 ||
+      result.code > NEEDS_BODIES ||
+      !(result.out instanceof Uint32Array)
+    )
+      throw new Error('invalid A0 Wasm tool transport result');
+    return { code: result.code, out: result.out.slice() };
+  }
   const input = Buffer.alloc(words.length * 4);
   for (const [i, w] of words.entries()) input.writeUInt32LE(w >>> 0, i * 4);
   const r = spawnWithInput(exe, input, { timeout: 600_000, maxBuffer: 1 << 28 });
@@ -241,7 +322,11 @@ function splitChunk(out: Uint32Array): ChunkOutput {
 }
 
 /** The module from the chunks' outputs (mode 3): every POOL, then every META, then every CODE. */
-function linkChunks(exe: string, chunks: readonly ChunkOutput[], layout: WasmLayout): Uint8Array {
+function linkChunks(
+  exe: WasmToolTransport,
+  chunks: readonly ChunkOutput[],
+  layout: WasmLayout,
+): Uint8Array {
   const version = [...Buffer.from(COMPILER_VERSION, 'utf8')];
   const functions = chunks.reduce((n, c) => n + c.calls.length, 0);
   const words: number[] = [3, version.length, ...version];
@@ -723,7 +808,7 @@ export interface OptimizedProgram {
   readonly runs: number;
 }
 
-const OPTIMIZED = new WeakMap<TypedProgram, OptimizedProgram>();
+const OPTIMIZED = new WeakMap<TypedProgram, Map<WasmToolTransport, OptimizedProgram>>();
 
 /**
  * The optimizer written in A0, function by function in program order: each run gets the
@@ -735,7 +820,7 @@ const OPTIMIZED = new WeakMap<TypedProgram, OptimizedProgram>();
  * computes the summaries itself and asks for every callee body).
  */
 export function a0OptimizeProgram(
-  exe: string,
+  exe: WasmToolTransport,
   program: TypedProgram,
   reference?: readonly Body[],
   /** Bodies to use for functions that do not fit a run (a check only: the result is then not A0's). */
@@ -746,15 +831,22 @@ export function a0OptimizeProgram(
   // metadata, so strict programs remain explicitly unsupported before any cache lookup.
   assertTargetSupports('a0w optimizer', program);
   const plain = reference === undefined && fallback === undefined && !image;
-  const known = plain ? OPTIMIZED.get(program) : undefined;
+  const known = plain ? OPTIMIZED.get(program)?.get(exe) : undefined;
   if (known !== undefined) return known;
   const done = optimizeProgram(exe, program, reference, fallback, image);
-  if (plain) OPTIMIZED.set(program, done);
+  if (plain) {
+    let cache = OPTIMIZED.get(program);
+    if (!cache) {
+      cache = new Map();
+      OPTIMIZED.set(program, cache);
+    }
+    cache.set(exe, done);
+  }
   return done;
 }
 
 function optimizeProgram(
-  exe: string,
+  exe: WasmToolTransport,
   program: TypedProgram,
   reference: readonly Body[] | undefined,
   fallback: readonly Body[] | undefined,
@@ -849,7 +941,7 @@ export interface IrCheck {
  * The A0 optimizer's IR against src/optimize.ts: every function on its own (with the
  * reference callee bodies) and the whole chain (A0 results feeding later runs).
  */
-export function a0IrCheck(exe: string, program: TypedProgram): IrCheck {
+export function a0IrCheck(exe: WasmToolTransport, program: TypedProgram): IrCheck {
   const fns = program.functions;
   const want = typescriptBodies(program);
   const notRun: string[] = [];
@@ -920,7 +1012,7 @@ interface Emitted {
  * chunk is too big, also with the room loop fusion needs): the caller cuts it.
  */
 function emitTables(
-  exe: string,
+  exe: WasmToolTransport,
   fns: readonly TypedFunc[],
   from: number,
   to: number,
@@ -961,7 +1053,7 @@ function emitTables(
  * room) is cut in two.
  */
 export function a0WasmFromTables(
-  exe: string,
+  exe: WasmToolTransport,
   source: TypedProgram,
   layout: WasmLayout,
   optimize = false,
@@ -1080,7 +1172,7 @@ function preludeOf(fns: readonly Func[]): string {
  * emitter) is cut in two.
  */
 export function a0WasmFromSource(
-  exe: string,
+  exe: WasmToolTransport,
   source: TypedProgram,
   layout: WasmLayout,
   optimize = false,
