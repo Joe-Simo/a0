@@ -104,7 +104,7 @@ p.functions[0].spec = { examples: [{ args: [U(-1)], result: { kind: 'bool', valu
 priority.push({ label: 'example result type before invalid argument execution', ...result(p) });
 const report = {
   schema: 1,
-  implementationInputCommit: 'f03a575e82fa25cfb88930bf5f4d28fad3fcf21d',
+  investigationBaselineCommit: 'f03a575e82fa25cfb88930bf5f4d28fad3fcf21d',
   executionCheckoutCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   rows,
   priority,
