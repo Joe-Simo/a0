@@ -1,5 +1,4 @@
 /** Source-bound release assets. Loading needs no compiler checkout or source parser. */
-import { createHash } from 'node:crypto';
 import { nativeSource } from './source-native.js';
 import { decodeSourceUtf8 } from './source-utf8.js';
 
@@ -25,14 +24,20 @@ export interface SourcePackageManifest {
   readonly components: Readonly<Record<SourcePackageFile, SourcePackageComponent>>;
 }
 
-const hash = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex');
+const hash = async (bytes: Uint8Array<ArrayBuffer>): Promise<string> =>
+  Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
 const digest = (value: unknown): value is string =>
   typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
-function manifestFrom(bytes: Uint8Array, expectedSHA256: string): SourcePackageManifest {
-  if (!digest(expectedSHA256) || hash(bytes) !== expectedSHA256)
+async function manifestFrom(
+  bytes: Uint8Array<ArrayBuffer>,
+  expectedSHA256: string,
+): Promise<SourcePackageManifest> {
+  if (!digest(expectedSHA256) || (await hash(bytes)) !== expectedSHA256)
     throw new Error('source package manifest identity differs');
   const manifest: unknown = JSON.parse(decodeSourceUtf8(bytes));
   if (
@@ -73,12 +78,12 @@ export async function loadNativeSourcePackage(
   expectedSHA256: string,
   read: (file: SourcePackageFile) => Promise<Uint8Array>,
 ) {
-  const manifest = manifestFrom(Uint8Array.from(manifestBytes), expectedSHA256);
+  const manifest = await manifestFrom(Uint8Array.from(manifestBytes), expectedSHA256);
   const snapshots = await Promise.all(
     SOURCE_PACKAGE_FILES.map(async (file) => {
       const bytes = Uint8Array.from(await read(file));
       const component = manifest.components[file];
-      if (bytes.length !== component.bytes || hash(bytes) !== component.sha256)
+      if (bytes.length !== component.bytes || (await hash(bytes)) !== component.sha256)
         throw new Error(`source package artifact identity differs: ${file}`);
       return bytes;
     }),

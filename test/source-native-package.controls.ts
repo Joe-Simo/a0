@@ -5,6 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
+import { runInNewContext } from 'node:vm';
 import { run } from '../src/core.js';
 import { loadNativeSourcePackage, SOURCE_PACKAGE_FILES } from '../src/source-native-package.js';
 import { packageNativeSource } from '../tools/source-native-package.js';
@@ -128,6 +129,45 @@ try {
       timeout: 30_000,
     });
     assert.notEqual(missing.status, 0, 'missing required diagnostic asset must fail closed');
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+});
+
+test('the same package loader bundles for browsers and runs without Node globals', async () => {
+  const scratch = await mkdtemp(join(tmpdir(), 'a0-package-browser-'));
+  try {
+    const output = join(scratch, 'browser.js');
+    const entry = join(scratch, 'entry.js');
+    await writeFile(
+      entry,
+      `import {loadNativeSourcePackage} from ${JSON.stringify(resolve('dist/src/source-native-package.js'))};\nglobalThis.A0SourcePackage={loadNativeSourcePackage};\n`,
+    );
+    const bundled = spawnSync(
+      'bun',
+      ['build', entry, '--target=browser', '--format=iife', '--outfile', output],
+      { encoding: 'utf8', timeout: 30_000 },
+    );
+    assert.equal(bundled.status, 0, bundled.stderr);
+    const browser = runInNewContext(
+      `${await readFile(output, 'utf8')}\n({api:globalThis.A0SourcePackage,node:[typeof process,typeof Buffer,typeof require]})`,
+      { WebAssembly, crypto, TextEncoder, TextDecoder },
+      { timeout: 10_000 },
+    ) as { api: { loadNativeSourcePackage: typeof loadNativeSourcePackage }; node: string[] };
+    assert.equal(browser.node.join(','), 'undefined,undefined,undefined');
+    const artifact = await browser.api.loadNativeSourcePackage(manifest, expected, (name) =>
+      readFile(join(directory, name)),
+    );
+    const engine = artifact.instantiate();
+    try {
+      const parsed = engine.parse('fn browser\nret A\nend\n');
+      assert.ok(parsed.ok && engine.format(parsed).ok && engine.revision(parsed).ok);
+      const bad = engine.parse('fn bad\nx absent A\nret x\nend\n');
+      assert.ok(!bad.ok && bad.diagnostic?.rendered.ok);
+      assert.equal(bad.diagnostic.rendered.error.id, 'A0102');
+    } finally {
+      engine.close();
+    }
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }
