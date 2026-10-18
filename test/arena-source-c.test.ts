@@ -85,3 +85,8 @@ test(
   { skip, timeout: 900_000 },
   async () => compare('boundaries'),
 );
+test(
+  'raw-source arena C preserves large construction field and element indices',
+  { skip, timeout: 900_000 },
+  async () => compare('large-construction'),
+);

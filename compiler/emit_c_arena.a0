@@ -6082,9 +6082,10 @@ r0 call sv_packed p0 1 a0
 ret r0
 end
 
-fn tc_fill_arr_key (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+# The conditional key fold has its own index; p5 preserves the constructor index.
+fn tc_fill_arr_key (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
 x1 call tcl121 p0
-x2 call sv_num x1 p1
+x2 call sv_num x1 p5
 x3 call tcl122 x2
 ret x3
 end
@@ -6095,9 +6096,9 @@ r0 call sv_packed p0 1 a0
 ret r0
 end
 
-fn tc_fill_rec_key (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 -> (u32,(u32,u32,u32),io)
+fn tc_fill_rec_key (u32,(u32,u32,u32),io) u32 u32x16 u32 u32 u32 -> (u32,(u32,u32,u32),io)
 x1 call tcl123 p0
-x2 call sv_num x1 p1
+x2 call sv_num x1 p5
 ret x2
 end
 
@@ -6143,10 +6144,10 @@ x32 eq x7 22
 x33 eq x7 24
 x34 or x32 x33
 x35 select x34 1 0
-x36 fold tc_fill_arr_key x35 x31 p2 p3 p4
+x36 fold tc_fill_arr_key x35 x31 p2 p3 p4 p1
 x37 eq x7 23
 x38 select x37 1 0
-x39 fold tc_fill_rec_key x38 x36 p2 p3 p4
+x39 fold tc_fill_rec_key x38 x36 p2 p3 p4 p1
 x40 call tcl120 x39
 x41 mul p4 8
 x42 add x41 2
