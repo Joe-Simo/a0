@@ -1,0 +1,141 @@
+{
+  "schema": 1,
+  "baseCommit": "f4f371e053798539b80609147a49de30b829382b",
+  "testedCodeCommit": "5e2b17117b9bbf34334e96d37f9f86fa17cd9a68",
+  "status": "Private native source-unit formatting restoration implemented. Public source-language cutover and final combined C/direct/JS verification are not claimed by this report.",
+  "scope": {
+    "api": "activateUnitForFormat(ownedUnit, budget)",
+    "input": "An authentic successful parseUnit result retained privately by the same open nativeSource instance.",
+    "output": "An opaque owned formatting input, or an explicit unavailable/native resource result. It is not a checked Program or acceptance result.",
+    "sourcesChanged": [
+      "src/source-native.ts",
+      "src/source-native-compose.ts",
+      "test/source-native-format.test.ts",
+      "test/source-native-format.controls.ts",
+      "docs/design/arena-format.md"
+    ],
+    "a0CompilerSourceChanged": false,
+    "sourceParsingDuringActivation": false,
+    "semanticCheckingDuringActivation": false,
+    "typescriptFormattingFallback": false,
+    "singletonGraphComposition": false,
+    "structuredAuthoringSidecarActivation": false
+  },
+  "restoration": {
+    "source": "Original source bytes, byte length, import rows, line/comment offsets and table contents are retained without composition or rebasing.",
+    "privateState": "The implementation retains private M/PS copies independently of public mutable result fields and Program objects.",
+    "nativeAllocation": "Existing generic native IR initialization/upload and native symbol/type interners allocate all active storage.",
+    "symbolsAndTypes": "Original IDs are asserted while interning in dependency order. Fresh source-symbol and type-key namespaces remain active.",
+    "parserFacts": "Genuine scalar facts, including strict profile, parser status and checked-ready flags, are preserved rather than manufactured.",
+    "specDirectory": "One rebuilt PS page is both uploaded as M59 and supplied to formatting. PS source and symbol headers refer to the active arena.",
+    "contractWords": "Non-empty PS59 contract-token words are captured and reuploaded. Empty parser scratch PS53/PS56 handles are cleared.",
+    "formatting": "The existing A0 formatter and revision components consume restored private native state; activation does not call the native checker finish operation."
+  },
+  "ownershipAndLifetime": {
+    "preflight": "Closed engines, foreign/refused/cloned units and invalid budgets reject before native mutation. Missing live ports or formatter capability returns unavailable before reset.",
+    "activation": "Successful initialization explicitly invalidates prior current graph/results and formatting inputs, then issues an authentic opaque input for the new generation.",
+    "invalidation": "Subsequent parse, check, activation or close invalidates the formatting input. Copied and foreign objects never acquire its private identity.",
+    "resourceFailure": "A failure after reset returns the native status without issuing a partial formatting input. The retained authentic unit remains available for a later retry or checkUnits."
+  },
+  "completedChecks": [
+    {
+      "command": "bun run build",
+      "exitCode": 0,
+      "log": "<repo>/.a0-tmp/activation-build-final.log"
+    },
+    {
+      "command": "node --test dist/test/source-native-format.test.js dist/test/source-native-program.test.js dist/test/source-native.test.js",
+      "exitCode": 0,
+      "tests": 11,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "log": "<repo>/.a0-tmp/activation-host.log",
+      "limit": "Host transport and bundled/default-component controls; this command does not execute the explicit C/direct/JS formatter controls."
+    },
+    {
+      "command": "bun run lint",
+      "exitCode": 0,
+      "existingWarnings": 18,
+      "existingInfos": 164,
+      "log": "<repo>/.a0-tmp/activation-lint.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "log": "<repo>/.a0-tmp/activation-typecheck.log"
+    },
+    {
+      "command": "a0-dev prereview --base=f4f371e053798539b80609147a49de30b829382b --json",
+      "exitCode": 0,
+      "score": 0,
+      "findings": [],
+      "log": "<repo>/.a0-tmp/activation-prereview.json",
+      "classification": "Deterministic review aid, not runtime proof."
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "actualCDiscovery": {
+    "command": "bun .a0-tmp/check-activation.ts",
+    "exitCode": 0,
+    "log": "<repo>/.a0-tmp/c-activation-controls.log",
+    "role": "Focused correctness discovery with existing unchanged A0 frontend bytes and the current authoring-capable formatter. This is not the final source-bound combined artifact proof.",
+    "frontend": {
+      "bytes": 358579,
+      "sha256": "e14da183e6301c667a24ec351101c6e014d706f11967f29f7e326b8e4678e076",
+      "normalizedSourceSha256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+      "origin": "Existing C-derived arena frontend module."
+    },
+    "formatter": {
+      "bytes": 67851,
+      "sha256": "5ab1ac6b1a141f3b283bb0395f02d0c795102e02b49be7e45747c0f801200a30",
+      "normalizedSourceSha256": "5188341cf66ba2800ba52fa49353f0407960699b73f422bd18b19a8939a6e90a",
+      "origin": "Existing C-derived A128 authoring-capable formatting module."
+    },
+    "assertions": [
+      "Exact formatter byte/map and revision equality before reset and after explicit restoration.",
+      "Strict profile, CRLF, Unicode import, function/node/return/example/contract comments and file tails survive graph checking and activation.",
+      "PS59 contract-token payloads are copied exactly into the active arena.",
+      "Public M/PS/Program mutation does not affect the private retained unit.",
+      "Foreign, refused and cloned units and invalid budgets reject without replacing the current graph.",
+      "Allocation budget zero returns native status 4; retained units can recover and remain usable by checkUnits.",
+      "Functionless imported files and nested repeat/example specifications retain byte/map output."
+    ],
+    "limit": "The ignored discovery script uses local artifact locations; durable independent controls are checked into test/source-native-format.controls.ts."
+  },
+  "durableControls": {
+    "suite": "test/source-native-format.controls.ts",
+    "newlyAddedTests": 7,
+    "expectedSuiteTests": 22,
+    "matrix": "Two activation controls per C/direct/JS backend plus one C native-port payload inspection control.",
+    "payloadInspection": "Asserts new-arena raw source bytes, parsed/spec vector payloads, PS59 words, private scalar facts, empty scratch and namespace mirror, rather than assuming numerical handle IDs must differ.",
+    "status": "Added and typechecked; final source-bound C/direct/JS execution is delegated to the combined verification worktree."
+  },
+  "independentReadOnlyReview": {
+    "testedCodeCommit": "5e2b17117b9bbf34334e96d37f9f86fa17cd9a68",
+    "blockingFindings": [],
+    "inspected": [
+      "Private snapshot capture and explicit restoration contract.",
+      "PS59 contract-word retention and empty PS53/PS56 scratch handling.",
+      "Scalar parser/checker fact preservation and fresh symbol/type namespaces.",
+      "Exact PS directory mirror, imports and original byte/line ownership.",
+      "Opaque input identity, generation invalidation and close lifecycle.",
+      "Shared internUnitTypes extraction and absence of checker/formatter fallbacks."
+    ],
+    "limit": "Static review supports the implementation but does not replace actual final component controls."
+  },
+  "remaining": [
+    "Run the final combined source-bound C/direct/JS formatter, A128 authoring and schema control suites on the integrated candidate.",
+    "Run the repository full applicable gate before main publication under the existing repository workflow.",
+    "Connect production per-file formatting callers in a later public cutover batch; no production mode removal or source migration is part of this patch."
+  ],
+  "claims": {
+    "timingOrPerformanceImprovement": false,
+    "fullGatePass": false,
+    "publicCutoverCompleted": false,
+    "deployment": false
+  }
+}
