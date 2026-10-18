@@ -61,14 +61,14 @@ function files(dir: string, out: string[] = []): string[] {
 }
 
 const text = (u: Unit, style: DenseStyle): string =>
-  formatDense(normalizeProgram(u.program), { known: u.known, style }).trimEnd();
+  formatDense(normalizeProgram(u.program, u.known), { known: u.known, style }).trimEnd();
 
 const total = (units: readonly Unit[], style: DenseStyle): number =>
   units.reduce((n, u) => n + tokens(text(u, style)), 0);
 
 /** Lossless and a fixed point with `style` on, for the program as written and normalized. */
 function roundTrips(u: Unit, style: DenseStyle): string | undefined {
-  for (const p of [u.program, normalizeProgram(u.program)]) {
+  for (const p of [u.program, normalizeProgram(u.program, u.known)]) {
     const dense = formatDense(p, { known: u.known, style });
     let back: Program;
     try {

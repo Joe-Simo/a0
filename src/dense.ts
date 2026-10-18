@@ -908,7 +908,7 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
   };
   return options.comments === true || options.style?.inline === false
     ? base
-    : { ...base, lambdas: planLambdas(program) };
+    : { ...base, lambdas: planLambdas(program, options.known) };
 }
 
 /**
@@ -1161,7 +1161,8 @@ type Sig = { readonly params: readonly Type[]; readonly result: Type };
 
 /**
  * What a function body parser needs to write a fold or loop body inline (`fold {A+B} ...`): the
- * enclosing function's name (the lifted body is `NAME_1`, `NAME_2`, ... in node order), the list
+ * enclosing function's name (the lifted body is `NAME_1`, `NAME_2`, ... in node order, skipping
+ * names already declared in the file or imports), the list
  * the lifted functions go to (they precede the function), and the types that give the lifted
  * function its signature (state type of the initial value, the extra operands' types).
  */
@@ -1185,6 +1186,21 @@ interface Inline {
 }
 
 type Expression<T = Operand> = Generator<undefined, T, Operand>;
+
+/** The next helper suffix, shared by normalization, printing and reading inline bodies. */
+function nextLambdaName(
+  fnName: string,
+  counter: { n: number },
+  reserved: ReadonlySet<string>,
+  existing?: string,
+): string {
+  let name: string;
+  do {
+    counter.n += 1;
+    name = `${fnName}_${counter.n}`;
+  } while (reserved.has(name) && name !== existing);
+  return name;
+}
 
 /** Statement parser for one function body; the edit protocol drives it line by line too. */
 export class FunctionParser {
@@ -1283,8 +1299,7 @@ export class FunctionParser {
   /** The lifted function of an inline body once the call's operands are known. */
   private lift(body: Inline, args: readonly Operand[], result: 'state' | 'bool'): string {
     const lam = this.lam as LambdaCtx;
-    lam.counter.n += 1;
-    const name = `${lam.fnName}_${lam.counter.n}`;
+    const name = nextLambdaName(lam.fnName, lam.counter, this.fnNames);
     const state = this.typeOf(args[1] as Operand);
     const params: Type[] = [state, 'u32', ...args.slice(2).map((a) => this.typeOf(a))];
     const f: Func = {
@@ -2323,16 +2338,21 @@ function inlineArity(f: Func): number {
 /**
  * Which functions are written inline in which caller. `F` is a fold or loop body (a loop's
  * predicate too) written `{...}` when it is called from exactly one node of exactly one caller `G`,
- * is named `G_1`, `G_2`, ... in the order those nodes appear, sits immediately before `G`, has no
+ * is named `G_1`, `G_2`, ... in the order those nodes appear (skipping other declared names),
+ * sits immediately before `G`, has no
  * fold or loop of its own, and has the signature the parser derives from the call (state type of
  * the initial value, `u32` index, the extra operands' types; result the state type, or bool for a
  * predicate). Nothing else is inlined, so converting back restores the program exactly.
  */
-export function planLambdas(program: Program): Map<string, string[]> {
+export function planLambdas(
+  program: Program,
+  known: ReadonlyMap<string, number> = new Map(),
+): Map<string, string[]> {
   const sigs = new Map<string, Sig>(
     program.functions.map((f) => [f.name, { params: f.params, result: f.result }] as const),
   );
   const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
+  const reserved = new Set([...known.keys(), ...index.keys()]);
   const foldUses = new Map<string, number>();
   const called = new Set<string>();
   for (const f of program.functions)
@@ -2348,6 +2368,7 @@ export function planLambdas(program: Program): Map<string, string[]> {
   for (const [gi, g] of program.functions.entries()) {
     const typeOf = typerFor(g, sigs);
     const chosen: string[] = [];
+    const counter = { n: 0 };
     for (const node of g.nodes) {
       if (node.op !== 'fold' && node.op !== 'loop') continue;
       const slots: { name: string; result: 'state' | 'bool' }[] =
@@ -2362,6 +2383,7 @@ export function planLambdas(program: Program): Map<string, string[]> {
       if (state === undefined || extras.some((e) => e === undefined)) continue;
       const params: Type[] = [state, 'u32', ...(extras as Type[])];
       const before = chosen.length;
+      const suffixBefore = counter.n;
       const picked: Func[] = [];
       for (const slot of slots) {
         const fi = index.get(slot.name);
@@ -2371,7 +2393,6 @@ export function planLambdas(program: Program): Map<string, string[]> {
           fi === gi ||
           foldUses.get(slot.name) !== 1 ||
           called.has(slot.name) ||
-          f.name !== `${g.name}_${chosen.length + 1}` ||
           f.comments !== undefined ||
           f.spec !== undefined ||
           f.nodes.some((n) => n.op === 'fold' || n.op === 'loop') ||
@@ -2380,6 +2401,9 @@ export function planLambdas(program: Program): Map<string, string[]> {
           !typeEquals(f.result, slot.result === 'bool' ? 'bool' : state)
         )
           continue;
+        const next = { n: counter.n };
+        if (f.name !== nextLambdaName(g.name, next, reserved, f.name)) continue;
+        counter.n = next.n;
         chosen.push(f.name);
         picked.push(f);
       }
@@ -2391,7 +2415,10 @@ export function planLambdas(program: Program): Map<string, string[]> {
       const ok =
         picked.length === 0 ||
         (picked.every((f) => inlineArity(f) <= n) && (named !== undefined || natural === n));
-      if (!ok) chosen.length = before;
+      if (!ok) {
+        chosen.length = before;
+        counter.n = suffixBefore;
+      }
     }
     if (chosen.length === 0) continue;
     const prior = program.functions.slice(gi - chosen.length, gi).map((f) => f.name);
@@ -2402,10 +2429,14 @@ export function planLambdas(program: Program): Map<string, string[]> {
 
 /**
  * Rename each helper that only a fold or loop in the function right after it calls to the name
- * the dense form writes inline (`G_1`, ...), moving it directly before that function: part of
+ * the dense form writes inline (`G_1`, ... with occupied names skipped), moving it directly before
+ * that function: part of
  * the normal form, since the rename changes the program text (not its behavior).
  */
-export function liftHelpers(program: Program): Program {
+export function liftHelpers(
+  program: Program,
+  known: ReadonlyMap<string, number> = new Map(),
+): Program {
   let fns = [...program.functions];
   const sigs = (): Map<string, Sig> =>
     new Map(fns.map((f) => [f.name, { params: f.params, result: f.result }] as const));
@@ -2422,7 +2453,7 @@ export function liftHelpers(program: Program): Program {
   for (const gName of program.functions.map((f) => f.name)) {
     const g = fns.find((f) => f.name === gName) as Func;
     const typeOf = typerFor(g, sigs());
-    const renames = new Map<string, string>();
+    const selected = new Set<string>();
     for (const node of g.nodes) {
       if (node.op !== 'fold' && node.op !== 'loop') continue;
       const state = typeOf(node.args[1] as Operand);
@@ -2440,13 +2471,21 @@ export function liftHelpers(program: Program): Program {
           f.spec !== undefined ||
           f.nodes.some((n) => n.op === 'fold' || n.op === 'loop') ||
           fns.indexOf(f) > fns.findIndex((x) => x.name === gName) ||
-          renames.has(name)
+          selected.has(name)
         )
           continue;
-        renames.set(name, `${gName}_${renames.size + 1}`);
+        selected.add(name);
       }
     }
-    if (renames.size === 0) continue;
+    if (selected.size === 0) continue;
+    const reserved = new Set([
+      ...known.keys(),
+      ...fns.filter((f) => !selected.has(f.name)).map((f) => f.name),
+    ]);
+    const counter = { n: 0 };
+    const renames = new Map(
+      [...selected].map((name) => [name, nextLambdaName(gName, counter, reserved)] as const),
+    );
     const moved = [...renames.keys()].map((n) => fns.find((f) => f.name === n) as Func);
     const rest = fns.filter((f) => !moved.includes(f));
     const at = rest.findIndex((f) => f.name === gName);
@@ -2534,6 +2573,9 @@ export function normalizeFunction(fn: Func): Func {
 }
 
 /** `normalizeFunction` on every function of a program. */
-export function normalizeProgram(program: Program): Program {
-  return liftHelpers({ ...program, functions: program.functions.map(normalizeFunction) });
+export function normalizeProgram(
+  program: Program,
+  known: ReadonlyMap<string, number> = new Map(),
+): Program {
+  return liftHelpers({ ...program, functions: program.functions.map(normalizeFunction) }, known);
 }

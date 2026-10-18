@@ -730,10 +730,78 @@ end`;
   // errors
   assert.throws(() => parseDense('fn f fold {add A {add A 1}} 3 0'), /nest|inline/);
   assert.throws(() => parseDense('fn f fold {add A B} 3'), /needs 2 operands/);
-  assert.throws(
-    () => parseDense('fn f_1 add A 1\n\nfn f fold {add A B} 3 0'),
-    /already a function/,
+  assert.deepEqual(
+    parseDense('fn f_1 add A 1\n\nfn f fold {add A B} 3 0').functions.map((f) => f.name),
+    ['f_1', 'f_2', 'f'],
   );
+});
+
+test('dense: lifted helpers reserve local and imported names and remain a fixed point', () => {
+  const source = `fn f_1 u32 u32 -> u32
+a add p0 p1
+ret a
+end
+fn f_3 u32 u32 -> u32
+ret p0
+end
+fn step u32 u32 -> u32
+a add p0 p1
+ret a
+end
+fn pred u32 u32 -> bool
+a lt p0 10
+ret a
+end
+fn body u32 u32 -> u32
+a add p0 1
+ret a
+end
+fn f u32 -> u32
+a fold step 3 p0
+b loop pred body 10 a
+c call f_1 b 7
+ret c
+end`;
+  const original = parseAndValidate(source);
+  for (const known of [
+    new Map<string, number>(),
+    new Map([
+      ['f_2', 2],
+      ['f_6', 2],
+    ]),
+  ]) {
+    const normalized = normalizeProgram(parse(source), known);
+    assert.deepEqual(
+      normalized.functions.map((f) => f.name),
+      known.size === 0
+        ? ['f_1', 'f_3', 'f_2', 'f_4', 'f_5', 'f']
+        : ['f_1', 'f_3', 'f_4', 'f_5', 'f_7', 'f'],
+    );
+    assert.equal(
+      formatProgram(normalizeProgram(normalized, known)),
+      formatProgram(normalized),
+      'normalization must not keep renaming helpers',
+    );
+    for (const [i, style] of [{}, COMPACT_ALL, DIGITS].entries()) {
+      const dense = formatDense(normalized, { known, style });
+      assert.ok(dense.includes('{'), 'reserved suffixes must still permit inline bodies');
+      const back = parseDense(dense, { known, compact: i > 0 });
+      assert.equal(formatProgram(back), formatProgram(normalized));
+      assert.equal(formatDense(back, { known, style }), dense);
+      const checked = validate(back);
+      const before = original.byName.get('f') as TypedProgram['functions'][number];
+      const after = checked.byName.get('f') as TypedProgram['functions'][number];
+      for (const arg of [0, 4, 20, 0xffffffff])
+        assert.ok(valueEquals(run(before, [arg]), run(after, [arg])));
+    }
+  }
+  const forward = parseDense('fn f fold {add A B} 3 0\n\nfn f_1 add A 1');
+  assert.deepEqual(
+    forward.functions.map((f) => f.name),
+    ['f_2', 'f', 'f_1'],
+  );
+  validate(forward);
+  assert.throws(() => parseDense('fn f_1 A\n\nfn f_1 A'), /duplicate function/);
 });
 
 test('dense: `x y` with y a value above names a copy of it', () => {
@@ -827,7 +895,7 @@ test('dense compact spellings: every program round-trips exactly with all of the
 }, async () => {
   for (const path of files(ROOT)) {
     const { program, known } = await parseFile(path, read);
-    for (const p of [program, normalizeProgram(program)]) {
+    for (const p of [program, normalizeProgram(program, known)]) {
       const dense = formatDense(p, { known, style: COMPACT_ALL });
       const back = parseDense(dense, { known, compact: true });
       assert.equal(formatProgram(back), formatProgram(p), `${path}: canonical form differs`);
@@ -904,7 +972,7 @@ test('dense combined compact rules: every program round-trips exactly with all o
 }, async () => {
   for (const path of files(ROOT)) {
     const { program, known } = await parseFile(path, read);
-    for (const p of [program, normalizeProgram(program)]) {
+    for (const p of [program, normalizeProgram(program, known)]) {
       const dense = formatDense(p, { known, style: DIGITS });
       const back = parseDense(dense, { known, compact: true });
       assert.equal(formatProgram(back), formatProgram(p), `${path}: canonical form differs`);
