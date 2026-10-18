@@ -1,0 +1,3219 @@
+{
+  "schema": 1,
+  "scope": "Count-only trace and offline simulation of successful first-page classification-fact reuse. No cache executes in the compiler; no timings, memory measurement, gain prediction or production/default change.",
+  "sourceIdentity": {
+    "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "functions": 612,
+    "modules": 23,
+    "frontendABI": 3,
+    "generatedC_SHA256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998",
+    "wasmSHA256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+    "wasmBytes": 358233,
+    "modulesMatchReviewedSnapshot": true
+  },
+  "policy": {
+    "capacities": [
+      1,
+      2,
+      3
+    ],
+    "replacement": "Fully associative LRU; MRU first; hit touches only; successful miss publishes after complete classifier status0.",
+    "key": [
+      "lexical invocation/session ownership",
+      "handle",
+      "start",
+      "fullLength"
+    ],
+    "siteIsPartOfKey": false,
+    "reset": "Empty context at every arena_parse and arena_verify_resume call, including zero-classifier invocations.",
+    "cachedFacts": "Nine scan-accumulator fields after original first-page fold, keyword, opcode, first full-word source cell.",
+    "entryWords": 16,
+    "wholeSpanMemoization": false,
+    "transportElision": false,
+    "hits": "Hypothetical pure-prefix reuse only. Every observed LOAD, framing/drain, tail scan and diagnostic remains original.",
+    "failureLimit": "Six accepted applications have no classifier/transport failures; fault law is design-only and not tested by this trace."
+  },
+  "instrumentation": {
+    "schema": 1,
+    "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "generatedC_SHA256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998",
+    "scope": "Observation-only function-entry and completed-classifier tracing; no cache executes.",
+    "definitionsInstrumented": {
+      "ac_name_scan": 2,
+      "arena_verify_resume": 2,
+      "sp_atom_done": 2,
+      "ap_wordscan": 2,
+      "arena_parse": 1
+    },
+    "files": {
+      "module.c": "00237e7d0d2ac9c04da35c9a69947f6c1328328ae43020f6c8ff2d76d3441688",
+      "driver.c": "db64c81f7d7036b69d4e42bed1bd6e0c364df36f90701f039083ed0c77ab8753",
+      "api.h": "59bfe369db25e6069df9030dec7f91eeb04eb7f1474d84110bfe448688be1926",
+      "build.json": "7274f5fdbeeedc8d88ff3a2da5bad852354c3cc84abb67b61625759485942580",
+      "arena_runtime.c": "6c18b83ad9d6006bb831baf4d06eae805680cf41c84f70f360f8f01b65048432",
+      "arena_runtime.h": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9",
+      "harness.c": "f5164c1039bd31744ff3c9341ae11ea7cd558d5853f75cad2d608c5d15c6d4da"
+    }
+  },
+  "executables": {
+    "baselineSHA256": "e4cd7955bf49753f31bab440e9546b54deee46ca81b7b2e4ba06ad8492678c03",
+    "tracedSHA256": "c1680ddabcfdc100c525fd33154d9e803edcb1af8f02b5fed28012661a27eb5c",
+    "flags": [
+      "-std=c11",
+      "-O2",
+      "-DNDEBUG"
+    ],
+    "compiler": "Debian clang version 19.1.7 (3+b1)",
+    "host": {
+      "platform": "linux",
+      "architecture": "x64"
+    }
+  },
+  "archive": {
+    "bytes": 3266380,
+    "sha256": "513145caa8f239b5a79437c6285e08f6d02ad0a674623945aa5dd3a33968a0d6",
+    "members": [
+      "manifest.json",
+      "u0.span.bin.gz",
+      "u1.span.bin.gz",
+      "u2.span.bin.gz",
+      "u3.span.bin.gz",
+      "u4.span.bin.gz",
+      "u5.span.bin.gz"
+    ]
+  },
+  "rows": [
+    {
+      "unit": "examples/life.a0",
+      "input": "u0.json",
+      "sourceBytes": 3029,
+      "sourceSHA256": "2e7ddcca22dda1ef6cc8b962e912a59acd02f844162c29d4bff4717b128e15b5",
+      "completeOutputBytes": 165796,
+      "completeOutputSHA256": "4c04c7cdc1b4d7f8028b320c52f38fcce11b721cf4e5b982f230df57b5aa3c9f",
+      "completeBaselineAndTracedOutputsEqual": true,
+      "trace": {
+        "member": "u0.span.bin.gz",
+        "bytes": 223792,
+        "sha256": "8d4d35d9865683561f54715a68494dfb3ab6dfd26bda5b07385934acdb21bdbe",
+        "gzipBytes": 9075,
+        "gzipSHA256": "7e2877db8594adcb37b12230de7a98fd6460fe624ccf5f9a6356992a60355360"
+      },
+      "counts": {
+        "actualClassifierCalls": 2541,
+        "actualScanbyteSteps": 6138,
+        "actualPrefixScanSteps": 6138,
+        "actualTailScanSteps": 0,
+        "prefixFailures": 0,
+        "classifierFailures": 0,
+        "distinctExactKeysInSession": 864,
+        "repeatedExactKeyVisitsInSession": 1677,
+        "distinctExactKeysSummedAcrossInvocations": 1017,
+        "offsetOnlyDifferingLengthRepeatEvents": 1,
+        "longSpanCalls": 0,
+        "maxSpanLength": 10,
+        "successfulPrefixFactEqualityChecks": 2541,
+        "invocationCount": 2,
+        "parserInvocations": 1,
+        "verifierInvocations": 1,
+        "simulations": {
+          "1": {
+            "total": {
+              "calls": 2541,
+              "eligible": 2541,
+              "hits": 210,
+              "misses": 2331,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 2539,
+              "successfulMissPublications": 2331,
+              "evictions": 2329,
+              "lruTouches": 0,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 504,
+              "avoidedKeywordCalls": 210,
+              "avoidedOpcodeCalls": 210,
+              "shortSpanHits": 210,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 2348,
+                "eligible": 2348,
+                "hits": 210,
+                "misses": 2138,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 2347,
+                "successfulMissPublications": 2138,
+                "evictions": 2137,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 504,
+                "avoidedKeywordCalls": 210,
+                "avoidedOpcodeCalls": 210,
+                "shortSpanHits": 210,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 4,
+                "eligible": 4,
+                "hits": 0,
+                "misses": 4,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 4,
+                "successfulMissPublications": 4,
+                "evictions": 4,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 189,
+                "eligible": 189,
+                "hits": 0,
+                "misses": 189,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 188,
+                "successfulMissPublications": 189,
+                "evictions": 188,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 2352,
+                "eligible": 2352,
+                "hits": 210,
+                "misses": 2142,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 2351,
+                "successfulMissPublications": 2142,
+                "evictions": 2141,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 504,
+                "avoidedKeywordCalls": 210,
+                "avoidedOpcodeCalls": 210,
+                "shortSpanHits": 210,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 189,
+                "eligible": 189,
+                "hits": 0,
+                "misses": 189,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 188,
+                "successfulMissPublications": 189,
+                "evictions": 188,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "2": {
+            "total": {
+              "calls": 2541,
+              "eligible": 2541,
+              "hits": 781,
+              "misses": 1760,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 4866,
+              "successfulMissPublications": 1760,
+              "evictions": 1756,
+              "lruTouches": 571,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 1576,
+              "avoidedKeywordCalls": 781,
+              "avoidedOpcodeCalls": 781,
+              "shortSpanHits": 781,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 2348,
+                "eligible": 2348,
+                "hits": 779,
+                "misses": 1569,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 4483,
+                "successfulMissPublications": 1569,
+                "evictions": 1567,
+                "lruTouches": 569,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 1574,
+                "avoidedKeywordCalls": 779,
+                "avoidedOpcodeCalls": 779,
+                "shortSpanHits": 779,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 4,
+                "eligible": 4,
+                "hits": 0,
+                "misses": 4,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 8,
+                "successfulMissPublications": 4,
+                "evictions": 4,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 189,
+                "eligible": 189,
+                "hits": 2,
+                "misses": 187,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 375,
+                "successfulMissPublications": 187,
+                "evictions": 185,
+                "lruTouches": 2,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 2,
+                "avoidedKeywordCalls": 2,
+                "avoidedOpcodeCalls": 2,
+                "shortSpanHits": 2,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 2352,
+                "eligible": 2352,
+                "hits": 779,
+                "misses": 1573,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 4491,
+                "successfulMissPublications": 1573,
+                "evictions": 1571,
+                "lruTouches": 569,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 1574,
+                "avoidedKeywordCalls": 779,
+                "avoidedOpcodeCalls": 779,
+                "shortSpanHits": 779,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 189,
+                "eligible": 189,
+                "hits": 2,
+                "misses": 187,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 375,
+                "successfulMissPublications": 187,
+                "evictions": 185,
+                "lruTouches": 2,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 2,
+                "avoidedKeywordCalls": 2,
+                "avoidedOpcodeCalls": 2,
+                "shortSpanHits": 2,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "3": {
+            "total": {
+              "calls": 2541,
+              "eligible": 2541,
+              "hits": 1448,
+              "misses": 1093,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 6620,
+              "successfulMissPublications": 1093,
+              "evictions": 1087,
+              "lruTouches": 1238,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 3351,
+              "avoidedKeywordCalls": 1448,
+              "avoidedOpcodeCalls": 1448,
+              "shortSpanHits": 1448,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 2348,
+                "eligible": 2348,
+                "hits": 1444,
+                "misses": 904,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 6049,
+                "successfulMissPublications": 904,
+                "evictions": 901,
+                "lruTouches": 1234,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 3347,
+                "avoidedKeywordCalls": 1444,
+                "avoidedOpcodeCalls": 1444,
+                "shortSpanHits": 1444,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 4,
+                "eligible": 4,
+                "hits": 0,
+                "misses": 4,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 12,
+                "successfulMissPublications": 4,
+                "evictions": 4,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 189,
+                "eligible": 189,
+                "hits": 4,
+                "misses": 185,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 559,
+                "successfulMissPublications": 185,
+                "evictions": 182,
+                "lruTouches": 4,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 4,
+                "avoidedKeywordCalls": 4,
+                "avoidedOpcodeCalls": 4,
+                "shortSpanHits": 4,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 2352,
+                "eligible": 2352,
+                "hits": 1444,
+                "misses": 908,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 6061,
+                "successfulMissPublications": 908,
+                "evictions": 905,
+                "lruTouches": 1234,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 3347,
+                "avoidedKeywordCalls": 1444,
+                "avoidedOpcodeCalls": 1444,
+                "shortSpanHits": 1444,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 189,
+                "eligible": 189,
+                "hits": 4,
+                "misses": 185,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 559,
+                "successfulMissPublications": 185,
+                "evictions": 182,
+                "lruTouches": 4,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 4,
+                "avoidedKeywordCalls": 4,
+                "avoidedOpcodeCalls": 4,
+                "shortSpanHits": 4,
+                "longSpanHits": 0
+              }
+            }
+          }
+        },
+        "invocations": [
+          {
+            "invocation": 1,
+            "phase": "parser",
+            "calls": 2352,
+            "uniqueExactKeys": 864,
+            "sites": {
+              "ap_wordscan": 2348,
+              "sp_atom_done": 4,
+              "ac_name_scan": 0
+            },
+            "hits": {
+              "1": 210,
+              "2": 779,
+              "3": 1444
+            }
+          },
+          {
+            "invocation": 2,
+            "phase": "verifier",
+            "calls": 189,
+            "uniqueExactKeys": 153,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 189
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 4
+            }
+          }
+        ]
+      }
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "input": "u1.json",
+      "sourceBytes": 5626,
+      "sourceSHA256": "f0ab8748931d68e7fd2f50204d15464782e4cf9add3339fdef7d9084fb15cd69",
+      "completeOutputBytes": 247548,
+      "completeOutputSHA256": "726a852eb69dce784c88119aa084850227db6095d319c725f2896118396fecf0",
+      "completeBaselineAndTracedOutputsEqual": true,
+      "trace": {
+        "member": "u1.span.bin.gz",
+        "bytes": 380344,
+        "sha256": "819ea2591e2990c71542b3312de5496e4f78f3515c589dc3812da2e17d0142b7",
+        "gzipBytes": 16048,
+        "gzipSHA256": "d713bc2e69b042d901fad62c8c4f3d37710430676ba556cd83593afa29ba8296"
+      },
+      "counts": {
+        "actualClassifierCalls": 4319,
+        "actualScanbyteSteps": 9384,
+        "actualPrefixScanSteps": 9384,
+        "actualTailScanSteps": 0,
+        "prefixFailures": 0,
+        "classifierFailures": 0,
+        "distinctExactKeysInSession": 1610,
+        "repeatedExactKeyVisitsInSession": 2709,
+        "distinctExactKeysSummedAcrossInvocations": 1772,
+        "offsetOnlyDifferingLengthRepeatEvents": 7,
+        "longSpanCalls": 0,
+        "maxSpanLength": 11,
+        "successfulPrefixFactEqualityChecks": 4319,
+        "invocationCount": 3,
+        "parserInvocations": 1,
+        "verifierInvocations": 2,
+        "simulations": {
+          "1": {
+            "total": {
+              "calls": 4319,
+              "eligible": 4319,
+              "hits": 377,
+              "misses": 3942,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 4316,
+              "successfulMissPublications": 3942,
+              "evictions": 3939,
+              "lruTouches": 0,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 503,
+              "avoidedKeywordCalls": 377,
+              "avoidedOpcodeCalls": 377,
+              "shortSpanHits": 377,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 3847,
+                "eligible": 3847,
+                "hits": 377,
+                "misses": 3470,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 3846,
+                "successfulMissPublications": 3470,
+                "evictions": 3469,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 503,
+                "avoidedKeywordCalls": 377,
+                "avoidedOpcodeCalls": 377,
+                "shortSpanHits": 377,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 146,
+                "eligible": 146,
+                "hits": 0,
+                "misses": 146,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 146,
+                "successfulMissPublications": 146,
+                "evictions": 146,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 326,
+                "eligible": 326,
+                "hits": 0,
+                "misses": 326,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 324,
+                "successfulMissPublications": 326,
+                "evictions": 324,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 3993,
+                "eligible": 3993,
+                "hits": 377,
+                "misses": 3616,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 3992,
+                "successfulMissPublications": 3616,
+                "evictions": 3615,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 503,
+                "avoidedKeywordCalls": 377,
+                "avoidedOpcodeCalls": 377,
+                "shortSpanHits": 377,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 326,
+                "eligible": 326,
+                "hits": 0,
+                "misses": 326,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 324,
+                "successfulMissPublications": 326,
+                "evictions": 324,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "2": {
+            "total": {
+              "calls": 4319,
+              "eligible": 4319,
+              "hits": 1385,
+              "misses": 2934,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 8252,
+              "successfulMissPublications": 2934,
+              "evictions": 2928,
+              "lruTouches": 1008,
+              "crossSiteHits": 2,
+              "avoidedPrefixScanSteps": 2385,
+              "avoidedKeywordCalls": 1385,
+              "avoidedOpcodeCalls": 1385,
+              "shortSpanHits": 1385,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 3847,
+                "eligible": 3847,
+                "hits": 1380,
+                "misses": 2467,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 7314,
+                "successfulMissPublications": 2467,
+                "evictions": 2465,
+                "lruTouches": 1003,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 2375,
+                "avoidedKeywordCalls": 1380,
+                "avoidedOpcodeCalls": 1380,
+                "shortSpanHits": 1380,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 146,
+                "eligible": 146,
+                "hits": 2,
+                "misses": 144,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 292,
+                "successfulMissPublications": 144,
+                "evictions": 144,
+                "lruTouches": 2,
+                "crossSiteHits": 2,
+                "avoidedPrefixScanSteps": 7,
+                "avoidedKeywordCalls": 2,
+                "avoidedOpcodeCalls": 2,
+                "shortSpanHits": 2,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 326,
+                "eligible": 326,
+                "hits": 3,
+                "misses": 323,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 646,
+                "successfulMissPublications": 323,
+                "evictions": 319,
+                "lruTouches": 3,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 3,
+                "avoidedKeywordCalls": 3,
+                "avoidedOpcodeCalls": 3,
+                "shortSpanHits": 3,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 3993,
+                "eligible": 3993,
+                "hits": 1382,
+                "misses": 2611,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 7606,
+                "successfulMissPublications": 2611,
+                "evictions": 2609,
+                "lruTouches": 1005,
+                "crossSiteHits": 2,
+                "avoidedPrefixScanSteps": 2382,
+                "avoidedKeywordCalls": 1382,
+                "avoidedOpcodeCalls": 1382,
+                "shortSpanHits": 1382,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 326,
+                "eligible": 326,
+                "hits": 3,
+                "misses": 323,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 646,
+                "successfulMissPublications": 323,
+                "evictions": 319,
+                "lruTouches": 3,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 3,
+                "avoidedKeywordCalls": 3,
+                "avoidedOpcodeCalls": 3,
+                "shortSpanHits": 3,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "3": {
+            "total": {
+              "calls": 4319,
+              "eligible": 4319,
+              "hits": 2317,
+              "misses": 2002,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 11177,
+              "successfulMissPublications": 2002,
+              "evictions": 1993,
+              "lruTouches": 1940,
+              "crossSiteHits": 2,
+              "avoidedPrefixScanSteps": 4515,
+              "avoidedKeywordCalls": 2317,
+              "avoidedOpcodeCalls": 2317,
+              "shortSpanHits": 2317,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 3847,
+                "eligible": 3847,
+                "hits": 2299,
+                "misses": 1548,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 9778,
+                "successfulMissPublications": 1548,
+                "evictions": 1545,
+                "lruTouches": 1922,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 4492,
+                "avoidedKeywordCalls": 2299,
+                "avoidedOpcodeCalls": 2299,
+                "shortSpanHits": 2299,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 146,
+                "eligible": 146,
+                "hits": 2,
+                "misses": 144,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 436,
+                "successfulMissPublications": 144,
+                "evictions": 144,
+                "lruTouches": 2,
+                "crossSiteHits": 2,
+                "avoidedPrefixScanSteps": 7,
+                "avoidedKeywordCalls": 2,
+                "avoidedOpcodeCalls": 2,
+                "shortSpanHits": 2,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 326,
+                "eligible": 326,
+                "hits": 16,
+                "misses": 310,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 963,
+                "successfulMissPublications": 310,
+                "evictions": 304,
+                "lruTouches": 16,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 16,
+                "avoidedKeywordCalls": 16,
+                "avoidedOpcodeCalls": 16,
+                "shortSpanHits": 16,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 3993,
+                "eligible": 3993,
+                "hits": 2301,
+                "misses": 1692,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 10214,
+                "successfulMissPublications": 1692,
+                "evictions": 1689,
+                "lruTouches": 1924,
+                "crossSiteHits": 2,
+                "avoidedPrefixScanSteps": 4499,
+                "avoidedKeywordCalls": 2301,
+                "avoidedOpcodeCalls": 2301,
+                "shortSpanHits": 2301,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 326,
+                "eligible": 326,
+                "hits": 16,
+                "misses": 310,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 963,
+                "successfulMissPublications": 310,
+                "evictions": 304,
+                "lruTouches": 16,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 16,
+                "avoidedKeywordCalls": 16,
+                "avoidedOpcodeCalls": 16,
+                "shortSpanHits": 16,
+                "longSpanHits": 0
+              }
+            }
+          }
+        },
+        "invocations": [
+          {
+            "invocation": 1,
+            "phase": "parser",
+            "calls": 3993,
+            "uniqueExactKeys": 1610,
+            "sites": {
+              "ap_wordscan": 3847,
+              "sp_atom_done": 146,
+              "ac_name_scan": 0
+            },
+            "hits": {
+              "1": 377,
+              "2": 1382,
+              "3": 2301
+            }
+          },
+          {
+            "invocation": 2,
+            "phase": "verifier",
+            "calls": 242,
+            "uniqueExactKeys": 130,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 242
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 11
+            }
+          },
+          {
+            "invocation": 3,
+            "phase": "verifier",
+            "calls": 84,
+            "uniqueExactKeys": 32,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 84
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "unit": "site/page.a0",
+      "input": "u2.json",
+      "sourceBytes": 126947,
+      "sourceSHA256": "20ef71d09070bcf403f4017fbd1e447ebb427584546548f9f24fbd0a76018e94",
+      "completeOutputBytes": 6068028,
+      "completeOutputSHA256": "e1d3107a779d1bdc71cae9faf29cb035ca2a4c6addc166c586edf0d0f23c5cce",
+      "completeBaselineAndTracedOutputsEqual": true,
+      "trace": {
+        "member": "u2.span.bin.gz",
+        "bytes": 5690880,
+        "sha256": "35677c5ee2b6f875a043e9c153769f0d33d9793664e8471090f4ab76c05f4a4e",
+        "gzipBytes": 227316,
+        "gzipSHA256": "c66d5453284001f5b1ca6d8a1aaa02cc6d5b87f0b4418b11f232f99c14ecaf66"
+      },
+      "counts": {
+        "actualClassifierCalls": 64666,
+        "actualScanbyteSteps": 277242,
+        "actualPrefixScanSteps": 277096,
+        "actualTailScanSteps": 146,
+        "prefixFailures": 0,
+        "classifierFailures": 0,
+        "distinctExactKeysInSession": 20473,
+        "repeatedExactKeyVisitsInSession": 44193,
+        "distinctExactKeysSummedAcrossInvocations": 26245,
+        "offsetOnlyDifferingLengthRepeatEvents": 0,
+        "longSpanCalls": 2,
+        "maxSpanLength": 201,
+        "successfulPrefixFactEqualityChecks": 64666,
+        "invocationCount": 3,
+        "parserInvocations": 1,
+        "verifierInvocations": 2,
+        "simulations": {
+          "1": {
+            "total": {
+              "calls": 64666,
+              "eligible": 64666,
+              "hits": 8412,
+              "misses": 56254,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 64663,
+              "successfulMissPublications": 56254,
+              "evictions": 56251,
+              "lruTouches": 0,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 42259,
+              "avoidedKeywordCalls": 8412,
+              "avoidedOpcodeCalls": 8412,
+              "shortSpanHits": 8411,
+              "longSpanHits": 1
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 58863,
+                "eligible": 58863,
+                "hits": 8412,
+                "misses": 50451,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 58862,
+                "successfulMissPublications": 50451,
+                "evictions": 50450,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 42259,
+                "avoidedKeywordCalls": 8412,
+                "avoidedOpcodeCalls": 8412,
+                "shortSpanHits": 8411,
+                "longSpanHits": 1
+              },
+              "sp_atom_done": {
+                "calls": 0,
+                "eligible": 0,
+                "hits": 0,
+                "misses": 0,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 0,
+                "successfulMissPublications": 0,
+                "evictions": 0,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 5803,
+                "eligible": 5803,
+                "hits": 0,
+                "misses": 5803,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 5801,
+                "successfulMissPublications": 5803,
+                "evictions": 5801,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 58863,
+                "eligible": 58863,
+                "hits": 8412,
+                "misses": 50451,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 58862,
+                "successfulMissPublications": 50451,
+                "evictions": 50450,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 42259,
+                "avoidedKeywordCalls": 8412,
+                "avoidedOpcodeCalls": 8412,
+                "shortSpanHits": 8411,
+                "longSpanHits": 1
+              },
+              "verifier": {
+                "calls": 5803,
+                "eligible": 5803,
+                "hits": 0,
+                "misses": 5803,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 5801,
+                "successfulMissPublications": 5803,
+                "evictions": 5801,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "2": {
+            "total": {
+              "calls": 64666,
+              "eligible": 64666,
+              "hits": 24187,
+              "misses": 40479,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 120911,
+              "successfulMissPublications": 40479,
+              "evictions": 40473,
+              "lruTouches": 15775,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 95891,
+              "avoidedKeywordCalls": 24187,
+              "avoidedOpcodeCalls": 24187,
+              "shortSpanHits": 24186,
+              "longSpanHits": 1
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 58863,
+                "eligible": 58863,
+                "hits": 24187,
+                "misses": 34676,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 109311,
+                "successfulMissPublications": 34676,
+                "evictions": 34674,
+                "lruTouches": 15775,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 95891,
+                "avoidedKeywordCalls": 24187,
+                "avoidedOpcodeCalls": 24187,
+                "shortSpanHits": 24186,
+                "longSpanHits": 1
+              },
+              "sp_atom_done": {
+                "calls": 0,
+                "eligible": 0,
+                "hits": 0,
+                "misses": 0,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 0,
+                "successfulMissPublications": 0,
+                "evictions": 0,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 5803,
+                "eligible": 5803,
+                "hits": 0,
+                "misses": 5803,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 11600,
+                "successfulMissPublications": 5803,
+                "evictions": 5799,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 58863,
+                "eligible": 58863,
+                "hits": 24187,
+                "misses": 34676,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 109311,
+                "successfulMissPublications": 34676,
+                "evictions": 34674,
+                "lruTouches": 15775,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 95891,
+                "avoidedKeywordCalls": 24187,
+                "avoidedOpcodeCalls": 24187,
+                "shortSpanHits": 24186,
+                "longSpanHits": 1
+              },
+              "verifier": {
+                "calls": 5803,
+                "eligible": 5803,
+                "hits": 0,
+                "misses": 5803,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 11600,
+                "successfulMissPublications": 5803,
+                "evictions": 5799,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "3": {
+            "total": {
+              "calls": 64666,
+              "eligible": 64666,
+              "hits": 38331,
+              "misses": 26335,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 161381,
+              "successfulMissPublications": 26335,
+              "evictions": 26326,
+              "lruTouches": 29919,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 161785,
+              "avoidedKeywordCalls": 38331,
+              "avoidedOpcodeCalls": 38331,
+              "shortSpanHits": 38330,
+              "longSpanHits": 1
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 58863,
+                "eligible": 58863,
+                "hits": 38329,
+                "misses": 20534,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 143984,
+                "successfulMissPublications": 20534,
+                "evictions": 20531,
+                "lruTouches": 29917,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 161783,
+                "avoidedKeywordCalls": 38329,
+                "avoidedOpcodeCalls": 38329,
+                "shortSpanHits": 38328,
+                "longSpanHits": 1
+              },
+              "sp_atom_done": {
+                "calls": 0,
+                "eligible": 0,
+                "hits": 0,
+                "misses": 0,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 0,
+                "successfulMissPublications": 0,
+                "evictions": 0,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 5803,
+                "eligible": 5803,
+                "hits": 2,
+                "misses": 5801,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 17397,
+                "successfulMissPublications": 5801,
+                "evictions": 5795,
+                "lruTouches": 2,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 2,
+                "avoidedKeywordCalls": 2,
+                "avoidedOpcodeCalls": 2,
+                "shortSpanHits": 2,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 58863,
+                "eligible": 58863,
+                "hits": 38329,
+                "misses": 20534,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 143984,
+                "successfulMissPublications": 20534,
+                "evictions": 20531,
+                "lruTouches": 29917,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 161783,
+                "avoidedKeywordCalls": 38329,
+                "avoidedOpcodeCalls": 38329,
+                "shortSpanHits": 38328,
+                "longSpanHits": 1
+              },
+              "verifier": {
+                "calls": 5803,
+                "eligible": 5803,
+                "hits": 2,
+                "misses": 5801,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 17397,
+                "successfulMissPublications": 5801,
+                "evictions": 5795,
+                "lruTouches": 2,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 2,
+                "avoidedKeywordCalls": 2,
+                "avoidedOpcodeCalls": 2,
+                "shortSpanHits": 2,
+                "longSpanHits": 0
+              }
+            }
+          }
+        },
+        "invocations": [
+          {
+            "invocation": 1,
+            "phase": "parser",
+            "calls": 58863,
+            "uniqueExactKeys": 20473,
+            "sites": {
+              "ap_wordscan": 58863,
+              "sp_atom_done": 0,
+              "ac_name_scan": 0
+            },
+            "hits": {
+              "1": 8412,
+              "2": 24187,
+              "3": 38329
+            }
+          },
+          {
+            "invocation": 2,
+            "phase": "verifier",
+            "calls": 5683,
+            "uniqueExactKeys": 5652,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 5683
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 2
+            }
+          },
+          {
+            "invocation": 3,
+            "phase": "verifier",
+            "calls": 120,
+            "uniqueExactKeys": 120,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 120
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "unit": "site/docs.a0",
+      "input": "u3.json",
+      "sourceBytes": 44930,
+      "sourceSHA256": "2c50d0b8b90422a850693ab1c7432142356794553cb8d975ae97defda8a735ca",
+      "completeOutputBytes": 2056052,
+      "completeOutputSHA256": "c1c9b565ed375283e1dc17b6b3ecb536b1bc22aeddde11cbafdd19e14a91053b",
+      "completeBaselineAndTracedOutputsEqual": true,
+      "trace": {
+        "member": "u3.span.bin.gz",
+        "bytes": 1299680,
+        "sha256": "0dcd5943691a47a45b317958e8c66b83a1bd27daade4173d384f3590ed2a1e09",
+        "gzipBytes": 54470,
+        "gzipSHA256": "6132d6331fe143afa92c97bc671403209920da0e4e8d4a64424ab82a1776b228"
+      },
+      "counts": {
+        "actualClassifierCalls": 14767,
+        "actualScanbyteSteps": 53811,
+        "actualPrefixScanSteps": 53665,
+        "actualTailScanSteps": 146,
+        "prefixFailures": 0,
+        "classifierFailures": 0,
+        "distinctExactKeysInSession": 4758,
+        "repeatedExactKeyVisitsInSession": 10009,
+        "distinctExactKeysSummedAcrossInvocations": 6061,
+        "offsetOnlyDifferingLengthRepeatEvents": 0,
+        "longSpanCalls": 2,
+        "maxSpanLength": 201,
+        "successfulPrefixFactEqualityChecks": 14767,
+        "invocationCount": 2,
+        "parserInvocations": 1,
+        "verifierInvocations": 1,
+        "simulations": {
+          "1": {
+            "total": {
+              "calls": 14767,
+              "eligible": 14767,
+              "hits": 1973,
+              "misses": 12794,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 14765,
+              "successfulMissPublications": 12794,
+              "evictions": 12792,
+              "lruTouches": 0,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 8431,
+              "avoidedKeywordCalls": 1973,
+              "avoidedOpcodeCalls": 1973,
+              "shortSpanHits": 1972,
+              "longSpanHits": 1
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 13433,
+                "eligible": 13433,
+                "hits": 1973,
+                "misses": 11460,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 13432,
+                "successfulMissPublications": 11460,
+                "evictions": 11459,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 8431,
+                "avoidedKeywordCalls": 1973,
+                "avoidedOpcodeCalls": 1973,
+                "shortSpanHits": 1972,
+                "longSpanHits": 1
+              },
+              "sp_atom_done": {
+                "calls": 0,
+                "eligible": 0,
+                "hits": 0,
+                "misses": 0,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 0,
+                "successfulMissPublications": 0,
+                "evictions": 0,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 1334,
+                "eligible": 1334,
+                "hits": 0,
+                "misses": 1334,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 1333,
+                "successfulMissPublications": 1334,
+                "evictions": 1333,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 13433,
+                "eligible": 13433,
+                "hits": 1973,
+                "misses": 11460,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 13432,
+                "successfulMissPublications": 11460,
+                "evictions": 11459,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 8431,
+                "avoidedKeywordCalls": 1973,
+                "avoidedOpcodeCalls": 1973,
+                "shortSpanHits": 1972,
+                "longSpanHits": 1
+              },
+              "verifier": {
+                "calls": 1334,
+                "eligible": 1334,
+                "hits": 0,
+                "misses": 1334,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 1333,
+                "successfulMissPublications": 1334,
+                "evictions": 1333,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "2": {
+            "total": {
+              "calls": 14767,
+              "eligible": 14767,
+              "hits": 5437,
+              "misses": 9330,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 27555,
+              "successfulMissPublications": 9330,
+              "evictions": 9326,
+              "lruTouches": 3464,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 18221,
+              "avoidedKeywordCalls": 5437,
+              "avoidedOpcodeCalls": 5437,
+              "shortSpanHits": 5436,
+              "longSpanHits": 1
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 13433,
+                "eligible": 13433,
+                "hits": 5437,
+                "misses": 7996,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 24890,
+                "successfulMissPublications": 7996,
+                "evictions": 7994,
+                "lruTouches": 3464,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 18221,
+                "avoidedKeywordCalls": 5437,
+                "avoidedOpcodeCalls": 5437,
+                "shortSpanHits": 5436,
+                "longSpanHits": 1
+              },
+              "sp_atom_done": {
+                "calls": 0,
+                "eligible": 0,
+                "hits": 0,
+                "misses": 0,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 0,
+                "successfulMissPublications": 0,
+                "evictions": 0,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 1334,
+                "eligible": 1334,
+                "hits": 0,
+                "misses": 1334,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 2665,
+                "successfulMissPublications": 1334,
+                "evictions": 1332,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 13433,
+                "eligible": 13433,
+                "hits": 5437,
+                "misses": 7996,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 24890,
+                "successfulMissPublications": 7996,
+                "evictions": 7994,
+                "lruTouches": 3464,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 18221,
+                "avoidedKeywordCalls": 5437,
+                "avoidedOpcodeCalls": 5437,
+                "shortSpanHits": 5436,
+                "longSpanHits": 1
+              },
+              "verifier": {
+                "calls": 1334,
+                "eligible": 1334,
+                "hits": 0,
+                "misses": 1334,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 2665,
+                "successfulMissPublications": 1334,
+                "evictions": 1332,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "3": {
+            "total": {
+              "calls": 14767,
+              "eligible": 14767,
+              "hits": 8616,
+              "misses": 6151,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 36879,
+              "successfulMissPublications": 6151,
+              "evictions": 6145,
+              "lruTouches": 6643,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 30720,
+              "avoidedKeywordCalls": 8616,
+              "avoidedOpcodeCalls": 8616,
+              "shortSpanHits": 8615,
+              "longSpanHits": 1
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 13433,
+                "eligible": 13433,
+                "hits": 8614,
+                "misses": 4819,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 32883,
+                "successfulMissPublications": 4819,
+                "evictions": 4816,
+                "lruTouches": 6641,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 30718,
+                "avoidedKeywordCalls": 8614,
+                "avoidedOpcodeCalls": 8614,
+                "shortSpanHits": 8613,
+                "longSpanHits": 1
+              },
+              "sp_atom_done": {
+                "calls": 0,
+                "eligible": 0,
+                "hits": 0,
+                "misses": 0,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 0,
+                "successfulMissPublications": 0,
+                "evictions": 0,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 1334,
+                "eligible": 1334,
+                "hits": 2,
+                "misses": 1332,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 3996,
+                "successfulMissPublications": 1332,
+                "evictions": 1329,
+                "lruTouches": 2,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 2,
+                "avoidedKeywordCalls": 2,
+                "avoidedOpcodeCalls": 2,
+                "shortSpanHits": 2,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 13433,
+                "eligible": 13433,
+                "hits": 8614,
+                "misses": 4819,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 32883,
+                "successfulMissPublications": 4819,
+                "evictions": 4816,
+                "lruTouches": 6641,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 30718,
+                "avoidedKeywordCalls": 8614,
+                "avoidedOpcodeCalls": 8614,
+                "shortSpanHits": 8613,
+                "longSpanHits": 1
+              },
+              "verifier": {
+                "calls": 1334,
+                "eligible": 1334,
+                "hits": 2,
+                "misses": 1332,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 3996,
+                "successfulMissPublications": 1332,
+                "evictions": 1329,
+                "lruTouches": 2,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 2,
+                "avoidedKeywordCalls": 2,
+                "avoidedOpcodeCalls": 2,
+                "shortSpanHits": 2,
+                "longSpanHits": 0
+              }
+            }
+          }
+        },
+        "invocations": [
+          {
+            "invocation": 1,
+            "phase": "parser",
+            "calls": 13433,
+            "uniqueExactKeys": 4758,
+            "sites": {
+              "ap_wordscan": 13433,
+              "sp_atom_done": 0,
+              "ac_name_scan": 0
+            },
+            "hits": {
+              "1": 1973,
+              "2": 5437,
+              "3": 8614
+            }
+          },
+          {
+            "invocation": 2,
+            "phase": "verifier",
+            "calls": 1334,
+            "uniqueExactKeys": 1303,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1334
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "input": "u4.json",
+      "sourceBytes": 1028160,
+      "sourceSHA256": "b6cc357736f4c84345fe6cdd719e9567bc5d78a3d68cc27b5a57d81915f02890",
+      "completeOutputBytes": 39102996,
+      "completeOutputSHA256": "29821b663f2c691be0033870ee94145410f4a8470fafa4504f7791732410e7b5",
+      "completeBaselineAndTracedOutputsEqual": true,
+      "trace": {
+        "member": "u4.span.bin.gz",
+        "bytes": 67751560,
+        "sha256": "c3b5070c7c7e6f7a739525deaf67f2b85bbc83b17ccb020f4a8782d09c0ee11b",
+        "gzipBytes": 2660629,
+        "gzipSHA256": "e3fd08930f8559227afb1e319dac203078abe63b962e09735770267d80b619c7"
+      },
+      "counts": {
+        "actualClassifierCalls": 769868,
+        "actualScanbyteSteps": 2327721,
+        "actualPrefixScanSteps": 2327721,
+        "actualTailScanSteps": 0,
+        "prefixFailures": 0,
+        "classifierFailures": 0,
+        "distinctExactKeysInSession": 254689,
+        "repeatedExactKeyVisitsInSession": 515179,
+        "distinctExactKeysSummedAcrossInvocations": 282272,
+        "offsetOnlyDifferingLengthRepeatEvents": 184,
+        "longSpanCalls": 0,
+        "maxSpanLength": 82,
+        "successfulPrefixFactEqualityChecks": 769868,
+        "invocationCount": 36,
+        "parserInvocations": 1,
+        "verifierInvocations": 35,
+        "simulations": {
+          "1": {
+            "total": {
+              "calls": 769868,
+              "eligible": 769868,
+              "hits": 57188,
+              "misses": 712680,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 769832,
+              "successfulMissPublications": 712680,
+              "evictions": 712644,
+              "lruTouches": 0,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 185504,
+              "avoidedKeywordCalls": 57188,
+              "avoidedOpcodeCalls": 57188,
+              "shortSpanHits": 57188,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 712448,
+                "eligible": 712448,
+                "hits": 57188,
+                "misses": 655260,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 712447,
+                "successfulMissPublications": 655260,
+                "evictions": 655259,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 185504,
+                "avoidedKeywordCalls": 57188,
+                "avoidedOpcodeCalls": 57188,
+                "shortSpanHits": 57188,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 2355,
+                "eligible": 2355,
+                "hits": 0,
+                "misses": 2355,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 2355,
+                "successfulMissPublications": 2355,
+                "evictions": 2355,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 55065,
+                "eligible": 55065,
+                "hits": 0,
+                "misses": 55065,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 55030,
+                "successfulMissPublications": 55065,
+                "evictions": 55030,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 714803,
+                "eligible": 714803,
+                "hits": 57188,
+                "misses": 657615,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 714802,
+                "successfulMissPublications": 657615,
+                "evictions": 657614,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 185504,
+                "avoidedKeywordCalls": 57188,
+                "avoidedOpcodeCalls": 57188,
+                "shortSpanHits": 57188,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 55065,
+                "eligible": 55065,
+                "hits": 0,
+                "misses": 55065,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 55030,
+                "successfulMissPublications": 55065,
+                "evictions": 55030,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "2": {
+            "total": {
+              "calls": 769868,
+              "eligible": 769868,
+              "hits": 244494,
+              "misses": 525374,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 1482440,
+              "successfulMissPublications": 525374,
+              "evictions": 525302,
+              "lruTouches": 187306,
+              "crossSiteHits": 199,
+              "avoidedPrefixScanSteps": 682808,
+              "avoidedKeywordCalls": 244494,
+              "avoidedOpcodeCalls": 244494,
+              "shortSpanHits": 244494,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 712448,
+                "eligible": 712448,
+                "hits": 244244,
+                "misses": 468204,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 1367705,
+                "successfulMissPublications": 468204,
+                "evictions": 468202,
+                "lruTouches": 187056,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 682244,
+                "avoidedKeywordCalls": 244244,
+                "avoidedOpcodeCalls": 244244,
+                "shortSpanHits": 244244,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 2355,
+                "eligible": 2355,
+                "hits": 199,
+                "misses": 2156,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 4710,
+                "successfulMissPublications": 2156,
+                "evictions": 2156,
+                "lruTouches": 199,
+                "crossSiteHits": 199,
+                "avoidedPrefixScanSteps": 511,
+                "avoidedKeywordCalls": 199,
+                "avoidedOpcodeCalls": 199,
+                "shortSpanHits": 199,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 55065,
+                "eligible": 55065,
+                "hits": 51,
+                "misses": 55014,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 110025,
+                "successfulMissPublications": 55014,
+                "evictions": 54944,
+                "lruTouches": 51,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 53,
+                "avoidedKeywordCalls": 51,
+                "avoidedOpcodeCalls": 51,
+                "shortSpanHits": 51,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 714803,
+                "eligible": 714803,
+                "hits": 244443,
+                "misses": 470360,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 1372415,
+                "successfulMissPublications": 470360,
+                "evictions": 470358,
+                "lruTouches": 187255,
+                "crossSiteHits": 199,
+                "avoidedPrefixScanSteps": 682755,
+                "avoidedKeywordCalls": 244443,
+                "avoidedOpcodeCalls": 244443,
+                "shortSpanHits": 244443,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 55065,
+                "eligible": 55065,
+                "hits": 51,
+                "misses": 55014,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 110025,
+                "successfulMissPublications": 55014,
+                "evictions": 54944,
+                "lruTouches": 51,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 53,
+                "avoidedKeywordCalls": 51,
+                "avoidedOpcodeCalls": 51,
+                "shortSpanHits": 51,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "3": {
+            "total": {
+              "calls": 769868,
+              "eligible": 769868,
+              "hits": 433296,
+              "misses": 336572,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 2007706,
+              "successfulMissPublications": 336572,
+              "evictions": 336464,
+              "lruTouches": 376108,
+              "crossSiteHits": 199,
+              "avoidedPrefixScanSteps": 1267213,
+              "avoidedKeywordCalls": 433296,
+              "avoidedOpcodeCalls": 433296,
+              "shortSpanHits": 433296,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 712448,
+                "eligible": 712448,
+                "hits": 432916,
+                "misses": 279532,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 1835906,
+                "successfulMissPublications": 279532,
+                "evictions": 279529,
+                "lruTouches": 375728,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 1266514,
+                "avoidedKeywordCalls": 432916,
+                "avoidedOpcodeCalls": 432916,
+                "shortSpanHits": 432916,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 2355,
+                "eligible": 2355,
+                "hits": 199,
+                "misses": 2156,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 6866,
+                "successfulMissPublications": 2156,
+                "evictions": 2156,
+                "lruTouches": 199,
+                "crossSiteHits": 199,
+                "avoidedPrefixScanSteps": 511,
+                "avoidedKeywordCalls": 199,
+                "avoidedOpcodeCalls": 199,
+                "shortSpanHits": 199,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 55065,
+                "eligible": 55065,
+                "hits": 181,
+                "misses": 54884,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 164934,
+                "successfulMissPublications": 54884,
+                "evictions": 54779,
+                "lruTouches": 181,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 188,
+                "avoidedKeywordCalls": 181,
+                "avoidedOpcodeCalls": 181,
+                "shortSpanHits": 181,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 714803,
+                "eligible": 714803,
+                "hits": 433115,
+                "misses": 281688,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 1842772,
+                "successfulMissPublications": 281688,
+                "evictions": 281685,
+                "lruTouches": 375927,
+                "crossSiteHits": 199,
+                "avoidedPrefixScanSteps": 1267025,
+                "avoidedKeywordCalls": 433115,
+                "avoidedOpcodeCalls": 433115,
+                "shortSpanHits": 433115,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 55065,
+                "eligible": 55065,
+                "hits": 181,
+                "misses": 54884,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 164934,
+                "successfulMissPublications": 54884,
+                "evictions": 54779,
+                "lruTouches": 181,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 188,
+                "avoidedKeywordCalls": 181,
+                "avoidedOpcodeCalls": 181,
+                "shortSpanHits": 181,
+                "longSpanHits": 0
+              }
+            }
+          }
+        },
+        "invocations": [
+          {
+            "invocation": 1,
+            "phase": "parser",
+            "calls": 714803,
+            "uniqueExactKeys": 254689,
+            "sites": {
+              "ap_wordscan": 712448,
+              "sp_atom_done": 2355,
+              "ac_name_scan": 0
+            },
+            "hits": {
+              "1": 57188,
+              "2": 244443,
+              "3": 433115
+            }
+          },
+          {
+            "invocation": 2,
+            "phase": "verifier",
+            "calls": 635,
+            "uniqueExactKeys": 465,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 635
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 19
+            }
+          },
+          {
+            "invocation": 3,
+            "phase": "verifier",
+            "calls": 1177,
+            "uniqueExactKeys": 757,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1177
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 2
+            }
+          },
+          {
+            "invocation": 4,
+            "phase": "verifier",
+            "calls": 1828,
+            "uniqueExactKeys": 1514,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1828
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 3
+            }
+          },
+          {
+            "invocation": 5,
+            "phase": "verifier",
+            "calls": 541,
+            "uniqueExactKeys": 394,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 541
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 3
+            }
+          },
+          {
+            "invocation": 6,
+            "phase": "verifier",
+            "calls": 803,
+            "uniqueExactKeys": 645,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 803
+            },
+            "hits": {
+              "1": 0,
+              "2": 9,
+              "3": 13
+            }
+          },
+          {
+            "invocation": 7,
+            "phase": "verifier",
+            "calls": 942,
+            "uniqueExactKeys": 711,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 942
+            },
+            "hits": {
+              "1": 0,
+              "2": 3,
+              "3": 14
+            }
+          },
+          {
+            "invocation": 8,
+            "phase": "verifier",
+            "calls": 1262,
+            "uniqueExactKeys": 981,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1262
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 8
+            }
+          },
+          {
+            "invocation": 9,
+            "phase": "verifier",
+            "calls": 1085,
+            "uniqueExactKeys": 722,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1085
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 1
+            }
+          },
+          {
+            "invocation": 10,
+            "phase": "verifier",
+            "calls": 3020,
+            "uniqueExactKeys": 2644,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 3020
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 5
+            }
+          },
+          {
+            "invocation": 11,
+            "phase": "verifier",
+            "calls": 634,
+            "uniqueExactKeys": 352,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 634
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 2
+            }
+          },
+          {
+            "invocation": 12,
+            "phase": "verifier",
+            "calls": 730,
+            "uniqueExactKeys": 347,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 730
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 8
+            }
+          },
+          {
+            "invocation": 13,
+            "phase": "verifier",
+            "calls": 803,
+            "uniqueExactKeys": 151,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 803
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 3
+            }
+          },
+          {
+            "invocation": 14,
+            "phase": "verifier",
+            "calls": 236,
+            "uniqueExactKeys": 60,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 236
+            },
+            "hits": {
+              "1": 0,
+              "2": 10,
+              "3": 20
+            }
+          },
+          {
+            "invocation": 15,
+            "phase": "verifier",
+            "calls": 349,
+            "uniqueExactKeys": 93,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 349
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 15
+            }
+          },
+          {
+            "invocation": 16,
+            "phase": "verifier",
+            "calls": 1038,
+            "uniqueExactKeys": 254,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1038
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 1
+            }
+          },
+          {
+            "invocation": 17,
+            "phase": "verifier",
+            "calls": 1289,
+            "uniqueExactKeys": 313,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1289
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 0
+            }
+          },
+          {
+            "invocation": 18,
+            "phase": "verifier",
+            "calls": 3263,
+            "uniqueExactKeys": 1394,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 3263
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 0
+            }
+          },
+          {
+            "invocation": 19,
+            "phase": "verifier",
+            "calls": 2938,
+            "uniqueExactKeys": 758,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 2938
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 1
+            }
+          },
+          {
+            "invocation": 20,
+            "phase": "verifier",
+            "calls": 1971,
+            "uniqueExactKeys": 609,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1971
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 0
+            }
+          },
+          {
+            "invocation": 21,
+            "phase": "verifier",
+            "calls": 2931,
+            "uniqueExactKeys": 925,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 2931
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 1
+            }
+          },
+          {
+            "invocation": 22,
+            "phase": "verifier",
+            "calls": 2013,
+            "uniqueExactKeys": 809,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 2013
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 2
+            }
+          },
+          {
+            "invocation": 23,
+            "phase": "verifier",
+            "calls": 479,
+            "uniqueExactKeys": 219,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 479
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 13
+            }
+          },
+          {
+            "invocation": 24,
+            "phase": "verifier",
+            "calls": 379,
+            "uniqueExactKeys": 163,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 379
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 9
+            }
+          },
+          {
+            "invocation": 25,
+            "phase": "verifier",
+            "calls": 484,
+            "uniqueExactKeys": 149,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 484
+            },
+            "hits": {
+              "1": 0,
+              "2": 4,
+              "3": 13
+            }
+          },
+          {
+            "invocation": 26,
+            "phase": "verifier",
+            "calls": 493,
+            "uniqueExactKeys": 233,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 493
+            },
+            "hits": {
+              "1": 0,
+              "2": 3,
+              "3": 5
+            }
+          },
+          {
+            "invocation": 27,
+            "phase": "verifier",
+            "calls": 2073,
+            "uniqueExactKeys": 1264,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 2073
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 1
+            }
+          },
+          {
+            "invocation": 28,
+            "phase": "verifier",
+            "calls": 4645,
+            "uniqueExactKeys": 2039,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 4645
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 2
+            }
+          },
+          {
+            "invocation": 29,
+            "phase": "verifier",
+            "calls": 1993,
+            "uniqueExactKeys": 486,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1993
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 0
+            }
+          },
+          {
+            "invocation": 30,
+            "phase": "verifier",
+            "calls": 2360,
+            "uniqueExactKeys": 1196,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 2360
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 3
+            }
+          },
+          {
+            "invocation": 31,
+            "phase": "verifier",
+            "calls": 2277,
+            "uniqueExactKeys": 1529,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 2277
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 2
+            }
+          },
+          {
+            "invocation": 32,
+            "phase": "verifier",
+            "calls": 1194,
+            "uniqueExactKeys": 548,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1194
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 0
+            }
+          },
+          {
+            "invocation": 33,
+            "phase": "verifier",
+            "calls": 1559,
+            "uniqueExactKeys": 754,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 1559
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 4
+            }
+          },
+          {
+            "invocation": 34,
+            "phase": "verifier",
+            "calls": 2032,
+            "uniqueExactKeys": 1161,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 2032
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 0
+            }
+          },
+          {
+            "invocation": 35,
+            "phase": "verifier",
+            "calls": 5174,
+            "uniqueExactKeys": 2669,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 5174
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 1
+            }
+          },
+          {
+            "invocation": 36,
+            "phase": "verifier",
+            "calls": 435,
+            "uniqueExactKeys": 275,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 435
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 7
+            }
+          }
+        ]
+      }
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "input": "u5.json",
+      "sourceBytes": 114645,
+      "sourceSHA256": "c90c70cad5719c15c0c50260e445bf9b3d4636292b93af6bf297162ccfe1e268",
+      "completeOutputBytes": 4952428,
+      "completeOutputSHA256": "514a70e4d84b8384a670620018c6147e081e2a8753e953d07115118ec1e8da69",
+      "completeBaselineAndTracedOutputsEqual": true,
+      "trace": {
+        "member": "u5.span.bin.gz",
+        "bytes": 7724912,
+        "sha256": "570605cf57922840aa43e8796cf9c581c955e994dff179e06a36c22c4c6bd7f0",
+        "gzipBytes": 294375,
+        "gzipSHA256": "4363146cbafb66ed75ac2fd3461b0bf813a1bae69b422debe4490112c7fe4474"
+      },
+      "counts": {
+        "actualClassifierCalls": 87772,
+        "actualScanbyteSteps": 235181,
+        "actualPrefixScanSteps": 235181,
+        "actualTailScanSteps": 0,
+        "prefixFailures": 0,
+        "classifierFailures": 0,
+        "distinctExactKeysInSession": 30332,
+        "repeatedExactKeyVisitsInSession": 57440,
+        "distinctExactKeysSummedAcrossInvocations": 32253,
+        "offsetOnlyDifferingLengthRepeatEvents": 84,
+        "longSpanCalls": 0,
+        "maxSpanLength": 67,
+        "successfulPrefixFactEqualityChecks": 87772,
+        "invocationCount": 11,
+        "parserInvocations": 1,
+        "verifierInvocations": 10,
+        "simulations": {
+          "1": {
+            "total": {
+              "calls": 87772,
+              "eligible": 87772,
+              "hits": 6691,
+              "misses": 81081,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 87761,
+              "successfulMissPublications": 81081,
+              "evictions": 81070,
+              "lruTouches": 0,
+              "crossSiteHits": 0,
+              "avoidedPrefixScanSteps": 17648,
+              "avoidedKeywordCalls": 6691,
+              "avoidedOpcodeCalls": 6691,
+              "shortSpanHits": 6691,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 80102,
+                "eligible": 80102,
+                "hits": 6691,
+                "misses": 73411,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 80101,
+                "successfulMissPublications": 73411,
+                "evictions": 73410,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 17648,
+                "avoidedKeywordCalls": 6691,
+                "avoidedOpcodeCalls": 6691,
+                "shortSpanHits": 6691,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 1203,
+                "eligible": 1203,
+                "hits": 0,
+                "misses": 1203,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 1203,
+                "successfulMissPublications": 1203,
+                "evictions": 1203,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 6467,
+                "eligible": 6467,
+                "hits": 0,
+                "misses": 6467,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 6457,
+                "successfulMissPublications": 6467,
+                "evictions": 6457,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 81305,
+                "eligible": 81305,
+                "hits": 6691,
+                "misses": 74614,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 81304,
+                "successfulMissPublications": 74614,
+                "evictions": 74613,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 17648,
+                "avoidedKeywordCalls": 6691,
+                "avoidedOpcodeCalls": 6691,
+                "shortSpanHits": 6691,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 6467,
+                "eligible": 6467,
+                "hits": 0,
+                "misses": 6467,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 6457,
+                "successfulMissPublications": 6467,
+                "evictions": 6457,
+                "lruTouches": 0,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 0,
+                "avoidedKeywordCalls": 0,
+                "avoidedOpcodeCalls": 0,
+                "shortSpanHits": 0,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "2": {
+            "total": {
+              "calls": 87772,
+              "eligible": 87772,
+              "hits": 27625,
+              "misses": 60147,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 168820,
+              "successfulMissPublications": 60147,
+              "evictions": 60125,
+              "lruTouches": 20934,
+              "crossSiteHits": 233,
+              "avoidedPrefixScanSteps": 60920,
+              "avoidedKeywordCalls": 27625,
+              "avoidedOpcodeCalls": 27625,
+              "shortSpanHits": 27625,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 80102,
+                "eligible": 80102,
+                "hits": 27383,
+                "misses": 52719,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 153510,
+                "successfulMissPublications": 52719,
+                "evictions": 52717,
+                "lruTouches": 20692,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 60308,
+                "avoidedKeywordCalls": 27383,
+                "avoidedOpcodeCalls": 27383,
+                "shortSpanHits": 27383,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 1203,
+                "eligible": 1203,
+                "hits": 233,
+                "misses": 970,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 2406,
+                "successfulMissPublications": 970,
+                "evictions": 970,
+                "lruTouches": 233,
+                "crossSiteHits": 233,
+                "avoidedPrefixScanSteps": 596,
+                "avoidedKeywordCalls": 233,
+                "avoidedOpcodeCalls": 233,
+                "shortSpanHits": 233,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 6467,
+                "eligible": 6467,
+                "hits": 9,
+                "misses": 6458,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 12904,
+                "successfulMissPublications": 6458,
+                "evictions": 6438,
+                "lruTouches": 9,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 16,
+                "avoidedKeywordCalls": 9,
+                "avoidedOpcodeCalls": 9,
+                "shortSpanHits": 9,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 81305,
+                "eligible": 81305,
+                "hits": 27616,
+                "misses": 53689,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 155916,
+                "successfulMissPublications": 53689,
+                "evictions": 53687,
+                "lruTouches": 20925,
+                "crossSiteHits": 233,
+                "avoidedPrefixScanSteps": 60904,
+                "avoidedKeywordCalls": 27616,
+                "avoidedOpcodeCalls": 27616,
+                "shortSpanHits": 27616,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 6467,
+                "eligible": 6467,
+                "hits": 9,
+                "misses": 6458,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 12904,
+                "successfulMissPublications": 6458,
+                "evictions": 6438,
+                "lruTouches": 9,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 16,
+                "avoidedKeywordCalls": 9,
+                "avoidedOpcodeCalls": 9,
+                "shortSpanHits": 9,
+                "longSpanHits": 0
+              }
+            }
+          },
+          "3": {
+            "total": {
+              "calls": 87772,
+              "eligible": 87772,
+              "hits": 48342,
+              "misses": 39430,
+              "prefixFailureBypasses": 0,
+              "keyComparisons": 228934,
+              "successfulMissPublications": 39430,
+              "evictions": 39397,
+              "lruTouches": 41651,
+              "crossSiteHits": 233,
+              "avoidedPrefixScanSteps": 117666,
+              "avoidedKeywordCalls": 48342,
+              "avoidedOpcodeCalls": 48342,
+              "shortSpanHits": 48342,
+              "longSpanHits": 0
+            },
+            "bySite": {
+              "ap_wordscan": {
+                "calls": 80102,
+                "eligible": 80102,
+                "hits": 48084,
+                "misses": 32018,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 206226,
+                "successfulMissPublications": 32018,
+                "evictions": 32015,
+                "lruTouches": 41393,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 117024,
+                "avoidedKeywordCalls": 48084,
+                "avoidedOpcodeCalls": 48084,
+                "shortSpanHits": 48084,
+                "longSpanHits": 0
+              },
+              "sp_atom_done": {
+                "calls": 1203,
+                "eligible": 1203,
+                "hits": 233,
+                "misses": 970,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 3376,
+                "successfulMissPublications": 970,
+                "evictions": 970,
+                "lruTouches": 233,
+                "crossSiteHits": 233,
+                "avoidedPrefixScanSteps": 596,
+                "avoidedKeywordCalls": 233,
+                "avoidedOpcodeCalls": 233,
+                "shortSpanHits": 233,
+                "longSpanHits": 0
+              },
+              "ac_name_scan": {
+                "calls": 6467,
+                "eligible": 6467,
+                "hits": 25,
+                "misses": 6442,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 19332,
+                "successfulMissPublications": 6442,
+                "evictions": 6412,
+                "lruTouches": 25,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 46,
+                "avoidedKeywordCalls": 25,
+                "avoidedOpcodeCalls": 25,
+                "shortSpanHits": 25,
+                "longSpanHits": 0
+              }
+            },
+            "byPhase": {
+              "parser": {
+                "calls": 81305,
+                "eligible": 81305,
+                "hits": 48317,
+                "misses": 32988,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 209602,
+                "successfulMissPublications": 32988,
+                "evictions": 32985,
+                "lruTouches": 41626,
+                "crossSiteHits": 233,
+                "avoidedPrefixScanSteps": 117620,
+                "avoidedKeywordCalls": 48317,
+                "avoidedOpcodeCalls": 48317,
+                "shortSpanHits": 48317,
+                "longSpanHits": 0
+              },
+              "verifier": {
+                "calls": 6467,
+                "eligible": 6467,
+                "hits": 25,
+                "misses": 6442,
+                "prefixFailureBypasses": 0,
+                "keyComparisons": 19332,
+                "successfulMissPublications": 6442,
+                "evictions": 6412,
+                "lruTouches": 25,
+                "crossSiteHits": 0,
+                "avoidedPrefixScanSteps": 46,
+                "avoidedKeywordCalls": 25,
+                "avoidedOpcodeCalls": 25,
+                "shortSpanHits": 25,
+                "longSpanHits": 0
+              }
+            }
+          }
+        },
+        "invocations": [
+          {
+            "invocation": 1,
+            "phase": "parser",
+            "calls": 81305,
+            "uniqueExactKeys": 30332,
+            "sites": {
+              "ap_wordscan": 80102,
+              "sp_atom_done": 1203,
+              "ac_name_scan": 0
+            },
+            "hits": {
+              "1": 6691,
+              "2": 27616,
+              "3": 48317
+            }
+          },
+          {
+            "invocation": 2,
+            "phase": "verifier",
+            "calls": 296,
+            "uniqueExactKeys": 103,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 296
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 4
+            }
+          },
+          {
+            "invocation": 3,
+            "phase": "verifier",
+            "calls": 584,
+            "uniqueExactKeys": 299,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 584
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 2
+            }
+          },
+          {
+            "invocation": 4,
+            "phase": "verifier",
+            "calls": 672,
+            "uniqueExactKeys": 210,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 672
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 4
+            }
+          },
+          {
+            "invocation": 5,
+            "phase": "verifier",
+            "calls": 880,
+            "uniqueExactKeys": 221,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 880
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 1
+            }
+          },
+          {
+            "invocation": 6,
+            "phase": "verifier",
+            "calls": 373,
+            "uniqueExactKeys": 54,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 373
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 0
+            }
+          },
+          {
+            "invocation": 7,
+            "phase": "verifier",
+            "calls": 642,
+            "uniqueExactKeys": 177,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 642
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 0
+            }
+          },
+          {
+            "invocation": 8,
+            "phase": "verifier",
+            "calls": 863,
+            "uniqueExactKeys": 292,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 863
+            },
+            "hits": {
+              "1": 0,
+              "2": 0,
+              "3": 2
+            }
+          },
+          {
+            "invocation": 9,
+            "phase": "verifier",
+            "calls": 707,
+            "uniqueExactKeys": 195,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 707
+            },
+            "hits": {
+              "1": 0,
+              "2": 1,
+              "3": 1
+            }
+          },
+          {
+            "invocation": 10,
+            "phase": "verifier",
+            "calls": 981,
+            "uniqueExactKeys": 240,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 981
+            },
+            "hits": {
+              "1": 0,
+              "2": 2,
+              "3": 5
+            }
+          },
+          {
+            "invocation": 11,
+            "phase": "verifier",
+            "calls": 469,
+            "uniqueExactKeys": 130,
+            "sites": {
+              "ap_wordscan": 0,
+              "sp_atom_done": 0,
+              "ac_name_scan": 469
+            },
+            "hits": {
+              "1": 0,
+              "2": 4,
+              "3": 6
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "recipeSnapshot": {
+    "commit": "917bb42662440cf5bf5317ff54b43c121f75489f",
+    "tree": "a1a8b92b22715f140909aae56ea0278f0c0f153f",
+    "trackedSourcesClean": true,
+    "files": [
+      {
+        "path": "experiments/unification/frontend-cost/exact-span-prepare.py.txt",
+        "bytes": 4753,
+        "sha256": "5f32e903b77df3e8247c9fd0f1fd0a3eab10235d04f5d94071798f2526c2a8e8"
+      },
+      {
+        "path": "experiments/unification/frontend-cost/exact-span-count.py.txt",
+        "bytes": 10436,
+        "sha256": "9e91b5bf00ee314276dc8e90ce2f31cd61515ef05c3f9ce87d310d16e4d4413e"
+      },
+      {
+        "path": "experiments/unification/frontend-cost/exact-span-verify.py.txt",
+        "bytes": 3668,
+        "sha256": "9d419887e55ac38b505a2da6f241bf5ac28ca2d0777ced8b945e8ec4aa9dbe87"
+      },
+      {
+        "path": "experiments/unification/frontend-cost/exact-span-report.mjs.txt",
+        "bytes": 3060,
+        "sha256": "18ffbcefc71f7e7cd158f1cf9a370859351e9bccb26563fd99d2b963ff67a059"
+      },
+      {
+        "path": "experiments/unification/frontend-cost/exact-span.md",
+        "bytes": 3766,
+        "sha256": "eb403a91a308a4539bad1767db26d66d4ab1c2e64b2251ee53a92ae3a29e9c41"
+      }
+    ]
+  },
+  "derivedCountLimitations": [
+    "Classifier call count and prefix fold count are captured freshly; total scanbyte steps are sum(fullLength), verified against prior semantic counters for these successful applications.",
+    "Cache probes, hits, misses, publications, evictions and LRU touches are offline policy operations, not generated machine instructions or a running compiler cache.",
+    "Entry capacity excludes code, key lookup, context copying, private stack, compiler analysis, binary and whole-package costs; none is measured or predicted.",
+    "No transport request, payload read, drain or classifier call is removed by this experiment.",
+    "Fault-stage partial facts, mutated source rejection, public ABI and private cache lowering require a later independent implementation proof."
+  ],
+  "verification": {
+    "completeOutputsComparedByteForByte": true,
+    "completeDumpHashesMatchCommittedSixInputs": true,
+    "everyRepeatedExactKeyHasIdenticalTwelvePrefixFacts": true,
+    "independentDictionaryLRUReplay": "pass; exact-span-verify.py.txt on the saved archive and summary",
+    "formalTiming": false,
+    "productionImplementation": false,
+    "defaultActivation": false
+  }
+}
