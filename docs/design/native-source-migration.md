@@ -37,3 +37,9 @@ transitive inferred result types, every registered backend's emitted output, con
 sharing a frontend, metadata/fixed-point guards, UTF8/confinement, native allocation refusal and
 concurrent source edits. These controls establish conversion behavior; compiler performance,
 Windows directory publication and the public syntax cutover still require their applicable gates.
+
+The [frozen migration record](../../results/native-source-migration.json) binds the passing
+controls to their code, frontend and formatter artifacts. Eight real dependency closures also
+converted with matching semantic revisions and byte-identical JavaScript, C and Wasm emission.
+The archive retains their manifests, converted files, output hashes and reproduction script.
+These are correctness checks; their busy-host durations provide no performance result.
