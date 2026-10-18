@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { compile } from '../src/backends.js';
 import { type Func, formatSource, isPrimitive, LIMITS, type Type } from '../src/core.js';
-import { A0Error } from '../src/diagnostics.js';
+import { A0Error, diag } from '../src/diagnostics.js';
 import { link } from '../src/link.js';
 import { type DirectFunction, directSource } from '../src/source-direct.js';
 import { linkSource } from '../src/source-link.js';
@@ -306,7 +306,7 @@ for (const [backend, factory] of factories) {
     }
   });
 
-  test(`${backend}: global native failures retain unowned facts and explicit renderer refusal`, () => {
+  test(`${backend}: global native failures retain unowned facts and complete catalog errors`, () => {
     const engine = factory({ load: renderer.load });
     const fn: Func = {
       name: 'f',
@@ -325,17 +325,18 @@ for (const [backend, factory] of factories) {
         !result.ok &&
           result.diagnostic &&
           'packet' in result.diagnostic &&
-          !result.diagnostic.rendered.ok,
+          result.diagnostic.rendered.ok,
       );
       assert.equal(result.state[109], 0xffff_ffff);
       assert.equal(result.state[1], 29);
       assert.equal(result.diagnostic.packet.facts[7], 0xffff_ffff);
-      assert.equal(
-        result.diagnostic.packet.status,
-        3,
-        'existing A0 renderer cannot render this IR-only global',
+      const expected = diag('A0029').toJSON();
+      assert.equal(result.diagnostic.packet.status, 0);
+      assert.deepEqual(
+        JSON.parse(new TextDecoder().decode(result.diagnostic.packet.json)),
+        expected,
       );
-      assert.equal(result.diagnostic.packet.json.length, 0);
+      assert.deepEqual(result.diagnostic.rendered.error.toJSON(), expected);
       const error = new NativeSourceError(result, '/native-live/archive.a0', 1, [
         {
           path: '/native-live/archive.a0',
@@ -346,7 +347,11 @@ for (const [backend, factory] of factories) {
           utf16Start: 0,
         },
       ]);
-      assert.equal(error.a0Error, undefined, 'no synthesized catalog error after renderer refusal');
+      assert.deepEqual(
+        error.a0Error?.toJSON(),
+        expected,
+        'global diagnostics have no guessed owner',
+      );
       assert.deepEqual(error.rendered, result.diagnostic.rendered);
     } finally {
       engine.close();

@@ -87,11 +87,16 @@ ID has been proved. The native diagnostic test suite checks complete JSON, repai
 priority, structural type formatting, decimal edge cases and UTF16 facts for its
 supported cases. Other IDs and unsupported options return renderer status 7.
 
+The global function-count diagnostic also renders without a selected function or
+source archive. Native verifier/renderer fixtures and live controls check its
+complete catalog JSON, unowned facts, empty and Unicode archives, and resource and
+transport priority. The live C and direct-Wasm integration checks are recorded in
+`results/source-native-global-diagnostic-integration.json`.
+
 | Open area | Evidence and required connection |
 | --- | --- |
 | Default routing | The live hook is optional. Raw `state` and `specState` are not renderer facts and must not be passed directly to the packet adapter. Shipping the renderer by default requires separate artifact/performance and coverage decisions. |
 | New structured-IR preflight errors | A0021, A0301–A0302 and A0304–A0308 are outside the renderer's declared set. The shared checker must supply the required names/arguments to A0 rendering before those cases can use the public adapter. |
-| Structured-IR global count | A real A0029 global function-count failure has no owning function. Although the ID is declared, the existing A0 renderer returns transport status 3 with no JSON for this IR state. The live controls retain that refusal; catalog hydration remains unavailable. |
 | Module errors | File resolution, imports and duplicate ownership still use the existing graph policy. Source-unit origins can map renderer locations; they do not supply missing module diagnostic content. |
 | Specifications | A0714–A0716 and A0719 do not have complete native public rendering. Ordered verification retains phase/example/trap/value facts, but those session-lived facts still need A0 rendering. The adapter can preserve a complete `SpecFault` payload; its synthetic transport test does not establish native spec rendering. |
 | Runtime traps | Public runtime errors carry `trap` separately from `Diagnostic` JSON. This compile-diagnostic packet adapter does not synthesize or claim runtime-trap transport. |
