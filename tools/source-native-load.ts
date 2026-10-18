@@ -7,6 +7,7 @@ import { type DirectSourceArtifact, directSource } from '../src/source-direct.js
 import { nativeSource } from '../src/source-native.js';
 import type { NativeFormatOptions } from '../src/source-native-format.js';
 import type { NativeDiagnosticOptions } from '../src/source-native-render.js';
+import { DIAGNOSTIC_OPTIONS, diagnosticInputs } from './source-diagnostic-inputs.js';
 
 const hash = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex');
 
@@ -75,10 +76,32 @@ export async function prepareSourceDiagnostic(directory: string) {
   const bytes = await readFile(join(path, 'diagnostic.wasm'));
   assert.equal(build.schema, 1);
   assert.equal(build.capability, 'arena-v1');
-  assert.equal(build.entry, 'compiler/diagnostics_arena.a0');
+  assert.equal(
+    build.entry,
+    build.verificationWords === undefined
+      ? 'compiler/diagnostics_arena.a0'
+      : 'compiler/diagnostic_specs_arena.a0',
+  );
   assert.equal(build.root, 'arena_diagnostic_options');
   assert.equal(build.resultWords, 133);
   assert.equal(build.parsedWords, 128);
+  if (build.verificationWords !== undefined) {
+    assert.equal(build.verificationWords, 768);
+    assert.deepEqual(build.roots, {
+      arena_diagnostic_options: { params: [1, 128, 1], resultWords: 133 },
+      arena_verified_diagnostic_options: {
+        params: [1, 128, 128, 128, 128, 128, 128, 1],
+        resultWords: 133,
+      },
+    });
+  }
+  if (build.verificationWords !== undefined) {
+    assert.deepEqual(build.options, DIAGNOSTIC_OPTIONS, 'diagnostic compiler options differ');
+    const current = await diagnosticInputs(build.entry);
+    assert.deepEqual(build.inputs, current.inputs, 'diagnostic input closure differs');
+    assert.equal(build.sourceSHA256, current.sourceSHA256, 'diagnostic source IR differs');
+    assert.deepEqual(build.requiredWasmFeatures, ['bulk-memory', 'simd']);
+  }
   assert.equal(hash(bytes), build.wasmSHA256, 'diagnostic renderer artifact differs');
   assert.equal(bytes.length, build.wasmBytes);
   assert.ok(
@@ -102,7 +125,12 @@ export async function prepareSourceDiagnostic(directory: string) {
     );
   }
   let module: WebAssembly.Module | undefined;
-  return { build, bytes: bytes.length, load: () => (module ??= new WebAssembly.Module(bytes)) };
+  return {
+    build,
+    bytes: bytes.length,
+    ...(build.verificationWords === undefined ? {} : { verification: true as const }),
+    load: () => (module ??= new WebAssembly.Module(bytes)),
+  };
 }
 
 /** Verify companion provenance now; compile and instantiate only on the first requested use. */

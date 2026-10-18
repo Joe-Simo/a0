@@ -519,61 +519,72 @@ q6 add q5 p1
 q7 mul q6 5
 r call av_load q0 q4 q7 5
 o at r 1
-q8 at p0 0
-q9 at p0 1
-q10 at r 2
-q11 rec q8 q9 b q10
-q12 at r 0
-a call sb_runtime q11 q12
-q13 get o 0
-q14 ne q13 1
-q15 get o 1
-q16 get b 84
-q17 lt q15 q16
-q18 get o 4
-q19 and q18 4
-q20 eq q19 0
-q21 and q17 q20
-valid or q14 q21
-q22 select valid 0 105
-a_1 call sb_wrap a q22
+q8 get o 1
+b_1 set b 91 q8
+b_2 set b_1 109 p1
+q9 get o 2
+b_3 set b_2 12 q9
+q10 get o 3
+b_4 set b_3 13 q10
+b_5 set b_4 99 p1
+b_6 set b_5 100 4294967295
+b_7 set b_6 101 4294967295
+b_8 set b_7 102 0
+q11 at p0 0
+q12 at p0 1
+q13 at r 2
+q14 rec q11 q12 b_8 q13
+q15 at r 0
+a call sb_runtime q14 q15
+q16 get o 0
+q17 ne q16 1
+q18 get o 1
+q19 get b_8 84
+q20 lt q18 q19
+q21 get o 4
+q22 and q21 4
+q23 eq q22 0
+q24 and q20 q23
+valid or q17 q24
+q25 select valid 0 105
+a_1 call sb_wrap a q25
 ar at a_1 2
-q23 get o 0
-q24 eq q23 1
-q25 and q24 valid
-q26 get ar 0
-q27 eq q26 0
-q28 and q25 q27
-count select q28 1 0
-q29 at a_1 3
-q30 get ar 44
-q31 get ar 45
-q32 get ar 46
-q33 rec q30 q31 q32
-q34 ne count 0
-q35 get b 86
-q36 get o 1
-q37 add q35 q36
-q38 select q34 q37 0
-t call av_load q29 q33 q38 count
-q39 at a_1 0
-q40 at a_1 1
-q41 at t 2
-q42 rec q39 q40 ar q41
-q43 at t 0
-a_2 call sb_runtime q42 q43
+q26 get o 0
+q27 eq q26 1
+q28 and q27 valid
+q29 get ar 0
+q30 eq q29 0
+q31 and q28 q30
+count select q31 1 0
+q32 at a_1 3
+q33 get ar 44
+q34 get ar 45
+q35 get ar 46
+q36 rec q33 q34 q35
+q37 ne count 0
+q38 get b_8 86
+q39 get o 1
+q40 add q38 q39
+q41 select q37 q40 0
+t call av_load q32 q36 q41 count
+q42 at a_1 0
+q43 at a_1 1
+q44 at t 2
+q45 rec q42 q43 ar q44
+q46 at t 0
+a_2 call sb_runtime q45 q46
 page at t 1
-q44 get o 0
-q45 eq q44 1
-q46 get page 0
 q47 get o 0
-q48 eq q47 3
-q49 select q48 1 0
-type select q45 q46 q49
-q50 call arena_zero
-z set q50 0 type
-q51 call sb_append a_2 53 1 z
-ret q51
+q48 eq q47 1
+q49 get page 0
+q50 get o 0
+q51 eq q50 3
+q52 select q51 1 0
+type select q48 q49 q52
+q53 call arena_zero
+z set q53 0 type
+q54 call sb_append a_2 53 1 z
+ret q54
 end
 
 fn sb_type_core (u32x128,u32x128,u32x128,io) u32 u32x128 -> (u32x128,u32x128,u32x128,io)

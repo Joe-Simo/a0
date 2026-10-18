@@ -1,13 +1,12 @@
 /** Build only the existing A0 diagnostic renderer, with generic live arena ports. */
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { compile } from '../src/backends.js';
-import { formatProgram, formatType } from '../src/core.js';
-import { link } from '../src/link.js';
+import { formatType } from '../src/core.js';
 import { writeReport } from './scrub-results.js';
+import { DIAGNOSTIC_OPTIONS, diagnosticInputs } from './source-diagnostic-inputs.js';
 
 const args = process.argv.slice(2);
 const argument = args[0];
@@ -16,9 +15,12 @@ assert.ok(
   '--out=DIR required',
 );
 const out = resolve(argument.slice(6));
-const linked = await link('compiler/diagnostics_arena.a0', (path) => readFile(path, 'utf8'));
+const entry = 'compiler/diagnostic_specs_arena.a0';
+const { linked, inputs, sourceSHA256 } = await diagnosticInputs(entry);
 const root = linked.program.byName.get('arena_diagnostic_options');
+const verified = linked.program.byName.get('arena_verified_diagnostic_options');
 assert.ok(root, 'missing renderer root');
+assert.ok(verified, 'missing verified renderer root');
 assert.deepEqual(
   root.params.map(formatType),
   ['io', 'u32x128', 'u32'],
@@ -29,12 +31,13 @@ assert.equal(
   '(u32,(u32,u32,u32),u32x128,io)',
   'renderer result ABI differs',
 );
-const options = {
-  wasmExports: ['arena_diagnostic_options'],
-  wasmSimd: true,
-  optimize: true,
-  wasmIo: { module: 'a0_arena', read: 'a0_runtime_read', write: 'a0_runtime_write' },
-} as const;
+assert.deepEqual(verified.params.map(formatType), [
+  'io',
+  ...Array<string>(6).fill('u32x128'),
+  'u32',
+]);
+assert.equal(formatType(verified.result), formatType(root.result));
+const options = DIAGNOSTIC_OPTIONS;
 const bytes = Buffer.from(compile(linked.program, 'wasm', options).text, 'base64');
 assert.ok(WebAssembly.validate(bytes), 'invalid diagnostic Wasm');
 const hash = (value: string | Uint8Array): string =>
@@ -44,27 +47,23 @@ await writeFile(join(out, 'diagnostic.wasm'), bytes);
 await writeReport(join(out, 'build.json'), {
   schema: 1,
   capability: 'arena-v1',
-  entry: 'compiler/diagnostics_arena.a0',
+  entry,
   root: 'arena_diagnostic_options',
   options,
   wasmSHA256: hash(bytes),
   wasmBytes: bytes.length,
-  sourceSHA256: hash(formatProgram(linked.program)),
+  sourceSHA256,
   resultWords: 133,
   parsedWords: 128,
+  verificationWords: 768,
+  roots: {
+    arena_diagnostic_options: { params: [1, 128, 1], resultWords: 133 },
+    arena_verified_diagnostic_options: {
+      params: [1, 128, 128, 128, 128, 128, 128, 1],
+      resultWords: 133,
+    },
+  },
   requiredWasmFeatures: ['bulk-memory', 'simd'],
-  inputs: await Promise.all(
-    [
-      ...new Set([
-        ...linked.sources.map(({ path }) => relative(process.cwd(), path)),
-        ...execFileSync('git', ['ls-files', 'src/*.ts'], { encoding: 'utf8' }).trim().split('\n'),
-        'src/source-native-render.ts',
-        'src/source-component.ts',
-        'tools/source-diagnostic-build.ts',
-      ]),
-    ]
-      .sort()
-      .map(async (path) => ({ path, sha256: hash(await readFile(path)) })),
-  ),
+  inputs,
 });
 console.log(`Built failure-only A0 diagnostic renderer: ${bytes.length} Wasm bytes`);

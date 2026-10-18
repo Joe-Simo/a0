@@ -150,7 +150,7 @@ const exports = [
   'malloc',
   'free',
   ...(diagnosticPorts === 'arena-v1'
-    ? ['a0_runtime_read', 'a0_runtime_write', 'frontend_arena_token']
+    ? ['a0_runtime_read', 'a0_runtime_write', 'frontend_arena_token', 'frontend_verification']
     : []),
 ];
 const linkerFlags = [

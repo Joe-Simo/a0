@@ -20896,7 +20896,7 @@ prepared rec prepstatus prepargs known prepio
 ret prepared
 end
 # Render the JSON/edit payload before collecting the original diagnostic sidecar facts.
-fn ad_render_json io u32x128 u32 -> (u32,(u32,u32,u32),u32x128,bool,bool,u32,io)
+fn ad_prepare_message_context io u32x128 u32 bool -> (u32,u32x128,(u32,u32,u32),(u32,u32,u32),bool,bool,u32,io)
 prepared call ad_render_prepare p0 p1 p2
 prepstatus at prepared 0
 prepargs at prepared 1
@@ -20917,7 +20917,8 @@ q53 eq q52 6
 q54 get p1 2
 q55 ne q54 0
 q56 and q53 q55
-q57 select q56 1 0
+prefix_active and q56 p3
+q57 select prefix_active 1 0
 q58 rec 0 0 0
 q59 at a 2
 q60 rec status q58 q59
@@ -21020,108 +21021,176 @@ q144 at exact 2
 q145 rec status_1 q143 q144
 q146 at a 1
 fix call ad_contextfix q145 p1 q146 kind
-q147 at fix 0
-q148 rec 0 0 0
-q149 at fix 2
-q150 rec q147 q148 q149
-q151 get p1 1
-ident call ad_id q150 q151
-q152 get p1 1
-c call ad_class q152
-q153 eq c 1
-q154 select q153 1 0
-q155 at ident 0
-q156 rec 0 0 0
-q157 at ident 2
-q158 rec q155 q156 q157
-cls fold ad_part_parse q154 q158
-q159 eq c 2
-q160 select q159 1 0
-cls_1 fold ad_part_type q160 cls
-q161 eq c 3
-q162 select q161 1 0
-cls_2 fold ad_part_structure q162 cls_1
-q163 eq c 4
-q164 select q163 1 0
-cls_3 fold ad_part_limit q164 cls_2
-q165 at cls_3 0
-q166 rec 0 0 0
-q167 at cls_3 2
-q168 rec q165 q166 q167
-j call ad_lit_json0 q168
-q169 at cls_3 1
-j_1 call ad_quoted j q169
+status_done at fix 0
+args_done at a 1
+message_done at msg 1
+fix_done at fix 1
+io_done at fix 2
+out rec status_done args_done message_done fix_done known functions kind io_done
+ret out
+end
+fn ad_prepare_message io u32x128 u32 -> (u32,u32x128,(u32,u32,u32),(u32,u32,u32),bool,bool,u32,io)
+prepared call ad_prepare_message_context p0 p1 p2 true
+ret prepared
+end
+fn ad_json_fields (u32,(u32,u32,u32),io) u32x128 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 0
+q1 rec 0 0 0
+q2 at p0 2
+q3 rec q0 q1 q2
+q4 get p1 1
+ident call ad_id q3 q4
+q5 get p2 97
+q6 eq q5 1
+q7 select q6 1 0
+q8 at ident 0
+q9 rec 0 0 0
+q10 at ident 2
+q11 rec q8 q9 q10
+cls fold ad_part_parse q7 q11
+q12 get p2 97
+q13 eq q12 2
+q14 select q13 1 0
+cls_1 fold ad_part_type q14 cls
+q15 get p2 97
+q16 eq q15 3
+q17 select q16 1 0
+cls_2 fold ad_part_structure q17 cls_1
+q18 get p2 97
+q19 eq q18 4
+q20 select q19 1 0
+cls_3 fold ad_part_limit q20 cls_2
+q21 at cls_3 0
+q22 rec 0 0 0
+q23 at cls_3 2
+q24 rec q21 q22 q23
+j call ad_lit_json0 q24
+q25 at cls_3 1
+j_1 call ad_quoted j q25
 j_2 call ad_lit_jsonid j_1
-q170 at ident 1
-j_3 call ad_quoted j_2 q170
+q26 at ident 1
+j_3 call ad_quoted j_2 q26
 j_4 call ad_lit_jsonmessage j_3
-q171 at msg 1
-j_5 call ad_quoted j_4 q171
+q27 get p2 18
+q28 get p2 19
+q29 get p2 20
+q30 rec q27 q28 q29
+j_5 call ad_quoted j_4 q30
 j_6 call ad_lit_jsonline j_5
-q172 get p1 0
-q173 eq q172 6
-q174 get p1 2
-q175 ne q174 0
-q176 and q173 q175
-q177 select q176 1 0
-q178 get p1 2
-j_7 fold ad_number_part q177 j_6 q178
-q179 get p1 0
-q180 eq q179 6
-q181 get p1 2
-q182 ne q181 0
-q183 and q180 q182
-q184 xor q183 true
-q185 select q184 1 0
-j_8 fold ad_part_null q185 j_7
+q31 get p2 96
+q32 ne q31 0
+q33 select q32 1 0
+q34 get p1 2
+j_7 fold ad_number_part q33 j_6 q34
+q35 get p2 96
+q36 eq q35 0
+q37 select q36 1 0
+j_8 fold ad_part_null q37 j_7
 j_9 call ad_lit_jsonexpected j_8
-q186 at a 1
-q187 get p1 1
-q188 eq q187 213
-q189 select q188 6 3
-q190 get q186 q189
-q191 add q189 1
-q192 get q186 q191
-q193 add q189 2
-q194 get q186 q193
-q195 rec q190 q192 q194
-q196 get p1 1
-q197 eq q196 201
-q198 get p1 1
-q199 eq q198 213
-q200 or q197 q199
-q201 get p1 1
-q202 eq q201 14
-q203 or q200 q202
-j_10 call ad_nullable j_9 q195 q203
+q38 get p2 6
+q39 get p2 7
+q40 get p2 8
+q41 rec q38 q39 q40
+q42 get p2 91
+q43 ne q42 0
+j_10 call ad_nullable j_9 q41 q43
 j_11 call ad_lit_jsonactual j_10
-q204 at a 1
-q205 get p1 1
-q206 eq q205 213
-q207 select q206 9 6
-q208 get q204 q207
-q209 add q207 1
-q210 get q204 q209
-q211 add q207 2
-q212 get q204 q211
-q213 rec q208 q210 q212
-q214 get p1 1
-q215 eq q214 201
-q216 get p1 1
-q217 eq q216 213
-q218 or q215 q217
-q219 get p1 1
-q220 eq q219 14
-q221 or q218 q220
-j_12 call ad_nullable j_11 q213 q221
+q44 get p2 9
+q45 get p2 10
+q46 get p2 11
+q47 rec q44 q45 q46
+q48 get p2 92
+q49 ne q48 0
+j_12 call ad_nullable j_11 q47 q49
 j_13 call ad_lit_jsonfix j_12
-q222 at fix 1
-q223 get p1 1
-q224 call ad_hasfix q223
-q225 ne kind 0
-q226 or q224 q225
-j_14 call ad_nullable j_13 q222 q226
-j_15 call ad_lit_jsonapp j_14
+q50 get p2 15
+q51 get p2 16
+q52 get p2 17
+q53 rec q50 q51 q52
+q54 get p2 93
+q55 ne q54 0
+j_14 call ad_nullable j_13 q53 q55
+q56 call ad_lit_jsonapp j_14
+ret q56
+end
+fn ad_json_context (u32,(u32,u32,u32),io) u32x128 u32x128 (u32,u32,u32) (u32,u32,u32) u32 -> (u32,(u32,u32,u32),io)
+d call arena_zero
+q0 get p1 1
+type eq q0 213
+q1 select type 6 3
+q2 get p2 q1
+q3 add q1 1
+q4 get p2 q3
+q5 add q1 2
+q6 get p2 q5
+q7 rec q2 q4 q6
+m1_d set d 6 q2
+m1_d_1 set m1_d 7 q4
+q8 set m1_d_1 8 q6
+q9 select type 9 6
+q10 get p2 q9
+q11 add q9 1
+q12 get p2 q11
+q13 add q9 2
+q14 get p2 q13
+q15 rec q10 q12 q14
+m3_d set q8 9 q10
+m3_d_1 set m3_d 10 q12
+q16 set m3_d_1 11 q14
+q17 at p4 0
+m4_d set q16 15 q17
+q18 at p4 1
+m4_d_1 set m4_d 16 q18
+q19 at p4 2
+q20 set m4_d_1 17 q19
+q21 at p3 0
+m5_d set q20 18 q21
+q22 at p3 1
+m5_d_1 set m5_d 19 q22
+q23 at p3 2
+q24 set m5_d_1 20 q23
+q25 eq q0 201
+q26 eq q0 213
+q27 or q25 q26
+q28 eq q0 14
+q29 or q27 q28
+q30 select q29 1 0
+d_1 set q24 91 q30
+q31 get d_1 91
+d_2 set d_1 92 q31
+q32 call ad_hasfix q0
+q33 ne p5 0
+q34 or q32 q33
+q35 select q34 1 0
+d_3 set d_2 93 q35
+q36 get p1 0
+q37 eq q36 6
+q38 get p1 2
+q39 ne q38 0
+q40 and q37 q39
+q41 select q40 1 0
+d_4 set d_3 96 q41
+q42 call ad_class q0
+d_5 set d_4 97 q42
+q43 call ad_json_fields p0 p1 d_5
+ret q43
+end
+fn ad_render_json io u32x128 u32 -> (u32,(u32,u32,u32),u32x128,bool,bool,u32,io)
+prepared call ad_prepare_message p0 p1 p2
+status at prepared 0
+arguments_ready at prepared 1
+arguments mov arguments_ready
+message_ready at prepared 2
+fix_ready at prepared 3
+known at prepared 4
+functions at prepared 5
+kind at prepared 6
+io_ready at prepared 7
+a rec status arguments_ready
+msg rec status message_ready
+json_empty rec 0 0 0
+json_work rec status json_empty io_ready
+j_15 call ad_json_context json_work p1 arguments message_ready fix_ready kind
 q227 eq kind 19
 q228 get arguments 116
 q229 ne q228 0
@@ -21196,8 +21265,8 @@ renderio at j_17 2
 rendered rec renderstatus renderbytes arguments known functions kind renderio
 ret rendered
 end
-fn ad_render io u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
-rendered call ad_render_json p0 p1 p2
+fn ad_collect (u32,(u32,u32,u32),u32x128,bool,bool,u32,io) u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+rendered mov p0
 renderstatus at rendered 0
 renderbytes at rendered 1
 arguments at rendered 2
@@ -21803,6 +21872,11 @@ q755 select q752 q753 q754
 q756 at typeutf 3
 q757 rec status_2 q755 facts_115 q756
 ret q757
+end
+fn ad_render io u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+rendered call ad_render_json p0 p1 p2
+out call ad_collect rendered p1
+ret out
 end
 fn arena_diagnostic io u32x128 -> (u32,(u32,u32,u32),u32x128,io)
 q0 call ad_render p0 p1 1

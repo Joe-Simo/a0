@@ -73,6 +73,17 @@ uint32_t frontend_abi(void) { return 3; }
 /* Optional generic transport capability for a separate failure-only A0 renderer. */
 #ifdef A0_FRONTEND_DIAGNOSTIC_PORTS
 uintptr_t frontend_arena_token(void) { return (uintptr_t)session; }
+/* One read-only snapshot of the retained verifier result; no language interpretation. */
+uintptr_t frontend_verification(void) {
+    static uint32_t snapshot[6 * 128];
+    memcpy(snapshot, state.f0.e, 128 * sizeof(uint32_t));
+    memcpy(snapshot + 128, state.f1.e, 128 * sizeof(uint32_t));
+    memcpy(snapshot + 256, state.f2.e, 128 * sizeof(uint32_t));
+    memcpy(snapshot + 384, state.f3.e, 128 * sizeof(uint32_t));
+    memcpy(snapshot + 512, state.f4.e, 128 * sizeof(uint32_t));
+    memcpy(snapshot + 640, state.f5.e, 128 * sizeof(uint32_t));
+    return (uintptr_t)snapshot;
+}
 #endif
 
 static uint32_t parse_source(const uint8_t *source, uint32_t length, uint32_t budget, bool unit) {
