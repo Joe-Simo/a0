@@ -1,5 +1,14 @@
 # A0 status
 
+2026-10-18 source-cost control: the native candidate remains ineligible for cutover. The matched
+192-cell run has identical backend outputs and maximum recorded load 2, but the boot frontend
+median is 1269.10 ms versus 184.44 ms for old Canonical; the parser/checker plus C emitter takes
+2387.88 ms versus 1311.49 ms (`results/unified-source-cost.json`, raw cells in
+`results/unified-source-cost-samples.json`). These flattened inputs exclude graph I/O, shipping
+startup and target execution. Peak RSS has a common measurement floor in smaller inputs and
+must not be read as proof of equal frontend memory. The current correctness audit passes all
+177 source entries (`results/unified-source-cost-audit.json`); it does not erase the timing loss.
+
 2026-10-16 publication update: first-party A0 source, editor and plugin packages use Apache 2.0 with copyright notices; third-party notices retain their original licenses. The website now includes the corrected independent Codex syntax study and its complete replay archive (`results/unification-codex-v2-replication.json`, `experiments/unification/README.md`). Earlier Dense-guide comparative conclusions are withdrawn (`results/unification-codex-guide-erratum.json`). This publication keeps the current compiler: unified syntax, native frontend performance, migration and the tool cutover remain unfinished. Historical language benchmarks retain their dates and scope.
 
 
