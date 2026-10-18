@@ -285,9 +285,9 @@ The next authoring integration has actual compiled C/direct-Wasm/generated-JS co
 in `results/native-authoring-combined-initial.json`. Full signature fragments, per-file formatting,
 native migration and the injected LSP path have been exercised. That initial attempt also retains
 the failed whole-function editing controls: source-less callee diagnostics return a renderer
-transport refusal instead of the required catalog error. The shared A0 renderer must be corrected
-and the controls rerun before this integration is verified. Public CLI/MCP routes still use the
-historical readers and editing paths.
+transport refusal instead of the required catalog error. The shared A0 renderer fix passes its
+frozen follow-up controls in `results/native-ir-reference-diagnostics.json`; the combined rerun is
+pending. Public CLI/MCP routes still use the historical readers and editing paths.
 
 The formal generated-JS frontend cohort is retained in
 `results/source-frontend-js-cost-quiet.json`. Its measured frontend, pipeline, child-wall and

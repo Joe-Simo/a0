@@ -96,7 +96,9 @@ deployment checks are recorded in `results/unified-core-68-platform-publication.
 `results/c-arena-stage-windows-674-verification.json`. The newer native authoring integration is
 still staged: its initial combined run passes the LSP/project/migration controls but exposes
 callee-diagnostic rendering failures in whole-function editing
-(`results/native-authoring-combined-initial.json`). This does not complete the public syntax cutover.
+(`results/native-authoring-combined-initial.json`). The shared A0 fix passes the frozen follow-up
+controls (`results/native-ir-reference-diagnostics.json`); the combined rerun is pending.
+This does not complete the public syntax cutover.
 
 The flat candidate builds from `compiler/source_frontend.a0` and shared compiler modules,
 with a portable host that decodes checked IR without a second parser or validator. The committed
