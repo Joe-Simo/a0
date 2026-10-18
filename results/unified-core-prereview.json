@@ -958,7 +958,7 @@
       ]
     }
   ],
-  "reviewedCodeCommit": "3b71820c1c0972e05f72decf52f20a4df666b587",
+  "reviewedCodeCommit": "1cfca9fd784a9a973928b95e65b848688bcbe4e9",
   "integrationEvidence": [
     "results/source-native-global-diagnostic-integration.json",
     "results/arena-format-unified.json",
@@ -969,7 +969,12 @@
     "results/wasm-read-array-loop-confirmation.json",
     "results/unified-core-68-integration.json",
     "results/native-source-format-sdk.json",
-    "results/c-stage-standard-optimizer.json"
+    "results/c-stage-standard-optimizer.json",
+    "results/unified-core-68-platform-failures.json",
+    "results/dense-helper-name-collision-repair.json",
+    "results/compiler-0.1.68-emission-parity.json",
+    "results/c-arena-stage-windows-send-fix.json",
+    "results/source-bundle-storage-verification.json"
   ],
   "reviewedSourceInputs": [
     {
@@ -1028,5 +1033,22 @@
       "path": "tools/wasm-stack-bound.ts",
       "sha256": "5c080d515272325d9687ca0a6eba0940bc4836785fada51cf71ab45592096655"
     }
-  ]
+  ],
+  "postCiFixReview": {
+    "base": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+    "sourceCommit": "1cfca9fd784a9a973928b95e65b848688bcbe4e9",
+    "rawFindingsUnchanged": true,
+    "reviewedSourceBytesUnchanged": true,
+    "productionChanges": [
+      "Reserve local/imported names during Dense normal-form helper renaming; parser and inline planner retain legacy behavior.",
+      "Rename private C stage helper to avoid Winsock declaration collision."
+    ],
+    "testAndEvidenceChanges": [
+      "Canonicalize source-cost fixture roots and exercise alias construction.",
+      "Refresh complete emission golden only after exact frozen64/66/68 byte comparisons.",
+      "Store exact experimental Git bundles as binary files and verify isolated replay.",
+      "Archive rejected readonly69 measurements with every loss retained; frozen source uses .a0.txt outside shipped inventories."
+    ],
+    "noRulesOrGateFloorChanged": true
+  }
 }
