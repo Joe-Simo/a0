@@ -515,26 +515,42 @@ export function stripCodeFences(text: string): string {
     .join('\n');
 }
 
+/** Internal staged language dependency; this does not select a source dialect. */
+export interface ProgramEditLanguage {
+  parseUnit(text: string): Program;
+  check(program: Program): TypedProgram;
+  signature(fn: Func): string;
+}
+
 /**
- * `validate`, except that a program the checker rejects only because a function calls one defined
- * below it (A0102, A0103, A0104) is accepted with each such callee moved to just above its first
- * caller. The order is a function of the program alone (see `hoistCallees`), nothing else changes, and the
- * moved program goes through the whole checker; any other error, and a cyclic program, raise the
- * original diagnostic.
+ * One ordering policy shared by the existing and staged native program-edit entry points.
+ * A0102/3/4 may retry with each callee moved before its first caller by `hoistCallees`.
+ * The reordered program receives a complete check. A cycle or another semantic rejection
+ * retains the original diagnostic; a non-A0 checker refusal or unexpected failure propagates.
  */
-export function validateOrdered(program: Program): TypedProgram {
+export function validateOrderedWith(
+  program: Program,
+  check: ProgramEditLanguage['check'],
+): TypedProgram {
   try {
-    return validate(program);
+    return check(program);
   } catch (e) {
     if (!(e instanceof A0Error) || !['A0102', 'A0103', 'A0104'].includes(e.id ?? '')) throw e;
     const hoisted = hoistCallees(program.functions);
     if (hoisted === undefined) throw e;
     try {
-      return validate({ ...program, functions: hoisted });
-    } catch {
+      return check({ ...program, functions: hoisted });
+    } catch (retryError) {
+      // Preserve native resource/transport refusals and unexpected checker failures.
+      // Only a second semantic diagnostic is replaced by the original ordering error.
+      if (!(retryError instanceof A0Error)) throw retryError;
       throw e;
     }
   }
+}
+
+export function validateOrdered(program: Program): TypedProgram {
+  return validateOrderedWith(program, validate);
 }
 
 /** `{ profile: 'strict' }` for a strict program, nothing for a canonical one (spread into `validate`). */
@@ -1048,9 +1064,17 @@ function orderFunctionsByCalls(fns: readonly Func[]): Func[] {
   return out;
 }
 
-export function editProgram(
+const LEGACY_PROGRAM_EDIT_LANGUAGE: ProgramEditLanguage = {
+  parseUnit: parse,
+  check: validate,
+  signature: formatSignature,
+};
+
+/** Internal transaction kernel; all source interpretation belongs to the supplied language. */
+export function editProgramWithLanguage(
   program: TypedProgram,
   text: string,
+  language: ProgramEditLanguage,
   /** A replaced function written without spec lines keeps the ones it had (a view that hid them). */
   keepSpecs = false,
 ): TypedProgram {
@@ -1069,20 +1093,19 @@ export function editProgram(
     if (m) {
       const name = m[1] ?? '';
       const shown = program.byName.get(name);
-      if (
-        m[2] !== undefined &&
-        shown !== undefined &&
-        `fn ${name} ${m[2]}`.split(/\s+/).join(' ') !== formatSignature(shown)
-      )
-        throw diag('A0516', [line, formatSignature(shown), name], {
-          applicability: 'exact',
-          edits: [{ op: 'lines', rule: 'signature', text: normalizeLine(line), to: `-fn ${name}` }],
-        });
+      if (m[2] !== undefined && shown !== undefined) {
+        const signature = language.signature(shown);
+        if (`fn ${name} ${m[2]}`.split(/\s+/).join(' ') !== signature)
+          throw diag('A0516', [line, signature, name], {
+            applicability: 'exact',
+            edits: [{ op: 'lines', rule: 'signature', text: normalizeLine(line), to: `-fn ${name}` }],
+          });
+      }
       removals.add(name);
     } else if (isSignatureEcho(line, program)) continue;
     else kept.push(raw);
   }
-  const incoming = orderFunctionsByCalls(parse(kept.join('\n')).functions);
+  const incoming = orderFunctionsByCalls(language.parseUnit(kept.join('\n')).functions);
   const byName = new Map(incoming.map((f) => [f.name, f] as const));
   for (const name of removals) {
     if (!program.byName.has(name)) throw diag('A0517', [name]);
@@ -1113,7 +1136,19 @@ export function editProgram(
   }
   functions.push(...pending);
   if (functions.length === 0) throw diag('A0518');
-  return validateOrdered({ ...(profile === undefined ? {} : { profile }), functions });
+  return validateOrderedWith(
+    { ...(profile === undefined ? {} : { profile }), functions },
+    (candidate) => language.check(candidate),
+  );
+}
+
+export function editProgram(
+  program: TypedProgram,
+  text: string,
+  /** A replaced function written without spec lines keeps the ones it had (a view that hid them). */
+  keepSpecs = false,
+): TypedProgram {
+  return editProgramWithLanguage(program, text, LEGACY_PROGRAM_EDIT_LANGUAGE, keepSpecs);
 }
 
 export interface SessionOptions {
