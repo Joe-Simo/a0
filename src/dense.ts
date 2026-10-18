@@ -908,7 +908,7 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
   };
   return options.comments === true || options.style?.inline === false
     ? base
-    : { ...base, lambdas: planLambdas(program, options.known) };
+    : { ...base, lambdas: planLambdas(program) };
 }
 
 /**
@@ -1161,8 +1161,7 @@ type Sig = { readonly params: readonly Type[]; readonly result: Type };
 
 /**
  * What a function body parser needs to write a fold or loop body inline (`fold {A+B} ...`): the
- * enclosing function's name (the lifted body is `NAME_1`, `NAME_2`, ... in node order, skipping
- * names already declared in the file or imports), the list
+ * enclosing function's name (the lifted body is `NAME_1`, `NAME_2`, ... in node order), the list
  * the lifted functions go to (they precede the function), and the types that give the lifted
  * function its signature (state type of the initial value, the extra operands' types).
  */
@@ -1187,18 +1186,17 @@ interface Inline {
 
 type Expression<T = Operand> = Generator<undefined, T, Operand>;
 
-/** The next helper suffix, shared by normalization, printing and reading inline bodies. */
+/** A deterministic unoccupied name for a helper in the normal form. */
 function nextLambdaName(
   fnName: string,
   counter: { n: number },
   reserved: ReadonlySet<string>,
-  existing?: string,
 ): string {
   let name: string;
   do {
     counter.n += 1;
     name = `${fnName}_${counter.n}`;
-  } while (reserved.has(name) && name !== existing);
+  } while (reserved.has(name));
   return name;
 }
 
@@ -1299,7 +1297,8 @@ export class FunctionParser {
   /** The lifted function of an inline body once the call's operands are known. */
   private lift(body: Inline, args: readonly Operand[], result: 'state' | 'bool'): string {
     const lam = this.lam as LambdaCtx;
-    const name = nextLambdaName(lam.fnName, lam.counter, this.fnNames);
+    lam.counter.n += 1;
+    const name = `${lam.fnName}_${lam.counter.n}`;
     const state = this.typeOf(args[1] as Operand);
     const params: Type[] = [state, 'u32', ...args.slice(2).map((a) => this.typeOf(a))];
     const f: Func = {
@@ -2338,21 +2337,16 @@ function inlineArity(f: Func): number {
 /**
  * Which functions are written inline in which caller. `F` is a fold or loop body (a loop's
  * predicate too) written `{...}` when it is called from exactly one node of exactly one caller `G`,
- * is named `G_1`, `G_2`, ... in the order those nodes appear (skipping other declared names),
- * sits immediately before `G`, has no
+ * is named `G_1`, `G_2`, ... in the order those nodes appear, sits immediately before `G`, has no
  * fold or loop of its own, and has the signature the parser derives from the call (state type of
  * the initial value, `u32` index, the extra operands' types; result the state type, or bool for a
  * predicate). Nothing else is inlined, so converting back restores the program exactly.
  */
-export function planLambdas(
-  program: Program,
-  known: ReadonlyMap<string, number> = new Map(),
-): Map<string, string[]> {
+export function planLambdas(program: Program): Map<string, string[]> {
   const sigs = new Map<string, Sig>(
     program.functions.map((f) => [f.name, { params: f.params, result: f.result }] as const),
   );
   const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
-  const reserved = new Set([...known.keys(), ...index.keys()]);
   const foldUses = new Map<string, number>();
   const called = new Set<string>();
   for (const f of program.functions)
@@ -2368,7 +2362,6 @@ export function planLambdas(
   for (const [gi, g] of program.functions.entries()) {
     const typeOf = typerFor(g, sigs);
     const chosen: string[] = [];
-    const counter = { n: 0 };
     for (const node of g.nodes) {
       if (node.op !== 'fold' && node.op !== 'loop') continue;
       const slots: { name: string; result: 'state' | 'bool' }[] =
@@ -2383,7 +2376,6 @@ export function planLambdas(
       if (state === undefined || extras.some((e) => e === undefined)) continue;
       const params: Type[] = [state, 'u32', ...(extras as Type[])];
       const before = chosen.length;
-      const suffixBefore = counter.n;
       const picked: Func[] = [];
       for (const slot of slots) {
         const fi = index.get(slot.name);
@@ -2393,6 +2385,7 @@ export function planLambdas(
           fi === gi ||
           foldUses.get(slot.name) !== 1 ||
           called.has(slot.name) ||
+          f.name !== `${g.name}_${chosen.length + 1}` ||
           f.comments !== undefined ||
           f.spec !== undefined ||
           f.nodes.some((n) => n.op === 'fold' || n.op === 'loop') ||
@@ -2401,9 +2394,6 @@ export function planLambdas(
           !typeEquals(f.result, slot.result === 'bool' ? 'bool' : state)
         )
           continue;
-        const next = { n: counter.n };
-        if (f.name !== nextLambdaName(g.name, next, reserved, f.name)) continue;
-        counter.n = next.n;
         chosen.push(f.name);
         picked.push(f);
       }
@@ -2415,10 +2405,7 @@ export function planLambdas(
       const ok =
         picked.length === 0 ||
         (picked.every((f) => inlineArity(f) <= n) && (named !== undefined || natural === n));
-      if (!ok) {
-        chosen.length = before;
-        counter.n = suffixBefore;
-      }
+      if (!ok) chosen.length = before;
     }
     if (chosen.length === 0) continue;
     const prior = program.functions.slice(gi - chosen.length, gi).map((f) => f.name);

@@ -730,13 +730,13 @@ end`;
   // errors
   assert.throws(() => parseDense('fn f fold {add A {add A 1}} 3 0'), /nest|inline/);
   assert.throws(() => parseDense('fn f fold {add A B} 3'), /needs 2 operands/);
-  assert.deepEqual(
-    parseDense('fn f_1 add A 1\n\nfn f fold {add A B} 3 0').functions.map((f) => f.name),
-    ['f_1', 'f_2', 'f'],
+  assert.throws(
+    () => parseDense('fn f_1 add A 1\n\nfn f fold {add A B} 3 0'),
+    /already a function/,
   );
 });
 
-test('dense: lifted helpers reserve local and imported names and remain a fixed point', () => {
+test('dense: normalized helpers reserve local and imported names and remain a fixed point', () => {
   const source = `fn f_1 u32 u32 -> u32
 a add p0 p1
 ret a
@@ -784,7 +784,7 @@ end`;
     );
     for (const [i, style] of [{}, COMPACT_ALL, DIGITS].entries()) {
       const dense = formatDense(normalized, { known, style });
-      assert.ok(dense.includes('{'), 'reserved suffixes must still permit inline bodies');
+      assert.ok(!dense.includes('{'), 'suffix gaps require named bodies for exact parsing');
       const back = parseDense(dense, { known, compact: i > 0 });
       assert.equal(formatProgram(back), formatProgram(normalized));
       assert.equal(formatDense(back, { known, style }), dense);
@@ -795,12 +795,10 @@ end`;
         assert.ok(valueEquals(run(before, [arg]), run(after, [arg])));
     }
   }
-  const forward = parseDense('fn f fold {add A B} 3 0\n\nfn f_1 add A 1');
-  assert.deepEqual(
-    forward.functions.map((f) => f.name),
-    ['f_2', 'f', 'f_1'],
+  assert.throws(
+    () => parseDense('fn f fold {add A B} 3 0\n\nfn f_1 add A 1'),
+    /duplicate function/,
   );
-  validate(forward);
   assert.throws(() => parseDense('fn f_1 A\n\nfn f_1 A'), /duplicate function/);
 });
 
