@@ -85,3 +85,49 @@ test('bootstrap IR closure refuses missing entries, forged calls, order and prof
     frontend.close();
   }
 });
+
+test('bootstrap IR closure retains loop predicate/body and transitive spec-only helpers', async () => {
+  const frontend = nativeSource(await artifact);
+  try {
+    const parsed = frontend.parse(`profile strict
+fn nonzero _ -> bool
+ret ne A 0
+end
+fn valid _ -> bool
+ret nonzero A
+end
+fn body _ _ _ -> _
+ret add A C
+end
+fn pred _ _ _ -> bool
+ret lt B C
+end
+fn unused
+ret A
+end
+fn count
+ex 2 -> 11
+pre valid A
+post valid r
+r loop pred body 6 A 3
+ret r
+end
+`);
+    assert.ok(parsed.ok);
+    const actual = bootstrapProgramClosure(parsed.typed, ['count']);
+    assert.deepEqual(
+      actual.functions.map((fn) => fn.name),
+      ['nonzero', 'valid', 'body', 'pred', 'count'],
+    );
+    const count = actual.byName.get('count');
+    assert.ok(count);
+    for (const name of ['body', 'pred'])
+      assert.equal(count.calls.get(name), actual.byName.get(name));
+    assert.equal(actual.byName.get('valid')?.calls.get('nonzero'), actual.byName.get('nonzero'));
+    assert.equal(count, parsed.typed.byName.get('count'));
+    assert.equal(count.literalIterations, 6);
+    assert.ok(frontend.checkProgram(actual).ok, 'loop and transitive contract helper remain valid');
+  } finally {
+    frontend.close();
+  }
+});
