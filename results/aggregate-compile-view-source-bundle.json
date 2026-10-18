@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "storage": "git-bundle-binary",
+  "path": "results/aggregate-compile-view-source.bundle",
+  "bytes": 26590,
+  "sha256": "1c8784c2b8e47df78d1ac51d1a509bfd18f094cd21270d9016a89198da05736c",
+  "prerequisites": [
+    "b4b2751e62dda4b8122c8f0d2329bbb8eb5e3d83"
+  ],
+  "head": "db36977d70cfe9f52275a8a977066e9b217cf10e",
+  "tree": "c784e79c63a828300830e65510dcd05dbb9b4afe",
+  "sourceFiles": [
+    {
+      "path": "src/owned-scalar-fold.ts",
+      "sha256": "de8106014bc4420ced09875cdd700d06ec508d23647d3e94d7cfb0ee8ff09963"
+    },
+    {
+      "path": "src/optimize.ts",
+      "sha256": "e8df42767e137d3435aa10fba441fb0c6559e2bd4b3566bec7b7acf88c9675c8"
+    },
+    {
+      "path": "src/aggregate-demand.ts",
+      "sha256": "bdd379be45eb211d5b6958fef5d9daf04c9e0cc36c457d295af53a2da6360b22"
+    },
+    {
+      "path": "src/aggregate-call-demand.ts",
+      "sha256": "d50a97837357b934084895bebf872ef08dbd7d881d67ebdb5a33f7ce9965d21c"
+    },
+    {
+      "path": "src/read-after-set.ts",
+      "sha256": "510c06274b9e3b1b3c665812395b417ddaa30f7e89375afc318b5d828f3db859"
+    },
+    {
+      "path": "src/core.ts",
+      "sha256": "8cc1232799e4924a631fab095bdcdf1ba32cd8e5fc691d85000990f5badfdbbb"
+    },
+    {
+      "path": "src/backends.ts",
+      "sha256": "6204742a286ac61440a758e96cce7e127bfbe3afe7a94dd941fadc922b5217a9"
+    },
+    {
+      "path": "src/wasm.ts",
+      "sha256": "e8ad9ba08911bd8c97fa5a5d2501f360033b5454132ed36563ab8948664c79d7"
+    },
+    {
+      "path": "test/guarded-aggregate-fold.test.ts",
+      "sha256": "b013c5c18541158b0420e5dcc68aeac5b9c0f89a651b73cfc534ac12d6cf2840"
+    },
+    {
+      "path": "test/private-call-return.test.ts",
+      "sha256": "b25210b2b890a4b6511aa585b2ace42d637cb352cd238da652f83a28ce6da464"
+    },
+    {
+      "path": "test/aggregate-compile-view.test.ts",
+      "sha256": "1b63985e85e098f22d52a1297d231024cac107b88d3b8040f372919cd39061c3"
+    },
+    {
+      "path": "docs/design/owned-scalar-fold-proof.md",
+      "sha256": "84431d07c55fb82fa038d3359f241663f7c3d8b9e930e9e11fcf8ea05fc5646b"
+    },
+    {
+      "path": "docs/design/aggregate-compile-view-proof.md",
+      "sha256": "1eaac0ef3c1854bcea9ce558908f09bd031ff206bbe925400263e885831c432e"
+    },
+    {
+      "path": "experiments/unification/aggregate-return-demand/compile-view.mjs.txt",
+      "sha256": "788a3bd533e80015aa9403e5d7b4309a535950be9ae14cac48893a985223380f"
+    }
+  ],
+  "buildAndReplay": [
+    "git init scratch",
+    "git -C scratch fetch --depth=1 ORIGINAL_REPOSITORY b4b2751e62dda4b8122c8f0d2329bbb8eb5e3d83",
+    "git -C scratch fetch SOURCE_BUNDLE HEAD",
+    "git -C scratch checkout --detach FETCH_HEAD",
+    "Make the existing project dependencies available; build with bun run build.",
+    "Extract PROOF_ZIP into scratch/.a0-tmp/compile-view-proof-input.",
+    "From scratch run node --input-type=module < experiments/unification/aggregate-return-demand/compile-view.mjs.txt."
+  ],
+  "proofReportSHA256": "367e3fb1a0a69ec2f01c787dc1523e925181913d5bc24b0768d9ce965758467a",
+  "proofArchiveSHA256": "995661420ff1fa6540f3df0714c943609e343be8b742fd8558ad367599f609b1",
+  "noDefaultIntegration": true
+}
