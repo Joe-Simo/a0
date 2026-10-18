@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { parseAndValidate } from '../src/core.js';
+import { parseAndValidate, run } from '../src/core.js';
 import { EditSession } from '../src/edit.js';
 import { KEY_RULE, wordKey } from '../src/wordkey.js';
 
@@ -38,4 +39,78 @@ test('the legend changes neither the revision nor an apply that copies it back',
   const echoed = session.apply(view.text);
   assert.equal(echoed.byName.get('kw')?.nodes.length, 2);
   delete process.env.A0_KEY_LEGEND;
+});
+
+test('shared A0 opcode table classifies exact spellings and refuses malformed or long words', async () => {
+  const program = parseAndValidate(await readFile('compiler/wordkey.a0', 'utf8'));
+  const key = program.byName.get('wordkey');
+  const opcode = program.byName.get('opcode');
+  assert.ok(key && opcode);
+  // Numeric word-IR operation order, independent of the key algorithm.
+  const words = [
+    'mov',
+    'add',
+    'sub',
+    'mul',
+    'and',
+    'or',
+    'xor',
+    'shl',
+    'shr',
+    'div',
+    'rem',
+    'eq',
+    'ne',
+    'lt',
+    'le',
+    'gt',
+    'ge',
+    'select',
+    'call',
+    'fold',
+    'loop',
+    'arr',
+    'rec',
+    'text',
+    'get',
+    'set',
+    'at',
+    'put',
+    'read',
+    'write',
+    'puts',
+    'cadd',
+    'csub',
+    'cmul',
+    'cdiv',
+    'crem',
+    'cget',
+  ];
+  const expected = new Map(words.map((word, index) => [word, index + 1]));
+  expected.set('udiv', 10);
+  expected.set('urem', 11);
+  const classify = (word: string): number => {
+    const bytes = [...new TextEncoder().encode(word)];
+    const page = Array.from({ length: 128 }, (_, i) => bytes[i] ?? 0);
+    const value = run(key, [page, bytes.length]);
+    assert.equal(value, wordKey(word) ?? 0, word);
+    return run(opcode, [value]) as number;
+  };
+  for (const [word, code] of expected) assert.equal(classify(word), code, word);
+  const invalid = [
+    '',
+    'ADD',
+    '<<',
+    '>>',
+    'a\u0000dd',
+    'é',
+    '_',
+    '______',
+    '9'.repeat(6),
+    'a'.repeat(129),
+    '1'.repeat(257),
+  ];
+  for (const word of expected.keys())
+    invalid.push(`_${word}`, `${word}_`, `${word}0`, `${word}A`, `${word}é`);
+  for (const word of invalid) assert.equal(classify(word), 0, word);
 });

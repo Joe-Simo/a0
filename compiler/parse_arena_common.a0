@@ -5,6 +5,7 @@ use "lex_arena.a0"
 use "types_arena.a0"
 use "lines_arena.a0"
 use "ir_builder_arena.a0"
+use "wordkey.a0"
 fn ap_fail (u32x128,io) u32 u32 u32 u32 u32 -> (u32x128,io)
 p at p0 0
 q0 get p 0
@@ -938,85 +939,9 @@ q12 and q9 q11
 ret q12
 end
 fn ap_opcode u32x128 u32 -> u32
-q0 call ap_is_mov p0 p1
-out select q0 1 0
-q1 call ap_is_add p0 p1
-out_1 select q1 2 out
-q2 call ap_is_sub p0 p1
-out_2 select q2 3 out_1
-q3 call ap_is_mul p0 p1
-out_3 select q3 4 out_2
-q4 call ap_is_and p0 p1
-out_4 select q4 5 out_3
-q5 call ap_is_or p0 p1
-out_5 select q5 6 out_4
-q6 call ap_is_xor p0 p1
-out_6 select q6 7 out_5
-q7 call ap_is_shl p0 p1
-out_7 select q7 8 out_6
-q8 call ap_is_shr p0 p1
-out_8 select q8 9 out_7
-q9 call ap_is_div p0 p1
-out_9 select q9 10 out_8
-q10 call ap_is_rem p0 p1
-out_10 select q10 11 out_9
-q11 call ap_is_eq p0 p1
-out_11 select q11 12 out_10
-q12 call ap_is_ne p0 p1
-out_12 select q12 13 out_11
-q13 call ap_is_lt p0 p1
-out_13 select q13 14 out_12
-q14 call ap_is_le p0 p1
-out_14 select q14 15 out_13
-q15 call ap_is_gt p0 p1
-out_15 select q15 16 out_14
-q16 call ap_is_ge p0 p1
-out_16 select q16 17 out_15
-q17 call ap_is_select p0 p1
-out_17 select q17 18 out_16
-q18 call ap_is_call p0 p1
-out_18 select q18 19 out_17
-q19 call ap_is_fold p0 p1
-out_19 select q19 20 out_18
-q20 call ap_is_loop p0 p1
-out_20 select q20 21 out_19
-q21 call ap_is_arr p0 p1
-out_21 select q21 22 out_20
-q22 call ap_is_rec p0 p1
-out_22 select q22 23 out_21
-q23 call ap_is_text p0 p1
-out_23 select q23 24 out_22
-q24 call ap_is_get p0 p1
-out_24 select q24 25 out_23
-q25 call ap_is_set p0 p1
-out_25 select q25 26 out_24
-q26 call ap_is_at p0 p1
-out_26 select q26 27 out_25
-q27 call ap_is_put p0 p1
-out_27 select q27 28 out_26
-q28 call ap_is_read p0 p1
-out_28 select q28 29 out_27
-q29 call ap_is_write p0 p1
-out_29 select q29 30 out_28
-q30 call ap_is_puts p0 p1
-out_30 select q30 31 out_29
-q31 call ap_is_cadd p0 p1
-out_31 select q31 32 out_30
-q32 call ap_is_csub p0 p1
-out_32 select q32 33 out_31
-q33 call ap_is_cmul p0 p1
-out_33 select q33 34 out_32
-q34 call ap_is_cdiv p0 p1
-out_34 select q34 35 out_33
-q35 call ap_is_crem p0 p1
-out_35 select q35 36 out_34
-q36 call ap_is_cget p0 p1
-out_36 select q36 37 out_35
-q37 call ap_is_udiv p0 p1
-out_37 select q37 10 out_36
-q38 call ap_is_urem p0 p1
-out_38 select q38 11 out_37
-ret out_38
+key call wordkey p0 p1
+out call opcode key
+ret out
 end
 fn ap_keyword u32x128 u32 -> u32
 q0 call ap_is_fn p0 p1
@@ -1049,6 +974,13 @@ q13 call ap_is_arrow p0 p1
 out_13 select q13 14 out_12
 ret out_13
 end
+# The first source page is already loaded to classify keyword and opcode spellings.
+# Scan its bytes directly; only subsequent pages need another arena read.
+fn ap_scantail (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,io) u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,io)
+index add p1 1
+out call ap_scanpage p0 index p2 p3 p4
+ret out
+end
 fn ap_scanword io u32 u32 u32 -> (u32,u32x128,io)
 q0 gt p3 128
 n select q0 128 p3
@@ -1069,7 +1001,15 @@ q12 and q10 q11
 q13 select q12 1 0
 q14 at prefix 2
 q15 rec q5 q7 q9 q13 0 0 0 0 0 0 q14
-r loop ap_scanok ap_scanpage pages q15 p1 p2 p3
+prefix_status at prefix 0
+prefix_ok eq prefix_status 0
+prefix_count select prefix_ok n 0
+prefix_bytes at prefix 1
+prefix_scan fold ap_scanbyte prefix_count q15 prefix_bytes 0 p3
+has_pages gt pages 0
+remaining_pages sub pages 1
+tail_count select has_pages remaining_pages 0
+r loop ap_scanok ap_scantail tail_count prefix_scan p1 p2 p3
 q16 at prefix 1
 kw call ap_keyword q16 p3
 q17 eq kw 1
