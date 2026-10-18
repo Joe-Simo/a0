@@ -16,6 +16,7 @@ interface Build {
   sourceSHA256: string;
   cSHA256: string;
   requiredWasmFeatures: string[];
+  optimization: string;
   symbols: string;
   symbolFlags: string[];
   libcSHA256: string;
@@ -37,6 +38,11 @@ export function nativeSourceArtifact(): Promise<WebAssembly.Module> {
     assert.equal(build.frontendABI, 3);
     assert.equal(build.entry, 'compiler/source_frontend.a0');
     assert.deepEqual(build.requiredWasmFeatures, [], 'the bundled default remains MVP');
+    assert.equal(
+      build.optimization,
+      'O3',
+      'the smaller research builds have recorded timing losses',
+    );
     assert.equal(build.symbols, 'strip');
     assert.deepEqual(build.symbolFlags, ['--strip-all']);
     assert.match(build.libcSHA256, /^[0-9a-f]{64}$/);
