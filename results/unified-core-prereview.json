@@ -876,8 +876,23 @@
     },
     {
       "kind": "fabricated-const",
+      "file": "src/source-component.ts",
+      "line": 68,
+      "weight": 0.7,
+      "text": "candidate.memory.grow(Math.ceil((end - candidate.memory.buffer.byteLength) / 65536));",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "WebAssembly memory pages contain65536bytes. The existing diagnostic marshaller memory reservation was moved into one shared component marshaller used by diagnostics and formatting; this divides required bytes by the standard page size and introduces no test-specific output.",
+      "controls": [
+        "test/source-native-render.test.ts",
+        "test/source-native-format.controls.ts",
+        "results/unified-core-68-integration.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
       "file": "src/source-direct.ts",
-      "line": 70,
+      "line": 72,
       "weight": 0.7,
       "text": "memory.grow(Math.ceil((end - memory.buffer.byteLength) / 65536));",
       "baseExactMatches": [],
@@ -898,21 +913,6 @@
       "disposition": "reviewed-false-positive",
       "reason": "0x100000000 is the exclusive u32 address-space bound for a line interval endpoint; individual fields remain validated u32. This prevents interval arithmetic overflow and ambiguous origin ownership.",
       "controls": [
-        "test/source-native-diagnostic.test.ts"
-      ]
-    },
-    {
-      "kind": "fabricated-const",
-      "file": "src/source-native-render.ts",
-      "line": 90,
-      "weight": 0.7,
-      "text": "memory.grow(Math.ceil((end - memory.buffer.byteLength) / 65536));",
-      "baseExactMatches": [],
-      "disposition": "reviewed-false-positive",
-      "reason": "WebAssembly.Memory.grow counts standard 64KiB pages. 65536 converts renderer scratch byte growth into page units; it is independent of source identity and expected outputs.",
-      "controls": [
-        "test/source-native-render.test.ts",
-        "test/source-native-live-diagnostics.controls.ts",
         "test/source-native-diagnostic.test.ts"
       ]
     },
@@ -958,7 +958,7 @@
       ]
     }
   ],
-  "reviewedCodeCommit": "b7f3abec63b91dad6806aefa726490fc150cfda6",
+  "reviewedCodeCommit": "3b71820c1c0972e05f72decf52f20a4df666b587",
   "integrationEvidence": [
     "results/source-native-global-diagnostic-integration.json",
     "results/arena-format-unified.json",
@@ -966,7 +966,10 @@
     "results/c-arena-stage-portable.json",
     "results/source-frontend-js-correctness.json",
     "results/source-corpus-inventory-68.json",
-    "results/wasm-read-array-loop-confirmation.json"
+    "results/wasm-read-array-loop-confirmation.json",
+    "results/unified-core-68-integration.json",
+    "results/native-source-format-sdk.json",
+    "results/c-stage-standard-optimizer.json"
   ],
   "reviewedSourceInputs": [
     {
@@ -1006,16 +1009,16 @@
       "sha256": "6e6dcad62265df961adc4d54617eeca83cef4c8f3c6bcc73d230ca59c3c188c7"
     },
     {
+      "path": "src/source-component.ts",
+      "sha256": "34211587606157a34e97e88a792bb6dc61fa70de5333044c051bfdea8b25f977"
+    },
+    {
       "path": "src/source-direct.ts",
-      "sha256": "6831415d1e925a4f991cf6631e174d1ade452b952dba4910d6effdbb97296cc2"
+      "sha256": "8f39d841a0c51b53745a8bfd8b5bc36fad76d6ab2aec303dca8dcd01989a04a7"
     },
     {
       "path": "src/source-native-diagnostic.ts",
       "sha256": "1e139b2d1e763ecf8095e5f17ab45f06c9f036c6bbd7f36506644c146e5a15eb"
-    },
-    {
-      "path": "src/source-native-render.ts",
-      "sha256": "0cf687f6854a6a7bf40d3cf70c943f83467f6297ffd4018c85820e5a0f15b3d8"
     },
     {
       "path": "tools/source-direct-build.ts",
