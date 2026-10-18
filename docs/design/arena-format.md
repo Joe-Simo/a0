@@ -77,6 +77,17 @@ The engine exposes `format(result, {scope, functionIndex, skipSpecs, mapping})` 
 
 Only an object returned by the same engine's current parse/check operation can be formatted. A subsequent native parse/check or `close()` invalidates it. Parsed source units retain their separate immutable snapshots for later `checkUnits`; they do not keep an earlier live arena available for formatting. Private copies of parsed/spec pages prevent mutations to the public result arrays or decoded Program from changing the formatter input. Bytes, mappings and diagnostic packets are copied before any reset; their returned copies survive reset/close. Descriptors contain native handles for inspection only, not reusable storage access.
 
+`activateUnitForFormat(unit, budget?)` explicitly resets that engine's arena to an authentic
+retained `parseUnit` snapshot. Its opaque `input` is accepted only by the existing `format` and
+`revision` operations; it is not a parse/check result or a checked program. Activation preserves
+the original file bytes, imports, line/comment ownership and symbol/type IDs through fresh IR
+uploads. It performs no source parsing or semantic checking. Foreign/refused units, closed engines
+and invalid budgets reject before reset. A successful reset, or a native allocation failure after
+reset begins, invalidates earlier live results. Another parse, check, activation or close invalidates
+the new input. Native resource refusal returns its status without a partial input. Missing formatter
+or arena ports return `unavailable` without resetting. Detached outputs and the retained units for
+`checkUnits` survive these resets. Structured-authoring/A128 snapshot activation is outside this API.
+
 The companion uses the same live arena read/write/token/view ports as diagnostics. Both codecs share `src/source-component.ts` for lazy import validation, flat-word ABI calls and detached vector reads. The existing compiled-source session driver is shared with the direct frontend; this adds no arena protocol, parser, source printer or host hash fallback. Loading, companion memory and private result registration occur only when configured/used. Formatter scratch consumes the current frontend allocation budget and remains until its session ends. No compilation, memory or latency equivalence is claimed.
 
 Source parse/check-unit results carry original native comment/line tables. Structured `checkProgram` IR carries synthetic locations. When the optional formatter is configured, the shared IR encoder also encodes profile/import/function/node/spec/return/end comments into the existing native line/comment tables. Graph composition uses the same comment ownership policy as the existing linker while retaining original source-unit byte/line sidecars. The [ABI-free metadata proof](../../results/native-source-authoring-metadata.json) records the initial authenticated-spec-directory failure and its correction. Checker-only engines do not allocate or upload optional authoring vectors. Public CLI/editor/default syntax routes are unchanged.

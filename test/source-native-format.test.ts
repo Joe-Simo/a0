@@ -78,3 +78,35 @@ test('formatter capability validates transport-only requests without loading a m
   assert.throws(() => live.format(page, page), /component imports/);
   assert.equal(loads, 1);
 });
+
+test('unit format activation validates ownership, budgets and closed state before native mutation', () => {
+  let loads = 0;
+  const engine = nativeSource(module, undefined, {
+    load() {
+      loads++;
+      throw new Error('must remain lazy without arena ports');
+    },
+  });
+  const peer = nativeSource(module);
+  try {
+    const refused = engine.parseUnit('fn f\nret\nend\n');
+    assert.ok(!refused.ok);
+    const unit = engine.parseUnit(simple);
+    assert.ok(unit.ok);
+    const foreign = peer.parseUnit(simple);
+    assert.ok(foreign.ok);
+    for (const budget of [-1, 0.5, NaN, Infinity, 0x1_0000_0000])
+      assert.throws(() => engine.activateUnitForFormat(unit, budget), /allocation budget/);
+    for (const invalid of [refused, foreign, { ...unit }])
+      assert.throws(() => engine.activateUnitForFormat(invalid), /parsed unit owned/);
+    assert.deepEqual(engine.activateUnitForFormat(unit), { ok: false, reason: 'unavailable' });
+    assert.deepEqual(engine.format(unit), { ok: false, reason: 'unavailable' });
+    assert.deepEqual(peer.activateUnitForFormat(foreign), { ok: false, reason: 'unavailable' });
+    assert.equal(loads, 0);
+    engine.close();
+    assert.throws(() => engine.activateUnitForFormat(unit), /closed/);
+  } finally {
+    engine.close();
+    peer.close();
+  }
+});

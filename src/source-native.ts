@@ -5,9 +5,11 @@ import type { NativeAuthoringAvailability } from './source-native-authoring.js';
 import {
   composeNativeUnits,
   type NativeIrBuilder,
+  type NativeUnitFormatSnapshot,
   type NativeUnitOrigin,
   type NativeUnitSnapshot,
   PARSED_VECTOR_WIDTHS,
+  restoreNativeUnitForFormat,
   SPEC_VECTOR_WIDTHS,
 } from './source-native-compose.js';
 import {
@@ -69,6 +71,16 @@ export type NativeGraphResult = NativeSourceResult & {
   readonly origins: readonly NativeUnitOrigin[];
 };
 
+declare const FORMAT_INPUT: unique symbol;
+/** An opaque formatting input; it grants no source acceptance or checked-program capability. */
+export interface NativeUnitFormatInput {
+  readonly [FORMAT_INPUT]: true;
+}
+export type NativeUnitFormatActivation =
+  | { readonly ok: true; readonly input: NativeUnitFormatInput }
+  | { readonly ok: false; readonly reason: 'unavailable' }
+  | { readonly ok: false; readonly status: number };
+
 class NativeIrFailure extends Error {
   constructor(readonly status: number) {
     super(`native IR construction failed: ${status}`);
@@ -114,14 +126,16 @@ export function nativeSource(
     profile: Profile,
     budget?: number,
   ): NativeGraphResult;
+  /** Explicitly reset the live arena to an authentic retained unit, only for formatting. */
+  activateUnitForFormat(unit: NativeUnitResult, budget?: number): NativeUnitFormatActivation;
   /** Formatting uses only this engine's current live result; output is detached. */
   format(
-    result: NativeSourceResult | NativeUnitResult,
+    result: NativeSourceResult | NativeUnitResult | NativeUnitFormatInput,
     request?: NativeFormatRequest,
   ): NativeFormatResult;
   /** Content/semantic hashes retain the established private revision serialization. */
   revision(
-    result: NativeSourceResult | NativeUnitResult,
+    result: NativeSourceResult | NativeUnitResult | NativeUnitFormatInput,
     request?: NativeRevisionRequest,
   ): NativeRevisionResult;
   close(): void;
@@ -172,6 +186,7 @@ export function nativeSourceApi(
     return result;
   };
   let snapshots = new WeakMap<NativeUnitResult, NativeUnitSnapshot>();
+  let unitFormatStates = new WeakMap<NativeUnitResult, NativeUnitFormatSnapshot>();
   const assertOpen = (): void => {
     if (closed) throw new Error('source frontend is closed');
   };
@@ -382,7 +397,27 @@ export function nativeSourceApi(
               },
             }),
       });
-      return remember(parsed);
+      remember(parsed);
+      const retained = formatStates.get(parsed);
+      if (retained)
+        unitFormatStates.set(parsed, {
+          parsed: retained.parsed,
+          specs: retained.specs,
+          tables: new Map(
+            OFFSETS.filter((slot) => slot >= 97).map((slot) => [
+              slot,
+              Uint32Array.from(tables.get(slot) as Uint32Array),
+            ]),
+          ),
+          // Contract-token word storage is not part of the published spec AST vectors.
+          specTables: new Map([
+            [
+              59,
+              Uint32Array.from(view(retained.specs[59] as number, retained.specs[60] as number)),
+            ],
+          ]),
+        });
+      return parsed;
     },
     checkProgram(program, budget = 16_000_000) {
       checkBudget(budget);
@@ -431,6 +466,31 @@ export function nativeSourceApi(
         });
       }
     },
+    activateUnitForFormat(unit, budget = 16_000_000) {
+      checkBudget(budget);
+      const snapshot = snapshots.get(unit);
+      if (snapshot === undefined) throw new Error('expected a parsed unit owned by this frontend');
+      if (!formatter || !api.a0_runtime_read || !api.a0_runtime_write || !api.frontend_arena_token)
+        return { ok: false, reason: 'unavailable' };
+      const retained = unitFormatStates.get(unit);
+      if (retained === undefined) throw new Error('missing retained source-unit formatting state');
+      try {
+        const restored = restoreNativeUnitForFormat(snapshot, retained, irBuilder(budget));
+        const input = Object.freeze({}) as NativeUnitFormatInput;
+        formatStates.set(input, {
+          generation,
+          sourceStatus: 0,
+          parsed: restored.parsed,
+          specs: restored.specs,
+          authoring: {},
+          descriptor: undefined,
+        });
+        return { ok: true, input };
+      } catch (error) {
+        if (!(error instanceof NativeIrFailure)) throw error;
+        return { ok: false, status: error.status };
+      }
+    },
     format(result, request) {
       assertOpen();
       if (!formatter) return { ok: false, reason: 'unavailable' };
@@ -462,6 +522,7 @@ export function nativeSourceApi(
       if (!closed) api.frontend_close();
       closed = true;
       snapshots = new WeakMap();
+      unitFormatStates = new WeakMap();
       formatStates = new WeakMap();
     },
   };

@@ -9,9 +9,11 @@ import { formatProgram, isPrimitive, type Type } from '../src/core.js';
 import { link } from '../src/link.js';
 import { formatSource, parseSource } from '../src/source.js';
 import { type DirectFunction, directSource } from '../src/source-direct.js';
-import { nativeSource } from '../src/source-native.js';
+import { type NativeApi, nativeSource, nativeSourceApi } from '../src/source-native.js';
+import { PARSED_VECTOR_WIDTHS, SPEC_VECTOR_WIDTHS } from '../src/source-native-compose.js';
 import type { NativeFormatOptions } from '../src/source-native-format.js';
 import type { NativeDiagnosticOptions } from '../src/source-native-render.js';
+import { readWasmWords } from '../src/wasm-words.js';
 import { prepareJsSource } from '../tools/source-js-load.js';
 import {
   prepareSourceDiagnostic,
@@ -73,6 +75,64 @@ for (const name of names) {
   assert.ok(fn, name);
   functions[name] = { params: fn.params.map(value), result: value(fn.result) };
 }
+
+test('C-derived: restored unit tables and contract-token storage belong to the new arena', () => {
+  const api = new WebAssembly.Instance(frontend).exports as unknown as NativeApi;
+  const engine = nativeSourceApi(api, undefined, undefined, companion);
+  const vector = (handle: number, count: number): Uint32Array =>
+    Uint32Array.from(readWasmWords(api.memory.buffer, api.frontend_view(handle), count));
+  const source =
+    '# header\r\nprofile strict\r\nuse "dep😀.a0"\r\nfn contracts _ _ _ -> _\r\npre lt C 10\r\npost eq A r\r\nret A\r\nend\r\n# tail\r\n';
+  try {
+    const unit = engine.parseUnit(source);
+    assert.ok(unit.ok);
+    const parsed = [...unit.state],
+      specs = [...unit.specState];
+    const original = new Map(
+      PARSED_VECTOR_WIDTHS.map(([slot]) => [
+        slot,
+        vector(parsed[slot] as number, parsed[slot + 1] as number),
+      ]),
+    );
+    const originalSpecs = new Map(
+      [...SPEC_VECTOR_WIDTHS.map(([slot]) => slot), 59].map((slot) => [
+        slot,
+        vector(specs[slot] as number, specs[slot + 1] as number),
+      ]),
+    );
+    assert.ok((originalSpecs.get(59)?.length ?? 0) > 0, 'real contract-token storage');
+    const before = engine.format(unit, { mapping: true });
+    assert.ok(before.ok);
+    engine.parse(simple);
+    const active = engine.activateUnitForFormat(unit);
+    assert.ok(active.ok);
+    const restored = Array.from(readWasmWords(api.memory.buffer, api.frontend_ir_state(), 128));
+    const restoredSpecs = vector(restored[59] as number, restored[60] as number);
+    assert.deepEqual(
+      vector(restored[6] as number, restored[7] as number),
+      Uint32Array.from(new TextEncoder().encode(source)),
+      'original UTF8 and CRLF bytes, without graph composition',
+    );
+    for (const [slot, words] of original)
+      assert.deepEqual(vector(restored[slot] as number, restored[slot + 1] as number), words);
+    for (const [slot, words] of originalSpecs)
+      assert.deepEqual(
+        vector(restoredSpecs[slot] as number, restoredSpecs[slot + 1] as number),
+        words,
+      );
+    for (const slot of [0, 8, 10, 24, 25, 26, 30, 93, 96])
+      assert.equal(restored[slot], parsed[slot], `retained parser fact ${slot}`);
+    assert.deepEqual([...restoredSpecs.slice(53, 59)], [0, 0, 0, 0, 0, 0]);
+    assert.equal(restoredSpecs[6], restored[6], 'same new source ownership');
+    assert.deepEqual([...restoredSpecs.slice(80, 86)], restored.slice(62, 68));
+    const after = engine.format(active.input, { mapping: true });
+    assert.ok(after.ok);
+    assert.deepEqual(after.bytes, before.bytes);
+    assert.deepEqual(after.events, before.events);
+  } finally {
+    engine.close();
+  }
+});
 const direct = new WebAssembly.Module(
   Buffer.from(
     compile(linked.program, 'wasm', {
@@ -164,6 +224,104 @@ function checkRows(engine: ReturnType<typeof nativeSource>, rows: readonly Sourc
 }
 
 for (const [backend, factory] of factories) {
+  test(`${backend}: explicit unit formatting activation restores imports and metadata after graph checking`, () => {
+    const engine = factory(companion);
+    const peer = factory(companion);
+    const source =
+      '# header\r\nprofile strict # profile\r\n# import lead\r\nuse "dep😀.a0" # import\r\n# function\r\nfn local\r\nex 1 -> 1 # example\r\npre lt A 10 # pre\r\npost eq A r # post\r\nx external A # node\r\nret x # return\r\nend # end\r\n# tail\r\n';
+    try {
+      const refused = engine.parseUnit('fn f\nret\nend\n');
+      assert.ok(!refused.ok);
+      const unit = engine.parseUnit(source);
+      assert.ok(unit.ok);
+      const before = engine.format(unit, { mapping: true });
+      assert.ok(before.ok);
+      assert.equal(before.text, formatSource(parseSource(source)));
+      const revision = engine.revision(unit);
+      const semantic = engine.revision(unit, { kind: 'semantic' });
+      const dependency = engine.parseUnit('profile strict\nfn external\nret A\nend\n');
+      assert.ok(dependency.ok);
+      const graph = engine.checkUnits([dependency, unit], 'strict');
+      assert.ok(graph.ok);
+      const foreign = peer.parseUnit(source);
+      assert.ok(foreign.ok);
+      for (const invalid of [refused, foreign, { ...unit }])
+        assert.throws(() => engine.activateUnitForFormat(invalid), /parsed unit owned/);
+      for (const budget of [-1, 0.5, NaN, Infinity, 0x1_0000_0000])
+        assert.throws(() => engine.activateUnitForFormat(unit, budget), /allocation budget/);
+      assert.ok(engine.format(graph).ok, 'preflight refusals leave the live graph intact');
+
+      (unit.state as number[]).fill(0xffff_ffff);
+      (unit.specState as number[]).fill(0xffff_ffff);
+      Object.assign(unit.program, { functions: [], uses: ['forged.a0'], profile: undefined });
+      const activated = engine.activateUnitForFormat(unit);
+      assert.ok(activated.ok);
+      assert.deepEqual(Object.keys(activated.input), [], 'formatting input exposes no checked IR');
+      assert.throws(() => engine.format(graph), /current result owned/);
+      assert.throws(() => engine.format(unit), /current result owned/);
+      assert.throws(() => engine.format({ ...activated.input }), /current result owned/);
+      assert.throws(() => peer.format(activated.input), /current result owned/);
+      const formatted = engine.format(activated.input, { mapping: true });
+      assert.ok(formatted.ok);
+      assert.equal(formatted.text, before.text);
+      assert.deepEqual(formatted.bytes, before.bytes);
+      assert.deepEqual(formatted.events, before.events);
+      assert.deepEqual(engine.revision(activated.input), revision);
+      assert.deepEqual(engine.revision(activated.input, { kind: 'semantic' }), semantic);
+      assert.ok(engine.checkUnits([dependency, unit], 'strict').ok);
+      assert.throws(() => engine.format(activated.input), /current result owned/);
+
+      const noBudget = engine.activateUnitForFormat(unit, 0);
+      assert.deepEqual(noBudget, { ok: false, status: 4 });
+      const recovered = engine.activateUnitForFormat(unit);
+      assert.ok(recovered.ok && engine.format(recovered.input).ok);
+      engine.parse(simple);
+      assert.throws(() => engine.format(recovered.input), /current result owned/);
+      const next = engine.activateUnitForFormat(unit);
+      assert.ok(next.ok);
+      engine.checkProgram(parseSource(simple));
+      assert.throws(() => engine.revision(next.input), /current result owned/);
+      const previous = engine.activateUnitForFormat(unit);
+      const current = engine.activateUnitForFormat(unit);
+      assert.ok(previous.ok && current.ok);
+      assert.throws(() => engine.format(previous.input), /current result owned/);
+      engine.close();
+      assert.throws(() => engine.activateUnitForFormat(unit), /closed/);
+      assert.throws(() => engine.format(current.input), /closed/);
+      assert.equal(formatted.text, before.text, 'detached output survives close');
+    } finally {
+      engine.close();
+      peer.close();
+    }
+  });
+
+  test(`${backend}: unit activation preserves functionless files and nested specification storage`, () => {
+    const engine = factory(companion);
+    try {
+      for (const source of [
+        '# head\nprofile strict # profile\nuse "dep😀.a0" # import\n# file tail\n',
+        'fn nested -> _x3\nex -> [7*3]\na [7*3]\nret a\nend\n',
+      ]) {
+        const unit = engine.parseUnit(source);
+        assert.ok(unit.ok);
+        const before = engine.format(unit, { mapping: true });
+        assert.ok(before.ok);
+        const hash = engine.revision(unit);
+        engine.parse(simple);
+        const active = engine.activateUnitForFormat(unit);
+        assert.ok(active.ok);
+        const after = engine.format(active.input, { mapping: true });
+        assert.ok(after.ok);
+        assert.equal(after.text, formatSource(parseSource(source)));
+        assert.deepEqual(after.bytes, before.bytes);
+        assert.deepEqual(after.events, before.events);
+        assert.deepEqual(engine.revision(active.input), hash);
+      }
+    } finally {
+      engine.close();
+    }
+  });
+
   test(`${backend}: SDK bytes/maps and historical/semantic hashes match independent complete corpus controls`, () => {
     const engine = factory(companion);
     try {

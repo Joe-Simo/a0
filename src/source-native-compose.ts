@@ -48,6 +48,12 @@ export interface NativeUnitSnapshot {
   readonly comments: SourceUnitComments;
   readonly metadata?: NativeMetadataOwnership;
 }
+export interface NativeUnitFormatSnapshot {
+  readonly parsed: Uint32Array;
+  readonly specs: Uint32Array;
+  readonly tables: NativeTables;
+  readonly specTables: NativeTables;
+}
 export interface NativeIrBuilder {
   initialize(source: string, strict: boolean): void;
   symbol(name: string): number;
@@ -207,6 +213,72 @@ function allocate(
   );
 }
 
+/** Intern one unit's structural types; the same transport supports composition and restoration. */
+function internUnitTypes(
+  unit: NativeUnitSnapshot,
+  intern: (kind: number, a: number, b: number, fields: Uint32Array) => number,
+): number[] {
+  const ids = [0, 1, 2];
+  if (unit.typeRows.length % 5) throw new Error('incomplete parsed source-unit type');
+  for (let id = 3; id < unit.typeRows.length / 5; id++) {
+    const row = unit.typeRows.subarray(id * 5, id * 5 + 5);
+    const kind = word(row, 0),
+      a = word(row, 1),
+      b = word(row, 2);
+    if (kind !== 3 && kind !== 4) throw new Error('invalid parsed source-unit type kind');
+    if (kind === 4 && a + b > unit.typeFields.length)
+      throw new Error('invalid record field extent');
+    const fields =
+      kind === 4
+        ? Uint32Array.from(unit.typeFields.subarray(a, a + b), (id) => need(ids[id]))
+        : new Uint32Array();
+    ids[id] = intern(kind, kind === 4 ? 0 : need(ids[a]), b, fields);
+  }
+  return ids;
+}
+
+/** Restore an authentic parse-only unit for formatting, without composition or semantic checking. */
+export function restoreNativeUnitForFormat(
+  unit: NativeUnitSnapshot,
+  state: NativeUnitFormatSnapshot,
+  builder: NativeIrBuilder,
+): { parsed: Uint32Array; specs: Uint32Array } {
+  if (state.parsed.length !== 128 || state.specs.length !== 128)
+    throw new Error('invalid retained source-unit state');
+  builder.initialize(unit.source, state.parsed[8] === 1);
+  if (builder.get(7) !== unit.byteLength) throw new Error('source-unit bytes changed');
+  for (const [id, name] of unit.symbols.entries())
+    if (builder.symbol(name) !== id)
+      throw new Error('restored source-unit symbol identity mismatch');
+  const types = internUnitTypes(unit, (kind, a, b, fields) => builder.type(kind, a, b, fields));
+  if (types.some((id, index) => id !== index))
+    throw new Error('restored source-unit type identity mismatch');
+
+  // Retain scalar parser facts, while rebuilding every descriptor and its arena ownership.
+  const descriptors = new Set<number>();
+  for (let index = 32; index < 80; index++) descriptors.add(index);
+  for (const slot of state.tables.keys())
+    for (let field = 0; field < 3; field++) descriptors.add(slot + field);
+  for (let index = 0; index < state.parsed.length; index++)
+    if (index !== 6 && !descriptors.has(index)) builder.set(index, word(state.parsed, index));
+  const tables = new Map([...unit.tables, ...state.tables]);
+  const specs = installNativeVectors(
+    builder,
+    tables,
+    new Map([...unit.specs, ...state.specTables]),
+    {
+      profileLine: word(state.parsed, 24),
+      tailFirst: word(state.parsed, 25),
+      tailCount: word(state.parsed, 26),
+    },
+    state.specs,
+  );
+  return {
+    parsed: Uint32Array.from({ length: 128 }, (_, index) => builder.get(index)),
+    specs,
+  };
+}
+
 /** Inputs must already be resolved and ordered by the shared graph loader. */
 export function composeNativeUnits(
   units: readonly NativeUnitSnapshot[],
@@ -243,22 +315,7 @@ export function composeNativeUnits(
   };
   for (const [unitIndex, unit] of units.entries()) {
     const symbolIds = unit.symbols.map(symbol),
-      typeIds = [0, 1, 2];
-    if (unit.typeRows.length % 5) throw new Error('incomplete parsed source-unit type');
-    for (let id = 3; id < unit.typeRows.length / 5; id++) {
-      const row = unit.typeRows.subarray(id * 5, id * 5 + 5);
-      const kind = word(row, 0),
-        a = word(row, 1),
-        b = word(row, 2);
-      if (kind !== 3 && kind !== 4) throw new Error('invalid parsed source-unit type kind');
-      if (kind === 4 && a + b > unit.typeFields.length)
-        throw new Error('invalid record field extent');
-      const fields =
-        kind === 4
-          ? Uint32Array.from(unit.typeFields.subarray(a, a + b), (id) => need(typeIds[id]))
-          : new Uint32Array();
-      typeIds[id] = structuralType(kind, kind === 4 ? 0 : need(typeIds[a]), b, fields);
-    }
+      typeIds = internUnitTypes(unit, structuralType);
     const at = (slot: number, width = 1): number => (positions.get(slot) ?? 0) / width;
     const spAt = (slot: number, width = 1): number => (specPositions.get(slot) ?? 0) / width;
     // Physical source lines and filtered line-table row indexes are distinct coordinate spaces.
@@ -428,7 +485,8 @@ export function installNativeVectors(
   tables: ReadonlyMap<number, Uint32Array | readonly number[]>,
   specs: ReadonlyMap<number, Uint32Array | readonly number[]>,
   metadata?: NativeMetadataOwnership,
-): void {
+  specHeader?: Uint32Array,
+): Uint32Array {
   const upload = (words: Uint32Array | readonly number[]): number =>
     builder.upload(words instanceof Uint32Array ? words : Uint32Array.from(words));
   for (const [slot, words] of tables) {
@@ -437,6 +495,13 @@ export function installNativeVectors(
     builder.set(slot + 2, words.length);
   }
   const directory = new Uint32Array(128);
+  if (specHeader !== undefined) {
+    if (specHeader.length !== directory.length) throw new Error('invalid specification header');
+    // Parser scratch vectors (53/56) are empty after a complete unit. Their old handles
+    // cannot survive an arena reset. Only scalar facts and published vectors are retained.
+    for (let index = 0; index < directory.length; index++)
+      if (index < 32 || index >= 86) directory[index] = word(specHeader, index);
+  }
   directory[6] = builder.get(6);
   // Match the A0 spec directory: a spec page has no profile declaration line.
   directory[24] = NONE;
@@ -456,4 +521,5 @@ export function installNativeVectors(
   if (metadata !== undefined) builder.set(24, metadata.profileLine);
   builder.set(25, metadata?.tailFirst ?? 0);
   builder.set(26, metadata?.tailCount ?? 0);
+  return directory;
 }
