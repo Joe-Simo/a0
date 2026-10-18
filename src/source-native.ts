@@ -10,6 +10,7 @@ import {
   SPEC_VECTOR_WIDTHS,
 } from './source-native-compose.js';
 import { decodeNativeSource, decodeNativeUnit } from './source-native-ir.js';
+import { encodeNativeProgram, restoreNativeProgramMetadata } from './source-native-program.js';
 import { readWasmWord, readWasmWords, writeWasmWord, writeWasmWords } from './wasm-words.js';
 
 const OFFSETS = [
@@ -85,6 +86,8 @@ export function nativeSource(module: WebAssembly.Module): {
   readonly memoryBytes: number;
   parse(source: string, budget?: number): NativeSourceResult;
   parseUnit(source: string, budget?: number): NativeUnitResult;
+  /** Experimental compiler IR check; lexical/count preflight and source locations remain open. */
+  checkProgram(program: Program, budget?: number): NativeSourceResult;
   /** Units must already be resolved, ordered and assigned a coherent profile by the graph loader. */
   checkUnits(
     units: readonly NativeUnitResult[],
@@ -199,6 +202,45 @@ export function nativeSourceApi(
     if (!pointer) throw new Error('native IR builder is not active');
     return pointer;
   };
+  const irBuilder = (budget: number): NativeIrBuilder => ({
+    initialize(source, strict) {
+      checked(
+        withSource(source, (pointer, length) =>
+          api.frontend_ir_init(pointer, length, budget, strict ? 1 : 0),
+        ).value,
+      );
+    },
+    upload,
+    symbol(name) {
+      const bytes = new TextEncoder().encode(name),
+        handle = upload(Uint32Array.from(bytes));
+      checked(api.frontend_ir_symbol(handle, bytes.length));
+      return api.frontend_ir_value();
+    },
+    type(kind, a, b, fields) {
+      const handle = upload(fields);
+      checked(api.frontend_ir_type(kind, a, b, handle));
+      return api.frontend_ir_value();
+    },
+    get(index) {
+      return readWasmWord(api.memory.buffer, builderPointer() + index * 4);
+    },
+    set(index, value) {
+      writeWasmWord(api.memory.buffer, builderPointer() + index * 4, value);
+    },
+  });
+  const irFailure = (error: unknown) => {
+    if (!(error instanceof NativeIrFailure)) throw error;
+    const pointer = api.frontend_ir_state(),
+      state = pointer ? page(pointer) : Array<number>(128).fill(0);
+    state[0] = error.status;
+    return {
+      ok: false as const,
+      status: error.status,
+      state,
+      specState: Array<number>(128).fill(0),
+    };
+  };
   return {
     get memoryBytes() {
       return retainedMemoryBytes();
@@ -237,6 +279,19 @@ export function nativeSourceApi(
       });
       return parsed;
     },
+    checkProgram(program, budget = 16_000_000) {
+      checkBudget(budget);
+      try {
+        const source = encodeNativeProgram(program, irBuilder(budget));
+        const result = readResult(api.frontend_ir_finish());
+        if (!result.ok) return result;
+        const { tables, specTables, symbols, ...state } = result;
+        const decoded = decodeNativeSource(state.state, tables, symbols, source, specTables);
+        return { ...state, ...restoreNativeProgramMetadata(decoded, program) };
+      } catch (error) {
+        return irFailure(error);
+      }
+    },
     checkUnits(units, profile, budget = 16_000_000) {
       checkBudget(budget);
       if (profile !== 'canonical' && profile !== 'strict')
@@ -247,35 +302,8 @@ export function nativeSourceApi(
           throw new Error('expected a parsed unit owned by this frontend');
         return snapshot;
       });
-      const builder: NativeIrBuilder = {
-        initialize(source, strict) {
-          checked(
-            withSource(source, (pointer, length) =>
-              api.frontend_ir_init(pointer, length, budget, strict ? 1 : 0),
-            ).value,
-          );
-        },
-        upload,
-        symbol(name) {
-          const bytes = new TextEncoder().encode(name),
-            handle = upload(Uint32Array.from(bytes));
-          checked(api.frontend_ir_symbol(handle, bytes.length));
-          return api.frontend_ir_value();
-        },
-        type(kind, a, b, fields) {
-          const handle = upload(fields);
-          checked(api.frontend_ir_type(kind, a, b, handle));
-          return api.frontend_ir_value();
-        },
-        get(index) {
-          return readWasmWord(api.memory.buffer, builderPointer() + index * 4);
-        },
-        set(index, value) {
-          writeWasmWord(api.memory.buffer, builderPointer() + index * 4, value);
-        },
-      };
       try {
-        const composition = composeNativeUnits(inputs, builder, profile === 'strict');
+        const composition = composeNativeUnits(inputs, irBuilder(budget), profile === 'strict');
         const result = readResult(api.frontend_ir_finish());
         if (!result.ok) return { ...result, origins: composition.origins };
         const { tables, specTables, symbols, ...state } = result;
@@ -292,15 +320,8 @@ export function nativeSourceApi(
           ),
         };
       } catch (error) {
-        if (!(error instanceof NativeIrFailure)) throw error;
-        const pointer = api.frontend_ir_state(),
-          state = pointer ? page(pointer) : Array<number>(128).fill(0);
-        state[0] = error.status;
         return {
-          ok: false as const,
-          status: error.status,
-          state,
-          specState: Array<number>(128).fill(0),
+          ...irFailure(error),
           origins: [],
         };
       }
