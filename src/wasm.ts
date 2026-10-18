@@ -6,7 +6,8 @@
  * the first byte the module never touches on its own; an io token is the address of a struct
  * `{ u32 input[IN]; u32 ninput; u32 position; u32 output[OUT]; u32 noutput; }` that the host
  * places there (IN/OUT are the `ioInputCapacity`/`ioOutputCapacity` options, defaults
- * C_IO_INPUT_CAPACITY/C_IO_OUTPUT_CAPACITY).
+ * C_IO_INPUT_CAPACITY/C_IO_OUTPUT_CAPACITY). An optional host IO layout imports word
+ * callbacks and passes each token unchanged as an opaque i32 handle.
  *
  * Scope: every scalar op with A0's exact meaning (wrapping u32 arithmetic, masked shifts,
  * logical right shift, total unsigned div/rem, unsigned comparison, 0/1 booleans), arrays and
@@ -258,6 +259,7 @@ const RT_IDX = 'rt:idx';
 const RT_TRAP = 'rt:trap';
 const IO_WRITE = 'io:write';
 const IO_PUTS = 'io:puts';
+const IO_PRESENT = 'io:present';
 
 /** Symbol of the runtime helper or A0 function a call part names; helpers have no frame. */
 const symbolFunction = (symbol: string): string | undefined =>
@@ -3707,6 +3709,14 @@ interface Fn {
   readonly code: readonly Part[];
 }
 
+interface ImportedFn {
+  readonly symbol: string;
+  readonly module: string;
+  readonly name: string;
+  readonly params: number;
+  readonly result: boolean;
+}
+
 /** u32 a0_read(io t): input[position++] while position < min(ninput, IN), else 0. */
 function ioRead(inCap: number, strict: number | undefined = undefined): Fn {
   const c = new Code();
@@ -3752,6 +3762,23 @@ function ioRead(inCap: number, strict: number | undefined = undefined): Fn {
     locals: 0,
     code: c.finish().parts,
   };
+}
+
+/** A strict host read checks the preceding read's non-consuming presence flag. */
+function ioHostRead(): Fn {
+  const c = new Code();
+  c.local(OP.localGet, 0);
+  c.call(IO_READ);
+  c.local(OP.localSet, 1);
+  c.local(OP.localGet, 0);
+  c.call(IO_PRESENT);
+  c.op(OP.eqz);
+  c.op(OP.if, VOID);
+  c.i32(2);
+  c.call(RT_TRAP);
+  c.op(OP.end);
+  c.local(OP.localGet, 1);
+  return { symbol: IO_SREAD, params: 1, result: true, locals: 1, code: c.finish().parts };
 }
 
 /** void a0_write(io t, u32 v): output[noutput++] = v while noutput < OUT. */
@@ -4003,9 +4030,25 @@ function name(text: string): number[] {
   return [...uleb(b.length), ...b];
 }
 
+/** Generic host word streams. Tokens are opaque i32 values the backend does not dereference. */
+export interface WasmIoImports {
+  readonly module: string;
+  /** i32 read(i32 token): the next word, or zero at end of input. */
+  readonly read: string;
+  /** void write(i32 token, i32 word): consumes the word in order. */
+  readonly write: string;
+  /**
+   * i32 readPresent(i32 token): nonzero when that token's preceding read provided a word.
+   * Required by reachable strict reads. This query consumes no input and changes no IO
+   * state. Hooks retain token identity and must not reenter the calling module.
+   */
+  readonly readPresent?: string;
+}
+
 export interface WasmLayout {
   readonly ioInputCapacity: number;
   readonly ioOutputCapacity: number;
+  readonly wasmIo?: WasmIoImports;
   /**
    * Functions the host calls (A0 names). When given, only these are exported and functions no
    * export reaches (for instance ones every call site inlined) are left out of the module;
@@ -4063,15 +4106,36 @@ export function assembleWasm(
   }
 
   // Function index space.
+  const host = layout.wasmIo;
+  const imports: ImportedFn[] =
+    io && host !== undefined
+      ? [
+          { symbol: IO_READ, module: host.module, name: host.read, params: 1, result: true },
+          { symbol: IO_WRITE, module: host.module, name: host.write, params: 2, result: false },
+          ...(host.readPresent === undefined
+            ? []
+            : [
+                {
+                  symbol: IO_PRESENT,
+                  module: host.module,
+                  name: host.readPresent,
+                  params: 1,
+                  result: true,
+                },
+              ]),
+        ]
+      : [];
   const fns: Fn[] = io
-    ? [
-        ioRead(layout.ioInputCapacity),
-        ioWrite(layout.ioInputCapacity, layout.ioOutputCapacity),
-        ioPuts(),
-      ]
+    ? host === undefined
+      ? [
+          ioRead(layout.ioInputCapacity),
+          ioWrite(layout.ioInputCapacity, layout.ioOutputCapacity),
+          ioPuts(),
+        ]
+      : [ioPuts()]
     : [];
   if (area !== undefined) {
-    if (io) fns.push(ioRead(layout.ioInputCapacity, 2));
+    if (io) fns.push(host === undefined ? ioRead(layout.ioInputCapacity, 2) : ioHostRead());
     fns.push(...strictRuntime(area));
   }
   const frames = new Map<string, number>();
@@ -4112,17 +4176,22 @@ export function assembleWasm(
     frames.set(r.name, frame);
     callees.set(r.name, out);
   }
-  if (layout.exports !== undefined) {
+  if (layout.exports !== undefined || host !== undefined) {
     // Keep what the exported functions reach through calls; export only those.
-    const roots = new Set(layout.exports.map((n) => `a0_${n}`));
-    const bySymbol = new Map(fns.map((f) => [f.symbol, f]));
+    const roots = new Set(
+      layout.exports === undefined
+        ? fns.flatMap((f) => (f.exportAs === undefined ? [] : [f.exportAs]))
+        : layout.exports.map((n) => `a0_${n}`),
+    );
+    const bySymbol = new Map(fns.map((f) => [f.symbol, f.code]));
+    for (const f of imports) bySymbol.set(f.symbol, []);
     const reached = new Set<string>();
     const stack = [...roots];
     for (let s = stack.pop(); s !== undefined; s = stack.pop()) {
-      const f = bySymbol.get(s);
-      if (f === undefined || reached.has(s)) continue;
+      const code = bySymbol.get(s);
+      if (code === undefined || reached.has(s)) continue;
       reached.add(s);
-      for (const p of f.code) if (typeof p === 'object' && 'call' in p) stack.push(p.call);
+      for (const p of code) if (typeof p === 'object' && 'call' in p) stack.push(p.call);
     }
     for (const r of roots)
       if (!reached.has(r)) throw new A0Error(`wasm: exported function ${r.slice(3)} not found`);
@@ -4132,8 +4201,14 @@ export function assembleWasm(
         roots.has(f.symbol) ? { ...f, exportAs: f.symbol } : f,
       );
     fns.splice(0, fns.length, ...kept);
+    imports.splice(0, imports.length, ...imports.filter((f) => reached.has(f.symbol)));
+    if (host !== undefined && reached.has(IO_SREAD) && host.readPresent === undefined)
+      throw new A0Error('wasm: host I/O requires readPresent for strict input');
   }
-  const index = new Map(fns.map((f, i) => [f.symbol, i] as const));
+  const index = new Map([
+    ...imports.map((f, i) => [f.symbol, i] as const),
+    ...fns.map((f, i) => [f.symbol, i + imports.length] as const),
+  ]);
 
   // Stack: the deepest frame chain through the acyclic call graph.
   const depth = new Map<string, number>();
@@ -4160,7 +4235,7 @@ export function assembleWasm(
   // Types: every signature is i32^n -> (i32 | nothing).
   const types: number[][] = [];
   const typeIndex = new Map<string, number>();
-  const typeOf = (f: Fn): number => {
+  const typeOf = (f: Pick<Fn, 'params' | 'result'>): number => {
     const key = `${f.params}:${f.result ? 1 : 0}`;
     const known = typeIndex.get(key);
     if (known !== undefined) return known;
@@ -4174,6 +4249,7 @@ export function assembleWasm(
     typeIndex.set(key, i);
     return i;
   };
+  const importTypes = imports.map(typeOf);
   const funcTypes = fns.map(typeOf);
 
   const bodiesOut = fns.map((f) => {
@@ -4212,7 +4288,7 @@ export function assembleWasm(
     [...name('__heap_base'), 0x03, 1],
     ...trapGlobals.map(([n], k) => [...name(n), 0x03, ...uleb(2 + k)]),
     ...fns.flatMap((f, i) =>
-      f.exportAs === undefined ? [] : [[...name(f.exportAs), 0x00, ...uleb(i)]],
+      f.exportAs === undefined ? [] : [[...name(f.exportAs), 0x00, ...uleb(i + imports.length)]],
     ),
   ];
 
@@ -4251,6 +4327,19 @@ export function assembleWasm(
     0x00,
     ...section(0, [...name('a0'), ...Buffer.from(version, 'utf8')]),
     ...section(1, vec(types)),
+    ...(imports.length === 0
+      ? []
+      : section(
+          2,
+          vec(
+            imports.map((f, i) => [
+              ...name(f.module),
+              ...name(f.name),
+              0x00,
+              ...uleb(importTypes[i] as number),
+            ]),
+          ),
+        )),
     ...section(3, vec(funcTypes.map((t) => uleb(t)))),
     ...section(5, vec([[0x00, ...uleb(pages)]])),
     // globals: 0 = __stack_pointer (mutable), 1 = __heap_base (immutable)

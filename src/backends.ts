@@ -51,7 +51,7 @@ import {
 } from './optimize.js';
 import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { COMPILER_VERSION, isTarget, TARGETS, type Target } from './targets.js';
-import { assembleWasm, emitWasmFunction } from './wasm.js';
+import { assembleWasm, emitWasmFunction, type WasmIoImports } from './wasm.js';
 import { assembleX86_64, emitX86_64Function, type X86Platform } from './x86_64.js';
 
 export { COMPILER_VERSION, isTarget, TARGETS, type Target };
@@ -2551,6 +2551,7 @@ export function assemble(
             ioInputCapacity: options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
             ioOutputCapacity: options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
             ...(options.wasmExports === undefined ? {} : { exports: options.wasmExports }),
+            ...(options.wasmIo === undefined ? {} : { wasmIo: options.wasmIo }),
           },
           COMPILER_VERSION,
         ),
@@ -2645,6 +2646,13 @@ export interface CompileOptions {
    * callees every call site inlined) are left out of the module.
    */
   readonly wasmExports?: readonly string[];
+  /**
+   * Direct wasm only: imported host word streams instead of buffered IO. Tokens are opaque
+   * i32 handles. Read/write hooks and the strict read-presence query are described by
+   * WasmIoImports; hooks must not reenter the module. This changes assembly only, so emitted
+   * function bodies and their cache entries are shared with the default buffered layout.
+   */
+  readonly wasmIo?: WasmIoImports;
   /**
    * wasm target only: simd128 for fill runs (default true; fixed-width SIMD is in every
    * current engine: Chrome/Edge 91+, Firefox 89+, Safari 16.4+, Node 16.4+). false emits
