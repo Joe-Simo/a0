@@ -1,12 +1,15 @@
 /** Actual A0 whole-function transactions on C-derived, direct-Wasm and generated-JS frontends. */
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { compile } from '../src/backends.js';
 import { A0Error, formatProgram, run, type TypedProgram, validate } from '../src/core.js';
 import { parseSource } from '../src/source.js';
-import type { nativeSource } from '../src/source-native.js';
+import { type NativeApi, type nativeSource, nativeSourceApi } from '../src/source-native.js';
 import { editNativeProgram } from '../src/source-native-edit.js';
 import { NativeSourceError } from '../src/source-native-link.js';
+import { nativeDiagnosticRenderer } from '../src/source-native-render.js';
 import { TARGETS } from '../src/targets.js';
 import { prepareJsSource } from '../tools/source-js-load.js';
 import {
@@ -32,13 +35,77 @@ const cPlain = await prepareSourceFrontend(cPath);
 const direct = await prepareSourceFrontend(directPath, diagnostics, formatting);
 assert.equal(direct.build.backend, 'direct-wasm');
 const directPlain = await prepareSourceFrontend(directPath);
+const ordinaryDiagnostics = { load: diagnostics.load };
+const cOrdinary = await prepareSourceFrontend(cPath, ordinaryDiagnostics, formatting);
+const directOrdinary = await prepareSourceFrontend(directPath, ordinaryDiagnostics, formatting);
 const js = await prepareJsSource(jsPath);
 type Frontend = ReturnType<typeof nativeSource>;
 const factories = [
-  ['C-derived', () => c.instantiate(), () => cPlain.instantiate()],
-  ['direct', () => direct.instantiate(), () => directPlain.instantiate()],
-  ['JS', () => js.instantiate(diagnostics, formatting), () => js.instantiate()],
+  ['C-derived', () => c.instantiate(), () => cPlain.instantiate(), () => cOrdinary.instantiate()],
+  [
+    'direct',
+    () => direct.instantiate(),
+    () => directPlain.instantiate(),
+    () => directOrdinary.instantiate(),
+  ],
+  [
+    'JS',
+    () => js.instantiate(diagnostics, formatting),
+    () => js.instantiate(),
+    () => js.instantiate(ordinaryDiagnostics, formatting),
+  ],
 ] as const;
+
+test('source-less reference detection preserves checked refusal of corrupt source/IR vectors', async () => {
+  const module = new WebAssembly.Module(await readFile(join(cPath, 'frontend.wasm')));
+  const api = new WebAssembly.Instance(module).exports as unknown as NativeApi;
+  const frontend = nativeSourceApi(api);
+  const renderer = nativeDiagnosticRenderer(api, ordinaryDiagnostics);
+  try {
+    const source = 'fn f u32 -> u32\nx missing A\nret x\nend\n';
+    for (const prefix of ['', '\n', '# comment Ω😀\n', '\n# comment Ω😀\n\n']) {
+      const sourceFailure = frontend.parse(prefix + source);
+      assert.ok(!sourceFailure.ok);
+      assert.ok(renderer.snapshot(sourceFailure.state).rendered.ok);
+      for (const errorLine of [sourceFailure.state[2] as number, 0]) {
+        const corrupt = [...sourceFailure.state];
+        corrupt[2] = errorLine;
+        corrupt.fill(0, 35, 38);
+        const failure = renderer.snapshot(corrupt);
+        assert.ok('packet' in failure && !failure.rendered.ok);
+        assert.equal(failure.packet.status, 3);
+        assert.equal(
+          failure.packet.json.length,
+          0,
+          'missing source words never become synthetic callee facts',
+        );
+      }
+    }
+    const unit = frontend.parseUnit(source);
+    assert.ok(unit.ok);
+    const irFailure = frontend.checkProgram(unit.program);
+    assert.ok(!irFailure.ok);
+    assert.ok(renderer.snapshot(irFailure.state).rendered.ok);
+    for (const [slot, value] of [
+      [33, (irFailure.state[33] as number) + 1],
+      [36, 1],
+      [37, 1],
+    ] as const) {
+      const corrupt = [...irFailure.state];
+      corrupt[slot] = value;
+      const failure = renderer.snapshot(corrupt);
+      assert.ok('packet' in failure && !failure.rendered.ok);
+      assert.equal(failure.packet.status, 3);
+      assert.equal(
+        failure.packet.json.length,
+        0,
+        'malformed IR geometry must keep checked transport refusal',
+      );
+    }
+  } finally {
+    frontend.close();
+  }
+});
 
 const BASE =
   '# increment Ω\nfn inc\nex 0 -> 1 # retained example\na add A 1 # retained node\nret a # return\nend # end\n\n# caller 😀\nfn top\nex 3 -> 4\nx inc A\nret x\nend\n\nfn spare _ -> _\nret A\nend\n';
@@ -61,7 +128,100 @@ function unchanged(before: TypedProgram, saved: TypedProgram): void {
   assert.deepEqual(before, saved);
 }
 
-for (const [backend, factory, plainFactory] of factories) {
+for (const [backend, factory, plainFactory, ordinaryFactory] of factories) {
+  test(`${backend}: both native diagnostic entries render source-less call/fold/loop facts without invented source spans`, () => {
+    for (const create of [factory, ordinaryFactory]) {
+      const frontend = create();
+      try {
+        for (const [id, source] of [
+          [102, 'fn f u32 -> u32\nx missing A\nret x\nend\n'],
+          [
+            102,
+            '# leading Ω\nfn f u32 -> u32 # header\nx missing A # node 😀\nret x # return\nend # end\n',
+          ],
+          [102, 'fn f u32 -> u32\nx f A\nret x\nend\n'],
+          [102, 'fn f u32 -> u32\nx late A\nret x\nend\nfn late u32 -> u32\nret A\nend\n'],
+          [102, 'fn f u32 -> u32\nx mod A 2\nret x\nend\n'],
+          [103, '# fold Ω\nfn f u32 -> u32\nx fold missing A 0 # body 😀\nret x\nend\n'],
+          [
+            104,
+            'fn step u32 u32 -> u32\nret add A B\nend\n# loop Ω\nfn f u32 -> u32\nx loop missing step A 0 # predicate 😀\nret x\nend\n',
+          ],
+        ] as const) {
+          const unit = frontend.parseUnit(source);
+          assert.ok(unit.ok, 'the shared grammar accepts unresolved function references');
+          const saved = structuredClone(unit.program);
+          let expected: ReturnType<A0Error['toJSON']> | undefined;
+          try {
+            validate(unit.program);
+          } catch (error) {
+            assert.ok(error instanceof A0Error);
+            expected = error.toJSON();
+          }
+          assert.equal(expected?.id, `A${String(id).padStart(4, '0')}`);
+          const result = frontend.checkProgram(unit.program);
+          assert.ok(!result.ok && result.diagnostic && 'packet' in result.diagnostic);
+          assert.equal(result.status, 8);
+          assert.equal(result.state[1], id);
+          assert.ok(
+            result.diagnostic.rendered.ok,
+            'real IR must not fall through to source-token transport failure',
+          );
+          assert.deepEqual(result.diagnostic.rendered.error.toJSON(), expected);
+          assert.deepEqual(
+            JSON.parse(new TextDecoder().decode(result.diagnostic.packet.json)),
+            expected,
+          );
+          assert.equal(result.diagnostic.rendered.location.line, null);
+          assert.equal(result.diagnostic.rendered.location.path, undefined);
+          assert.deepEqual(result.diagnostic.packet.facts.slice(27, 32), [0, 0, 0, 0, 0]);
+          assert.deepEqual(unit.program, saved);
+          const retained = JSON.stringify(result);
+          assert.ok(frontend.parse('fn identity\nret A\nend\n').ok);
+          assert.equal(
+            JSON.stringify(result),
+            retained,
+            'arena reuse preserves detached error facts',
+          );
+        }
+        const before = initial(frontend, 'fn a\nret add A 1\nend\nfn b\nret mul A 2\nend\n');
+        const saved = structuredClone(before);
+        const failures: A0Error[] = [];
+        const authority: Frontend = {
+          ...frontend,
+          checkProgram(program, budget) {
+            const result = frontend.checkProgram(program, budget);
+            if (!result.ok) {
+              const error = new NativeSourceError(result).a0Error;
+              assert.ok(error, 'both entry points produce the actual catalog error');
+              failures.push(error);
+              throw error;
+            }
+            return result;
+          },
+        };
+        assert.throws(
+          () =>
+            editNativeProgram(before, 'fn a\nx b A\nret x\nend\nfn b\nret true\nend\n', authority),
+          (error) => {
+            assert.equal(failures.length, 2);
+            assert.equal(
+              error,
+              failures[0],
+              'a rejected semantic retry preserves the first rendered error object',
+            );
+            assert.equal(failures[0]?.id, 'A0102');
+            assert.equal(failures[1]?.id, 'A0201');
+            return true;
+          },
+        );
+        unchanged(before, saved);
+      } finally {
+        frontend.close();
+      }
+    }
+  });
+
   test(`${backend}: native whole-function add/replace/remove keeps one complete transaction and declared interfaces`, () => {
     const frontend = factory();
     try {

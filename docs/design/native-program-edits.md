@@ -17,6 +17,11 @@ and catalog-validated numeric diagnostic facts. Only A0102/3/4 enter the existin
 policy. The optional renderer enriches errors but does not decide which valid edits are accepted.
 No fake A0Error, message matching, host recheck or semantic fallback is used for a raw native error.
 The original error object/facts remain intact. Resource/transport statuses do not enter the policy.
+Source-less structured IR has no original word-token table. The A0 renderer recognizes its checked
+synthetic-line geometry, including comment-owned rows, and renders call/fold/loop errors from retained
+IR symbols and operands. It does not infer source presence from the symbol/comment byte pool, invent
+callee spans, or treat malformed source/token vectors as synthetic IR. Both diagnostic entry points
+reuse this policy; the original source-backed token-range checks remain authoritative.
 The shared ordered checker propagates an unclassified refusal from the hoisted retry instead of
 masking it with the first ordering error. A second genuine semantic rejection still preserves that
 original diagnostic. This narrow unexpected-exception change also applies to the legacy wrapper.
