@@ -111,7 +111,7 @@ for (const [backend, factory, rawFactory] of factories) {
       assert.equal(checks, 1);
       assert.equal(activations, 1);
       assert.deepEqual(target(next).params, ['u32', 'u32']);
-      assert.equal(target(next).retComments?.trailing, 'changed return');
+      assert.equal(target(next).retComments?.trailing, '# changed return');
       assert.equal(
         run(target(next, 'caller'), []),
         2,
@@ -168,7 +168,7 @@ for (const [backend, factory, rawFactory] of factories) {
       assert.equal(target(next).ret.kind, 'node');
       assert.ok(target(next).nodes.some((node) => node.id === 'retval2'));
       assert.equal(run(target(next), [3]), 14);
-      assert.equal(target(next).retComments?.trailing, 'fresh result');
+      assert.equal(target(next).retComments?.trailing, '# fresh result');
       equivalent(
         next,
         'fn f u32 -> u32\nx add A 1\nretval mul x 2\nlater add A 2\nz add later 1\nretval2 add z retval\nret retval2 # fresh result\nend\n',
@@ -178,7 +178,7 @@ for (const [backend, factory, rawFactory] of factories) {
         target(moved).nodes.map((node) => node.id),
         ['x', 'y', 'retval'],
       );
-      assert.equal(target(moved).nodes[1]?.comments?.trailing, 'anchored Ω');
+      assert.equal(target(moved).nodes[1]?.comments?.trailing, '# anchored Ω');
       for (const reply of [
         '-x\n',
         '-absent\n',
@@ -219,8 +219,8 @@ for (const [backend, factory, rawFactory] of factories) {
       assert.deepEqual(target(next).endComments, fn.endComments);
       assert.deepEqual(target(next).retComments, fn.retComments);
       assert.deepEqual(target(next).nodes[0]?.comments, {
-        leading: ['replacement 😀'],
-        trailing: 'new node',
+        leading: ['# replacement 😀'],
+        trailing: '# new node',
       });
       const kept = editNativeNodes(before, fn, 'x add A 1\n', frontend);
       assert.deepEqual(target(kept).nodes[0]?.comments, fn.nodes[0]?.comments);
