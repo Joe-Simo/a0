@@ -1,0 +1,29 @@
+# Internal C-only stage. The continuation never crosses the C entry ABI.
+# The caller budgets resume calls; parse, lowering and emission are not preemptible.
+use "c_service_arena.a0"
+
+fn cstage_more (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32)) u32 u32 -> bool
+e at p0 0
+done call arena_c_source_done e
+pending xor done true
+ret pending
+end
+
+fn cstage_step (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32)) u32 u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32))
+out call arena_c_source_resume p0 p2
+ret out
+end
+
+fn arena_c_stage io u32 u32 u32 u32 u32 u32 u32 -> io
+initial call arena_c_source_begin p0 p1 p2 p3 p4 p5
+state loop cstage_more cstage_step p7 initial p6
+e at state 0
+done call arena_c_source_done e
+published call arena_c_source_publish state
+status at published 0
+code select done status 4
+t at published 1
+finished call arena_finish t code
+out at finished 1
+ret out
+end
