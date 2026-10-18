@@ -15,6 +15,7 @@ import {
   PARSED_VECTOR_WIDTHS,
   SPEC_VECTOR_WIDTHS,
 } from './source-native-compose.js';
+import { losslessSourceString } from './source-utf8.js';
 import type { Lit } from './spec.js';
 import { irOp } from './word-ir.js';
 
@@ -40,14 +41,7 @@ function boolean(value: boolean): number {
 /** Arena strings are UTF-8; refuse host strings that would lose original code units. */
 function transportString(value: string): string {
   if (typeof value !== 'string') fail('expected an IR string');
-  for (let index = 0; index < value.length; index++) {
-    const code = value.charCodeAt(index);
-    if (code < 0xd800 || code > 0xdfff) continue;
-    const next = value.charCodeAt(index + 1);
-    if (code > 0xdbff || !(next >= 0xdc00 && next <= 0xdfff)) fail('unpaired UTF-16 surrogate');
-    index++;
-  }
-  return value;
+  return losslessSourceString(value, 'unrepresentable native program IR');
 }
 
 /**

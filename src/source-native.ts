@@ -17,6 +17,7 @@ import {
   type NativeLiveDiagnostic,
   nativeDiagnosticRenderer,
 } from './source-native-render.js';
+import { losslessSourceString } from './source-utf8.js';
 import { readWasmWord, readWasmWords, writeWasmWord, writeWasmWords } from './wasm-words.js';
 
 const OFFSETS = [
@@ -177,7 +178,7 @@ export function nativeSourceApi(
     return { ok: true as const, status, state, specState, tables, specTables, symbols };
   };
   const withSource = (source: string, action: (pointer: number, length: number) => number) => {
-    const bytes = new TextEncoder().encode(source),
+    const bytes = new TextEncoder().encode(losslessSourceString(source)),
       pointer = api.malloc(bytes.length || 1);
     if (!pointer) throw new Error('source frontend host allocation failed');
     try {
