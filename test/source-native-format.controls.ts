@@ -235,15 +235,32 @@ for (const [backend, factory] of factories) {
     const rows = [
       { source: 'fn scalar\nret A\nend\n', header: 'fn scalar _ -> _\n', body: 'ret A\nend\n' },
       { source: 'fn zero\nret 7\nend\n', header: 'fn zero -> _\n', body: 'ret 7\nend\n' },
-      { source: 'fn unused _ _ -> _\nret 7\nend\n', header: 'fn unused _ _ -> _\n', body: 'ret 7\nend\n' },
-      { source: 'fn flag bool -> bool\nret A\nend\n', header: 'fn flag bool -> bool\n', body: 'ret A\nend\n' },
       {
-        source: '# signature 😀\nfn aggregate (_x3,bool) boolx2 io -> ((_x3,bool),boolx2,io)\na rec A B C\nret a\nend # tail\n',
+        source: 'fn unused _ _ -> _\nret 7\nend\n',
+        header: 'fn unused _ _ -> _\n',
+        body: 'ret 7\nend\n',
+      },
+      {
+        source: 'fn flag bool -> bool\nret A\nend\n',
+        header: 'fn flag bool -> bool\n',
+        body: 'ret A\nend\n',
+      },
+      {
+        source:
+          '# signature 😀\nfn aggregate (_x3,bool) boolx2 io -> ((_x3,bool),boolx2,io)\na rec A B C\nret a\nend # tail\n',
         header: 'fn aggregate (_x3,bool) boolx2 io -> ((_x3,bool),boolx2,io)\n',
         body: 'a rec A B C\nret a\nend\n',
       },
-      { source: 'fn many\nret p27\nend\n', header: `fn many ${Array<string>(28).fill('_').join(' ')} -> _\n`, body: 'ret p27\nend\n' },
-      { source: 'fn contract\npre eq A A\npost eq r A\nret A\nend\n', header: 'fn contract _ -> _\n', body: 'ret A\nend\n' },
+      {
+        source: 'fn many\nret p27\nend\n',
+        header: `fn many ${Array<string>(28).fill('_').join(' ')} -> _\n`,
+        body: 'ret p27\nend\n',
+      },
+      {
+        source: 'fn contract\npre eq A A\npost eq r A\nret A\nend\n',
+        header: 'fn contract _ -> _\n',
+        body: 'ret A\nend\n',
+      },
     ];
     try {
       for (const row of rows) {
@@ -258,11 +275,14 @@ for (const [backend, factory] of factories) {
         assert.equal(signature.facts[10], 3);
         assert.equal(signature.facts[11], 0);
         assert.ok(!signature.text.includes('#'));
-        const events = Array.from({ length: signature.events.length / 6 }, (_, index) =>
-          [...signature.events.subarray(index * 6, index * 6 + 6)],
-        );
+        const events = Array.from({ length: signature.events.length / 6 }, (_, index) => [
+          ...signature.events.subarray(index * 6, index * 6 + 6),
+        ]);
         assert.equal(events.filter(([kind]) => kind === 1).length, 1);
-        assert.equal(events.filter(([kind]) => kind === 2).length, checked.program.functions[0]?.params.length);
+        assert.equal(
+          events.filter(([kind]) => kind === 2).length,
+          checked.program.functions[0]?.params.length,
+        );
         assert.equal(events.filter(([kind]) => kind === 3).length, 1);
         for (const [kind, , , start, length] of events) {
           assert.ok([1, 2, 3, 21].includes(kind as number), 'header/type/name events only');
@@ -278,16 +298,30 @@ for (const [backend, factory] of factories) {
         assert.equal(after.text, before.text, 'ordinary canonical source remains unchanged');
         assert.deepEqual(after.bytes, before.bytes);
         assert.deepEqual(after.events, before.events);
-        assert.deepEqual(engine.revision(checked), revision, 'private revision serialization remains unchanged');
+        assert.deepEqual(
+          engine.revision(checked),
+          revision,
+          'private revision serialization remains unchanged',
+        );
         for (const functionIndex of [1, 0xffff_ffff]) {
-          const refused = engine.format(checked, { scope: 'signature', functionIndex, mapping: true });
+          const refused = engine.format(checked, {
+            scope: 'signature',
+            functionIndex,
+            mapping: true,
+          });
           assert.ok(!refused.ok && 'status' in refused);
           assert.equal(refused.status, 6);
         }
         const restored = engine.parse(row.header + row.body);
         assert.ok(restored.ok, 'signature is a canonical grammar fragment');
-        assert.deepEqual(restored.program.functions[0]?.params, checked.program.functions[0]?.params);
-        assert.deepEqual(restored.program.functions[0]?.result, checked.program.functions[0]?.result);
+        assert.deepEqual(
+          restored.program.functions[0]?.params,
+          checked.program.functions[0]?.params,
+        );
+        assert.deepEqual(
+          restored.program.functions[0]?.result,
+          checked.program.functions[0]?.result,
+        );
       }
       const empty = engine.parseUnit('');
       assert.ok(empty.ok);
