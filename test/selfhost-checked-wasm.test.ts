@@ -109,6 +109,125 @@ end
 `);
 const EFFECT_INPUTS = [[], [0xffffffff], [0xffffffff, 0xffffffff], [65536, 65536], [7, 13]];
 
+// More nested bodies than the inline-frame limit must remain ordinary calls.
+// The runtime bound belongs to the outer loop and must survive failed probes
+// of a deeper body or predicate. The mixing step prevents a constant sum from
+// replacing the loop and gives a separate integer oracle for every iteration.
+const NESTED = parseAndValidate(
+  `fn step0 u32 u32 -> u32
+a mul p0 1664525
+b add a p1
+r xor b 1013904223
+ret r
+end
+${Array.from(
+  { length: 5 },
+  (_, i) => `fn step${i + 1} u32 u32 -> u32
+r fold step${i} 2 p0
+ret r
+end
+`,
+).join('')}
+fn keep u32 u32 -> bool
+ret lt p1 3
+end
+${Array.from(
+  { length: 6 },
+  (_, depth) => `fn probe${depth} u32 u32 -> u32
+s add p1 2
+r fold step${depth} p0 s
+ret r
+end
+`,
+).join('')}
+fn limited u32 u32 -> u32
+s add p1 2
+r loop keep step3 p0 s
+ret r
+end
+${[
+  ['foldio', 'probe5'],
+  ['loopio', 'limited'],
+]
+  .map(
+    ([name, callee]) => `fn ${name} io -> u32
+a read p0
+count at a 0
+i1 at a 1
+b read i1
+seed at b 0
+i2 at b 1
+r call ${callee} count seed
+w write i2 r
+ret r
+end
+`,
+  )
+  .join('')}`,
+);
+
+function nestedStep(depth: number, value: number, trip: number): number {
+  if (depth === 0)
+    return Number(((BigInt(value) * 1664525n + BigInt(trip)) & 0xffffffffn) ^ 1013904223n);
+  let out = value;
+  for (let i = 0; i < 2; i++) out = nestedStep(depth - 1, out, i);
+  return out;
+}
+
+function nestedExpected(depth: number, count: number, seed: number, limit = count): number {
+  let out = (seed + 2) >>> 0;
+  for (let i = 0; i < Math.min(count, limit); i++) out = nestedStep(depth, out, i);
+  return out;
+}
+
+for (const [mode, optimize] of MODES.flatMap((mode) =>
+  [false, true].map((optimize) => [mode, optimize] as const),
+)) {
+  test(`A0 Wasm nested loops ${mode} optimize=${optimize} preserve bounds and IO`, {
+    skip: SKIP,
+  }, async () => {
+    const bytes = emit(await executable(), mode, NESTED, optimize);
+    assert.deepEqual(bytes, typescriptWasm(NESTED, LAYOUT, optimize));
+    const { instance } = await WebAssembly.instantiate(bytes as BufferSource, {});
+    const memory = instance.exports.memory;
+    const base = instance.exports.__heap_base;
+    assert.ok(memory instanceof WebAssembly.Memory && base instanceof WebAssembly.Global);
+    const pointer = Number(base.value) >>> 0;
+    const words = LAYOUT.ioInputCapacity + LAYOUT.ioOutputCapacity + 3;
+    const end = pointer + words * 4;
+    if (end > memory.buffer.byteLength)
+      memory.grow(Math.ceil((end - memory.buffer.byteLength) / 65536));
+    for (const count of [0, 1, 2, 5]) {
+      for (const seed of [0, 0xffffffff]) {
+        for (let depth = 0; depth <= 5; depth++)
+          assert.equal(
+            entry(instance, `probe${depth}`)(count, seed) >>> 0,
+            nestedExpected(depth, count, seed),
+          );
+        assert.equal(
+          entry(instance, 'limited')(count, seed) >>> 0,
+          nestedExpected(3, count, seed, 3),
+        );
+        for (const [name, depth, limit] of [
+          ['foldio', 5, count],
+          ['loopio', 3, 3],
+        ] as const) {
+          const io = new Uint32Array(memory.buffer, pointer, words);
+          io.fill(0);
+          io.set([count, seed]);
+          io[2] = 2;
+          const expected = nestedExpected(depth, count, seed, limit);
+          assert.equal(entry(instance, name)(pointer) >>> 0, expected);
+          const result: Uint32Array = new Uint32Array(memory.buffer, pointer, words);
+          assert.deepEqual([...result.slice(0, 4)], [count, seed, 2, 2]);
+          assert.equal(result[4], expected);
+          assert.equal(result[8], 1);
+        }
+      }
+    }
+  });
+}
+
 for (const [mode, optimize] of MODES.flatMap((mode) =>
   [false, true].map((optimize) => [mode, optimize] as const),
 )) {
