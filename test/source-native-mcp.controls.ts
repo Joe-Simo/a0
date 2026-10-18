@@ -255,6 +255,47 @@ test('native MCP failed source serialization preserves a dirty edit for a later 
   });
 });
 
+test('native MCP cached default and explicit requests recheck policy without losing a dirty edit', async () => {
+  await fixture(async (root) => {
+    const frontend = packaged.instantiate();
+    const client = await protocol(join(root, 'm.a0'), frontend);
+    try {
+      assert.equal((await call(client, 'a0_open', { function: 'f' })).error, false);
+      const changed = await call(client, 'a0_apply', { edit: 'x add B A # accepted' });
+      assert.equal(changed.error, false, changed.text);
+      const seal = join(root, '.a0-seal');
+      await mkdir(seal);
+      await writeFile(
+        join(seal, 'head.json'),
+        JSON.stringify({ format: 'a0-vault-1', phase: 'on' }),
+      );
+      for (const file of [undefined, 'm.a0']) {
+        const args = file === undefined ? {} : { file };
+        for (const [name, fields] of [
+          ['a0_open', { function: 'f' }],
+          ['a0_apply', { edit: 'e0\nx add B A # refused' }],
+          ['a0_save', {}],
+        ] as const) {
+          const result = await call(client, name, { ...args, ...fields });
+          assert.equal(result.error, true, `${name}: ${result.text}`);
+          assert.equal(JSON.parse(result.text).id, 'A0809');
+          assert.ok(!result.text.includes(root));
+        }
+      }
+      assert.equal(await readFile(join(root, 'm.a0'), 'utf8'), SOURCE);
+      await rm(seal, { recursive: true });
+      assert.equal((await call(client, 'a0_save')).error, false);
+      const saved = await readFile(join(root, 'm.a0'), 'utf8');
+      assert.match(saved, /x add B A # accepted/);
+      assert.doesNotMatch(saved, /# refused/);
+      assert.ok(frontend.parse(saved).ok);
+    } finally {
+      await client.close();
+      frontend.close();
+    }
+  });
+});
+
 test('native MCP companion absence and closed borrowed frontends refuse without historical acceptance', async () => {
   await fixture(async (root) => {
     const raw = nativeSource(

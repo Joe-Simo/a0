@@ -419,6 +419,46 @@ function publicationServices() {
 }
 
 for (const surface of ['full', 'compact'] as const) {
+  test(`MCP ${surface}: cached default and explicit files recheck storage policy before read, edit and save`, async () => {
+    await directory(async (root) => {
+      const supplied = services();
+      const client = await protocol(join(root, 'm.a0'), supplied.language, surface);
+      try {
+        assert.equal((await call(client, 'a0_open', { function: 'f' })).error, false);
+        assert.equal((await call(client, 'a0_apply', { edit: 'b add p0 1' })).error, false);
+        const seal = join(root, '.a0-seal');
+        await mkdir(seal);
+        await writeFile(
+          join(seal, 'head.json'),
+          JSON.stringify({ format: 'a0-vault-1', phase: 'on' }),
+        );
+        for (const file of [undefined, 'm.a0']) {
+          const args = file === undefined ? {} : { file };
+          for (const [name, fields] of [
+            ['a0_open', { function: 'f' }],
+            ['a0_apply', { edit: 'e0\nb add p0 2' }],
+            ['a0_save', {}],
+          ] as const) {
+            const refused = await call(client, name, { ...args, ...fields });
+            assert.equal(refused.error, true, `${name}: ${refused.text}`);
+            assert.equal(JSON.parse(refused.text).id, 'A0809');
+            assert.ok(!refused.text.includes(root));
+          }
+        }
+        assert.equal(await readFile(join(root, 'm.a0'), 'utf8'), SOURCE);
+        assert.deepEqual([supplied.counts.loads, supplied.counts.sessions], [1, 1]);
+        await rm(seal, { recursive: true });
+        assert.equal((await call(client, 'a0_save')).error, false);
+        const saved = await readFile(join(root, 'm.a0'), 'utf8');
+        assert.match(saved, /b add p0 1/);
+        assert.doesNotMatch(saved, /b add p0 2/);
+        assert.equal(JSON.parse((await call(client, 'a0_save')).text).id, 'A0806');
+      } finally {
+        await client.close();
+      }
+    });
+  });
+
   test(`MCP ${surface}: refused open publication preserves handle capacity and counters`, async () => {
     await directory(async (root) => {
       const { language, controls } = publicationServices();

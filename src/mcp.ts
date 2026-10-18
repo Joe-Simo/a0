@@ -193,6 +193,7 @@ export async function createServer(
   const fileOf = async (file: string | undefined): Promise<string> => {
     if (file !== undefined) return confined(file, true);
     if (defaultFile === undefined) throw diag('A0805');
+    protectionPolicy(defaultFile);
     if (!legacy && !language.acceptsPath(defaultFile)) throw diag('A0802', [defaultFile]);
     return defaultFile;
   };
