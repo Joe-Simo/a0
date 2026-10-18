@@ -89,6 +89,12 @@ it never guesses between ambiguous spellings. The public
 complete per-file metadata and formatter fixed points, then links and compares the staged program
 and revision before publication.
 
+The same staging engine now supports `migrateNativeSourceProject`, whose output is formatted,
+parsed and checked by the A0 frontend. Historical readers supply only the explicitly selected
+input. Its [migration record](native-source-migration.md) documents native capability refusals,
+publication guards and frozen real-application comparisons. Public `a0 migrate` routing still
+targets historical Dense; neither candidate converter is an additional source mode.
+
 `test/source.test.ts` checks repository round trips and independent binding/callee, parameter,
 contract and aggregate cases. `test/source-link.test.ts` checks linked origins, dependency handling
 and migration from both historical spellings against every registered backend's emitted output.
@@ -152,9 +158,19 @@ without full-source reparsing or TypeScript validation. Symbol/type identity com
 A0 interners. Source spans, spec directories and comments are rebased; physical lines and filtered
 line-table indexes remain separate. Comment folding is shared with the reference linker.
 
-`NativeSourceError` currently exposes authoritative numeric failure facts and physical file/line
-origins. Complete catalog wording, suggestions and structured edits remain unfinished. This API
-is an internal candidate, not the public compiler default or a claim of diagnostic parity.
+`NativeSourceError` exposes authoritative numeric failure facts and physical file/line origins.
+With the optional A0 diagnostic companion it also retains supported catalog wording, suggestions,
+structured edits and spec faults. Coverage, refusals and remaining grammar differences are
+documented in [native diagnostics](native-diagnostic-adapter.md) and
+[spec diagnostics](native-spec-diagnostics.md). This API remains an internal candidate; measured
+compatibility cases do not establish complete diagnostic parity or a public cutover.
+
+The optional [A0 formatter and revision companion](arena-format.md) consumes authenticated current
+native input or explicitly activated formatting IR. It preserves source metadata without granting
+typed acceptance to unchecked input. [Retained project sessions](native-source-project.md) can
+activate original files for formatting and recheck their dependency graph through the same checker.
+Ordinary one-shot linking retains no project session. These APIs support the later tool migration;
+the public edit, MCP and LSP routes have not switched.
 
 The source-bound executable fixture under `seed/source-frontend/` lets integration tests run with
 ordinary Node, without a local WASI build toolchain. Its freshness check covers the full A0 closure,

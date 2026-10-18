@@ -31,8 +31,9 @@ options value. Successful parses/checks never call that loader or instantiate th
 renderer. `memoryBytes` includes the renderer's retained memory after loading it.
 No public compiler route changes.
 
-The renderer exports only `arena_diagnostic_options`, takes the failed parsed
-page and uses generic arena read/write imports. The host copies its JSON vector
+The renderer keeps `arena_diagnostic_options` for ordinary failed parsed pages and adds
+`arena_verified_diagnostic_options` for retained specification facts. Both use generic arena
+read/write imports. The host copies the selected entry's JSON vector
 through an existing readonly storage view. It does not call the renderer's parse
 entry or reconstruct diagnostic arguments. Parsed and specification pages are
 copied before rendering; packets, JSON bytes and hydrated errors survive another
@@ -98,7 +99,7 @@ transport priority. The live C and direct-Wasm integration checks are recorded i
 | Default routing | The live hook is optional. Raw `state` and `specState` are not renderer facts and must not be passed directly to the packet adapter. Shipping the renderer by default requires separate artifact/performance and coverage decisions. |
 | Structured-IR numeric representation | A0308 remains outside the declared set. The encoder refuses non-word numeric payloads before native checking and cannot preserve the reference instruction-diagnostic priority for malformed handbuilt IR. A0308 names only the function/node, with no numeric display payload. The [numeric contract inventory](native-numeric-contract.md) distinguishes accepted source from handbuilt return/spec quirks and records a possible lossless native representation; no implementation or public checker parity is claimed. |
 | Module errors | File resolution, imports and duplicate ownership still use the existing graph policy. Source-unit origins can map renderer locations; they do not supply missing module diagnostic content. |
-| Specifications | A0714–A0716 and A0719 do not have complete native public rendering. Ordered verification retains phase/example/trap/value facts, but those session-lived facts still need A0 rendering. The adapter can preserve a complete `SpecFault` payload; its synthetic transport test does not establish native spec rendering. |
+| Specifications | The optional verified entry renders retained A0714–A0716 and A0719 facts in A0. Actual C-derived, direct Wasm and generated-JS compatibility cases are recorded in [spec diagnostics](native-spec-diagnostics.md); remaining grammar differences and incomplete contexts still refuse explicitly. These controls do not establish exhaustive grammar or diagnostic parity. |
 | Runtime traps | Public runtime errors carry `trap` separately from `Diagnostic` JSON. This compile-diagnostic packet adapter does not synthesize or claim runtime-trap transport. |
 
 `test/fixtures/native-diagnostics/packets.json` retains actual packets from the
