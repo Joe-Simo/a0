@@ -19,6 +19,7 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
 import {
   A0Error,
+  type Comments,
   type Func,
   formatFunction,
   formatOperand,
@@ -49,7 +50,14 @@ import { diag } from './diagnostics.js';
 import { fixAll } from './fix.js';
 import { constructLegend, lazyDiagnostic, lazyHints } from './lazy.js';
 import { programRevision, revision } from './revision.js';
-import { applySpecEdits, type SpecEdit, type SpecWord, withoutSpec, withSpec } from './spec.js';
+import {
+  applySpecEdits,
+  type Spec,
+  type SpecEdit,
+  type SpecWord,
+  withoutSpec,
+  withSpec,
+} from './spec.js';
 import { keyLegend } from './wordkey.js';
 
 export const REVISION_LENGTH = 64;
@@ -75,7 +83,7 @@ export interface Replacement {
 export type EditOp =
   | { readonly kind: 'node'; readonly node: Node; readonly after?: string; readonly fresh?: true }
   | { readonly kind: 'delete'; readonly id: string }
-  | { readonly kind: 'ret'; readonly operand: Operand }
+  | { readonly kind: 'ret'; readonly operand: Operand; readonly comments?: Comments }
   | ({ readonly kind: 'spec' } & SpecEdit);
 
 /**
@@ -92,6 +100,7 @@ function duplicateEditError(
   secondAt: number,
   line: number,
   taken: ReadonlySet<string> | undefined,
+  firstLineNumber?: number,
 ): A0Error {
   const reads = (text: string): boolean => text.split(/\s+/).slice(2).includes(id);
   const first = normalizeLine(lines[firstAt] ?? '');
@@ -130,7 +139,7 @@ function duplicateEditError(
         rule: 'sequence',
         text: first,
         to: firstTo,
-        line: line - (secondAt - firstAt),
+        line: firstLineNumber ?? line - (secondAt - firstAt),
       },
       { op: 'lines', rule: 'sequence', text: second, to: secondTo, line },
     ],
@@ -158,9 +167,38 @@ function guardChain(
   return clash ? e.withEdits(e.edits, 'maybe') : e;
 }
 
-export function parseEditOps(
+/** Internal language services for the one existing node-edit protocol loop. */
+export interface NodeEditSyntax {
+  node(text: string, line: number, index: number): Node;
+  ret(text: string, line: number, index: number): readonly EditOp[];
+  spec(match: RegExpExecArray, line: number, index: number): SpecEdit;
+  /** Physical reply lines when a caller retains blank/comment lines outside the protocol loop. */
+  line?(index: number): number;
+}
+
+function legacyEditReturn(text: string, line: number): EditOp[] {
+  const parts = text.split(/\s+/);
+  if (isRetNodeForm(parts)) {
+    let node: Node;
+    try {
+      node = parseNode(`retval ${parts.slice(1).join(' ')}`, line);
+    } catch (e) {
+      // The failing line is synthesized, so no original reply edit is safe to apply.
+      throw e instanceof A0Error && e.edits.length > 0 ? e.withEdits([], 'maybe') : e;
+    }
+    return [
+      { kind: 'node', node, fresh: true },
+      { kind: 'ret', operand: { kind: 'node', id: 'retval' } },
+    ];
+  }
+  if (parts.length !== 2) throw retOperandError(parts, line, 'edit');
+  return [{ kind: 'ret', operand: parseOperand(parts[1] ?? '', line) }];
+}
+
+export function parseEditOpsWithLanguage(
   lines: readonly string[],
   firstLine: number,
+  language: NodeEditSyntax,
   taken?: ReadonlySet<string>,
 ): EditOp[] {
   if (lines.length === 0) throw diag('A0501');
@@ -170,10 +208,11 @@ export function parseEditOps(
   const textDeletes = new Map<string, { text: string; line: number; raw: string }>();
   let sawRet = false;
   lines.forEach((text, i) => {
-    const line = firstLine + i;
+    const line = language.line?.(i) ?? firstLine + i;
     const claim = (id: string): void => {
       const at = seen.get(id);
-      if (at !== undefined) throw duplicateEditError(id, lines, at, i, line, taken);
+      if (at !== undefined)
+        throw duplicateEditError(id, lines, at, i, line, taken, language.line?.(at));
       seen.set(id, i);
     };
     const spec = SPEC_EDIT.exec(text);
@@ -182,7 +221,7 @@ export function parseEditOps(
       spec[1] === undefined &&
       (spec[2] === '+' || (spec[4] ?? '').trim() !== '')
     ) {
-      ops.push({ kind: 'spec', ...specEditOf(spec), line });
+      ops.push({ kind: 'spec', ...language.spec(spec, line, i), line });
       return;
     }
     if (text.startsWith('-')) {
@@ -205,29 +244,13 @@ export function parseEditOps(
     if (/^ret\s/.test(text)) {
       if (sawRet) throw diag('A0505', [], { line });
       sawRet = true;
-      const parts = text.split(/\s+/);
-      if (isRetNodeForm(parts)) {
-        // `ret OP ARGS…`: a fresh node plus `ret` of it (same sugar as in source).
-        // The id is provisional: replaceNodes picks one that is free in the function.
-        let node: Node;
-        try {
-          node = parseNode(`retval ${parts.slice(1).join(' ')}`, line);
-        } catch (e) {
-          // The failing line is the synthesised `retval OP …`, not a line of the reply: no edits to apply.
-          throw e instanceof A0Error && e.edits.length > 0 ? e.withEdits([], 'maybe') : e;
-        }
-        ops.push({ kind: 'node', node, fresh: true });
-        ops.push({ kind: 'ret', operand: { kind: 'node', id: 'retval' } });
-        return;
-      }
-      if (parts.length !== 2) throw retOperandError(parts, line, 'edit');
-      ops.push({ kind: 'ret', operand: parseOperand(parts[1] ?? '', line) });
+      ops.push(...language.ret(text, line, i));
       return;
     }
     const m = /^(.*?)\s+@\s+([a-z][a-z0-9_]*)$/.exec(text);
     let node: Node;
     try {
-      node = parseNode(m ? (m[1] ?? '') : text, line);
+      node = language.node(m ? (m[1] ?? '') : text, line, i);
     } catch (e) {
       throw guardChain(e, lines, taken);
     }
@@ -260,6 +283,19 @@ export function parseEditOps(
       ],
     });
   return ops;
+}
+
+export function parseEditOps(
+  lines: readonly string[],
+  firstLine: number,
+  taken?: ReadonlySet<string>,
+): EditOp[] {
+  return parseEditOpsWithLanguage(
+    lines,
+    firstLine,
+    { node: parseNode, ret: legacyEditReturn, spec: specEditOf },
+    taken,
+  );
 }
 
 /** Backwards-compatible helper: replacement-only edits as EditOps. */
@@ -320,11 +356,17 @@ function reaches(
   return false;
 }
 
-export function replaceNodes(
-  program: TypedProgram,
+/** Internal semantic services; structural mutation and refusal policy live once below. */
+export interface NodeEditLanguage<T> {
+  check(replaced: Func): T;
+  specs(fn: Func, edits: readonly SpecEdit[]): Spec | undefined;
+}
+
+export function replaceNodesWithLanguage<T>(
   fn: TypedFunc,
   ops: readonly (EditOp | Node)[],
-): TypedFunc {
+  language: NodeEditLanguage<T>,
+): T {
   let edits: EditOp[] = ops.map((o) => ('kind' in o ? o : { kind: 'node', node: o }));
   // A `ret OP …` node gets an id that is free in the function and in the edit.
   const freshOp = edits.find((o) => o.kind === 'node' && o.fresh === true);
@@ -336,12 +378,13 @@ export function replaceNodes(
     edits = edits.map((o) => {
       if (o.kind === 'node' && o.fresh === true) return { kind: 'node', node: { ...o.node, id } };
       if (o.kind === 'ret' && o.operand.kind === 'node' && o.operand.id === 'retval')
-        return { kind: 'ret', operand: { kind: 'node', id } };
+        return { ...o, operand: { kind: 'node', id } };
       return o;
     });
   }
   let nodes: Node[] = [...fn.nodes];
   let ret = fn.ret;
+  let retComments = fn.retComments;
   const specEdits: SpecEdit[] = edits.flatMap((o) => (o.kind === 'spec' ? [o] : []));
   // 1. deletions
   for (const op of edits) {
@@ -381,16 +424,39 @@ export function replaceNodes(
     }
   }
   // 3. result
-  for (const op of edits) if (op.kind === 'ret') ret = op.operand;
+  for (const op of edits)
+    if (op.kind === 'ret') {
+      ret = op.operand;
+      if (op.comments !== undefined) retComments = op.comments;
+    }
   // Edits may list nodes in any order that has a valid dependency order: move each node
   // that references a later node to just after its last reference. A true cycle is left
   // for the validator to report.
   nodes = orderByDependencies(nodes);
   if (nodes.length > LIMITS.maxNodesPerFunction) throw diag('A0316', [fn.name]);
+  const body: Func = {
+    ...fn,
+    nodes,
+    ret,
+    ...(retComments === undefined ? {} : { retComments }),
+  };
   const replaced: Func =
-    specEdits.length === 0
-      ? { ...fn, nodes, ret }
-      : withSpec({ ...fn, nodes, ret }, applySpecEdits(fn, specEdits));
+    specEdits.length === 0 ? body : withSpec(body, language.specs(fn, specEdits));
+  const typed = language.check(replaced);
+  // A node this edit adds that nothing reads is almost always a result the reply forgot to
+  // return (`ret` still names the old node). Land nothing silently wrong: reject with the fix.
+  const existing = new Set(fn.nodes.map((n) => n.id));
+  const used = new Set<string>();
+  for (const n of nodes) for (const a of n.args) if (a.kind === 'node') used.add(a.id);
+  if (ret.kind === 'node') used.add(ret.id);
+  for (const op of edits) {
+    if (op.kind !== 'node' || existing.has(op.node.id) || used.has(op.node.id)) continue;
+    throw diag('A0508', [fn.name, op.node.id]);
+  }
+  return typed;
+}
+
+function checkLegacyNodeEdit(program: TypedProgram, fn: TypedFunc, replaced: Func): TypedFunc {
   // Legal call targets are exactly the functions defined before this one.
   const scope = new Map<string, TypedFunc>();
   for (const f of program.functions) {
@@ -413,17 +479,18 @@ export function replaceNodes(
       throw e;
     }
   }
-  // A node this edit adds that nothing reads is almost always a result the reply forgot to
-  // return (`ret` still names the old node). Land nothing silently wrong: reject with the fix.
-  const existing = new Set(fn.nodes.map((n) => n.id));
-  const used = new Set<string>();
-  for (const n of nodes) for (const a of n.args) if (a.kind === 'node') used.add(a.id);
-  if (ret.kind === 'node') used.add(ret.id);
-  for (const op of edits) {
-    if (op.kind !== 'node' || existing.has(op.node.id) || used.has(op.node.id)) continue;
-    throw diag('A0508', [fn.name, op.node.id]);
-  }
   return typed;
+}
+
+export function replaceNodes(
+  program: TypedProgram,
+  fn: TypedFunc,
+  ops: readonly (EditOp | Node)[],
+): TypedFunc {
+  return replaceNodesWithLanguage(fn, ops, {
+    check: (replaced) => checkLegacyNodeEdit(program, fn, replaced),
+    specs: applySpecEdits,
+  });
 }
 
 /**

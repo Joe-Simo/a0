@@ -11,7 +11,7 @@ import { NativeSourceError } from './source-native-link.js';
 
 type Frontend = ReturnType<typeof nativeSource>;
 
-function failed(result: Extract<NativeSourceResult, { readonly ok: false }>): never {
+function failedNativeEdit(result: Extract<NativeSourceResult, { readonly ok: false }>): never {
   const error = new NativeSourceError(result);
   // Rendering enriches the rejection without becoming a dependency of semantic acceptance.
   throw error.a0Error ?? error;
@@ -51,30 +51,30 @@ function signature(frontend: Frontend, fn: Func): string {
   return output.text.endsWith('\n') ? output.text.slice(0, -1) : output.text;
 }
 
-/**
- * Borrow an explicit A0 frontend for the existing whole-function/program transaction kernel.
- * The returned program exists only after complete native checking. This is not a partial
- * native EditSession: node, numbered, signed-spec, handle and public command routes are unchanged.
- */
+/** Internal authoritative services shared by staged program and node transactions. */
+export function nativeEditLanguage(frontend: Frontend): ProgramEditLanguage {
+  return {
+    parseUnit(source) {
+      const unit = frontend.parseUnit(source);
+      if (!unit.ok) failedNativeEdit(unit);
+      return unit.program;
+    },
+    check(candidate) {
+      const result = frontend.checkProgram(candidate);
+      if (!result.ok) failedNativeEdit(result);
+      return result.typed;
+    },
+    signature: (fn) => signature(frontend, fn),
+    failure,
+  };
+}
+
+/** Borrow a frontend for the existing whole-function kernel; no session or public route switch. */
 export function editNativeProgram(
   program: TypedProgram,
   text: string,
   frontend: Frontend,
   keepSpecs = false,
 ): TypedProgram {
-  const language: ProgramEditLanguage = {
-    parseUnit(source) {
-      const unit = frontend.parseUnit(source);
-      if (!unit.ok) failed(unit);
-      return unit.program;
-    },
-    check(candidate) {
-      const result = frontend.checkProgram(candidate);
-      if (!result.ok) failed(result);
-      return result.typed;
-    },
-    signature: (fn) => signature(frontend, fn),
-    failure,
-  };
-  return editProgramWithLanguage(program, text, language, keepSpecs);
+  return editProgramWithLanguage(program, text, nativeEditLanguage(frontend), keepSpecs);
 }
