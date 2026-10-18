@@ -274,6 +274,7 @@ export function litOf(value: Value, type: Type): Lit {
 function litValue(lit: Lit, type: Type, fn: string, what: string): Value {
   const mismatch = (): never => {
     throw diag('A0714', [fn, `${what} is ${formatLit(lit)}, which is not a ${formatType(type)}`], {
+      specOwner: fn,
       expected: formatType(type),
       actual: formatLit(lit),
     });
@@ -528,6 +529,7 @@ function typeExpression(
     if (!(e instanceof A0Error)) throw e;
     if (e.id === 'A0201' && e.detail.startsWith(`${fn.name}.ret`))
       throw diag('A0714', [fn.name, `${word} is ${e.actual ?? 'not'}, a ${word} must be bool`], {
+        specOwner: fn.name,
         expected: 'bool',
         actual: e.actual ?? '',
         fix: `${word} is one operation whose result is bool (lt, eq, a call of a bool function, ...)`,

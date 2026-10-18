@@ -125,6 +125,8 @@ export interface SpecFault {
 
 export interface DiagnosticDetail {
   readonly code?: DiagnosticCode;
+  /** Internal source owner when a spec diagnostic deliberately omits public spec fields. */
+  readonly specOwner?: string;
   /** The spec line the diagnostic is about (A0714, A0715, A0716, A0719). */
   readonly spec?: SpecFault;
   /** Set when the run stopped on a budget (fuel, iteration cap, io output cap). */
@@ -166,6 +168,8 @@ export class A0Error extends Error {
   readonly edits: readonly FixEdit[];
   readonly trap: Trap | undefined;
   readonly spec: SpecFault | undefined;
+  /** Internal source owner; excluded from the machine-readable diagnostic. */
+  readonly specOwner: string | undefined;
   /** The message without the `line N: ` prefix. */
   readonly detail: string;
   constructor(
@@ -185,6 +189,7 @@ export class A0Error extends Error {
     this.edits = detail.edits ?? [];
     this.trap = detail.trap;
     this.spec = detail.spec;
+    this.specOwner = detail.specOwner;
   }
 
   /** The same diagnostic with another message and/or line (the linker maps lines to files). */
@@ -205,6 +210,7 @@ export class A0Error extends Error {
       ...(actual === undefined ? {} : { actual }),
       ...(id === undefined ? {} : { id }),
       ...(this.spec === undefined ? {} : { spec: this.spec }),
+      ...(this.specOwner === undefined ? {} : { specOwner: this.specOwner }),
     });
   }
 
@@ -228,6 +234,7 @@ export class A0Error extends Error {
       ...(this.edits.length === 0 ? {} : { edits: this.edits }),
       ...(this.trap === undefined ? {} : { trap: this.trap }),
       ...(this.spec === undefined ? {} : { spec: this.spec }),
+      ...(this.specOwner === undefined ? {} : { specOwner: this.specOwner }),
     };
   }
 
@@ -2024,6 +2031,8 @@ const fill = (template: string, args: readonly (string | number)[]): string =>
 
 export interface DiagOptions {
   readonly line?: number;
+  /** Internal source owner; never adds fields to the public diagnostic JSON. */
+  readonly specOwner?: string;
   readonly expected?: string;
   readonly actual?: string;
   /** Overrides the table's fix template (a fix computed from the failing input). */
@@ -2057,6 +2066,7 @@ export function diag(
     ...(edits.length === 0 ? {} : { edits }),
     ...(opts.trap === undefined ? {} : { trap: opts.trap }),
     ...(opts.spec === undefined ? {} : { spec: opts.spec }),
+    ...(opts.specOwner === undefined ? {} : { specOwner: opts.specOwner }),
   });
 }
 

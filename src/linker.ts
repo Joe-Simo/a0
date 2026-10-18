@@ -295,18 +295,28 @@ export async function linkProject(
       }
       throw e;
     }
-    const m = /^([a-z][a-z0-9_]*)(?:\.([a-z][a-z0-9_]*))?(?:[:.]|\s)/.exec(e.message);
-    const path = m === null ? undefined : owner.get(m[1] as string);
+    const specOwner = e.spec?.function ?? e.specOwner;
+    const specDiagnostic =
+      e.id === 'A0714' || e.id === 'A0715' || e.id === 'A0716' || e.id === 'A0719';
+    const m =
+      specOwner === undefined && !specDiagnostic
+        ? /^([a-z][a-z0-9_]*)(?:\.([a-z][a-z0-9_]*))?(?:[:.]|\s)/.exec(e.message)
+        : null;
+    const name = specOwner ?? m?.[1];
+    const nodeId = m?.[2];
+    const path = name === undefined ? undefined : owner.get(name);
     if (path === undefined) throw e;
     const source = order.find((o) => o.path === path);
-    const located = m === null ? undefined : source?.locate?.(m[1] as string, m[2]);
+    const located = name === undefined ? undefined : source?.locate?.(name, nodeId);
     if (located !== undefined && e.spec === undefined)
       throw e.rewrite(`${path}:${located}: ${e.message}`);
     const text = source?.shown ?? '';
     const fileLines = text.split(/\r?\n/);
-    let line = fileLines.findIndex((l) => new RegExp(`^\\s*fn\\s+${m?.[1]}\\b`).test(l));
-    if (line >= 0 && m?.[2] !== undefined) {
-      const node = fileLines.findIndex((l, i) => i > line && new RegExp(`^\\s*${m[2]}\\s`).test(l));
+    let line = fileLines.findIndex((l) => new RegExp(`^\\s*fn\\s+${name}\\b`).test(l));
+    if (line >= 0 && nodeId !== undefined) {
+      const node = fileLines.findIndex(
+        (l, i) => i > line && new RegExp(`^\\s*${nodeId}\\s`).test(l),
+      );
       if (node >= 0) line = node;
     }
     // A spec failure points at the spec line it is about (the example it broke).
