@@ -1,0 +1,206 @@
+{
+  "schema": 1,
+  "scope": "Explicit consumed ABI roots and call forms for static inventories of two frozen SAME-S0 C-stage artifacts; this is not a native-frontend artifact-size proof or a library compatibility waiver.",
+  "sourceSnapshotCommit": "ca3cc4e07791edc4a33a601d760eb949df474911",
+  "sourceFiles": [
+    {
+      "file": "tools/source-native-build.ts",
+      "sha256": "ef8b175053459d8688494bc7f013b35f320ec24821aab8208f175661ccbad805"
+    },
+    {
+      "file": "tools/native/source_frontend.c",
+      "sha256": "db64c81f7d7036b69d4e42bed1bd6e0c364df36f90701f039083ed0c77ab8753"
+    },
+    {
+      "file": "tools/native/c_arena_stage.c",
+      "sha256": "2e7ed715b482a9bfa94127af28a1f4873c694421bf139363eb5b398b7751ef05"
+    },
+    {
+      "file": "test/c-iteration-extras.test.ts",
+      "sha256": "082c59fbfcadeb3719a5d58cd45e4efa57164640df6369ce3eb2a99dd4df3090"
+    },
+    {
+      "file": "src/parallel.ts",
+      "sha256": "42a677a319edb237c6f8deec5d3e98c7110345c848379cc13ff4238fae74e3dc"
+    },
+    {
+      "file": "src/backends.ts",
+      "sha256": "6204742a286ac61440a758e96cce7e127bfbe3afe7a94dd941fadc922b5217a9"
+    },
+    {
+      "file": "docs/design/c-emission-static-inventory.md",
+      "sha256": "fd59a486d1816ffde9d5ae13358fec5643cb56cf40371abb6dbd42ed7d26db22"
+    }
+  ],
+  "frontendTypedPublicA0APIs": [
+    {
+      "name": "arena_parse_verify_begin",
+      "params": [
+        "io",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)"
+    },
+    {
+      "name": "arena_source_unit",
+      "params": [
+        "io",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)"
+    },
+    {
+      "name": "arena_verify_begin",
+      "params": [
+        "io",
+        "u32x128"
+      ],
+      "result": "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)"
+    },
+    {
+      "name": "arena_verify_resume",
+      "params": [
+        "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)",
+        "u32"
+      ],
+      "result": "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)"
+    },
+    {
+      "name": "arena_verify_status",
+      "params": [
+        "u32x128"
+      ],
+      "result": "u32"
+    },
+    {
+      "name": "source_ir_init",
+      "params": [
+        "io",
+        "u32",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,io)"
+    },
+    {
+      "name": "source_ir_symbol",
+      "params": [
+        "(u32x128,io)",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,u32,io)"
+    },
+    {
+      "name": "source_ir_type",
+      "params": [
+        "(u32x128,io)",
+        "u32",
+        "u32",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,u32,io)"
+    }
+  ],
+  "frontendTypedAPIReference": {
+    "file": "seed/source-frontend/build.json",
+    "sha256": "e063a4e3f6de9c171b5c4cfe3853867b3e72a3d5ebbda030976ff8afe096f718"
+  },
+  "standaloneStage": [
+    {
+      "symbol": "a0_arena_c_stage",
+      "callForm": "a0_arena_c_stage((a0_io *)session,handle,length,options[0],options[1],options[2],options[3],options[4])",
+      "signature": "io,u32,u32,u32,u32,u32,u32,u32 -> io",
+      "source": "tools/native/c_arena_stage.c:84"
+    }
+  ],
+  "frontendCallForms": [
+    {
+      "symbol": "a0_arena_parse_verify_begin",
+      "callForm": "small ABI: s=a0_arena_parse_verify_begin(t,h,n); large ABI: a0_arena_parse_verify_begin(&s,t,h,n)",
+      "source": "tools/source-native-build.ts:96"
+    },
+    {
+      "symbol": "a0_arena_source_unit",
+      "callForm": "small ABI: s=a0_arena_source_unit(t,h,n); large ABI: a0_arena_source_unit(&s,t,h,n)",
+      "source": "tools/source-native-build.ts:97"
+    },
+    {
+      "symbol": "a0_arena_verify_resume",
+      "callForm": "small ABI: s=a0_arena_verify_resume(s,n)",
+      "source": "tools/source-native-build.ts:98"
+    },
+    {
+      "symbol": "a0o_arena_verify_resume",
+      "callForm": "large ABI: a0o_arena_verify_resume(&s,n)",
+      "signature": "void (mutable SV_STATE *, uint32_t)",
+      "source": "tools/source-native-build.ts:98"
+    },
+    {
+      "symbol": "a0_arena_verify_status",
+      "callForm": "small ABI: a0_arena_verify_status(m); large ABI: a0_arena_verify_status(&m)",
+      "source": "tools/source-native-build.ts:99"
+    }
+  ],
+  "testAddressTakenForms": [
+    {
+      "symbol": "a0o_step",
+      "signature": "void (*)(a0t_r2_a8_u_u *, uint32_t, const a0t_a1024_u *)",
+      "callForm": "typed owned function pointer initialized from a0o_step",
+      "source": "test/c-iteration-extras.test.ts:306"
+    },
+    {
+      "symbol": "a0r_pred",
+      "signature": "bool (*)(const a0t_r2_a8_u_u *, uint32_t, const a0t_a1024_u *)",
+      "callForm": "typed predicate function pointer initialized from a0r_pred",
+      "source": "test/c-iteration-extras.test.ts:307"
+    }
+  ],
+  "dynamicConsumers": [
+    {
+      "source": "src/parallel.ts:787",
+      "callForm": "a0v_${body.name}(acc,i,...borrowed extras)",
+      "consequence": "Root the selected target variant in any explicit parallel helper manifest; this inventory cannot infer arbitrary helper names outside these frozen modules."
+    },
+    {
+      "source": "src/parallel.ts:810",
+      "callForm": "a0o_${body.name}(mutable state,i,...borrowed extras)",
+      "consequence": "Root the selected target variant in any explicit parallel helper manifest; preserve all variants in default open-library compatibility context."
+    }
+  ],
+  "contexts": [
+    {
+      "name": "standalone-stage",
+      "extraRoots": [
+        "a0_arena_c_stage"
+      ],
+      "meaning": "All external public definitions and canonical helpers remain roots; only this frozen standalone module and the generic stage shim are considered."
+    },
+    {
+      "name": "known-frontend-and-test-consumers",
+      "extraRoots": [
+        "a0_arena_parse_verify_begin",
+        "a0_arena_source_unit",
+        "a0_arena_verify_begin",
+        "a0_arena_verify_resume",
+        "a0_arena_verify_status",
+        "a0_source_ir_init",
+        "a0_source_ir_symbol",
+        "a0_source_ir_type",
+        "a0o_arena_verify_resume",
+        "a0o_step",
+        "a0r_pred"
+      ],
+      "meaning": "Conservative overlay of actual typed frontend/shim and address-taking test consumers onto each frozen SAME-S0 artifact. Absent target names are reported, not treated as supplied APIs."
+    },
+    {
+      "name": "default-library-compatibility",
+      "allVariantsAreRoots": true,
+      "extraRoots": [],
+      "meaning": "Retain all variant compatibility for arbitrary include-module host, function-pointer and dynamically generated parallel consumers. No deletion is authorized."
+    }
+  ]
+}
