@@ -121,3 +121,13 @@ end
     arm.close();
   }
 });
+
+test('native arm refuses an unsealed starter before invoking a historical reader or package loader', async () => {
+  await assert.rejects(
+    nativeAppEditArm(
+      { a0: 'not historical source', ts: '' },
+      { directory: '', manifestSHA256: '' },
+    ),
+    /only the sealed historical starter/,
+  );
+});

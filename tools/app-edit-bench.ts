@@ -449,7 +449,8 @@ export function conversationCost(
 ) {
   return Object.fromEntries(
     (['o200k_base', 'cl100k_base'] as const).map((encoding) => {
-      const count = (text: string) => localTokens(text)[encoding];
+      const tokenizer = encoding === 'o200k_base' ? enc : encCl;
+      const count = (text: string) => tokenizer.encode(text).length;
       const messages = [initial.system, initial.user];
       const calls = attempts.map((attempt, index) => {
         const input = messages.reduce((sum, message) => sum + count(message), 0);
@@ -630,10 +631,8 @@ async function main(): Promise<void> {
           `${String(row.task).padEnd(22)} ${String(row.side).padEnd(3)} ref ${row.referencePasses ? 'pass' : 'FAIL'}  start ${row.startFails ? 'fails' : 'PASSES'}  wrong ${row.wrongFails ? 'fails' : 'PASSES'}${row.wrongApplies ? '' : ' (NOT APPLIED)'}${row.referencePasses ? '' : `  ${JSON.stringify(row.referenceFailures)}`}`,
         );
       console.log(`self-check ${r.ok ? 'ok' : 'FAILED'}`);
-      if (
-        epoch !== undefined &&
-        JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(epoch)
-      )
+      const implementationAfter = epoch === undefined ? null : committedTree(process.cwd());
+      if (epoch !== undefined && JSON.stringify(implementationAfter) !== JSON.stringify(epoch))
         throw new Error('implementation changed during self-check');
       if (args[0] !== undefined) {
         await mkdir(dirname(args[0]), { recursive: true });
@@ -645,6 +644,7 @@ async function main(): Promise<void> {
           modelCalls: 0,
           taskSetSha256: await sealed(),
           implementation: epoch ?? null,
+          implementationAfter,
           native: native?.metadata ?? null,
           guide: { path: guidePath, sha256: sha(guide) },
           ...r,
@@ -674,7 +674,8 @@ async function main(): Promise<void> {
               surface,
               native?.services,
             );
-      if (JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(implementation))
+      const implementationAfter = committedTree(process.cwd());
+      if (JSON.stringify(implementationAfter) !== JSON.stringify(implementation))
         throw new Error('implementation changed during prompt preparation');
       const text = JSON.stringify(dump, null, 1);
       await mkdir(dirname(out), { recursive: true });
@@ -682,6 +683,7 @@ async function main(): Promise<void> {
       if (native) await writeFile(`${out}.starter.a0`, native.programs.a0);
       await writeReport(`${out}.manifest.json`, {
         implementation,
+        implementationAfter,
         runtime: { node: process.version, bun: process.versions.bun ?? null },
         a0SourceSurface: surface,
         programViewScope: process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all',
@@ -783,7 +785,8 @@ async function main(): Promise<void> {
             },
           });
         }
-      if (JSON.stringify(committedTree(process.cwd())) !== JSON.stringify(implementation))
+      const implementationAfter = committedTree(process.cwd());
+      if (JSON.stringify(implementationAfter) !== JSON.stringify(implementation))
         throw new Error('implementation changed during scoring');
       await writeReport(out, {
         generatedAt: new Date().toISOString(),
@@ -797,6 +800,7 @@ async function main(): Promise<void> {
         a0SourceSurface: surface,
         guide: { path: guidePath, sha256: sha(guide) },
         implementation,
+        implementationAfter,
         runtime: { node: process.version, bun: process.versions.bun ?? null },
         programViewScope: process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all',
         model: model ?? null,

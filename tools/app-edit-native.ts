@@ -9,6 +9,7 @@ import { createNativeEditSession } from '../src/source-native-edit-session.js';
 import { NativeSourceError } from '../src/source-native-link.js';
 import { loadNativeSourcePackage } from '../src/source-native-package.js';
 import type { A0ArmServices, Programs } from './app-edit-bench.js';
+import { START_SHA256 } from './app-edit-tasks.js';
 
 const sha = (bytes: string | Uint8Array): string =>
   createHash('sha256').update(bytes).digest('hex');
@@ -59,6 +60,8 @@ export async function nativeAppEditArm(
   historical: Programs,
   options: { readonly directory: string; readonly manifestSHA256: string },
 ) {
+  if (sha(historical.a0) !== START_SHA256.a0 || sha(historical.ts) !== START_SHA256.ts)
+    throw new Error('native application arm imports only the sealed historical starter');
   const manifestBytes = await readFile(join(options.directory, 'manifest.json'));
   const packaged = await loadNativeSourcePackage(manifestBytes, options.manifestSHA256, (name) =>
     readFile(join(options.directory, name)),
