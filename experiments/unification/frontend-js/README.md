@@ -89,3 +89,37 @@ retained Wasm buffers only; it excludes JS heap, generated code, JIT, GC and sha
 retention. A later approved comparison must include process/engine memory and cold module
 preparation, preserve every loss, and record the distinct JS and Wasm artifacts. The existing
 formal source-cost harness does not accept this target; no timing protocol is expanded here.
+
+## Recorded correctness proof
+
+[The correctness record](../../../results/source-frontend-js-correctness.json) lists the checks and
+their limits. The source frontend remains 23 A0 modules and 612 functions with the same source hash.
+The generated JS artifact is 968559 bytes; its reused arena Wasm is 16422 bytes. These are artifact
+sizes, with no claim about latency or total memory. Full build records, the 20 default-byte rows,
+six application output hashes and the final metadata-only rebuild proof are archived alongside it.
+
+The eight actual JS controls ran on `9fb763255cc48284ac0a732f11fba23f964081ab`. Final code commit
+`a5534a7ea4d468b38a427b02d798db79a2d1c6cd` imports the existing compiler-68 C-fixture metadata
+correction and its report. Fresh cold preparation proves identical generated JS, arena, compiler
+outputs and source inputs after that correction; the unchanged direct-adapter suite and final
+unsigned/resource/catalog/recovery smoke also pass. The initial direct-suite attempt correctly
+refused stale C-banner metadata before executing any case. No guard was weakened.
+
+Reproduce from sibling checkouts so their package/configuration roots remain independent:
+
+```sh
+git worktree add --detach ../a0-js-control 2f1c1740eb8e3cb63731bd2810c7e98d7da13483
+git worktree add --detach ../a0-js-run a5534a7ea4d468b38a427b02d798db79a2d1c6cd
+(cd ../a0-js-control && bun install --frozen-lockfile && bun run build)
+cd ../a0-js-run
+bun install --frozen-lockfile
+bun run build
+```
+
+Then run the explicit build/control commands above with
+`PRE_HOST_COMPILER_68_CHECKOUT=../a0-js-control` and the WASI/Clang inputs recorded in
+[the direct control](../../../results/source-frontend-js-direct-control.json).
+The loader intentionally requires its recorded clean code checkout; this results-only commit
+does not silently retag an existing artifact. Rebuilding on a different clean checkout records
+that checkout's actual identity. The conservative scope still requires the full repository and
+platform gate before a shipping push; the recorded checks do not stand in for that gate.
