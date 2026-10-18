@@ -244,7 +244,12 @@ test('structured checking preserves aggregate type identity, nested literals and
         result: nested,
         nodes: [],
         ret: parameter(0),
-        spec: { examples: [{ args: [literal], result: literal }] },
+        spec: {
+          examples: Array.from({ length: 3 }, () => ({
+            args: [structuredClone(literal)],
+            result: literal,
+          })),
+        },
       },
       { name: 'wide', params: [wide], result: wide, nodes: [], ret: parameter(0) },
       {
@@ -295,6 +300,55 @@ test('structured examples preserve result ordering when literal objects are shar
     const result = engine.checkProgram(input);
     assert.ok(result.ok, JSON.stringify(result));
     assert.equal(formatProgram(result.typed), formatProgram(validate(input)));
+  } finally {
+    engine.close();
+  }
+});
+
+test('structured contracts preserve earlier function and loop predicate dependencies', async () => {
+  const engine = nativeSource(await nativeSourceArtifact());
+  const input: Program = {
+    functions: [
+      { name: 'allowed', params: ['bool'], result: 'bool', nodes: [], ret: parameter(0) },
+      {
+        name: 'stop',
+        params: ['bool', 'u32'],
+        result: 'bool',
+        nodes: [],
+        ret: { kind: 'bool', value: false },
+      },
+      { name: 'keep', params: ['bool', 'u32'], result: 'bool', nodes: [], ret: parameter(0) },
+      {
+        name: 'subject',
+        params: ['bool'],
+        result: 'bool',
+        nodes: [],
+        ret: parameter(0),
+        spec: {
+          examples: [
+            { args: [{ kind: 'bool', value: true }], result: { kind: 'bool', value: true } },
+          ],
+          pre: {
+            id: 'pre',
+            op: 'loop',
+            callee: 'keep',
+            pred: 'stop',
+            args: [scalar(5), parameter(0)],
+          },
+          post: { id: 'post', op: 'call', callee: 'allowed', args: [reference('r')] },
+        },
+      },
+    ],
+  };
+  try {
+    const expected = validate(input),
+      result = engine.checkProgram(input);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.equal(formatProgram(result.typed), formatProgram(expected));
+    assert.equal(compile(result.typed, 'c').text, compile(expected, 'c').text);
+    const subject = result.typed.byName.get('subject');
+    assert.ok(subject);
+    assert.equal(run(subject, [true]), true);
   } finally {
     engine.close();
   }
