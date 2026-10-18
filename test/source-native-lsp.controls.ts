@@ -609,10 +609,18 @@ test('native LSP preserves genuine spec diagnostic JSON and ownership across dir
       ['A0715', 'fn target\nex 3 -> 9\nret A\nend\n'],
       ['A0716', 'fn target\nex 3 -> 3\npre lt A 2\nret A\nend\n'],
       ['A0716', 'fn target\nex 3 -> 3\npost lt r 2\nret A\nend\n'],
-      ['A0719', 'fn target\nex 3 -> 3\nx div A 0\nret x\nend\n'],
+      ['A0715', 'fn target\nex 3 -> 3\nx div A 0\nret x\nend\n'],
+      [
+        'A0716',
+        'fn exploding _ -> bool\nx div A 0\ny eq x 0\nret y\nend\nfn target\nex 3 -> 3\npre exploding A\nret A\nend\n',
+      ],
       [
         'A0719',
-        'fn exploding _ -> bool\nx div A 0\ny eq x 0\nret y\nend\nfn target\nex 3 -> 3\npre exploding A\nret A\nend\n',
+        'fn step u32 u32 -> u32\nx add p0 1\nret x\nend\nfn target u32 -> u32\nex 1 -> 20001\nx fold step 20000 p0\nret x\nend\n',
+      ],
+      [
+        'A0719',
+        'fn step u32 u32 -> u32\nx add p0 1\nret x\nend\nfn heavy u32 -> bool\nx fold step 20000 p0\ny eq x 0\nret y\nend\nfn target u32 -> u32\nex 1 -> 1\npre heavy p0\nret p0\nend\n',
       ],
     ] as const;
     await writeFile(main, baseMain);
@@ -662,7 +670,7 @@ test('native LSP preserves genuine spec diagnostic JSON and ownership across dir
           );
           assert.equal(actual.range.start.line, imported ? 2 : Number(location[2]) - 1);
           assert.ok(!JSON.stringify(actual).includes(root));
-          if (id === 'A0715') {
+          if (id === 'A0715' && expected.spec?.actual === '3') {
             const actions = await session.client.sendRequest<
               { edit: { changes: Record<string, TextEdit[]> } }[]
             >('textDocument/codeAction', {
