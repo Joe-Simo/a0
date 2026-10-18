@@ -1,0 +1,528 @@
+{
+  "schema": 1,
+  "inspectedCommit": "ca3cc4e07791edc4a33a601d760eb949df474911",
+  "method": "Read-only call-site, source-asset, API lifetime and existing-evidence inspection. No new runtime tests or timing trials.",
+  "status": "Public cutover incomplete. Current .a0 and .a0d compiler/MCP/editor routes still use historical readers.",
+  "counts": {
+    "trackedA0": 342,
+    "trackedA0d": 0,
+    "trackedA0s": 21,
+    "historicalDenseCopies": 91,
+    "rejectCorpusSources": 77,
+    "otherTrackedA0Units": 174,
+    "rootAndExtensionGroups": {
+      "compiler:a0": 116,
+      "compiler:a0s": 21,
+      "corpus:a0": 77,
+      "dense:a0": 91,
+      "editors:a0": 3,
+      "examples:a0": 2,
+      "results:a0": 1,
+      "seed:a0": 3,
+      "site:a0": 27,
+      "test:a0": 20,
+      "tools:a0": 2
+    },
+    "note": "Tracked units are an asset inventory, not independent applications or proof every file is a standalone accepted program."
+  },
+  "directProductionRoutes": {
+    "legacyLinkImporters": [
+      "src/cli-main.ts",
+      "src/lsp.ts",
+      "src/mcp.ts",
+      "src/migrate.ts",
+      "src/protection/build.ts",
+      "src/protection/disk.ts"
+    ],
+    "denseModuleImporters": [
+      "src/cli-main.ts",
+      "src/dense-edit.ts",
+      "src/edit.ts",
+      "src/link.ts",
+      "src/lsp.ts",
+      "src/mcp.ts",
+      "src/migrate.ts"
+    ],
+    "nativeGraphLinkImportersUnderSrc": [],
+    "candidateReferenceLinkImportersUnderSrc": [
+      "src/migrate.ts"
+    ],
+    "referenceFlatParserImportsUnderSrc": [
+      "src/migrate.ts",
+      "src/source-link.ts"
+    ],
+    "note": "Imports counted recursively under src; type-only backend imports of core are not evidence of a second source ingress."
+  },
+  "layers": [
+    {
+      "area": "Compiler entry and filesystem source graph",
+      "paths": [
+        "src/a0.ts",
+        "src/native-fast.ts",
+        "src/cli-main.ts",
+        "src/link.ts",
+        "src/linker.ts",
+        "src/node-fs.ts"
+      ],
+      "current": "Standalone plain check can accept through the historical prebuilt checker and falls back to the TS CLI. link chooses canonical parse or Dense/.a0d parse and checkProgramUnits calls core.validate.",
+      "required": "One A0 source authority on all commands, including errors/resource refusals. Keep graph confinement, cycle/profile/duplicate ownership and injected storage policy. Route raw-file bytes through fatal UTF8 decoding before upload. Never use a legacy source parser as native failure fallback."
+    },
+    {
+      "area": "Source grammar, validator and internal compiler IR",
+      "paths": [
+        "src/core.ts",
+        "src/source.ts",
+        "src/source-native.ts",
+        "src/optimize.ts",
+        "src/avr.ts",
+        "src/spec.ts"
+      ],
+      "current": "TS canonical, Dense and candidate-flat grammar implementations coexist with historical paged A0 and Dense A0 readers. The full-word A0 grammar/checker is private. Optimizer/AVR/spec code also directly calls TS validateFunction/validate on transformed or synthetic IR.",
+      "required": "Retire duplicate source parsing from normal compilation. Keep typed IR/runtime/backend utilities. Route language-semantic IR checking through the shared A0 authority; retain old validation only as an isolated differential oracle or explicitly separate backend IR verifier without source acceptance authority."
+    },
+    {
+      "area": "Formatting, revisions and retained source sessions",
+      "paths": [
+        "src/source-native-format.ts",
+        "src/source-native.ts",
+        "src/source-native-compose.ts",
+        "src/source-native-link.ts",
+        "src/revision.ts"
+      ],
+      "current": "A0 formatting/revision companion is optional. format/revision require the current result identity. Native linking returns a fresh TypedProgram spread and does not expose that live result. Parsed-unit snapshots survive checking but their original arena handles do not.",
+      "required": "Connect authentic retained file units to the same A0 formatter with explicit activation/lifetime rules. Preserve authoring metadata for edited structured IR. Keep historical revision serialization private and byte stable; it is not an alternate source syntax."
+    },
+    {
+      "area": "Structured edits and executable specifications",
+      "paths": [
+        "src/edit.ts",
+        "src/dense-edit.ts",
+        "src/spec.ts",
+        "src/fix.ts"
+      ],
+      "current": "EditSession uses canonical parseNode/parseOperand/parse/validateFunction and Dense translation chosen by each handle. Spec parsing/printing is also a reference-source path. Revision guards, dependency ordering, transactional rejection and exact fixes are public behavior.",
+      "required": "Use the same flat A0 grammar for function/instruction/contract payloads, preserving edit-command framing as a protocol rather than another source dialect. Complete authoring encoding and native spec JSON/repair payloads. Measure incremental accepted-edit work, not only whole-program parse latency."
+    },
+    {
+      "area": "CLI, MCP and LSP",
+      "paths": [
+        "src/cli-main.ts",
+        "src/mcp.ts",
+        "src/lsp.ts"
+      ],
+      "current": "CLI exposes dense/canon commands and --dense/--dense=a0. MCP defaults to Dense views/replies with dense:false canonical opt-out; compact is a separate protocol experiment. Saves depend on destination extension. LSP uses legacy link, canonical formatting or a .a0d Dense branch.",
+      "required": "Cut views, edit payloads, saves, diagnostics, hints, completions and schema descriptions together to one flat spelling. Remove source-mode switches. Preserve semantic strict/default profiles and protocol/tool capability options. Preserve MCP A0807: saving a linked multi-file program to its original file is refused; save-as emits the flattened program."
+    },
+    {
+      "area": "Deterministic historical import and protection",
+      "paths": [
+        "src/migrate.ts",
+        "src/protection/build.ts",
+        "src/protection/disk.ts",
+        "src/protection/vault.ts"
+      ],
+      "current": "Public migrate targets Dense/.a0d; private migrateSourceProject targets flat using the reference TS source codec/link. Staging verifies comments, fixed points, semantic hashes, source bytes, containment and no overwrite. Sealed compilation uses the same legacy linker; source inventories and vault roles accept .a0/.a0d.",
+      "required": "Make flat the sole migration output, checked and printed by A0. Keep old-reader selection explicit only in the historical import command; do not guess ambiguous .a0 text. Preserve guarded staging and sealed virtual-source adapters, storage/confidentiality rules and managed-source path migration."
+    },
+    {
+      "area": "Self-hosted toolchains and bootstrap",
+      "paths": [
+        "compiler/boot.a0",
+        "compiler/parse.a0",
+        "compiler/dense.a0",
+        "compiler/source_frontend.a0",
+        "tools/bootstrap.ts",
+        "tools/bootstrap-arm64.ts",
+        "tools/bootstrap-macho.ts",
+        "tools/selfhost-wasm.ts",
+        "tools/seed.ts",
+        "seed/"
+      ],
+      "current": "Official seed and C/ARM64/Mach-O/Wasm tools still enter the historical paged reader. Private raw-source C stage uses the shared grammar and has reproduction controls, but is not the official seed. Full-word C output/package footprint remains a measured gate.",
+      "required": "Move every self-hosted source ingress to the shared grammar or checked internal IR, preserving existing backend capabilities. Prove native fixed points, source/behavior parity and the existing whole seed package size floor. Do not waive the floor or add a source-to-source shim before a legacy parser."
+    },
+    {
+      "area": "Source assets, source generators and website",
+      "paths": [
+        "compiler/",
+        "examples/",
+        "corpus/",
+        "site/",
+        "site/gen/page.tpl",
+        "site/gen/docs.tpl",
+        "site/gen/bench.tpl",
+        "tools/site-gen.ts",
+        "tools/site-build.ts",
+        "tools/a0s.ts",
+        "dense/"
+      ],
+      "current": "Compiler, examples, site generator/pages/live apps, fixtures, seed chunks and snippets still use historical source spelling. Twenty-one .a0s authoring files generate compiler .a0; 91 Dense copies remain. Site build and generator link through the public legacy reader.",
+      "required": "Convert and verify live source plus generators that would overwrite it, regenerate seed/site/snippets, then remove duplicate Dense trees. Make .a0s research historical rather than a second maintained compiler-source language. Preserve original benchmark cells as explicitly historical controls rather than relabeling them unified."
+    },
+    {
+      "area": "Editor assets, guides and installed bundles",
+      "paths": [
+        "editors/tree-sitter-a0/grammar.js",
+        "editors/tree-sitter-a0/src/",
+        "editors/tree-sitter-a0/test/",
+        "editors/vscode/syntaxes/a0.tmLanguage.json",
+        "editors/vscode/package.json",
+        "editors/linguist/",
+        "skills/a0/",
+        "plugin/skills/a0/",
+        "MODEL_GUIDE.txt",
+        "MODEL_GUIDE.dense.txt",
+        "README.md",
+        "DESIGN.md",
+        "STATUS.md",
+        "tools/mcpb.ts",
+        "tools/release.sh"
+      ],
+      "current": "TextMate/Tree-sitter teach explicit canonical headers/types/pN, while skill/MCP guides teach a Dense default and a separate canonical opt-out. Release artifacts still package historical checker/CLI paths.",
+      "required": "One source guide and one default formatter across editor syntax support and distribution. Editor parsers remain syntax consumers, not semantic authorities. Generate/update fixtures and enforce conformance with the A0 frontend. Keep history/research and legal/SEO uses of canonical separate from source-mode removal."
+    }
+  ],
+  "establishedNativeCapabilities": {
+    "evidence": "results/unified-core-68-integration.json",
+    "testedProductionCommit": "f8546a9c608569a96c9214357f13965a4113f514",
+    "implementation": "Same A0 source grammar/checker compiled through C-derived Wasm, direct Wasm and generated JS, with shared generic host transport and no TS grammar/checker fallback.",
+    "bundledFixture": {
+      "sourceFiles": 23,
+      "reachableFunctions": 612,
+      "wasmBytes": 358233,
+      "wasmSHA256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926"
+    },
+    "controls": {
+      "threeBackendFormatRevisionOwnership": 15,
+      "generatedJSFrontend": 8,
+      "directFrontend": 3,
+      "hostIRUnicodeStrictArtifacts": 29
+    },
+    "behavior": [
+      "parseUnit before external-callee checking",
+      "dependency snapshots/checkUnits and owned source origins",
+      "checkProgram without source printing/parsing",
+      "ordered contracts/examples and resource failures",
+      "optional A0 diagnostics, formatting, maps and historical revisions",
+      "same frontend parses/checks its own source",
+      "six frozen applications agree across native backends and independent reference"
+    ],
+    "limits": [
+      "These are cited correctness records, not new executions in this inventory.",
+      "Default production routing, accepted-edit latency/memory and full public spec diagnostics are not established by these counts.",
+      "A128 authoring follow-up and spec renderer work are in separate active branches and absent from this inspected tree."
+    ]
+  },
+  "contractBoundaries": {
+    "actualBlockers": [
+      "Native spec failure JSON/repairs for A0714-A0716/A0719",
+      "Edited-source authoring metadata and one A0 formatter connection",
+      "Persistent/per-file formatting ownership after graph checking",
+      "Public edit and source ingress rewiring without TS fallback",
+      "Measured native and incremental edit costs",
+      "Every self-hosted ingress plus seed/package compatibility"
+    ],
+    "arbitraryNumericIR": {
+      "evidenceCommit": "ed29456",
+      "evidence": "results/native-numeric-contract.json",
+      "conclusion": "Read-only follow-up inventory found no accepted source spelling that constructs invalid u32 payloads. MCP apply receives an edit string; runtime JSON arguments pass checkArgument, not arbitrary IR. Negative/fractional/NaN/infinite/out-of-range handbuilt operand quirks are not an accepted-source cutover blocker. Full arbitrary public Program parity would require an explicit contract decision; no promise is made here."
+    },
+    "keepDistinct": [
+      "canonical versus strict names are semantic profiles, not source dialects",
+      "physical canonical paths and HTML rel=canonical are unrelated to source modes",
+      "private historical revision serialization is allowed internal representation",
+      "target SDK/OS execution gates do not make the language source platform-specific"
+    ]
+  },
+  "orderedBatches": [
+    {
+      "batch": 1,
+      "name": "Finish private authority and ownership boundaries",
+      "dependsOn": [],
+      "work": [
+        "Finish A128 authoring and native spec JSON under current source contract.",
+        "Implement explicit authentic-unit formatting activation; freeze public frontend packaging/UTF8 boundary and source-result ownership API.",
+        "Expose shared A0 parsing/checking for edit payloads and transformed IR without a source-mode fallback."
+      ],
+      "acceptance": "Existing source/native/format/diagnostic controls plus multi-file imports/profile/tails, stale/foreign/mutated/closed units and exact transactional edit failures."
+    },
+    {
+      "batch": 2,
+      "name": "Prove costs and bootstrap replacement",
+      "dependsOn": [
+        1
+      ],
+      "work": [
+        "Resolve retained native frontend/incremental-edit time and memory losses with matched independent application controls.",
+        "Finish raw-source C bootstrap footprint, original-source stage2/3/4 fixed points and Windows/Apple/Linux host gates.",
+        "Route other self-hosted compiler source entries through the same grammar or checked internal IR."
+      ],
+      "acceptance": "No waived size/performance floors, no skipped required platform steps, same semantics/output and complete recorded artifact/source provenance. Preparation can proceed in parallel with batch1."
+    },
+    {
+      "batch": 3,
+      "name": "Prepare one public facade and migrate real source assets",
+      "dependsOn": [
+        1,
+        2
+      ],
+      "work": [
+        "Switch private integration checkout CLI/linker/EditSession/MCP/LSP/protection and formatter/revision callers to the shared A0 session contract.",
+        "Make guarded historical migration emit native-verified flat .a0; convert dependencies, compiler authoring sources, examples, website generator/pages and fixtures.",
+        "Regenerate seed/site/editor fixtures and retain explicit old Canonical/Dense control inputs outside normal compilation."
+      ],
+      "acceptance": "Whole dependency closures, comments/imports/specs/profiles/revisions, all applicable backend behavior and self-hosting agree before redundant readers are removed."
+    },
+    {
+      "batch": 4,
+      "name": "Remove public source choices and update distribution",
+      "dependsOn": [
+        3
+      ],
+      "work": [
+        "Remove Dense/Canonical source modes, extension routing, flags, converters from ordinary compile entry points, duplicate trees and obsolete mode tests.",
+        "Update one guide, MCP schemas, editor syntax assets, website source examples and release/MCP bundles together.",
+        "Keep only explicitly invoked historical import tooling and accurately labeled experiment evidence."
+      ],
+      "acceptance": "CLI, MCP, LSP, SDK, source files and formatter emit one flat syntax; every compiler source ingress uses one A0 grammar/checker; semantic profiles and targets remain."
+    },
+    {
+      "batch": 5,
+      "name": "Verify and publish the exact integrated subject",
+      "dependsOn": [
+        4
+      ],
+      "work": [
+        "Run complete scope/full gates, deterministic migration, independent AI edit controls and accepted-edit cost checks on the integrated tree.",
+        "Use the existing reviewed merge/artifact/notes path, then update main and deploy verified website/release artifacts."
+      ],
+      "acceptance": "Only exact passing subject/tree/base/artifact evidence supports cutover, no-regression or deployment claims."
+    }
+  ],
+  "formattingActivationProposal": {
+    "status": "API proposal only; no implementation",
+    "api": "activateUnitForFormat(ownedUnit,budget?) -> opaque current formatting input; existing format/revision consume that input",
+    "ownership": "Look up the original unit in this open engine private WeakMap before any arena mutation. Copy private scalar M/PS metadata with the existing owned source/table/symbol/type snapshots; never trust public result.state/program fields.",
+    "restore": "Explicitly reset through generic IR initialization/upload, reintern original symbol/type IDs, rebind all handles/source references, restore imports and M24/M25/M26, and publish a matching PS directory. Do not use composeNativeUnits([unit]), which strips imports/promotes comments for graph composition.",
+    "authority": "No source reparse, no TS formatter or checker, and no unchecked TypedProgram result. The existing A0 formatter remains authoritative.",
+    "lifecycle": "Successful activation increments generation and explicitly invalidates earlier live graph/format inputs. Next parse/check/activation/close invalidates the new input. Foreign/closed requests reject before changing the current arena. Outputs are detached before any reset.",
+    "metadataCoordination": "Parsed source units need their original M/PS tables, not A128. Future captured structured-authoring states must reupload/rebind A128 vectors and source pool rather than retaining session handles.",
+    "remainingMcpConnection": "Edited MCP whole-Program formatting must connect the completed authoring encoder to the same A0 formatter; original multi-file save refusal remains. No per-file multi-file MCP editing feature is required.",
+    "controls": [
+      "unit format bytes/maps equal before and after graph checking",
+      "external callees, imports, strict profile, functionless/trailing/Unicode comments",
+      "private copies ignore public mutation",
+      "stale current result rejected after explicit activation",
+      "foreign ownership and closed-engine rejection",
+      "allocation refusal exposes no partial format input/output",
+      "existing checkUnits can reuse authentic snapshots after formatting",
+      "C-derived/direct/JS transports agree"
+    ]
+  },
+  "inspectedFiles": [
+    {
+      "path": "docs/design/unified-syntax.md",
+      "sha256": "87196ec558d243e933a3fc665f391276b17eab5cb44def3a58ad2aaa0b7ef4a3"
+    },
+    {
+      "path": "docs/design/arena-format.md",
+      "sha256": "3e3d5a8ba25a645515b0c1d1ed68094b82f416fb51930a411672dc699f5c112d"
+    },
+    {
+      "path": "docs/design/native-diagnostic-adapter.md",
+      "sha256": "6e6dcad62265df961adc4d54617eeca83cef4c8f3c6bcc73d230ca59c3c188c7"
+    },
+    {
+      "path": "src/a0.ts",
+      "sha256": "af84ec894223e44281aa2a4aa0b5f913bc1c0e09d37f3b2a449c970a2f2eb40b"
+    },
+    {
+      "path": "src/native-fast.ts",
+      "sha256": "ec5d2bd134cba22397dc792c4ed201670e522c5b7e9b56b2c710f4ffe8f98abb"
+    },
+    {
+      "path": "src/core.ts",
+      "sha256": "8cc1232799e4924a631fab095bdcdf1ba32cd8e5fc691d85000990f5badfdbbb"
+    },
+    {
+      "path": "src/dense.ts",
+      "sha256": "936d64ac0268f29d6138c3908e48741af9ff17679bc814cec5d9d3c7fb1c88b7"
+    },
+    {
+      "path": "src/dense-a0.ts",
+      "sha256": "2814679fcff2dffe55971251a2c026b3054dddcfeddc75acf975dfb9415976c9"
+    },
+    {
+      "path": "src/dense-edit.ts",
+      "sha256": "21edb6cfb1931dd3d0fefd913c05cffa5e75d54654635c7919202b42e5b54a6e"
+    },
+    {
+      "path": "src/source.ts",
+      "sha256": "4322b9c6e8a869d24ed964c2b79734dec17b75bc843fe6690e3a6c66c452687d"
+    },
+    {
+      "path": "src/link.ts",
+      "sha256": "1fe8c719ff072ea01fdb273d43a18fb70f73dbc6ba1ee533760fbc004f402a85"
+    },
+    {
+      "path": "src/linker.ts",
+      "sha256": "1c31e02d0e0106b138c1a531d454c5df9823413bf15c32589b9b2fa328ef4596"
+    },
+    {
+      "path": "src/source-link.ts",
+      "sha256": "42afbf7dab463a34528e7fc4805e8514846922b565763d628b3e514efd36b7b3"
+    },
+    {
+      "path": "src/source-native-link.ts",
+      "sha256": "03bb7181f6fb640ea73cdd33787abdf1cb3abe8ddabdff63cdf4a4c99c310f33"
+    },
+    {
+      "path": "src/source-native.ts",
+      "sha256": "3f394c93a8961d8a1108926655fa8c98694e4bf81e3bac11f146032e6226b5c6"
+    },
+    {
+      "path": "src/source-native-compose.ts",
+      "sha256": "9960f826fddf3ca15286740f72967a52a9e8f043d7095cd5b3278839f61b13a1"
+    },
+    {
+      "path": "src/source-native-program.ts",
+      "sha256": "12f22e8f90f5212efb09b29aacd212a0dea53b22944c7a1e22017b18f3db5740"
+    },
+    {
+      "path": "src/source-native-format.ts",
+      "sha256": "951b91ca663b05a59b550008c45dc870d8ce22e94595fcc1a4c310b183398f95"
+    },
+    {
+      "path": "src/source-utf8.ts",
+      "sha256": "b59c39f9ad27037fec19b67a9d97c34a5a698a820ac06bb1a36dd6ee4be34669"
+    },
+    {
+      "path": "src/cli-main.ts",
+      "sha256": "7f188e302c321e8d3aff89812e587ebe9ccc7d5c8523871dc1c43436a6ebba68"
+    },
+    {
+      "path": "src/mcp.ts",
+      "sha256": "5ec4cc7b813c4262c2cdfa54a2e808b2a09f9b47d858c3f92f29d1d399a5ab41"
+    },
+    {
+      "path": "src/lsp.ts",
+      "sha256": "f675760e873e9f8e78561838f28b0902f5b5772c2393e757e09b7474874fc56a"
+    },
+    {
+      "path": "src/edit.ts",
+      "sha256": "ff9ba329008116c6e793c4668f0bcdfd87f919fed7ea737a89163c0dcf224601"
+    },
+    {
+      "path": "src/spec.ts",
+      "sha256": "4642296e5c553e1106485c90ca2322de8a6167f8e2b1906382419d15260a2edc"
+    },
+    {
+      "path": "src/revision.ts",
+      "sha256": "ca707451816fa2893c9261303f2341d021b2a8c57ec6ab042b3720390d1eb37f"
+    },
+    {
+      "path": "src/explain.ts",
+      "sha256": "11b45696a0c21c5a2e2e726ee4780641d65c2aeaa07283a20373921d336cc4ee"
+    },
+    {
+      "path": "src/optimize.ts",
+      "sha256": "c7b25b1997fd1c0815d632f6a5dedbff803643714cbc2ca1364adb6d25dd1a4e"
+    },
+    {
+      "path": "src/avr.ts",
+      "sha256": "b5733623854ec4aa73f4a759291bfb604f8308e2345d5667018d7da05e7abd90"
+    },
+    {
+      "path": "src/migrate.ts",
+      "sha256": "b2a81c79efa52d59ec2f81af74a3597a3c961985a7317a712134757ffd72713d"
+    },
+    {
+      "path": "src/protection/build.ts",
+      "sha256": "946026d2586ef686beec770264c97d60271cdefe87b3c9e01a03fd06afe9aa50"
+    },
+    {
+      "path": "src/protection/disk.ts",
+      "sha256": "ed63575ae45a0ed3e300d8c31629c89cbd476bda4a3856a3606197d5e21edfdf"
+    },
+    {
+      "path": "src/protection/vault.ts",
+      "sha256": "f687d730509aecadd0465e4e938ba54d628ca9a9aa35bd102fbf197fa54b6d8d"
+    },
+    {
+      "path": "compiler/boot.a0",
+      "sha256": "00cb4dc4566a2a36bd60e4ed60b5370e19e3cdedb93aa928148e58b62c854e62"
+    },
+    {
+      "path": "compiler/source_frontend.a0",
+      "sha256": "bc36cc4527dc40e7fda17dda239da43a80655beb4c95e3ecb49e4308dec42f43"
+    },
+    {
+      "path": "compiler/source_ir.a0",
+      "sha256": "5a999f01c0b0d5bb034468bf7e3d54cd5ac1c34e1bf502eb77526771521c3554"
+    },
+    {
+      "path": "compiler/dense.a0",
+      "sha256": "8a917719ca341b59dfed26103f5d272ee35d4b6ce361e522b4d41f60abdccf9d"
+    },
+    {
+      "path": "tools/seed.ts",
+      "sha256": "f6d0c65858d0c8c9a04eea5f5ceae585823c94b7933313ce07e43395bfb3d794"
+    },
+    {
+      "path": "tools/bootstrap.ts",
+      "sha256": "88fede3f4e014ad2b32b9fc11cc596ec416ce913048faf23c2b3406c7dd9dac5"
+    },
+    {
+      "path": "tools/bootstrap-arm64.ts",
+      "sha256": "644b203c21fdd9d08c20a9ffbdc58e2ede9cc7a4115acf699f2073cef0e7fae0"
+    },
+    {
+      "path": "tools/bootstrap-macho.ts",
+      "sha256": "ae00218d946196b37889becdd1072d464779eb2e8fb0ff99f7109f6118fd7787"
+    },
+    {
+      "path": "tools/selfhost-wasm.ts",
+      "sha256": "a9a78e9d0a6f3ac9b2eb13905527218e3a0450ea48eae1d9f79edab1e163b02a"
+    },
+    {
+      "path": "tools/a0s.ts",
+      "sha256": "eecb298f59bcc70285c37f214d0298924567c77d216f6a38e02895e7f2a00769"
+    },
+    {
+      "path": "tools/site-build.ts",
+      "sha256": "50716ef0fbb0e34175ef0c123dff797a5c453cfbdc8b590bfed3e48f60b4d18d"
+    },
+    {
+      "path": "tools/site-gen.ts",
+      "sha256": "036a685461d23d9c6798c5e9177b18ac7c48f550d06c1df477d26b790ed6b4eb"
+    },
+    {
+      "path": "editors/tree-sitter-a0/grammar.js",
+      "sha256": "6904af429127fe506ffc3298077bc0767c9e3aafaf772ce2188351e91a1f7db8"
+    },
+    {
+      "path": "editors/vscode/syntaxes/a0.tmLanguage.json",
+      "sha256": "33d4b30fb015c4e96c6c58750340a230e8452749c25ca0646cd77a963d986a97"
+    },
+    {
+      "path": "editors/vscode/package.json",
+      "sha256": "886373b7812183dc73b10d12e8165a65215351ffe1d44729767254fb3c321602"
+    },
+    {
+      "path": "editors/linguist/languages.yml",
+      "sha256": "94a60093aa3430cef04913cdf2f92fecb16004676ca1854f56760b8e18c1256b"
+    },
+    {
+      "path": "test/seed.test.ts",
+      "sha256": "67d7dc3f2fe136166334966c959baac46135e2e0f1cd5199503d8ccf2d56a847"
+    }
+  ],
+  "reuse": [
+    "docs/design/unified-syntax.md",
+    "docs/design/arena-format.md",
+    "docs/design/native-diagnostic-adapter.md",
+    "results/unified-core-68-integration.json",
+    "results/unification-codex-v2-replication.json",
+    "results/source-cost-readonly-call-decision.json"
+  ]
+}
