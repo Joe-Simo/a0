@@ -138,6 +138,7 @@ for (const [backend, factory, plainFactory] of factories) {
 
   test(`${backend}: authoritative complete checks hoist existing callees and reject cycles without mutating the input`, () => {
     const frontend = factory();
+    const plain = plainFactory();
     try {
       const source = 'fn a\nret add A 1\nend\nfn b\nret mul A 2\nend\nfn c\nret A\nend\n';
       const before = initial(frontend, source), saved = structuredClone(before);
@@ -147,6 +148,26 @@ for (const [backend, factory, plainFactory] of factories) {
       assert.equal(checks, 2, 'one rejected order and one checked structural hoist');
       equivalent(next, 'fn b\nret mul A 2\nend\nfn a\nx b A\nret x\nend\nfn c\nret A\nend\n');
       assert.equal(run(next.byName.get('a') as NonNullable<typeof next.functions[number]>, [3]), 6);
+      let rawChecks = 0;
+      const rawAuthority: Frontend = { ...plain, checkProgram(program, budget) { rawChecks++; return plain.checkProgram(program, budget); } };
+      const rawNext = editNativeProgram(before, 'fn a\nx b A\nret x\nend\n', rawAuthority);
+      assert.equal(rawChecks, 2);
+      assert.equal(formatProgram(rawNext), formatProgram(next), 'the optional renderer does not change accepted program edits');
+      equivalent(rawNext, 'fn b\nret mul A 2\nend\nfn a\nx b A\nret x\nend\nfn c\nret A\nend\n');
+      const rawFailures: Extract<ReturnType<Frontend['checkProgram']>, { readonly ok: false }>[] = [];
+      const retainRaw: Frontend = { ...plain, checkProgram(program, budget) {
+        const result = plain.checkProgram(program, budget);
+        if (!result.ok) rawFailures.push(result);
+        return result;
+      } };
+      assert.throws(() => editNativeProgram(before, 'fn a\nx b A\nret x\nend\nfn b\nret true\nend\n', retainRaw), error => {
+        assert.ok(error instanceof NativeSourceError);
+        assert.equal(rawFailures.length, 2);
+        assert.equal(error.result, rawFailures[0], 'a second raw semantic failure preserves the first native error/facts');
+        assert.equal(error.diagnostic, 102);
+        return true;
+      });
+      unchanged(before, saved);
       for (const duplicate of [
         'fn fresh\nret 1\nend\nfn fresh\nret 2\nend\n',
         'fn a\nret A\nend\nfn a\nret add A 1\nend\n',
@@ -168,7 +189,7 @@ for (const [backend, factory, plainFactory] of factories) {
         unchanged(before, saved);
       }
       assert.ok(frontend.parse(source).ok, 'the same engine recovers after rejected edits');
-    } finally { frontend.close(); }
+    } finally { frontend.close(); plain.close(); }
   });
 
   test(`${backend}: absent capabilities, raw diagnostics, allocation and encoding refusals never use host acceptance`, () => {
@@ -178,10 +199,12 @@ for (const [backend, factory, plainFactory] of factories) {
       const before = initial(frontend), saved = structuredClone(before);
       const bounded: Frontend = { ...frontend, checkProgram(program) { return frontend.checkProgram(program, 0); } };
       assert.throws(() => editNativeProgram(before, 'fn top\nret A\nend\n', bounded), error => error instanceof NativeSourceError && error.status === 4);
-      let checks = 0;
-      const retryBounded: Frontend = { ...frontend, checkProgram(program, budget) { checks++; return frontend.checkProgram(program, checks === 2 ? 0 : budget); } };
-      assert.throws(() => editNativeProgram(before, 'fn top\nx spare A\nret x\nend\n', retryBounded), error => error instanceof NativeSourceError && error.status === 4);
-      assert.equal(checks, 2, 'a raw allocation refusal on the hoisted retry is not masked by the first semantic error');
+      for (const authority of [frontend, plain]) {
+        let checks = 0;
+        const retryBounded: Frontend = { ...authority, checkProgram(program, budget) { checks++; return authority.checkProgram(program, checks === 2 ? 0 : budget); } };
+        assert.throws(() => editNativeProgram(before, 'fn top\nx spare A\nret x\nend\n', retryBounded), error => error instanceof NativeSourceError && error.status === 4);
+        assert.equal(checks, 2, 'a raw allocation refusal on retry propagates with or without a renderer');
+      }
       const parseBounded: Frontend = { ...frontend, parseUnit(source) { return frontend.parseUnit(source, 0); } };
       assert.throws(() => editNativeProgram(before, 'fn top\nret A\nend\n', parseBounded), error => error instanceof NativeSourceError && error.status === 4);
       assert.throws(() => editNativeProgram(before, 'fn malformed\nret\nend\n', plain), error => error instanceof NativeSourceError && error.a0Error === undefined);

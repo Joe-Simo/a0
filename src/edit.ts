@@ -516,34 +516,48 @@ export function stripCodeFences(text: string): string {
 }
 
 /** Internal staged language dependency; this does not select a source dialect. */
+export interface ProgramEditFailure {
+  /** Omitted for an uncatalogued semantic diagnostic, never inferred from message text. */
+  readonly diagnosticID?: string;
+}
+
 export interface ProgramEditLanguage {
   parseUnit(text: string): Program;
   check(program: Program): TypedProgram;
   signature(fn: Func): string;
+  /** Presence identifies a genuine semantic rejection; absence preserves a raw refusal. */
+  failure(error: unknown): ProgramEditFailure | undefined;
+}
+
+function legacyProgramEditFailure(error: unknown): ProgramEditFailure | undefined {
+  return error instanceof A0Error
+    ? error.id === undefined ? {} : { diagnosticID: error.id }
+    : undefined;
 }
 
 /**
  * One ordering policy shared by the existing and staged native program-edit entry points.
  * A0102/3/4 may retry with each callee moved before its first caller by `hoistCallees`.
  * The reordered program receives a complete check. A cycle or another semantic rejection
- * retains the original diagnostic; a non-A0 checker refusal or unexpected failure propagates.
+ * retains the original diagnostic; a nonsemantic refusal or unexpected failure propagates.
  */
 export function validateOrderedWith(
   program: Program,
   check: ProgramEditLanguage['check'],
+  failure: ProgramEditLanguage['failure'] = legacyProgramEditFailure,
 ): TypedProgram {
   try {
     return check(program);
   } catch (e) {
-    if (!(e instanceof A0Error) || !['A0102', 'A0103', 'A0104'].includes(e.id ?? '')) throw e;
+    if (!['A0102', 'A0103', 'A0104'].includes(failure(e)?.diagnosticID ?? '')) throw e;
     const hoisted = hoistCallees(program.functions);
     if (hoisted === undefined) throw e;
     try {
       return check({ ...program, functions: hoisted });
     } catch (retryError) {
       // Preserve native resource/transport refusals and unexpected checker failures.
-      // Only a second semantic diagnostic is replaced by the original ordering error.
-      if (!(retryError instanceof A0Error)) throw retryError;
+      // Only a second classified semantic diagnostic restores the original ordering error.
+      if (failure(retryError) === undefined) throw retryError;
       throw e;
     }
   }
@@ -1068,6 +1082,7 @@ const LEGACY_PROGRAM_EDIT_LANGUAGE: ProgramEditLanguage = {
   parseUnit: parse,
   check: validate,
   signature: formatSignature,
+  failure: legacyProgramEditFailure,
 };
 
 /** Internal transaction kernel; all source interpretation belongs to the supplied language. */
@@ -1139,6 +1154,7 @@ export function editProgramWithLanguage(
   return validateOrderedWith(
     { ...(profile === undefined ? {} : { profile }), functions },
     (candidate) => language.check(candidate),
+    (error) => language.failure(error),
   );
 }
 

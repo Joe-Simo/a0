@@ -11,11 +11,14 @@ The transaction algorithm lives once in `editProgramWithLanguage`. The existing 
 wrapper supplies its original parser/checker/printer dependencies and retains its default behavior.
 Both entries share optional block closing, function removal/replacement, replacement placement,
 profile edits, hidden-spec retention, stable call ordering and complete-result validation. Ordered
-validation also shares one `validateOrderedWith` implementation; only genuine semantic diagnostics
-from the actual A0 renderer can enter its existing callee-hoisting policy. A missing renderer or a
-native resource/transport refusal does not invoke host parsing, checking or diagnostic classification.
-The shared ordered checker now propagates a non-A0 exception from the hoisted retry instead of
-masking it with the first ordering error. A second genuine semantic A0Error still preserves that
+validation also shares one `validateOrderedWith` implementation. Its internal failure service reads
+genuine semantic rejection identity: an existing A0Error, or the native frontend's schema1 status6/8
+and catalog-validated numeric diagnostic facts. Only A0102/3/4 enter the existing callee-hoisting
+policy. The optional renderer enriches errors but does not decide which valid edits are accepted.
+No fake A0Error, message matching, host recheck or semantic fallback is used for a raw native error.
+The original error object/facts remain intact. Resource/transport statuses do not enter the policy.
+The shared ordered checker propagates an unclassified refusal from the hoisted retry instead of
+masking it with the first ordering error. A second genuine semantic rejection still preserves that
 original diagnostic. This narrow unexpected-exception change also applies to the legacy wrapper.
 
 Source payload lines reach the native parser with their comments intact. The native checker returns

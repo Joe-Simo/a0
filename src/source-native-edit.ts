@@ -1,6 +1,7 @@
 /** Staged whole-function edits through the shared A0 language services; no session/default switch. */
 import type { Func, TypedProgram } from './core.js';
-import { editProgramWithLanguage, type ProgramEditLanguage } from './edit.js';
+import { A0Error, isDiagId } from './diagnostics.js';
+import { editProgramWithLanguage, type ProgramEditFailure, type ProgramEditLanguage } from './edit.js';
 import type { nativeSource, NativeSourceResult } from './source-native.js';
 import { NativeSourceError } from './source-native-link.js';
 
@@ -8,9 +9,27 @@ type Frontend = ReturnType<typeof nativeSource>;
 
 function failed(result: Extract<NativeSourceResult, { readonly ok: false }>): never {
   const error = new NativeSourceError(result);
-  // Only genuine A0-rendered diagnostics participate in the existing ordering/repair policy.
-  // A raw native refusal must not become a host-classified semantic diagnostic.
+  // Rendering enriches the rejection without becoming a dependency of semantic acceptance.
   throw error.a0Error ?? error;
+}
+
+function failure(error: unknown): ProgramEditFailure | undefined {
+  if (error instanceof A0Error)
+    return error.id === undefined ? {} : { diagnosticID: error.id };
+  if (
+    !(error instanceof NativeSourceError) ||
+    (error.status !== 6 && error.status !== 8) ||
+    error.result.state.length !== 128 ||
+    error.result.state[0] !== error.status ||
+    error.result.state[93] !== 1 ||
+    !Number.isInteger(error.diagnostic) ||
+    error.diagnostic <= 0 ||
+    error.diagnostic > 0xffff_ffff
+  ) return undefined;
+  const id = `A${String(error.diagnostic).padStart(4, '0')}`;
+  // These are actual native source-failure facts and catalog metadata, not a host recheck
+  // or a diagnostic invented to drive the ordering policy. Keep the error itself untouched.
+  return isDiagId(id) ? { diagnosticID: id } : undefined;
 }
 
 function signature(frontend: Frontend, fn: Func): string {
@@ -51,6 +70,7 @@ export function editNativeProgram(
       return result.typed;
     },
     signature: (fn) => signature(frontend, fn),
+    failure,
   };
   return editProgramWithLanguage(program, text, language, keepSpecs);
 }
