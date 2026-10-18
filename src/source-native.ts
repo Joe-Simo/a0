@@ -15,7 +15,7 @@ import { readWasmWord, readWasmWords, writeWasmWord, writeWasmWords } from './wa
 const OFFSETS = [
   32, 35, 38, 41, 44, 47, 50, 53, 56, 59, 62, 68, 71, 74, 97, 100, 103, 106, 115, 118, 121, 124,
 ];
-interface NativeApi {
+export interface NativeApi {
   memory: WebAssembly.Memory;
   frontend_abi(): number;
   malloc(size: number): number;
@@ -96,6 +96,14 @@ export function nativeSource(module: WebAssembly.Module): {
   if (WebAssembly.Module.imports(module).length)
     throw new Error('source frontend must be import-free');
   const api = new WebAssembly.Instance(module).exports as unknown as NativeApi;
+  return nativeSourceApi(api);
+}
+
+/** Internal transport boundary shared by compiled backends of the same A0 frontend. */
+export function nativeSourceApi(
+  api: NativeApi,
+  retainedMemoryBytes: () => number = () => api.memory.buffer.byteLength,
+): ReturnType<typeof nativeSource> {
   if (typeof api.frontend_abi !== 'function' || api.frontend_abi() !== 3)
     throw new Error('unsupported source frontend ABI');
   let closed = false;
@@ -193,7 +201,7 @@ export function nativeSource(module: WebAssembly.Module): {
   };
   return {
     get memoryBytes() {
-      return api.memory.buffer.byteLength;
+      return retainedMemoryBytes();
     },
     parse(source, budget = 16_000_000) {
       const result = readSource(source, budget, false);
