@@ -1,0 +1,192 @@
+/** Reproducible candidate grammar/migration audit on a committed source tree. */
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, relative, resolve } from 'node:path';
+import { compile } from '../src/backends.js';
+import {
+  formatProgram,
+  formatSource as legacySource,
+  parseAndValidate,
+  type TypedProgram,
+} from '../src/core.js';
+import { link, parseFile } from '../src/link.js';
+import { migrateSourceProject } from '../src/migrate.js';
+import { formatSource, parseSource } from '../src/source.js';
+import { linkSource } from '../src/source-link.js';
+import { nativeSource } from '../src/source-native.js';
+import { linkNativeSource } from '../src/source-native-link.js';
+import { isReject, listSources } from './dense-loader.js';
+import { committedTree } from './measurement-checkout.js';
+import { reportJson, writeReport } from './scrub-results.js';
+
+const args = process.argv.slice(2);
+const option = (name: string): string | undefined =>
+  args.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
+const nativeGraph = args.includes('--native-graph');
+assert.ok(!nativeGraph || option('native-artifact'), '--native-graph requires --native-artifact');
+const root = process.cwd();
+const identity = committedTree(root);
+const hash = (bytes: string | Uint8Array): string =>
+  createHash('sha256').update(bytes).digest('hex');
+const read = (path: string): Promise<string> => readFile(path, 'utf8');
+let engine: ReturnType<typeof nativeSource> | undefined;
+let native: { artifactSha256: string; build: unknown } | undefined;
+const artifact = option('native-artifact');
+if (artifact !== undefined) {
+  const bytes = await readFile(join(resolve(artifact), 'frontend.wasm'));
+  const build = JSON.parse(await read(join(resolve(artifact), 'build.json')));
+  assert.equal(hash(bytes), build.wasmSHA256, 'native artifact does not match its build record');
+  engine = nativeSource(new WebAssembly.Module(bytes));
+  native = {
+    artifactSha256: hash(bytes),
+    build: Object.fromEntries(
+      [
+        'sourceSHA256',
+        'cSHA256',
+        'wasmSHA256',
+        'functions',
+        'aggregateBytes',
+        'stackBytes',
+        'wasmBytes',
+      ].map((key) => [key, build[key]]),
+    ),
+  };
+}
+function sameTyped(actual: TypedProgram, reference: TypedProgram): void {
+  assert.equal(
+    legacySource(actual),
+    legacySource(reference),
+    'native typed IR or metadata differs',
+  );
+  for (const fn of actual.functions) {
+    assert.equal(actual.byName.get(fn.name), fn, `${fn.name}: typed identity`);
+    for (const [name, callee] of fn.calls)
+      assert.equal(callee, actual.byName.get(name), `${fn.name}: callee identity`);
+    const expected = reference.byName.get(fn.name);
+    assert.ok(expected, fn.name);
+    assert.deepEqual([...fn.types], [...expected.types], `${fn.name}: types`);
+    assert.equal(fn.staticIterations, expected.staticIterations, `${fn.name}: iteration facts`);
+    assert.equal(
+      fn.literalIterations,
+      expected.literalIterations,
+      `${fn.name}: literal iteration facts`,
+    );
+    assert.deepEqual([...fn.calls.keys()], [...expected.calls.keys()], `${fn.name}: calls`);
+  }
+}
+const scratch = await mkdtemp(join(tmpdir(), 'a0-source-audit-'));
+const rows: {
+  entry: string;
+  status: 'pass' | 'fail';
+  inputSha256?: string;
+  sourceSha256?: string;
+  files?: number;
+  reason?: string;
+}[] = [];
+try {
+  for (const path of listSources(root).filter((path) => !isReject(path, root))) {
+    const entry = relative(root, path);
+    try {
+      const unit = await parseFile(path, read);
+      const text = formatSource(unit.program);
+      const back = parseSource(text);
+      assert.equal(
+        legacySource(back),
+        legacySource(unit.program),
+        'per-file IR or source metadata differs',
+      );
+      assert.equal(formatSource(back), text, 'formatter is not a fixed point');
+      const before = await link(path, read);
+      const linkedSource = formatSource(before.program);
+      if (engine !== undefined) {
+        const actual = engine.parse(linkedSource);
+        assert.ok(actual.ok, `native refusal ${actual.status}`);
+        assert.equal(
+          legacySource(actual.program),
+          legacySource(before.program),
+          'native IR or source metadata differs',
+        );
+        assert.equal(
+          legacySource(actual.typed),
+          legacySource(before.program),
+          'native typed IR differs',
+        );
+        sameTyped(actual.typed, before.program);
+        if (nativeGraph) {
+          const graph = await linkNativeSource(path, read, engine);
+          sameTyped(graph.program, before.program);
+        }
+      }
+      const destination = join(scratch, `project-${rows.length}`);
+      const manifest = await migrateSourceProject(path, destination, root);
+      const after = await linkSource(join(destination, manifest.entry), read, {
+        root: destination,
+      });
+      assert.equal(
+        formatProgram(after.program),
+        formatProgram(before.program),
+        'migrated linked program differs',
+      );
+      if (nativeGraph && engine !== undefined) {
+        const graph = await linkNativeSource(join(destination, manifest.entry), read, engine, {
+          root: destination,
+        });
+        sameTyped(graph.program, before.program);
+      }
+      rows.push({
+        entry,
+        status: 'pass',
+        inputSha256: hash(legacySource(before.program)),
+        sourceSha256: hash(linkedSource),
+        files: manifest.files.length,
+      });
+    } catch (error) {
+      rows.push({
+        entry,
+        status: 'fail',
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  assert.deepEqual(committedTree(root), identity, 'source tree changed during the audit');
+  let selfSource: { functions: number; sourceSha256: string; cSha256: string } | undefined;
+  const bootstrap = option('self-bootstrap');
+  if (bootstrap !== undefined) {
+    assert.ok(engine, '--self-bootstrap requires --native-artifact');
+    const input = parseAndValidate(await read(resolve(bootstrap)));
+    const source = formatSource(input);
+    const actual = engine.parse(source);
+    assert.ok(actual.ok, 'native frontend refused its own source');
+    assert.equal(legacySource(actual.program), legacySource(input), 'self-source IR differs');
+    const expectedC = compile(input, 'c', { cIo: 'host' }).text;
+    const emittedC = compile(actual.typed, 'c', { cIo: 'host' }).text;
+    assert.equal(emittedC, expectedC, 'self-source optimized C differs');
+    selfSource = {
+      functions: input.functions.length,
+      sourceSha256: hash(source),
+      cSha256: hash(emittedC),
+    };
+  }
+  const failed = rows.filter((row) => row.status === 'fail').length;
+  await writeReport(option('out') ?? join(root, 'results/unified-flat-source-audit.json'), {
+    schema: 1,
+    scope:
+      'Candidate correctness and migration only; no public syntax cutover, performance or AI accuracy claim. Native checking, when present, uses the recorded compiler-module artifact and portable host IR decoder. Archived experiment proofs remain independent controls.',
+    candidate: identity,
+    method:
+      'All accepted source entries from the committed inventory; exact per-file IR/comments/imports/profiles and formatter fixed points; guarded whole-closure migration with staged shared validation and revision checks; optional A0 native parsed IR and typed facts. With --native-graph, original and migrated projects also use the shared graph policy with one native parse per source unit, direct IR composition and one native check; no TypeScript validation or full-source reparse on that route. Existing native output/spec proofs remain separate.',
+    native,
+    nativeGraph,
+    selfSource,
+    entries: rows.length,
+    failed,
+    rows,
+  });
+  process.stdout.write(reportJson({ entries: rows.length, failed }));
+  if (failed) process.exitCode = 1;
+} finally {
+  engine?.close();
+  await rm(scratch, { recursive: true, force: true });
+}

@@ -2,11 +2,12 @@
 
 The objective is one source syntax and one authoritative frontend, with the existing semantic
 program and target backends retained. This refactor is **in progress**. Canonical and Dense are
-still supported; neither has been silently reinterpreted. No third source syntax is introduced.
+still supported; neither has been silently reinterpreted. The candidate frontend is internal and
+is not exposed as another CLI mode or file extension.
 
 ## Implemented foundation
 
-`src/link.ts` now joins the programs returned by the source readers and calls the shared validator.
+`src/linker.ts` now joins the programs returned by the source readers and calls the shared validator.
 It no longer reparses their concatenated printed source. Combined source text remains available
 to existing consumers. Removing import and profile directives preserves their line positions,
 including directives with trailing comments. Whole-program resource limits, dependency ordering,
@@ -56,9 +57,111 @@ destination reserved against accidental overwrites. Ordinary failures clean up s
 empty reservation. A process interruption can leave an empty reservation or a sibling staging
 directory; retain the originals, inspect the abandoned output, and retry into a fresh directory.
 This is not a power-loss durability guarantee or a transactional snapshot against uncooperative
-concurrent writers. Directory replacement behavior has been exercised on Linux; Windows and
-macOS host execution still need verification. An unsupported rename fails without modifying the
+concurrent writers. Directory replacement behavior has been exercised on Linux and in the macOS
+integration gate; Windows host execution still needs verification. An unsupported rename fails without modifying the
 original sources. Do not delete old source trees based on an unverified migration.
+
+## Candidate frontend and staged cutover
+
+The integration candidate is the flat grammar from the corrected study and the existing A0
+frontend experiment, not the older Surface v2 expression prototype. The latter remains in
+`tools/surface-v2-frontend.ts` for research; it is not a public mode. The flat candidate retains
+explicit node bindings, uses short positional parameter operands, compact array/record/text
+literals, abbreviated scalar types and unambiguous inferred scalar signatures. See the corrected
+study and retained native performance losses in
+[the refactor record](../history/2026-10-16-unified-source-refactor.md).
+
+`src/source.ts` supplies the candidate grammar and one default formatter. It uses the existing
+line scanner and instruction parser in `src/core.ts`, with direct IR construction. Source bodies
+and executable examples use the same aggregate grammar in `src/aggregate.ts`, recovered from the
+frozen experiment. Historical input remains available for migration; no new CLI flag or source
+extension exposes the candidate. The formatter preserves IDs, order, signatures, contracts,
+profiles, imports and comments. Explicit signatures retain unused parameters. Inferred signatures
+include references from executable contracts. Valid large boolean arrays remain representable.
+
+`src/source-link.ts` connects the candidate to the same dependency resolver, IR composition and
+validator as the historical readers. Parser origins map validation errors to physical source
+lines. `migrateSourceProject` in `src/migrate.ts` converts historical Canonical or `.a0d` dependency
+closures into candidate `.a0` files using the existing guarded staging engine. Its explicit
+`legacyDense` migration input argument also handles historical Dense trees stored as `.a0`;
+it never guesses between ambiguous spellings. The public
+`a0 migrate` command still targets historical Dense until cutover. Candidate migration checks
+complete per-file metadata and formatter fixed points, then links and compares the staged program
+and revision before publication.
+
+`test/source.test.ts` checks repository round trips and independent binding/callee, parameter,
+contract and aggregate cases. `test/source-link.test.ts` checks linked origins, dependency handling
+and migration from both historical spellings against every registered backend's emitted output.
+These correctness checks do not establish an AI accuracy, compilation speed or memory advantage.
+The native A0 frontend experiment is reusable, but its recorded performance/resource limitations
+must be resolved and the compiler, editor and MCP entry points must cut over before the historical
+readers and public modes can be removed. This is still an incomplete migration.
+
+The native candidate now has a compiler entry at `compiler/source_frontend.a0`. Grammar-independent
+storage, type checking, evaluation and specification verification live in shared compiler modules;
+existing bootstrap modules import those same definitions. `tools/source-native-build.ts` builds
+that entry through the public C backend and a generic arena transport. It does not load a source
+implementation from the archived experiment. The portable `src/source-native.ts` host reads checked
+IR directly, preserves callee/type identity, and decodes type rows iteratively. It does not call
+the TypeScript source parser or validator. `tools/source-audit.ts --native-artifact=DIR` checks this
+host and artifact against the source migration controls. The existing TypeScript compiler remains
+the public default until the integration and performance gates pass.
+The committed native corpus, own-source and specification checks are recorded in
+`results/unified-source-module-audit.json`, `results/unified-source-module-build.json` and
+`results/unified-source-module-specs.json`. These record correctness, not a timing improvement.
+
+The default native fixture omits linker debug metadata; `--symbols=keep` retains it for debugging.
+The executable-section and ABI comparison is recorded in
+`results/unified-native-release-sections.json`. This packaging change does not establish a frontend
+latency improvement or a completed syntax cutover.
+
+The current native graph audit and source-unit controls are recorded in
+`results/unified-native-graph-source-audit.json` and `results/unified-native-graph-unit-audit.json`.
+The own-source comparison and exact build provenance are in
+`results/unified-native-graph-self-source.json` and `results/unified-native-graph-build.json`.
+These are correctness records; measured frontend performance remains a separate cutover gate.
+
+The same native grammar also exposes `nativeSource(module).parseUnit(source)`. This returns
+source IR, imports, comments and specifications without checking external callees or executing
+specifications; `parse(source)` performs the whole-program check. The distinction is a compiler
+stage, not a source dialect. `tools/source-unit-audit.ts --artifact=DIR` compares both existing
+and flat-formatted source units and verifies that invalid whole programs can parse before the
+validation stage rejects them. The earlier source-unit and full-frontend audit records are
+`results/unified-source-unit-audit.json`, `results/unified-source-unit-frontend-audit.json` and
+`results/unified-source-unit-build.json`.
+
+The candidate now composes parsed dependency IR through `checkUnits` and `src/source-native-link.ts`.
+The same graph loader retains path, symlink, cycle, duplicate-definition, profile and resource
+policy. A source reader supplies one check stage: the native reader calls the A0 checker once,
+without full-source reparsing or TypeScript validation. Symbol/type identity comes from the shared
+A0 interners. Source spans, spec directories and comments are rebased; physical lines and filtered
+line-table indexes remain separate. Comment folding is shared with the reference linker.
+
+`NativeSourceError` currently exposes authoritative numeric failure facts and physical file/line
+origins. Complete catalog wording, suggestions and structured edits remain unfinished. This API
+is an internal candidate, not the public compiler default or a claim of diagnostic parity.
+
+The source-bound executable fixture under `seed/source-frontend/` lets integration tests run with
+ordinary Node, without a local WASI build toolchain. Its freshness check covers the full A0 closure,
+generated C, native transport and builder inputs. Tests execute that artifact, including actual
+compiler graphs, specifications, ownership/lifetime boundaries and independent backend controls.
+The artifact's build provenance and third-party notices are retained alongside it. The existing
+C bootstrap remains independent. Regeneration instructions are in its README.
+
+The artifact builder defaults to the WebAssembly MVP instruction set. The explicit research build
+option `--wasm-features=bulk-memory` enables standard bulk-memory code generation on compatible
+compiler hosts. This is a backend feature setting, not a source dialect. The matched six-workload
+comparison did not establish a consistent time/memory improvement, so it is not the default
+(`results/unified-source-bulk-memory.json`). The build report records the Clang flags and required
+features. Application target semantics are unchanged.
+
+Build the internal candidate with an installed Clang/WASI toolchain (no downloads are performed):
+
+```sh
+bun run build
+node dist/tools/source-native-build.js --out=.a0-tmp/source-frontend \
+  --sysroot=/path/to/wasi/usr --builtins=/path/to/libclang_rt.builtins-wasm32.a
+```
 
 ## Measurements
 
@@ -68,6 +171,11 @@ original sources. Do not delete old source trees based on an unverified migratio
 bun run build
 node dist/tools/frontend-baseline.js --baseline=/path/to/built/baseline-checkout
 ```
+
+`--include-candidate-source` adds an internal candidate-frontend cell on the candidate checkout
+and candidate token counts. The baseline has no such frontend; it is compared on the two
+historical spellings only. Every cell must match the same semantic program and emitted artifacts.
+The report retains the explicit incomplete-cutover status. It is not evidence of model accuracy.
 
 It uses Life, the linked self-hosted compiler and the website application. It records Canonical
 and Dense token counts with both repository tokenizers, warm frontend samples and observed load,
@@ -128,6 +236,28 @@ array/text refusal expectations and only the deliberately changed compiler sourc
 all three affected checks passed focused reruns. `results/unified-reader-gate/summary.json`
 preserves the failed full-run outcome and the successful reruns; it does not claim a second
 all-green full-suite invocation. No implementation changed after that full run.
+
+The later integration published as `e67d33a` passed both [full CI](https://github.com/Joe-Simo/a0/actions/runs/39067658205)
+and the [macOS full gate](https://github.com/Joe-Simo/a0/actions/runs/39067655493) on the identical
+`7b34126` tree. Those results supersede the Apple-host availability blocker for that release.
+They do not establish a completed single-syntax frontend or fresh AI acceptance results.
+
+## Fresh controls before selecting the standard syntax
+
+`tools/app-edit-bench.ts --surface=canonical|dense` now uses the same sealed application task set,
+validators and hidden tests for both existing source views. Dense harness references are derived
+through the production edit engine and formatter; no reference answer is submitted as a model
+reply. Canonical remains the default. Prompt dumps carry source-tree, starter, guide, task-set and
+prompt hashes. Measurements require a clean committed tree and direct Bun source execution to
+avoid recording source hashes alongside stale compiled tooling. The [registered protocol](../history/2026-10-17-unified-controls-preregistration.md)
+defines the paired pilot, repair budget, usage accounting and limits on any conclusion.
+
+`bun tools/dense-loader.ts --source-spelling-only` audits accepted source files as written through
+both existing parsers, including source comments and imported arities. This is a grammar audit,
+not a runtime benchmark or a new reader. An independent strict-profile regression test demonstrates
+that a binding whose name is also a callee can be accepted by both grammars with different runtime
+behavior. A source conversion must therefore be explicit and verified; content-based parser
+guessing cannot safely merge the source entry points.
 
 Existing evidence must remain distinguishable from fresh measurements:
 

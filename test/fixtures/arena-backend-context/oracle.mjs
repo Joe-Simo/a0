@@ -541,7 +541,8 @@ x add p0 1
 ret x
 end
 `,
-    status: budget === 1024 ? 0 : 4,
+    // The unused token table is gone: 896 words now suffice; smaller controls still fail.
+    status: budget >= 896 ? 0 : 4,
     budget,
   })),
 ];

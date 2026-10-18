@@ -1,0 +1,2768 @@
+use "arena_shared.a0"
+use "arena_vector_shared.a0"
+
+fn ae_umul u32 u32 -> (u32,u32)
+a0 and p0 65535
+a1 shr p0 16
+b0 and p1 65535
+b1 shr p1 16
+prod0 mul a0 b0
+prod1 mul a0 b1
+prod2 mul a1 b0
+prod3 mul a1 b1
+q0 shr prod0 16
+q1 and prod1 65535
+q2 add q0 q1
+q3 and prod2 65535
+mid add q2 q3
+q4 and prod0 65535
+q5 and mid 65535
+q6 shl q5 16
+q7 or q4 q6
+q8 shr prod1 16
+q9 add prod3 q8
+q10 shr prod2 16
+q11 add q9 q10
+q12 shr mid 16
+q13 add q11 q12
+q14 rec q7 q13
+ret q14
+end
+
+fn ae_bitstep u32 u32 u32 -> u32
+q0 shr p2 p1
+q1 ne q0 0
+q2 add p1 1
+q3 select q1 q2 p0
+ret q3
+end
+
+fn ae_bitlen u32 -> u32
+q0 fold ae_bitstep 32 0 p0
+ret q0
+end
+
+fn ae_uadd (u32,u32) (u32,u32) -> (u32,u32)
+q0 at p0 0
+q1 at p1 0
+lo add q0 q1
+q2 at p0 1
+q3 at p1 1
+q4 add q2 q3
+q5 at p0 0
+q6 lt lo q5
+q7 select q6 1 0
+q8 add q4 q7
+q9 rec lo q8
+ret q9
+end
+
+fn ae_usub (u32,u32) (u32,u32) -> (u32,u32)
+q0 at p0 0
+q1 at p1 0
+q2 sub q0 q1
+q3 at p0 1
+q4 at p1 1
+q5 sub q3 q4
+q6 at p0 0
+q7 at p1 0
+q8 lt q6 q7
+q9 select q8 1 0
+q10 sub q5 q9
+q11 rec q2 q10
+ret q11
+end
+
+fn ae_ult (u32,u32) (u32,u32) -> bool
+q0 at p0 1
+q1 at p1 1
+q2 lt q0 q1
+q3 at p0 1
+q4 at p1 1
+q5 eq q3 q4
+q6 at p0 0
+q7 at p1 0
+q8 lt q6 q7
+q9 and q5 q8
+q10 or q2 q9
+ret q10
+end
+
+fn ae_ushl (u32,u32) u32 -> (u32,u32)
+q0 eq p1 0
+q1 at p0 0
+q2 lt p1 32
+q3 at p0 0
+q4 shl q3 p1
+q5 select q2 q4 0
+lo select q0 q1 q5
+q6 eq p1 0
+q7 at p0 1
+q8 lt p1 32
+q9 at p0 1
+q10 shl q9 p1
+q11 at p0 0
+q12 sub 32 p1
+q13 shr q11 q12
+q14 or q10 q13
+q15 lt p1 64
+q16 at p0 0
+q17 sub p1 32
+q18 shl q16 q17
+q19 select q15 q18 0
+q20 select q8 q14 q19
+hi select q6 q7 q20
+q21 rec lo hi
+ret q21
+end
+
+fn ae_ushr (u32,u32) u32 -> (u32,u32)
+q0 eq p1 0
+q1 at p0 0
+q2 lt p1 32
+q3 at p0 0
+q4 shr q3 p1
+q5 at p0 1
+q6 sub 32 p1
+q7 shl q5 q6
+q8 or q4 q7
+q9 lt p1 64
+q10 at p0 1
+q11 sub p1 32
+q12 shr q10 q11
+q13 select q9 q12 0
+q14 select q2 q8 q13
+lo select q0 q1 q14
+q15 eq p1 0
+q16 at p0 1
+q17 lt p1 32
+q18 at p0 1
+q19 shr q18 p1
+q20 select q17 q19 0
+hi select q15 q16 q20
+q21 rec lo hi
+ret q21
+end
+
+fn ae_ujam (u32,u32) u32 -> (u32,u32)
+z call ae_ushr p0 p1
+back call ae_ushl z p1
+q0 at back 0
+q1 at p0 0
+q2 ne q0 q1
+q3 at back 1
+q4 at p0 1
+q5 ne q3 q4
+lost or q2 q5
+q6 at z 0
+q7 select lost 1 0
+q8 or q6 q7
+q9 at z 1
+q10 rec q8 q9
+ret q10
+end
+
+fn ae_nan (u32,u32) -> bool
+q0 at p0 1
+q1 and q0 2146435072
+q2 eq q1 2146435072
+q3 at p0 1
+q4 and q3 1048575
+q5 ne q4 0
+q6 at p0 0
+q7 ne q6 0
+q8 or q5 q7
+q9 and q2 q8
+ret q9
+end
+
+fn ae_negative (u32,u32) -> bool
+q0 call ae_nan p0
+q1 xor q0 true
+q2 at p0 1
+q3 and q2 2147483648
+q4 ne q3 0
+q5 and q1 q4
+q6 at p0 1
+q7 and q6 2147483647
+q8 ne q7 0
+q9 at p0 0
+q10 ne q9 0
+q11 or q8 q10
+q12 and q5 q11
+ret q12
+end
+
+fn ae_nonpositive (u32,u32) -> bool
+q0 call ae_negative p0
+q1 at p0 1
+q2 and q1 2147483647
+q3 eq q2 0
+q4 at p0 0
+q5 eq q4 0
+q6 and q3 q5
+q7 or q0 q6
+ret q7
+end
+
+fn ae_fsub (u32,u32) u32 -> (u32,u32)
+q0 at p0 1
+q1 shr q0 20
+exp and q1 2047
+q2 eq exp 0
+ax select q2 1 exp
+q3 at p0 0
+q4 at p0 1
+q5 and q4 1048575
+q6 eq exp 0
+q7 select q6 0 1048576
+q8 or q5 q7
+q9 rec q3 q8
+am call ae_ushl q9 3
+len call ae_bitlen p1
+bx add 1022 len
+q10 rec p1 0
+q11 sub 56 len
+bm call ae_ushl q10 q11
+q12 gt ax bx
+q13 eq ax bx
+q14 call ae_ult am bm
+q15 xor q14 true
+q16 and q13 q15
+abig or q12 q16
+big select abig am bm
+small select abig bm am
+ex select abig ax bx
+sx select abig bx ax
+q17 sub ex sx
+aligned call ae_ujam small q17
+q18 at p0 1
+q19 and q18 2147483648
+neg ne q19 0
+sum call ae_uadd big aligned
+diff call ae_usub big aligned
+raw select neg sum diff
+q20 xor abig true
+sign or neg q20
+q21 at raw 1
+carry ge q21 16777216
+q22 call ae_ujam raw 1
+shifted select carry q22 raw
+q23 select carry 1 0
+ex1 add ex q23
+q24 at shifted 1
+q25 ne q24 0
+q26 at shifted 1
+q27 call ae_bitlen q26
+q28 add 32 q27
+q29 at shifted 0
+q30 call ae_bitlen q29
+bits select q25 q28 q30
+q31 lt bits 56
+q32 sub 56 bits
+want select q31 q32 0
+q33 lt want ex1
+q34 sub ex1 1
+left select q33 want q34
+norm call ae_ushl shifted left
+ex2 sub ex1 left
+q35 at norm 0
+q36 and q35 7
+q37 gt q36 4
+q38 at norm 0
+q39 and q38 7
+q40 eq q39 4
+q41 at norm 0
+q42 and q41 8
+q43 ne q42 0
+q44 and q40 q43
+round or q37 q44
+q45 select round 8 0
+q46 rec q45 0
+q47 call ae_uadd norm q46
+rounded call ae_ushr q47 3
+q48 at rounded 1
+rc ge q48 2097152
+q49 call ae_ushr rounded 1
+mant select rc q49 rounded
+q50 select rc 1 0
+ex3 add ex2 q50
+q51 at raw 0
+q52 eq q51 0
+q53 at raw 1
+q54 eq q53 0
+iszero and q52 q54
+q55 eq ex3 1
+q56 at mant 1
+q57 lt q56 1048576
+q58 and q55 q57
+packedexp select q58 0 ex3
+overflow ge ex3 2047
+q59 select sign 2147483648 0
+q60 shl packedexp 20
+q61 at mant 1
+q62 and q61 1048575
+q63 or q60 q62
+q64 select overflow 2146435072 q63
+hi or q59 q64
+q65 at mant 0
+lo select overflow 0 q65
+special eq exp 2047
+q66 select iszero 0 lo
+q67 select iszero 0 hi
+q68 eq p1 0
+q69 or special q68
+q70 rec q66 q67
+q71 select q69 p0 q70
+ret q71
+end
+
+fn ae_fail (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 ne p1 0
+active and q1 q2
+q3 get m 0
+q4 select active 9 q3
+a set m 0 q4
+q5 get a 1
+q6 select active p1 q5
+q7 set a 1 q6
+q8 at p0 1
+q9 at p0 2
+q10 rec q7 q8 q9
+ret q10
+end
+
+fn ae_ldgo (u32x128,u32x128,u32x128,io) u32 u32 u32 u32 u32 -> (u32x128,u32x128,u32x128,io)
+m at p0 0
+ir at p0 1
+q0 eq p2 0
+q1 get ir p3
+q2 add p3 1
+q3 get ir q2
+q4 add p3 2
+q5 get ir q4
+q6 rec q1 q3 q5
+q7 get m p3
+q8 add p3 1
+q9 get m q8
+q10 add p3 2
+q11 get m q10
+q12 rec q7 q9 q11
+v select q0 q6 q12
+q13 at p0 3
+a call av_load q13 v p4 p5
+q14 at a 0
+q15 set m 0 q14
+q16 at a 1
+q17 at a 2
+q18 rec q15 ir q16 q17
+ret q18
+end
+
+fn ae_load (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,u32x128,io)
+m at p0 0
+z call arena_zero
+q0 get m 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 at p0 1
+q4 at p0 2
+q5 rec m q3 z q4
+q6 fold ae_ldgo q2 q5 p1 p2 p3 p4
+ret q6
+end
+
+fn ae_rawgo (u32x128,u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,u32x128,io)
+q0 at p0 3
+a call arena_load q0 p2 p3 p4
+q1 at p0 0
+q2 at a 0
+q3 set q1 0 q2
+q4 at p0 1
+q5 at a 1
+q6 at a 2
+q7 rec q3 q4 q5 q6
+ret q7
+end
+
+fn ae_raw (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 at p0 1
+q4 call arena_zero
+q5 at p0 2
+q6 rec m q3 q4 q5
+q7 fold ae_rawgo q2 q6 p1 p2 p3
+ret q7
+end
+
+fn ae_storego (u32x128,u32x128,io) u32 u32 u32 u32 u32 u32x128 -> (u32x128,u32x128,io)
+m at p0 0
+ir at p0 1
+q0 at p0 2
+q1 eq p2 0
+q2 get ir p3
+q3 add p3 1
+q4 get ir q3
+q5 add p3 2
+q6 get ir q5
+q7 rec q2 q4 q6
+q8 get m p3
+q9 add p3 1
+q10 get m q9
+q11 add p3 2
+q12 get m q11
+q13 rec q8 q10 q12
+q14 select q1 q7 q13
+a call av_store q0 q14 p4 p5 p6
+q15 at a 0
+q16 set m 0 q15
+q17 at a 1
+q18 rec q16 ir q17
+ret q18
+end
+
+fn ae_store (u32x128,u32x128,io) u32 u32 u32 u32 u32x128 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold ae_storego q2 p0 p1 p2 p3 p4 p5
+ret q3
+end
+
+fn ae_hstorego (u32x128,u32x128,io) u32 u32 u32 u32 u32x128 -> (u32x128,u32x128,io)
+q0 at p0 2
+a call arena_store q0 p2 p3 p4 p5
+q1 at p0 0
+q2 at a 0
+q3 set q1 0 q2
+q4 at p0 1
+q5 at a 1
+q6 rec q3 q4 q5
+ret q6
+end
+
+fn ae_hstore (u32x128,u32x128,io) u32 u32 u32 u32x128 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold ae_hstorego q2 p0 p1 p2 p3 p4
+ret q3
+end
+
+fn ae_appendgo (u32x128,u32x128,io) u32 u32 u32 u32x128 -> (u32x128,u32x128,io)
+m at p0 0
+q0 at p0 2
+q1 get m p2
+q2 add p2 1
+q3 get m q2
+q4 add p2 2
+q5 get m q4
+q6 rec q1 q3 q5
+a call av_append q0 q6 p3 p4
+q7 at a 1
+q8 at q7 0
+m1_a set m p2 q8
+q9 add p2 1
+q10 at q7 1
+m1_b set m1_a q9 q10
+q11 add p2 2
+q12 at q7 2
+q13 set m1_b q11 q12
+q14 at a 0
+q15 set q13 0 q14
+q16 at p0 1
+q17 at a 2
+q18 rec q15 q16 q17
+ret q18
+end
+
+fn ae_append (u32x128,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold ae_appendgo q2 p0 p1 p2 p3
+ret q3
+end
+
+fn ae_allocgo (u32x128,u32x128,u32,u32,io) u32 u32 -> (u32x128,u32x128,u32,u32,io)
+q0 at p0 4
+a call arena_alloc q0 p2
+q1 at p0 0
+q2 at a 0
+q3 set q1 0 q2
+q4 at p0 1
+q5 at a 1
+q6 at a 2
+q7 rec q3 q4 0 q5 q6
+ret q7
+end
+
+fn ae_alloc (u32x128,u32x128,io) u32 -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 at p0 1
+q4 at p0 2
+q5 rec m q3 0 0 q4
+q6 fold ae_allocgo q2 q5 p1
+ret q6
+end
+
+fn ae_mset (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+q0 at p0 0
+q1 set q0 p1 p2
+q2 at p0 1
+q3 at p0 2
+q4 rec q1 q2 q3
+ret q4
+end
+
+fn ae_reset (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 add p1 1
+q1 call ae_mset p0 q0 0
+ret q1
+end
+
+fn ae_zero_page (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+first mul p1 128
+q0 sub p3 first
+q1 gt q0 128
+q2 sub p3 first
+q3 select q1 128 q2
+q4 call arena_zero
+q5 call ae_append p0 p2 q3 q4
+ret q5
+end
+
+fn ae_zero_more (u32x128,u32x128,io) u32 u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_zeros (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+q0 div p2 128
+q1 rem p2 128
+q2 eq q1 0
+q3 select q2 0 1
+q4 add q0 q3
+q5 loop ae_zero_more ae_zero_page q4 p0 p1 p2
+ret q5
+end
+
+fn ae_cache u32x128 u32 u32x128 u32 -> u32x128
+q0 add p3 p1
+q1 get p2 p1
+q2 set p0 q0 q1
+ret q2
+end
+
+fn ae_cacheload (u32x128,u32x128,io) u32x128 u32 u32 -> (u32x128,u32x128,io)
+q0 at p0 0
+q1 fold ae_cache p3 q0 p1 p2
+q2 at p0 1
+q3 at p0 2
+q4 rec q1 q2 q3
+ret q4
+end
+
+fn ae_frame (u32x128,u32x128,io) -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 33
+q1 sub q0 24
+r call ae_load p0 1 32 q1 24
+q2 at r 0
+q3 at r 1
+q4 at r 3
+q5 rec q2 q3 q4
+q6 at r 2
+q7 call ae_cacheload q5 q6 64 24
+ret q7
+end
+
+fn ae_frameword u32x128 u32 u32x128 -> u32x128
+q0 add 64 p1
+q1 get p2 q0
+q2 set p0 p1 q1
+ret q2
+end
+
+fn ae_framepage u32x128 -> u32x128
+z call arena_zero
+q0 fold ae_frameword 24 z p0
+ret q0
+end
+
+fn ae_save (u32x128,u32x128,io) -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 33
+q1 sub q0 24
+q2 call ae_framepage m
+q3 call ae_store p0 1 32 q1 24 q2
+ret q3
+end
+
+fn ae_pairpage u32 u32 -> u32x128
+z call arena_zero
+q0 set z 0 p0
+q1 set q0 1 p1
+ret q1
+end
+
+fn ae_pair (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+q0 call ae_pairpage p2 p3
+q1 call ae_append p0 p1 2 q0
+ret q1
+end
+
+fn ae_charge (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 4
+q1 get m 5
+q2 rec q0 q1
+f call ae_fsub q2 p1
+q3 get m 0
+q4 eq q3 0
+q5 at f 0
+q6 get m 4
+q7 select q4 q5 q6
+q8 set m 4 q7
+q9 get m 0
+q10 eq q9 0
+q11 at f 1
+q12 get m 5
+q13 select q10 q11 q12
+a set q8 5 q13
+q14 at p0 1
+q15 at p0 2
+q16 rec a q14 q15
+q17 get m 0
+q18 eq q17 0
+q19 call ae_negative f
+q20 and q18 q19
+q21 select q20 701 0
+q22 call ae_fail q16 q21
+ret q22
+end
+
+fn ae_trip (u32x128,u32x128,io) -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 6
+q3 ne q2 0
+q4 and q1 q3
+q5 get m 7
+q6 get m 8
+q7 rec q5 q6
+q8 call ae_nonpositive q7
+bad and q4 q8
+q9 get m 7
+q10 get m 8
+q11 rec q9 q10
+f call ae_fsub q11 1
+q12 get m 0
+q13 eq q12 0
+q14 get m 6
+q15 ne q14 0
+q16 and q13 q15
+q17 xor bad true
+q18 and q16 q17
+q19 at f 0
+q20 get m 7
+q21 select q18 q19 q20
+q22 set m 7 q21
+q23 get m 0
+q24 eq q23 0
+q25 get m 6
+q26 ne q25 0
+q27 and q24 q26
+q28 xor bad true
+q29 and q27 q28
+q30 at f 1
+q31 get m 8
+q32 select q29 q30 q31
+a set q22 8 q32
+q33 at p0 1
+q34 at p0 2
+q35 rec a q33 q34
+q36 select bad 709 0
+q37 call ae_fail q35 q36
+ret q37
+end
+
+fn ae_find_more (u32x128,u32x128,io) u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 123
+q3 eq q2 4294967295
+q4 and q1 q3
+ret q4
+end
+
+fn ae_find_node (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 67
+q1 add q0 p1
+q2 mul q1 14
+r call ae_load p0 0 44 q2 1
+a at r 2
+q at r 0
+q3 get a 0
+q4 eq q3 p2
+q5 get m 67
+q6 add q5 p1
+q7 select q4 q6 4294967295
+q8 set q 123 q7
+q9 at r 1
+q10 at r 3
+q11 rec q8 q9 q10
+ret q11
+end
+
+fn ae_operand_node (u32x128,u32x128,u32,u32,io) u32 u32 -> (u32x128,u32x128,u32,u32,io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+s call ae_mset q3 123 4294967295
+m at s 0
+q4 get m 69
+a loop ae_find_more ae_find_node q4 s p2
+b at a 0
+q5 get b 123
+q6 eq q5 4294967295
+q7 select q6 791 0
+bad call ae_fail a q7
+q8 get b 65
+q9 get b 66
+q10 get b 123
+q11 add q9 q10
+q12 get b 67
+q13 sub q11 q12
+q14 mul q13 2
+q15 add q8 q14
+r call ae_load bad 1 35 q15 2
+v at r 2
+q16 at r 0
+q17 at r 1
+q18 get v 0
+q19 get v 1
+q20 at r 3
+q21 rec q16 q17 q18 q19 q20
+ret q21
+end
+
+fn ae_operand_param (u32x128,u32x128,u32,u32,io) u32 u32 -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+q4 get m 66
+q5 ge p2 q4
+q6 select q5 791 0
+checked call ae_fail q3 q6
+q7 get m 65
+q8 mul p2 2
+q9 add q7 q8
+r call ae_load checked 1 35 q9 2
+a at r 2
+q10 at r 0
+q11 at r 1
+q12 get a 0
+q13 get a 1
+q14 at r 3
+q15 rec q10 q11 q12 q13 q14
+ret q15
+end
+
+fn ae_operand (u32x128,u32x128,io) u32 -> (u32x128,u32x128,u32,u32,io)
+q0 mul p1 5
+r call ae_load p0 0 47 q0 5
+a at r 2
+m at r 0
+q1 at r 1
+q2 get a 0
+q3 eq q2 3
+q4 select q3 1 0
+q5 get a 1
+q6 at r 3
+q7 get m 0
+q8 eq q7 0
+q9 get a 0
+q10 eq q9 1
+q11 and q8 q10
+q12 select q11 1 0
+q13 rec m q1 q4 q5 q6
+q14 get a 1
+p fold ae_operand_param q12 q13 q14
+b at p 0
+q15 get b 0
+q16 eq q15 0
+q17 get a 0
+q18 eq q17 0
+q19 and q16 q18
+q20 select q19 1 0
+q21 get a 1
+q22 fold ae_operand_node q20 p q21
+ret q22
+end
+
+fn ae_gather (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+q0 add p2 p1
+r call ae_operand p0 q0
+q1 at r 0
+q2 at r 1
+q3 at r 4
+q4 rec q1 q2 q3
+q5 at r 2
+q6 at r 3
+q7 call ae_pair q4 38 q5 q6
+ret q7
+end
+
+fn ae_block_copy (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,io)
+pos mul p1 128
+q0 sub p4 pos
+q1 gt q0 128
+q2 sub p4 pos
+n select q1 128 q2
+q3 add p3 pos
+r call ae_load p0 1 38 q3 n
+q4 at r 0
+q5 at r 1
+q6 at r 3
+q7 rec q4 q5 q6
+q8 add 1 pos
+q9 at r 2
+q10 call ae_hstore q7 p2 q8 n q9
+ret q10
+end
+
+fn ae_block_more (u32x128,u32x128,io) u32 u32 u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_block (u32x128,u32x128,io) u32 -> (u32x128,u32x128,u32,u32,io)
+q0 mul p1 2
+q1 add 1 q0
+a call ae_alloc p0 q1
+h at a 3
+q2 call arena_zero
+z set q2 0 p1
+q3 at a 0
+q4 at a 1
+q5 at a 4
+q6 rec q3 q4 q5
+b call ae_hstore q6 h 0 1 z
+q7 mul p1 2
+q8 div q7 128
+q9 mul p1 2
+q10 rem q9 128
+q11 eq q10 0
+q12 select q11 0 1
+q13 add q8 q12
+q14 mul p1 2
+c loop ae_block_more ae_block_copy q13 b h 0 q14
+q15 at c 0
+q16 at c 1
+q17 at c 2
+q18 rec q15 q16 0 h q17
+ret q18
+end
+
+fn ae_clone_copy (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,io)
+pos mul p1 128
+q0 sub p4 pos
+q1 gt q0 128
+q2 sub p4 pos
+count select q1 128 q2
+a call ae_raw p0 p2 pos count
+q3 at a 0
+q4 at a 1
+q5 at a 3
+q6 rec q3 q4 q5
+q7 at a 2
+q8 call ae_hstore q6 p3 pos count q7
+ret q8
+end
+
+fn ae_clone_more (u32x128,u32x128,io) u32 u32 u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_clone (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,u32,u32,io)
+a call ae_raw p0 p1 0 1
+len at a 2
+q0 get len 0
+q1 mul q0 2
+n add 1 q1
+q2 at a 0
+q3 at a 1
+q4 at a 3
+q5 rec q2 q3 q4
+b call ae_alloc q5 n
+q6 div n 128
+q7 rem n 128
+q8 eq q7 0
+q9 select q8 0 1
+q10 add q6 q9
+q11 at b 0
+q12 at b 1
+q13 at b 4
+q14 rec q11 q12 q13
+q15 at b 3
+c loop ae_clone_more ae_clone_copy q10 q14 p1 q15 n
+q16 at b 3
+q17 mul p2 2
+q18 add 1 q17
+q19 call ae_pairpage p3 p4
+d call ae_hstore c q16 q18 2 q19
+q20 at d 0
+q21 at d 1
+q22 at b 3
+q23 at d 2
+q24 rec q20 q21 0 q22 q23
+ret q24
+end
+
+fn ae_checked (u32x128,u32x128,io) u32 bool -> (u32x128,u32x128,u32,u32,io)
+a call ae_reset p0 38
+b call ae_pair a 38 0 p1
+q0 select p2 1 0
+c call ae_pair b 38 1 q0
+q1 call ae_block c 2
+ret q1
+end
+
+fn ae_io_emitgo (u32x128,u32x128,io) u32 u32 u32 u32x128 -> (u32x128,u32x128,io)
+q0 at p0 2
+q1 get p4 4
+q2 get p4 5
+q3 get p4 6
+q4 rec q1 q2 q3
+q5 call arena_zero
+q6 set q5 0 p3
+a call av_append q0 q4 1 q6
+q7 at p0 0
+q8 at a 0
+m set q7 0 q8
+v at a 1
+q9 call arena_zero
+q10 at v 0
+q11 set q9 0 q10
+q12 at v 1
+q13 set q11 1 q12
+q14 at v 2
+page set q13 2 q14
+q15 at p0 1
+q16 at a 2
+q17 rec m q15 q16
+q18 call ae_hstore q17 p2 4 3 page
+ret q18
+end
+
+fn ae_io_emit (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+a call ae_raw p0 p1 0 7
+obj at a 2
+q0 at a 0
+q1 at a 1
+q2 at a 3
+q3 rec q0 q1 q2
+q4 get obj 5
+q5 ge q4 1048576
+q6 select q5 702 0
+b call ae_fail q3 q6
+m at b 0
+q7 get m 0
+q8 eq q7 0
+q9 select q8 1 0
+c fold ae_io_emitgo q9 b p1 p2 obj
+ret c
+end
+
+fn ae_puts_word (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+q0 mul p1 2
+q1 add 1 q0
+a call ae_raw p0 p3 q1 2
+v at a 2
+q2 at a 0
+q3 at a 1
+q4 at a 3
+q5 rec q2 q3 q4
+q6 get v 1
+q7 call ae_io_emit q5 p2 q6
+ret q7
+end
+
+fn ae_puts_more (u32x128,u32x128,io) u32 u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_io_puts (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+a call ae_raw p0 p2 0 1
+len at a 2
+q0 at a 0
+q1 at a 1
+q2 at a 3
+q3 rec q0 q1 q2
+q4 get len 0
+b call ae_io_emit q3 p1 q4
+q5 get len 0
+q6 loop ae_puts_more ae_puts_word q5 b p1 p2
+ret q6
+end
+
+fn ae_io_readgo (u32x128,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x128,io)
+q0 at p0 2
+q1 get p3 0
+q2 get p3 1
+q3 get p3 2
+q4 rec q1 q2 q3
+q5 get p3 3
+a call av_load q0 q4 q5 1
+v at a 1
+q6 at p0 0
+q7 at a 0
+q8 set q6 0 q7
+q9 at p0 1
+q10 at a 2
+q11 rec q8 q9 q10
+q12 get v 0
+b call ae_mset q11 24 q12
+q13 call arena_zero
+q14 get p3 3
+q15 add q14 1
+q16 set q13 0 q15
+q17 call ae_hstore b p2 3 1 q16
+ret q17
+end
+
+fn ae_io_read (u32x128,u32x128,io) u32 -> (u32x128,u32x128,u32,u32,io)
+a call ae_raw p0 p1 0 7
+obj at a 2
+m at a 0
+q0 at a 0
+q1 at a 1
+q2 at a 3
+q3 rec q0 q1 q2
+q4 call ae_mset q3 24 0
+q5 get m 3
+q6 ne q5 0
+q7 get obj 3
+q8 get obj 1
+q9 ge q7 q8
+q10 and q6 q9
+q11 select q10 712 0
+b call ae_fail q4 q11
+q at b 0
+q12 get q 0
+q13 eq q12 0
+q14 get obj 3
+q15 get obj 1
+q16 lt q14 q15
+q17 and q13 q16
+q18 select q17 1 0
+c fold ae_io_readgo q18 b p1 obj
+p at c 0
+d call ae_reset c 38
+q19 get p 24
+e call ae_pair d 38 0 q19
+f call ae_pair e 38 2 p1
+q20 call ae_block f 2
+ret q20
+end
+
+fn ae_scalar (u32x128,u32x128,io) -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 get m 89
+q1 get m 103
+q2 get m 105
+q3 get m 107
+q4 eq q0 1
+q5 eq q0 2
+q6 add q1 q2
+q7 eq q0 3
+q8 sub q1 q2
+q9 eq q0 4
+q10 mul q1 q2
+q11 eq q0 5
+q12 and q1 q2
+q13 eq q0 6
+q14 or q1 q2
+q15 eq q0 7
+q16 xor q1 q2
+q17 eq q0 8
+q18 shl q1 q2
+q19 eq q0 9
+q20 shr q1 q2
+q21 eq q0 10
+q22 div q1 q2
+q23 eq q0 11
+q24 rem q1 q2
+q25 select q23 q24 0
+q26 select q21 q22 q25
+q27 select q19 q20 q26
+q28 select q17 q18 q27
+q29 select q15 q16 q28
+q30 select q13 q14 q29
+q31 select q11 q12 q30
+q32 select q9 q10 q31
+q33 select q7 q8 q32
+q34 select q5 q6 q33
+val select q4 q1 q34
+q35 eq q0 12
+q36 eq q1 q2
+q37 eq q0 13
+q38 ne q1 q2
+q39 eq q0 14
+q40 lt q1 q2
+q41 eq q0 15
+q42 le q1 q2
+q43 eq q0 16
+q44 gt q1 q2
+q45 ge q1 q2
+q46 select q43 q44 q45
+q47 select q41 q42 q46
+q48 select q39 q40 q47
+q49 select q37 q38 q48
+cmp select q35 q36 q49
+q50 ge q0 12
+q51 le q0 17
+q52 and q50 q51
+q53 select cmp 1 0
+q54 eq q0 18
+q55 ne q1 0
+q56 select q55 q2 q3
+q57 select q54 q56 val
+v select q52 q53 q57
+q58 eq q0 1
+q59 get m 102
+q60 eq q0 18
+q61 ne q1 0
+q62 get m 104
+q63 get m 106
+q64 select q61 q62 q63
+q65 get m 22
+q66 select q60 q64 q65
+t select q58 q59 q66
+q67 get m 3
+q68 ne q67 0
+q69 eq q0 10
+q70 eq q0 11
+q71 or q69 q70
+q72 and q68 q71
+q73 eq q2 0
+q74 and q72 q73
+q75 select q74 711 0
+p call ae_fail p0 q75
+q76 at p 0
+q77 at p 1
+q78 at p 2
+q79 rec q76 q77 t v q78
+ret q79
+end
+
+fn ae_checked_op (u32x128,u32x128,u32,u32,io) u32 -> (u32x128,u32x128,u32,u32,io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 get q0 89
+q4 get q0 103
+q5 get q0 105
+mul call ae_umul q4 q5
+q6 eq q3 32
+q7 add q4 q5
+q8 eq q3 33
+q9 sub q4 q5
+q10 eq q3 34
+q11 at mul 0
+q12 eq q3 35
+q13 eq q5 0
+q14 div q4 q5
+q15 select q13 0 q14
+q16 eq q5 0
+q17 rem q4 q5
+q18 select q16 0 q17
+q19 select q12 q15 q18
+q20 select q10 q11 q19
+q21 select q8 q9 q20
+v select q6 q7 q21
+q22 eq q3 32
+q23 ge v q4
+q24 eq q3 33
+q25 ge q4 q5
+q26 eq q3 34
+q27 at mul 1
+q28 eq q27 0
+q29 ne q5 0
+q30 select q26 q28 q29
+q31 select q24 q25 q30
+ok select q22 q23 q31
+q32 rec q0 q1 q2
+q33 call ae_checked q32 v ok
+ret q33
+end
+
+fn ae_get_op (u32x128,u32x128,u32,u32,io) u32 -> (u32x128,u32x128,u32,u32,io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 get q0 89
+q4 rec q0 q1 q2
+q5 get q0 103
+a call ae_raw q4 q5 0 1
+len at a 2
+q6 eq q3 25
+q7 get q0 105
+q8 get len 0
+q9 rem q7 q8
+q10 get q0 105
+idx select q6 q9 q10
+q11 at a 0
+q12 at a 1
+q13 at a 3
+q14 rec q11 q12 q13
+q15 get q0 3
+q16 ne q15 0
+q17 get q0 105
+q18 get len 0
+q19 ge q17 q18
+q20 and q16 q19
+q21 select q20 710 0
+b call ae_fail q14 q21
+q22 get q0 103
+q23 mul idx 2
+q24 add 1 q23
+c call ae_raw b q22 q24 2
+v at c 2
+q25 at c 0
+q26 at c 1
+q27 get v 0
+q28 get v 1
+q29 at c 3
+q30 rec q25 q26 q27 q28 q29
+ret q30
+end
+
+fn ae_cget_ok (u32x128,u32x128,u32,u32,io) u32 -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+q4 get m 103
+q5 get m 105
+q6 mul q5 2
+q7 add 1 q6
+a call ae_raw q3 q4 q7 2
+v at a 2
+q8 at a 0
+q9 at a 1
+q10 get v 1
+q11 at a 3
+q12 rec q8 q9 0 q10 q11
+ret q12
+end
+
+fn ae_cget (u32x128,u32x128,u32,u32,io) u32 -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+q4 get m 103
+a call ae_raw q3 q4 0 1
+len at a 2
+q5 at a 0
+q6 at a 1
+q7 at a 3
+q8 get m 105
+q9 get len 0
+q10 lt q8 q9
+q11 select q10 1 0
+q12 rec q5 q6 0 0 q7
+b fold ae_cget_ok q11 q12
+q13 at b 0
+q14 at b 1
+q15 at b 4
+q16 rec q13 q14 q15
+q17 at b 3
+q18 get m 105
+q19 get len 0
+q20 lt q18 q19
+q21 call ae_checked q16 q17 q20
+ret q21
+end
+
+fn ae_update_op (u32x128,u32x128,u32,u32,io) u32 -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+q4 get m 103
+a call ae_raw q3 q4 0 1
+len at a 2
+q5 at a 0
+q6 at a 1
+q7 at a 3
+q8 rec q5 q6 q7
+q9 get len 0
+q10 gt q9 0
+q11 get len 0
+q12 select q10 q11 1
+b call ae_charge q8 q12
+q13 get m 3
+q14 ne q13 0
+q15 get m 105
+q16 get len 0
+q17 ge q15 q16
+q18 and q14 q17
+q19 select q18 710 0
+c call ae_fail b q19
+q20 get m 103
+q21 get m 89
+q22 eq q21 26
+q23 get m 105
+q24 get len 0
+q25 rem q23 q24
+q26 get m 105
+q27 select q22 q25 q26
+q28 get m 106
+q29 get m 107
+q30 call ae_clone c q20 q27 q28 q29
+ret q30
+end
+
+fn ae_arr_op (u32x128,u32x128,u32,u32,io) u32 -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+q4 get m 91
+q5 gt q4 0
+q6 get m 91
+q7 select q5 q6 1
+a call ae_charge q3 q7
+q8 get m 91
+q9 call ae_block a q8
+ret q9
+end
+
+fn ae_read_op (u32x128,u32x128,u32,u32,io) u32 -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+q4 get m 103
+q5 call ae_io_read q3 q4
+ret q5
+end
+
+fn ae_write_op (u32x128,u32x128,u32,u32,io) u32 -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+q4 get m 103
+q5 get m 105
+a call ae_io_emit q3 q4 q5
+q6 at a 0
+q7 at a 1
+q8 get m 103
+q9 at a 2
+q10 rec q6 q7 2 q8 q9
+ret q10
+end
+
+fn ae_puts_op (u32x128,u32x128,u32,u32,io) u32 -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+q4 get m 103
+q5 get m 105
+a call ae_io_puts q3 q4 q5
+q6 at a 0
+q7 at a 1
+q8 get m 103
+q9 at a 2
+q10 rec q6 q7 2 q8 q9
+ret q10
+end
+
+fn ae_evalop (u32x128,u32x128,io) -> (u32x128,u32x128,u32,u32,io)
+m at p0 0
+q0 get m 89
+a call ae_scalar p0
+q1 ge q0 32
+q2 le q0 36
+q3 and q1 q2
+q4 select q3 1 0
+b fold ae_checked_op q4 a
+q5 eq q0 37
+q6 select q5 1 0
+c fold ae_cget q6 b
+q7 eq q0 25
+q8 eq q0 27
+q9 or q7 q8
+q10 select q9 1 0
+d fold ae_get_op q10 c
+q11 eq q0 26
+q12 eq q0 28
+q13 or q11 q12
+q14 select q13 1 0
+e fold ae_update_op q14 d
+q15 eq q0 22
+q16 eq q0 23
+q17 or q15 q16
+q18 select q17 1 0
+f fold ae_arr_op q18 e
+q19 eq q0 29
+q20 select q19 1 0
+g fold ae_read_op q20 f
+q21 eq q0 30
+q22 select q21 1 0
+h fold ae_write_op q22 g
+q23 eq q0 31
+q24 select q23 1 0
+j fold ae_puts_op q24 h
+q25 at j 0
+q26 at j 1
+q27 get m 22
+q28 at j 3
+q29 at j 4
+q30 rec q25 q26 q27 q28 q29
+ret q30
+end
+
+fn ae_param_more (u32x128,u32x128,io) u32 (u32,u32,u32) u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_param_copy (u32x128,u32x128,io) u32 (u32,u32,u32) u32 -> (u32x128,u32x128,io)
+q0 at p0 2
+q1 mul p1 2
+a call av_load q0 p2 q1 2
+q2 at p0 0
+q3 at a 0
+q4 set q2 0 q3
+q5 at p0 1
+q6 at a 2
+q7 rec q4 q5 q6
+q8 mul p1 2
+q9 add p3 q8
+q10 at a 1
+q11 call ae_store q7 1 35 q9 2 q10
+ret q11
+end
+
+fn ae_push (u32x128,u32x128,io) u32 (u32,u32,u32) -> (u32x128,u32x128,io)
+q0 mul p1 14
+a call ae_load p0 0 41 q0 14
+f at a 2
+m at a 0
+q1 get m 36
+q2 at a 0
+q3 at a 1
+q4 at a 3
+q5 rec q2 q3 q4
+q6 at p2 1
+q7 get f 2
+q8 mul q7 2
+q9 ne q6 q8
+q10 select q9 703 0
+bad call ae_fail q5 q10
+q11 get f 2
+q12 get f 5
+q13 add q11 q12
+q14 mul q13 2
+b call ae_zeros bad 35 q14
+q15 get f 2
+c loop ae_param_more ae_param_copy q15 b p2 q1
+z call arena_zero
+q16 set z 0 p1
+q17 set q16 1 q1
+q18 get f 2
+q19 set q17 2 q18
+q20 get f 4
+q21 set q19 3 q20
+q22 get f 5
+d set q21 4 q22
+q23 set d 7 4294967295
+q24 set q23 17 4294967295
+q25 get f 6
+e set q24 18 q25
+q26 call ae_append c 32 24 e
+ret q26
+end
+
+fn ae_commit (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 65
+q1 get m 66
+q2 get m 69
+q3 add q1 q2
+q4 mul q3 2
+q5 add q0 q4
+q6 call ae_pairpage p1 p2
+a call ae_store p0 1 35 q5 2 q6
+b at a 0
+q7 get b 69
+q8 add q7 1
+q9 set b 69 q8
+c set q9 70 1
+q10 at a 1
+q11 at a 2
+q12 rec c q10 q11
+q13 call ae_save q12
+ret q13
+end
+
+fn ae_normalop (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+a call ae_evalop p0
+q0 at a 0
+q1 at a 1
+q2 at a 4
+q3 rec q0 q1 q2
+q4 at a 2
+q5 at a 3
+q6 call ae_commit q3 q4 q5
+ret q6
+end
+
+fn ae_callnode (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 call ae_mset p0 70 2
+a call ae_save q0
+q1 get m 24
+q2 get m 38
+q3 get m 39
+q4 get m 40
+q5 rec q2 q3 q4
+q6 call ae_push a q1 q5
+ret q6
+end
+
+fn ae_iternode (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 91
+a call ae_block p0 q0
+b at a 0
+q1 set b 70 3
+q2 get b 81
+q3 set q1 71 q2
+q4 set q3 72 0
+q5 get b 103
+q set q4 73 q5
+q6 get b 104
+q7 set q 74 q6
+q8 get b 105
+q9 set q7 75 q8
+q10 get b 89
+q11 set q9 76 q10
+q12 get b 24
+r set q11 77 q12
+q13 get b 25
+q14 set r 78 q13
+q15 get b 90
+q16 set q14 79 q15
+q17 get b 91
+q18 set q16 80 q17
+q19 at a 3
+t set q18 83 q19
+q20 at a 1
+q21 at a 4
+q22 rec t q20 q21
+q23 call ae_save q22
+ret q23
+end
+
+fn ae_gather_more (u32x128,u32x128,io) u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_node (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 67
+q1 get m 69
+global add q0 q1
+q2 call ae_mset p0 11 global
+q3 call ae_mset q2 81 global
+a call ae_charge q3 1
+q4 mul global 14
+b call ae_load a 0 44 q4 14
+q5 at b 0
+q6 at b 1
+q7 at b 3
+q8 rec q5 q6 q7
+q9 at b 2
+c call ae_cacheload q8 q9 88 14
+p at c 0
+d call ae_load c 0 97 global 1
+ty at d 2
+q10 at d 0
+q11 at d 1
+q12 at d 3
+q13 rec q10 q11 q12
+q14 get ty 0
+e call ae_mset q13 22 q14
+q15 mul global 2
+f call ae_load e 0 100 q15 2
+rs at f 2
+q16 at f 0
+q17 at f 1
+q18 at f 3
+q19 rec q16 q17 q18
+q20 get rs 0
+q21 call ae_mset q19 24 q20
+q22 get rs 1
+g call ae_mset q21 25 q22
+h call ae_reset g 38
+q23 get p 91
+q24 get p 90
+j loop ae_gather_more ae_gather q23 h q24
+q at j 0
+q25 get q 39
+q26 gt q25 6
+q27 get q 39
+q28 select q26 6 q27
+k call ae_load j 1 38 0 q28
+q29 at k 0
+q30 at k 1
+q31 at k 3
+q32 rec q29 q30 q31
+q33 at k 2
+l call ae_cacheload q32 q33 102 6
+mm at l 0
+q34 get mm 89
+q35 eq q34 0
+q36 gt q34 37
+q37 or q35 q36
+q38 eq q34 24
+q39 or q37 q38
+q40 select q39 790 0
+bad call ae_fail l q40
+q41 eq q34 19
+q42 select q41 1 0
+n fold ae_callnode q42 bad
+q43 eq q34 20
+q44 eq q34 21
+q45 or q43 q44
+q46 select q45 1 0
+o fold ae_iternode q46 n
+q47 ne q34 19
+q48 ne q34 20
+q49 and q47 q48
+q50 ne q34 21
+q51 and q49 q50
+q52 select q51 1 0
+q53 fold ae_normalop q52 o
+ret q53
+end
+
+fn ae_iter_arg (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+q0 add p1 2
+q1 mul q0 2
+q2 add 1 q1
+a call ae_raw p0 p2 q2 2
+v at a 2
+q3 at a 0
+q4 at a 1
+q5 at a 3
+q6 rec q3 q4 q5
+q7 get v 0
+q8 get v 1
+q9 call ae_pair q6 38 q7 q8
+ret q9
+end
+
+fn ae_iter_argmore (u32x128,u32x128,io) u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_iter_args (u32x128,u32x128,io) -> (u32x128,u32x128,io)
+m at p0 0
+q0 call ae_reset p0 38
+q1 get m 74
+q2 get m 75
+a call ae_pair q0 38 q1 q2
+q3 get m 72
+b call ae_pair a 38 0 q3
+q4 get m 80
+q5 sub q4 2
+q6 get m 83
+q7 loop ae_iter_argmore ae_iter_arg q5 b q6
+ret q7
+end
+
+fn ae_iter_body (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+a call ae_iter_args p0
+m at a 0
+q0 call ae_mset a 70 5
+b call ae_save q0
+q1 get m 77
+q2 get m 38
+q3 get m 39
+q4 get m 40
+q5 rec q2 q3 q4
+q6 call ae_push b q1 q5
+ret q6
+end
+
+fn ae_iter_pred (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+a call ae_iter_args p0
+m at a 0
+q0 call ae_mset a 70 4
+b call ae_save q0
+q1 get m 78
+q2 get m 38
+q3 get m 39
+q4 get m 40
+q5 rec q2 q3 q4
+q6 call ae_push b q1 q5
+ret q6
+end
+
+fn ae_iter_finish (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+a call ae_mset p0 71 4294967295
+q0 get m 74
+q1 get m 75
+q2 call ae_commit a q0 q1
+ret q2
+end
+
+fn ae_iter_trip (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+a call ae_charge p0 1
+b call ae_trip a
+c call ae_save b
+m at c 0
+q0 get m 76
+q1 eq q0 21
+q2 select q1 1 0
+d fold ae_iter_pred q2 c
+q3 get m 76
+q4 eq q3 20
+q5 select q4 1 0
+q6 fold ae_iter_body q5 d
+ret q6
+end
+
+fn ae_iter (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 72
+q1 get m 73
+q2 ge q0 q1
+q3 select q2 1 0
+a fold ae_iter_finish q3 p0
+q4 get m 72
+q5 get m 73
+q6 lt q4 q5
+q7 select q6 1 0
+q8 fold ae_iter_trip q7 a
+ret q8
+end
+
+fn ae_parent_call (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+q0 call ae_commit p0 p2 p3
+ret q0
+end
+
+fn ae_parent_pred (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+q0 eq p3 0
+q1 select q0 1 0
+a fold ae_iter_finish q1 p0
+m at a 0
+q2 ne p3 0
+q3 get m 70
+q4 select q2 6 q3
+b call ae_mset a 70 q4
+q5 call ae_save b
+ret q5
+end
+
+fn ae_parent_body (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 set m 74 p2
+q1 set q0 75 p3
+q2 get m 72
+q3 add q2 1
+q4 set q1 72 q3
+a set q4 70 3
+q5 at p0 1
+q6 at p0 2
+q7 rec a q5 q6
+q8 call ae_save q7
+ret q8
+end
+
+fn ae_return_parent (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+a call ae_frame p0
+m at a 0
+q0 get m 70
+q1 eq q0 2
+q2 select q1 1 0
+b fold ae_parent_call q2 a p2 p3
+q3 get m 70
+q4 eq q3 4
+q5 select q4 1 0
+c fold ae_parent_pred q5 b p2 p3
+q6 get m 70
+q7 eq q6 5
+q8 select q7 1 0
+q9 fold ae_parent_body q8 c p2 p3
+ret q9
+end
+
+fn ae_return (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 82
+a call ae_operand p0 q0
+b at a 0
+q1 at a 2
+q2 set b 9 q1
+q3 at a 3
+q4 set q2 10 q3
+q5 get b 33
+q6 sub q5 24
+q7 set q4 33 q6
+q8 get m 65
+c set q7 36 q8
+q9 get c 33
+last eq q9 0
+q10 select last 1 0
+q11 set c 2 q10
+q12 at a 1
+q13 at a 4
+q14 select last 0 1
+q15 rec q11 q12 q13
+q16 at a 2
+q17 at a 3
+q18 fold ae_return_parent q14 q15 q16 q17
+ret q18
+end
+
+fn ae_entry (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 call ae_charge p0 1
+q1 call ae_mset q0 70 1
+q2 call ae_save q1
+ret q2
+end
+
+fn ae_nodes (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 69
+q1 get m 68
+q2 ge q0 q1
+q3 select q2 1 0
+a fold ae_return q3 p0
+q4 get m 69
+q5 get m 68
+q6 lt q4 q5
+q7 select q6 1 0
+q8 fold ae_node q7 a
+ret q8
+end
+
+fn ae_step (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+a call ae_frame p0
+m at a 0
+q0 get m 70
+q1 eq q0 0
+q2 select q1 1 0
+b fold ae_entry q2 a
+q3 eq q0 1
+q4 select q3 1 0
+c fold ae_nodes q4 b
+q5 eq q0 3
+q6 select q5 1 0
+d fold ae_iter q6 c
+q7 eq q0 6
+q8 select q7 1 0
+q9 fold ae_iter_body q8 d
+ret q9
+end
+
+fn ae_running (u32x128,u32x128,io) u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 2
+q3 eq q2 0
+q4 and q1 q3
+ret q4
+end
+
+fn ae_resume (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 loop ae_running ae_step p1 p0
+ret q0
+end
+
+fn ae_empty u32x128 io u32 u32 bool u32 u32 -> (u32x128,u32x128,io)
+z call arena_zero
+q0 get p0 8
+q1 set z 3 q0
+q2 set q1 4 p2
+q3 set q2 5 p3
+q4 select p4 1 0
+a set q3 6 q4
+q5 set a 7 p5
+q6 set q5 8 p6
+q7 set q6 11 4294967295
+b set q7 26 4294967295
+q8 rec b p0 p1
+ret q8
+end
+
+fn ae_task (u32x128,u32x128,io) u32 u32 u32 u32 u32 u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 42
+id div q0 6
+z call arena_zero
+q1 set z 0 p1
+q2 set q1 1 p2
+q3 set q2 2 p3
+q4 set q3 3 p4
+q5 set q4 4 p5
+p set q5 5 p6
+a call ae_append p0 41 6 p
+q6 call arena_zero
+q7 set q6 0 id
+q8 call ae_append a 44 1 q7
+ret q8
+end
+
+fn ae_argument_task (u32x128,u32x128,io) u32 (u32,u32,u32) u32 u32 -> (u32x128,u32x128,io)
+q0 sub p4 1
+ix sub q0 p1
+q1 add p3 ix
+a call ae_load p0 0 50 q1 1
+expected at a 2
+q2 at a 3
+q3 mul ix 2
+b call av_load q2 p2 q3 2
+val at b 1
+q4 at a 0
+q5 at b 0
+q6 set q4 0 q5
+q7 at a 1
+q8 at b 2
+q9 rec q6 q7 q8
+q10 get expected 0
+q11 get val 0
+q12 get val 1
+q13 call ae_task q9 q10 q11 q12 4294967295 ix 0
+ret q13
+end
+
+fn ae_argument_more (u32x128,u32x128,io) u32 (u32,u32,u32) u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_child_task (u32x128,u32x128,io) u32 u32 u32x128 u32 u32 -> (u32x128,u32x128,io)
+q0 sub p5 1
+ix sub q0 p1
+q1 get p3 0
+q2 eq q1 4
+q3 get p3 1
+q4 add q3 ix
+q5 select q2 q4 0
+q6 get p3 0
+q7 eq q6 4
+q8 select q7 1 0
+a call ae_load p0 0 71 q5 q8
+ty at a 2
+q9 at a 0
+q10 at a 1
+q11 at a 3
+q12 rec q9 q10 q11
+q13 mul ix 2
+q14 add 1 q13
+b call ae_raw q12 p4 q14 2
+val at b 2
+q15 at b 0
+q16 at b 1
+q17 at b 3
+q18 rec q15 q16 q17
+q19 get p3 0
+q20 eq q19 3
+q21 get p3 1
+q22 get ty 0
+q23 select q20 q21 q22
+q24 get val 0
+q25 get val 1
+q26 get p3 0
+q27 eq q26 3
+q28 select q27 1 2
+q29 call ae_task q18 q23 q24 q25 p2 ix q28
+ret q29
+end
+
+fn ae_child_more (u32x128,u32x128,io) u32 u32 u32x128 u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_shape_check (u32x128,u32x128,io) u32 u32x128 u32x128 u32 -> (u32x128,u32x128,io)
+q0 get p2 2
+a call ae_raw p0 q0 0 1
+len at a 2
+q1 get p3 0
+q2 eq q1 3
+q3 get p3 2
+q4 get p3 2
+wanted select q2 q3 q4
+q5 at a 0
+q6 at a 1
+q7 at a 3
+q8 rec q5 q6 q7
+q9 call ae_mset q8 27 wanted
+q10 get len 0
+b call ae_mset q9 28 q10
+q11 get len 0
+q12 ne q11 wanted
+q13 get p3 0
+q14 eq q13 3
+q15 select q14 705 706
+q16 select q12 q15 0
+c call ae_fail b q16
+q17 get p2 2
+q18 loop ae_child_more ae_child_task wanted c p4 p3 q17 wanted
+ret q18
+end
+
+fn ae_check_step (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 45
+q1 sub q0 1
+a call ae_load p0 1 44 q1 1
+ix at a 2
+q2 at a 0
+q3 at a 1
+q4 at a 3
+q5 rec q2 q3 q4
+q6 get m 45
+q7 sub q6 1
+b call ae_mset q5 45 q7
+q8 get ix 0
+q9 mul q8 6
+c call ae_load b 1 41 q9 6
+task at c 2
+q10 at c 0
+q11 at c 1
+q12 at c 3
+q13 rec q10 q11 q12
+q14 get task 0
+q15 mul q14 5
+d call ae_load q13 0 68 q15 5
+expected at d 2
+q16 get expected 0
+q17 lt q16 3
+q18 get task 1
+q19 get expected 0
+q20 ne q18 q19
+q21 get expected 0
+q22 eq q21 1
+q23 get task 2
+q24 gt q23 1
+q25 and q22 q24
+q26 or q20 q25
+q27 get task 1
+q28 lt q27 3
+q29 get task 1
+q30 eq q29 4294967295
+q31 or q28 q30
+bad select q17 q26 q31
+q32 at d 0
+q33 at d 1
+q34 at d 3
+q35 rec q32 q33 q34
+q36 get ix 0
+q37 call ae_mset q35 26 q36
+q38 select bad 704 0
+e call ae_fail q37 q38
+p at e 0
+q39 get p 0
+q40 eq q39 0
+q41 get expected 0
+q42 ge q41 3
+q43 and q40 q42
+q44 select q43 1 0
+q45 get ix 0
+q46 fold ae_shape_check q44 e task expected q45
+ret q46
+end
+
+fn ae_check_more (u32x128,u32x128,io) u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 45
+q3 ne q2 0
+q4 and q1 q3
+ret q4
+end
+
+fn ae_check_resume (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 loop ae_check_more ae_check_step p1 p0
+ret q0
+end
+
+fn ae_prepare (u32x128,u32x128,io) u32 (u32,u32,u32) -> (u32x128,u32x128,io)
+q0 mul p1 14
+a call ae_load p0 0 41 q0 14
+header at a 2
+q1 at a 0
+q2 at a 1
+q3 at a 3
+q4 rec q1 q2 q3
+q5 call ae_reset q4 32
+q6 call ae_reset q5 35
+q7 call ae_reset q6 41
+b call ae_reset q7 44
+q8 call ae_mset b 29 p1
+q9 at p2 0
+q10 call ae_mset q8 30 q9
+q11 at p2 1
+c call ae_mset q10 31 q11
+q12 get header 2
+q13 call ae_mset c 26 q12
+q14 at p2 1
+q15 div q14 2
+d call ae_mset q13 27 q15
+q16 at p2 1
+q17 get header 2
+q18 mul q17 2
+q19 ne q16 q18
+q20 select q19 703 0
+e call ae_fail d q20
+q21 get header 2
+q22 get header 1
+q23 get header 2
+q24 loop ae_argument_more ae_argument_task q21 e p2 q22 q23
+ret q24
+end
+
+fn ae_start_checked (u32x128,u32x128,io) u32 (u32,u32,u32) -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 45
+q1 ne q0 0
+q2 select q1 790 0
+a call ae_fail p0 q2
+q3 call ae_push a p1 p2
+ret q3
+end
+
+fn ae_lit_child (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+q0 add p2 p1
+a call ae_load p0 1 53 q0 1
+ix at a 2
+m at a 0
+q1 at a 0
+q2 at a 1
+q3 at a 3
+q4 rec q1 q2 q3
+q5 get ix 0
+q6 get m 16
+q7 ge q5 q6
+q8 select q7 790 0
+b call ae_fail q4 q8
+q9 get ix 0
+q10 mul q9 2
+c call ae_load b 1 56 q10 2
+v at c 2
+q11 at c 0
+q12 at c 1
+q13 at c 3
+q14 rec q11 q12 q13
+q15 get v 0
+q16 get v 1
+q17 call ae_pair q14 38 q15 q16
+ret q17
+end
+
+fn ae_lit_morechild (u32x128,u32x128,io) u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_lit_aggregate (u32x128,u32x128,u32,u32,io) u32 u32 u32 -> (u32x128,u32x128,u32,u32,io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 4
+q3 rec q0 q1 q2
+a call ae_reset q3 38
+b loop ae_lit_morechild ae_lit_child p3 a p2
+c call ae_block b p3
+q4 at c 0
+q5 at c 1
+q6 at c 3
+q7 at c 4
+q8 rec q4 q5 3 q6 q7
+ret q8
+end
+
+fn ae_lit_step (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 16
+q1 mul q0 6
+a call ae_load p0 1 50 q1 6
+lit at a 2
+q2 at a 0
+q3 at a 1
+q4 at a 3
+q5 rec q2 q3 q4
+q6 get lit 0
+q7 lt q6 1
+q8 get lit 0
+q9 gt q8 4
+q10 or q7 q9
+q11 get lit 0
+q12 eq q11 2
+q13 get lit 1
+q14 gt q13 1
+q15 and q12 q14
+q16 or q10 q15
+q17 select q16 790 0
+b call ae_fail q5 q17
+q18 at b 0
+q19 at b 1
+q20 get lit 0
+q21 eq q20 2
+q22 select q21 1 0
+q23 get lit 1
+q24 at b 2
+q25 get lit 0
+q26 ge q25 3
+q27 select q26 1 0
+q28 rec q18 q19 q22 q23 q24
+q29 get lit 2
+q30 get lit 3
+c fold ae_lit_aggregate q27 q28 q29 q30
+q31 at c 0
+q32 at c 1
+q33 at c 4
+q34 rec q31 q32 q33
+q35 at c 2
+q36 at c 3
+d call ae_pair q34 56 q35 q36
+q37 get m 16
+q38 add q37 1
+q39 call ae_mset d 16 q38
+ret q39
+end
+
+fn ae_lit_more (u32x128,u32x128,io) u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 16
+q3 get m 51
+q4 div q3 6
+q5 lt q2 q4
+q6 and q1 q5
+ret q6
+end
+
+fn ae_literals_resume (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 loop ae_lit_more ae_lit_step p1 p0
+ret q0
+end
+
+fn ae_eq_push (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,io)
+q0 call arena_zero
+q1 set q0 0 p1
+q2 set q1 1 p2
+q3 set q2 2 p3
+z set q3 3 p4
+q4 call ae_append p0 47 4 z
+ret q4
+end
+
+fn ae_eq_child (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,io)
+q0 sub p4 1
+ix sub q0 p1
+q1 mul ix 2
+q2 add 1 q1
+x call ae_raw p0 p2 q2 2
+av at x 2
+q3 at x 0
+q4 at x 1
+q5 at x 3
+q6 rec q3 q4 q5
+q7 mul ix 2
+q8 add 1 q7
+y call ae_raw q6 p3 q8 2
+bv at y 2
+q9 at y 0
+q10 at y 1
+q11 at y 3
+q12 rec q9 q10 q11
+q13 get av 0
+q14 get av 1
+q15 get bv 0
+q16 get bv 1
+q17 call ae_eq_push q12 q13 q14 q15 q16
+ret q17
+end
+
+fn ae_eq_childmore (u32x128,u32x128,io) u32 u32 u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_eq_arrays (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+a call ae_raw p0 p2 0 1
+al at a 2
+q0 at a 0
+q1 at a 1
+q2 at a 3
+q3 rec q0 q1 q2
+b call ae_raw q3 p3 0 1
+bl at b 2
+q4 at b 0
+q5 at b 1
+q6 at b 3
+q7 rec q4 q5 q6
+q8 get al 0
+q9 get bl 0
+q10 eq q8 q9
+q11 select q10 1 0
+c call ae_mset q7 21 q11
+q12 get al 0
+q13 get bl 0
+q14 eq q12 q13
+q15 get al 0
+q16 select q14 q15 0
+q17 get al 0
+q18 loop ae_eq_childmore ae_eq_child q16 c p2 p3 q17
+ret q18
+end
+
+fn ae_eq_step (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 48
+q1 sub q0 4
+a call ae_load p0 1 47 q1 4
+v at a 2
+q2 get v 0
+q3 ge q2 3
+q4 get v 2
+q5 ge q4 3
+q6 and q3 q5
+q7 get v 0
+q8 ne q7 4294967295
+q9 and q6 q8
+q10 get v 2
+q11 ne q10 4294967295
+both and q9 q11
+q12 get v 0
+q13 get v 2
+q14 eq q12 q13
+q15 get v 1
+q16 get v 3
+q17 eq q15 q16
+same and q14 q17
+q18 at a 0
+q19 at a 1
+q20 at a 3
+q21 rec q18 q19 q20
+q22 get m 48
+q23 sub q22 4
+q24 call ae_mset q21 48 q23
+q25 or both same
+q26 select q25 1 0
+b call ae_mset q24 21 q26
+q27 select both 1 0
+q28 get v 1
+q29 get v 3
+q30 fold ae_eq_arrays q27 b q28 q29
+ret q30
+end
+
+fn ae_eq_more (u32x128,u32x128,io) u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 48
+q3 ne q2 0
+q4 and q1 q3
+q5 get m 21
+q6 ne q5 0
+q7 and q4 q6
+ret q7
+end
+
+fn ae_equal_begin (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,io)
+q0 call ae_reset p0 47
+q1 call ae_mset q0 21 1
+q2 call ae_eq_push q1 p1 p2 p3 p4
+ret q2
+end
+
+fn ae_equal_resume (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+q0 loop ae_eq_more ae_eq_step p1 p0
+ret q0
+end
+
+fn ae_ir_appendgo (u32x128,u32x128,io) u32 u32 u32 u32x128 -> (u32x128,u32x128,io)
+ir at p0 1
+q0 at p0 2
+q1 get ir p2
+q2 add p2 1
+q3 get ir q2
+q4 add p2 2
+q5 get ir q4
+q6 rec q1 q3 q5
+a call av_append q0 q6 p3 p4
+q7 at p0 0
+q8 at a 0
+q9 set q7 0 q8
+q10 at a 1
+q11 at q10 0
+m1_a set ir p2 q11
+q12 add p2 1
+q13 at q10 1
+m1_b set m1_a q12 q13
+q14 add p2 2
+q15 at q10 2
+q16 set m1_b q14 q15
+q17 at a 2
+q18 rec q9 q16 q17
+ret q18
+end
+
+fn ae_ir_append (u32x128,u32x128,io) u32 u32 u32x128 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold ae_ir_appendgo q2 p0 p1 p2 p3
+ret q3
+end
+
+fn ae_copy_irpage (u32x128,u32x128,io) u32 u32 (u32,u32,u32) -> (u32x128,u32x128,io)
+first mul p1 128
+q0 at p3 1
+q1 sub q0 first
+q2 gt q1 128
+q3 at p3 1
+q4 sub q3 first
+count select q2 128 q4
+q5 at p0 2
+a call av_load q5 p3 first count
+q6 at p0 0
+q7 at a 0
+q8 set q6 0 q7
+q9 at p0 1
+q10 at a 2
+q11 rec q8 q9 q10
+q12 at a 1
+q13 call ae_ir_append q11 p2 count q12
+ret q13
+end
+
+fn ae_copy_irmore (u32x128,u32x128,io) u32 u32 (u32,u32,u32) -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_copy_ir (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+ir at p0 1
+q0 get ir p1
+q1 add p1 1
+q2 get ir q1
+q3 add p1 2
+q4 get ir q3
+q5 rec 0 0 0
+m1_a set ir p1 0
+q6 add p1 1
+m1_b set m1_a q6 0
+q7 add p1 2
+q8 set m1_b q7 0
+q9 div q2 128
+q10 rem q2 128
+q11 eq q10 0
+q12 select q11 0 1
+q13 add q9 q12
+q14 at p0 0
+q15 at p0 2
+q16 rec q14 q8 q15
+q17 rec q0 q2 q4
+q18 loop ae_copy_irmore ae_copy_irpage q13 q16 p1 q17
+ret q18
+end
+
+fn ae_external_ir (u32x128,u32x128,io) u32 (u32,u32,u32) -> (u32x128,u32x128,io)
+q0 at p2 1
+q1 div q0 128
+q2 at p2 1
+q3 rem q2 128
+q4 eq q3 0
+q5 select q4 0 1
+q6 add q1 q5
+q7 loop ae_copy_irmore ae_copy_irpage q6 p0 p1 p2
+ret q7
+end
+
+fn ae_fillword u32x128 u32 u32 -> u32x128
+q0 set p0 p1 p2
+ret q0
+end
+
+fn ae_ir_fillstep (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,io)
+q0 call arena_zero
+z fold ae_fillword 128 q0 p4
+first mul p1 128
+q1 sub p3 first
+q2 gt q1 128
+q3 sub p3 first
+q4 select q2 128 q3
+q5 call ae_ir_append p0 p2 q4 z
+ret q5
+end
+
+fn ae_ir_fillmore (u32x128,u32x128,io) u32 u32 u32 u32 -> bool
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+ret q1
+end
+
+fn ae_ir_fill (u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+q0 div p2 128
+q1 rem p2 128
+q2 eq q1 0
+q3 select q2 0 1
+q4 add q0 q3
+q5 loop ae_ir_fillmore ae_ir_fillstep q4 p0 p1 p2 p3
+ret q5
+end
+
+fn ae_contract_view (u32x128,u32x128,io) u32 u32x128 (u32,u32,u32) (u32,u32,u32) u32 u32 -> (u32x128,u32x128,io)
+q0 mul p1 14
+a call ae_load p0 0 41 q0 14
+original at a 2
+q1 at a 0
+q2 at a 1
+q3 at a 3
+q4 rec q1 q2 q3
+b call ae_copy_ir q4 41
+c call ae_copy_ir b 44
+d call ae_copy_ir c 47
+e call ae_copy_ir d 50
+f call ae_copy_ir e 97
+g call ae_copy_ir f 100
+ir at g 1
+q5 get ir 42
+nf div q5 14
+q6 get ir 45
+nn div q6 14
+q7 get ir 48
+na div q7 5
+q8 get ir 51
+q9 at p3 1
+q10 rem q9 5
+q11 ne q10 0
+q12 get p2 3
+q13 at p3 1
+q14 div q13 5
+q15 ne q12 q14
+q16 or q11 q15
+q17 get ir 98
+q18 gt q17 nn
+q19 or q16 q18
+q20 get ir 101
+q21 mul nn 2
+q22 gt q20 q21
+q23 or q19 q22
+q24 select q23 790 0
+h call ae_fail g q24
+q25 get ir 98
+q26 sub nn q25
+j call ae_ir_fill h 97 q26 0
+q27 mul nn 2
+q28 get ir 101
+q29 sub q27 q28
+k call ae_ir_fill j 100 q29 4294967295
+l call ae_external_ir k 47 p3
+q30 call arena_zero
+q31 set q30 0 0
+q32 get p2 0
+retpage set q31 1 q32
+m call ae_ir_append l 47 5 retpage
+n call ae_external_ir m 50 p4
+nd set p2 2 na
+o call ae_ir_append n 44 14 nd
+q33 call arena_zero
+q34 set q33 0 1
+p call ae_ir_append o 97 1 q34
+q35 call ae_pairpage p5 p6
+q call ae_ir_append p 100 2 q35
+q36 set original 1 q8
+q37 at p4 1
+q38 set q36 2 q37
+q39 set q38 3 1
+q40 set q39 4 nn
+q41 set q40 5 1
+q42 at p3 1
+q43 div q42 5
+q44 add na q43
+header set q41 6 q44
+r call ae_ir_append q 41 14 header
+q45 call ae_mset r 17 nf
+q46 call ae_mset q45 18 nn
+ret q46
+end
+
+fn ae_run_begin (u32x128,u32x128,io) u32 (u32,u32,u32) -> (u32x128,u32x128,io)
+a call ae_prepare p0 p1 p2
+q0 at p2 2
+q1 call ae_mset a 62 q0
+q2 call ae_mset q1 12 1
+ret q2
+end
+
+fn ae_validated_start (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 29
+q1 get m 30
+q2 get m 31
+q3 get m 62
+q4 rec q1 q2 q3
+a call ae_start_checked p0 q0 q4
+q5 call ae_mset a 12 2
+ret q5
+end
+
+fn ae_validation_pump (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+a call ae_check_resume p0 p2
+m at a 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 45
+q3 eq q2 0
+q4 and q1 q3
+q5 select q4 1 0
+q6 fold ae_validated_start q5 a
+ret q6
+end
+
+fn ae_execution_pump (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+a call ae_resume p0 p2
+m at a 0
+q0 get m 2
+q1 ne q0 0
+q2 get m 12
+q3 select q1 0 q2
+q4 call ae_mset a 12 q3
+ret q4
+end
+
+fn ae_import_pump (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+a call ae_literals_resume p0 p2
+m at a 0
+q0 get m 16
+q1 get m 51
+q2 div q1 6
+q3 ge q0 q2
+q4 get m 12
+q5 select q3 0 q4
+q6 call ae_mset a 12 q5
+ret q6
+end
+
+fn ae_equal_request (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,io)
+q0 call ae_equal_begin p0 p1 p2 p3 p4
+q1 call ae_mset q0 12 4
+ret q1
+end
+
+fn ae_equality_pump (u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,io)
+a call ae_equal_resume p0 p2
+m at a 0
+q0 get m 48
+q1 eq q0 0
+q2 get m 21
+q3 eq q2 0
+q4 or q1 q3
+q5 get m 12
+q6 select q4 0 q5
+q7 call ae_mset a 12 q6
+ret q7
+end
+
+fn ae_pump (u32x128,u32x128,io) u32 -> (u32x128,u32x128,io)
+m at p0 0
+q0 get m 0
+q1 eq q0 0
+q2 get m 12
+request select q1 q2 0
+q3 eq request 1
+q4 select q3 1 0
+a fold ae_validation_pump q4 p0 p1
+q5 eq request 2
+q6 select q5 1 0
+b fold ae_execution_pump q6 a p1
+q7 eq request 3
+q8 select q7 1 0
+c fold ae_import_pump q8 b p1
+q9 eq request 4
+q10 select q9 1 0
+d fold ae_equality_pump q10 c p1
+q at d 0
+q11 get q 0
+q12 ne q11 0
+q13 get q 12
+q14 select q12 0 q13
+q15 call ae_mset d 12 q14
+ret q15
+end

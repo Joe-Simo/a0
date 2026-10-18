@@ -455,7 +455,7 @@ test('the Stage A, B1, B2 and B3.1 reader: accepted programs in the Stage A form
       refusedMembers.push(name);
       continue;
     }
-    assert.equal(got.text, formatProgram(program), `${name}: canonical text`);
+    assert.equal(got.text, readerProgramText(program), `${name}: canonical text`);
     checked += 1;
     if (isStageA(program)) stageA += 1;
     else if (program.functions.some((f) => f.nodes.some((n) => n.op === 'fold' || n.op === 'loop')))
@@ -517,7 +517,7 @@ test('stubs: programs that call functions of the files they use read to their ca
       refused.push(name);
       continue;
     }
-    assert.equal(got.text, formatProgram(program), `${name}: canonical text`);
+    assert.equal(got.text, readerProgramText(program), `${name}: canonical text`);
   }
   t.diagnostic(
     `${members.length - refused.length} of ${members.length} programs with calls into used files read; ${tooBig} over the capacities; refused: ${refused.join(' ')}`,
@@ -716,6 +716,23 @@ test('chunks: the planner cuts a program at function boundaries within the capac
   assert.ok(readable.length > 75 && refused.length >= 5, 'both kinds are present');
 });
 
+// The streaming historical reader emits functions only. An import-only unit has no
+// function bytes; the internal formatProgram(empty) serializer contributes a newline.
+function readerProgramText(program: Program): string {
+  return program.functions.length === 0 ? '' : formatProgram(program);
+}
+
+test('historical function-text streaming preserves import-only source units', () => {
+  const program = parse('use "dependency.a0"\n');
+  const dense = formatDense(program);
+  assert.deepEqual(parseDense(dense).uses, ['dependency.a0']);
+  const got = loadReader()(dense);
+  assert.equal(got.err, false);
+  assert.equal(got.text, '');
+  assert.equal(readerProgramText(program), '');
+  assert.equal(formatProgram(program), '\n', 'the internal IR serializer retains its contract');
+});
+
 /**
  * Reads the programs without a function refused up front chunk by chunk at one budget: each reads to the
  * text the reference gives the whole program, with no chunk flagged that the planner counted within the
@@ -733,7 +750,7 @@ function chunkInvariance(t: TestContext, label: string, caps: Caps): number {
       [[], 0],
       `${name}: no chunk is flagged at ${label}`,
     );
-    assert.equal(got.text, formatProgram(program), `${name}: canonical text at ${label}`);
+    assert.equal(got.text, readerProgramText(program), `${name}: canonical text at ${label}`);
   }
   t.diagnostic(
     `${label}: ${members.length} programs read to the whole-program text in ${chunks} chunks`,
@@ -807,20 +824,20 @@ test('chunks: literal pools follow printed expression-frame depth, including cal
   }
 });
 
-// The smaller website source now fits the reader and joins the chunk-invariance corpus.
+// Shared compiler modules, the unified frontend and the smaller website source join the corpus.
 test('chunks: a program cut at 16 KB reads to the text of the whole program', (t) => {
   const n = chunkInvariance(t, '16 KB', READER_CAPS);
-  assert.equal(n, 152, `${n} programs`);
+  assert.equal(n, 171, `${n} programs`);
 });
 
 test('chunks: a program cut at 4 KB reads to the same text', (t) => {
   const n = chunkInvariance(t, '4 KB', { ...READER_CAPS, bytes: 4096 });
-  assert.equal(n, 152, `${n} programs`);
+  assert.equal(n, 171, `${n} programs`);
 });
 
 test('chunks: a program cut after every function reads to the same text', (t) => {
   const n = chunkInvariance(t, 'one function per chunk', { ...READER_CAPS, bytes: 1 });
-  assert.equal(n, 152, `${n} programs`);
+  assert.equal(n, 171, `${n} programs`);
 });
 
 test('chunks: generated call programs cut at random budgets read to the text of the whole program', (t) => {

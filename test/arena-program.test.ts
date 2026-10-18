@@ -118,3 +118,23 @@ test('seed-built shared IR constructors preserve full-width rows, immutable pref
     assert.match(ran.stdout, /PASS shared IR construction seam/);
   }
 });
+
+test('seed-built frontend parses a comment-heavy source within a bounded allocation budget', {
+  skip,
+}, async () => {
+  const dir = await prepare();
+  const source = `# ${'x'.repeat(32768)}\nfn answer -> u32\nret 42\nend\n`;
+  const input = join(dir, 'comment-budget.a0');
+  await writeFile(input, source);
+  for (const level of [0, 2]) {
+    const output = join(dir, `comment-budget-O${level}.bin`);
+    const result = runTool(
+      join(dir, `driver-O${level}`),
+      [input, output, String(Buffer.byteLength(source) * 2)],
+      { timeoutMs: 30_000 },
+    );
+    assert.ok(result.ok, result.stderr);
+    const words = await readFile(output);
+    assert.equal(words.readUInt32LE(0), 0, `O${level}: valid program exhausted the arena budget`);
+  }
+});

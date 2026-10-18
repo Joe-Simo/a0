@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { applyDiff, selfCheck } from '../tools/app-edit-bench.js';
+import { applyDiff, prompt, selfCheck, startPrograms } from '../tools/app-edit-bench.js';
 import { verdict, wilson } from '../tools/app-edit-summary.js';
 import { APP_TASKS } from '../tools/app-edit-tasks.js';
 
@@ -48,4 +48,33 @@ test('app-edit self-check: references pass, start programs fail, wrong replies a
     );
   assert.equal(r.rows.length, 28);
   assert.ok(r.ok);
+});
+
+test('app-edit source controls keep the default Canonical prompt and expose a distinct Dense view', async () => {
+  const programs = await startPrograms();
+  const task = APP_TASKS[0];
+  assert.ok(task);
+  const original = prompt('a0', task, programs, 'guide');
+  assert.deepEqual(prompt('a0', task, programs, 'guide', 'canonical'), original);
+  const dense = prompt('a0', task, programs, 'guide', 'dense');
+  assert.equal(dense.system, original.system);
+  assert.notEqual(dense.user, original.user);
+  assert.ok(dense.user.startsWith(task.instruction));
+  assert.deepEqual(
+    prompt('ts', task, programs, 'guide', 'dense'),
+    prompt('ts', task, programs, 'guide', 'canonical'),
+  );
+});
+
+test('app-edit Dense control uses the same sealed reference, start, and wrong-edit acceptance tests', {
+  timeout: 600_000,
+}, async () => {
+  const result = await selfCheck('dense');
+  assert.equal(result.rows.length, APP_TASKS.length * 2);
+  for (const row of result.rows)
+    assert.ok(
+      row.referencePasses && row.startFails && row.wrongFails && row.wrongApplies,
+      JSON.stringify(row),
+    );
+  assert.ok(result.ok);
 });

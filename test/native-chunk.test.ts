@@ -79,10 +79,12 @@ test('chunked check: forced small chunks give the unchunked check verdict and re
     assert.ok(sources.length >= 20, `${sources.length} sources`);
     let split = 0;
     let whole = 0;
+    let splittable = 0;
     for (const path of sources) {
       const p = { label: path, path };
       const linked = await link(path, (p) => Promise.resolve(readFileSync(p, 'utf8')));
-      assert.ok(linked.program.functions.length > 1, `${path}: needs functions to split`);
+      const canSplit = linked.program.functions.length > 1;
+      if (canSplit) splittable += 1;
       const forced = [
         `--chunk-bytes=${Math.min(3000, Math.floor(Buffer.byteLength(linked.text) / 2))}`,
       ];
@@ -100,11 +102,16 @@ test('chunked check: forced small chunks give the unchunked check verdict and re
         );
       }
       // the forced plan really cuts the source
-      if (chunkCount(exe, forced, path) > 1) split += 1;
-      else assert.fail(`${path}: the forced plan did not split it`);
+      const chunks = chunkCount(exe, forced, path);
+      if (canSplit) {
+        assert.ok(chunks > 1, `${path}: the forced plan did not split it`);
+        split += 1;
+      } else
+        assert.equal(chunks, chunkCount(exe, [WHOLE], path), `${path}: atomic function boundary`);
     }
     assert.ok(whole >= 4, `${whole} sources fit one chunk`);
-    assert.equal(split, sources.length);
+    assert.equal(split, splittable);
+    assert.ok(splittable >= 20, `${splittable} multi-function sources exercise splitting`);
 
     // Rejections across chunk boundaries: seeded one-line edits of each linked source (as the
     // differential of tools/native-check-diff.ts makes them), each checked in the forced plan.

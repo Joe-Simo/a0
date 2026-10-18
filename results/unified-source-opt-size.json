@@ -1,0 +1,992 @@
+{
+  "schema": 1,
+  "candidate": {
+    "commit": "4389d1a37e0103ef87d0cee9a7d97f9f0f4aaa96",
+    "tree": "4081ad3ecaebf0c2864e68769f877c2816029234"
+  },
+  "baseline": {
+    "commit": "764de84ab99a156e41164518f14cc0676b6343dd",
+    "tree": "ab27dea02d1f5047601f0e1c310c6c3e625f08ea"
+  },
+  "startedAt": "2026-10-18T03:33:32.907Z",
+  "finishedAt": "2026-10-18T03:35:41.119Z",
+  "scope": "Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and modular A0 frontend. Parser/checker plus the same optimized C text emitter. Native instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter and model inference excluded. Equal module and compiled-Wasm preloads in every fresh process; memory includes those preloads and the input. No official source cutover or no-regression conclusion is implied.",
+  "protocol": "Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution.",
+  "workerSha256": "1d5ba7d5dd8f5c5fc29813f6c83b3180950549470715b037c68020ded48c64e3",
+  "preparedInputs": {
+    "u0.json": "d2f72c27c1a937cdc77eafb33aba7d93952a4b843171d8e20ada0387f1f15f2e",
+    "u1.json": "6cfa2eac22dd54a963e707c7d209ab72213f0400a1f93e3482daa9eca397d6c6",
+    "u2.json": "f7f58c96697ad9ab3f4b12905b835845b4c9c980e7c9e8aad1a8be325ca15b76",
+    "u3.json": "eaac91b7b91c74bf5f6d52ccb5fe2f334a82a4e8e630f2ce05d52bca16deae50",
+    "u4.json": "e79d2f01e57f60fbd1bbc1a53753ef397e0845d463f5841a2b2510295d184a5f",
+    "u5.json": "534059d74253f7ab3d806dd17f46de0f5291d158f1143173d62cdc74c8248e26"
+  },
+  "artifact": {
+    "sha256": "b700f91e4e90472f5c1b641d2639365696fc92f40ec80b54e0ef7a5595caae31",
+    "sourceSha256": "5d6098033eb9d5bf851ca1361bb128a06f7cb88c01fc0aaaa6c2a3167ebd0077",
+    "bytes": 204765
+  },
+  "controlArtifact": {
+    "scope": "Candidate A0 source frontend built from shared compiler modules. Public TypeScript C backend bootstraps this artifact. No official source cutover or performance claim.",
+    "entry": "compiler/source_frontend.a0",
+    "frontendABI": 3,
+    "nativeInputs": [
+      {
+        "path": "tools/native/source_frontend.c",
+        "sha256": "d7cca684c9ee56330539b07588ca6a02a9673694940d2cce357201e900014be6"
+      },
+      {
+        "path": "tools/native/arena_runtime.c",
+        "sha256": "ff4ab723d8976ec7982589756a500740a7e804252e0091cd5d6f08e6ba15acba"
+      },
+      {
+        "path": "tools/native/arena_runtime.h",
+        "sha256": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9"
+      },
+      {
+        "path": "tools/source-native-build.ts",
+        "sha256": "4dfd58c3c2464def6974775c34c786266a9d9b7466058c005e98dbc644cfbb4d"
+      }
+    ],
+    "libcSHA256": "a4874785cb53513f899604e31348e59767bd859bf88b53ffe86ed24434ea5a74",
+    "builtinsSHA256": "d532620c772bf91a4dfee336087b0f1f6a8d6c7c220a802d9d139e36d9e21e2a",
+    "sourceSHA256": "5d6098033eb9d5bf851ca1361bb128a06f7cb88c01fc0aaaa6c2a3167ebd0077",
+    "cSHA256": "c78cde5338126bd704c30e6737950c905bf383bf2a5e46b8ce9c7d89ba1a8d14",
+    "wasmSHA256": "19b4e6f602bba699fea23f631c8580f91af8ae1da8386298f2385bfcb86b6cdb",
+    "driverSHA256": "d7cca684c9ee56330539b07588ca6a02a9673694940d2cce357201e900014be6",
+    "functions": 609,
+    "clangFlags": [
+      "--target=wasm32-wasi",
+      "-O3",
+      "-flto",
+      "-DNDEBUG"
+    ],
+    "requiredWasmFeatures": [],
+    "optimization": "O3",
+    "symbols": "strip",
+    "symbolFlags": [
+      "--strip-all"
+    ],
+    "compilerHost": "Node >=22 or a WebAssembly engine supporting the recorded required features",
+    "aggregateBytes": 4096,
+    "stackBytes": 16777216,
+    "wasmBytes": 356280,
+    "modules": [
+      {
+        "path": "compiler/arena_shared.a0",
+        "sha256": "7f2d51b37607b79abe0635b3363e8652f1b0546a7352a5c38686af2cd25886ab"
+      },
+      {
+        "path": "compiler/arena_vector_shared.a0",
+        "sha256": "b20b396b730c2ff9977954ffbc7d3f2f338ed16f932f6ca18fbba6ccb10e3b2a"
+      },
+      {
+        "path": "compiler/ir_builder_arena_shared.a0",
+        "sha256": "02f04981e386cef52f0d4cd9fc0ef55a2bbb35b45e7c7ded14372af6c58b4b94"
+      },
+      {
+        "path": "compiler/symbol_arena_shared.a0",
+        "sha256": "3a618114c46167063b7ac03b35d214bf2f819a17445a89faca53462045ab766b"
+      },
+      {
+        "path": "compiler/parse_arena_common_shared.a0",
+        "sha256": "fe839414a3dfadc297e9834b12a5dbab756ad29b4537bd91eda505bc1b5193a8"
+      },
+      {
+        "path": "compiler/lex_arena_shared.a0",
+        "sha256": "5a809ce51d7aff0b63c82c465b3ae815af63c2b4373b6404c053312f6273873a"
+      },
+      {
+        "path": "compiler/lines_arena_shared.a0",
+        "sha256": "1c92973ce233808946b9c1eb2fd5072f4357525f566650dc3925131d1ae8b709"
+      },
+      {
+        "path": "compiler/types_arena_shared.a0",
+        "sha256": "9d39c2890923e1ca1c1915f7d887dd6601d0ddcc014df091924d9a4985fbc85d"
+      },
+      {
+        "path": "compiler/parse_arena_shared.a0",
+        "sha256": "0a9b5a0887bd87c132b787ddf74cb21f884ec10c0a2bd1a72eb4442020d51194"
+      },
+      {
+        "path": "compiler/spec_hooks_arena_shared.a0",
+        "sha256": "f0ec54ac69d5456d30c435e6f4f57e7b629012f654df978d69f343e5a705a60e"
+      },
+      {
+        "path": "compiler/specs_arena_shared.a0",
+        "sha256": "93d4ccfebc782566fbdb3319d538bcca551e7d1cddd6c55b1929c4ba47112be8"
+      },
+      {
+        "path": "compiler/check_arena_shared.a0",
+        "sha256": "34a152b785c5c4e419871be53f480403278caabf9e8edb7569d73e2e32611ea4"
+      },
+      {
+        "path": "compiler/eval_arena_shared.a0",
+        "sha256": "51ca1c6ad2fab8d171a4b60e0e582eb747df5c951602ae220156ac8154222f15"
+      },
+      {
+        "path": "compiler/spec_types_arena_shared.a0",
+        "sha256": "9a22c424b5522b14c45820201ef6cdbf51ce3b89f219a10650384ea571e889c6"
+      },
+      {
+        "path": "compiler/verify_arena_shared.a0",
+        "sha256": "0861a0a0151975d60ca8ed2db32e549c39d1fc62fd4571a901df15812fcbc652"
+      },
+      {
+        "path": "compiler/opcode.a0",
+        "sha256": "e7d27b6086233dc4bc0624fd2c3047a9554a284dc937752f3545cb5b56d271c6"
+      },
+      {
+        "path": "compiler/wordkey.a0",
+        "sha256": "ca804e351c436b363f952962680877bf631683209400a36ee487731d25b50fa4"
+      },
+      {
+        "path": "compiler/source_ir.a0",
+        "sha256": "5a999f01c0b0d5bb034468bf7e3d54cd5ac1c34e1bf502eb77526771521c3554"
+      },
+      {
+        "path": "compiler/source_frontend.a0",
+        "sha256": "22fd9d2fbb54566434eef3139527d573d6f98aa8bf062afcd4926ed9911df145"
+      }
+    ],
+    "clang": "Debian clang version 19.1.7 (3+b1)",
+    "linker": "Debian LLD 19.1.7"
+  },
+  "nativeBuild": {
+    "scope": "Candidate A0 source frontend built from shared compiler modules. Public TypeScript C backend bootstraps this artifact. No official source cutover or performance claim.",
+    "entry": "compiler/source_frontend.a0",
+    "frontendABI": 3,
+    "nativeInputs": [
+      {
+        "path": "tools/native/source_frontend.c",
+        "sha256": "d7cca684c9ee56330539b07588ca6a02a9673694940d2cce357201e900014be6"
+      },
+      {
+        "path": "tools/native/arena_runtime.c",
+        "sha256": "ff4ab723d8976ec7982589756a500740a7e804252e0091cd5d6f08e6ba15acba"
+      },
+      {
+        "path": "tools/native/arena_runtime.h",
+        "sha256": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9"
+      },
+      {
+        "path": "tools/source-native-build.ts",
+        "sha256": "4dfd58c3c2464def6974775c34c786266a9d9b7466058c005e98dbc644cfbb4d"
+      }
+    ],
+    "libcSHA256": "a4874785cb53513f899604e31348e59767bd859bf88b53ffe86ed24434ea5a74",
+    "builtinsSHA256": "d532620c772bf91a4dfee336087b0f1f6a8d6c7c220a802d9d139e36d9e21e2a",
+    "sourceSHA256": "5d6098033eb9d5bf851ca1361bb128a06f7cb88c01fc0aaaa6c2a3167ebd0077",
+    "cSHA256": "c78cde5338126bd704c30e6737950c905bf383bf2a5e46b8ce9c7d89ba1a8d14",
+    "wasmSHA256": "b700f91e4e90472f5c1b641d2639365696fc92f40ec80b54e0ef7a5595caae31",
+    "driverSHA256": "d7cca684c9ee56330539b07588ca6a02a9673694940d2cce357201e900014be6",
+    "functions": 609,
+    "clangFlags": [
+      "--target=wasm32-wasi",
+      "-Os",
+      "-flto",
+      "-DNDEBUG"
+    ],
+    "requiredWasmFeatures": [],
+    "optimization": "Os",
+    "symbols": "strip",
+    "symbolFlags": [
+      "--strip-all"
+    ],
+    "compilerHost": "Node >=22 or a WebAssembly engine supporting the recorded required features",
+    "aggregateBytes": 4096,
+    "stackBytes": 16777216,
+    "wasmBytes": 204765,
+    "modules": [
+      {
+        "path": "compiler/arena_shared.a0",
+        "sha256": "7f2d51b37607b79abe0635b3363e8652f1b0546a7352a5c38686af2cd25886ab"
+      },
+      {
+        "path": "compiler/arena_vector_shared.a0",
+        "sha256": "b20b396b730c2ff9977954ffbc7d3f2f338ed16f932f6ca18fbba6ccb10e3b2a"
+      },
+      {
+        "path": "compiler/ir_builder_arena_shared.a0",
+        "sha256": "02f04981e386cef52f0d4cd9fc0ef55a2bbb35b45e7c7ded14372af6c58b4b94"
+      },
+      {
+        "path": "compiler/symbol_arena_shared.a0",
+        "sha256": "3a618114c46167063b7ac03b35d214bf2f819a17445a89faca53462045ab766b"
+      },
+      {
+        "path": "compiler/parse_arena_common_shared.a0",
+        "sha256": "fe839414a3dfadc297e9834b12a5dbab756ad29b4537bd91eda505bc1b5193a8"
+      },
+      {
+        "path": "compiler/lex_arena_shared.a0",
+        "sha256": "5a809ce51d7aff0b63c82c465b3ae815af63c2b4373b6404c053312f6273873a"
+      },
+      {
+        "path": "compiler/lines_arena_shared.a0",
+        "sha256": "1c92973ce233808946b9c1eb2fd5072f4357525f566650dc3925131d1ae8b709"
+      },
+      {
+        "path": "compiler/types_arena_shared.a0",
+        "sha256": "9d39c2890923e1ca1c1915f7d887dd6601d0ddcc014df091924d9a4985fbc85d"
+      },
+      {
+        "path": "compiler/parse_arena_shared.a0",
+        "sha256": "0a9b5a0887bd87c132b787ddf74cb21f884ec10c0a2bd1a72eb4442020d51194"
+      },
+      {
+        "path": "compiler/spec_hooks_arena_shared.a0",
+        "sha256": "f0ec54ac69d5456d30c435e6f4f57e7b629012f654df978d69f343e5a705a60e"
+      },
+      {
+        "path": "compiler/specs_arena_shared.a0",
+        "sha256": "93d4ccfebc782566fbdb3319d538bcca551e7d1cddd6c55b1929c4ba47112be8"
+      },
+      {
+        "path": "compiler/check_arena_shared.a0",
+        "sha256": "34a152b785c5c4e419871be53f480403278caabf9e8edb7569d73e2e32611ea4"
+      },
+      {
+        "path": "compiler/eval_arena_shared.a0",
+        "sha256": "51ca1c6ad2fab8d171a4b60e0e582eb747df5c951602ae220156ac8154222f15"
+      },
+      {
+        "path": "compiler/spec_types_arena_shared.a0",
+        "sha256": "9a22c424b5522b14c45820201ef6cdbf51ce3b89f219a10650384ea571e889c6"
+      },
+      {
+        "path": "compiler/verify_arena_shared.a0",
+        "sha256": "0861a0a0151975d60ca8ed2db32e549c39d1fc62fd4571a901df15812fcbc652"
+      },
+      {
+        "path": "compiler/opcode.a0",
+        "sha256": "e7d27b6086233dc4bc0624fd2c3047a9554a284dc937752f3545cb5b56d271c6"
+      },
+      {
+        "path": "compiler/wordkey.a0",
+        "sha256": "ca804e351c436b363f952962680877bf631683209400a36ee487731d25b50fa4"
+      },
+      {
+        "path": "compiler/source_ir.a0",
+        "sha256": "5a999f01c0b0d5bb034468bf7e3d54cd5ac1c34e1bf502eb77526771521c3554"
+      },
+      {
+        "path": "compiler/source_frontend.a0",
+        "sha256": "22fd9d2fbb54566434eef3139527d573d6f98aa8bf062afcd4926ed9911df145"
+      }
+    ],
+    "clang": "Debian clang version 19.1.7 (3+b1)",
+    "linker": "Debian LLD 19.1.7"
+  },
+  "memoryMethod": "Live frontend RSS/heap/external memory captured before emission. Initial peak/live RSS exposes any inherited launch or preload floor; maxRSS alone cannot establish small-cell frontend parity.",
+  "node": "v24.19.0",
+  "cpu": "AMD EPYC 7763 64-Core Processor",
+  "availableParallelism": 4,
+  "loadSource": "loadavg",
+  "maxLoad1": 2.96,
+  "measuredRounds": 7,
+  "warmups": 1,
+  "samples": 240,
+  "outputControls": [
+    {
+      "unit": "examples/life.a0",
+      "frozenSHA256": "bf1b75f37bd8e8291aef3bfc015aa479f5076313f38d30bac2fe0249f3a85d86",
+      "expectedSHA256": "da4f5d2ccd5e679050e5ea1c2e864633e8006c76b319cd17aa063a6db8a44750",
+      "difference": "Only the first compiler banner changes from a0c-0.1.62 to a0c-0.1.63; exact frozen hash verified after that explicit substitution."
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "frozenSHA256": "029ccc4193307c60842758b943c6878d89bbec892221130ca17b0acd7bc21ce4",
+      "expectedSHA256": "a7356601cc2139b26236cb5fdef74a526d00cb05cbcd89484455182f40b7e781",
+      "difference": "Only the first compiler banner changes from a0c-0.1.62 to a0c-0.1.63; exact frozen hash verified after that explicit substitution."
+    },
+    {
+      "unit": "site/page.a0",
+      "frozenSHA256": "e0fad2212a7e05d2823f3032af08f851895c9acc471897799233e345e1c98205",
+      "expectedSHA256": "6339e9ba377cb1c79b253453b07e81f07941753a3da14927a95d1162c88b4a8c",
+      "difference": "Only the first compiler banner changes from a0c-0.1.62 to a0c-0.1.63; exact frozen hash verified after that explicit substitution."
+    },
+    {
+      "unit": "site/docs.a0",
+      "frozenSHA256": "ee0742f47cc40c79cebdf8849f5c17484dd5f99cbea1dd77a345de18d812e407",
+      "expectedSHA256": "557e38dee53f3be96f0ebc3022107501b3cb1818d1bc9c6c01f0f9d693643079",
+      "difference": "Only the first compiler banner changes from a0c-0.1.62 to a0c-0.1.63; exact frozen hash verified after that explicit substitution."
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "frozenSHA256": "9128461b6b318e9bf45e1d888a124151cf98430872df5c3524e6fcf6b9b0dee9",
+      "expectedSHA256": "644817bf012ca166c1d740c33b0390998d2efdf1367ad774426e2c46d8a5246d",
+      "difference": "Only the first compiler banner changes from a0c-0.1.62 to a0c-0.1.63; exact frozen hash verified after that explicit substitution."
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "frozenSHA256": "f1bf07eb85510579ee58c51c4466761c19d1e646a81ef9ce917e6672b0e6d7af",
+      "expectedSHA256": "f196293d29c8b134c1cbe0b10f541f2daa3e7a056553c7433b577d3db59080df",
+      "difference": "Only the first compiler banner changes from a0c-0.1.62 to a0c-0.1.63; exact frozen hash verified after that explicit substitution."
+    }
+  ],
+  "inputs": [
+    {
+      "unit": "examples/life.a0",
+      "hashes": {
+        "canonical": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+        "dense": "3bbcd1df00319df82196710a99ac2b360ee3897684c25e6c2e9020eed589cd66",
+        "flat": "2e7ddcca22dda1ef6cc8b962e912a59acd02f844162c29d4bff4717b128e15b5"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 1746,
+          "dense": 1503,
+          "flat": 1538
+        },
+        "cl100k_base": {
+          "canonical": 1744,
+          "dense": 1503,
+          "flat": 1538
+        }
+      }
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "hashes": {
+        "canonical": "c89c9932c9ddb1c220c49c6aed0af81052de41f7cc65b23d006333ab65a07a10",
+        "dense": "4de3ea618cbbc27a20a61a14954ff8ea39b4782662bedad30838f00561fda2c8",
+        "flat": "f0ab8748931d68e7fd2f50204d15464782e4cf9add3339fdef7d9084fb15cd69"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 3186,
+          "dense": 2249,
+          "flat": 2652
+        },
+        "cl100k_base": {
+          "canonical": 3166,
+          "dense": 2244,
+          "flat": 2647
+        }
+      }
+    },
+    {
+      "unit": "site/page.a0",
+      "hashes": {
+        "canonical": "2dc6530d1b180711cea7a4e44471bcbae0b7255bf0f1ffb70d26fb6b2546a252",
+        "dense": "0e6b28d768429aaee01a68d7ac5c2a286971adc284e0e8b604746fe900034d6b",
+        "flat": "20ef71d09070bcf403f4017fbd1e447ebb427584546548f9f24fbd0a76018e94"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 60185,
+          "dense": 57280,
+          "flat": 57512
+        },
+        "cl100k_base": {
+          "canonical": 60142,
+          "dense": 57237,
+          "flat": 57469
+        }
+      }
+    },
+    {
+      "unit": "site/docs.a0",
+      "hashes": {
+        "canonical": "c89c280690f8fc64322ab7d68d7c38d2af7e184db422b034f60c2bdb293a86c3",
+        "dense": "274289325991ad07e998278d639c9c1e94afde9d974973d4ec4351f5ac075389",
+        "flat": "2c50d0b8b90422a850693ab1c7432142356794553cb8d975ae97defda8a735ca"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 17484,
+          "dense": 16582,
+          "flat": 16750
+        },
+        "cl100k_base": {
+          "canonical": 17465,
+          "dense": 16563,
+          "flat": 16731
+        }
+      }
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "hashes": {
+        "canonical": "36cf9b3fe3d031b8623ace73457170aaea8a0c136f30ffb36719aae719560ba9",
+        "dense": "3175f93009e7807f0801b96967fc5a2a513595e60f8f8c73ebd4c53b57568a00",
+        "flat": "b6cc357736f4c84345fe6cdd719e9567bc5d78a3d68cc27b5a57d81915f02890"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 588452,
+          "dense": 519822,
+          "flat": 519223
+        },
+        "cl100k_base": {
+          "canonical": 593842,
+          "dense": 525221,
+          "flat": 520928
+        }
+      }
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "hashes": {
+        "canonical": "9a2d01b2f252b016ac9ee9061469d7ca4a57cd5d95f7cc954ce6c43647f6117a",
+        "dense": "b82e270a3c2490135ae7e9347964710d976aca0a91c9a88cc654cf22a6bf27b4",
+        "flat": "c90c70cad5719c15c0c50260e445bf9b3d4636292b93af6bf297162ccfe1e268"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 64389,
+          "dense": 59901,
+          "flat": 58248
+        },
+        "cl100k_base": {
+          "canonical": 64354,
+          "dense": 59867,
+          "flat": 58214
+        }
+      }
+    }
+  ],
+  "rows": [
+    {
+      "unit": "examples/life.a0",
+      "arms": {
+        "old-canonical": {
+          "frontendMs": 5.847386,
+          "emitCMs": 17.853640999999996,
+          "pipelineMs": 24.164783,
+          "wallMs": 122.78387400000065,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41484288,
+          "frontendRssBytes": 42328064,
+          "frontendHeapUsedBytes": 9975880,
+          "frontendExternalBytes": 2634221,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 44838912,
+          "heapUsedBytes": 13585840,
+          "externalBytes": 2634221,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "frontendMs": 12.053162,
+          "emitCMs": 20.055351,
+          "pipelineMs": 32.271326,
+          "wallMs": 128.1315340000001,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41574400,
+          "frontendRssBytes": 42835968,
+          "frontendHeapUsedBytes": 11003208,
+          "frontendExternalBytes": 2634013,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 46096384,
+          "heapUsedBytes": 11000840,
+          "externalBytes": 2634013,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "frontendMs": 6.694587999999996,
+          "emitCMs": 16.453256999999994,
+          "pipelineMs": 23.18960299999999,
+          "wallMs": 122.71437700000388,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41721856,
+          "frontendRssBytes": 42299392,
+          "frontendHeapUsedBytes": 9958264,
+          "frontendExternalBytes": 2634013,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 45129728,
+          "heapUsedBytes": 13465600,
+          "externalBytes": 2634013,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "frontendMs": 15.607838000000001,
+          "emitCMs": 17.787475,
+          "pipelineMs": 33.30023799999999,
+          "wallMs": 134.15196799999103,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41504768,
+          "frontendRssBytes": 50401280,
+          "frontendHeapUsedBytes": 9823944,
+          "frontendExternalBytes": 19614571,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 49963008,
+          "heapUsedBytes": 13478808,
+          "externalBytes": 19614571,
+          "wasmLinearMemoryBytes": 16973824
+        },
+        "flat-a0-control": {
+          "frontendMs": 18.2025,
+          "emitCMs": 18.120879000000016,
+          "pipelineMs": 36.980453999999995,
+          "wallMs": 140.5112439999939,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42156032,
+          "frontendRssBytes": 52555776,
+          "frontendHeapUsedBytes": 9838520,
+          "frontendExternalBytes": 19765878,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 57692160,
+          "heapUsedBytes": 13970040,
+          "externalBytes": 19765878,
+          "wasmLinearMemoryBytes": 16973824
+        }
+      }
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "arms": {
+        "old-canonical": {
+          "frontendMs": 7.667324000000008,
+          "emitCMs": 25.570426999999995,
+          "pipelineMs": 34.845220999999995,
+          "wallMs": 136.68162499999744,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41607168,
+          "frontendRssBytes": 42582016,
+          "frontendHeapUsedBytes": 10345280,
+          "frontendExternalBytes": 2642567,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 47562752,
+          "heapUsedBytes": 13047128,
+          "externalBytes": 2642359,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "frontendMs": 15.841785000000002,
+          "emitCMs": 26.704273,
+          "pipelineMs": 43.10925900000001,
+          "wallMs": 142.8517339999962,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41443328,
+          "frontendRssBytes": 43642880,
+          "frontendHeapUsedBytes": 11991872,
+          "frontendExternalBytes": 2642567,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 50585600,
+          "heapUsedBytes": 10939024,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "frontendMs": 9.463307,
+          "emitCMs": 23.703181,
+          "pipelineMs": 34.417473,
+          "wallMs": 135.7505189999938,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 40787968,
+          "frontendRssBytes": 42823680,
+          "frontendHeapUsedBytes": 10111272,
+          "frontendExternalBytes": 2920789,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 48062464,
+          "heapUsedBytes": 12764432,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "frontendMs": 20.29013900000001,
+          "emitCMs": 25.202280000000016,
+          "pipelineMs": 45.208939000000015,
+          "wallMs": 146.54325600000448,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41525248,
+          "frontendRssBytes": 54685696,
+          "frontendHeapUsedBytes": 10137304,
+          "frontendExternalBytes": 19740152,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 51920896,
+          "heapUsedBytes": 12892248,
+          "externalBytes": 19740152,
+          "wasmLinearMemoryBytes": 17104896
+        },
+        "flat-a0-control": {
+          "frontendMs": 24.603192000000007,
+          "emitCMs": 25.714957999999996,
+          "pipelineMs": 50.360378,
+          "wallMs": 158.88851099999738,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42217472,
+          "frontendRssBytes": 62578688,
+          "frontendHeapUsedBytes": 10130464,
+          "frontendExternalBytes": 19910574,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 70070272,
+          "heapUsedBytes": 12905456,
+          "externalBytes": 19891667,
+          "wasmLinearMemoryBytes": 17104896
+        }
+      }
+    },
+    {
+      "unit": "site/page.a0",
+      "arms": {
+        "old-canonical": {
+          "frontendMs": 40.91476300000001,
+          "emitCMs": 89.07135300000002,
+          "pipelineMs": 128.544133,
+          "wallMs": 242.56736000000092,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 43900928,
+          "frontendRssBytes": 71667712,
+          "frontendHeapUsedBytes": 15006544,
+          "frontendExternalBytes": 2622828,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82485248,
+          "rssBytes": 82354176,
+          "heapUsedBytes": 32903544,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "frontendMs": 70.40732999999999,
+          "emitCMs": 92.37323,
+          "pipelineMs": 163.148149,
+          "wallMs": 278.1009030000132,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 43626496,
+          "frontendRssBytes": 68870144,
+          "frontendHeapUsedBytes": 17653280,
+          "frontendExternalBytes": 2622828,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 92463104,
+          "rssBytes": 92463104,
+          "heapUsedBytes": 24603712,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "frontendMs": 41.17948700000001,
+          "emitCMs": 85.27225299999998,
+          "pipelineMs": 126.11704199999998,
+          "wallMs": 240.160246000014,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 43761664,
+          "frontendRssBytes": 70496256,
+          "frontendHeapUsedBytes": 14485824,
+          "frontendExternalBytes": 2622828,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 78057472,
+          "heapUsedBytes": 24280816,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "frontendMs": 225.75364,
+          "emitCMs": 91.52870999999999,
+          "pipelineMs": 315.938712,
+          "wallMs": 426.4876010000007,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42766336,
+          "frontendRssBytes": 66572288,
+          "frontendHeapUsedBytes": 15287704,
+          "frontendExternalBytes": 25767842,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 85835776,
+          "rssBytes": 85835776,
+          "heapUsedBytes": 22513872,
+          "externalBytes": 25766786,
+          "wasmLinearMemoryBytes": 23068672
+        },
+        "flat-a0-control": {
+          "frontendMs": 203.266905,
+          "emitCMs": 91.416451,
+          "pipelineMs": 291.559978,
+          "wallMs": 397.9607539999997,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 43225088,
+          "frontendRssBytes": 78163968,
+          "frontendHeapUsedBytes": 15371336,
+          "frontendExternalBytes": 25919336,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 87613440,
+          "rssBytes": 87117824,
+          "heapUsedBytes": 22237512,
+          "externalBytes": 25919244,
+          "wasmLinearMemoryBytes": 23068672
+        }
+      }
+    },
+    {
+      "unit": "site/docs.a0",
+      "arms": {
+        "old-canonical": {
+          "frontendMs": 26.020736999999997,
+          "emitCMs": 51.890133000000006,
+          "pipelineMs": 78.074075,
+          "wallMs": 189.7586949999968,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41984000,
+          "frontendRssBytes": 54767616,
+          "frontendHeapUsedBytes": 16087152,
+          "frontendExternalBytes": 2622828,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 67256320,
+          "heapUsedBytes": 22442848,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "frontendMs": 39.47232100000001,
+          "emitCMs": 51.137485999999996,
+          "pipelineMs": 91.59410299999999,
+          "wallMs": 202.35293700001785,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41988096,
+          "frontendRssBytes": 58298368,
+          "frontendHeapUsedBytes": 17380560,
+          "frontendExternalBytes": 2622828,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 68313088,
+          "heapUsedBytes": 16511624,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "frontendMs": 24.901066999999998,
+          "emitCMs": 48.694922000000005,
+          "pipelineMs": 73.992011,
+          "wallMs": 183.0410719999927,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 41930752,
+          "frontendRssBytes": 55345152,
+          "frontendHeapUsedBytes": 15605296,
+          "frontendExternalBytes": 2622828,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 67485696,
+          "heapUsedBytes": 21813648,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "frontendMs": 107.522515,
+          "emitCMs": 54.004684999999995,
+          "pipelineMs": 162.369554,
+          "wallMs": 266.62744099998963,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42094592,
+          "frontendRssBytes": 59351040,
+          "frontendHeapUsedBytes": 11623600,
+          "frontendExternalBytes": 21607674,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 73641984,
+          "heapUsedBytes": 17478000,
+          "externalBytes": 21542102,
+          "wasmLinearMemoryBytes": 18939904
+        },
+        "flat-a0-control": {
+          "frontendMs": 98.03845199999999,
+          "emitCMs": 55.065866,
+          "pipelineMs": 153.171784,
+          "wallMs": 258.1380610000051,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42614784,
+          "frontendRssBytes": 61726720,
+          "frontendHeapUsedBytes": 11761496,
+          "frontendExternalBytes": 21759189,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 76378112,
+          "heapUsedBytes": 17320608,
+          "externalBytes": 21693617,
+          "wasmLinearMemoryBytes": 18939904
+        }
+      }
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "arms": {
+        "old-canonical": {
+          "frontendMs": 194.592736,
+          "emitCMs": 1125.995576,
+          "pipelineMs": 1323.808093,
+          "wallMs": 1458.5979110000044,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 52068352,
+          "frontendRssBytes": 141889536,
+          "frontendHeapUsedBytes": 62300352,
+          "frontendExternalBytes": 2557256,
+          "frontendPeakRssBytes": 142901248,
+          "peakRssBytes": 270069760,
+          "rssBytes": 270069760,
+          "heapUsedBytes": 102406064,
+          "externalBytes": 2557256,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "frontendMs": 412.60089999999997,
+          "emitCMs": 1062.360007,
+          "pipelineMs": 1472.736513,
+          "wallMs": 1626.4053069999936,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 52236288,
+          "frontendRssBytes": 133500928,
+          "frontendHeapUsedBytes": 50213496,
+          "frontendExternalBytes": 2557256,
+          "frontendPeakRssBytes": 133500928,
+          "peakRssBytes": 260419584,
+          "rssBytes": 260419584,
+          "heapUsedBytes": 103977176,
+          "externalBytes": 2557256,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "frontendMs": 185.33021399999996,
+          "emitCMs": 1073.77122,
+          "pipelineMs": 1266.50038,
+          "wallMs": 1398.7779670000018,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 52117504,
+          "frontendRssBytes": 138276864,
+          "frontendHeapUsedBytes": 60346944,
+          "frontendExternalBytes": 2557256,
+          "frontendPeakRssBytes": 138276864,
+          "peakRssBytes": 267780096,
+          "rssBytes": 267780096,
+          "heapUsedBytes": 106457632,
+          "externalBytes": 2557256,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "frontendMs": 1501.3497619999998,
+          "emitCMs": 1152.1651969999998,
+          "pipelineMs": 2659.020994,
+          "wallMs": 2789.280110000007,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 52072448,
+          "frontendRssBytes": 149958656,
+          "frontendHeapUsedBytes": 34288312,
+          "frontendExternalBytes": 60804468,
+          "frontendPeakRssBytes": 150089728,
+          "peakRssBytes": 286130176,
+          "rssBytes": 286130176,
+          "heapUsedBytes": 93051368,
+          "externalBytes": 60804142,
+          "wasmLinearMemoryBytes": 57212928
+        },
+        "flat-a0-control": {
+          "frontendMs": 1277.788848,
+          "emitCMs": 1128.3759200000002,
+          "pipelineMs": 2408.393812,
+          "wallMs": 2543.2956960000156,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 52674560,
+          "frontendRssBytes": 149774336,
+          "frontendHeapUsedBytes": 34139600,
+          "frontendExternalBytes": 60956444,
+          "frontendPeakRssBytes": 149774336,
+          "peakRssBytes": 285786112,
+          "rssBytes": 285655040,
+          "heapUsedBytes": 69725016,
+          "externalBytes": 60956444,
+          "wasmLinearMemoryBytes": 57212928
+        }
+      }
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "arms": {
+        "old-canonical": {
+          "frontendMs": 36.904005999999995,
+          "emitCMs": 190.216877,
+          "pipelineMs": 230.624151,
+          "wallMs": 340.1654280000075,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42442752,
+          "frontendRssBytes": 61009920,
+          "frontendHeapUsedBytes": 17615744,
+          "frontendExternalBytes": 2622828,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 74723328,
+          "heapUsedBytes": 20002272,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "frontendMs": 76.707683,
+          "emitCMs": 182.407945,
+          "pipelineMs": 259.78675799999996,
+          "wallMs": 370.80910099999164,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42147840,
+          "frontendRssBytes": 66068480,
+          "frontendHeapUsedBytes": 19050400,
+          "frontendExternalBytes": 2622828,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 74686464,
+          "heapUsedBytes": 23775568,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "frontendMs": 38.91131299999999,
+          "emitCMs": 189.702931,
+          "pipelineMs": 228.25607199999996,
+          "wallMs": 335.28226800000994,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42422272,
+          "frontendRssBytes": 60301312,
+          "frontendHeapUsedBytes": 18137912,
+          "frontendExternalBytes": 2622828,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 74481664,
+          "heapUsedBytes": 19203752,
+          "externalBytes": 2622828,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "frontendMs": 194.829812,
+          "emitCMs": 186.391638,
+          "pipelineMs": 385.764542,
+          "wallMs": 492.04959300000337,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42430464,
+          "frontendRssBytes": 62627840,
+          "frontendHeapUsedBytes": 14598168,
+          "frontendExternalBytes": 24626473,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82243584,
+          "rssBytes": 78659584,
+          "heapUsedBytes": 16959736,
+          "externalBytes": 24626473,
+          "wasmLinearMemoryBytes": 21954560
+        },
+        "flat-a0-control": {
+          "frontendMs": 176.873246,
+          "emitCMs": 187.06804900000003,
+          "pipelineMs": 365.573311,
+          "wallMs": 468.0592439999891,
+          "initialPeakRssBytes": 82243584,
+          "initialRssBytes": 42733568,
+          "frontendRssBytes": 66084864,
+          "frontendHeapUsedBytes": 14417008,
+          "frontendExternalBytes": 24777988,
+          "frontendPeakRssBytes": 82243584,
+          "peakRssBytes": 82612224,
+          "rssBytes": 82612224,
+          "heapUsedBytes": 20439496,
+          "externalBytes": 24777988,
+          "wasmLinearMemoryBytes": 21954560
+        }
+      }
+    }
+  ]
+}

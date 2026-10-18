@@ -28,15 +28,17 @@
  *   node dist/tools/dense-loader.js [--out=results/dense-loader.json]
  */
 
+import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { readFile, realpath } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { A0Error, formatProgram, type Program, parse } from '../src/core.js';
+import { A0Error, formatProgram, formatSource, type Program, parse } from '../src/core.js';
 import { formatDense, parseDense } from '../src/dense.js';
 import { EXACT_FIXES } from '../src/diagnostics.js';
 import { programRevision, revision } from '../src/edit.js';
-import { type Linked, link } from '../src/link.js';
+import { type Linked, link, parseFile } from '../src/link.js';
+import { committedTree } from './measurement-checkout.js';
 import { reportJson } from './scrub-results.js';
 
 /** Reads the text of one file; the loader keys every file by `keyOf(path)`. */
@@ -460,10 +462,90 @@ export async function runComparison(root: string = ROOT): Promise<Report> {
   };
 }
 
+/** Audit compatibility of source as written, without selecting a reader by guessing its contents. */
+export async function compareSourceSpelling(
+  path: string,
+  read: Read,
+): Promise<{
+  status: 'exact' | 'different' | 'canonical-refused' | 'dense-refused';
+  reason?: string;
+}> {
+  let parsed: Awaited<ReturnType<typeof parseFile>>;
+  try {
+    parsed = await parseFile(path, read);
+  } catch (error) {
+    if (!(error instanceof A0Error)) throw error;
+    return { status: 'canonical-refused', reason: error.message };
+  }
+  try {
+    const dense = parseDense(await read(path), { known: parsed.known });
+    return { status: formatSource(parsed.program) === formatSource(dense) ? 'exact' : 'different' };
+  } catch (error) {
+    if (!(error instanceof A0Error)) throw error;
+    return { status: 'dense-refused', reason: error.message };
+  }
+}
+
+export async function sourceSpellingComparison(root: string = ROOT) {
+  const implementation = committedTree(root);
+  const snapshots = new Map<string, string>();
+  const read: Read = async (path) => {
+    let text = snapshots.get(path);
+    if (text === undefined) {
+      text = await readFile(path, 'utf8');
+      snapshots.set(path, text);
+    }
+    return text;
+  };
+  const files = [];
+  for (const path of listSources(root)) {
+    if (isReject(path, root)) continue;
+    const text = await read(path);
+    files.push({
+      path: relative(root, path).split(sep).join('/'),
+      sourceSha256: createHash('sha256').update(text).digest('hex'),
+      ...(await compareSourceSpelling(path, read)),
+    });
+  }
+  for (const [path, text] of snapshots)
+    if ((await readFile(path, 'utf8')) !== text)
+      throw new Error('source changed during grammar audit');
+  if (JSON.stringify(committedTree(root)) !== JSON.stringify(implementation))
+    throw new Error('implementation changed during grammar audit');
+  return {
+    tool: 'tools/dense-loader.ts --source-spelling-only',
+    implementation,
+    method:
+      'Read each accepted-source file as written with the existing Canonical and Dense parsers, supplying import arities through parseFile. Compare formatSource including comments. No rewriting, syntax promotion, model calls, runtime or performance measurement.',
+    summary: { total: files.length, statuses: countBy(files.map((file) => file.status)) },
+    files,
+  };
+}
+
 function main(): void {
   const out =
     process.argv.find((a) => a.startsWith('--out='))?.slice(6) ??
-    join(ROOT, 'results', 'dense-loader.json');
+    join(
+      ROOT,
+      'results',
+      process.argv.includes('--source-spelling-only')
+        ? 'dense-source-spelling.json'
+        : 'dense-loader.json',
+    );
+  if (process.argv.includes('--source-spelling-only')) {
+    if (process.versions.bun === undefined || !import.meta.url.endsWith('.ts'))
+      throw new Error('source grammar measurements must execute source directly with Bun');
+    void sourceSpellingComparison()
+      .then((report) => {
+        writeFileSync(out, reportJson(report), 'utf8');
+        process.stderr.write(`source spelling audit wrote ${out}\n`);
+      })
+      .catch((error: unknown) => {
+        process.stderr.write(`${String(error)}\n`);
+        process.exitCode = 1;
+      });
+    return;
+  }
   runComparison()
     .then((report) => {
       writeFileSync(out, reportJson(report), 'utf8');

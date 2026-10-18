@@ -514,6 +514,12 @@ ret g`,
     'io',
   ),
 );
+// Malformed numeric and opcode words cross source-page boundaries without losing diagnostics.
+for (const length of [127, 128, 129, 255, 256, 257]) {
+  cases.push(simple(`ret ${'0'.repeat(length - 1)}7`, 'u32', ''));
+  cases.push(simple(`a mov ${'1'.repeat(length)}\nret a`, 'u32', ''));
+  cases.push(simple(`a ${'x'.repeat(length)} 1\nret a`, 'u32', ''));
+}
 cases.push(
   ...ILL_TYPED.map((x) => x[1]),
   formatProgram(generateCorpus(CORPUS_SEED)),

@@ -1,0 +1,1825 @@
+use "arena_shared.a0"
+use "arena_vector_shared.a0"
+use "ir_builder_arena_shared.a0"
+use "symbol_arena_shared.a0"
+
+fn ap_fail (u32x128,io) u32 u32 u32 u32 u32 -> (u32x128,io)
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 ne p1 0
+active and q1 q2
+q3 get p 0
+q4 select active 6 q3
+a set p 0 q4
+q5 get p 1
+q6 select active p1 q5
+b set a 1 q6
+q7 get p 2
+q8 select active p2 q7
+c set b 2 q8
+q9 get p 3
+q10 select active p3 q9
+d set c 3 q10
+q11 get p 4
+q12 select active p4 q11
+e set d 4 q12
+q13 get p 5
+q14 select active p5 q13
+f set e 5 q14
+q15 at p0 1
+q16 rec f q15
+ret q16
+end
+
+fn ap_readgo (u32x128,u32x128,io) u32 u32 u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+q0 at p0 2
+q1 get p p2
+q2 add p2 1
+q3 get p q2
+q4 add p2 2
+q5 get p q4
+q6 rec q1 q3 q5
+r call av_load q0 q6 p3 p4
+q7 at r 0
+q8 set p 0 q7
+q9 at r 1
+q10 at r 2
+q11 rec q8 q9 q10
+ret q11
+end
+
+fn ap_read (u32x128,io) u32 u32 u32 -> (u32x128,u32x128,io)
+p at p0 0
+z call arena_zero
+q0 get p 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 at p0 1
+q4 rec p z q3
+q5 fold ap_readgo q2 q4 p1 p2 p3
+ret q5
+end
+
+fn ap_digit u32 -> bool
+q0 ge p0 48
+q1 le p0 57
+q2 and q0 q1
+ret q2
+end
+
+fn ap_letter u32 -> bool
+q0 ge p0 97
+q1 le p0 122
+q2 and q0 q1
+ret q2
+end
+
+fn ap_wordchar u32 -> bool
+q0 call ap_letter p0
+q1 call ap_digit p0
+q2 or q0 q1
+q3 eq p0 95
+q4 or q2 q3
+ret q4
+end
+
+fn ap_scanbyte (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,io) u32 u32x128 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,io)
+q0 get p2 p1
+at add p3 p1
+digit call ap_digit q0
+d sub q0 48
+q1 at p0 1
+q2 ne q1 0
+q3 and q2 digit
+q4 eq at 0
+q5 eq q0 48
+q6 and q4 q5
+q7 gt p4 1
+q8 and q6 q7
+q9 xor q8 true
+digits and q3 q9
+q10 at p0 2
+q11 ne q10 0
+q12 eq at 0
+q13 eq q0 112
+q14 eq at 1
+q15 eq q0 48
+q16 and q14 q15
+q17 gt p4 2
+q18 and q16 q17
+q19 xor q18 true
+q20 and digit q19
+q21 select q12 q13 q20
+pd and q11 q21
+q22 at p0 3
+q23 ne q22 0
+q24 eq at 0
+q25 call ap_letter q0
+q26 call ap_wordchar q0
+q27 select q24 q25 q26
+ident and q23 q27
+q28 at p0 6
+q29 ne q28 0
+q30 at p0 4
+q31 gt q30 429496729
+q32 or q29 q31
+q33 at p0 4
+q34 eq q33 429496729
+q35 gt d 5
+q36 and q34 q35
+ov or q32 q36
+q37 at p0 7
+q38 ne q37 0
+q39 gt at 0
+q40 at p0 5
+q41 gt q40 429496729
+q42 at p0 5
+q43 eq q42 429496729
+q44 gt d 5
+q45 and q43 q44
+q46 or q41 q45
+q47 and q39 q46
+pov or q38 q47
+q48 at p0 4
+q49 mul q48 10
+num add q49 d
+q50 eq at 0
+q51 at p0 5
+q52 mul q51 10
+q53 add q52 d
+param select q50 0 q53
+q54 at p0 9
+q55 eq q0 34
+q56 select q55 1 0
+q57 or q54 q56
+q58 eq q0 92
+q59 select q58 2 0
+q60 or q57 q59
+q61 eq q0 40
+q62 select q61 4 0
+flags or q60 q62
+q63 at p0 0
+q64 select digits 1 0
+q65 select pd 1 0
+q66 select ident 1 0
+q67 select ov 1 0
+q68 select pov 1 0
+q69 at p0 10
+q70 rec q63 q64 q65 q66 num param q67 q68 q0 flags q69
+ret q70
+end
+
+fn ap_scanok (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+
+fn ap_scanpage (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,io) u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,io)
+base mul p1 128
+rest sub p4 base
+q0 gt rest 128
+n select q0 128 rest
+q1 at p0 10
+q2 add p3 base
+r call arena_load q1 p2 q2 n
+q3 at r 0
+q4 at p0 1
+q5 at p0 2
+q6 at p0 3
+q7 at p0 4
+q8 at p0 5
+q9 at p0 6
+q10 at p0 7
+q11 at p0 8
+q12 at p0 9
+q13 at r 2
+q14 at r 0
+q15 eq q14 0
+q16 select q15 n 0
+q17 rec q3 q4 q5 q6 q7 q8 q9 q10 q11 q12 q13
+q18 at r 1
+q19 fold ap_scanbyte q16 q17 q18 base p4
+ret q19
+end
+
+fn ap_is_fn u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 102
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 110
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_ret u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 114
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 116
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_end u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 101
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 110
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 100
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_use u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 117
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 115
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 101
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_true u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 116
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 114
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 117
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 101
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_false u32x128 u32 -> bool
+q0 eq p1 5
+q1 get p0 0
+q2 eq q1 102
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 97
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 108
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 115
+q12 and q9 q11
+q13 get p0 4
+q14 eq q13 101
+q15 and q12 q14
+ret q15
+end
+
+fn ap_is_patch u32x128 u32 -> bool
+q0 eq p1 5
+q1 get p0 0
+q2 eq q1 112
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 97
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 116
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 99
+q12 and q9 q11
+q13 get p0 4
+q14 eq q13 104
+q15 and q12 q14
+ret q15
+end
+
+fn ap_is_profile u32x128 u32 -> bool
+q0 eq p1 7
+q1 get p0 0
+q2 eq q1 112
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 114
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 111
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 102
+q12 and q9 q11
+q13 get p0 4
+q14 eq q13 105
+q15 and q12 q14
+q16 get p0 5
+q17 eq q16 108
+q18 and q15 q17
+q19 get p0 6
+q20 eq q19 101
+q21 and q18 q20
+ret q21
+end
+
+fn ap_is_strict u32x128 u32 -> bool
+q0 eq p1 6
+q1 get p0 0
+q2 eq q1 115
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 116
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 114
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 105
+q12 and q9 q11
+q13 get p0 4
+q14 eq q13 99
+q15 and q12 q14
+q16 get p0 5
+q17 eq q16 116
+q18 and q15 q17
+ret q18
+end
+
+fn ap_is_text u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 116
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 120
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 116
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_ex u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 101
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 120
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_pre u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 112
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 114
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 101
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_post u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 112
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 111
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 115
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 116
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_arrow u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 45
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 62
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_mov u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 109
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 111
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 118
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_add u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 97
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 100
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 100
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_sub u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 115
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 117
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 98
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_mul u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 109
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 117
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 108
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_and u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 97
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 110
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 100
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_or u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 111
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 114
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_xor u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 120
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 111
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 114
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_shl u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 115
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 104
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 108
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_shr u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 115
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 104
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 114
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_div u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 100
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 105
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 118
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_rem u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 114
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 109
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_eq u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 101
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 113
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_ne u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 110
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_lt u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 108
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 116
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_le u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 108
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_gt u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 103
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 116
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_ge u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 103
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_select u32x128 u32 -> bool
+q0 eq p1 6
+q1 get p0 0
+q2 eq q1 115
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 108
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 101
+q12 and q9 q11
+q13 get p0 4
+q14 eq q13 99
+q15 and q12 q14
+q16 get p0 5
+q17 eq q16 116
+q18 and q15 q17
+ret q18
+end
+
+fn ap_is_call u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 99
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 97
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 108
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 108
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_fold u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 102
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 111
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 108
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 100
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_loop u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 108
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 111
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 111
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 112
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_arr u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 97
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 114
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 114
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_rec u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 114
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 99
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_get u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 103
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 116
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_set u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 115
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 116
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_at u32x128 u32 -> bool
+q0 eq p1 2
+q1 get p0 0
+q2 eq q1 97
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 116
+q6 and q3 q5
+ret q6
+end
+
+fn ap_is_put u32x128 u32 -> bool
+q0 eq p1 3
+q1 get p0 0
+q2 eq q1 112
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 117
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 116
+q9 and q6 q8
+ret q9
+end
+
+fn ap_is_read u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 114
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 101
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 97
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 100
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_write u32x128 u32 -> bool
+q0 eq p1 5
+q1 get p0 0
+q2 eq q1 119
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 114
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 105
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 116
+q12 and q9 q11
+q13 get p0 4
+q14 eq q13 101
+q15 and q12 q14
+ret q15
+end
+
+fn ap_is_puts u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 112
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 117
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 116
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 115
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_cadd u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 99
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 97
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 100
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 100
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_csub u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 99
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 115
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 117
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 98
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_cmul u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 99
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 109
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 117
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 108
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_cdiv u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 99
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 100
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 105
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 118
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_crem u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 99
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 114
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 101
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 109
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_cget u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 99
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 103
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 101
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 116
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_udiv u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 117
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 100
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 105
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 118
+q12 and q9 q11
+ret q12
+end
+
+fn ap_is_urem u32x128 u32 -> bool
+q0 eq p1 4
+q1 get p0 0
+q2 eq q1 117
+q3 and q0 q2
+q4 get p0 1
+q5 eq q4 114
+q6 and q3 q5
+q7 get p0 2
+q8 eq q7 101
+q9 and q6 q8
+q10 get p0 3
+q11 eq q10 109
+q12 and q9 q11
+ret q12
+end
+
+fn ap_keyword u32x128 u32 -> u32
+q0 call ap_is_fn p0 p1
+out select q0 1 0
+q1 call ap_is_ret p0 p1
+out_1 select q1 2 out
+q2 call ap_is_end p0 p1
+out_2 select q2 3 out_1
+q3 call ap_is_use p0 p1
+out_3 select q3 4 out_2
+q4 call ap_is_true p0 p1
+out_4 select q4 5 out_3
+q5 call ap_is_false p0 p1
+out_5 select q5 6 out_4
+q6 call ap_is_patch p0 p1
+out_6 select q6 7 out_5
+q7 call ap_is_profile p0 p1
+out_7 select q7 8 out_6
+q8 call ap_is_strict p0 p1
+out_8 select q8 9 out_7
+q9 call ap_is_text p0 p1
+out_9 select q9 10 out_8
+q10 call ap_is_ex p0 p1
+out_10 select q10 11 out_9
+q11 call ap_is_pre p0 p1
+out_11 select q11 12 out_10
+q12 call ap_is_post p0 p1
+out_12 select q12 13 out_11
+q13 call ap_is_arrow p0 p1
+out_13 select q13 14 out_12
+ret out_13
+end
+
+# The first source page is already loaded to classify keyword and opcode spellings.
+# Scan its bytes directly; only subsequent pages need another arena read.
+fn ap_scantail (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,io) u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,io)
+index add p1 1
+out call ap_scanpage p0 index p2 p3 p4
+ret out
+end
+
+fn ap_intern_go (u32x128,u32,io) u32 u32 u32 -> (u32x128,u32,io)
+p at p0 0
+q0 at p0 2
+q1 get p 62
+q2 get p 63
+q3 get p 64
+q4 rec q1 q2 q3
+q5 get p 65
+q6 get p 66
+q7 get p 67
+q8 rec q4 q5 q6 q7
+q9 get p 6
+r call si_intern q0 q8 q9 p2 p3
+q10 at r 1
+q11 at q10 0
+q12 at q11 0
+m3_a set p 62 q12
+q13 at q11 1
+m3_b set m3_a 63 q13
+q14 at q11 2
+q15 set m3_b 64 q14
+q16 at q10 1
+m2_b set q15 65 q16
+q17 at q10 2
+m2_c set m2_b 66 q17
+q18 at q10 3
+q19 set m2_c 67 q18
+q20 at r 0
+q21 set q19 0 q20
+q22 at r 2
+q23 at r 3
+q24 rec q21 q22 q23
+ret q24
+end
+
+fn ap_intern (u32x128,io) u32 u32 -> (u32x128,u32,io)
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 at p0 1
+q4 rec p 0 q3
+q5 fold ap_intern_go q2 q4 p1 p2
+ret q5
+end
+
+fn ap_ok (u32x128,io) u32 u32x128 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+
+fn ap_seenread (u32x128,bool,io) u32 u32 -> (u32x128,bool,io)
+q0 at p0 0
+q1 at p0 2
+q2 rec q0 q1
+r call ap_read q2 80 p2 1
+page at r 1
+q3 at r 0
+q4 get page 0
+q5 ne q4 0
+q6 at r 2
+q7 rec q3 q5 q6
+ret q7
+end
+
+fn ap_seenlookup (u32x128,io) u32 -> (u32x128,bool,io)
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 get p 81
+q3 lt p1 q2
+q4 and q1 q3
+q5 select q4 1 0
+q6 at p0 1
+q7 rec p false q6
+q8 fold ap_seenread q5 q7 p1
+ret q8
+end
+
+fn ap_seenmore (u32x128,io) u32 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 get p 81
+q3 lt q2 p2
+q4 and q1 q3
+ret q4
+end
+
+fn ap_seenfill (u32x128,io) u32 u32 -> (u32x128,io)
+p at p0 0
+q0 get p 81
+remaining sub p2 q0
+q1 gt remaining 128
+count select q1 128 remaining
+q2 call arena_zero
+q3 call ap_append p0 80 count q2
+ret q3
+end
+
+fn ap_seenstore (u32x128,io) u32 u32 u32 -> (u32x128,io)
+p at p0 0
+q0 call arena_zero
+z set q0 0 p3
+q1 at p0 1
+q2 get p 80
+q3 get p 81
+q4 get p 82
+q5 rec q2 q3 q4
+r call av_store q1 q5 p2 1 z
+q6 at r 0
+q7 set p 0 q6
+q8 at r 1
+q9 rec q7 q8
+ret q9
+end
+
+fn ap_seenregister (u32x128,io) u32 u32 -> (u32x128,io)
+p at p0 0
+needed add p1 1
+q0 get p 81
+q1 gt needed q0
+q2 get p 81
+q3 sub needed q2
+missing select q1 q3 0
+q4 div missing 128
+q5 rem missing 128
+q6 eq q5 0
+q7 select q6 0 1
+pages add q4 q7
+r loop ap_seenmore ap_seenfill pages p0 needed
+q at r 0
+q8 get q 0
+q9 eq q8 0
+q10 select q9 1 0
+q11 fold ap_seenstore q10 r p1 p2
+ret q11
+end
+
+fn ap_operandintern (u32x128,u32,io) u32 u32x128 -> (u32x128,u32,io)
+q0 at p0 0
+q1 at p0 2
+q2 rec q0 q1
+q3 get p2 13
+q4 get p2 14
+q5 call ap_intern q2 q3 q4
+ret q5
+end
+
+fn ap_argok (u32x128,io) u32 u32x128 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+
+fn ap_setcallee (u32x128,io) u32 u32x128 u32 -> (u32x128,io)
+q0 get p2 13
+q1 get p2 14
+r call ap_intern p0 q0 q1
+q2 at r 0
+q3 at r 1
+q4 set q2 p3 q3
+q5 at r 2
+q6 rec q4 q5
+ret q6
+end
+
+fn ap_arity u32 -> u32
+q0 eq p0 1
+q1 eq p0 29
+unary or q0 q1
+q2 eq p0 18
+q3 eq p0 26
+q4 or q2 q3
+q5 eq p0 28
+triple or q4 q5
+q6 eq p0 19
+q7 eq p0 20
+q8 or q6 q7
+q9 eq p0 21
+q10 or q8 q9
+q11 eq p0 22
+q12 or q10 q11
+q13 eq p0 23
+variable or q12 q13
+q14 select triple 3 2
+q15 select unary 1 q14
+q16 select variable 4294967295 q15
+ret q16
+end
+
+fn ap_tchar (u32x128,u32,u32,u32,u32,io) u32 u32x128 u32 u32 -> (u32x128,u32,u32,u32,u32,io)
+q0 get p2 p1
+q1 at p0 1
+escaped ne q1 0
+q2 xor escaped true
+q3 eq q0 92
+slash and q2 q3
+q4 xor escaped true
+q5 eq q0 34
+quote and q4 q5
+q6 sub p4 p1
+q7 ge q6 3
+q8 eq q0 226
+q9 and q7 q8
+q10 add p1 1
+q11 get p2 q10
+q12 eq q11 128
+q13 and q9 q12
+q14 add p1 2
+q15 get p2 q14
+q16 eq q15 168
+q17 add p1 2
+q18 get p2 q17
+q19 eq q18 169
+q20 or q16 q19
+ls and q13 q20
+q21 at p0 2
+q22 ne q21 0
+q23 or q22 quote
+q24 eq q0 13
+q25 eq q0 10
+q26 or q24 q25
+q27 or q26 ls
+q28 and escaped q27
+badshape or q23 q28
+q29 eq q0 110
+q30 eq q0 116
+q31 or q29 q30
+q32 eq q0 34
+q33 or q31 q32
+q34 eq q0 92
+known or q33 q34
+q35 at p0 3
+q36 eq q35 4294967295
+q37 and q36 escaped
+q38 xor known true
+q39 and q37 q38
+q40 add p3 p1
+q41 at p0 3
+bad select q39 q40 q41
+q42 at p0 0
+q43 select slash 1 0
+q44 select badshape 1 0
+q45 at p0 4
+q46 select slash 0 1
+q47 add q45 q46
+q48 at p0 5
+q49 rec q42 q43 q44 bad q47 q48
+ret q49
+end
+
+fn ap_tpageok (u32x128,u32,u32,u32,u32,io) u32 u32 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+
+fn ap_tpage (u32x128,u32,u32,u32,u32,io) u32 u32 u32 -> (u32x128,u32,u32,u32,u32,io)
+p at p0 0
+base mul p1 126
+rem sub p3 base
+q0 gt rem 128
+load select q0 128 rem
+q1 gt rem 126
+count select q1 126 rem
+q2 at p0 5
+q3 get p 6
+q4 add p2 base
+r call arena_load q2 q3 q4 load
+q5 at r 0
+q set p 0 q5
+q6 at r 0
+q7 eq q6 0
+q8 select q7 count 0
+q9 at p0 1
+q10 at p0 2
+q11 at p0 3
+q12 at p0 4
+q13 at r 2
+q14 rec q q9 q10 q11 q12 q13
+q15 at r 1
+q16 add p2 base
+q17 fold ap_tchar q8 q14 q15 q16 rem
+ret q17
+end
+
+fn ap_textshape (u32x128,u32,u32,u32,u32,io) u32 u32 u32 -> (u32x128,u32,u32,u32,u32,io)
+p at p0 0
+q0 at p0 5
+q1 get p 6
+q2 add p2 p3
+last call arena_load q0 q1 q2 1
+lastpage at last 1
+q3 at last 0
+q set p 0 q3
+q4 div p3 126
+q5 rem p3 126
+q6 eq q5 0
+q7 select q6 0 1
+pages add q4 q7
+q8 get lastpage 0
+q9 ne q8 34
+q10 select q9 1 0
+q11 at last 2
+q12 rec q 0 q10 4294967295 0 q11
+r loop ap_tpageok ap_tpage pages q12 p2 p3
+ret r
+end
+
+fn ap_textemit (u32x128,io) u32 u32 u32 u32 -> (u32x128,io)
+out call ab_operand p0 2 p2 p3 p4 2
+q0 at out 0
+q1 at out 2
+q2 rec q0 q1
+ret q2
+end
+
+fn ap_tdchar (u32x128,u32,io) u32 u32x128 u32 -> (u32x128,u32,io)
+q0 get p2 p1
+q1 at p0 1
+esc ne q1 0
+q2 xor esc true
+q3 eq q0 92
+slash and q2 q3
+q4 eq q0 110
+q5 eq q0 116
+q6 select q5 9 q0
+q7 select q4 10 q6
+value select esc q7 q0
+p at p0 0
+q8 get p 0
+q9 eq q8 0
+q10 xor slash true
+q11 and q9 q10
+q12 select q11 1 0
+q13 at p0 2
+q14 rec p q13
+q15 add p3 p1
+q16 select esc 1 0
+q17 sub q15 q16
+q18 select esc 2 1
+r fold ap_textemit q12 q14 value q17 q18
+q19 at r 0
+q20 select slash 1 0
+q21 at r 1
+q22 rec q19 q20 q21
+ret q22
+end
+
+fn ap_tdpageok (u32x128,u32,io) u32 u32 u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+ret q1
+end
+
+fn ap_tdpage (u32x128,u32,io) u32 u32 u32 -> (u32x128,u32,io)
+p at p0 0
+base mul p1 128
+rem sub p3 base
+q0 gt rem 128
+n select q0 128 rem
+q1 at p0 2
+q2 get p 6
+q3 add p2 base
+r call arena_load q1 q2 q3 n
+q4 at r 0
+q set p 0 q4
+q5 at r 0
+q6 eq q5 0
+q7 select q6 n 0
+q8 at p0 1
+q9 at r 2
+q10 rec q q8 q9
+q11 at r 1
+q12 add p2 base
+q13 fold ap_tdchar q7 q10 q11 q12
+ret q13
+end
+
+fn ap_textnode (u32x128,io) u32 u32x128 u32 u32x128 u32x128 u32 u32 u32 u32 -> (u32x128,io)
+p at p0 0
+q0 get p4 1
+q1 eq q0 0
+q2 select q1 5 0
+q3 get p2 0
+q4 get p4 13
+q5 get p4 14
+a call ap_fail p0 q2 q3 q4 q5 0
+q6 ne p8 4294967295
+q7 select q6 8 0
+q8 get p2 0
+a_1 call ap_fail a q7 q8 p8 1 0
+q9 eq p9 0
+q10 gt p9 65536
+q11 select q10 7 0
+q12 select q9 6 q11
+q13 get p2 0
+q14 get p2 3
+q15 get p2 4
+a_2 call ap_fail a_1 q12 q13 q14 q15 0
+q16 get p4 13
+q17 get p4 14
+symbol call ap_intern a_2 q16 q17
+q at symbol 0
+q18 get q 48
+first div q18 5
+q19 div p7 128
+q20 rem p7 128
+q21 eq q20 0
+q22 select q21 0 1
+pages add q19 q22
+q23 at symbol 2
+q24 rec q 0 q23
+r loop ap_tdpageok ap_tdpage pages q24 p6 p7
+q25 at symbol 1
+q26 get p4 13
+q27 get p4 14
+q28 get p5 13
+q29 get p5 14
+q30 at r 0
+q31 at r 2
+q32 rec q30 q31
+out call ab_node q32 q25 22 first p9 4294967295 4294967295 p3 q26 q27 q28 q29 2 p6 p7
+q_3 at out 0
+q_4 set q_3 88 q25
+q37 at out 1
+q38 rec q_4 q37
+ret q38
+end
+
+fn ap_ret_digit u32x128 u32 u32 u32 u32x10 -> u32x128
+q0 sub p3 p1
+q1 sub q0 1
+q2 get p4 q1
+q3 add 6 p1
+q4 div p2 q2
+q5 rem q4 10
+q6 add 48 q5
+q7 set p0 q3 q6
+ret q7
+end
+
+fn ap_ret_candidate u32 -> (u32x128,u32)
+n add p0 1
+z call arena_zero
+z_1 set z 0 114
+z_2 set z_1 1 101
+z_3 set z_2 2 116
+z_4 set z_3 3 118
+z_5 set z_4 4 97
+z_6 set z_5 5 108
+q0 eq p0 0
+q1 ge n 1000000000
+q2 ge n 100000000
+q3 ge n 10000000
+q4 ge n 1000000
+q5 ge n 100000
+q6 ge n 10000
+q7 ge n 1000
+q8 ge n 100
+q9 ge n 10
+q10 select q9 2 1
+q11 select q8 3 q10
+q12 select q7 4 q11
+q13 select q6 5 q12
+q14 select q5 6 q13
+q15 select q4 7 q14
+q16 select q3 8 q15
+q17 select q2 9 q16
+q18 select q1 10 q17
+digits select q0 0 q18
+powers arr 1 10 100 1000 10000 100000 1000000 10000000 100000000 1000000000
+page fold ap_ret_digit digits z_6 n digits powers
+q19 add 6 digits
+q20 rec page q19
+ret q20
+end
+
+fn ap_freshstore (u32,io) u32 u32 u32 u32x128 -> (u32,io)
+q0 at p0 1
+q1 call arena_store q0 p2 0 p3 p4
+ret q1
+end
+
+fn ap_internsource (u32x128,u32,io) u32 u32 u32 u32 -> (u32x128,u32,io)
+p at p0 0
+q0 at p0 2
+q1 get p 62
+q2 get p 63
+q3 get p 64
+q4 rec q1 q2 q3
+q5 get p 65
+q6 get p 66
+q7 get p 67
+q8 rec q4 q5 q6 q7
+r call si_intern q0 q8 p2 p3 p4
+q9 at r 1
+q10 at q9 0
+q11 at q10 0
+m3_a set p 62 q11
+q12 at q10 1
+m3_b set m3_a 63 q12
+q13 at q10 2
+q14 set m3_b 64 q13
+q15 at q9 1
+m2_b set q14 65 q15
+q16 at q9 2
+m2_c set m2_b 66 q16
+q17 at q9 3
+q18 set m2_c 67 q17
+q19 at r 0
+q20 set q18 0 q19
+q21 at r 2
+q22 at r 3
+q23 rec q20 q21 q22
+ret q23
+end
+
+fn ap_nodeexists (u32x128,bool,io) u32 u32 -> (u32x128,bool,io)
+p at p0 0
+q0 at p0 2
+q1 rec p q0
+q2 get p 13
+q3 add q2 p1
+q4 mul q3 14
+r call ap_read q1 44 q4 1
+a at r 1
+q5 at r 0
+q6 at p0 1
+q7 get a 0
+q8 eq q7 p2
+q9 or q6 q8
+q10 at r 2
+q11 rec q5 q9 q10
+ret q11
+end
+
+fn ap_freshok (u32x128,u32,bool,io) u32 -> bool
+p at p0 0
+q0 get p 0
+q1 eq q0 0
+q2 at p0 2
+q3 xor q2 true
+q4 and q1 q3
+ret q4
+end
+
+fn ap_freshstep (u32x128,u32,bool,io) u32 -> (u32x128,u32,bool,io)
+p at p0 0
+q0 at p0 1
+candidate call ap_ret_candidate q0
+q1 at p0 3
+q2 at candidate 1
+r call arena_alloc q1 q2
+q3 at r 0
+q4 eq q3 0
+q5 select q4 1 0
+q6 at r 0
+q7 at r 2
+q8 rec q6 q7
+q9 at r 1
+q10 at candidate 1
+q11 at candidate 0
+st fold ap_freshstore q5 q8 q9 q10 q11
+q12 at st 0
+q set p 0 q12
+q13 at st 0
+q14 eq q13 0
+q15 select q14 1 0
+q16 at st 1
+q17 rec q 0 q16
+q18 at r 1
+q19 at candidate 1
+sym fold ap_internsource q15 q17 q18 0 q19
+q20 get p 14
+q21 at sym 0
+q22 at sym 2
+q23 rec q21 false q22
+q24 at sym 1
+dup fold ap_nodeexists q20 q23 q24
+q25 at dup 0
+q26 at sym 1
+a set q25 88 q26
+q27 at p0 1
+q28 add q27 1
+q29 at dup 1
+q30 xor q29 true
+q31 at dup 2
+q32 rec a q28 q30 q31
+ret q32
+end
+
+fn ap_fresh (u32x128,io) -> (u32x128,io)
+p at p0 0
+q0 get p 14
+q1 add q0 1
+q2 at p0 1
+q3 rec p 0 false q2
+r loop ap_freshok ap_freshstep q1 q3
+q4 at r 0
+q5 at r 3
+q6 rec q4 q5
+ret q6
+end
+
+fn ap_achar (u32,u32,u32,u32,u32,u32,io) u32 u32x128 -> (u32,u32,u32,u32,u32,u32,io)
+q0 get p2 p1
+q1 at p0 1
+quoted ne q1 0
+q2 at p0 2
+escaped ne q2 0
+q3 xor escaped true
+q4 and quoted q3
+q5 eq q0 34
+closing and q4 q5
+q6 xor quoted true
+q7 eq q0 34
+opening and q6 q7
+q8 at p0 3
+q9 ne q8 0
+q10 eq q0 62
+arrow and q9 q10
+q11 at p0 4
+q12 ne q11 0
+q13 xor quoted true
+q14 and q13 arrow
+outside or q12 q14
+q15 or opening closing
+q16 at p0 5
+q17 ne q16 0
+q18 and quoted arrow
+q19 or q17 q18
+inside select q15 false q19
+q20 select closing false quoted
+nq select opening true q20
+q21 xor escaped true
+q22 and quoted q21
+q23 eq q0 92
+ne and q22 q23
+q24 at p0 0
+q25 select nq 1 0
+q26 select ne 1 0
+q27 eq q0 45
+q28 select q27 1 0
+q29 select outside 1 0
+q30 select inside 1 0
+q31 at p0 6
+q32 rec q24 q25 q26 q28 q29 q30 q31
+ret q32
+end
+
+fn ap_apageok (u32,u32,u32,u32,u32,u32,io) u32 u32 u32 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+
+fn ap_apage (u32,u32,u32,u32,u32,u32,io) u32 u32 u32 u32 -> (u32,u32,u32,u32,u32,u32,io)
+base mul p1 128
+rest sub p4 base
+q0 gt rest 128
+n select q0 128 rest
+q1 at p0 6
+q2 add p3 base
+r call arena_load q1 p2 q2 n
+q3 at r 0
+q4 eq q3 0
+q5 select q4 n 0
+q6 at r 0
+q7 at p0 1
+q8 at p0 2
+q9 at p0 3
+q10 at p0 4
+q11 at p0 5
+q12 at r 2
+q13 rec q6 q7 q8 q9 q10 q11 q12
+q14 at r 1
+q15 fold ap_achar q5 q13 q14
+ret q15
+end
+
+fn ap_speckind (u32x128,io) u32x128 -> (u32x128,u32,u32,io)
+p at p0 0
+q0 at p0 1
+q1 get p 6
+q2 get p1 3
+q3 get p1 4
+q4 gt q3 5
+q5 get p1 4
+q6 select q4 5 q5
+prefix call arena_load q0 q1 q2 q6
+a at prefix 1
+q7 get p1 4
+q8 ge q7 3
+q9 get a 0
+q10 eq q9 112
+q11 and q8 q10
+q12 get a 1
+q13 eq q12 114
+q14 and q11 q13
+q15 get a 2
+q16 eq q15 101
+q17 and q14 q16
+q18 get p1 4
+q19 eq q18 3
+q20 get a 3
+q21 call ap_wordchar q20
+q22 xor q21 true
+q23 or q19 q22
+pre and q17 q23
+q24 get p1 4
+q25 ge q24 4
+q26 get a 0
+q27 eq q26 112
+q28 and q25 q27
+q29 get a 1
+q30 eq q29 111
+q31 and q28 q30
+q32 get a 2
+q33 eq q32 115
+q34 and q31 q33
+q35 get a 3
+q36 eq q35 116
+q37 and q34 q36
+q38 get p1 4
+q39 eq q38 4
+q40 get a 4
+q41 call ap_wordchar q40
+q42 xor q41 true
+q43 or q39 q42
+post and q37 q43
+q44 get p1 4
+q45 ge q44 2
+q46 get a 0
+q47 eq q46 101
+q48 and q45 q47
+q49 get a 1
+q50 eq q49 120
+q51 and q48 q50
+q52 get p1 4
+q53 eq q52 2
+q54 get a 2
+q55 call ap_wordchar q54
+q56 xor q55 true
+q57 or q53 q56
+ex and q51 q57
+q58 get p1 4
+q59 div q58 128
+q60 get p1 4
+q61 rem q60 128
+q62 eq q61 0
+q63 select q62 0 1
+pages add q59 q63
+q64 select ex pages 0
+q65 at prefix 0
+q66 at prefix 2
+q67 rec q65 0 0 0 0 0 q66
+q68 get p 6
+q69 get p1 3
+q70 get p1 4
+arrows loop ap_apageok ap_apage q64 q67 q68 q69 q70
+q71 at arrows 4
+q72 ne q71 0
+q73 at arrows 1
+q74 ne q73 0
+q75 at arrows 5
+q76 ne q75 0
+q77 and q74 q76
+has or q72 q77
+q78 and ex has
+q79 select q78 1 0
+q80 select post 3 q79
+kind select pre 2 q80
+q81 at arrows 0
+q82 set p 0 q81
+q83 select post 4 2
+q84 select pre 3 q83
+q85 at arrows 6
+q86 rec q82 kind q84 q85
+ret q86
+end

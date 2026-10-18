@@ -1,0 +1,120 @@
+# Trusted parsed-IR construction for dependency composition. No source grammar.
+# Symbol and structural type identity remain owned by the shared A0 interners.
+use "parse_arena_shared.a0"
+fn source_ir_init io u32 u32 u32 -> (u32x128,io)
+z call arena_zero
+a set z 6 p1
+b set a 7 p2
+c set b 8 p3
+d set c 24 4294967295
+e set d 93 1
+initial rec e p0
+symbols call ap_initsymbols initial 0
+types call ap_inittypes symbols 0
+ret types
+end
+
+fn source_ir_symbols u32x128 -> ((u32,u32,u32),u32,u32,u32)
+a get p0 62
+b get p0 63
+c get p0 64
+v rec a b c
+d get p0 65
+e get p0 66
+f get p0 67
+out rec v d e f
+ret out
+end
+
+fn source_ir_symbol (u32x128,io) u32 u32 -> (u32x128,u32,io)
+p at p0 0
+t at p0 1
+header call source_ir_symbols p
+r call si_intern t header p1 0 p2
+h at r 1
+v at h 0
+a at v 0
+b at v 1
+c at v 2
+s0 set p 62 a
+s1 set s0 63 b
+s2 set s1 64 c
+d at h 1
+e at h 2
+f at h 3
+s3 set s2 65 d
+s4 set s3 66 e
+s5 set s4 67 f
+code at r 0
+s6 set s5 0 code
+id at r 2
+io at r 3
+out rec s6 id io
+ret out
+end
+
+fn source_ir_types u32x128 -> ((u32,u32,u32),(u32,u32,u32),((u32,u32,u32),u32,u32,u32))
+a get p0 68
+b get p0 69
+c get p0 70
+rows rec a b c
+d get p0 71
+e get p0 72
+f get p0 73
+fields rec d e f
+g get p0 74
+h get p0 75
+i get p0 76
+symbols rec g h i
+j get p0 77
+k get p0 78
+l get p0 79
+index rec symbols j k l
+out rec rows fields index
+ret out
+end
+
+fn source_ir_type (u32x128,io) u32 u32 u32 u32 -> (u32x128,u32,io)
+p at p0 0
+t at p0 1
+header call source_ir_types p
+record eq p1 4
+n select record p3 0
+fields rec p4 n n
+r call tp_intern t header p1 p2 p3 fields 0
+h at r 1
+rows at h 0
+fieldsout at h 1
+index at h 2
+symbols at index 0
+a at rows 0
+b at rows 1
+c at rows 2
+s0 set p 68 a
+s1 set s0 69 b
+s2 set s1 70 c
+d at fieldsout 0
+e at fieldsout 1
+f at fieldsout 2
+s3 set s2 71 d
+s4 set s3 72 e
+s5 set s4 73 f
+g at symbols 0
+h0 at symbols 1
+i at symbols 2
+s6 set s5 74 g
+s7 set s6 75 h0
+s8 set s7 76 i
+j at index 1
+k at index 2
+l at index 3
+s9 set s8 77 j
+s10 set s9 78 k
+s11 set s10 79 l
+code at r 0
+s12 set s11 0 code
+id at r 2
+io at r 3
+out rec s12 id io
+ret out
+end

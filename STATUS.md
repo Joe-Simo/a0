@@ -1,5 +1,41 @@
 # A0 status
 
+2026-10-18 native graph checking: the shared dependency loader now parses each source file once,
+composes its native IR and checks the complete graph once. Original and migrated projects pass all
+178 accepted entries (`results/unified-native-graph-source-audit.json`); per-file checks are in
+`results/unified-native-graph-unit-audit.json`. The candidate checks its own 609 functions across
+19 modules with exact normalized IR and optimized C (`results/unified-native-graph-self-source.json`;
+artifact provenance in `results/unified-native-graph-build.json`). This remains an internal candidate;
+full diagnostics, editing integration, performance and public tooling cutover remain open.
+
+2026-10-18 size-optimization control: all 240 backend hashes match at maximum recorded load 2.96,
+but `-Os` is slower on the larger programs. Boot rises from 1277.79 to 1501.35 ms; page rises from
+203.27 to 225.75 ms. The artifact shrinks from 356280 to 204765 bytes and the two small programs
+improve, so the result is mixed. The default remains `-O3` (`results/unified-source-opt-size.json`,
+raw cells in `results/unified-source-opt-size-samples.json`). These measurements do not clear the
+old Canonical control or establish a shipping frontend improvement.
+
+2026-10-18 native artifact packaging: the default frontend fixture is 356280 bytes, down from
+417837 bytes with debug metadata. Every standard Wasm section and import/export is byte-identical
+(`results/unified-native-release-sections.json`). `--symbols=keep` retains the debugging build.
+This establishes a packaging reduction; frontend timing and the public syntax cutover remain open.
+
+2026-10-18 bulk-memory control: all 240 backend hashes match in the paired six-workload run,
+but the result is mixed. Boot native time falls from 1270.91 to 1187.97 ms; frame rises from
+23.74 to 24.35 ms and boot live frontend RSS rises from 143.69 to 156.58 MiB. The artifact builder
+therefore keeps MVP code generation as its default; bulk memory remains an explicit research
+option. Neither native build clears the old Canonical control (`results/unified-source-bulk-memory.json`,
+raw cells in `results/unified-source-bulk-memory-samples.json`).
+
+2026-10-18 source-cost control: the native candidate remains ineligible for cutover. The matched
+192-cell run has identical backend outputs and maximum recorded load 2, but the boot frontend
+median is 1269.10 ms versus 184.44 ms for old Canonical; the parser/checker plus C emitter takes
+2387.88 ms versus 1311.49 ms (`results/unified-source-cost.json`, raw cells in
+`results/unified-source-cost-samples.json`). These flattened inputs exclude graph I/O, shipping
+startup and target execution. Peak RSS has a common measurement floor in smaller inputs and
+must not be read as proof of equal frontend memory. That source revision's correctness audit passes all
+177 source entries (`results/unified-source-cost-audit.json`); it does not erase the timing loss.
+
 2026-10-16 publication update: first-party A0 source, editor and plugin packages use Apache 2.0 with copyright notices; third-party notices retain their original licenses. The website now includes the corrected independent Codex syntax study and its complete replay archive (`results/unification-codex-v2-replication.json`, `experiments/unification/README.md`). Earlier Dense-guide comparative conclusions are withdrawn (`results/unification-codex-guide-erratum.json`). This publication keeps the current compiler: unified syntax, native frontend performance, migration and the tool cutover remain unfinished. Historical language benchmarks retain their dates and scope.
 
 
@@ -17,6 +53,18 @@ Syntax unification is in progress: the linker now connects parsed programs direc
 validator, and `a0 migrate` creates a verified source-dependency copy using the existing Dense
 printer. Both source readers still exist; the language has not yet met the single-syntax goal.
 Scope, migration instructions and outstanding gates: [unified syntax](docs/design/unified-syntax.md).
+
+The flat candidate builds from `compiler/source_frontend.a0` and shared compiler modules,
+with a portable host that decodes checked IR without a second parser or validator. The committed
+earlier corpus audit passed all 176 accepted source entries, including guarded migration and exact native
+IR/type facts, and parses its own 604-function source to identical optimized C
+(`results/unified-source-unit-frontend-audit.json`, `results/unified-source-unit-build.json`).
+Source units use the same parser before whole-program checking (`results/unified-source-unit-audit.json`).
+The independent specification controls pass 30 cases (`results/unified-source-unit-specs.json`).
+The current increment adds native dependency IR composition through the shared graph loader and
+an executable fixture bound to its source and transport inputs. Complete diagnostics/tool integration,
+full gates and the recorded frontend performance losses still prevent an official source cutover; no compilation or AI accuracy gain
+is claimed by this increment.
 
 - **Language.** Types `u32`, `bool`, fixed-size arrays and records, and the linear `io` token; pure, total, exactly specified
   operations (wrapping unsigned arithmetic, logical shifts, total `div`/`rem`); `call`, bounded `fold`, early-exit `loop`, `text`.

@@ -67,6 +67,8 @@ export function stepFiles(root: string, step: StepId): string[] {
   if (step === 'test') {
     // The runner discovers every test; include their fixtures and golden files too.
     extra.push(...walk(root, 'test', /./));
+    // Frontend fixtures execute bundled Wasm and verify native source/transport freshness.
+    extra.push(...walk(root, 'seed', /./), ...walk(root, 'tools/native', /./));
     extra.push(...walk(root, 'examples', /\.a0$/), ...walk(root, 'compiler', /\.a0$/));
     extra.push(...walk(root, 'src', /\.ts$/), ...walk(root, 'tools', /\.ts$/));
     extra.push(

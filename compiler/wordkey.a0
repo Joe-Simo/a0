@@ -1,0 +1,46 @@
+# Shared exact short-word keys. See src/wordkey.ts for the key rule.
+# Bijective base 37 digits are 1..37; six digits fit in u32. Longer or invalid words key to 0.
+use "opcode.a0"
+
+fn wordkey_code u32 -> u32
+lo ge p0 97
+hi le p0 122
+letter and lo hi
+dl ge p0 48
+dh le p0 57
+digit and dl dh
+underscore eq p0 95
+lc sub p0 96
+dc sub p0 21
+l select letter lc 0
+d select digit dc l
+out select underscore 37 d
+ret out
+end
+
+fn wordkey_step (u32,u32,bool) u32 u32x128 -> (u32,u32,bool)
+byte get p2 p1
+code call wordkey_code byte
+key at p0 0
+power at p0 1
+oldvalid at p0 2
+term mul code power
+next add key term
+nextpower mul power 37
+known ne code 0
+valid and oldvalid known
+out rec next nextpower valid
+ret out
+end
+
+fn wordkey u32x128 u32 -> u32
+fits le p1 6
+count select fits p1 0
+initial rec 0 1 true
+result fold wordkey_step count initial p0
+valid at result 2
+key at result 0
+out select valid key 0
+ret out
+end
+

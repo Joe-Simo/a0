@@ -1,46 +1,5 @@
-# Compiler-only arena protocol v1. Ordinary A0 programs keep buffered IO.
-# Requests are op,argcount,args...; replies are status,count,payload... (<=128 words).
-# Status0 success,1 protocol,2 bad handle,3 range,4 resource,5 already finished.
-# Opaque handles are host storage IDs, never A0 references; all accesses carry the io token.
-fn arena_zero -> u32x128
-z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-ret z
-end
-fn arena_reply_word (u32x128,io) u32 -> (u32x128,io)
-a at p0 0
-t at p0 1
-r read t
-v at r 0
-t1 at r 1
-b set a p1 v
-out rec b t1
-ret out
-end
-fn arena_reply io -> (u32,u32,u32x128,io)
-r read p0
-status at r 0
-t at r 1
-q read t
-count at q 0
-t1 at q 1
-big gt count 128
-n select big 128 count
-z call arena_zero
-s rec z t1
-v fold arena_reply_word n s
-a at v 0
-t2 at v 1
-code select big 1 status
-out rec code count a t2
-ret out
-end
-fn arena_expect u32 u32 u32 -> u32
-ok eq p0 0
-n select ok p2 0
-bad ne p1 n
-code select bad 1 p0
-ret code
-end
+use "arena_shared.a0"
+
 fn arena_hello io -> (u32,io)
 r call arena_reply p0
 status at r 0
@@ -59,70 +18,7 @@ outcode select both 1 code
 out rec outcode t
 ret out
 end
-fn arena_alloc io u32 -> (u32,u32,io)
-a write p0 1
-b write a 1
-c write b p1
-r call arena_reply c
-status at r 0
-count at r 1
-page at r 2
-t at r 3
-code call arena_expect status count 1
-value get page 0
-ok eq code 0
-zero eq value 0
-bad and ok zero
-code2 select bad 1 code
-success eq code2 0
-handle select success value 0
-out rec code2 handle t
-ret out
-end
-fn arena_load io u32 u32 u32 -> (u32,u32x128,io)
-a write p0 2
-b write a 3
-c write b p1
-d write c p2
-e write d p3
-r call arena_reply e
-status at r 0
-count at r 1
-page at r 2
-t at r 3
-code call arena_expect status count p3
-out rec code page t
-ret out
-end
-fn arena_write_word io u32 u32x128 -> io
-v get p2 p1
-t write p0 v
-ret t
-end
-fn arena_store_valid (u32,io) u32 u32 u32 u32 u32x128 -> (u32,io)
-t at p0 1
-a write t 3
-n add p4 3
-b write a n
-c write b p2
-d write c p3
-e write d p4
-f fold arena_write_word p4 e p5
-r call arena_reply f
-status at r 0
-count at r 1
-t1 at r 3
-code call arena_expect status count 0
-out rec code t1
-ret out
-end
-fn arena_store io u32 u32 u32 u32x128 -> (u32,io)
-ok le p3 128
-n select ok 1 0
-s rec 3 p0
-r fold arena_store_valid n s p1 p2 p3 p4
-ret r
-end
+
 fn arena_emit_valid (u32,io) u32 u32 u32x128 -> (u32,io)
 t at p0 1
 a write t 4
@@ -130,14 +26,10 @@ n add p2 1
 b write a n
 c write b p2
 d fold arena_write_word p2 c p3
-r call arena_reply d
-status at r 0
-count at r 1
-t1 at r 3
-code call arena_expect status count 0
-out rec code t1
-ret out
+r call arena_ack d
+ret r
 end
+
 fn arena_emit io u32 u32x128 -> (u32,io)
 ok le p1 128
 n select ok 1 0
@@ -145,15 +37,11 @@ s rec 3 p0
 r fold arena_emit_valid n s p1 p2
 ret r
 end
+
 fn arena_finish io u32 -> (u32,io)
 a write p0 5
 b write a 1
 c write b p1
-r call arena_reply c
-status at r 0
-count at r 1
-t at r 3
-code call arena_expect status count 0
-out rec code t
-ret out
+r call arena_ack c
+ret r
 end

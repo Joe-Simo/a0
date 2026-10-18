@@ -1,7 +1,7 @@
 /** Isolated measurement process: load only the measured checkout's frontend before sampling RSS. */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -36,12 +36,18 @@ const fixtures = JSON.parse(readFileSync(0, 'utf8')) as {
   entry: string;
   canonical: [string, string][];
   dense: [string, string][];
+  candidateSource?: [string, string][];
 };
 const hash = (text: string | Uint8Array): string => createHash('sha256').update(text).digest('hex');
 const read = (path: string): Promise<string> => readFile(path, 'utf8');
+const surface = option('surface');
 const { link } = (await import(pathToFileURL(join(implementation, 'dist/src/link.js')).href)) as {
   link: typeof Link;
 };
+const loadProject: typeof Link =
+  surface === 'candidate-source'
+    ? (await import(pathToFileURL(join(implementation, 'dist/src/source-link.js')).href)).linkSource
+    : link;
 const builtVersion = (await import(
   pathToFileURL(join(implementation, 'dist/src/targets.js')).href
 )) as { COMPILER_VERSION: string };
@@ -52,30 +58,40 @@ if (sourceVersion !== builtVersion.COMPILER_VERSION)
   throw new Error('baseline build is stale: rebuild with tsc --incremental false');
 const implementationHashes = Object.fromEntries(
   await Promise.all(
-    ['link', 'core', 'dense'].map(async (name) => [
-      name,
-      {
-        source: hash(await read(join(implementation, `src/${name}.ts`))),
-        built: hash(await read(join(implementation, `dist/src/${name}.js`))),
-      },
-    ]),
+    ['link', 'core', 'dense', 'linker', 'source', 'source-link', 'names']
+      .filter((name) => existsSync(join(implementation, `src/${name}.ts`)))
+      .map(async (name) => [
+        name,
+        {
+          source: hash(await read(join(implementation, `src/${name}.ts`))),
+          built: hash(await read(join(implementation, `dist/src/${name}.js`))),
+        },
+      ]),
   ),
 );
-const dense = option('surface') === 'dense';
-const texts = new Map(dense ? fixtures.dense : fixtures.canonical);
+const dense = surface === 'dense';
+if (surface === 'candidate-source' && fixtures.candidateSource === undefined)
+  throw new Error('candidate source snapshot missing');
+const texts = new Map(
+  surface === 'candidate-source'
+    ? fixtures.candidateSource
+    : dense
+      ? fixtures.dense
+      : fixtures.canonical,
+);
 const reader = async (path: string): Promise<string> => {
   const text = texts.get(path);
   if (text === undefined) throw new Error(`source snapshot missing: ${path}`);
   return text;
 };
 const options = { root: fixtures.root, dense };
-for (let n = 0; n < 5; n += 1) await link(fixtures.entry, reader, options);
+for (let n = 0; n < 5; n += 1) await loadProject(fixtures.entry, reader, options);
 const samples: { ms: number; loadBefore: number; loadAfter: number }[] = [];
-let linked = await link(fixtures.entry, reader, options);
+let linked = await loadProject(fixtures.entry, reader, options);
 for (let n = 0; n < 15; n += 1) {
   const loadBefore = systemLoad();
   const start = performance.now();
-  linked = await link(fixtures.entry, reader, options);
+  linked = await loadProject(fixtures.entry, reader, options);
   const ms = performance.now() - start;
   samples.push({ ms, loadBefore, loadAfter: systemLoad() });
 }
