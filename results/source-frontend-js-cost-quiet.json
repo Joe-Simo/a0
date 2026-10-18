@@ -1,0 +1,1709 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-18T16:56:06.438Z",
+  "scope": "Formal fresh-process cost comparison of the frozen generated-JS A0 frontend against C/Wasm, historical Canonical/Dense and the current flat TypeScript research reader. Six actual application/compiler inputs, one discarded warmup and seven rotated measured rounds. No production frontend, grammar, public routing, emitter, runtime or default was changed.",
+  "decision": {
+    "result": "reject-current-generated-js-for-cold-cost-adoption",
+    "reason": "On this Linux/Node runtime and all six frozen inputs, generated JS has higher median frontend, pipeline and fresh-child wall time and higher frontend RSS than every control. Its smaller arena-only Wasm memory excludes its JavaScript heap/JIT/code/GC and does not establish lower total memory. Existing production defaults remain unchanged.",
+    "productionCutover": false,
+    "noRegressionClaim": false,
+    "sameProcessWarmCohort": "unrun"
+  },
+  "candidate": {
+    "commit": "acb686bea705e23097b7433d03b4c231dc361a66",
+    "tree": "be3222d447dd764cb12fbf49f6f6081d000c22cc"
+  },
+  "cControl": {
+    "commit": "3ef2db0f9160dada89e1c513fd8170d78649d7ef",
+    "tree": "ec2d513896d8caa947fa033128e683841bec3acb"
+  },
+  "historical": {
+    "commit": "764de84ab99a156e41164518f14cc0676b6343dd",
+    "tree": "ab27dea02d1f5047601f0e1c310c6c3e625f08ea"
+  },
+  "source": {
+    "sha256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "functions": 612,
+    "modules": 23,
+    "consumedFunctionSignatures": 8
+  },
+  "protocol": {
+    "controller": "tools/source-cost-bench.ts",
+    "worker": "tools/source-cost-worker.ts",
+    "mode": "--cross-backend",
+    "coldParentPreparation": "Fresh TypeScript builds in all three clean checkouts; strict cold JS re-emission, generic arena reproduction and complete strict native C/Wasm reproduction before samples. Exact shared compiler/source/configuration/toolchain inputs and structural API signatures checked by the frozen harness.",
+    "startedAt": "2026-10-18T16:34:20.225Z",
+    "finishedAt": "2026-10-18T16:54:50.558Z",
+    "warmupRounds": 1,
+    "measuredRounds": 7,
+    "units": 6,
+    "arms": 5,
+    "totalCells": 240,
+    "discardedWarmupCells": 30,
+    "measuredCells": 210,
+    "perChildTimeoutMs": 240000,
+    "rotation": "For each round -1 through 6 and input id, rotate five arms by (round+1+id+index)%5. Every cell runs in a fresh process. Warmup cells remain archived and are excluded from medians.",
+    "outputControl": "Every cell emits byte-identical C through one historical emitter. Frozen historical output hashes permit only the recorded first-line compiler-version banner substitution; the controller verifies the substituted frozen hash before samples.",
+    "scope": "Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and compiled A0 frontend. Parser/checker plus one historical C text emitter. Frontend instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter, model inference and generated-target execution excluded. Every fresh process preloads the common candidate SDK and its selected artifact; candidate artifact also preloaded for historical and TS controls. Per-sample preload records identify every component, hash and size, separating JavaScript text from Wasm bytes. Artifact validation and module compilation are outside frontend/pipeline phases; fresh-child wall time includes process startup, preparation and final proof checks. No official source cutover or no-regression conclusion is implied.",
+    "detail": "Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every arm uses the historical baseline C text emitter, so frontend IR is compared through one fixed backend even when frontend artifact code generation changes. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution. JS compiled-backend mode requires a cold parent re-emission with exact compiler outputs/configuration and SDK/source inventory, the same raw and normalized A0 closure/count and eight structural API signatures, identical common compiler implementation/configuration, explicit host-word IO and optimization, same arena/libc/builtins/toolchain, exact generic-arena rebuild and strict C native rebuild. A hashed immutable parent proof binds every worker to the actual component and SDK bytes; compiler rebuilding never occurs per worker. JavaScript text bytes are distinct from arena Wasm bytes. Module preparation includes artifact/SDK validation plus fresh ESM import and Wasm module compilation outside frontendMs, and remains inside child wall. First-call JS lazy JIT is included in frontendMs. No same-process warm cohort or total engine-memory equivalence is claimed.",
+    "memoryMethod": "Live frontend RSS/heap/external/arrayBuffer memory captured before emission. Module preparation and pre-preparation memory are separately recorded; process/SDK import startup remains in child wall. Initial peak/live RSS exposes any inherited launch or preload floor; maxRSS alone cannot establish small-cell frontend parity. JS engine code/JIT/GC cannot be isolated by these process counters. wasmLinearMemoryBytes includes only retained Wasm buffers (arena-only for JS), not JS heap/code/JIT/GC; no cross-engine total-memory equivalence is implied."
+  },
+  "runtime": {
+    "node": "v24.19.0",
+    "v8": "13.6.233.17-node.51",
+    "arch": "x64",
+    "platform": "linux"
+  },
+  "cpu": "AMD EPYC 7763 64-Core Processor",
+  "availableParallelism": 4,
+  "quietWindow": {
+    "coordinator": "Root cleared the quiet window after all other local builders/test runners stopped; other agents held builds and tests until controller success and final proof verification.",
+    "loadSource": "loadavg",
+    "maxLoad1": 1.94,
+    "observations": {
+      "oneMinute": 720,
+      "fiveMinute": 240,
+      "fifteenMinute": 240,
+      "total": 1200
+    },
+    "benchValidity": {
+      "state": "publishable",
+      "reason": "load at most 1.94, 7 samples, interleaved"
+    },
+    "allRawLoadTriplesAndPhaseLoadsArchived": true
+  },
+  "artifacts": {
+    "generatedJs": {
+      "sha256": "8148b7dd4ecb47d3b0cf5ace83041c339d41a5e3f64d66dae7e7097ed93f8326",
+      "sourceSha256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+      "bytes": 984981,
+      "backend": "generated-js",
+      "components": [
+        {
+          "file": "frontend.mjs",
+          "sha256": "cf960c46885e8cf76c0014d84e8d2cbbec0b57e449cb3800d565e11dc16293f5",
+          "bytes": 968559
+        },
+        {
+          "file": "arena.wasm",
+          "sha256": "fffd7aa76fe43d3ca3fa2b173b9f484c291fa4579ab3fe7cbf7ca6f5f88faa75",
+          "bytes": 16422
+        }
+      ],
+      "componentCount": 2,
+      "totalWasmBytes": 16422,
+      "totalJavaScriptBytes": 968559,
+      "totalArtifactBytes": 984981,
+      "artifactSha256": "8148b7dd4ecb47d3b0cf5ace83041c339d41a5e3f64d66dae7e7097ed93f8326"
+    },
+    "cControl": {
+      "backend": "clang-wasm",
+      "components": [
+        {
+          "file": "frontend.wasm",
+          "sha256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+          "bytes": 358233
+        }
+      ],
+      "componentCount": 1,
+      "totalWasmBytes": 358233,
+      "artifactSha256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926"
+    },
+    "scope": "Component bytes only. These are not complete bootstrap package sizes, installed SDK sizes, execution binary sizes or total engine-memory measurements."
+  },
+  "verification": {
+    "schema": 1,
+    "cells": 240,
+    "discardedWarmupCells": 30,
+    "measuredCells": 210,
+    "units": 6,
+    "arms": 5,
+    "measuredRounds": 7,
+    "discardedWarmupRounds": 1,
+    "rotatedOrder": "pass",
+    "allOutputHashes": "pass",
+    "exactArtifactPreloads": "pass",
+    "allReportedMediansIndependentlyRecomputed": "pass",
+    "finalCleanCheckoutAndWorkerProofChecks": "pass",
+    "sdkOutputs": 90,
+    "historicalSdkOutputs": 56,
+    "workerProofSHA256": "9289917a6b33c39680192e233e81d309386d98af90a76fd2952bde7183fcad13",
+    "benchValidity": {
+      "state": "publishable",
+      "reason": "load at most 1.94, 7 samples, interleaved"
+    },
+    "loadObservations": {
+      "oneMinute": 720,
+      "fiveMinute": 240,
+      "fifteenMinute": 240,
+      "total": 1200
+    },
+    "maxLoad1": 1.94
+  },
+  "inputs": [
+    {
+      "unit": "examples/life.a0",
+      "rawInputSHA256": "ea62ebb4a4188b1bb30e7b894de37e012917fe0947c5f30e793b3c37f06edf0a",
+      "hashes": {
+        "canonical": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+        "dense": "3bbcd1df00319df82196710a99ac2b360ee3897684c25e6c2e9020eed589cd66",
+        "flat": "2e7ddcca22dda1ef6cc8b962e912a59acd02f844162c29d4bff4717b128e15b5"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 1746,
+          "dense": 1503,
+          "flat": 1538
+        },
+        "cl100k_base": {
+          "canonical": 1744,
+          "dense": 1503,
+          "flat": 1538
+        }
+      }
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "rawInputSHA256": "77a42531b055eb242599fe83cd5272490044749f33214d571448853626fc31f7",
+      "hashes": {
+        "canonical": "c89c9932c9ddb1c220c49c6aed0af81052de41f7cc65b23d006333ab65a07a10",
+        "dense": "4de3ea618cbbc27a20a61a14954ff8ea39b4782662bedad30838f00561fda2c8",
+        "flat": "f0ab8748931d68e7fd2f50204d15464782e4cf9add3339fdef7d9084fb15cd69"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 3186,
+          "dense": 2249,
+          "flat": 2652
+        },
+        "cl100k_base": {
+          "canonical": 3166,
+          "dense": 2244,
+          "flat": 2647
+        }
+      }
+    },
+    {
+      "unit": "site/page.a0",
+      "rawInputSHA256": "5ef6421856628732193ce7d8c8e53e9ccc5055a03364bdfb30e6dad296a5e720",
+      "hashes": {
+        "canonical": "2dc6530d1b180711cea7a4e44471bcbae0b7255bf0f1ffb70d26fb6b2546a252",
+        "dense": "0e6b28d768429aaee01a68d7ac5c2a286971adc284e0e8b604746fe900034d6b",
+        "flat": "20ef71d09070bcf403f4017fbd1e447ebb427584546548f9f24fbd0a76018e94"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 60185,
+          "dense": 57280,
+          "flat": 57512
+        },
+        "cl100k_base": {
+          "canonical": 60142,
+          "dense": 57237,
+          "flat": 57469
+        }
+      }
+    },
+    {
+      "unit": "site/docs.a0",
+      "rawInputSHA256": "04c875234a51a8b84d67e10db3418db0ab9ba3b895b5b3c88f6225912e277cd4",
+      "hashes": {
+        "canonical": "c89c280690f8fc64322ab7d68d7c38d2af7e184db422b034f60c2bdb293a86c3",
+        "dense": "274289325991ad07e998278d639c9c1e94afde9d974973d4ec4351f5ac075389",
+        "flat": "2c50d0b8b90422a850693ab1c7432142356794553cb8d975ae97defda8a735ca"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 17484,
+          "dense": 16582,
+          "flat": 16750
+        },
+        "cl100k_base": {
+          "canonical": 17465,
+          "dense": 16563,
+          "flat": 16731
+        }
+      }
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "rawInputSHA256": "fe23ac50e51b16cf6bb01e676729fa94267fec9d2362638299f7484de86b517d",
+      "hashes": {
+        "canonical": "36cf9b3fe3d031b8623ace73457170aaea8a0c136f30ffb36719aae719560ba9",
+        "dense": "3175f93009e7807f0801b96967fc5a2a513595e60f8f8c73ebd4c53b57568a00",
+        "flat": "b6cc357736f4c84345fe6cdd719e9567bc5d78a3d68cc27b5a57d81915f02890"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 588452,
+          "dense": 519822,
+          "flat": 519223
+        },
+        "cl100k_base": {
+          "canonical": 593842,
+          "dense": 525221,
+          "flat": 520928
+        }
+      }
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "rawInputSHA256": "10b3fbd34597f75225373170cea9a5938015ca44fa5e681ca9335dd826477d9b",
+      "hashes": {
+        "canonical": "9a2d01b2f252b016ac9ee9061469d7ca4a57cd5d95f7cc954ce6c43647f6117a",
+        "dense": "b82e270a3c2490135ae7e9347964710d976aca0a91c9a88cc654cf22a6bf27b4",
+        "flat": "c90c70cad5719c15c0c50260e445bf9b3d4636292b93af6bf297162ccfe1e268"
+      },
+      "tokens": {
+        "o200k_base": {
+          "canonical": 64389,
+          "dense": 59901,
+          "flat": 58248
+        },
+        "cl100k_base": {
+          "canonical": 64354,
+          "dense": 59867,
+          "flat": 58214
+        }
+      }
+    }
+  ],
+  "rows": [
+    {
+      "unit": "examples/life.a0",
+      "arms": {
+        "old-canonical": {
+          "modulePreparationMs": 282.31037499999996,
+          "postCheckMs": 71.56252499999994,
+          "beforePreparationRssBytes": 45445120,
+          "beforePreparationHeapUsedBytes": 9601488,
+          "beforePreparationExternalBytes": 2466558,
+          "frontendHeapTotalBytes": 41017344,
+          "frontendArrayBufferBytes": 10548301,
+          "heapTotalBytes": 36347904,
+          "arrayBufferBytes": 1162452,
+          "frontendMs": 6.216504999999984,
+          "emitCMs": 18.647650999999996,
+          "pipelineMs": 24.906233999999984,
+          "wallMs": 491.310341000004,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 83353600,
+          "frontendRssBytes": 84140032,
+          "frontendHeapUsedBytes": 29354744,
+          "frontendExternalBytes": 14179778,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 81956864,
+          "heapUsedBytes": 19819912,
+          "externalBytes": 14179778,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "modulePreparationMs": 299.59180299999997,
+          "postCheckMs": 79.08129100000002,
+          "beforePreparationRssBytes": 45461504,
+          "beforePreparationHeapUsedBytes": 9598464,
+          "beforePreparationExternalBytes": 2466558,
+          "frontendHeapTotalBytes": 41279488,
+          "frontendArrayBufferBytes": 10549417,
+          "heapTotalBytes": 36085760,
+          "arrayBufferBytes": 1163568,
+          "frontendMs": 12.512393000000031,
+          "emitCMs": 18.827293999999995,
+          "pipelineMs": 31.790331999999978,
+          "wallMs": 526.2864259999478,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 83357696,
+          "frontendRssBytes": 85254144,
+          "frontendHeapUsedBytes": 30411960,
+          "frontendExternalBytes": 14180894,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 82026496,
+          "heapUsedBytes": 20786856,
+          "externalBytes": 14180894,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "modulePreparationMs": 316.106683,
+          "postCheckMs": 76.80636900000002,
+          "beforePreparationRssBytes": 45314048,
+          "beforePreparationHeapUsedBytes": 9597720,
+          "beforePreparationExternalBytes": 2466558,
+          "frontendHeapTotalBytes": 41017344,
+          "frontendArrayBufferBytes": 10557517,
+          "heapTotalBytes": 36085760,
+          "arrayBufferBytes": 1171668,
+          "frontendMs": 7.63579500000003,
+          "emitCMs": 20.859538999999984,
+          "pipelineMs": 28.72451799999999,
+          "wallMs": 535.985446000006,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 83296256,
+          "frontendRssBytes": 84213760,
+          "frontendHeapUsedBytes": 29375736,
+          "frontendExternalBytes": 14188994,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 81829888,
+          "heapUsedBytes": 19960472,
+          "externalBytes": 14188994,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "modulePreparationMs": 287.420932,
+          "postCheckMs": 80.67044499999997,
+          "beforePreparationRssBytes": 45539328,
+          "beforePreparationHeapUsedBytes": 9577856,
+          "beforePreparationExternalBytes": 2466558,
+          "frontendHeapTotalBytes": 37134336,
+          "frontendArrayBufferBytes": 5501339,
+          "heapTotalBytes": 37396480,
+          "arrayBufferBytes": 5501339,
+          "frontendMs": 223.40083599999997,
+          "emitCMs": 18.3970240000001,
+          "pipelineMs": 240.73123600000002,
+          "wallMs": 725.9255430000485,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 83968000,
+          "frontendRssBytes": 99459072,
+          "frontendHeapUsedBytes": 22295904,
+          "frontendExternalBytes": 20797832,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 100245504,
+          "heapUsedBytes": 26056088,
+          "externalBytes": 20797832,
+          "wasmLinearMemoryBytes": 196608
+        },
+        "flat-a0-control": {
+          "modulePreparationMs": 167.81787200000002,
+          "postCheckMs": 74.33653300000003,
+          "beforePreparationRssBytes": 45387776,
+          "beforePreparationHeapUsedBytes": 9597280,
+          "beforePreparationExternalBytes": 2467070,
+          "frontendHeapTotalBytes": 20500480,
+          "frontendArrayBufferBytes": 1562860,
+          "heapTotalBytes": 21286912,
+          "arrayBufferBytes": 1562860,
+          "frontendMs": 19.32861300000002,
+          "emitCMs": 21.347842000000014,
+          "pipelineMs": 40.734414000000015,
+          "wallMs": 395.98627799993847,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 56426496,
+          "frontendRssBytes": 64475136,
+          "frontendHeapUsedBytes": 11802904,
+          "frontendExternalBytes": 20876749,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 68841472,
+          "heapUsedBytes": 15463408,
+          "externalBytes": 20876749,
+          "wasmLinearMemoryBytes": 16973824
+        }
+      }
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "arms": {
+        "old-canonical": {
+          "modulePreparationMs": 299.205913,
+          "postCheckMs": 70.64268400000003,
+          "beforePreparationRssBytes": 45330432,
+          "beforePreparationHeapUsedBytes": 9593736,
+          "beforePreparationExternalBytes": 2474904,
+          "frontendHeapTotalBytes": 41279488,
+          "frontendArrayBufferBytes": 10537880,
+          "heapTotalBytes": 36347904,
+          "arrayBufferBytes": 1152031,
+          "frontendMs": 7.36712399999999,
+          "emitCMs": 24.718181000000016,
+          "pipelineMs": 32.52968900000002,
+          "wallMs": 517.7619209999975,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 83636224,
+          "frontendRssBytes": 84946944,
+          "frontendHeapUsedBytes": 29810816,
+          "frontendExternalBytes": 14169357,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 82399232,
+          "heapUsedBytes": 22923208,
+          "externalBytes": 14169357,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "modulePreparationMs": 296.15514099999996,
+          "postCheckMs": 73.41189099999997,
+          "beforePreparationRssBytes": 45510656,
+          "beforePreparationHeapUsedBytes": 9614136,
+          "beforePreparationExternalBytes": 2474904,
+          "frontendHeapTotalBytes": 41279488,
+          "frontendArrayBufferBytes": 10537716,
+          "heapTotalBytes": 36610048,
+          "arrayBufferBytes": 1152075,
+          "frontendMs": 16.367096000000004,
+          "emitCMs": 23.93357100000003,
+          "pipelineMs": 40.34554000000003,
+          "wallMs": 537.5759309999412,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 82972672,
+          "frontendRssBytes": 86118400,
+          "frontendHeapUsedBytes": 31434968,
+          "frontendExternalBytes": 14169193,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 84127744,
+          "heapUsedBytes": 24490720,
+          "externalBytes": 14169193,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "modulePreparationMs": 314.780291,
+          "postCheckMs": 77.41716199999996,
+          "beforePreparationRssBytes": 45273088,
+          "beforePreparationHeapUsedBytes": 9619608,
+          "beforePreparationExternalBytes": 2475032,
+          "frontendHeapTotalBytes": 41279488,
+          "frontendArrayBufferBytes": 10549209,
+          "heapTotalBytes": 36085760,
+          "arrayBufferBytes": 1163360,
+          "frontendMs": 9.211486999999977,
+          "emitCMs": 26.61978400000004,
+          "pipelineMs": 35.916650000000004,
+          "wallMs": 543.31551700001,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 82927616,
+          "frontendRssBytes": 84238336,
+          "frontendHeapUsedBytes": 29829752,
+          "frontendExternalBytes": 14180686,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 81829888,
+          "heapUsedBytes": 23027648,
+          "externalBytes": 14180686,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "modulePreparationMs": 282.90635299999997,
+          "postCheckMs": 81.95153700000003,
+          "beforePreparationRssBytes": 45330432,
+          "beforePreparationHeapUsedBytes": 9597320,
+          "beforePreparationExternalBytes": 2474904,
+          "frontendHeapTotalBytes": 34807808,
+          "frontendArrayBufferBytes": 13950551,
+          "heapTotalBytes": 35069952,
+          "arrayBufferBytes": 2816559,
+          "frontendMs": 411.55386999999996,
+          "emitCMs": 31.836212000000046,
+          "pipelineMs": 453.437778,
+          "wallMs": 944.9629020000575,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 83730432,
+          "frontendRssBytes": 101724160,
+          "frontendHeapUsedBytes": 23663000,
+          "frontendExternalBytes": 16743220,
+          "frontendPeakRssBytes": 102367232,
+          "peakRssBytes": 102379520,
+          "rssBytes": 102379520,
+          "heapUsedBytes": 22570560,
+          "externalBytes": 16743220,
+          "wasmLinearMemoryBytes": 262144
+        },
+        "flat-a0-control": {
+          "modulePreparationMs": 171.246379,
+          "postCheckMs": 72.45841000000001,
+          "beforePreparationRssBytes": 45330432,
+          "beforePreparationHeapUsedBytes": 9563592,
+          "beforePreparationExternalBytes": 2474904,
+          "frontendHeapTotalBytes": 19976192,
+          "frontendArrayBufferBytes": 1411790,
+          "heapTotalBytes": 24170496,
+          "arrayBufferBytes": 1364951,
+          "frontendMs": 29.256144000000006,
+          "emitCMs": 31.85173199999997,
+          "pipelineMs": 60.737323,
+          "wallMs": 413.42953399999533,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 56508416,
+          "frontendRssBytes": 74129408,
+          "frontendHeapUsedBytes": 12121976,
+          "frontendExternalBytes": 20856751,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 73850880,
+          "heapUsedBytes": 18441072,
+          "externalBytes": 20809912,
+          "wasmLinearMemoryBytes": 17104896
+        }
+      }
+    },
+    {
+      "unit": "site/page.a0",
+      "arms": {
+        "old-canonical": {
+          "modulePreparationMs": 304.458733,
+          "postCheckMs": 84.29551900000001,
+          "beforePreparationRssBytes": 47222784,
+          "beforePreparationHeapUsedBytes": 11236248,
+          "beforePreparationExternalBytes": 2875236,
+          "frontendHeapTotalBytes": 55750656,
+          "frontendArrayBufferBytes": 2454980,
+          "heapTotalBytes": 62263296,
+          "arrayBufferBytes": 2454980,
+          "frontendMs": 41.75408500000003,
+          "emitCMs": 94.79050200000006,
+          "pipelineMs": 136.11255900000003,
+          "wallMs": 643.3735410000663,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 80007168,
+          "frontendRssBytes": 102424576,
+          "frontendHeapUsedBytes": 27192016,
+          "frontendExternalBytes": 6094384,
+          "frontendPeakRssBytes": 102424576,
+          "peakRssBytes": 116719616,
+          "rssBytes": 116719616,
+          "heapUsedBytes": 29921216,
+          "externalBytes": 6086457,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "modulePreparationMs": 297.79771900000003,
+          "postCheckMs": 80.57149099999992,
+          "beforePreparationRssBytes": 47337472,
+          "beforePreparationHeapUsedBytes": 11244296,
+          "beforePreparationExternalBytes": 2874596,
+          "frontendHeapTotalBytes": 57585664,
+          "frontendArrayBufferBytes": 2447117,
+          "heapTotalBytes": 60952576,
+          "arrayBufferBytes": 2447117,
+          "frontendMs": 74.60779400000001,
+          "emitCMs": 79.74241200000006,
+          "pipelineMs": 155.44054699999998,
+          "wallMs": 649.7269170000218,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 80551936,
+          "frontendRssBytes": 110333952,
+          "frontendHeapUsedBytes": 26286696,
+          "frontendExternalBytes": 6080736,
+          "frontendPeakRssBytes": 110333952,
+          "peakRssBytes": 114970624,
+          "rssBytes": 114970624,
+          "heapUsedBytes": 42974424,
+          "externalBytes": 6078594,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "modulePreparationMs": 280.547465,
+          "postCheckMs": 79.26469100000008,
+          "beforePreparationRssBytes": 47108096,
+          "beforePreparationHeapUsedBytes": 11207360,
+          "beforePreparationExternalBytes": 2875236,
+          "frontendHeapTotalBytes": 55750656,
+          "frontendArrayBufferBytes": 2456558,
+          "heapTotalBytes": 62263296,
+          "arrayBufferBytes": 2456558,
+          "frontendMs": 42.35166600000002,
+          "emitCMs": 94.98949800000008,
+          "pipelineMs": 137.43090199999995,
+          "wallMs": 637.0633080000989,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 80703488,
+          "frontendRssBytes": 103563264,
+          "frontendHeapUsedBytes": 26657000,
+          "frontendExternalBytes": 6094338,
+          "frontendPeakRssBytes": 103563264,
+          "peakRssBytes": 119713792,
+          "rssBytes": 119713792,
+          "heapUsedBytes": 29458664,
+          "externalBytes": 6086457,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "modulePreparationMs": 304.2452,
+          "postCheckMs": 111.21048599999995,
+          "beforePreparationRssBytes": 47161344,
+          "beforePreparationHeapUsedBytes": 11158344,
+          "beforePreparationExternalBytes": 2874596,
+          "frontendHeapTotalBytes": 52899840,
+          "frontendArrayBufferBytes": 6182607,
+          "heapTotalBytes": 58626048,
+          "arrayBufferBytes": 2450953,
+          "frontendMs": 13402.103749999998,
+          "emitCMs": 103.53402300000016,
+          "pipelineMs": 13501.501041,
+          "wallMs": 14013.508462999947,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 79667200,
+          "frontendRssBytes": 166965248,
+          "frontendHeapUsedBytes": 23905048,
+          "frontendExternalBytes": 19377546,
+          "frontendPeakRssBytes": 167723008,
+          "peakRssBytes": 170921984,
+          "rssBytes": 170876928,
+          "heapUsedBytes": 27687368,
+          "externalBytes": 11079876,
+          "wasmLinearMemoryBytes": 6291456
+        },
+        "flat-a0-control": {
+          "modulePreparationMs": 171.31413299999997,
+          "postCheckMs": 85.64554399999997,
+          "beforePreparationRssBytes": 47104000,
+          "beforePreparationHeapUsedBytes": 11216288,
+          "beforePreparationExternalBytes": 2875108,
+          "frontendHeapTotalBytes": 34398208,
+          "frontendArrayBufferBytes": 324316,
+          "heapTotalBytes": 38027264,
+          "arrayBufferBytes": 324316,
+          "frontendMs": 208.01029499999999,
+          "emitCMs": 92.36822200000006,
+          "pipelineMs": 301.51484600000003,
+          "wallMs": 669.5177100000437,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 57274368,
+          "frontendRssBytes": 89436160,
+          "frontendHeapUsedBytes": 16368088,
+          "frontendExternalBytes": 27270375,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 94339072,
+          "heapUsedBytes": 26301632,
+          "externalBytes": 25733053,
+          "wasmLinearMemoryBytes": 23068672
+        }
+      }
+    },
+    {
+      "unit": "site/docs.a0",
+      "arms": {
+        "old-canonical": {
+          "modulePreparationMs": 294.81852100000003,
+          "postCheckMs": 76.98525000000001,
+          "beforePreparationRssBytes": 45453312,
+          "beforePreparationHeapUsedBytes": 10193240,
+          "beforePreparationExternalBytes": 2600896,
+          "frontendHeapTotalBytes": 53125120,
+          "frontendArrayBufferBytes": 2446373,
+          "heapTotalBytes": 57942016,
+          "arrayBufferBytes": 2440298,
+          "frontendMs": 24.817109000000016,
+          "emitCMs": 51.71886999999998,
+          "pipelineMs": 77.45880799999998,
+          "wallMs": 557.721446999989,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 79683584,
+          "frontendRssBytes": 91410432,
+          "frontendHeapUsedBytes": 31416248,
+          "frontendExternalBytes": 6077850,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 109793280,
+          "rssBytes": 109793280,
+          "heapUsedBytes": 31354536,
+          "externalBytes": 6071775,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "modulePreparationMs": 298.02072999999996,
+          "postCheckMs": 79.29634999999996,
+          "beforePreparationRssBytes": 45850624,
+          "beforePreparationHeapUsedBytes": 10193272,
+          "beforePreparationExternalBytes": 2601024,
+          "frontendHeapTotalBytes": 37920768,
+          "frontendArrayBufferBytes": 2422352,
+          "heapTotalBytes": 56893440,
+          "arrayBufferBytes": 2422352,
+          "frontendMs": 37.844603000000006,
+          "emitCMs": 51.41801299999997,
+          "pipelineMs": 88.774836,
+          "wallMs": 582.5551899999846,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 80498688,
+          "frontendRssBytes": 87449600,
+          "frontendHeapUsedBytes": 21999584,
+          "frontendExternalBytes": 4762417,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 100352000,
+          "heapUsedBytes": 28219448,
+          "externalBytes": 4762417,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "modulePreparationMs": 285.21308799999997,
+          "postCheckMs": 73.91597600000006,
+          "beforePreparationRssBytes": 46104576,
+          "beforePreparationHeapUsedBytes": 10193240,
+          "beforePreparationExternalBytes": 2601280,
+          "frontendHeapTotalBytes": 37134336,
+          "frontendArrayBufferBytes": 2422352,
+          "heapTotalBytes": 57155584,
+          "arrayBufferBytes": 2422352,
+          "frontendMs": 24.698577,
+          "emitCMs": 53.374078,
+          "pipelineMs": 78.57691399999999,
+          "wallMs": 551.3308550000656,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 80982016,
+          "frontendRssBytes": 87531520,
+          "frontendHeapUsedBytes": 24099168,
+          "frontendExternalBytes": 4770379,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101830656,
+          "rssBytes": 101830656,
+          "heapUsedBytes": 30857856,
+          "externalBytes": 4762417,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "modulePreparationMs": 293.049983,
+          "postCheckMs": 95.85333499999979,
+          "beforePreparationRssBytes": 45633536,
+          "beforePreparationHeapUsedBytes": 10193232,
+          "beforePreparationExternalBytes": 2601536,
+          "frontendHeapTotalBytes": 37920768,
+          "frontendArrayBufferBytes": 7079162,
+          "heapTotalBytes": 58466304,
+          "arrayBufferBytes": 2668400,
+          "frontendMs": 6394.443927,
+          "emitCMs": 69.63812899999994,
+          "pipelineMs": 6465.369339,
+          "wallMs": 6980.2142640000675,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 80535552,
+          "frontendRssBytes": 123953152,
+          "frontendHeapUsedBytes": 23368936,
+          "frontendExternalBytes": 13591515,
+          "frontendPeakRssBytes": 123953152,
+          "peakRssBytes": 143351808,
+          "rssBytes": 143351808,
+          "heapUsedBytes": 39401808,
+          "externalBytes": 7171153,
+          "wasmLinearMemoryBytes": 2162688
+        },
+        "flat-a0-control": {
+          "modulePreparationMs": 175.12416299999998,
+          "postCheckMs": 75.21947600000004,
+          "beforePreparationRssBytes": 45817856,
+          "beforePreparationHeapUsedBytes": 10193240,
+          "beforePreparationExternalBytes": 2600896,
+          "frontendHeapTotalBytes": 20238336,
+          "frontendArrayBufferBytes": 200217,
+          "heapTotalBytes": 32395264,
+          "arrayBufferBytes": 196023,
+          "frontendMs": 97.02880899999997,
+          "emitCMs": 54.961389999999994,
+          "pipelineMs": 151.151704,
+          "wallMs": 519.470468999818,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 55910400,
+          "frontendRssBytes": 64466944,
+          "frontendHeapUsedBytes": 13246752,
+          "frontendExternalBytes": 21480186,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 78114816,
+          "heapUsedBytes": 18406528,
+          "externalBytes": 21475992,
+          "wasmLinearMemoryBytes": 18939904
+        }
+      }
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "arms": {
+        "old-canonical": {
+          "modulePreparationMs": 304.696439,
+          "postCheckMs": 94.41245800000002,
+          "beforePreparationRssBytes": 56221696,
+          "beforePreparationHeapUsedBytes": 19356200,
+          "beforePreparationExternalBytes": 2455789,
+          "frontendHeapTotalBytes": 114003968,
+          "frontendArrayBufferBytes": 1151589,
+          "heapTotalBytes": 210272256,
+          "arrayBufferBytes": 145959,
+          "frontendMs": 164.47795799999994,
+          "emitCMs": 1157.301751,
+          "pipelineMs": 1325.60306,
+          "wallMs": 1864.3610020000488,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 94339072,
+          "frontendRssBytes": 176816128,
+          "frontendHeapUsedBytes": 51025176,
+          "frontendExternalBytes": 4783066,
+          "frontendPeakRssBytes": 179089408,
+          "peakRssBytes": 294662144,
+          "rssBytes": 294662144,
+          "heapUsedBytes": 109638320,
+          "externalBytes": 2486024,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "modulePreparationMs": 308.758242,
+          "postCheckMs": 89.994551,
+          "beforePreparationRssBytes": 56414208,
+          "beforePreparationHeapUsedBytes": 19356200,
+          "beforePreparationExternalBytes": 2455789,
+          "frontendHeapTotalBytes": 109899776,
+          "frontendArrayBufferBytes": 1148538,
+          "heapTotalBytes": 197427200,
+          "arrayBufferBytes": 145959,
+          "frontendMs": 401.518292,
+          "emitCMs": 1130.236376,
+          "pipelineMs": 1515.555301,
+          "wallMs": 2070.991398000042,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 95875072,
+          "frontendRssBytes": 173998080,
+          "frontendHeapUsedBytes": 73111632,
+          "frontendExternalBytes": 4780015,
+          "frontendPeakRssBytes": 173998080,
+          "peakRssBytes": 274976768,
+          "rssBytes": 274976768,
+          "heapUsedBytes": 98591552,
+          "externalBytes": 2486024,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "modulePreparationMs": 298.96218899999997,
+          "postCheckMs": 78.789628,
+          "beforePreparationRssBytes": 56107008,
+          "beforePreparationHeapUsedBytes": 19356200,
+          "beforePreparationExternalBytes": 2455789,
+          "frontendHeapTotalBytes": 108236800,
+          "frontendArrayBufferBytes": 1148538,
+          "heapTotalBytes": 209485824,
+          "arrayBufferBytes": 145959,
+          "frontendMs": 163.09440899999993,
+          "emitCMs": 1103.507189,
+          "pipelineMs": 1270.99244,
+          "wallMs": 1799.9292190000415,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 95412224,
+          "frontendRssBytes": 169484288,
+          "frontendHeapUsedBytes": 72166352,
+          "frontendExternalBytes": 4780015,
+          "frontendPeakRssBytes": 169484288,
+          "peakRssBytes": 291041280,
+          "rssBytes": 291041280,
+          "heapUsedBytes": 108844496,
+          "externalBytes": 2486024,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "modulePreparationMs": 296.029228,
+          "postCheckMs": 108.87109599998803,
+          "beforePreparationRssBytes": 56041472,
+          "beforePreparationHeapUsedBytes": 19356192,
+          "beforePreparationExternalBytes": 2455789,
+          "frontendHeapTotalBytes": 102502400,
+          "frontendArrayBufferBytes": 5353171,
+          "heapTotalBytes": 204242944,
+          "arrayBufferBytes": 149555,
+          "frontendMs": 95018.818415,
+          "emitCMs": 1160.0554330000014,
+          "pipelineMs": 96176.10083,
+          "wallMs": 96747.47466299997,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 95109120,
+          "frontendRssBytes": 262758400,
+          "frontendHeapUsedBytes": 56969112,
+          "frontendExternalBytes": 48126350,
+          "frontendPeakRssBytes": 262758400,
+          "peakRssBytes": 370130944,
+          "rssBytes": 370130944,
+          "heapUsedBytes": 98613392,
+          "externalBytes": 42922734,
+          "wasmLinearMemoryBytes": 40435712
+        },
+        "flat-a0-control": {
+          "modulePreparationMs": 174.69677299999998,
+          "postCheckMs": 89.63078799999994,
+          "beforePreparationRssBytes": 56143872,
+          "beforePreparationHeapUsedBytes": 19356200,
+          "beforePreparationExternalBytes": 2455789,
+          "frontendHeapTotalBytes": 98156544,
+          "frontendArrayBufferBytes": 1177848,
+          "heapTotalBytes": 194916352,
+          "arrayBufferBytes": 1177848,
+          "frontendMs": 1322.591356,
+          "emitCMs": 1155.9645829999997,
+          "pipelineMs": 2477.654089,
+          "wallMs": 2898.83562599984,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 72835072,
+          "frontendRssBytes": 156483584,
+          "frontendHeapUsedBytes": 35323008,
+          "frontendExternalBytes": 60730841,
+          "frontendPeakRssBytes": 156483584,
+          "peakRssBytes": 293998592,
+          "rssBytes": 293998592,
+          "heapUsedBytes": 76506760,
+          "externalBytes": 60730841,
+          "wasmLinearMemoryBytes": 57212928
+        }
+      }
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "arms": {
+        "old-canonical": {
+          "modulePreparationMs": 308.90798,
+          "postCheckMs": 79.08460600000001,
+          "beforePreparationRssBytes": 45846528,
+          "beforePreparationHeapUsedBytes": 10308576,
+          "beforePreparationExternalBytes": 2833636,
+          "frontendHeapTotalBytes": 53911552,
+          "frontendArrayBufferBytes": 2422352,
+          "heapTotalBytes": 60719104,
+          "arrayBufferBytes": 2422352,
+          "frontendMs": 38.07209499999999,
+          "emitCMs": 197.05790900000005,
+          "pipelineMs": 235.90736699999997,
+          "wallMs": 741.9511890000431,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 79925248,
+          "frontendRssBytes": 92762112,
+          "frontendHeapUsedBytes": 30226288,
+          "frontendExternalBytes": 12856854,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 115818496,
+          "rssBytes": 115818496,
+          "heapUsedBytes": 42498264,
+          "externalBytes": 4762417,
+          "wasmLinearMemoryBytes": 0
+        },
+        "old-dense": {
+          "modulePreparationMs": 302.776175,
+          "postCheckMs": 81.74291700000003,
+          "beforePreparationRssBytes": 45850624,
+          "beforePreparationHeapUsedBytes": 10308576,
+          "beforePreparationExternalBytes": 2833636,
+          "frontendHeapTotalBytes": 56008704,
+          "frontendArrayBufferBytes": 2422352,
+          "heapTotalBytes": 60981248,
+          "arrayBufferBytes": 2422352,
+          "frontendMs": 88.10966200000001,
+          "emitCMs": 183.22839799999997,
+          "pipelineMs": 271.436784,
+          "wallMs": 776.5661850000033,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 80523264,
+          "frontendRssBytes": 106037248,
+          "frontendHeapUsedBytes": 23303080,
+          "frontendExternalBytes": 4762417,
+          "frontendPeakRssBytes": 106037248,
+          "peakRssBytes": 114413568,
+          "rssBytes": 114413568,
+          "heapUsedBytes": 34183384,
+          "externalBytes": 4762417,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-ts-control": {
+          "modulePreparationMs": 310.24199300000004,
+          "postCheckMs": 79.27420399999994,
+          "beforePreparationRssBytes": 46206976,
+          "beforePreparationHeapUsedBytes": 10423240,
+          "beforePreparationExternalBytes": 2834276,
+          "frontendHeapTotalBytes": 54960128,
+          "frontendArrayBufferBytes": 2422352,
+          "heapTotalBytes": 61243392,
+          "arrayBufferBytes": 2422352,
+          "frontendMs": 41.04468000000003,
+          "emitCMs": 195.36268199999995,
+          "pipelineMs": 236.83194700000007,
+          "wallMs": 753.400781000033,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 79642624,
+          "frontendRssBytes": 90796032,
+          "frontendHeapUsedBytes": 25735728,
+          "frontendExternalBytes": 4762417,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 116154368,
+          "rssBytes": 116154368,
+          "heapUsedBytes": 36097040,
+          "externalBytes": 4762417,
+          "wasmLinearMemoryBytes": 0
+        },
+        "flat-a0": {
+          "modulePreparationMs": 302.966499,
+          "postCheckMs": 102.88485700000092,
+          "beforePreparationRssBytes": 45813760,
+          "beforePreparationHeapUsedBytes": 10423232,
+          "beforePreparationExternalBytes": 2834276,
+          "frontendHeapTotalBytes": 52109312,
+          "frontendArrayBufferBytes": 10670592,
+          "heapTotalBytes": 58392576,
+          "arrayBufferBytes": 2656241,
+          "frontendMs": 12581.283862999999,
+          "emitCMs": 199.6663499999995,
+          "pipelineMs": 12774.208604,
+          "wallMs": 13286.207394999976,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 80166912,
+          "frontendRssBytes": 162496512,
+          "frontendHeapUsedBytes": 25424296,
+          "frontendExternalBytes": 28202737,
+          "frontendPeakRssBytes": 162496512,
+          "peakRssBytes": 166035456,
+          "rssBytes": 166035456,
+          "heapUsedBytes": 30949344,
+          "externalBytes": 10173650,
+          "wasmLinearMemoryBytes": 5177344
+        },
+        "flat-a0-control": {
+          "modulePreparationMs": 170.73680199999998,
+          "postCheckMs": 80.40101000000004,
+          "beforePreparationRssBytes": 45989888,
+          "beforePreparationHeapUsedBytes": 10423240,
+          "beforePreparationExternalBytes": 2833636,
+          "frontendHeapTotalBytes": 29151232,
+          "frontendArrayBufferBytes": 375261,
+          "heapTotalBytes": 34385920,
+          "arrayBufferBytes": 375261,
+          "frontendMs": 181.40479399999998,
+          "emitCMs": 196.48339499999997,
+          "pipelineMs": 377.954383,
+          "wallMs": 757.5750950000947,
+          "initialPeakRssBytes": 101289984,
+          "initialRssBytes": 55558144,
+          "frontendRssBytes": 69648384,
+          "frontendHeapUsedBytes": 16033872,
+          "frontendExternalBytes": 24669886,
+          "frontendPeakRssBytes": 101289984,
+          "peakRssBytes": 101289984,
+          "rssBytes": 84283392,
+          "heapUsedBytes": 18874464,
+          "externalBytes": 24669886,
+          "wasmLinearMemoryBytes": 21954560
+        }
+      }
+    }
+  ],
+  "lossCounts": {
+    "old-canonical": {
+      "modulePreparationMs": {
+        "higher": 1,
+        "lower": 5,
+        "equal": 0
+      },
+      "postCheckMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "emitCMs": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "pipelineMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "wallMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "beforePreparationRssBytes": {
+        "higher": 2,
+        "lower": 3,
+        "equal": 1
+      },
+      "beforePreparationHeapUsedBytes": {
+        "higher": 2,
+        "lower": 4,
+        "equal": 0
+      },
+      "beforePreparationExternalBytes": {
+        "higher": 2,
+        "lower": 1,
+        "equal": 3
+      },
+      "initialPeakRssBytes": {
+        "higher": 0,
+        "lower": 0,
+        "equal": 6
+      },
+      "initialRssBytes": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "frontendRssBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendHeapUsedBytes": {
+        "higher": 1,
+        "lower": 5,
+        "equal": 0
+      },
+      "frontendHeapTotalBytes": {
+        "higher": 0,
+        "lower": 6,
+        "equal": 0
+      },
+      "frontendArrayBufferBytes": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "frontendExternalBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendPeakRssBytes": {
+        "higher": 5,
+        "lower": 0,
+        "equal": 1
+      },
+      "peakRssBytes": {
+        "higher": 5,
+        "lower": 0,
+        "equal": 1
+      },
+      "rssBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "heapUsedBytes": {
+        "higher": 2,
+        "lower": 4,
+        "equal": 0
+      },
+      "heapTotalBytes": {
+        "higher": 2,
+        "lower": 4,
+        "equal": 0
+      },
+      "arrayBufferBytes": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "externalBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "wasmLinearMemoryBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      }
+    },
+    "old-dense": {
+      "modulePreparationMs": {
+        "higher": 2,
+        "lower": 4,
+        "equal": 0
+      },
+      "postCheckMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "emitCMs": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "pipelineMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "wallMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "beforePreparationRssBytes": {
+        "higher": 1,
+        "lower": 5,
+        "equal": 0
+      },
+      "beforePreparationHeapUsedBytes": {
+        "higher": 1,
+        "lower": 5,
+        "equal": 0
+      },
+      "beforePreparationExternalBytes": {
+        "higher": 2,
+        "lower": 0,
+        "equal": 4
+      },
+      "initialPeakRssBytes": {
+        "higher": 0,
+        "lower": 0,
+        "equal": 6
+      },
+      "initialRssBytes": {
+        "higher": 3,
+        "lower": 3,
+        "equal": 0
+      },
+      "frontendRssBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendHeapUsedBytes": {
+        "higher": 2,
+        "lower": 4,
+        "equal": 0
+      },
+      "frontendHeapTotalBytes": {
+        "higher": 0,
+        "lower": 5,
+        "equal": 1
+      },
+      "frontendArrayBufferBytes": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "frontendExternalBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendPeakRssBytes": {
+        "higher": 5,
+        "lower": 0,
+        "equal": 1
+      },
+      "peakRssBytes": {
+        "higher": 5,
+        "lower": 0,
+        "equal": 1
+      },
+      "rssBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "heapUsedBytes": {
+        "higher": 3,
+        "lower": 3,
+        "equal": 0
+      },
+      "heapTotalBytes": {
+        "higher": 3,
+        "lower": 3,
+        "equal": 0
+      },
+      "arrayBufferBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "externalBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "wasmLinearMemoryBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      }
+    },
+    "flat-ts-control": {
+      "modulePreparationMs": {
+        "higher": 2,
+        "lower": 4,
+        "equal": 0
+      },
+      "postCheckMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "emitCMs": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "pipelineMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "wallMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "beforePreparationRssBytes": {
+        "higher": 3,
+        "lower": 3,
+        "equal": 0
+      },
+      "beforePreparationHeapUsedBytes": {
+        "higher": 0,
+        "lower": 6,
+        "equal": 0
+      },
+      "beforePreparationExternalBytes": {
+        "higher": 1,
+        "lower": 2,
+        "equal": 3
+      },
+      "initialPeakRssBytes": {
+        "higher": 0,
+        "lower": 0,
+        "equal": 6
+      },
+      "initialRssBytes": {
+        "higher": 3,
+        "lower": 3,
+        "equal": 0
+      },
+      "frontendRssBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendHeapUsedBytes": {
+        "higher": 0,
+        "lower": 6,
+        "equal": 0
+      },
+      "frontendHeapTotalBytes": {
+        "higher": 1,
+        "lower": 5,
+        "equal": 0
+      },
+      "frontendArrayBufferBytes": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "frontendExternalBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendPeakRssBytes": {
+        "higher": 5,
+        "lower": 0,
+        "equal": 1
+      },
+      "peakRssBytes": {
+        "higher": 5,
+        "lower": 0,
+        "equal": 1
+      },
+      "rssBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "heapUsedBytes": {
+        "higher": 2,
+        "lower": 4,
+        "equal": 0
+      },
+      "heapTotalBytes": {
+        "higher": 2,
+        "lower": 4,
+        "equal": 0
+      },
+      "arrayBufferBytes": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "externalBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "wasmLinearMemoryBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      }
+    },
+    "flat-a0-control": {
+      "modulePreparationMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "postCheckMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "emitCMs": {
+        "higher": 4,
+        "lower": 2,
+        "equal": 0
+      },
+      "pipelineMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "wallMs": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "beforePreparationRssBytes": {
+        "higher": 2,
+        "lower": 3,
+        "equal": 1
+      },
+      "beforePreparationHeapUsedBytes": {
+        "higher": 1,
+        "lower": 5,
+        "equal": 0
+      },
+      "beforePreparationExternalBytes": {
+        "higher": 2,
+        "lower": 2,
+        "equal": 2
+      },
+      "initialPeakRssBytes": {
+        "higher": 0,
+        "lower": 0,
+        "equal": 6
+      },
+      "initialRssBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendRssBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendHeapUsedBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendHeapTotalBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendArrayBufferBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "frontendExternalBytes": {
+        "higher": 1,
+        "lower": 5,
+        "equal": 0
+      },
+      "frontendPeakRssBytes": {
+        "higher": 5,
+        "lower": 0,
+        "equal": 1
+      },
+      "peakRssBytes": {
+        "higher": 5,
+        "lower": 0,
+        "equal": 1
+      },
+      "rssBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "heapUsedBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "heapTotalBytes": {
+        "higher": 6,
+        "lower": 0,
+        "equal": 0
+      },
+      "arrayBufferBytes": {
+        "higher": 5,
+        "lower": 1,
+        "equal": 0
+      },
+      "externalBytes": {
+        "higher": 0,
+        "lower": 6,
+        "equal": 0
+      },
+      "wasmLinearMemoryBytes": {
+        "higher": 0,
+        "lower": 6,
+        "equal": 0
+      }
+    }
+  },
+  "comparisonRecord": {
+    "archiveMember": "comparisons.json",
+    "pairs": 24,
+    "fieldsPerPair": 24,
+    "policy": "Every higher, lower and equal observation is retained with exact absolute and relative differences. No tolerance, significance filter, load excuse or successful subset suppresses a measured loss. Ratios against zero are null."
+  },
+  "archive": {
+    "path": "results/source-frontend-js-cost-quiet-artifacts.zip",
+    "bytes": 1486833,
+    "sha256": "8d3c07ca53736a8a9eee6df9c3c2ae9bdcc90bb78f8293447dad4584ad9eb112",
+    "members": [
+      {
+        "file": "analysis-recipe.mjs.txt",
+        "bytes": 13221,
+        "sha256": "4391223e156f7ec4c7c2ca636c2c4589084af9afb6f758008fdda2bd3a8bd5b1"
+      },
+      {
+        "file": "arena-origin.json",
+        "bytes": 37419,
+        "sha256": "c26db8efcf5b90f8b87060d4b4fba69ba59bfc0f7d6fbe91eb8cf5dcb6851f90"
+      },
+      {
+        "file": "c-control-build.json",
+        "bytes": 23786,
+        "sha256": "e063a4e3f6de9c171b5c4cfe3853867b3e72a3d5ebbda030976ff8afe096f718"
+      },
+      {
+        "file": "candidate-build.json",
+        "bytes": 120875,
+        "sha256": "2e826dae078604b213a87a2febe80f90fdef501397bf5cdcfb302affa5d11517"
+      },
+      {
+        "file": "comparisons.json",
+        "bytes": 146419,
+        "sha256": "47dd575a2a082c279bbdec48f9a3d3dd45f1e7db93823bdb1c1282969e341b13"
+      },
+      {
+        "file": "emission.json",
+        "bytes": 69938,
+        "sha256": "4377db4703d3075b67b21ca8ca5b230f30a817d08dc181e2c0c80c39b86bd514"
+      },
+      {
+        "file": "independent-analysis.log",
+        "bytes": 12864,
+        "sha256": "48232659f289035ce16d34835c30d069cdd94c7d3e28a25f33bd39acac7e6133"
+      },
+      {
+        "file": "independent-verification.json",
+        "bytes": 756,
+        "sha256": "f9f5b566fbf2fa2d582a37f9d7c97bc2e23492e42f29e0459667b1312617dc66"
+      },
+      {
+        "file": "quiet-cohort-command.sh",
+        "bytes": 532,
+        "sha256": "b39b4a1b4118958faf5d4df30fc0fed25f9fd1d854e78082040c995753ba59db"
+      },
+      {
+        "file": "quiet-cohort-launch.txt",
+        "bytes": 140,
+        "sha256": "f9343272e35897d5ae4c3b74ec6b0791bd477a8041c499fe74e0676a976af8e2"
+      },
+      {
+        "file": "quiet-cohort.log",
+        "bytes": 197,
+        "sha256": "bf8b90c01424698307398e3fbad44095ceae83296a75ada54b958a2db921637d"
+      },
+      {
+        "file": "results.json",
+        "bytes": 567490,
+        "sha256": "3359c0da81302135106fbd0395c782e26bcfa078ed1defcc4df9ea5d0a32da05"
+      },
+      {
+        "file": "samples.json",
+        "bytes": 466953,
+        "sha256": "3a40ec657fe3b7cc546dd251fb29492fad4f79792a417513fecc4784deb2b87f"
+      },
+      {
+        "file": "snapshot-manifest.json",
+        "bytes": 6661,
+        "sha256": "79e21766fb962b7978f0b9e5de39e783b3978b698e9b52375033981e2dfc8a19"
+      },
+      {
+        "file": "u0.json",
+        "bytes": 10145,
+        "sha256": "d2f72c27c1a937cdc77eafb33aba7d93952a4b843171d8e20ada0387f1f15f2e"
+      },
+      {
+        "file": "u1.json",
+        "bytes": 18491,
+        "sha256": "6cfa2eac22dd54a963e707c7d209ab72213f0400a1f93e3482daa9eca397d6c6"
+      },
+      {
+        "file": "u2.json",
+        "bytes": 418183,
+        "sha256": "f7f58c96697ad9ab3f4b12905b835845b4c9c980e7c9e8aad1a8be325ca15b76"
+      },
+      {
+        "file": "u3.json",
+        "bytes": 144483,
+        "sha256": "eaac91b7b91c74bf5f6d52ccb5fe2f334a82a4e8e630f2ce05d52bca16deae50"
+      },
+      {
+        "file": "u4.json",
+        "bytes": 3369339,
+        "sha256": "e79d2f01e57f60fbd1bbc1a53753ef397e0845d463f5841a2b2510295d184a5f"
+      },
+      {
+        "file": "u5.json",
+        "bytes": 377223,
+        "sha256": "534059d74253f7ab3d806dd17f46de0f5291d158f1143173d62cdc74c8248e26"
+      },
+      {
+        "file": "worker-proof.json",
+        "bytes": 355199,
+        "sha256": "220c4d00da516679aa5f5586eead1b80c7264119d82a5e876d5c58b1a39f6aea"
+      }
+    ],
+    "crcAndMemberHashes": "pass",
+    "snapshotManifestMember": "snapshot-manifest.json",
+    "timingSamplesMember": "samples.json",
+    "fullControllerResultMember": "results.json",
+    "workerProofMember": "worker-proof.json",
+    "inspectionOnly": "Proof/build snapshots replace local paths with named placeholders; original raw byte lengths and SHA-256 digests remain in snapshot-manifest.json. All 240 timing sample bytes and all six prepared source input bytes are preserved exactly. The analysis recipe is an inspection copy with named path placeholders. Executable proof files are rebuilt through the strict frozen harness in clean replay checkouts."
+  },
+  "replay": {
+    "sourceBundleRecord": "results/source-frontend-js-cost-source-bundle.json",
+    "preparationRecord": "results/source-frontend-js-cost-validation.json",
+    "instructions": "Recover the exact frozen candidate source bundle and its prerequisite, create separate clean candidate, C control and historical checkouts, install dependencies and use the recorded matching native toolchain. Rebuild the normal direct/JS and explicit disabled-diagnostics C artifacts. Run the unchanged normal --cross-backend command from cost-preparation.md into a fresh output directory after a new quiet-window clearance. The archived command uses named path placeholders. The parent regenerates executable worker proofs rather than reusing inspection snapshots."
+  },
+  "limitations": [
+    "This is the cold fresh-process cohort on the recorded Linux/x64 Node/V8 runtime. Persistent/warmed frontend sessions, browsers and other engines remain unmeasured.",
+    "The phases include parse/check/typed-IR decoding and one fixed historical C emitter. Graph disk I/O, shipping CLI startup, formatter, AI inference/edit success and execution of generated application targets are outside this cohort.",
+    "All historical/TypeScript controls preload the candidate artifact and common SDK as required by the frozen research harness; C control uses its C artifact. Child wall describes this instrumented experiment, not shipping CLI startup.",
+    "RSS and heap counters retain import/preparation floors and allocator/GC effects. Arena-only Wasm memory does not isolate JS JIT/code/GC or total process cost. No forced GC or engine-memory equivalence claim is used.",
+    "These experimental losses justify retaining current defaults. They do not complete the universal syntax cutover or any full repository/platform release gate."
+  ]
+}

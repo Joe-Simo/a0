@@ -84,12 +84,15 @@ facts; this experiment adds no ownership optimization.
 
 Every host protocol word crosses from JS into the reused Wasm arena. ESM loading, JS parsing,
 JIT compilation, typed-array allocation and garbage collection also contribute to total cost.
-Whether this target improves any measured workload remains unknown. `memoryBytes` reports
+The [fresh-process comparison](../../../results/source-frontend-js-cost-quiet.json) records higher
+frontend, pipeline and child-wall medians on all six inputs against every control. `memoryBytes` reports
 retained Wasm buffers only; it excludes JS heap, generated code, JIT, GC and shared ESM module
-retention. A later approved comparison must include process/engine memory and cold module
-preparation, preserve every loss, and record the distinct JS and Wasm artifacts. The existing
+retention. The cold cohort records process memory, module preparation and the distinct JS/Wasm
+artifacts, and preserves every loss. Persistent frontend sessions remain unmeasured. The existing
 strict source-cost preparation for this target is documented in
-[cost-preparation.md](cost-preparation.md). No formal JS target timing result is recorded here.
+[cost-preparation.md](cost-preparation.md). The subsequent
+[formal quiet result](../../../results/source-frontend-js-cost-quiet.json) retains all measured losses
+and leaves the current JS target experimental.
 
 ## Recorded correctness proof
 

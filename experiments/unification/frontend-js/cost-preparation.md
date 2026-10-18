@@ -68,4 +68,11 @@ Published manifest and worker-proof snapshots replace local checkout paths with 
 They are inspection copies, with the original raw byte hashes recorded separately; they are not
 executable manifests or worker proofs. Replay rebuilds exact artifacts and proof files in its own
 clean checkouts. The smoke runner and replay commands are included in the preparation record.
-Formal quiet timing and the same-process warm cohort remain unrun.
+The subsequent [quiet fresh-process comparison](../../../results/source-frontend-js-cost-quiet.json)
+completed all 240 cells on the frozen harness: 30 discarded warmups and 210 measured cells, with
+maximum recorded one-minute load 1.94. Generated JS had higher median frontend, pipeline and
+fresh-child wall time and higher frontend RSS on every input against each control. The raw samples,
+full proof/build snapshots, all six prepared source inputs and every comparison are retained in the
+[artifact archive](../../../results/source-frontend-js-cost-quiet-artifacts.zip). The current JS arm
+therefore remains an experiment; its cold cost does not meet the adoption requirement. The same-process
+warm cohort remains unrun.
