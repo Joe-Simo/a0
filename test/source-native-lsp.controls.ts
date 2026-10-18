@@ -22,6 +22,7 @@ import {
 } from 'vscode-languageserver/node';
 import { compile } from '../src/backends.js';
 import { A0Error, formatProgram, type TypedProgram } from '../src/core.js';
+import type { Diagnostic as SourceDiagnostic } from '../src/diagnostics.js';
 import { semanticRevision } from '../src/edit.js';
 import { startServer } from '../src/lsp.js';
 import { formatSource, parseSource } from '../src/source.js';
@@ -33,6 +34,7 @@ import {
   prepareSourceFormat,
   prepareSourceFrontend,
 } from '../tools/source-native-load.js';
+import { flatSpecLiteralError } from './fixtures/source-flat-spec-diagnostics.js';
 
 const frontendPath = process.env.A0_LSP_FRONTEND;
 const formatPath = process.env.A0_LSP_FORMAT;
@@ -603,8 +605,8 @@ test('native LSP preserves genuine spec diagnostic JSON and ownership across dir
     const baseLibrary =
       '# dependency π 😀\nprofile strict\nfn spec\nret 0\nend\nfn helper\nret A\nend\n';
     const baseMain = '# entry Ω\nprofile strict\nuse "libλ.a0"\nfn top\nx helper A\nret x\nend\n';
-    const cases = [
-      ['A0714', 'fn target\nex nope -> 1\nret A\nend\n'],
+    const cases: readonly (readonly [string, string, SourceDiagnostic?])[] = [
+      ['A0714', 'fn target\nex nope -> 1\nret A\nend\n', flatSpecLiteralError('nope', 2, 'target')],
       ['A0714', 'fn target\npre eq missing 0\nret A\nend\n'],
       ['A0715', 'fn target\nex 3 -> 9\nret A\nend\n'],
       ['A0716', 'fn target\nex 3 -> 3\npre lt A 2\nret A\nend\n'],
@@ -632,7 +634,7 @@ test('native LSP preserves genuine spec diagnostic JSON and ownership across dir
       assert.deepEqual((await session.open(main, baseMain)).diagnostics, []);
       let version = 1;
       for (const imported of [false, true]) {
-        for (const [id, source] of cases) {
+        for (const [id, source, nativeExpectation] of cases) {
           const mainSource = baseMain + (imported ? '' : source);
           const librarySource = baseLibrary + (imported ? source : '');
           const sources = new Map([
@@ -643,12 +645,25 @@ test('native LSP preserves genuine spec diagnostic JSON and ownership across dir
           const report = await session.change(main, mainSource, ++version);
           const actual = report.diagnostics[0];
           assert.ok(actual, `${imported ? 'imported' : 'direct'}/${id}`);
-          let expected: A0Error | undefined;
-          try {
-            await linkSource(main, async (path) => sources.get(path) as string, { root });
-          } catch (error) {
-            assert.ok(error instanceof A0Error);
-            expected = error;
+          let expected: A0Error | SourceDiagnostic | undefined;
+          if (nativeExpectation !== undefined) {
+            // This hint deliberately changed to the standard grammar. Use the explicit
+            // native fixture, with independently counted physical file/line ownership.
+            const owner = imported ? library : main;
+            const prefix = imported ? baseLibrary : baseMain;
+            const line = prefix.split('\n').length + (nativeExpectation.line as number) - 1;
+            expected = {
+              ...nativeExpectation,
+              message: `${owner}:${line}: ${nativeExpectation.message.replace(/^line [0-9]+: /, '')}`,
+              line: null,
+            };
+          } else {
+            try {
+              await linkSource(main, async (path) => sources.get(path) as string, { root });
+            } catch (error) {
+              assert.ok(error instanceof A0Error);
+              expected = error;
+            }
           }
           assert.ok(expected);
           assert.equal(expected.id, id);

@@ -4,18 +4,18 @@ import type { Diagnostic } from '../../src/diagnostics.js';
 const literalFix = 'a literal is a number, true, false, an array [1 2 3] or a record (1 true)';
 
 /** The rejected word and physical line are explicit inputs, independent of any diagnostic. */
-export function flatSpecLiteralError(word: string, line: number): Diagnostic {
+export function flatSpecLiteralError(word: string, line: number, functionName = 'f'): Diagnostic {
   return {
     code: 'structure',
     id: 'A0714',
-    message: `line ${line}: spec of f: '${word}' is not a literal`,
+    message: `line ${line}: spec of ${functionName}: '${word}' is not a literal`,
     line,
     expected: null,
     actual: null,
     fix: literalFix,
     applicability: 'maybe',
     edits: [],
-    spec: { function: 'f', ex: null },
+    spec: { function: functionName, ex: null },
   };
 }
 
