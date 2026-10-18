@@ -366,7 +366,11 @@ for (const [backend, factory] of factories) {
         assert.equal(actual.status, expected.status, `status at budget ${budget}`);
         assert.equal(actual.ok, expected.ok, `acceptance at budget ${budget}`);
         assert.deepEqual(actual.state, expected.state, `raw state at budget ${budget}`);
-        assert.deepEqual(actual.specState, expected.specState, `raw spec state at budget ${budget}`);
+        assert.deepEqual(
+          actual.specState,
+          expected.specState,
+          `raw spec state at budget ${budget}`,
+        );
         if (actual.ok && expected.ok) {
           accepted++;
           for (const target of ['c', 'js', 'wasm'] as const)

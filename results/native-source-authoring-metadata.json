@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "scope": "Private optional native SDK authoring metadata; no public frontend cutover or performance claim.",
+  "testedCommit": "61538a27f5a4321c9f4c63a37078616a09840767",
+  "initial": {
+    "commit": "e3162d48c8c9be4affc8accd5401529d5d53a3f9",
+    "proof": {
+      "file": ".a0-tmp/authoring-abi-free-controls.log",
+      "sha256": "57582a2fcc7e64111b0fbf6d0ca5f57d78600a27235c80e9d0d82b392955501c",
+      "tests": 21,
+      "pass": 15,
+      "fail": 6,
+      "skipped": 0
+    },
+    "cause": "The generic IR publication path initialized PS24 to zero instead of the NONE sentinel used by the A0 spec-directory constructors and checked formatter."
+  },
+  "fix": {
+    "commit": "61538a2",
+    "change": "Set PS24=NONE in the single generic IR vector publication path; retain schema validation and ordered checker behavior."
+  },
+  "actualBackendControls": {
+    "file": ".a0-tmp/authoring-abi-free-fixed-controls.log",
+    "sha256": "1e3008ef0201f970f3f10e384ed0d34bd3726abb56bc9bf4229d91dae31d46af",
+    "tests": 21,
+    "pass": 21,
+    "fail": 0,
+    "skipped": 0
+  },
+  "hostControls": {
+    "file": ".a0-tmp/authoring-abi-free-fixed-host.log",
+    "sha256": "5ebed5b1b93edcaebf236e7f64ca9757f67d322ff16a71efee661008eeffd646",
+    "tests": 21,
+    "pass": 21,
+    "fail": 0,
+    "skipped": 0
+  },
+  "artifacts": {
+    "frontend": {
+      "manifestSHA256": "874f3e54d2783c93e165d7cb32e47e6930f93bc06f4f1d27bbde62d46137eed9",
+      "frontendSHA256": "e14da183e6301c667a24ec351101c6e014d706f11967f29f7e326b8e4678e076",
+      "frontendBytes": 358579,
+      "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0"
+    },
+    "direct": {
+      "manifestSHA256": "b97bb157f624ce4e3eb2ccaea62632a02d359e07398bf1448a8b2ae5f796f5f8",
+      "frontendSHA256": "934a4e59ba26fcea16e88fefb529505979bf1fefa46a22e3ff6088158e235486",
+      "frontendBytes": 127599,
+      "arenaSHA256": "fffd7aa76fe43d3ca3fa2b173b9f484c291fa4579ab3fe7cbf7ca6f5f88faa75",
+      "arenaBytes": 16422,
+      "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0"
+    },
+    "js": {
+      "manifestSHA256": "57c81e61539eb7bba9a3f342de6e7d9c6011ff3d563de565232f403c8e75e71e",
+      "frontendSHA256": "cf960c46885e8cf76c0014d84e8d2cbbec0b57e449cb3800d565e11dc16293f5",
+      "frontendBytes": 968559,
+      "arenaSHA256": "fffd7aa76fe43d3ca3fa2b173b9f484c291fa4579ab3fe7cbf7ca6f5f88faa75",
+      "arenaBytes": 16422,
+      "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0"
+    },
+    "formatter": {
+      "manifestSHA256": "38c43e5e8b7027b00efcce42d2892578c2f18f269e9d1a293b1c01ad0d890574",
+      "frontendSHA256": "e71347987afc147cb9afa9cb2e6a030c9e8516f222f1309c7e5150d551e8635b",
+      "frontendBytes": 64698,
+      "sourceSHA256": "d6c35674edb90553489f42744b9775d6ef83f583528bca08c79ec7b2160dbee2"
+    },
+    "diagnostic": {
+      "manifestSHA256": "3e974c6f55d27097da3c6213eafe8e13ed2645588a9072977f9877f80dad9d20",
+      "frontendSHA256": "76026e10f59f31c2548ce10d66c630ffe81dfc6768b30b2675f9bc55099d47b1",
+      "frontendBytes": 218010,
+      "sourceSHA256": "63e82e0ad588510f02bb816e0076064c60f54333c1fcd1255a8ae43e906c96e8"
+    }
+  },
+  "limits": [
+    "Intermediate or explicitly empty function tails, independent Program tails with functions, and mismatching Node.text hints still have explicit optional formatter refusals in this ABI-free slice.",
+    "The following private sidecar work is separate and has not been verified by this report.",
+    "No main publication, full gate, timing or no-regression claim is established by these controls."
+  ]
+}
