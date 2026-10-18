@@ -31,6 +31,11 @@ const comparisons = {
     added: [],
     changed: ['compiler/diagnostic_specs_arena.a0', 'compiler/source_grammar.a0'],
   },
+  'native-signatures': {
+    commit: 'f622ff7c58367bbb336f473520e408819336ebb0',
+    added: [],
+    changed: ['compiler/format_arena.a0', 'compiler/revision_arena.a0'],
+  },
 };
 assert.ok(Object.hasOwn(comparisons, comparison), 'unknown frozen comparison');
 const expected = comparisons[comparison];
