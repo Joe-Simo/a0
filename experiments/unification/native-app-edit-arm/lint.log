@@ -1,0 +1,339 @@
+$ biome check . && bun tools/dev/claim-check.ts --since=base && bun tools/loss-ledger.ts && bun tools/scrub-results.ts --check && bun tools/sync-skill.ts --check
+test/fixtures/arena-backend-context/oracle.mjs:452:26 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    450 │       Array.from(
+    451 │         { length: 1100 },
+  > 452 │         (_, i) => `fn ${('f' + i).padEnd(64, 'a')} u32 -> u32
+        │                          ^^^^^^^
+    453 │ ret p0
+    454 │ end
+  
+  i Unsafe fix: Use a template literal.
+  
+    450 450 │         Array.from(
+    451 451 │           { length: 1100 },
+    452     │ - ········(_,·i)·=>·`fn·${('f'·+·i).padEnd(64,·'a')}·u32·->·u32
+        452 │ + ········(_,·i)·=>·`fn·${(`f${i}`).padEnd(64,·'a')}·u32·->·u32
+    453 453 │   ret p0
+    454 454 │   end
+  
+
+test/fixtures/arena-backend-context/oracle.mjs:508:38 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    506 │         Array.from(
+    507 │           { length: 4096 },
+  > 508 │           (_, i) => `n${i} add ${i ? 'n' + (i - 1) : 'p0'} ${i}
+        │                                      ^^^^^^^^^^^^^
+    509 │ `,
+    510 │         ).join('') +
+  
+  i Unsafe fix: Use a template literal.
+  
+    506 506 │           Array.from(
+    507 507 │             { length: 4096 },
+    508     │ - ··········(_,·i)·=>·`n${i}·add·${i·?·'n'·+·(i·-·1)·:·'p0'}·${i}
+        508 │ + ··········(_,·i)·=>·`n${i}·add·${i·?·`n${i·-·1}`·:·'p0'}·${i}
+    509 509 │   `,
+    510 510 │           ).join('') +
+  
+
+test/fixtures/arena-backend-context/oracle.mjs:538:11 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    536 │   { name: 'over-2MiB', source: ' '.repeat(2097153), status: 6, capacity: true },
+    537 │   ...[256, 512, 768, 896, 1024].map((budget) => ({
+  > 538 │     name: 'allocation-' + budget,
+        │           ^^^^^^^^^^^^^^^^^^^^^^
+    539 │     source: `fn f u32 -> u32
+    540 │ x add p0 1
+  
+  i Unsafe fix: Use a template literal.
+  
+    536 536 │     { name: 'over-2MiB', source: ' '.repeat(2097153), status: 6, capacity: true },
+    537 537 │     ...[256, 512, 768, 896, 1024].map((budget) => ({
+    538     │ - ····name:·'allocation-'·+·budget,
+        538 │ + ····name:·`allocation-${budget}`,
+    539 539 │       source: `fn f u32 -> u32
+    540 540 │   x add p0 1
+  
+
+test/fixtures/arena-backend-context/oracle.mjs:559:14 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    557 │       { length: 34 },
+    558 │       (_, i) => `fn f${i} u32 u32 u32 -> u32
+  > 559 │ x fold ${i ? 'f' + (i - 1) : 'step'} p2 p0${i ? ' p2' : ''}
+        │              ^^^^^^^^^^^^^
+    560 │ ret x
+    561 │ end
+  
+  i Unsafe fix: Use a template literal.
+  
+    557 557 │         { length: 34 },
+    558 558 │         (_, i) => `fn f${i} u32 u32 u32 -> u32
+    559     │ - x·fold·${i·?·'f'·+·(i·-·1)·:·'step'}·p2·p0${i·?·'·p2'·:·''}
+        559 │ + x·fold·${i·?·`f${i·-·1}`·:·'step'}·p2·p0${i·?·'·p2'·:·''}
+    560 560 │   ret x
+    561 561 │   end
+  
+
+test/fixtures/arena-backend-context/oracle.mjs:575:24 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    573 │     if ((group === 'capacity') !== Boolean(c.capacity)) continue;
+    574 │     if (level === 0 && c.capacity) continue;
+  > 575 │     const sourcefile = root + '/source.bin',
+        │                        ^^^^^^^^^^^^^^^^^^^^
+    576 │       out = root + '/output.bin';
+    577 │     await writeFile(sourcefile, c.source);
+  
+  i Unsafe fix: Use a template literal.
+  
+    573 573 │       if ((group === 'capacity') !== Boolean(c.capacity)) continue;
+    574 574 │       if (level === 0 && c.capacity) continue;
+    575     │ - ····const·sourcefile·=·root·+·'/source.bin',
+        575 │ + ····const·sourcefile·=·`${root}/source.bin`,
+    576 576 │         out = root + '/output.bin';
+    577 577 │       await writeFile(sourcefile, c.source);
+  
+
+test/fixtures/arena-backend-context/oracle.mjs:576:13 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    574 │     if (level === 0 && c.capacity) continue;
+    575 │     const sourcefile = root + '/source.bin',
+  > 576 │       out = root + '/output.bin';
+        │             ^^^^^^^^^^^^^^^^^^^^
+    577 │     await writeFile(sourcefile, c.source);
+    578 │     const quantum = level === 0 ? 1 : 7;
+  
+  i Unsafe fix: Use a template literal.
+  
+    574 574 │       if (level === 0 && c.capacity) continue;
+    575 575 │       const sourcefile = root + '/source.bin',
+    576     │ - ······out·=·root·+·'/output.bin';
+        576 │ + ······out·=·`${root}/output.bin`;
+    577 577 │       await writeFile(sourcefile, c.source);
+    578 578 │       const quantum = level === 0 ? 1 : 7;
+  
+
+src/protection/disk.ts:291:9 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    289 │   for (let i = 0; i < items.length; i++) {
+    290 │     const item = items[i];
+  > 291 │     if (!item || item.role !== 'source') continue;
+        │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    292 │     if (!dependencies.acceptsPath(item.path))
+    293 │       throw new ProtectionError('UNSUPPORTED_SOURCE_DEPENDENCY');
+  
+  i Unsafe fix: Change to an optional chain.
+  
+    289 289 │     for (let i = 0; i < items.length; i++) {
+    290 290 │       const item = items[i];
+    291     │ - ····if·(!item·||·item.role·!==·'source')·continue;
+        291 │ + ····if·(item?.role·!==·'source')·continue;
+    292 292 │       if (!dependencies.acceptsPath(item.path))
+    293 293 │         throw new ProtectionError('UNSUPPORTED_SOURCE_DEPENDENCY');
+  
+
+test/bench-tables.test.ts:10:44 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+     8 │ import { test } from 'node:test';
+     9 │ 
+  > 10 │ const results = async (f: string): Promise<any> =>
+       │                                            ^^^
+    11 │   JSON.parse(await readFile(`results/${f}`, 'utf8'));
+    12 │ const template = (): Promise<string> => readFile('site/gen/bench.tpl', 'utf8');
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:45:43 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    43 │     ['flat-v2', 'Unified prototype'],
+    44 │   ]) {
+  > 45 │     const rows = report.rows.filter((row: any) => row.arm === arm);
+       │                                           ^^^
+    46 │     const first = rows.filter((row: any) => row.first.passed).length;
+    47 │     const accepted = rows.filter((row: any) => row.accepted).length;
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:46:37 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    44 │   ]) {
+    45 │     const rows = report.rows.filter((row: any) => row.arm === arm);
+  > 46 │     const first = rows.filter((row: any) => row.first.passed).length;
+       │                                     ^^^
+    47 │     const accepted = rows.filter((row: any) => row.accepted).length;
+    48 │     const tokens = rows.reduce(
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:47:40 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    45 │     const rows = report.rows.filter((row: any) => row.arm === arm);
+    46 │     const first = rows.filter((row: any) => row.first.passed).length;
+  > 47 │     const accepted = rows.filter((row: any) => row.accepted).length;
+       │                                        ^^^
+    48 │     const tokens = rows.reduce(
+    49 │       (sum: number, row: any) =>
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:49:26 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    47 │     const accepted = rows.filter((row: any) => row.accepted).length;
+    48 │     const tokens = rows.reduce(
+  > 49 │       (sum: number, row: any) =>
+       │                          ^^^
+    50 │         sum +
+    51 │         row.promptTokens.o200k_base +
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:74:19 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    72 │   const tpl = await template();
+    73 │   const w = await results('wasm-benchmark.json');
+  > 74 │   const row = (r: any): Cell[] => [
+       │                   ^^^
+    75 │     r.kernel,
+    76 │     `${ns(r.nsPerTrip.a0)} / ${ns(r.nsPerTrip.clang)}`,
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:89:39 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    87 │     'Module bytes (A0 / clang)',
+    88 │   ];
+  > 89 │   const sorted = [...w.rows].sort((a: any, b: any) => a.speedup - b.speedup);
+       │                                       ^^^
+    90 │   const losses = sorted.filter((r: any) => r.verdict === 'loss');
+    91 │   const rest = sorted.filter((r: any) => r.verdict !== 'loss');
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:89:47 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    87 │     'Module bytes (A0 / clang)',
+    88 │   ];
+  > 89 │   const sorted = [...w.rows].sort((a: any, b: any) => a.speedup - b.speedup);
+       │                                               ^^^
+    90 │   const losses = sorted.filter((r: any) => r.verdict === 'loss');
+    91 │   const rest = sorted.filter((r: any) => r.verdict !== 'loss');
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:90:36 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    88 │   ];
+    89 │   const sorted = [...w.rows].sort((a: any, b: any) => a.speedup - b.speedup);
+  > 90 │   const losses = sorted.filter((r: any) => r.verdict === 'loss');
+       │                                    ^^^
+    91 │   const rest = sorted.filter((r: any) => r.verdict !== 'loss');
+    92 │   const src = 'results/wasm-benchmark.json';
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:91:34 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    89 │   const sorted = [...w.rows].sort((a: any, b: any) => a.speedup - b.speedup);
+    90 │   const losses = sorted.filter((r: any) => r.verdict === 'loss');
+  > 91 │   const rest = sorted.filter((r: any) => r.verdict !== 'loss');
+       │                                  ^^^
+    92 │   const src = 'results/wasm-benchmark.json';
+    93 │   assert.ok(
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:115:58 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    113 │     'remaining-rows table drifted from the results file',
+    114 │   );
+  > 115 │   const count = (v: string): number => w.rows.filter((r: any) => r.verdict === v).length;
+        │                                                          ^^^
+    116 │   const take =
+    117 │     `clang's time divided by A0's has a geometric mean of ${f2(w.geomeanSpeedup)} over ${w.rows.length} test programs: ` +
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:202:17 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    200 │     ),
+    201 │   );
+  > 202 │   const v = (k: any, c: string): string =>
+        │                 ^^^
+    203 │     k.comparisons.find((x: any) => x.subject.includes('fresh process') && x.competitor === c)
+    204 │       .verdict;
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+test/bench-tables.test.ts:203:28 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    201 │   );
+    202 │   const v = (k: any, c: string): string =>
+  > 203 │     k.comparisons.find((x: any) => x.subject.includes('fresh process') && x.competitor === c)
+        │                            ^^^
+    204 │       .verdict;
+    205 │   assert.equal(v(mac, 'tsgo'), 'loss');
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+Diagnostics not shown: 162.
+Checked 654 files in 3s. No fixes applied.
+Found 18 warnings.
+Found 164 infos.
+claim-check: 0 claims on lines changed since origin/main, 0 flagged
+616 recorded losses (0 unverified): ns-per-call-js 8, ns-per-call 16, ns-per-call-x86_64 5, binary-bytes 4, wasm-load-ms 25, ns-per-trip 12, wasm-bytes 9, tokens-kernel 337, ai-tokens-conventional 24, ai-tokens-structured 20, ai-accepted-structured 2, spec-accepted-one-shot 15, spec-accepted-repaired 9, spec-tokens-per-accepted 16, primer-accepted-one-shot 54, primer-accepted-repaired 22, primer-tokens-per-accepted 27, app-edit-accepted 5, app-edit-tokens-per-accepted 3, check-latency-ms 3
+scrub-results: 2134 files, 0 need a scrub
+skill copies identical (6 files)
