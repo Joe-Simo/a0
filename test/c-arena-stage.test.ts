@@ -1,33 +1,33 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { after, test } from 'node:test';
 import { LIMITS } from '../src/core.js';
-import { findClang, runTool } from '../src/toolchain.js';
+import { runTool } from '../src/toolchain.js';
 import {
   type BootstrappedCStage,
   bootstrapCStage,
   C_STAGE_RESOURCES,
+  cStageCompilerFlags,
+  findCStageCompiler,
   reproduceCStage,
   runCStage,
 } from '../tools/c-arena-stage.js';
 
-const clang = findClang();
-const skip =
-  clang.path === undefined
-    ? 'clang unavailable'
-    : process.platform === 'win32'
-      ? 'POSIX stage'
-      : false;
+const clang = findCStageCompiler();
+const skip = clang.path === undefined ? 'C compiler unavailable' : false;
+const artifactRoot = process.env.A0_C_STAGE_ARTIFACTS;
 let scratch: string | undefined;
 let prepared: Promise<BootstrappedCStage & { dir: string }> | undefined;
 after(async () => {
-  if (scratch) await rm(scratch, { recursive: true, force: true });
+  if (scratch && !artifactRoot) await rm(scratch, { recursive: true, force: true });
 });
 function prepare(): Promise<BootstrappedCStage & { dir: string }> {
   prepared ??= (async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'a0-c-arena-stage-'));
+    if (artifactRoot) await mkdir(artifactRoot, { recursive: true });
+    const dir = await mkdtemp(join(artifactRoot ?? tmpdir(), 'a0-c-arena-stage-'));
     scratch = dir;
     const built = await bootstrapCStage(dir, clang);
     return { ...built, dir };
@@ -67,14 +67,8 @@ test('C arena stage preserves source/spec/strict/IO semantics and atomic refusal
     for (const level of ['-O0', '-O2']) {
       const output = join(base, level.slice(1));
       const built = runTool(clang.path, [
-        '-std=c11',
+        ...cStageCompilerFlags({}, clang).filter((flag) => !['-O2', '-municode'].includes(flag)),
         level,
-        '-Wall',
-        '-Wextra',
-        '-Werror',
-        '-Wno-unused-parameter',
-        '-fsanitize=undefined',
-        '-fno-sanitize-recover=all',
         join(base, 'main.c'),
         '-o',
         output,
@@ -151,15 +145,7 @@ test('C arena stage refuses transport corruption and incomplete FINISH before pu
   const built = runTool(
     clang.path,
     [
-      '-std=c11',
-      '-O2',
-      '-Wall',
-      '-Wextra',
-      '-Werror',
-      '-Wno-unused-parameter',
-      '-fsanitize=undefined',
-      '-fno-sanitize-recover=all',
-      '-pthread',
+      ...cStageCompilerFlags({}, clang),
       '-I',
       dir,
       '-I',
@@ -188,5 +174,108 @@ test('C arena stage refuses transport corruption and incomplete FINISH before pu
     });
     assert.equal(ran.status, code, `${fault}: ${ran.stderr}`);
     assert.equal(await readFile(output, 'utf8'), 'prior artifact\n');
+  }
+});
+
+test('C arena stage host preserves native paths, atomic replacement and worker lifetime', {
+  skip,
+  timeout: 120_000,
+}, async () => {
+  assert.ok(clang.path);
+  if (artifactRoot) await mkdir(artifactRoot, { recursive: true });
+  const dir = await mkdtemp(join(artifactRoot ?? tmpdir(), 'a0-stage-host-'));
+  try {
+    const fixture = resolve('test/fixtures/c-arena-stage'),
+      runtime = resolve('tools/native'),
+      exe = join(dir, process.platform === 'win32' ? 'host.exe' : 'host');
+    await copyFile(join(fixture, 'host_module.c'), join(dir, 'module.c'));
+    const built = runTool(clang.path, [
+      ...cStageCompilerFlags({}, clang),
+      '-I',
+      dir,
+      '-I',
+      runtime,
+      join(fixture, 'host_driver.c'),
+      join(runtime, 'arena_runtime.c'),
+      '-o',
+      exe,
+    ]);
+    assert.ok(built.ok, built.stderr);
+    const source = join(dir, 'source 漢字 😀.a0'),
+      output = join(dir, 'result café λ.c'),
+      marker = 'existing artifact\r\n';
+    const originalSource = Buffer.concat([
+      Buffer.from('opaque source bytes'),
+      Buffer.from([0, 13, 10, 26, 255]),
+    ]);
+    await writeFile(source, originalSource);
+    const run = (fault = '') =>
+      spawnSync(exe, [source, output, ...Object.values(C_STAGE_RESOURCES).map(String)], {
+        encoding: 'utf8',
+        env: { ...process.env, A0_STAGE_HOST_FAULT: fault },
+      });
+    for (const existing of [false, true]) {
+      if (existing) await writeFile(output, marker);
+      const ran = run();
+      assert.equal(ran.status, 0, ran.stderr);
+      assert.deepEqual(await readFile(output), originalSource);
+    }
+    for (const [fault, code] of [
+      ['create', 66],
+      ['join', 66],
+      ['temporary', 69],
+      ['write', 69],
+      ['flush', 69],
+      ['commit', 69],
+      ['close', 69],
+      ['replace', 69],
+    ] as const) {
+      await writeFile(output, marker);
+      const ran = run(fault);
+      assert.equal(ran.status, code, `${fault}: ${ran.stderr}`);
+      assert.equal(await readFile(output, 'utf8'), marker, `${fault}: preserve prior bytes`);
+      assert.deepEqual(
+        (await readdir(dir)).filter((name) => name.includes('.tmp.')),
+        [],
+        fault,
+      );
+    }
+    if (cStageCompilerFlags({}, clang).includes('-municode')) {
+      await writeFile(output, marker);
+      const locked = run('locked');
+      assert.equal(locked.status, 69, locked.stderr);
+      assert.equal(
+        await readFile(output, 'utf8'),
+        marker,
+        'Windows locked replacement preserves bytes',
+      );
+      const collided = run('collision');
+      assert.equal(collided.status, 0, collided.stderr);
+      assert.deepEqual(await readFile(output), originalSource);
+      const collisions = (await readdir(dir)).filter((name) => name.includes('.tmp.'));
+      assert.equal(
+        collisions.length,
+        1,
+        "exclusive creation leaves another owner's file untouched",
+      );
+      assert.equal(await readFile(join(dir, collisions[0] as string), 'utf8'), 'keep');
+      await rm(join(dir, collisions[0] as string));
+    }
+    await rm(output);
+    await mkdir(output);
+    const refused = run();
+    assert.equal(refused.status, 69, refused.stderr);
+    assert.deepEqual(
+      await readdir(output),
+      [],
+      'replacement failure preserves destination directory',
+    );
+    assert.deepEqual(
+      (await readdir(dir)).filter((name) => name.includes('.tmp.')),
+      [],
+    );
+    assert.deepEqual(await readFile(source), originalSource);
+  } finally {
+    if (!artifactRoot) await rm(dir, { recursive: true, force: true });
   }
 });

@@ -2,15 +2,16 @@
  * stage consumes the same frozen raw A0 bytes and emits verbatim C through A0.
  * This does not replace seed/, native drivers, or public compiler defaults. */
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { link } from '../src/link.js';
-import { findClang, runTool, type ToolInfo } from '../src/toolchain.js';
+import { findClang, runTool, type ToolInfo, type ToolResult } from '../src/toolchain.js';
 import { buildStage, closure, emitChunked, runStageChunk } from './bootstrap.js';
-import { writeReport } from './scrub-results.js';
+import { reportJson, writeReport } from './scrub-results.js';
 import { readBootstrapSeed } from './seed.js';
 
 export const C_STAGE_ENTRY = 'arena_c_stage';
@@ -33,13 +34,70 @@ export interface BootstrappedCStage {
   readonly chunks: number;
 }
 const sha = (text: string | Uint8Array): string => createHash('sha256').update(text).digest('hex');
+const shimFiles = ['c_arena_stage.c', 'arena_runtime.c', 'arena_runtime.h'];
+
+/** CC names one executable, as in the C-only script. An explicit unavailable
+ * compiler fails instead of silently selecting another implementation. */
+export function findCStageCompiler(): ToolInfo {
+  const path = process.env.CC;
+  if (!path) return findClang();
+  const version = runTool(path, ['--version']);
+  assert.ok(version.ok, `configured CC unavailable: ${path}`);
+  return {
+    name: path,
+    path,
+    version: version.stdout.split('\n')[0],
+  };
+}
+
+export interface CStageBuildSettings {
+  readonly optimization?: 'O0' | 'O2' | 'O3' | 'Os' | 'Oz';
+  readonly sanitize?: boolean;
+}
+
+const compilerTargets = new Map<string, { windows: boolean; suffix: string }>();
+function cStageCompilerTarget(compiler: ToolInfo): { windows: boolean; suffix: string } {
+  assert.ok(compiler.path, 'C arena stage requires a C compiler');
+  let target = compilerTargets.get(compiler.path);
+  if (!target) {
+    const macros = runTool(compiler.path, ['-dM', '-E', '-x', 'c', '-'], { input: '' });
+    assert.ok(macros.ok, macros.stderr);
+    const windows = /^#define _WIN32\b/m.test(macros.stdout);
+    target = {
+      windows,
+      suffix: windows || /^#define __(?:CYGWIN|MSYS)__\b/m.test(macros.stdout) ? '.exe' : '',
+    };
+    compilerTargets.set(compiler.path, target);
+  }
+  return target;
+}
+
+export function cStageCompilerFlags(
+  settings: CStageBuildSettings = {},
+  compiler = findCStageCompiler(),
+): string[] {
+  const target = cStageCompilerTarget(compiler);
+  return [
+    '-std=c11',
+    `-${settings.optimization ?? 'O2'}`,
+    '-Wall',
+    '-Wextra',
+    '-Werror',
+    '-Wno-unused-parameter',
+    ...((settings.sanitize ?? !target.windows)
+      ? ['-fsanitize=undefined', '-fno-sanitize-recover=all']
+      : []),
+    '-pthread',
+    ...(target.windows ? ['-municode'] : []),
+  ];
+}
 
 export function runCStage(
   exe: string,
   source: string,
   output: string,
   resources: StageResources = C_STAGE_RESOURCES,
-): ReturnType<typeof runTool> {
+): ToolResult {
   const values = [
     resources.arenaWords,
     resources.outputWords,
@@ -50,34 +108,37 @@ export function runCStage(
     resources.flags,
     resources.stackBytes,
   ];
-  return runTool(exe, [source, output, ...values.map(String)], {
-    timeoutMs: 900_000,
+  // Source/output are arbitrary native paths, including Unicode and spaces.
+  // Arguments remain separate and never pass through a shell.
+  const ran = spawnSync(exe, [source, output, ...values.map(String)], {
+    encoding: 'utf8',
+    timeout: 900_000,
+    maxBuffer: 64 << 20,
   });
+  return {
+    ok: ran.status === 0,
+    status: ran.status,
+    stdout: ran.stdout ?? '',
+    stderr: ran.stderr || ran.error?.message || '',
+  };
 }
 
 /** No type-name extraction or generated-C rewriting: the entry uses only the
  * existing opaque IO pointer and u32 values on both bootstrap implementations. */
 export function buildCStage(
-  clang: ToolInfo,
+  compiler: ToolInfo,
   dir: string,
   extraFlags: readonly string[] = [],
+  settings: CStageBuildSettings = {},
 ): string {
-  assert.ok(clang.path, 'C arena stage requires clang');
-  const exe = join(dir, 'stage');
+  assert.ok(compiler.path, 'C arena stage requires a C compiler');
+  const exe = join(dir, `stage${cStageCompilerTarget(compiler).suffix}`);
   const runtime = resolve('tools/native');
+  const flags = [...cStageCompilerFlags(settings, compiler), ...extraFlags];
   const built = runTool(
-    clang.path,
+    compiler.path,
     [
-      '-std=c11',
-      '-O2',
-      '-Wall',
-      '-Wextra',
-      '-Werror',
-      '-Wno-unused-parameter',
-      '-fsanitize=undefined',
-      '-fno-sanitize-recover=all',
-      '-pthread',
-      ...extraFlags,
+      ...flags,
       '-I',
       dir,
       '-I',
@@ -91,38 +152,41 @@ export function buildCStage(
   );
   writeFileSync(join(dir, 'native-build.stderr.log'), built.stderr);
   writeFileSync(join(dir, 'native-build.stdout.log'), built.stdout);
+  writeFileSync(
+    join(dir, 'native-build.json'),
+    reportJson({ compiler, flags, accepted: built.ok }),
+  );
   assert.ok(built.ok, built.stderr);
   return exe;
 }
 
 export async function bootstrapCStage(
   dir: string,
-  clang = findClang(),
+  compiler = findCStageCompiler(),
 ): Promise<BootstrappedCStage> {
   await mkdir(dir, { recursive: true });
   const linked = await link('compiler/c_stage_arena.a0', (path) => readFile(path, 'utf8'));
   const source = closure(linked.program.functions, C_STAGE_ENTRY);
   const seed = await readBootstrapSeed();
-  const [seedExe] = await buildStage(clang, 'verified-seed', seed.c, 'emitchunkio', dir);
+  const [seedExe] = await buildStage(compiler, 'verified-seed', seed.c, 'emitchunkio', dir);
   const emitted = emitChunked(source, (chunk, bounds) => runStageChunk(seedExe, chunk, bounds));
   assert.equal(emitted.code, 0, `verified seed rejected ${emitted.failed?.own.join(',')}`);
   const sourcePath = join(dir, 'compiler-source.a0');
   await writeFile(sourcePath, source);
   await writeFile(join(dir, 'module.c'), emitted.text);
-  const exe = buildCStage(clang, dir);
+  const exe = buildCStage(compiler, dir);
   return { exe, source, sourcePath, seedSHA256: sha(seed.c), chunks: emitted.chunks };
 }
 
 export async function reproduceCStage(dir: string, prepared?: BootstrappedCStage): Promise<void> {
-  const clang = findClang();
-  const shimFiles = ['c_arena_stage.c', 'arena_runtime.c', 'arena_runtime.h'];
+  const compiler = findCStageCompiler();
   const shim = await Promise.all(
     shimFiles.map(async (file) => ({
       file,
       sha256: sha(await readFile(resolve('tools/native', file))),
     })),
   );
-  const initial = prepared ?? (await bootstrapCStage(join(dir, 'stage1'), clang));
+  const initial = prepared ?? (await bootstrapCStage(join(dir, 'stage1'), compiler));
   const frozen = initial.sourcePath;
   const rows: Record<string, unknown>[] = [];
   let exe = initial.exe;
@@ -156,7 +220,7 @@ export async function reproduceCStage(dir: string, prepared?: BootstrappedCStage
     }
     previous = bytes;
     try {
-      exe = buildCStage(clang, next);
+      exe = buildCStage(compiler, next);
       Object.assign(rows[rows.length - 1] as Record<string, unknown>, { nativeBuilt: true });
     } catch {
       Object.assign(rows[rows.length - 1] as Record<string, unknown>, { nativeBuilt: false });
@@ -177,7 +241,8 @@ export async function reproduceCStage(dir: string, prepared?: BootstrappedCStage
     failure,
     entry: C_STAGE_ENTRY,
     bootstrap: 'verified native A0 seed; TS only links and plans this fixed implementation',
-    stageExecution: 'C + POSIX; raw original source, A0 service, same generic shim, verbatim C',
+    stageExecution: 'C + pthreads; raw original source, A0 service, same generic shim, verbatim C',
+    compiler,
     sourceBytes: Buffer.byteLength(initial.source),
     sourceSHA256: sha(initial.source),
     seedSHA256: initial.seedSHA256,
@@ -189,11 +254,31 @@ export async function reproduceCStage(dir: string, prepared?: BootstrappedCStage
   assert.equal(failure, undefined, failure);
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const dir = process.argv[2];
-  assert.ok(dir, 'caller-owned artifact directory required');
-  reproduceCStage(resolve(dir)).catch((error: unknown) => {
-    console.error(error);
-    process.exitCode = 1;
+/** One-time development bootstrap. The exported directory can then be copied
+ * to a machine with only a C compiler, pthreads and the documented shell tools. */
+export async function prepareCStage(dir: string): Promise<void> {
+  const compiler = findCStageCompiler();
+  const initial = await bootstrapCStage(dir, compiler);
+  for (const file of shimFiles) await copyFile(resolve('tools/native', file), join(dir, file));
+  await writeReport(join(dir, 'preparation.json'), {
+    status: 'prepared',
+    bootstrap: 'verified native A0 seed; TS links and plans only this development bootstrap',
+    compiler,
+    sourceSHA256: sha(initial.source),
+    seedSHA256: initial.seedSHA256,
+    bootstrapChunks: initial.chunks,
+    resources: C_STAGE_RESOURCES,
   });
+}
+
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const prepare = process.argv[2] === '--prepare';
+  const dir = process.argv[prepare ? 3 : 2];
+  assert.ok(dir, 'caller-owned artifact directory required');
+  (prepare ? prepareCStage(resolve(dir)) : reproduceCStage(resolve(dir))).catch(
+    (error: unknown) => {
+      console.error(error);
+      process.exitCode = 1;
+    },
+  );
 }

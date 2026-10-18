@@ -10,7 +10,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#include <wchar.h>
+#include <windows.h>
+typedef wchar_t stage_path;
+#else
 #include <unistd.h>
+typedef char stage_path;
+#endif
 #include "arena_runtime.h"
 
 /* a0_io is an opaque pointer under the existing host-IO hooks. Neither the
@@ -25,11 +34,15 @@ static a0_arena_session *session;
 static a0_io *returned;
 static uint32_t handle, length, options[5];
 
-static bool number(const char *text, uint32_t *out) {
-  char *end;
+static bool number(const stage_path *text, uint32_t *out) {
+  stage_path *end;
   if (!*text || *text < '0' || *text > '9') return false;
   errno = 0;
+#ifdef _WIN32
+  uintmax_t n = wcstoumax(text, &end, 10);
+#else
   uintmax_t n = strtoumax(text, &end, 10);
+#endif
   if (errno || *end || n > UINT32_MAX) return false;
   *out = (uint32_t)n;
   return true;
@@ -73,19 +86,42 @@ static void *run(void *unused) {
   return NULL;
 }
 
-static bool publish(const char *path) {
+static bool publish(const stage_path *path) {
   const uint32_t *words = a0_arena_output(session);
   uint32_t n = a0_arena_output_count(session);
   for (uint32_t i = 0; i < n; i++) if (words[i] > 255) return false;
+#ifdef _WIN32
+  size_t size = wcslen(path), extra = 64;
+  if (size > SIZE_MAX / sizeof(stage_path) - extra) return false;
+  stage_path *temporary = malloc((size + extra) * sizeof(stage_path));
+  if (!temporary) return false;
+  memcpy(temporary, path, size * sizeof(stage_path));
+  HANDLE file = INVALID_HANDLE_VALUE;
+  /* CREATE_NEW never opens an existing file or follows its replacement. Names
+   * remain beside the destination; MoveFileEx cannot copy across volumes. */
+  for (uint32_t attempt = 0;; attempt++) {
+    if (swprintf(temporary + size, extra, L".tmp.%lu.%lu", (unsigned long)GetCurrentProcessId(),
+        (unsigned long)attempt) < 0) break;
+    file = CreateFileW(temporary, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+      FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file != INVALID_HANDLE_VALUE || GetLastError() != ERROR_FILE_EXISTS ||
+        attempt == UINT32_MAX) break;
+  }
+  if (file == INVALID_HANDLE_VALUE) { free(temporary); return false; }
+  int fd = _open_osfhandle((intptr_t)file, _O_WRONLY | _O_BINARY);
+  if (fd < 0) { CloseHandle(file); DeleteFileW(temporary); free(temporary); return false; }
+  FILE *output = _fdopen(fd, "wb");
+#else
   size_t size = strlen(path);
   if (size > SIZE_MAX - 12) return false;
-  char *temporary = malloc(size + 12);
+  stage_path *temporary = malloc(size + 12);
   if (!temporary) return false;
   memcpy(temporary, path, size);
   memcpy(temporary + size, ".tmp.XXXXXX", 12);
   int fd = mkstemp(temporary);
   if (fd < 0) { free(temporary); return false; }
   FILE *output = fdopen(fd, "wb");
+#endif
   bool okay = output != NULL;
   if (output) {
     unsigned char bytes[4096];
@@ -95,16 +131,37 @@ static bool publish(const char *path) {
       okay = fwrite(bytes, 1, count, output) == count;
       i += count;
     }
-    if (fflush(output) || fsync(fd)) okay = false;
+    if (fflush(output)) okay = false;
+#ifdef _WIN32
+    if (_commit(fd)) okay = false;
+#else
+    if (fsync(fd)) okay = false;
+#endif
     if (fclose(output)) okay = false;
-  } else close(fd);
+  } else {
+#ifdef _WIN32
+    _close(fd);
+#else
+    close(fd);
+#endif
+  }
+#ifdef _WIN32
+  if (okay && !MoveFileExW(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+    okay = false;
+  if (!okay) DeleteFileW(temporary);
+#else
   if (okay && rename(temporary, path)) okay = false;
   if (!okay) unlink(temporary);
+#endif
   free(temporary);
   return okay;
 }
 
+#ifdef _WIN32
+int wmain(int argc, wchar_t **argv) {
+#else
 int main(int argc, char **argv) {
+#endif
   /* Every resource is caller-selected: arena/output words, quantum, resume
    * calls, generated buffered input/output capacities, flags and stack bytes. */
   uint32_t max_words, max_output, stack_bytes;
@@ -115,7 +172,11 @@ int main(int argc, char **argv) {
     fputs("usage: stage source output arenaWords outputWords quantum resumes inputCapacity outputCapacity flags stackBytes\n", stderr);
     return 64;
   }
+#ifdef _WIN32
+  FILE *input = _wfopen(argv[1], L"rb");
+#else
   FILE *input = fopen(argv[1], "rb");
+#endif
   if (!input) return 64;
   unsigned char *bytes = NULL;
   size_t count = 0, capacity = 0;
