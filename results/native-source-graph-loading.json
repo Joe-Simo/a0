@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-18T17:15:24.770Z",
+  "scope": "Injectable graph loading and parse-only source inventory for CLI and sealed storage. Public reader defaults, standalone native-fast, check --fix and MCP edited-program sessions remain unchanged. No full cutover, performance improvement, package result or full gate pass is claimed.",
+  "subject": {
+    "base": "9dd33a443416e9200564d1a7306672f8f0499112",
+    "commit": "2f861d3b84005f91fe13609fe762e123227dccff",
+    "tree": "0b6538a2c41c9c749b59fa3a9c930c5720dcc80b"
+  },
+  "implementation": {
+    "loader": "src/source-graph.ts / SourceGraphLoader",
+    "native": "nativeSourceGraphLoader delegates to ephemeral linkNativeSource on the caller-owned frontend; nativeSourceDependencies uses that same frontend parseUnit",
+    "cli": "loadCliProgram guards every injected read; explicit native reads decode UTF-8 fatally. The public historical CLI supplies its existing text adapter.",
+    "sealed": "linkSealed, compileSealed, serveUnlocked and protectionCli accept the graph-loading dependency; compiler sourceAccess, authentication, confidentiality/disclosure controls, profile agreement and virtual root confinement are retained.",
+    "inventory": "inventory and both sealing re-inventory passes receive the same dependency reader. Genuine native syntax failures are incomplete graphs; malformed UTF-8, allocation/transport refusals and unsupported extensions abort.",
+    "diagnostics": "Only already-rendered native diagnostics are hydrated. cliCheckDiagnostic uses the native physical local line and does not reload source or call the historical line locator. Sealed protocol failures expose only a code.",
+    "lifecycle": "Borrowed frontend operations are serial; parsing resets live capabilities. No injected frontend is acquired, closed or replaced.",
+    "mcpBoundary": "A future MCP session must check/compile its edited in-memory program rather than reloading its original disk graph."
+  },
+  "artifacts": {
+    "frontend": {
+      "entry": "compiler/source_frontend.a0",
+      "bytes": 359944,
+      "sha256": "ed1de3810216510b88fe318d56dd519c44fd79ffbfce5fe776bea7305b96c147",
+      "sourceSHA256": "2eee18e1f62244f16d496be873c1347ca8d75a008ad4f67b92e9b9df1e54f515",
+      "buildSHA256": "0300c09efe973e3dc16aa081f70d4bc66b694f291985e6b83205dedfae80375f",
+      "frontendABI": 3,
+      "diagnosticPorts": "arena-v1",
+      "cSHA256": "0cb132f5292fa22d54a98a5d11568495211e8928e4c8c610e19285f0c155d834"
+    },
+    "diagnostic": {
+      "entry": "compiler/diagnostic_specs_arena.a0",
+      "bytes": 324039,
+      "sha256": "8200d68bc53d708f107f41d23b48895532a0030cd2a1b77a16ff8da223a8fe54",
+      "sourceSHA256": "a66f6c28b56022fe6e0dfaf840dd4fe5c75b28fa2f59fce76a7842c050eb3f98",
+      "buildSHA256": "0930b3898956c61983f7adc582579d57a81d05b4692771128f38e7177cec6a61",
+      "verificationWords": 768
+    },
+    "freshness": {
+      "frontendGuardPassed": true,
+      "diagnosticGuardPassed": true,
+      "staleDiagnosticReuseNegativeControl": {
+        "rejected": true,
+        "reason": "diagnostic input closure differs",
+        "guardUnchanged": true
+      },
+      "diagnosticRebuiltFromActualChangedHostClosure": true
+    }
+  },
+  "verification": {
+    "native": {
+      "file": "test/source-graph-native.controls.ts",
+      "tests": 12,
+      "pass": 12,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "logSHA256": "8e8296ebf74195d0fed035842eee186505f01606de54ccf446f69e2b37e0882f",
+      "controls": [
+        "plain CLI and sealed storage use the same borrowed graph loader for a diamond and profile override",
+        "native graph entry extension is checked before a storage read",
+        "native graph rejects traversal, absolute and symlink imports before outside reads",
+        "profile override preserves mixed-declaration rejection",
+        "plain native loading guards sealed policy before injected storage access",
+        "fatal plain and sealed UTF8 decoding refuse before native parsing",
+        "sealed authentication, migration phase and requested target protection fail before native parsing",
+        "native inventory discovers excluded dependencies and retains its reader across migration re-inventory",
+        "native inventory records syntax errors while refusing invalid UTF8 and unsupported source extensions",
+        "native allocation refusals abort inventory instead of becoming an incomplete graph",
+        "native error boundary preserves rendered diagnostic JSON without another source/check call",
+        "unlocked native session emits code-only failures and blocks external AI graph loading"
+      ]
+    },
+    "regression": {
+      "files": [
+        "test/protection.test.ts",
+        "test/cli-startup.test.ts",
+        "test/hygiene.test.ts"
+      ],
+      "tests": 26,
+      "pass": 25,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 1,
+      "todo": 0,
+      "optionalSkip": "A0_PUBLIC_DENYLIST names no local denylist file",
+      "logSHA256": "75f8b0910ad451053cd2082181f2add436ce4670200c4181d9b576fff5f66c0c"
+    },
+    "broadAttempt": {
+      "files": [
+        "test/protection.test.ts",
+        "test/cli-startup.test.ts",
+        "test/source-native-graph.test.ts",
+        "test/hygiene.test.ts"
+      ],
+      "tests": 34,
+      "pass": 25,
+      "fail": 8,
+      "cancelled": 0,
+      "skipped": 1,
+      "todo": 0,
+      "logSHA256": "a99c0f3ae52b7e963fd2458486326f456e6ee26b853cefa809e78d0d9ffd0e19",
+      "failure": {
+        "count": 8,
+        "guard": "bundled seed/source-frontend source module freshness",
+        "module": "compiler/source_grammar.a0",
+        "currentSHA256": "a0b06ea3f35ecb3db70921052e41185710d26ef2cd5dd962e398485bbb654091",
+        "recordedSHA256": "e7628e87095f215db55aa57333b0e6eccad233c08baba02c7e9318f4ff230622",
+        "baselineModuleSHA256": "a0b06ea3f35ecb3db70921052e41185710d26ef2cd5dd962e398485bbb654091",
+        "baselineRecordedSHA256": "e7628e87095f215db55aa57333b0e6eccad233c08baba02c7e9318f4ff230622",
+        "mismatchAlreadyPresentAtBase": true,
+        "sourceAndSeedUnchangedInPatch": true,
+        "classification": "Same mismatch exists in the base inputs; a clean baseline test rerun was not performed. Full fixture verification remains pending."
+      }
+    },
+    "build": "pass",
+    "lint": "pass",
+    "typecheck": "pass",
+    "prereview": {
+      "findings": [],
+      "score": 0,
+      "verdict": "ok"
+    },
+    "peerReview": {
+      "kind": "independent read-only source review",
+      "policyOrFallbackBlockers": 0,
+      "followup": "Native CLI physical-line envelope policy was documented and tested through the actual shared JSON helper with zero source rereads."
+    },
+    "requiredFullGateSteps": [
+      "lint",
+      "typecheck",
+      "test",
+      "verify",
+      "equiv",
+      "hw",
+      "app",
+      "dotnet",
+      "gpu",
+      "selfhost",
+      "selfhost-c",
+      "bootstrap",
+      "tokens",
+      "site"
+    ],
+    "fullGate": "pending combined verification; the bundled native fixture must first be regenerated and verified",
+    "lightGate": "not run; targeted checks do not cover the complete light scope"
+  }
+}
