@@ -31,7 +31,12 @@ const text = (value: string): number[] => [...leb(value.length), ...Buffer.from(
 const get = (local: number): number[] => [0x20, ...leb(local)];
 const constant = (value: number): number[] => [0x41, ...signed(value)];
 const call = (index: number): number[] => [...get(0), 0x10, ...leb(index), 0x1a];
-const framed = (frame: number, middle: number[] = [], restore = frame): number[] => [
+const framed = (
+  frame: number,
+  middle: number[] = [],
+  restore = frame,
+  result: 'i32' | 'void' = 'i32',
+): number[] => [
   0x23,
   0,
   ...constant(frame),
@@ -46,7 +51,7 @@ const framed = (frame: number, middle: number[] = [], restore = frame): number[]
   0x6a,
   0x24,
   0,
-  ...get(0),
+  ...(result === 'i32' ? get(0) : []),
   0x0b,
 ];
 interface FixtureOptions {
@@ -54,8 +59,9 @@ interface FixtureOptions {
   table?: boolean;
   extraGlobal?: boolean;
   data?: boolean;
+  results?: readonly ('i32' | 'void')[];
 }
-/** Every function takes and returns i32, with one i32 local available for its frame. */
+/** Every function takes i32, with one i32 local available for its frame. */
 const moduleBytes = (functions: number[][], options: FixtureOptions = {}): Uint8Array => {
   const imported = options.imports ? 1 : 0;
   return new Uint8Array([
@@ -67,9 +73,12 @@ const moduleBytes = (functions: number[][], options: FixtureOptions = {}): Uint8
     0,
     0,
     0,
-    ...section(1, [1, 0x60, 1, 0x7f, 1, 0x7f]),
+    ...section(1, [2, 0x60, 1, 0x7f, 1, 0x7f, 0x60, 1, 0x7f, 0]),
     ...(options.imports ? section(2, [1, ...text('host'), ...text('call'), 0, 0]) : []),
-    ...section(3, [...leb(functions.length), ...functions.map(() => 0)]),
+    ...section(3, [
+      ...leb(functions.length),
+      ...functions.map((_, index) => (options.results?.[index] === 'void' ? 1 : 0)),
+    ]),
     ...(options.table ? section(4, [1, 0x70, 0, 1]) : []),
     ...section(5, [1, 0, 1]),
     ...section(6, [
@@ -149,6 +158,61 @@ test('frameless helpers, loops, internal branches and bulk memory do not add C s
   assert.equal(proof.opcodeHistogram['0xfc/10'], 1);
   assert.equal(proof.opcodeHistogram['0xfc/11'], 1);
   assert.equal(wasmStackBound(moduleBytes([[...get(0), 0x0b]])).maxLinearStackBytes, 0);
+});
+
+test('void and scalar epilogues share one fixed-frame proof across mixed call chains', () => {
+  const callVoid = (index: number) => [...get(0), 0x10, ...leb(index)];
+  const internalBranch = [0x02, 0x40, ...constant(1), 0x0d, 0, 0x0b];
+  const bytes = moduleBytes(
+    [
+      framed(16, [...callVoid(1), ...callVoid(3)]),
+      framed(32, [...internalBranch, ...call(2)], 32, 'void'),
+      framed(48),
+      [0x0b],
+    ],
+    { results: ['i32', 'void', 'i32', 'void'] },
+  );
+  assert.ok(WebAssembly.validate(new Uint8Array(bytes)));
+  const proof = wasmStackBound(bytes);
+  assert.equal(proof.maxLinearStackBytes, 96);
+  assert.equal(proof.maxCallDepth, 3);
+  assert.deepEqual(proof.exports.run?.frameBoundPath, [0, 1, 2]);
+  assert.deepEqual(
+    proof.functions.map((fn) => fn.frameBytes),
+    [16, 32, 48, 0],
+  );
+  assert.equal(proof.functions[1]?.globalAccesses.length, 3);
+});
+
+test('void returns cannot bypass restoration or change its frame/local/global invariants', () => {
+  const fixture = (middle: number[] = [], restore = 16) =>
+    moduleBytes([framed(16, middle, restore, 'void')], { results: ['void'] });
+  rejected(fixture([], 32), /unsupported epilogue/);
+  rejected(fixture([...constant(0), 0x21, 1]), /frame local modified/);
+  rejected(fixture([0x23, 0, 0x1a]), /unexpected stack global access/);
+  rejected(fixture([0x0f]), /early return/);
+  rejected(fixture([0x0c, 0]), /branch skips restoration/);
+  rejected(fixture([...constant(1), 0x0d, 0]), /branch skips restoration/);
+  rejected(fixture([...constant(0), 0x0e, 0, 0]), /branch skips restoration/);
+  rejected(fixture([0x02, 0x40, 0x0c, 1, 0x0b]), /branch skips restoration/);
+  for (const labels of [
+    [0, 1],
+    [1, 0],
+  ])
+    rejected(
+      fixture([0x02, 0x40, ...get(0), 0x0e, 1, ...labels, 0x0b]),
+      /branch skips restoration/,
+    );
+  rejected(
+    moduleBytes([framed(16, [...get(0), 0x10, 0], 16, 'void')], { results: ['void'] }),
+    /recursive call graph/,
+  );
+  rejected(
+    moduleBytes([framed(16), framed(32, [...get(0), 0x10, 1], 32, 'void')], {
+      results: ['i32', 'void'],
+    }),
+    /recursive call graph/,
+  );
 });
 
 test('stack proofs reject mismatched frames, modified frame locals and hidden global reads', () => {

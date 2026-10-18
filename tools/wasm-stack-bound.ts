@@ -236,12 +236,15 @@ export function wasmStackBound(input: Uint8Array): WasmStackProof {
         `unsupported prologue in function ${index}`,
       );
       requireProof(frameBytes > 0 && frameBytes % 16 === 0, 'positive aligned frame required');
+      // LLVM's outermost restoration is identical for void and scalar returns.
+      // A scalar result has one final local.get; a void result ends immediately.
+      const epilogueLength = body.at(-2)?.op === 0x20 ? 6 : 5;
+      const epilogue = body.length - epilogueLength;
       requireProof(
-        matches(body.at(-6), 0x20, local) &&
-          matches(body.at(-5), 0x41, frameBytes) &&
-          matches(body.at(-4), 0x6a) &&
-          matches(body.at(-3), 0x24, 0) &&
-          body.at(-2)?.op === 0x20 &&
+        matches(body[epilogue], 0x20, local) &&
+          matches(body[epilogue + 1], 0x41, frameBytes) &&
+          matches(body[epilogue + 2], 0x6a) &&
+          matches(body[epilogue + 3], 0x24, 0) &&
           matches(body.at(-1), 0x0b),
         `unsupported epilogue in function ${index}`,
       );
@@ -249,7 +252,7 @@ export function wasmStackBound(input: Uint8Array): WasmStackProof {
         accesses.length === 3 &&
           accesses[0]?.instruction === 0 &&
           accesses[1]?.instruction === 4 &&
-          accesses[2]?.instruction === body.length - 3,
+          accesses[2]?.instruction === epilogue + 3,
         'unexpected stack global access',
       );
       let depth = 0;
@@ -264,7 +267,7 @@ export function wasmStackBound(input: Uint8Array): WasmStackProof {
             args.every((label) => label < depth),
             'branch skips restoration',
           );
-        if (position === body.length - 6) requireProof(depth === 0, 'epilogue not outermost');
+        if (position === epilogue) requireProof(depth === 0, 'epilogue not outermost');
       }
       requireProof(depth === -1, 'unbalanced function controls');
     }
