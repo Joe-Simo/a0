@@ -147,7 +147,7 @@ export function directSource(artifact: DirectSourceArtifact): ReturnType<typeof 
     arena.a0_runtime_write(session, args.length);
     for (const value of args) arena.a0_runtime_write(session, value);
   };
-  const close = (): void => {
+  const reset = (): void => {
     if (session) arena.a0_arena_destroy(session);
     session = status = irValue = 0;
     active = false;
@@ -156,7 +156,7 @@ export function directSource(artifact: DirectSourceArtifact): ReturnType<typeof 
     writeWasmWords(arena.memory.buffer, irPointer, irState.subarray(0, PAGE_WORDS));
   };
   const start = (budget: number): number => {
-    close();
+    reset();
     session = arena.a0_arena_create(budget, 0) >>> 0;
     if (!session) {
       status = 4;
@@ -287,7 +287,10 @@ export function directSource(artifact: DirectSourceArtifact): ReturnType<typeof 
       ]);
       return finish();
     },
-    frontend_close: close,
+    frontend_close() {
+      reset();
+      arena.free(pages);
+    },
   };
   return nativeSourceApi(api, () => arena.memory.buffer.byteLength + memory.buffer.byteLength);
 }

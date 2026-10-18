@@ -15,11 +15,12 @@ import { link, parseFile } from '../src/link.js';
 import { migrateSourceProject } from '../src/migrate.js';
 import { formatSource, parseSource } from '../src/source.js';
 import { linkSource } from '../src/source-link.js';
-import { nativeSource } from '../src/source-native.js';
+import type { nativeSource } from '../src/source-native.js';
 import { linkNativeSource } from '../src/source-native-link.js';
 import { isReject, listSources } from './dense-loader.js';
 import { committedTree } from './measurement-checkout.js';
 import { reportJson, writeReport } from './scrub-results.js';
+import { prepareSourceFrontend } from './source-native-load.js';
 
 const args = process.argv.slice(2);
 const option = (name: string): string | undefined =>
@@ -35,12 +36,11 @@ let engine: ReturnType<typeof nativeSource> | undefined;
 let native: { artifactSha256: string; build: unknown } | undefined;
 const artifact = option('native-artifact');
 if (artifact !== undefined) {
-  const bytes = await readFile(join(resolve(artifact), 'frontend.wasm'));
-  const build = JSON.parse(await read(join(resolve(artifact), 'build.json')));
-  assert.equal(hash(bytes), build.wasmSHA256, 'native artifact does not match its build record');
-  engine = nativeSource(new WebAssembly.Module(bytes));
+  const prepared = await prepareSourceFrontend(artifact);
+  const build = prepared.build;
+  engine = prepared.instantiate();
   native = {
-    artifactSha256: hash(bytes),
+    artifactSha256: prepared.artifactSha256,
     build: Object.fromEntries(
       [
         'sourceSHA256',
@@ -50,6 +50,11 @@ if (artifact !== undefined) {
         'aggregateBytes',
         'stackBytes',
         'wasmBytes',
+        'backend',
+        'functionCount',
+        'frontendSHA256',
+        'arenaSHA256',
+        'totalWasmBytes',
       ].map((key) => [key, build[key]]),
     ),
   };

@@ -1,5 +1,6 @@
 /** Experimental direct-Wasm build of the unchanged A0 frontend plus generic arena storage. */
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
@@ -130,17 +131,17 @@ await writeReport(join(out, 'build.json'), {
   linker: run(toolchain.wasmLd, ['--version']).split('\n')[0],
   inputs: await Promise.all(
     [
-      ...linked.sources.map((source) => relative(process.cwd(), resolve(source.path))),
-      'src/source-direct.ts',
-      'src/source-native.ts',
-      'src/wasm-words.ts',
-      'src/wasm.ts',
-      'src/backends.ts',
-      'tools/native/arena_runtime.c',
-      'tools/native/arena_runtime.h',
-      'tools/native/arena_memory.c',
-      'tools/source-direct-build.ts',
-    ].map(async (path) => ({ path, sha256: hash(await readFile(path)) })),
+      ...new Set([
+        ...linked.sources.map((source) => relative(process.cwd(), resolve(source.path))),
+        ...execFileSync('git', ['ls-files', 'src/*.ts'], { encoding: 'utf8' }).trim().split('\n'),
+        'tools/native/arena_runtime.c',
+        'tools/native/arena_runtime.h',
+        'tools/native/arena_memory.c',
+        'tools/source-direct-build.ts',
+      ]),
+    ]
+      .sort()
+      .map(async (path) => ({ path, sha256: hash(await readFile(path)) })),
   ),
 });
 console.log(`Direct frontend: ${frontend.length} bytes; arena: ${arena.length} bytes`);

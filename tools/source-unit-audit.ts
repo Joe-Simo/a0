@@ -1,14 +1,13 @@
 /** Verify native source-unit parsing independently of whole-program checking. */
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
+import { relative } from 'node:path';
 import { formatSource as legacySource, parse } from '../src/core.js';
 import { formatSource, parseSource } from '../src/source.js';
-import { nativeSource } from '../src/source-native.js';
 import { isReject, listSources } from './dense-loader.js';
 import { committedTree } from './measurement-checkout.js';
 import { writeReport } from './scrub-results.js';
+import { prepareSourceFrontend } from './source-native-load.js';
 
 const args = process.argv.slice(2);
 const option = (name: string): string | undefined =>
@@ -17,13 +16,9 @@ const artifact = option('artifact');
 assert.ok(artifact, '--artifact=DIR is required');
 const root = process.cwd(),
   identity = committedTree(root);
-const bytes = await readFile(join(resolve(artifact), 'frontend.wasm'));
-const build = JSON.parse(await readFile(join(resolve(artifact), 'build.json'), 'utf8')) as {
-  wasmSHA256: string;
-};
-const artifactSha256 = createHash('sha256').update(bytes).digest('hex');
-assert.equal(artifactSha256, build.wasmSHA256, 'artifact/build mismatch');
-const frontend = nativeSource(new WebAssembly.Module(bytes));
+const prepared = await prepareSourceFrontend(artifact);
+const artifactSha256 = prepared.artifactSha256;
+const frontend = prepared.instantiate();
 const rows: { entry: string; status: 'pass' | 'fail'; reason?: string }[] = [];
 try {
   for (const path of listSources(root).filter((path) => !isReject(path, root))) {
