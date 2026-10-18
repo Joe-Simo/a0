@@ -91,8 +91,6 @@ const preload = snapshot?.preload ?? {
   totalWasmBytes: prepared.bytes,
   artifactSha256: prepared.artifactSha256,
 };
-const modulePreparationMs = performance.now() - modulePreparationStart;
-const modulePreparationCpu = process.cpuUsage(modulePreparationCpuStart);
 if (proof && proofPath) {
   assert.deepEqual(
     await readSourceCostWorkerProof(workerRoot, proofPath, proofSHA256 as string, baseline),
@@ -104,6 +102,8 @@ if (proof && proofPath) {
     proof.subjects[arm === 'flat-a0-control' ? 'control' : 'candidate'],
   );
 }
+const modulePreparationMs = performance.now() - modulePreparationStart;
+const modulePreparationCpu = process.cpuUsage(modulePreparationCpuStart);
 const initialMemory = process.memoryUsage();
 const initialPeakRssBytes = process.resourceUsage().maxRSS * 1024;
 let engine: ReturnType<typeof prepared.instantiate> | undefined;
