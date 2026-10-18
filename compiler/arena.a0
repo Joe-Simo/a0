@@ -26,13 +26,8 @@ n add p2 1
 b write a n
 c write b p2
 d fold arena_write_word p2 c p3
-r call arena_reply d
-status at r 0
-count at r 1
-t1 at r 3
-code call arena_expect status count 0
-out rec code t1
-ret out
+r call arena_ack d
+ret r
 end
 
 fn arena_emit io u32 u32x128 -> (u32,io)
@@ -47,11 +42,6 @@ fn arena_finish io u32 -> (u32,io)
 a write p0 5
 b write a 1
 c write b p1
-r call arena_reply c
-status at r 0
-count at r 1
-t at r 3
-code call arena_expect status count 0
-out rec code t
-ret out
+r call arena_ack c
+ret r
 end

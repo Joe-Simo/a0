@@ -18,7 +18,8 @@ out rec b t1
 ret out
 end
 
-fn arena_reply io -> (u32,u32,u32x128,io)
+# Every reply reader shares header validation and drains the same bounded payload.
+fn arena_reply_header io -> (u32,u32,u32,io)
 r read p0
 status at r 0
 t at r 1
@@ -27,13 +28,50 @@ count at q 0
 t1 at q 1
 big gt count 128
 n select big 128 count
+code select big 1 status
+out rec code count n t1
+ret out
+end
+
+fn arena_reply io -> (u32,u32,u32x128,io)
+h call arena_reply_header p0
+code at h 0
+count at h 1
+n at h 2
+t1 at h 3
 z call arena_zero
 s rec z t1
 v fold arena_reply_word n s
 a at v 0
 t2 at v 1
-code select big 1 status
 out rec code count a t2
+ret out
+end
+
+# Scalar replies still drain malformed extra payload words, without constructing a page.
+fn arena_reply_first_word (u32,io) u32 -> (u32,io)
+t at p0 1
+r read t
+value at r 0
+next at r 1
+first eq p1 0
+old at p0 0
+saved select first value old
+out rec saved next
+ret out
+end
+
+fn arena_reply_first io -> (u32,u32,u32,io)
+h call arena_reply_header p0
+code at h 0
+count at h 1
+n at h 2
+t at h 3
+initial rec 0 t
+read fold arena_reply_first_word n initial
+value at read 0
+next at read 1
+out rec code count value next
 ret out
 end
 
@@ -45,17 +83,26 @@ code select bad 1 p0
 ret code
 end
 
+fn arena_ack io -> (u32,io)
+r call arena_reply_first p0
+status at r 0
+count at r 1
+t at r 3
+code call arena_expect status count 0
+out rec code t
+ret out
+end
+
 fn arena_alloc io u32 -> (u32,u32,io)
 a write p0 1
 b write a 1
 c write b p1
-r call arena_reply c
+r call arena_reply_first c
 status at r 0
 count at r 1
-page at r 2
+value at r 2
 t at r 3
 code call arena_expect status count 1
-value get page 0
 ok eq code 0
 zero eq value 0
 bad and ok zero
@@ -97,13 +144,8 @@ c write b p2
 d write c p3
 e write d p4
 f fold arena_write_word p4 e p5
-r call arena_reply f
-status at r 0
-count at r 1
-t1 at r 3
-code call arena_expect status count 0
-out rec code t1
-ret out
+r call arena_ack f
+ret r
 end
 
 fn arena_store io u32 u32 u32 u32x128 -> (u32,io)
