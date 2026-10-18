@@ -80,7 +80,7 @@ The ID set declared by `ad_known` in `compiler/diagnostics_arena.a0` is:
 | Parse | A0001, A0003–A0020, A0023–A0031 |
 | Names | A0101–A0105 |
 | Types | A0201–A0210, A0213–A0222 |
-| Structure | A0303, A0309–A0316 |
+| Structure | A0021, A0301–A0307, A0309–A0316 |
 
 This is a dispatch inventory, not a claim that every source or payload carrying an
 ID has been proved. The native diagnostic test suite checks complete JSON, repair
@@ -96,7 +96,7 @@ transport priority. The live C and direct-Wasm integration checks are recorded i
 | Open area | Evidence and required connection |
 | --- | --- |
 | Default routing | The live hook is optional. Raw `state` and `specState` are not renderer facts and must not be passed directly to the packet adapter. Shipping the renderer by default requires separate artifact/performance and coverage decisions. |
-| New structured-IR preflight errors | A0021, A0301–A0302 and A0304–A0308 are outside the renderer's declared set. The shared checker must supply the required names/arguments to A0 rendering before those cases can use the public adapter. |
+| Structured-IR numeric representation | A0308 remains outside the declared set. Structured operands contain one u32 word, so the encoder explicitly refuses negative, fractional and out-of-range values before native checking; it cannot retain an A0308 payload. This is a representation boundary, with no claim of public checker diagnostic priority for unrepresentable IR. Source literals retain their existing parse diagnostics instead. |
 | Module errors | File resolution, imports and duplicate ownership still use the existing graph policy. Source-unit origins can map renderer locations; they do not supply missing module diagnostic content. |
 | Specifications | A0714–A0716 and A0719 do not have complete native public rendering. Ordered verification retains phase/example/trap/value facts, but those session-lived facts still need A0 rendering. The adapter can preserve a complete `SpecFault` payload; its synthetic transport test does not establish native spec rendering. |
 | Runtime traps | Public runtime errors carry `trap` separately from `Diagnostic` JSON. This compile-diagnostic packet adapter does not synthesize or claim runtime-trap transport. |
@@ -108,3 +108,32 @@ binaries with UBSan produced identical packets. The adapter test compares suppor
 packets against public error JSON and independent source validation, checks refusal
 behavior and attacks malformed transport fields. Public compiler routing remains
 outside this private adapter.
+
+The structured checker diagnostics A0021, A0301–A0302 and A0304–A0307 use their
+retained function/node/symbol rows directly. Function-only and body-node contexts
+are checked separately, including node ownership by the selected function and
+the absence of an argument selection. Missing, overflowing and inconsistent
+contexts refuse instead of inventing a name, return location or physical source
+owner. A0307 uses the retained native opcode for its `arr`/`rec` argument. These
+errors require no additional checker facts or public ABI and do not parse the
+structured encoder's internal string pool as source.
+
+Structured encoder strings must be losslessly representable as UTF8. Unpaired
+UTF16 surrogates refuse explicitly before native checking, including separate
+identity spans that could otherwise join into a different surrogate pair. Valid
+Unicode scalar strings, controls and empty invalid names still reach the shared
+A0 classifier and renderer. This check changes no source or text-literal rules.
+
+The permanent arena diagnostic suite includes actual ordered structured-IR
+checks, complete independent public JSON comparisons, malformed-context and
+resource/transport controls. The explicit
+`test/source-native-ir-diagnostics.controls.ts` suite requires frontend, renderer
+and arena artifact paths and runs the same errors through C-derived and direct
+frontends. A0029 whole-program limits retain their global context and require no
+function row; the separate global controls cover empty and Unicode archives.
+
+Run the structured live controls after building the artifacts above and the generic arena:
+
+```sh
+A0_IR_DIAGNOSTIC_FRONTEND=.a0-tmp/live-frontend A0_IR_DIAGNOSTIC_RENDERER=.a0-tmp/live-renderer A0_IR_DIAGNOSTIC_ARENA=.a0-tmp/direct/arena.wasm node --test dist/test/source-native-ir-diagnostics.controls.js
+```

@@ -104,7 +104,9 @@ static int structured_main(int argc, char **argv) {
     uint32_t n = word(packet), *bytes = calloc((size_t)n + 1, sizeof(uint32_t));
     if (!bytes) die("symbol allocation");
     for (uint32_t j = 0; j < n; j++) bytes[j] = word(packet);
-    uint32_t name = upload(bytes, n);
+    /* The scanner's zero-length LOAD still requires a real symbol handle,
+     * matching the production Program builder's empty-string transport. */
+    uint32_t name = upload(bytes, n ? n : 1);
     IR_SYMBOL symbol = a0_source_ir_symbol(state, name, n);
     if (symbol.f0.e[0] || symbol.f1 != i || symbol.f2 != &io) die("native symbol identity");
     state.f0 = symbol.f0; state.f1 = symbol.f2; free(bytes);
@@ -152,6 +154,18 @@ static int structured_main(int argc, char **argv) {
     IR_STATE current = {checked.f1, &io};
     if (fault == 1 || fault == 21 || fault == 25) current.f0.e[109] = UINT32_MAX;
     if (fault == 2) current.f0.e[109] = current.f0.e[42] / 14;
+    if (fault == 4 || (fault >= 31 && fault <= 35)) current.f0.e[110] = UINT32_MAX;
+    if (fault == 5) current.f0.e[110] = current.f0.e[45] / 14;
+    if (fault == 6) current.f0.e[110] = 0;
+    if (fault == 7) current.f0.e[111] = 0;
+    if (fault == 8) current.f0.e[1] = 307;
+    if (fault == 9) current.f0.e[42]++;
+    if (fault == 10) current.f0.e[1] = 308;
+    if (fault == 40) current.f0.e[109] = UINT32_MAX / 14 + 1;
+    if (fault == 41) current.f0.e[44] = UINT32_MAX;
+    if (fault == 42) current.f0.e[62] = UINT32_MAX;
+    if (fault == 43) current.f0.e[63]++;
+    if (fault == 44) current.f0.e[0] = 6;
     /* Explicit transport control, separate from unchanged checker facts: a global
      * diagnostic can retain a physical Unicode span without gaining an owner. */
     if (fault == 3) {
@@ -165,6 +179,7 @@ static int structured_main(int argc, char **argv) {
     copy = snapshot(&count);
     if (fault >= 11 && fault <= 15) injected = fault - 10;
     if (fault == 21 || fault == 25) injected = fault - 20;
+    if (fault >= 31 && fault <= 35) injected = fault - 30;
     DIAG_RESULT result = a0_arena_diagnostic_options(&io, current.f0, options);
     if (injected) die("storage error injection not reached");
     injected = 0;

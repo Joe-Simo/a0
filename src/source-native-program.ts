@@ -37,6 +37,19 @@ function boolean(value: boolean): number {
   return value ? 1 : 0;
 }
 
+/** Arena strings are UTF-8; refuse host strings that would lose original code units. */
+function transportString(value: string): string {
+  if (typeof value !== 'string') fail('expected an IR string');
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    if (code < 0xd800 || code > 0xdfff) continue;
+    const next = value.charCodeAt(index + 1);
+    if (code > 0xdbff || !(next >= 0xdc00 && next <= 0xdfff)) fail('unpaired UTF-16 surrogate');
+    index++;
+  }
+  return value;
+}
+
 /**
  * Program is internal structured IR; locations are synthetic. The shared native grammar
  * classifies names and the A0 checker enforces the program/function/node limits.
@@ -56,7 +69,7 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     spans = new Map<string, readonly [number, number]>();
   let stringBytes = 0;
   const span = (value: string): readonly [number, number] => {
-    if (typeof value !== 'string') fail('expected an IR string');
+    transportString(value);
     const known = spans.get(value);
     if (known !== undefined) return known;
     const count = new TextEncoder().encode(value).length;
@@ -88,7 +101,7 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
   append(table(32), [0, 0, 0, 0, 0, 0, 0, NONE, 0, 0]);
   const symbols = new Map<string, number>();
   const symbol = (name: string): number => {
-    if (typeof name !== 'string') fail('expected a symbol');
+    transportString(name);
     const previous = symbols.get(name);
     if (previous !== undefined) return previous;
     const id = word(builder.symbol(name));

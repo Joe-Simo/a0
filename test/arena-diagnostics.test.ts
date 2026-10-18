@@ -25,6 +25,7 @@ import { encodeNativeProgram } from '../src/source-native-program.js';
 import { findClang, runTool } from '../src/toolchain.js';
 import { buildStage, closure, emitChunked, runStageChunk } from '../tools/bootstrap.js';
 import { readBootstrapSeed } from '../tools/seed.js';
+import { irDiagnosticCases } from './fixtures/native-diagnostics/ir-cases.js';
 
 // This private frontend uses the candidate source grammar. The TypeScript source reader
 // and checker are independent test oracles, including complete fixes and edits.
@@ -1391,6 +1392,110 @@ async function structuredRequest(
   assert.equal(offset, bytes.length, 'no trailing structured output');
   return { status, state, rendered };
 }
+
+test('seed-built structured IR diagnostics render exact catalog JSON and refuse malformed local context', {
+  skip,
+}, async () => {
+  const dir = await prepare();
+  const rows = irDiagnosticCases();
+  const representatives = rows.filter(
+    (row, index) => rows.findIndex((other) => other.id === row.id) === index,
+  );
+  for (const level of [0, 2]) {
+    for (const row of rows) {
+      let expected: ReturnType<A0Error['toJSON']> | undefined;
+      try {
+        validate(row.program);
+        assert.fail('independent structured validation must fail');
+      } catch (error) {
+        assert.ok(error instanceof A0Error);
+        expected = error.toJSON();
+      }
+      assert.equal(expected.id, `A${String(row.id).padStart(4, '0')}`, row.name);
+      const actual = await structuredRequest(dir, level, row.program, '', [
+        [0, 0, NONE],
+        [1, 0, NONE],
+      ]);
+      assert.equal(actual.status, 8, row.name);
+      assert.equal(actual.state[1], row.id, row.name);
+      for (const packet of actual.rendered) {
+        assert.equal(packet.status, 0, row.name);
+        assert.deepEqual(JSON.parse(packet.json.toString('utf8')), expected, row.name);
+        assert.deepEqual(packet.facts.slice(7, 10), actual.state.slice(109, 112));
+        const decoded = nativeDiagnostic(packet);
+        assert.ok(decoded.ok);
+        assert.deepEqual(decoded.error.toJSON(), expected);
+      }
+    }
+    for (const row of representatives) {
+      const header = row.id === 21 || row.id === 301;
+      const controls: RenderControl[] = [
+        [1, 0, NONE],
+        [2, 0, NONE],
+        [1, 0, 0],
+        [1, 1, NONE],
+        [1, 2, NONE],
+        [1, header ? 6 : 4, NONE],
+        [1, 5, NONE],
+        [1, 7, NONE],
+        [1, 9, NONE],
+        [1, 10, NONE],
+        [1, 40, NONE],
+        [1, 42, NONE],
+        [1, 43, NONE],
+        [1, 44, NONE],
+        [2, 11, NONE],
+        [1, header ? 6 : 4, 0],
+        ...[1, 2, 3, 4, 5].map((status): RenderControl => [1, status + 10, NONE]),
+        ...(!header ? [1, 2, 3, 4, 5].map((status): RenderControl => [1, status + 30, NONE]) : []),
+      ];
+      const actual = await structuredRequest(dir, level, row.program, 'λ😀\r\nx', controls);
+      assert.equal(actual.state[1], row.id);
+      for (const [index, packet] of actual.rendered.entries()) {
+        const control = controls[index];
+        assert.ok(control);
+        const [options, fault, budget] = control;
+        // Options refuse before publication. A reached storage failure is retained;
+        // missing context refuses before the first output allocation is attempted.
+        let expected = budget === 0 ? 4 : 0;
+        if (fault) expected = fault === 42 ? 2 : 7;
+        if (fault >= 11 && fault <= 15) expected = fault - 10;
+        if (fault >= 31 && fault <= 35) expected = fault - 30;
+        if (options > 1) expected = 7;
+        assert.equal(packet.status, expected, `${row.name}: O${level} fault${fault}`);
+        if (expected !== 0) assert.equal(packet.json.length, 0, 'atomic refusal');
+      }
+      const physical = await structuredRequest(dir, level, row.program, 'λ😀\r\nx', [[1, 3, NONE]]);
+      assert.equal(physical.rendered[0]?.status, 0);
+      assert.deepEqual(physical.rendered[0]?.facts.slice(2, 5), [1, 2, 4]);
+      assert.deepEqual(physical.rendered[0]?.facts.slice(12, 14), [1, 2]);
+    }
+    const callee = rows.find((row) => row.id === 304);
+    assert.ok(callee);
+    const forgedOpcode = await structuredRequest(dir, level, callee.program, '', [
+      [1, 8, NONE],
+      [1, 41, NONE],
+    ]);
+    assert.deepEqual(
+      forgedOpcode.rendered.map((packet) => packet.status),
+      [7, 2],
+    );
+    assert.ok(forgedOpcode.rendered.every((packet) => packet.json.length === 0));
+    const later = rows.find((row) => row.name === 'second function owns its failing node');
+    assert.ok(later);
+    const crossFunction = await structuredRequest(dir, level, later.program, '', [
+      [1, 0, NONE],
+      [1, 6, NONE],
+    ]);
+    assert.equal(crossFunction.state[109], 1);
+    assert.equal(crossFunction.state[110], 1);
+    assert.deepEqual(
+      crossFunction.rendered.map((packet) => packet.status),
+      [0, 7],
+      'another function node cannot supply the diagnostic name',
+    );
+  }
+});
 
 test('seed-built ordered verifier renders global limits without inventing function context', {
   skip,
