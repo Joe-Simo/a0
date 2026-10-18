@@ -106,6 +106,9 @@ IR directly, preserves callee/type identity, and decodes type rows iteratively. 
 the TypeScript source parser or validator. `tools/source-audit.ts --native-artifact=DIR` checks this
 host and artifact against the source migration controls. The existing TypeScript compiler remains
 the public default until the integration and performance gates pass.
+The committed native corpus, own-source and specification checks are recorded in
+`results/unified-source-module-audit.json`, `results/unified-source-module-build.json` and
+`results/unified-source-module-specs.json`. These record correctness, not a timing improvement.
 
 Build the internal candidate with an installed Clang/WASI toolchain (no downloads are performed):
 

@@ -18,6 +18,16 @@ validator, and `a0 migrate` creates a verified source-dependency copy using the 
 printer. Both source readers still exist; the language has not yet met the single-syntax goal.
 Scope, migration instructions and outstanding gates: [unified syntax](docs/design/unified-syntax.md).
 
+The flat candidate now builds from `compiler/source_frontend.a0` and shared compiler modules,
+with a portable host that decodes checked IR without a second parser or validator. The committed
+corpus audit passes all 176 accepted source entries, including guarded migration and exact native
+IR/type facts, and parses its own 598-function source to identical optimized C
+(`results/unified-source-module-audit.json`, `results/unified-source-module-build.json`). The
+independent specification controls pass 30 cases (`results/unified-source-module-specs.json`).
+These are correctness results. Native graph/tool integration, full gates and the recorded frontend
+performance losses still prevent an official source cutover; no compilation or AI accuracy gain
+is claimed by this increment.
+
 - **Language.** Types `u32`, `bool`, fixed-size arrays and records, and the linear `io` token; pure, total, exactly specified
   operations (wrapping unsigned arithmetic, logical shifts, total `div`/`rem`); `call`, bounded `fold`, early-exit `loop`, `text`.
   No recursion, no heap, no floating point. Reference: `DESIGN.md`, `MODEL_GUIDE.txt`.
