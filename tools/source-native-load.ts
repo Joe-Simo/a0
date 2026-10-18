@@ -8,6 +8,7 @@ import { nativeSource } from '../src/source-native.js';
 import type { NativeFormatOptions } from '../src/source-native-format.js';
 import type { NativeDiagnosticOptions } from '../src/source-native-render.js';
 import { DIAGNOSTIC_OPTIONS, diagnosticInputs } from './source-diagnostic-inputs.js';
+import { FORMAT_OPTIONS, FORMAT_ROOTS, formatInputs } from './source-format-inputs.js';
 
 const hash = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex');
 
@@ -145,6 +146,12 @@ export async function prepareSourceFormat(directory: string) {
     assert.equal(build.authoringWords, 128);
     assert.equal(build.roots?.arena_format_authoring?.resultWords, 133);
     assert.equal(build.roots?.arena_revision_authoring?.resultWords, 5);
+    const current = await formatInputs();
+    assert.deepEqual(build.inputs, current.inputs, 'formatter input closure differs');
+    assert.equal(build.sourceSHA256, current.sourceSHA256, 'formatter source IR differs');
+    assert.deepEqual(build.roots, FORMAT_ROOTS, 'formatter function ABI differs');
+    assert.deepEqual(build.options, FORMAT_OPTIONS, 'formatter compiler options differ');
+    assert.deepEqual(build.requiredWasmFeatures, ['bulk-memory', 'simd']);
   }
   assert.equal(build.entry, 'compiler/revision_arena.a0');
   assert.equal(build.parsedWords, 128);
