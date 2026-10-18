@@ -1,8 +1,10 @@
 /** Actual pinned package over the MCP protocol; no checkout freshness wrapper or default switch. */
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer, type McpSurface } from '../src/mcp.js';
@@ -52,6 +54,26 @@ async function call(client: Client, name: string, args: Record<string, unknown> 
 }
 
 for (const surface of ['full', 'compact'] as const) {
+  test(`native MCP ${surface}: a filesystem save cannot mark a later edit clean`, {
+    skip:
+      process.platform === 'win32'
+        ? 'deterministic filesystem-worker control uses POSIX FIFO'
+        : false,
+  }, () => {
+    const child = spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL('./fixtures/mcp-save-order.js', import.meta.url)), 'native', surface],
+      { encoding: 'utf8', env: { ...process.env, UV_THREADPOOL_SIZE: '1' }, timeout: 30_000 },
+    );
+    assert.equal(child.status, 0, child.stderr || child.stdout);
+    assert.deepEqual(JSON.parse(child.stdout), {
+      backend: 'native',
+      surface,
+      ordered: true,
+      secondSave: 'saved',
+    });
+  });
+
   test(`native MCP ${surface}: one native syntax edits specs, repairs and saves source metadata`, async () => {
     await fixture(async (root) => {
       const frontend = packaged.instantiate();

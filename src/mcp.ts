@@ -43,8 +43,10 @@ export const MAX_OUTPUT = 1 << 20;
 export const MAX_FUEL = LIMITS.defaultFuel;
 
 interface Opened {
+  readonly path: string;
   readonly session: EditSession;
   readonly sources: readonly string[];
+  pending: Promise<void>;
   /** True once an edit has been applied and not yet saved. */
   dirty: boolean;
 }
@@ -208,8 +210,10 @@ export async function createServer(
         return legacy ? readFile(source, 'utf8') : readUtf8Source(source);
       });
       return {
+        path,
         session: language.createSession(linked.program),
         sources: linked.sources.map((s) => s.path),
+        pending: Promise.resolve(),
         dirty: false,
       };
     })();
@@ -223,14 +227,32 @@ export async function createServer(
     }
   };
 
-  const program = async (file: string | undefined): Promise<TypedProgram> =>
-    (await sessionFor(file)).session.program;
-
-  const apply = (entry: Opened, edit: string, render: (session: EditSession) => string): string => {
-    const output = entry.session.applyAndPublish(edit, (session) => boundedOutput(render(session)));
-    entry.dirty = true;
-    return output;
+  const inOrder = <Output>(entry: Opened, operation: () => Output | Promise<Output>) => {
+    const result = entry.pending.then(() => {
+      protectionPolicy(entry.path);
+      return operation();
+    });
+    // A refusal reaches its caller while leaving the next request able to proceed.
+    entry.pending = result.then(
+      () => {},
+      () => {},
+    );
+    return result;
   };
+
+  const program = async (file: string | undefined): Promise<TypedProgram> => {
+    const entry = await sessionFor(file);
+    return inOrder(entry, () => entry.session.program);
+  };
+
+  const apply = (entry: Opened, edit: string, render: (session: EditSession) => string) =>
+    inOrder(entry, () => {
+      const output = entry.session.applyAndPublish(edit, (session) =>
+        boundedOutput(render(session)),
+      );
+      entry.dirty = true;
+      return output;
+    });
 
   const fileField = z
     .string()
@@ -262,14 +284,18 @@ export async function createServer(
         inputSchema: { file, function: z.string() },
       },
       tool(async ({ file: f, function: name }) => {
-        const { session } = await sessionFor(f);
-        return session.openAndPublish(
-          name,
-          { scope: 'bodies', ...(legacy ? { dense: true } : {}) },
-          ({ text }) => {
-            const body = text.slice(text.indexOf('\n') + 1);
-            return boundedOutput(legacy ? typedTargetView(body, session.program, name) : body);
-          },
+        const entry = await sessionFor(f);
+        return inOrder(entry, () =>
+          entry.session.openAndPublish(
+            name,
+            { scope: 'bodies', ...(legacy ? { dense: true } : {}) },
+            ({ text }) => {
+              const body = text.slice(text.indexOf('\n') + 1);
+              return boundedOutput(
+                legacy ? typedTargetView(body, entry.session.program, name) : body,
+              );
+            },
+          ),
         );
       }),
     );
@@ -297,12 +323,14 @@ export async function createServer(
       },
       tool(async ({ file: f }) => {
         const entry = await sessionFor(f);
-        if (!entry.dirty) throw diag('A0806');
-        const out = await fileOf(f);
-        if (entry.sources.length > 1) throw diag('A0807');
-        await writeFile(out, language.formatSource(entry.session.program, out), 'utf8');
-        entry.dirty = false;
-        return relative(root, out);
+        return inOrder(entry, async () => {
+          if (!entry.dirty) throw diag('A0806');
+          const out = await fileOf(f);
+          if (entry.sources.length > 1) throw diag('A0807');
+          await writeFile(out, language.formatSource(entry.session.program, out), 'utf8');
+          entry.dirty = false;
+          return relative(root, out);
+        });
       }),
     );
     return server;
@@ -330,21 +358,23 @@ export async function createServer(
       },
     },
     tool(async ({ file, function: name, scope, dense, specs, lean }) => {
-      const { session } = await sessionFor(file);
+      const entry = await sessionFor(file);
       const useDense = legacy && (dense ?? true);
-      return session.openAndPublish(
-        name,
-        {
-          ...(scope === 'full'
-            ? {}
-            : { scope: scope === 'bodies' ? ('bodies' as const) : ('deps' as const) }),
-          ...(useDense ? { dense: true } : {}),
-          ...(specs === undefined ? {} : { specs }),
-        },
-        ({ text }) =>
-          boundedOutput(
-            (useDense || !legacy) && lean === true ? text.slice(text.indexOf('\n') + 1) : text,
-          ),
+      return inOrder(entry, () =>
+        entry.session.openAndPublish(
+          name,
+          {
+            ...(scope === 'full'
+              ? {}
+              : { scope: scope === 'bodies' ? ('bodies' as const) : ('deps' as const) }),
+            ...(useDense ? { dense: true } : {}),
+            ...(specs === undefined ? {} : { specs }),
+          },
+          ({ text }) =>
+            boundedOutput(
+              (useDense || !legacy) && lean === true ? text.slice(text.indexOf('\n') + 1) : text,
+            ),
+        ),
       );
     }),
   );
@@ -361,14 +391,16 @@ export async function createServer(
       },
     },
     tool(async ({ file, target, dense }) => {
-      const { session } = await sessionFor(file);
+      const entry = await sessionFor(file);
       const useDense = legacy && (dense ?? true);
-      return session.openProgramAndPublish(
-        {
-          ...(target === undefined ? {} : { scope: 'deps' as const, target }),
-          ...(useDense ? { dense: true } : {}),
-        },
-        ({ text }) => boundedOutput(text),
+      return inOrder(entry, () =>
+        entry.session.openProgramAndPublish(
+          {
+            ...(target === undefined ? {} : { scope: 'deps' as const, target }),
+            ...(useDense ? { dense: true } : {}),
+          },
+          ({ text }) => boundedOutput(text),
+        ),
       );
     }),
   );
@@ -464,12 +496,14 @@ export async function createServer(
     },
     tool(async ({ file, path }) => {
       const entry = await sessionFor(file);
-      if (!entry.dirty) throw diag('A0806');
-      const out = path === undefined ? await fileOf(file) : await confined(path, false);
-      if (path === undefined && entry.sources.length > 1) throw diag('A0807');
-      await writeFile(out, language.formatSource(entry.session.program, out), 'utf8');
-      entry.dirty = false;
-      return relative(root, out);
+      return inOrder(entry, async () => {
+        if (!entry.dirty) throw diag('A0806');
+        const out = path === undefined ? await fileOf(file) : await confined(path, false);
+        if (path === undefined && entry.sources.length > 1) throw diag('A0807');
+        await writeFile(out, language.formatSource(entry.session.program, out), 'utf8');
+        entry.dirty = false;
+        return relative(root, out);
+      });
     }),
   );
 
