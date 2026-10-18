@@ -217,6 +217,34 @@ function bareFunction(fn: Func): Func {
         }),
   };
 }
+
+/** Remove authoring hints while retaining every semantic value, type, import and spec. */
+function semanticProgram(program: Program): Program {
+  const node = (value: Node): Node => {
+    const { text: _text, ...plain } = bareNode(value);
+    return plain;
+  };
+  return {
+    functions: program.functions.map((value) => {
+      const fn = bareFunction(value);
+      return {
+        ...fn,
+        nodes: fn.nodes.map(node),
+        ...(fn.spec === undefined
+          ? {}
+          : {
+              spec: {
+                examples: fn.spec.examples,
+                ...(fn.spec.pre === undefined ? {} : { pre: node(fn.spec.pre) }),
+                ...(fn.spec.post === undefined ? {} : { post: node(fn.spec.post) }),
+              },
+            }),
+      };
+    }),
+    ...(program.profile === undefined ? {} : { profile: program.profile }),
+    ...(program.uses === undefined ? {} : { uses: program.uses }),
+  };
+}
 function flat(program: Program, scope: 'source' | 'program' | 'function', id: number): string {
   if (scope === 'source') return formatSource(program);
   const selected = scope === 'function' ? [program.functions[id] as Func] : program.functions;
@@ -325,6 +353,37 @@ async function graphOracle(sources: readonly string[]) {
 }
 
 for (const [backend, factory] of factories) {
+  test(`${backend}: unconfigured checking ignores authoring costs across actual allocation budgets`, () => {
+    const rich = factory(),
+      plain = factory();
+    try {
+      const authored = authoredProgram(),
+        semantic = semanticProgram(authored);
+      let accepted = 0;
+      for (const budget of [0, 500, 1_000, 4_000, 16_000, 100_000_000]) {
+        const actual = rich.checkProgram(authored, budget),
+          expected = plain.checkProgram(semantic, budget);
+        assert.equal(actual.status, expected.status, `status at budget ${budget}`);
+        assert.equal(actual.ok, expected.ok, `acceptance at budget ${budget}`);
+        assert.deepEqual(actual.state, expected.state, `raw state at budget ${budget}`);
+        assert.deepEqual(actual.specState, expected.specState, `raw spec state at budget ${budget}`);
+        if (actual.ok && expected.ok) {
+          accepted++;
+          for (const target of ['c', 'js', 'wasm'] as const)
+            assert.equal(
+              compile(actual.typed, target).text,
+              compile(expected.typed, target).text,
+              `${target} executable output at budget ${budget}`,
+            );
+        }
+      }
+      assert.ok(accepted > 0, 'the budget range includes successful executable checks');
+    } finally {
+      rich.close();
+      plain.close();
+    }
+  });
+
   test(`${backend}: structured authoring preserves every comment attachment, Unicode text and revision`, () => {
     const engine = factory(companion, diagnostic);
     try {
