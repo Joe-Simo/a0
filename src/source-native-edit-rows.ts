@@ -4,7 +4,7 @@ import type { A0Error, FixEdit } from './diagnostics.js';
 import { type EditSourceLine, type EditSourceOwner, editSourceJoin } from './edit-source.js';
 import { applyEdit } from './fix.js';
 import type { nativeSource } from './source-native.js';
-import { nativeEditEventText, nativeEditFormat } from './source-native-edit-context.js';
+import { nativeEditEventText, nativeEditFormats } from './source-native-edit-context.js';
 import { mapNativeEditDiagnostic, throwNativeEditSource } from './source-native-edit-source.js';
 import type { Spec, SpecExample } from './spec.js';
 
@@ -22,8 +22,8 @@ export function nativeEditRows(frontend: Frontend) {
     provenance.set(value, fields);
   };
   const render = (fn: Func, skipSpecs = false): EditSourceLine[] => {
-    const output = nativeEditFormat(frontend, fn),
-      header = nativeEditFormat(frontend, fn, 'signature').text.trimEnd();
+    const { body: output, signature } = nativeEditFormats(frontend, fn),
+      header = signature.text.trimEnd();
     const rows: { start: number; row: EditSourceLine }[] = [];
     let node = 0,
       example = 0,

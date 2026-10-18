@@ -1,27 +1,48 @@
 /** Detached contextual fragments from the authoritative A0 formatter. */
 import type { Func } from './core.js';
-import type { nativeSource } from './source-native.js';
+import type { NativeUnitFormatInput, nativeSource } from './source-native.js';
 import type { NativeFormatResult } from './source-native-format.js';
 
 type Frontend = ReturnType<typeof nativeSource>;
 export type NativeFormattedText = Extract<NativeFormatResult, { readonly ok: true }>;
+
+function activate(frontend: Frontend, fn: Func): NativeUnitFormatInput {
+  const active = frontend.activateProgramForFormat({ functions: [fn] });
+  if (!active.ok)
+    throw new Error(
+      `native edit activation refused: ${'reason' in active ? active.reason : active.status}`,
+    );
+  return active.input;
+}
+
+function format(
+  frontend: Frontend,
+  input: NativeUnitFormatInput,
+  scope: 'function' | 'signature',
+): NativeFormattedText {
+  const output = frontend.format(input, { scope, mapping: true });
+  if (!output.ok)
+    throw new Error(
+      `native edit formatting refused: ${'reason' in output ? output.reason : output.status}`,
+    );
+  return output;
+}
 
 export function nativeEditFormat(
   frontend: Frontend,
   fn: Func,
   scope: 'function' | 'signature' = 'function',
 ): NativeFormattedText {
-  const active = frontend.activateProgramForFormat({ functions: [fn] });
-  if (!active.ok)
-    throw new Error(
-      `native edit activation refused: ${'reason' in active ? active.reason : active.status}`,
-    );
-  const output = frontend.format(active.input, { scope, mapping: true });
-  if (!output.ok)
-    throw new Error(
-      `native edit formatting refused: ${'reason' in output ? output.reason : output.status}`,
-    );
-  return output;
+  return format(frontend, activate(frontend, fn), scope);
+}
+
+/** One activation; both outputs are detached before any subsequent arena reset. */
+export function nativeEditFormats(frontend: Frontend, fn: Func) {
+  const input = activate(frontend, fn);
+  return {
+    signature: format(frontend, input, 'signature'),
+    body: format(frontend, input, 'function'),
+  };
 }
 
 export function nativeEditEventText(output: NativeFormattedText, at: number): string {
@@ -41,8 +62,8 @@ export function nativeEditEventText(output: NativeFormattedText, at: number): st
 
 /** Both strings are detached before any subsequent parser/checker activation. */
 export function nativeEditContext(frontend: Frontend, fn: Func): { header: string; ret: string } {
-  const header = nativeEditFormat(frontend, fn, 'signature').text;
-  const output = nativeEditFormat(frontend, fn);
+  const { signature, body: output } = nativeEditFormats(frontend, fn);
+  const header = signature.text;
   const returns: string[] = [];
   for (let at = 0; at < output.events.length; at += 6)
     if (output.events[at] === 10) returns.push(nativeEditEventText(output, at));
