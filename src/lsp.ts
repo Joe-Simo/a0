@@ -25,10 +25,10 @@ import {
   DiagnosticSeverity,
   type DocumentSymbol,
   type Location,
+  LSPErrorCodes,
   type Position,
   type Range,
   ResponseError,
-  LSPErrorCodes,
   SymbolKind,
   TextDocumentSyncKind,
   TextDocuments,
@@ -242,10 +242,13 @@ export async function startServer(
   const root = (await stat(launched)).isDirectory() ? launched : dirname(launched);
   const documents = new TextDocuments(TextDocument);
   const frontend = options.frontend;
-  const native = frontend === undefined ? undefined : {
-    frontend,
-    source: await import('./source-native-link.js'),
-  };
+  const native =
+    frontend === undefined
+      ? undefined
+      : {
+          frontend,
+          source: await import('./source-native-link.js'),
+        };
   let documentEpoch = 0;
   let stopping = false;
   const pendingPublications = new Set<Promise<void>>();
@@ -269,7 +272,7 @@ export async function startServer(
   const canonicalNativePath = async (path: string): Promise<string> => {
     // linkProject canonicalizes the root directory before any source file.
     if (path === root) {
-      if (await realpath(root) !== root) throw new Error('language service root changed');
+      if ((await realpath(root)) !== root) throw new Error('language service root changed');
       return root;
     }
     return confineNativePath(path);
@@ -297,11 +300,17 @@ export async function startServer(
   };
 
   /** Capture original open-buffer strings together; later graph IO cannot mix buffer versions. */
-  const nativeReadSnapshot = async (entry: string, entryText: string): Promise<(path: string) => Promise<string>> => {
+  const nativeReadSnapshot = async (
+    entry: string,
+    entryText: string,
+  ): Promise<(path: string) => Promise<string>> => {
     const buffers = documents.all().map((doc) => ({ uri: doc.uri, text: doc.getText() }));
-    const resolved = await Promise.all(buffers.map(async ({ uri, text }) => ({
-      path: paths.get(uri) ?? await pathOf(uri), text,
-    })));
+    const resolved = await Promise.all(
+      buffers.map(async ({ uri, text }) => ({
+        path: paths.get(uri) ?? (await pathOf(uri)),
+        text,
+      })),
+    );
     const captured = new Map<string, string>();
     for (const { path, text } of resolved)
       if (path !== undefined && !captured.has(path)) captured.set(path, text);
@@ -356,34 +365,61 @@ export async function startServer(
         },
       ];
     if (frontend !== undefined && !path.endsWith('.a0'))
-      return [{
-        range: lineRange(text, 0), severity: DiagnosticSeverity.Error, code: 'service', source: 'a0',
-        message: 'Migrate historical source before using language services.',
-        data: { native: { reason: 'source-path' } },
-      }];
-    try {
-      if (native === undefined) await link(path, read, { root });
-      else await native.source.linkNativeSource(path, await nativeReadSnapshot(path, text), native.frontend, {
-        root,
-        canonicalPath: canonicalNativePath,
-      });
-      return [];
-    } catch (e) {
-      // Native semantic details come only from the actual A0 renderer, never host reclassification.
-      const failure = native !== undefined && e instanceof native.source.NativeSourceError ? e : undefined;
-      const rendered = failure?.a0Error;
-      if (native !== undefined && !(e instanceof A0Error) && rendered === undefined) {
-        const facts = failure !== undefined
-          ? { status: failure.status, diagnostic: failure.diagnostic }
-          : { reason: typeof (e as { code?: unknown })?.code === 'string' ? (e as { code: string }).code : 'service-unavailable' };
-        return [{
-          range: lineRange(text, Math.max(0, (failure !== undefined && failure.path === path ? failure.line ?? 1 : 1) - 1)),
+      return [
+        {
+          range: lineRange(text, 0),
           severity: DiagnosticSeverity.Error,
           code: 'service',
           source: 'a0',
-          message: failure !== undefined ? 'Source checking refused.' : 'Language service unavailable.',
-          data: { native: facts },
-        }];
+          message: 'Migrate historical source before using language services.',
+          data: { native: { reason: 'source-path' } },
+        },
+      ];
+    try {
+      if (native === undefined) await link(path, read, { root });
+      else
+        await native.source.linkNativeSource(
+          path,
+          await nativeReadSnapshot(path, text),
+          native.frontend,
+          {
+            root,
+            canonicalPath: canonicalNativePath,
+          },
+        );
+      return [];
+    } catch (e) {
+      // Native semantic details come only from the actual A0 renderer, never host reclassification.
+      const failure =
+        native !== undefined && e instanceof native.source.NativeSourceError ? e : undefined;
+      const rendered = failure?.a0Error;
+      if (native !== undefined && !(e instanceof A0Error) && rendered === undefined) {
+        const facts =
+          failure !== undefined
+            ? { status: failure.status, diagnostic: failure.diagnostic }
+            : {
+                reason:
+                  typeof (e as { code?: unknown })?.code === 'string'
+                    ? (e as { code: string }).code
+                    : 'service-unavailable',
+              };
+        return [
+          {
+            range: lineRange(
+              text,
+              Math.max(
+                0,
+                (failure !== undefined && failure.path === path ? (failure.line ?? 1) : 1) - 1,
+              ),
+            ),
+            severity: DiagnosticSeverity.Error,
+            code: 'service',
+            source: 'a0',
+            message:
+              failure !== undefined ? 'Source checking refused.' : 'Language service unavailable.',
+            data: { native: facts },
+          },
+        ];
       }
       const err = rendered ?? (e instanceof A0Error ? e : new A0Error('internal error', undefined));
       const at = LINKED_AT.exec(err.message);
@@ -424,10 +460,17 @@ export async function startServer(
 
   const publishCurrent = async (doc: TextDocument): Promise<void> => {
     if (frontend !== undefined && (stopping || documents.get(doc.uri) !== doc)) return;
-    const epoch = documentEpoch, version = doc.version;
+    const epoch = documentEpoch,
+      version = doc.version;
     const diagnostics = await diagnose(doc);
-    if (frontend !== undefined &&
-      (stopping || documentEpoch !== epoch || documents.get(doc.uri) !== doc || doc.version !== version)) return;
+    if (
+      frontend !== undefined &&
+      (stopping ||
+        documentEpoch !== epoch ||
+        documents.get(doc.uri) !== doc ||
+        doc.version !== version)
+    )
+      return;
     await connection.sendDiagnostics({
       uri: doc.uri,
       diagnostics,
@@ -439,7 +482,9 @@ export async function startServer(
     const task = publishCurrent(doc);
     if (frontend !== undefined) {
       pendingPublications.add(task);
-      const completed = (): void => { pendingPublications.delete(task); };
+      const completed = (): void => {
+        pendingPublications.delete(task);
+      };
       void task.then(completed, completed);
     }
     return task;
@@ -565,42 +610,71 @@ export async function startServer(
   connection.onDocumentFormatting(async ({ textDocument }): Promise<TextEdit[] | null> => {
     const doc = documents.get(textDocument.uri);
     if (doc === undefined) return null;
-    const epoch = documentEpoch, version = doc.version, text = doc.getText();
-    const path = paths.get(textDocument.uri) ?? (frontend === undefined ? undefined : await pathOf(textDocument.uri));
+    const epoch = documentEpoch,
+      version = doc.version,
+      text = doc.getText();
+    const path =
+      paths.get(textDocument.uri) ??
+      (frontend === undefined ? undefined : await pathOf(textDocument.uri));
     if (frontend !== undefined && stopping)
-      throw new ResponseError(LSPErrorCodes.RequestFailed, 'Language service unavailable.', { reason: 'service-unavailable' });
-    if (frontend !== undefined &&
-      (documentEpoch !== epoch || documents.get(textDocument.uri) !== doc || doc.version !== version))
-      throw new ResponseError(LSPErrorCodes.ContentModified, 'Document changed during formatting.', { reason: 'content-modified' });
+      throw new ResponseError(LSPErrorCodes.RequestFailed, 'Language service unavailable.', {
+        reason: 'service-unavailable',
+      });
+    if (
+      frontend !== undefined &&
+      (documentEpoch !== epoch ||
+        documents.get(textDocument.uri) !== doc ||
+        doc.version !== version)
+    )
+      throw new ResponseError(
+        LSPErrorCodes.ContentModified,
+        'Document changed during formatting.',
+        { reason: 'content-modified' },
+      );
     if (path === undefined) return null;
     let formatted: string;
     if (frontend !== undefined) {
       try {
-      if (!path.endsWith('.a0'))
-        throw new ResponseError(LSPErrorCodes.RequestFailed, 'Formatting requires migrated .a0 source.', { reason: 'source-path' });
-      const unit = frontend.parseUnit(text);
-      if (!unit.ok)
-        throw new ResponseError(LSPErrorCodes.RequestFailed, 'Source parsing refused.', { status: unit.status, diagnostic: unit.state[1] });
-      const output = frontend.format(unit);
-      if (!output.ok)
-        throw new ResponseError(LSPErrorCodes.RequestFailed, 'Source formatting refused.', output);
-      formatted = output.text;
+        if (!path.endsWith('.a0'))
+          throw new ResponseError(
+            LSPErrorCodes.RequestFailed,
+            'Formatting requires migrated .a0 source.',
+            { reason: 'source-path' },
+          );
+        const unit = frontend.parseUnit(text);
+        if (!unit.ok)
+          throw new ResponseError(LSPErrorCodes.RequestFailed, 'Source parsing refused.', {
+            status: unit.status,
+            diagnostic: unit.state[1],
+          });
+        const output = frontend.format(unit);
+        if (!output.ok)
+          throw new ResponseError(
+            LSPErrorCodes.RequestFailed,
+            'Source formatting refused.',
+            output,
+          );
+        formatted = output.text;
       } catch (error) {
         if (error instanceof ResponseError) throw error;
         throw new ResponseError(LSPErrorCodes.RequestFailed, 'Language service unavailable.', {
-          reason: typeof (error as { code?: unknown })?.code === 'string' ? (error as { code: string }).code : 'service-unavailable',
+          reason:
+            typeof (error as { code?: unknown })?.code === 'string'
+              ? (error as { code: string }).code
+              : 'service-unavailable',
         });
       }
-    } else try {
-      if (isDensePath(path)) {
-        // Dense text is formatted through the dense printer, with the parameter counts of
-        // the files it uses (a call's arity comes from its callee).
-        const { program, known } = await parseFile(path, read);
-        formatted = formatDense(program, { known, comments: true });
-      } else formatted = formatSource(parse(text));
-    } catch {
-      return null;
-    }
+    } else
+      try {
+        if (isDensePath(path)) {
+          // Dense text is formatted through the dense printer, with the parameter counts of
+          // the files it uses (a call's arity comes from its callee).
+          const { program, known } = await parseFile(path, read);
+          formatted = formatDense(program, { known, comments: true });
+        } else formatted = formatSource(parse(text));
+      } catch {
+        return null;
+      }
     if (formatted === text) return [];
     const end = doc.positionAt(text.length);
     return [{ range: { start: { line: 0, character: 0 }, end }, newText: formatted }];
