@@ -106,6 +106,21 @@ IR directly, preserves callee/type identity, and decodes type rows iteratively. 
 the TypeScript source parser or validator. `tools/source-audit.ts --native-artifact=DIR` checks this
 host and artifact against the source migration controls. The existing TypeScript compiler remains
 the public default until the integration and performance gates pass.
+
+The arena entrypoints now share `compiler/source_grammar.a0` and
+`compiler/source_type_grammar.a0` for ordinary source and executable specifications.
+`compiler/word_classify_shared.a0` also checks names supplied through structured compiler IR.
+`compiler/source_verify_arena_shared.a0` supplies the ordered parse/check/spec driver to both
+the source frontend and backend service. Moving that driver preserves the executable artifact
+exactly (`results/unified-source-shared-driver.json`). The historical paged bootstrap reader
+still needs migration; this consolidation does not complete the public frontend cutover.
+
+`nativeSource.checkProgram` sends existing compiler IR to the same A0 checker without formatting
+or reparsing source. Its locations are synthetic. The private diagnostic packet adapter and
+remaining renderer coverage are documented in [native diagnostics](native-diagnostic-adapter.md).
+Generic host streams for the arena C emitter are documented in
+[arena C host IO](arena-c-host-io.md); these support the later bootstrap integration.
+
 The committed native corpus, own-source and specification checks are recorded in
 `results/unified-source-module-audit.json`, `results/unified-source-module-build.json` and
 `results/unified-source-module-specs.json`. These record correctness, not a timing improvement.
