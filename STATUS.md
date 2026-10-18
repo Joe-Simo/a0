@@ -1,5 +1,15 @@
 # A0 status
 
+2026-10-18 read-array Wasm control: all 240 emitted C hashes match at maximum recorded load 1.9,
+but the direct frontend remains slower than the C-derived control on all six applications
+(1.23–2.08×). Boot takes 2640.11 ms versus 1299.51 ms for the C-derived frontend and 191.76 ms
+for old Canonical. The two direct components total 143092 bytes, with a proved 16-byte arena stack;
+smaller artifacts and lower linear memory do not clear the latency losses. This paired run does not
+isolate the read-array fold optimization against the earlier direct backend. The official frontend
+remains unchanged; full cells, audits and scope are in `results/unified-source-read-array-wasm.json`,
+`results/unified-source-read-array-wasm-samples.json` and
+`results/unified-source-read-array-wasm-decision.json`.
+
 2026-10-18 direct Wasm control: all 240 emitted C hashes match at maximum recorded load 1.7,
 but the boot frontend median is 2716.08 ms versus 189.73 ms for old Canonical and 1291.83 ms
 for the C-derived frontend. The direct components total 143167 bytes and use less linear Wasm
