@@ -11,6 +11,8 @@ const step = 'fn step u32 u32 -> u32\nx mov p0\nret x\nend\n';
 const checker = (n) => `fn held u32 -> bool\na fold step ${n} p0\nb eq a p0\nret b\nend\n`;
 const helper = 'fn identity u32 -> u32\nret p0\nend\n';
 const badbool = 'fn bad u32 -> bool\na div p0 0\nb eq a 0\nret b\nend\n';
+// Keep historical source bytes as the independent oracle. Native-only spellings are
+// handwritten below so stricter spec separators do not remove value/type coverage.
 export const cases = [
   { name: 'empty-source', source: '', status: 0 },
   { name: 'no-spec', source: simple(), status: 0 },
@@ -164,12 +166,24 @@ export const cases = [
       '(u32x2,(bool,u32))',
       '(u32x2,(bool,u32))',
     ),
+    nativeSource: simple(
+      'ex ([1 2] (true 9)) ->([1 2] (true 9))\npost eq true true',
+      'ret p0',
+      '(u32x2,(bool,u32))',
+      '(u32x2,(bool,u32))',
+    ),
     status: 0,
   },
   {
     name: 'nested-deep-mismatch',
     source: simple(
       'ex ([1;2];(true;9)) ->([1;2];(true;8))',
+      'ret p0',
+      '(u32x2,(bool,u32))',
+      '(u32x2,(bool,u32))',
+    ),
+    nativeSource: simple(
+      'ex ([1 2] (true 9)) ->([1 2] (true 8))',
       'ret p0',
       '(u32x2,(bool,u32))',
       '(u32x2,(bool,u32))',
@@ -181,6 +195,7 @@ export const cases = [
   {
     name: 'record-and-array-literals-remain-distinct',
     source: simple('ex (1;2) ->[1;2]', 'ret p0', 'u32x2', 'u32x2'),
+    nativeSource: simple('ex (1 2) ->[1 2]', 'ret p0', 'u32x2', 'u32x2'),
     status: 8,
     id: 714,
     reason: 7,
@@ -247,11 +262,13 @@ export const cases = [
   {
     name: 'checked-overflow-tuple',
     source: simple('ex 4294967295 ->(0;false)', 'a cadd p0 1\nret a', 'u32', '(u32,bool)'),
+    nativeSource: simple('ex 4294967295 ->(0 false)', 'a cadd p0 1\nret a', 'u32', '(u32,bool)'),
     status: 0,
   },
   {
     name: 'checked-divzero-tuple',
     source: simple('ex 7 ->(0;false)', 'a cdiv p0 0\nret a', 'u32', '(u32,bool)'),
+    nativeSource: simple('ex 7 ->(0 false)', 'a cdiv p0 0\nret a', 'u32', '(u32,bool)'),
     status: 0,
   },
   {
@@ -259,6 +276,9 @@ export const cases = [
     source:
       'profile strict\n' +
       simple('ex [7;8] ->(0;false)', 'a cget p0 32\nret a', 'u32x2', '(u32,bool)'),
+    nativeSource:
+      'profile strict\n' +
+      simple('ex [7 8] ->(0 false)', 'a cget p0 32\nret a', 'u32x2', '(u32,bool)'),
     status: 0,
   },
   {

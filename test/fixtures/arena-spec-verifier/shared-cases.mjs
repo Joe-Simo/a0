@@ -123,3 +123,36 @@ export const legacyAdjacencyCases = [
     status: 0,
   },
 ];
+
+// Native parser inputs use the explicit flat aggregate contract. Historical
+// canonical/flat pairs above remain unchanged as migration and semantic oracles.
+export const nativeSpecInputs = {
+  'nested-record-array-literals': {
+    canonical:
+      'fn keep (u32x2,(bool,u32)) -> (u32x2,(bool,u32))\n' +
+      'ex ([1 2] (true 9)) ->([1 2] (true 9))\nret p0\nend\n',
+  },
+  'array-trailing-separators': {
+    canonical: 'fn f u32x2 -> u32x2\nex [1 2] ->[1 2]\nret p0\nend\n',
+    flat: 'fn f _x2 -> _x2\nex [1,2] ->[1,2]\nret A\nend\n',
+  },
+  'record-trailing-separators': {
+    canonical: 'fn f (u32,bool) -> (u32,bool)\nex (1 true) ->(1 true)\nret p0\nend\n',
+    flat: 'fn f (_,bool) -> (_,bool)\nex (1,true) ->(1,true)\nret A\nend\n',
+  },
+  'singleton-record-separators': {
+    canonical: 'fn f (u32) -> (u32)\nex (7,) ->(7,)\nret p0\nend\n',
+  },
+  'nested-singleton-record-separators': {
+    canonical: 'fn f ((u32)) -> ((u32))\nex ((7,),) ->((7,),)\nret p0\nend\n',
+  },
+  'repeated-separators-remain-invalid': {
+    canonical: 'fn f u32x2 -> u32x2\nex [1,,2] ->[1 2]\nret p0\nend\n',
+  },
+  'adjacent-nested-arrays-without-separator': {
+    canonical: 'fn f (u32x1,u32x1) -> (u32x1,u32x1)\nex ([1] [2]) ->([1] [2])\nret p0\nend\n',
+  },
+  'adjacent-number-and-boolean-without-separator': {
+    canonical: 'fn f (u32,bool) -> (u32,bool)\nex (1 true) ->(1 true)\nret p0\nend\n',
+  },
+};

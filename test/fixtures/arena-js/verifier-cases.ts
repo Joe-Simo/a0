@@ -1,6 +1,8 @@
 interface SpecCase {
   readonly name: string;
   readonly source: string;
+  /** Handwritten flat spec literals; source remains the independent historical oracle. */
+  readonly nativeSource?: string;
   readonly status: number;
   readonly id?: number;
   readonly heavy?: boolean;
@@ -180,12 +182,24 @@ export const cases: readonly SpecCase[] = [
       '(u32x2,(bool,u32))',
       '(u32x2,(bool,u32))',
     ),
+    nativeSource: simple(
+      'ex ([1 2] (true 9)) ->([1 2] (true 9))\npost eq true true',
+      'ret p0',
+      '(u32x2,(bool,u32))',
+      '(u32x2,(bool,u32))',
+    ),
     status: 0,
   },
   {
     name: 'nested-deep-mismatch',
     source: simple(
       'ex ([1;2];(true;9)) ->([1;2];(true;8))',
+      'ret p0',
+      '(u32x2,(bool,u32))',
+      '(u32x2,(bool,u32))',
+    ),
+    nativeSource: simple(
+      'ex ([1 2] (true 9)) ->([1 2] (true 8))',
       'ret p0',
       '(u32x2,(bool,u32))',
       '(u32x2,(bool,u32))',
@@ -197,6 +211,7 @@ export const cases: readonly SpecCase[] = [
   {
     name: 'record-and-array-literals-remain-distinct',
     source: simple('ex (1;2) ->[1;2]', 'ret p0', 'u32x2', 'u32x2'),
+    nativeSource: simple('ex (1 2) ->[1 2]', 'ret p0', 'u32x2', 'u32x2'),
     status: 8,
     id: 714,
     reason: 7,
@@ -263,11 +278,13 @@ export const cases: readonly SpecCase[] = [
   {
     name: 'checked-overflow-tuple',
     source: simple('ex 4294967295 ->(0;false)', 'a cadd p0 1\nret a', 'u32', '(u32,bool)'),
+    nativeSource: simple('ex 4294967295 ->(0 false)', 'a cadd p0 1\nret a', 'u32', '(u32,bool)'),
     status: 0,
   },
   {
     name: 'checked-divzero-tuple',
     source: simple('ex 7 ->(0;false)', 'a cdiv p0 0\nret a', 'u32', '(u32,bool)'),
+    nativeSource: simple('ex 7 ->(0 false)', 'a cdiv p0 0\nret a', 'u32', '(u32,bool)'),
     status: 0,
   },
   {
@@ -275,6 +292,9 @@ export const cases: readonly SpecCase[] = [
     source:
       'profile strict\n' +
       simple('ex [7;8] ->(0;false)', 'a cget p0 32\nret a', 'u32x2', '(u32,bool)'),
+    nativeSource:
+      'profile strict\n' +
+      simple('ex [7 8] ->(0 false)', 'a cget p0 32\nret a', 'u32x2', '(u32,bool)'),
     status: 0,
   },
   {

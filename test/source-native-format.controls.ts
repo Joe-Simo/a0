@@ -23,6 +23,7 @@ import {
 import { assertCase } from './fixtures/arena-format/assertions.js';
 import {
   formattingCases,
+  nativeFormatInput,
   pressureCases,
   revisionCases,
   type SourceCase,
@@ -170,9 +171,10 @@ const simple = '# 😀\nfn identity\nret A\nend\n';
 function checkRows(engine: ReturnType<typeof nativeSource>, rows: readonly SourceCase[]): void {
   for (const row of rows) {
     if (!row.requests.length) continue; // Invalid legacy spellings are tested by their own parser controls.
+    const source = nativeFormatInput(row.source);
     const parsed = row.checked
-      ? engine.parse(row.source, 100_000_000)
-      : engine.parseUnit(row.source, 100_000_000);
+      ? engine.parse(source, 100_000_000)
+      : engine.parseUnit(source, 100_000_000);
     const state = [...parsed.state],
       specs = [...parsed.specState];
     const results: ComponentResult[] = row.requests.map((request) => {

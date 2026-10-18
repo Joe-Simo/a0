@@ -5,10 +5,10 @@ import { spawnSync } from 'node:child_process';
 import { closeSync, mkdtempSync, openSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { A0Error, LIMITS, parse, parseAndValidate } from '../../../dist/src/core.js';
+import { A0Error, formatProgram, LIMITS, parse, parseAndValidate } from '../../../dist/src/core.js';
 import { spawnWithInput } from '../../../dist/src/toolchain.js';
 import { cases, simple } from './cases.mjs';
-import { legacyAdjacencyCases, sharedCases } from './shared-cases.mjs';
+import { legacyAdjacencyCases, nativeSpecInputs, sharedCases } from './shared-cases.mjs';
 
 const [exe, group] = process.argv.slice(2);
 assert.ok(exe);
@@ -251,6 +251,12 @@ function referenceSpecs(program) {
 }
 if (group === 'core' || group === 'fuel') {
   for (const item of cases.filter((c) => Boolean(c.heavy) === (group === 'fuel'))) {
+    if (item.nativeSource !== undefined)
+      assert.equal(
+        formatProgram(parse(item.nativeSource)),
+        formatProgram(parse(item.source)),
+        `${item.name}: handwritten native source preserves the historical IR`,
+      );
     let reference;
     try {
       parseAndValidate(item.source);
@@ -265,7 +271,7 @@ if (group === 'core' || group === 'fuel') {
     );
     let first;
     for (const quantum of [1, 7]) {
-      const got = invoke(item.source, quantum);
+      const got = invoke(item.nativeSource ?? item.source, quantum);
       check(item, got);
       if (reference?.spec && [715, 716, 719].includes(item.id)) {
         assert.equal(reference.spec.ex, got.v[3] + 1);
@@ -292,6 +298,7 @@ if (group === 'core' || group === 'fuel') {
 } else if (group === 'capacity') {
   const count = LIMITS.maxArrayLength;
   const array = `[${Array(count).fill('0').join(';')}]`;
+  const nativeArray = `[${Array(count).fill('0').join(' ')}]`;
   const item = {
     name: 'full-width-literal-import-and-equality',
     source: simple(`ex ${array} ->${array}`, 'ret p0', `u32x${count}`, `u32x${count}`),
@@ -299,7 +306,13 @@ if (group === 'core' || group === 'fuel') {
     cache: 2 * (count + 1),
   };
   parseAndValidate(item.source);
-  const got = invoke(item.source, 17);
+  const nativeSource = simple(
+    `ex ${nativeArray} ->${nativeArray}`,
+    'ret p0',
+    `u32x${count}`,
+    `u32x${count}`,
+  );
+  const got = invoke(nativeSource, 17);
   check(item, got);
   assert.ok(got.v[6] > 65535, 'expected literal ID crosses the old 16-bit region');
 } else if (group === 'boundaries') {
@@ -335,7 +348,8 @@ if (group === 'core' || group === 'fuel') {
     );
     const expected = item.status === 6 ? undefined : referenceSpecs(parse(item.canonical));
     let first;
-    for (const source of [item.canonical, item.flat]) {
+    const native = nativeSpecInputs[item.name];
+    for (const source of [native?.canonical ?? item.canonical, native?.flat ?? item.flat]) {
       for (const standalone of [false, true]) {
         for (const quantum of [1, 7]) {
           const got = invoke(source, quantum, 0, 16_000_000, standalone);
@@ -369,6 +383,19 @@ if (group === 'core' || group === 'fuel') {
             );
           }
         }
+      }
+    }
+  }
+  // Converted positive spellings retain their semantic oracle above; the
+  // original separators/adjacency now remain explicit native rejection cases.
+  for (const item of [...sharedCases, ...legacyAdjacencyCases]) {
+    const native = nativeSpecInputs[item.name];
+    for (const spelling of ['canonical', 'flat']) {
+      if (native?.[spelling] === undefined) continue;
+      for (const standalone of [false, true]) {
+        const got = invoke(item[spelling], 7, 0, 16_000_000, standalone);
+        assert.equal(got.status, 6, `${item.name}/${spelling}: obsolete aggregate grammar`);
+        assert.equal(got.m[1], 714, `${item.name}/${spelling}: spec grammar diagnostic`);
       }
     }
   }

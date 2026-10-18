@@ -20,7 +20,7 @@ function check(r, want, name) {
 }
 for (const t of cases.filter((t) => !t.heavy)) {
   const want = t.status === 0 && t.source.includes('profile strict') ? 6 : t.status,
-    r = emitSource(t.source, { quantum: 7 });
+    r = emitSource(t.nativeSource ?? t.source, { quantum: 7 });
   check(r, want, t.name);
   if (t.status !== 0) assert.equal(r.meta.verifier[0], t.status);
 }

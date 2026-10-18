@@ -18,7 +18,7 @@ import { targetFixture } from './runtime.mjs';
 
 if (group === 'core') {
   for (const item of cases) {
-    const r = await invoke(exe, item.name, item.source);
+    const r = await invoke(exe, item.name, item.nativeSource ?? item.source);
     assert.equal(r.code, item.status, item.name);
     assert.equal(r.M[1], item.id ?? 0, item.name);
     if (r.code === 0) {

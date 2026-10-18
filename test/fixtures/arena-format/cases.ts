@@ -49,6 +49,20 @@ export interface SourceCase {
   readonly roundTrip?: boolean;
 }
 const sha = (text: string): string => createHash('sha256').update(text).digest('hex');
+const nativeSpellings = new Map<string, string>(
+  cases.flatMap(({ source, nativeSource }) =>
+    nativeSource === undefined ? [] : [[source, nativeSource] as const],
+  ),
+);
+/** Explicit fixture data, never parser repair. Keep historical hashes/oracles and
+ * every written literal occurrence while tightening native spec separators. */
+function nativeSpelling(source: string, nativeSource: string): string {
+  nativeSpellings.set(source, nativeSource);
+  return source;
+}
+export function nativeFormatInput(source: string): string {
+  return nativeSpellings.get(source) ?? source;
+}
 const bareNode = (node: Node): Node => ({
   id: node.id,
   op: node.op,
@@ -118,7 +132,10 @@ const extras = [
   '# profile\r\nprofile strict # end\r\nuse "Ω # path.a0" # u\r\n# f\r\nfn go -> u32\r\nret 7 # r\r\nend # done\r\n# tail\r\n',
   '\ufeff# initialBOM\nfn f -> u32x1\na text "\ufeffΩ\t\ra # \\" \\\\"\nret a\nend\n',
   'fn f -> u32\np0001 mov 7\nx udiv p0001 2\ny urem x 3\nret y\nend\n',
-  'fn f -> u32\nex ([1 2,3];(true,);false) -> ([1;2;3];(true;);false)\nret 7\nend\n',
+  nativeSpelling(
+    'fn f -> u32\nex ([1 2,3];(true,);false) -> ([1;2;3];(true;);false)\nret 7\nend\n',
+    'fn f -> u32\nex ([1 2,3] (true,) false) -> ([1 2 3] (true,) false)\nret 7\nend\n',
+  ),
   'fn first -> u32\npre eq 1 1\nret 7\nend\nfn absent -> u32\nret 8\nend\nfn third -> u32\npost eq r 9\nex -> 9\nret 9\nend\n',
 ];
 for (const operand of [
@@ -154,8 +171,14 @@ for (const gap of [
   );
 for (let depth = 1; depth <= 12; depth++) {
   const t = `${'('.repeat(depth)}u32${')'.repeat(depth)}`,
-    lit = `${'('.repeat(depth)}7${';)'.repeat(depth)}`;
-  extras.push(`fn nested ${t} -> ${t}\nex ${lit} -> ${lit}\nret p0\nend\n`);
+    lit = `${'('.repeat(depth)}7${';)'.repeat(depth)}`,
+    flatLit = `${'('.repeat(depth)}7${',)'.repeat(depth)}`;
+  extras.push(
+    nativeSpelling(
+      `fn nested ${t} -> ${t}\nex ${lit} -> ${lit}\nret p0\nend\n`,
+      `fn nested ${t} -> ${t}\nex ${flatLit} -> ${flatLit}\nret p0\nend\n`,
+    ),
+  );
 }
 const MATRIX_SOURCES = [
   ...new Set([
@@ -174,7 +197,10 @@ const MANUAL_SOURCES = [
   '# before\nprofile strict # p\n# u\nuse "x.a0" # u2\n# remaining\n',
   'fn f -> u32\nret 7\nend\n',
   '# header\nfn f u32 boolx2x3 (u32) -> (u32,bool) # h\n# n\nx add p0 1 # a\nr rec x true\n# rt\nret r # r\n# en\nend # e\n# after1\n# after2\n',
-  'fn f (u32,boolx2) -> (u32)\n# post first\npost eq r p0 # p\n# example1\nex (1;[true,false]) -> (1;) # e\npre eq p0 p0 # pre\n# body\nr rec 1\nex (2;[false,true]) -> (1;) # late\nret r\nend\n',
+  nativeSpelling(
+    'fn f (u32,boolx2) -> (u32)\n# post first\npost eq r p0 # p\n# example1\nex (1;[true,false]) -> (1;) # e\npre eq p0 p0 # pre\n# body\nr rec 1\nex (2;[false,true]) -> (1;) # late\nret r\nend\n',
+    'fn f (u32,boolx2) -> (u32)\n# post first\npost eq r p0 # p\n# example1\nex (1 [true,false]) -> (1,) # e\npre eq p0 p0 # pre\n# body\nr rec 1\nex (2 [false,true]) -> (1,) # late\nret r\nend\n',
+  ),
   'fn a u32 -> u32\nret add p0 2 # inline\nend\n\n# between\nfn b u32 -> u32\nx a p0\ny loop a a 2 x\nret y\nend\n# last\n',
   'fn text_example -> u32x11\na text "é\\t\\n\\"\\\\#Ω" # text\nret a\nend\n',
   'fn wide -> u32\nx mov p4294967296\ny mov p1000000000000000000000000000000\nret p' +
@@ -187,8 +213,14 @@ const FLAT_SOURCES = [
   'fn holes u32 u32 u32 -> u32\nx add p2 1\nret x\nend\n',
   `fn params ${Array(64).fill('u32').join(' ')} -> u32\na add p0 p25\nb add p26 p63\nc add a b\nret c\nend\n`,
   'fn examples u32 -> u32\nex 7 -> 7\nret 7\nend\n',
-  'fn literals -> (u32x3,(u32),u32x2)\nex -> ([7;7;7];(2;);[8;8])\na arr 7 7 7\nb rec 2\nc arr 8 8\nd rec a b c\nret d\nend\n',
-  'fn nested -> u32\nex -> [(1;[2;2;2]);(1;[2;2;2]);(1;[2;2;2])]\nex -> [(1;[2;2;2]);(1;[2;2;3]);(1;[2;2;2])]\nret 0\nend\n',
+  nativeSpelling(
+    'fn literals -> (u32x3,(u32),u32x2)\nex -> ([7;7;7];(2;);[8;8])\na arr 7 7 7\nb rec 2\nc arr 8 8\nd rec a b c\nret d\nend\n',
+    'fn literals -> (u32x3,(u32),u32x2)\nex -> ([7 7 7] (2,) [8 8])\na arr 7 7 7\nb rec 2\nc arr 8 8\nd rec a b c\nret d\nend\n',
+  ),
+  nativeSpelling(
+    'fn nested -> u32\nex -> [(1;[2;2;2]);(1;[2;2;2]);(1;[2;2;2])]\nex -> [(1;[2;2;2]);(1;[2;2;3]);(1;[2;2;2])]\nret 0\nend\n',
+    'fn nested -> u32\nex -> [(1 [2 2 2]) (1 [2 2 2]) (1 [2 2 2])]\nex -> [(1 [2 2 2]) (1 [2 2 3]) (1 [2 2 2])]\nret 0\nend\n',
+  ),
   'fn rounded -> u32\na arr p9007199254740992 p9007199254740993 p9007199254740992\nb arr p4294967296 p4294967297 p4294967296\nret 0\nend\n',
   'fn aliases u32 -> u32\na shl p0 1\nb shr a 2\nret b\nend\n',
   ...[...ALL_OPS, 'udiv', 'urem', 'text', 'pre', 'profile', 'p0'].map(
@@ -250,6 +282,11 @@ export function formattingCases(): SourceCase[] {
         requests: [],
       };
     }
+    assert.equal(
+      formatProgram(parse(nativeFormatInput(source))),
+      formatProgram(program),
+      `matrix ${index}: native spelling preserves the historical IR`,
+    );
     const requests: Request[] = [];
     for (const skip of [false, true])
       for (const mode of [0, 1, 2]) {
@@ -418,7 +455,10 @@ export function resourceCases(): SourceCase[] {
       format(2, 0, false, false, expected),
     ],
   });
-  const nested = 'fn nested -> u32\nex -> [(1;[2;2;2]);(1;[2;2;2]);(1;[2;2;2])]\nret 0\nend\n';
+  const nested = nativeSpelling(
+    'fn nested -> u32\nex -> [(1;[2;2;2]);(1;[2;2;2]);(1;[2;2;2])]\nret 0\nend\n',
+    'fn nested -> u32\nex -> [(1 [2 2 2]) (1 [2 2 2]) (1 [2 2 2])]\nret 0\nend\n',
+  );
   const nestedText = formatSource(parse(nested));
   // PS appends each literal after its children. All three explicitly written records
   // have distinct AST IDs, including their nested repeated scalar children.
@@ -501,7 +541,10 @@ export function pressureCases(): SourceCase[] {
     ],
     [
       '4096 nested singleton literals',
-      `fn deep -> u32\nex -> ${literal}\nret 7\nend\n`,
+      nativeSpelling(
+        `fn deep -> u32\nex -> ${literal}\nret 7\nend\n`,
+        `fn deep -> u32\nex -> ${literal.replaceAll(';)', ',)')}\nret 7\nend\n`,
+      ),
       `fn deep -> u32\nex -> ${literal}\nret 7\nend`,
       `fn deep\nex -> ${literal.replaceAll(';)', ',)')}\nret 7\nend`,
       7,
