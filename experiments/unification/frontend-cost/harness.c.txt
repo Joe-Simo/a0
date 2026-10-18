@@ -1,0 +1,58 @@
+#define _POSIX_C_SOURCE 200809L
+#include <stdio.h>
+#include <errno.h>
+#include <time.h>
+#include <sys/resource.h>
+#include <inttypes.h>
+#include "driver.c"
+
+static double milliseconds(struct timespec t) {
+    return t.tv_sec * 1000.0 + t.tv_nsec / 1000000.0;
+}
+static bool put_word(uint32_t v) {
+    const uint8_t b[] = {v, v >> 8, v >> 16, v >> 24};
+    return fwrite(b, 1, sizeof b, stdout) == sizeof b;
+}
+static bool put_words(const uint32_t *v, uint32_t n) {
+    for (uint32_t i = 0; i < n; i++) if (!put_word(v[i])) return false;
+    return true;
+}
+int main(int argc, char **argv) {
+    uint32_t budget = 16000000;
+    if (argc > 2) return 64;
+    if (argc == 2) {
+        char *end = NULL;
+        errno = 0;
+        unsigned long long value = strtoull(argv[1], &end, 10);
+        if (errno || !end || *end || value > UINT32_MAX) return 64;
+        budget = (uint32_t)value;
+    }
+    size_t cap = 4096, size = 0;
+    uint8_t *bytes = malloc(cap);
+    if (!bytes) return 70;
+    for (;;) {
+        if (size == cap) {
+            if (cap >= UINT32_MAX || cap > SIZE_MAX / 2) return 65;
+            size_t next = cap * 2;
+            if (next > UINT32_MAX) next = UINT32_MAX;
+            void *p = realloc(bytes, next);
+            if (!p) return 70;
+            bytes = p; cap = next;
+        }
+        size_t n = fread(bytes + size, 1, cap - size, stdin);
+        size += n;
+        if (feof(stdin)) break;
+        if (ferror(stdin)) return 74;
+    }
+    uint32_t status = frontend_parse(bytes, (uint32_t)size, budget);
+    bool ok = put_word(0x41304e50) && put_word(1) && put_word(status) && put_word(a0_arena_allocation_count(session));
+    ok = ok && put_words((const uint32_t *)frontend_state(), 128);
+    ok = ok && put_words((const uint32_t *)frontend_specs(), 128);
+    for (uint32_t h = 1; ok && h <= a0_arena_allocation_count(session); h++) {
+        uint32_t n = frontend_view_length(h);
+        ok = put_word(n) && put_words((const uint32_t *)frontend_view(h), n);
+    }
+    frontend_close();
+    free(bytes);
+    return ok && !ferror(stdout) ? 0 : 74;
+}

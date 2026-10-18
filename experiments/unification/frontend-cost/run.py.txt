@@ -1,0 +1,15 @@
+from pathlib import Path
+import subprocess,json,hashlib,sys
+if len(sys.argv)!=5:raise SystemExit('usage: run.py.txt INPUT_DIR BASELINE_PROBE COUNTED_PROBE NEW_OUTPUT_DIR')
+inputs=Path(sys.argv[1]);baseline=Path(sys.argv[2]).resolve();counted=Path(sys.argv[3]).resolve();root=Path(sys.argv[4]).resolve();root.mkdir(parents=True,exist_ok=False);index=json.loads((inputs/'index.json').read_text());rows=[]
+for i,unit in enumerate(index):
+ data=json.loads((inputs/unit['input']).read_text())['unified'].encode();outputs=[]
+ for name,probe in [('baseline',baseline),('current',counted)]:
+  p=subprocess.run([str(probe)],input=data,cwd=probe.parent,capture_output=True)
+  assert p.returncode==0,(name,p.stderr.decode());assert not p.stderr,p.stderr.decode();outputs.append(p.stdout)
+ assert outputs[0]==outputs[1],unit
+ counts=json.loads((counted.parent/'counts.json').read_text());assert counts['status']==0
+ (root/f'counts-u{i}.json').write_text(json.dumps(counts,indent=2)+'\n')
+ rows.append({'unit':unit['unit'],'sourceBytes':len(data),'sourceSHA256':hashlib.sha256(data).hexdigest(),'exactDumpSHA256':hashlib.sha256(outputs[0]).hexdigest(),'dumpBytes':len(outputs[0]),'instrumentationPreservesEveryStateAndAllocationWord':True,'counts':counts})
+ print(unit['unit'],'loads',sum(x['ops'][2] for x in counts['phases']),'classify',counts['lexicalSpans'],flush=True)
+(root/'current-operation-counts.json').write_text(json.dumps({'schema':1,'scope':'Structural instrumentation of current612-function/23-module generated C on the existing six frozen representative inputs. No timing or measured gain. Baseline and instrumented status, M/PS and every allocation byte are equal.','functions':json.loads((counted.parent/'functions.json').read_text()),'rows':rows},indent=2)+'\n')

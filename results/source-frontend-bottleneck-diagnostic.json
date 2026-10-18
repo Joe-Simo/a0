@@ -1,0 +1,5109 @@
+{
+  "schema": 1,
+  "scope": "Diagnostic source/representation investigation only. No shipping code, syntax, ABI or default is changed. No new timing samples, formal benchmark, projected gain or causal explanation of the entire historical latency gap is claimed.",
+  "sourceReviewSnapshot": "ca3cc4e07791edc4a33a601d760eb949df474911",
+  "generatedArtifactSnapshot": {
+    "commit": "04962213098a07bd25d7afa81c748e17e9f1ea6e",
+    "tree": "a383635bbbb0893a4c1789713b8e7b8d31c21989",
+    "dirty": false
+  },
+  "sourceIdentity": {
+    "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "functions": 612,
+    "modules": 23,
+    "frontendABI": 3,
+    "generatedC_SHA256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998",
+    "wasmSHA256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+    "wasmBytes": 358233,
+    "modulesMatchReviewedSnapshot": true
+  },
+  "existingWork": [
+    {
+      "work": "C-derived V8 sampling",
+      "source": "604 functions/18 modules; five warm parse subjects",
+      "evidence": "c-wasm-604-18 profile in profiles archive",
+      "limitation": "Historical source; sampling is diagnostic and is not the current612-function cost distribution."
+    },
+    {
+      "work": "Native gprof and phase/request instrumentation",
+      "source": "609 functions/19 modules",
+      "evidence": "Historical source SHA5d609803; existing diagnostic phase counts and exact full dump match",
+      "limitation": "Native execution/profile instrumentation and concurrent work; no matched timing inference."
+    },
+    {
+      "work": "Direct debug-named Wasm sampling",
+      "source": "609 functions/19 modules",
+      "evidence": "direct-wasm-609-19 profile in profiles archive; existing probe checks every non-name section unchanged",
+      "limitation": "One cold subject; instantiation/decode included; historical source."
+    },
+    {
+      "work": "Single source-page scan and SIMD experiments",
+      "evidence": "Historical593-function exploratory fixed-order profile; existing source change reuses the already loaded prefix page",
+      "limitation": "Not a formal matched comparison; already implemented prefix reuse is not a new proposal."
+    },
+    {
+      "work": "Rejected transport reply view/bulk-write/read fusion",
+      "evidence": "results/unified-source-reply-view.json; results/unified-source-transport-size-controls.json; archived read-array confirmation",
+      "limitation": "Recorded size/latency/memory losses remain; no inferred adoption."
+    },
+    {
+      "work": "Rejected owned-record C projection",
+      "evidence": "results/source-cost-c-projection-decision.json",
+      "limitation": "Extends owned record projections/intermediate rebuilds around fold/loop; has measured frontend/RSS losses."
+    },
+    {
+      "work": "Rejected shared lazy-error and scalar-first result helpers",
+      "evidence": "results/source-cost-shared-lazy-error-decision.json; results/source-cost-scalar-ap-read-decision.json",
+      "limitation": "Partial reductions do not clear all measured latency/CPU/memory losses."
+    },
+    {
+      "work": "Rejected pure ordinary readonly calls",
+      "evidence": "results/source-cost-readonly-call-decision.json",
+      "limitation": "Changes argument calling convention, not interprocedural result/loop-state demand; no Wasm size improvement and four frontend losses."
+    }
+  ],
+  "profiles": [
+    {
+      "id": "c-wasm-604-18",
+      "scope": "Historical diagnostic sampling; not the current612-function source and not a formal matched performance comparison. Counts are V8 self samples, not semantic operations or measured speedup.",
+      "original": {
+        "path": "c-wasm-604-18.cpuprofile",
+        "bytes": 418223,
+        "sha256": "92fe85ccdeaa695ba833a84603f47877383eb9b883f7df6e97ead3e883528374"
+      },
+      "normalized": {
+        "path": "c-wasm-604-18.cpuprofile.json",
+        "bytes": 892926,
+        "sha256": "1792532fd43d0380d6f707acfb45e7b0018ec157a60bb6958faa745fb736834f"
+      },
+      "normalization": "Only file URLs changed: repository roots become <repo>; diagnostic runner URLs become <probe>. All other fields, stack nodes, samples and counters are identical.",
+      "sourceSHA256": "c16d79c99f2234b01094b7578cd018333707859e3875e9b3f267f54b7600b799",
+      "functions": 604,
+      "modules": 18,
+      "artifactSHA256": "f3b14e481a24b7993d06298c75b2abee03770805a563c919f8b070fef8fe0057",
+      "artifactBytes": 415791,
+      "samples": 36882,
+      "wasmSelfSamples": 33569,
+      "copyZeroSelfSamples": 12336,
+      "topSelf": [
+        {
+          "name": "memcpy",
+          "samples": 9630
+        },
+        {
+          "name": "a0_runtime_write",
+          "samples": 6476
+        },
+        {
+          "name": "memset",
+          "samples": 2706
+        },
+        {
+          "name": "a0_arena_reply",
+          "samples": 2443
+        },
+        {
+          "name": "a0_ac_function_body",
+          "samples": 1828
+        },
+        {
+          "name": "a0_ap_scanword",
+          "samples": 1572
+        },
+        {
+          "name": "a0_arena_parse",
+          "samples": 1511
+        },
+        {
+          "name": "a0_ap_node",
+          "samples": 1425
+        },
+        {
+          "name": "node",
+          "samples": 1123
+        },
+        {
+          "name": "a0_av_load",
+          "samples": 1056
+        },
+        {
+          "name": "a0_arena_reply_header",
+          "samples": 1012
+        },
+        {
+          "name": "a0_av_reserve",
+          "samples": 813
+        },
+        {
+          "name": "",
+          "samples": 795
+        },
+        {
+          "name": "a0o_ac_op",
+          "samples": 698
+        },
+        {
+          "name": "a0_si_intern",
+          "samples": 657
+        },
+        {
+          "name": "a0_ac_operand",
+          "samples": 409
+        },
+        {
+          "name": "slice",
+          "samples": 349
+        },
+        {
+          "name": "comments",
+          "samples": 307
+        },
+        {
+          "name": "a0_ab_node",
+          "samples": 230
+        },
+        {
+          "name": "a0_ap_operand",
+          "samples": 201
+        },
+        {
+          "name": "a0_ab_operand",
+          "samples": 186
+        },
+        {
+          "name": "readSource",
+          "samples": 170
+        },
+        {
+          "name": "(garbage collector)",
+          "samples": 161
+        },
+        {
+          "name": "a0_arena_reply_first",
+          "samples": 147
+        },
+        {
+          "name": "decodeUTF8",
+          "samples": 123
+        }
+      ],
+      "copyZeroCallers": [
+        {
+          "operation": "memcpy",
+          "caller": "a0_av_reserve",
+          "samples": 1599
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_ap_node",
+          "samples": 1494
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_arena_reply",
+          "samples": 1440
+        },
+        {
+          "operation": "memset",
+          "caller": "a0_arena_reply",
+          "samples": 1215
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_av_load",
+          "samples": 1015
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_ac_function_body",
+          "samples": 1001
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_runtime_write",
+          "samples": 723
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_arena_parse",
+          "samples": 678
+        },
+        {
+          "operation": "memset",
+          "caller": "a0_av_load",
+          "samples": 599
+        },
+        {
+          "operation": "memset",
+          "caller": "calloc",
+          "samples": 339
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_ap_scanword",
+          "samples": 269
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_ap_operand",
+          "samples": 250
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_ac_operand",
+          "samples": 248
+        },
+        {
+          "operation": "memset",
+          "caller": "a0_ab_node",
+          "samples": 218
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_si_intern",
+          "samples": 208
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0o_ac_op",
+          "samples": 125
+        },
+        {
+          "operation": "memset",
+          "caller": "a0_si_intern",
+          "samples": 89
+        },
+        {
+          "operation": "memcpy",
+          "caller": "memcpy",
+          "samples": 85
+        },
+        {
+          "operation": "memset",
+          "caller": "a0_ap_scanword",
+          "samples": 83
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_ab_operand",
+          "samples": 76
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0o_sp_atom_done",
+          "samples": 58
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0_arena_store",
+          "samples": 52
+        },
+        {
+          "operation": "memcpy",
+          "caller": "parse_source",
+          "samples": 50
+        },
+        {
+          "operation": "memcpy",
+          "caller": "a0o_ac_call",
+          "samples": 47
+        }
+      ]
+    },
+    {
+      "id": "direct-wasm-609-19",
+      "scope": "Historical diagnostic sampling; not the current612-function source and not a formal matched performance comparison. Counts are V8 self samples, not semantic operations or measured speedup.",
+      "original": {
+        "path": "direct-wasm-609-19.cpuprofile",
+        "bytes": 321786,
+        "sha256": "19fe8398809fc5f80ae692b15bb5e86f48e2efc96786c2d957c2e100d14a2159"
+      },
+      "normalized": {
+        "path": "direct-wasm-609-19.cpuprofile.json",
+        "bytes": 569298,
+        "sha256": "a13be2f2faedb8de94a8c40f48e64aa877488fbb60a4c26d4ef93df48b6722d0"
+      },
+      "normalization": "Only file URLs changed: repository roots become <repo>; diagnostic runner URLs become <probe>. All other fields, stack nodes, samples and counters are identical.",
+      "sourceSHA256": "5d6098033eb9d5bf851ca1361bb128a06f7cb88c01fc0aaaa6c2a3167ebd0077",
+      "functions": 609,
+      "modules": 19,
+      "artifactSHA256": "875095958cb5198c6ad42ab35c71109cf1f336a6bacd09fa927ab78681913cd7",
+      "artifactBytes": 126745,
+      "samples": 2431,
+      "wasmSelfSamples": 2303,
+      "copyZeroSelfSamples": 0,
+      "topSelf": [
+        {
+          "name": "a0o_ap_readgo",
+          "samples": 355
+        },
+        {
+          "name": "a0_arena_reply",
+          "samples": 298
+        },
+        {
+          "name": "wasm-function[18]",
+          "samples": 183
+        },
+        {
+          "name": "a0_arena_load",
+          "samples": 127
+        },
+        {
+          "name": "a0_ac_error",
+          "samples": 107
+        },
+        {
+          "name": "wasm-function[25]",
+          "samples": 103
+        },
+        {
+          "name": "wasm-function[17]",
+          "samples": 95
+        },
+        {
+          "name": "a0_ap_read",
+          "samples": 86
+        },
+        {
+          "name": "a0o_ap_wordgo",
+          "samples": 70
+        },
+        {
+          "name": "a0o_pl_byte",
+          "samples": 60
+        },
+        {
+          "name": "a0o_av_append_valid",
+          "samples": 52
+        },
+        {
+          "name": "a0_arena_reply_header",
+          "samples": 49
+        },
+        {
+          "name": "wasm-function[24]",
+          "samples": 44
+        },
+        {
+          "name": "a0o_pl_content",
+          "samples": 43
+        },
+        {
+          "name": "node",
+          "samples": 43
+        },
+        {
+          "name": "a0o_ap_scanbyte",
+          "samples": 41
+        },
+        {
+          "name": "a0_ap_scanword",
+          "samples": 41
+        },
+        {
+          "name": "a0o_arena_store_valid",
+          "samples": 37
+        },
+        {
+          "name": "wasm-function[10]",
+          "samples": 35
+        },
+        {
+          "name": "a0o_ap_wordscan",
+          "samples": 33
+        },
+        {
+          "name": "a0_ap_fail",
+          "samples": 25
+        },
+        {
+          "name": "",
+          "samples": 25
+        },
+        {
+          "name": "a0o_ac_linear",
+          "samples": 24
+        },
+        {
+          "name": "a0_av_span",
+          "samples": 21
+        },
+        {
+          "name": "a0_ap_word",
+          "samples": 18
+        }
+      ],
+      "copyZeroCallers": []
+    }
+  ],
+  "phaseMeaning": [
+    "Host upload before A0 frontend",
+    "A0 parsing until arena_verify_begin",
+    "A0 checking and executable specifications"
+  ],
+  "instrumentation": {
+    "description": "Counters inserted in copies of generated C function entries and generic runtime read/write/request completion. Original generated C, driver and runtime are unchanged for baseline. Every native result byte is compared, including status, M/PS and all arena allocation words. Counter insertion can affect optimization/inlining; function counters describe semantic executions under this instrumentation, not machine call instructions.",
+    "compiler": "Debian clang version 19.1.7 (3+b1)",
+    "flags": [
+      "-std=c11",
+      "-O2",
+      "-DNDEBUG"
+    ],
+    "host": "Linux x86_64",
+    "allocationBudget": 16000000,
+    "diagnosticArrays": "Host-only per-source-offset counters lie outside the arena and are not a memory-performance measurement.",
+    "lexicalOffsetDefinition": "lexicalSpans.unique counts distinct start offsets, not distinct(handle,start,length) spans. lengthMismatch records repeated offsets with different lengths; histogram bucket64 means64or more. Do not infer a valid offset-only lexical cache or exact cache savings from this heatmap.",
+    "snapshots": [
+      {
+        "path": "baseline/module.c",
+        "bytes": 1183666,
+        "sha256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998"
+      },
+      {
+        "path": "current/module.c",
+        "bytes": 1185169,
+        "sha256": "3f5d045d2be219c73965a8493bf974a01543642b2d7a8931f962498d6e2ea552"
+      },
+      {
+        "path": "baseline/driver.c",
+        "bytes": 6061,
+        "sha256": "db64c81f7d7036b69d4e42bed1bd6e0c364df36f90701f039083ed0c77ab8753"
+      },
+      {
+        "path": "current/driver.c",
+        "bytes": 6061,
+        "sha256": "db64c81f7d7036b69d4e42bed1bd6e0c364df36f90701f039083ed0c77ab8753"
+      },
+      {
+        "path": "baseline/api.h",
+        "bytes": 410,
+        "sha256": "59bfe369db25e6069df9030dec7f91eeb04eb7f1474d84110bfe448688be1926"
+      },
+      {
+        "path": "current/api.h",
+        "bytes": 410,
+        "sha256": "59bfe369db25e6069df9030dec7f91eeb04eb7f1474d84110bfe448688be1926"
+      },
+      {
+        "path": "baseline/build.json",
+        "bytes": 23786,
+        "sha256": "7274f5fdbeeedc8d88ff3a2da5bad852354c3cc84abb67b61625759485942580"
+      },
+      {
+        "path": "current/build.json",
+        "bytes": 23786,
+        "sha256": "7274f5fdbeeedc8d88ff3a2da5bad852354c3cc84abb67b61625759485942580"
+      },
+      {
+        "path": "baseline/arena_runtime.c",
+        "bytes": 9938,
+        "sha256": "6c18b83ad9d6006bb831baf4d06eae805680cf41c84f70f360f8f01b65048432"
+      },
+      {
+        "path": "current/arena_runtime.c",
+        "bytes": 10208,
+        "sha256": "41372cf37b2c73587852b277fdd250944cab7a7e596a6b8c9b7d18147d778449"
+      },
+      {
+        "path": "baseline/arena_runtime.h",
+        "bytes": 4291,
+        "sha256": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9"
+      },
+      {
+        "path": "current/arena_runtime.h",
+        "bytes": 4291,
+        "sha256": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9"
+      },
+      {
+        "path": "baseline/harness.c",
+        "bytes": 2072,
+        "sha256": "b59b78839ef81d7b8aed8765be1ceca78f8742576cfcf6f0b8cd5eb6f90d513e"
+      },
+      {
+        "path": "current/harness.c",
+        "bytes": 5226,
+        "sha256": "2d8ab2a3b708bc20e48db6084a1daf01a1f63b36633e29eca80cc92f9ee806f0"
+      },
+      {
+        "path": "baseline/probe",
+        "bytes": 643104,
+        "sha256": "e4cd7955bf49753f31bab440e9546b54deee46ca81b7b2e4ba06ad8492678c03"
+      },
+      {
+        "path": "current/probe",
+        "bytes": 656448,
+        "sha256": "a38faac22072cad8d1aea595ba025b1738810da4fc0e00e760c7f57c4bcb5e33"
+      }
+    ]
+  },
+  "rows": [
+    {
+      "unit": "examples/life.a0",
+      "sourceBytes": 3029,
+      "sourceSHA256": "2e7ddcca22dda1ef6cc8b962e912a59acd02f844162c29d4bff4717b128e15b5",
+      "exactDumpSHA256": "4c04c7cdc1b4d7f8028b320c52f38fcce11b721cf4e5b982f230df57b5aa3c9f",
+      "dumpBytes": 165796,
+      "instrumentationPreservesEveryStateAndAllocationWord": true,
+      "counts": {
+        "functions": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            8821,
+            8821,
+            22673,
+            3512,
+            1928,
+            77,
+            155,
+            2565,
+            2366,
+            2348,
+            2352,
+            5622,
+            2352,
+            2352,
+            2799,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            492,
+            21
+          ],
+          [
+            10517,
+            10517,
+            34344,
+            11210,
+            995,
+            55,
+            48,
+            11138,
+            0,
+            0,
+            189,
+            516,
+            189,
+            189,
+            0,
+            4618,
+            189,
+            1132,
+            1066,
+            434,
+            175,
+            420,
+            7,
+            7
+          ]
+        ],
+        "phases": [
+          {
+            "readWords": 55,
+            "writeWords": 3152,
+            "scanBytes": 0,
+            "ops": [
+              0,
+              1,
+              0,
+              24,
+              0,
+              0
+            ],
+            "loadSizes": {},
+            "storeSizes": {
+              "85": 1,
+              "128": 23
+            }
+          },
+          {
+            "readWords": 66478,
+            "writeWords": 83466,
+            "scanBytes": 5622,
+            "ops": [
+              0,
+              105,
+              8821,
+              2526,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 1006,
+              "2": 4688,
+              "3": 1104,
+              "4": 157,
+              "5": 1163,
+              "6": 30,
+              "7": 196,
+              "8": 27,
+              "9": 12,
+              "10": 226,
+              "12": 46,
+              "14": 2,
+              "15": 4,
+              "16": 6,
+              "25": 1,
+              "28": 2,
+              "30": 3,
+              "32": 1,
+              "50": 1,
+              "56": 2,
+              "60": 3,
+              "64": 1,
+              "120": 3,
+              "122": 1,
+              "124": 4,
+              "125": 3,
+              "126": 6,
+              "127": 2,
+              "128": 121
+            },
+            "storeSizes": {
+              "1": 57,
+              "2": 1273,
+              "3": 1,
+              "4": 7,
+              "5": 618,
+              "8": 6,
+              "10": 218,
+              "12": 16,
+              "13": 1,
+              "14": 191,
+              "15": 4,
+              "16": 2,
+              "20": 1,
+              "25": 1,
+              "28": 2,
+              "30": 3,
+              "32": 1,
+              "50": 1,
+              "56": 2,
+              "60": 3,
+              "64": 1,
+              "85": 1,
+              "120": 3,
+              "122": 1,
+              "124": 4,
+              "125": 3,
+              "126": 6,
+              "127": 2,
+              "128": 97
+            }
+          },
+          {
+            "readWords": 51122,
+            "writeWords": 63390,
+            "scanBytes": 516,
+            "ops": [
+              0,
+              62,
+              10517,
+              1323,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 7106,
+              "2": 196,
+              "3": 137,
+              "4": 30,
+              "5": 2744,
+              "6": 3,
+              "7": 5,
+              "8": 7,
+              "9": 1,
+              "10": 1,
+              "12": 3,
+              "14": 242,
+              "15": 1,
+              "16": 20,
+              "30": 6,
+              "32": 3,
+              "64": 3,
+              "128": 9
+            },
+            "storeSizes": {
+              "1": 786,
+              "2": 448,
+              "3": 15,
+              "4": 11,
+              "5": 8,
+              "6": 8,
+              "8": 16,
+              "12": 1,
+              "15": 1,
+              "16": 4,
+              "25": 2,
+              "30": 6,
+              "32": 3,
+              "64": 3,
+              "128": 11
+            }
+          }
+        ],
+        "lexicalSpans": {
+          "unique": 863,
+          "uniqueBytes": 2159,
+          "repeatedVisits": 1678,
+          "maxVisits": 7,
+          "parserOnly": 710,
+          "checkerOnly": 0,
+          "both": 153,
+          "otherHandles": 0,
+          "rangeMismatch": 0,
+          "lengthMismatch": 1,
+          "histogram": {
+            "1": 45,
+            "2": 297,
+            "3": 217,
+            "4": 280,
+            "5": 17,
+            "6": 3,
+            "7": 4
+          },
+          "zeroErrorCalls": 4618
+        },
+        "sourceBytes": 3029,
+        "words": 41021,
+        "allocations": 168,
+        "status": 0
+      },
+      "functionCounts": {
+        "arena_load": 19338,
+        "arena_reply": 19338,
+        "arena_zero": 57017,
+        "av_load": 14722,
+        "av_append": 2923,
+        "av_reserve_alloc": 132,
+        "av_copy_page": 203,
+        "ap_read": 13703,
+        "ap_word": 2366,
+        "ap_wordscan": 2348,
+        "ap_scanword": 2541,
+        "ap_scanbyte": 6138,
+        "ap_keyword": 2541,
+        "ap_opcode": 2541,
+        "pl_content": 2799,
+        "ac_error": 4618,
+        "ac_name": 189,
+        "ac_type": 1132,
+        "ac_arg": 1066,
+        "ac_operand": 434,
+        "ac_node": 175,
+        "ac_linear": 420,
+        "si_intern": 499,
+        "tp_intern": 28
+      },
+      "summary": {
+        "loadReplies": 19338,
+        "loadedPayloadWords": 70725,
+        "repliesRequestingAtMost5Words": 18331,
+        "readWords": 117655,
+        "writeWords": 150008,
+        "logicalReplyArrayWordCapacity": 2475264,
+        "logicalArenaZeroArrayWordCapacity": 7298176
+      },
+      "loadSizes": {
+        "1": 8112,
+        "2": 4884,
+        "3": 1241,
+        "4": 187,
+        "5": 3907,
+        "6": 33,
+        "7": 201,
+        "8": 34,
+        "9": 13,
+        "10": 227,
+        "12": 49,
+        "14": 244,
+        "15": 5,
+        "16": 26,
+        "25": 1,
+        "28": 2,
+        "30": 9,
+        "32": 4,
+        "50": 1,
+        "56": 2,
+        "60": 3,
+        "64": 4,
+        "120": 3,
+        "122": 1,
+        "124": 4,
+        "125": 3,
+        "126": 6,
+        "127": 2,
+        "128": 130
+      }
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "sourceBytes": 5626,
+      "sourceSHA256": "f0ab8748931d68e7fd2f50204d15464782e4cf9add3339fdef7d9084fb15cd69",
+      "exactDumpSHA256": "726a852eb69dce784c88119aa084850227db6095d319c725f2896118396fecf0",
+      "dumpBytes": 247548,
+      "instrumentationPreservesEveryStateAndAllocationWord": true,
+      "counts": {
+        "functions": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            13595,
+            13595,
+            36374,
+            5487,
+            3451,
+            114,
+            230,
+            4267,
+            3872,
+            3847,
+            3993,
+            8642,
+            3993,
+            3993,
+            5160,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            734,
+            14
+          ],
+          [
+            17577,
+            17577,
+            58220,
+            19111,
+            1679,
+            68,
+            64,
+            18946,
+            0,
+            0,
+            326,
+            742,
+            326,
+            326,
+            0,
+            7859,
+            326,
+            2101,
+            1749,
+            769,
+            279,
+            722,
+            11,
+            11
+          ]
+        ],
+        "phases": [
+          {
+            "readWords": 95,
+            "writeWords": 5849,
+            "scanBytes": 0,
+            "ops": [
+              0,
+              1,
+              0,
+              44,
+              0,
+              0
+            ],
+            "loadSizes": {},
+            "storeSizes": {
+              "122": 1,
+              "128": 43
+            }
+          },
+          {
+            "readWords": 100544,
+            "writeWords": 129952,
+            "scanBytes": 8642,
+            "ops": [
+              0,
+              135,
+              13595,
+              4150,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 3315,
+              "2": 6783,
+              "3": 407,
+              "4": 178,
+              "5": 1762,
+              "6": 227,
+              "7": 62,
+              "8": 82,
+              "9": 35,
+              "10": 463,
+              "11": 3,
+              "12": 7,
+              "14": 2,
+              "15": 5,
+              "16": 22,
+              "23": 1,
+              "28": 2,
+              "30": 7,
+              "32": 2,
+              "56": 2,
+              "60": 3,
+              "63": 1,
+              "64": 2,
+              "65": 1,
+              "82": 1,
+              "120": 4,
+              "122": 2,
+              "124": 5,
+              "125": 3,
+              "126": 6,
+              "127": 2,
+              "128": 198
+            },
+            "storeSizes": {
+              "1": 193,
+              "2": 2020,
+              "3": 7,
+              "4": 14,
+              "5": 940,
+              "7": 1,
+              "8": 18,
+              "9": 2,
+              "10": 424,
+              "12": 4,
+              "14": 328,
+              "15": 5,
+              "16": 2,
+              "19": 1,
+              "23": 1,
+              "28": 2,
+              "30": 7,
+              "32": 2,
+              "56": 2,
+              "60": 3,
+              "63": 1,
+              "64": 2,
+              "120": 4,
+              "122": 2,
+              "124": 5,
+              "125": 3,
+              "126": 6,
+              "127": 2,
+              "128": 149
+            }
+          },
+          {
+            "readWords": 86407,
+            "writeWords": 105780,
+            "scanBytes": 742,
+            "ops": [
+              0,
+              79,
+              17577,
+              2150,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 11821,
+              "2": 201,
+              "3": 61,
+              "4": 62,
+              "5": 4938,
+              "6": 13,
+              "7": 12,
+              "8": 13,
+              "9": 5,
+              "10": 4,
+              "11": 1,
+              "12": 7,
+              "14": 375,
+              "15": 1,
+              "16": 26,
+              "30": 8,
+              "32": 4,
+              "63": 1,
+              "64": 4,
+              "126": 1,
+              "128": 19
+            },
+            "storeSizes": {
+              "1": 1329,
+              "2": 647,
+              "3": 48,
+              "4": 29,
+              "5": 13,
+              "6": 5,
+              "8": 23,
+              "10": 2,
+              "12": 5,
+              "14": 1,
+              "15": 1,
+              "16": 5,
+              "18": 2,
+              "20": 1,
+              "30": 8,
+              "32": 4,
+              "63": 1,
+              "64": 4,
+              "126": 1,
+              "128": 21
+            }
+          }
+        ],
+        "lexicalSpans": {
+          "unique": 1603,
+          "uniqueBytes": 3995,
+          "repeatedVisits": 2716,
+          "maxVisits": 30,
+          "parserOnly": 1457,
+          "checkerOnly": 0,
+          "both": 146,
+          "otherHandles": 0,
+          "rangeMismatch": 0,
+          "lengthMismatch": 7,
+          "histogram": {
+            "1": 262,
+            "2": 509,
+            "3": 468,
+            "4": 323,
+            "5": 21,
+            "6": 3,
+            "7": 4,
+            "8": 4,
+            "9": 1,
+            "10": 1,
+            "13": 2,
+            "16": 2,
+            "24": 1,
+            "29": 1,
+            "30": 1
+          },
+          "zeroErrorCalls": 7859
+        },
+        "sourceBytes": 5626,
+        "words": 61412,
+        "allocations": 215,
+        "status": 0
+      },
+      "functionCounts": {
+        "arena_load": 31172,
+        "arena_reply": 31172,
+        "arena_zero": 94594,
+        "av_load": 24598,
+        "av_append": 5130,
+        "av_reserve_alloc": 182,
+        "av_copy_page": 294,
+        "ap_read": 23213,
+        "ap_word": 3872,
+        "ap_wordscan": 3847,
+        "ap_scanword": 4319,
+        "ap_scanbyte": 9384,
+        "ap_keyword": 4319,
+        "ap_opcode": 4319,
+        "pl_content": 5160,
+        "ac_error": 7859,
+        "ac_name": 326,
+        "ac_type": 2101,
+        "ac_arg": 1749,
+        "ac_operand": 769,
+        "ac_node": 279,
+        "ac_linear": 722,
+        "si_intern": 745,
+        "tp_intern": 25
+      },
+      "summary": {
+        "loadReplies": 31172,
+        "loadedPayloadWords": 111365,
+        "repliesRequestingAtMost5Words": 29528,
+        "readWords": 187046,
+        "writeWords": 241581,
+        "logicalReplyArrayWordCapacity": 3990016,
+        "logicalArenaZeroArrayWordCapacity": 12108032
+      },
+      "loadSizes": {
+        "1": 15136,
+        "2": 6984,
+        "3": 468,
+        "4": 240,
+        "5": 6700,
+        "6": 240,
+        "7": 74,
+        "8": 95,
+        "9": 40,
+        "10": 467,
+        "11": 4,
+        "12": 14,
+        "14": 377,
+        "15": 6,
+        "16": 48,
+        "23": 1,
+        "28": 2,
+        "30": 15,
+        "32": 6,
+        "56": 2,
+        "60": 3,
+        "63": 2,
+        "64": 6,
+        "65": 1,
+        "82": 1,
+        "120": 4,
+        "122": 2,
+        "124": 5,
+        "125": 3,
+        "126": 7,
+        "127": 2,
+        "128": 217
+      }
+    },
+    {
+      "unit": "site/page.a0",
+      "sourceBytes": 126947,
+      "sourceSHA256": "20ef71d09070bcf403f4017fbd1e447ebb427584546548f9f24fbd0a76018e94",
+      "exactDumpSHA256": "e1d3107a779d1bdc71cae9faf29cb035ca2a4c6addc166c586edf0d0f23c5cce",
+      "dumpBytes": 6068028,
+      "instrumentationPreservesEveryStateAndAllocationWord": true,
+      "counts": {
+        "functions": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            226023,
+            226023,
+            596010,
+            86839,
+            71999,
+            101,
+            4449,
+            64736,
+            59630,
+            58863,
+            58863,
+            249873,
+            58863,
+            58863,
+            121040,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            13072,
+            3
+          ],
+          [
+            524570,
+            524570,
+            1783080,
+            586644,
+            51330,
+            204,
+            724,
+            584314,
+            0,
+            0,
+            5803,
+            27369,
+            5803,
+            5803,
+            0,
+            189504,
+            5803,
+            76205,
+            74843,
+            32744,
+            5768,
+            32709,
+            1071,
+            1071
+          ]
+        ],
+        "phases": [
+          {
+            "readWords": 1991,
+            "writeWords": 131910,
+            "scanBytes": 0,
+            "ops": [
+              0,
+              1,
+              0,
+              992,
+              0,
+              0
+            ],
+            "loadSizes": {},
+            "storeSizes": {
+              "99": 1,
+              "128": 991
+            }
+          },
+          {
+            "readWords": 2148649,
+            "writeWords": 2557582,
+            "scanBytes": 249873,
+            "ops": [
+              0,
+              116,
+              226023,
+              90445,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 9612,
+              "2": 98413,
+              "3": 3496,
+              "4": 16265,
+              "5": 84441,
+              "6": 847,
+              "7": 243,
+              "8": 334,
+              "9": 267,
+              "10": 5970,
+              "11": 20,
+              "12": 38,
+              "13": 21,
+              "14": 17,
+              "15": 9,
+              "16": 14,
+              "17": 7,
+              "18": 21,
+              "19": 14,
+              "20": 12,
+              "21": 8,
+              "22": 8,
+              "23": 9,
+              "24": 14,
+              "25": 8,
+              "26": 6,
+              "27": 10,
+              "28": 9,
+              "29": 2,
+              "30": 19,
+              "31": 5,
+              "32": 19,
+              "33": 8,
+              "34": 8,
+              "35": 5,
+              "37": 12,
+              "39": 16,
+              "40": 4,
+              "41": 2,
+              "43": 6,
+              "44": 4,
+              "46": 2,
+              "48": 2,
+              "49": 3,
+              "50": 2,
+              "51": 4,
+              "53": 8,
+              "56": 10,
+              "59": 3,
+              "60": 3,
+              "61": 4,
+              "63": 5,
+              "64": 5,
+              "65": 8,
+              "66": 4,
+              "68": 8,
+              "70": 2,
+              "71": 2,
+              "72": 2,
+              "73": 10,
+              "74": 2,
+              "75": 4,
+              "76": 2,
+              "77": 8,
+              "78": 4,
+              "79": 4,
+              "80": 4,
+              "82": 2,
+              "83": 4,
+              "84": 2,
+              "87": 4,
+              "90": 1,
+              "94": 1,
+              "98": 4,
+              "99": 1,
+              "102": 1,
+              "103": 1,
+              "104": 1,
+              "106": 2,
+              "108": 2,
+              "110": 1,
+              "111": 1,
+              "112": 2,
+              "117": 3,
+              "120": 7,
+              "122": 4,
+              "124": 10,
+              "125": 6,
+              "126": 12,
+              "127": 5,
+              "128": 5588
+            },
+            "storeSizes": {
+              "1": 95,
+              "2": 35642,
+              "3": 3,
+              "4": 7,
+              "5": 38528,
+              "7": 2,
+              "8": 2,
+              "9": 1,
+              "10": 5874,
+              "12": 2,
+              "14": 5806,
+              "15": 3,
+              "16": 2,
+              "18": 1,
+              "19": 1,
+              "28": 3,
+              "30": 3,
+              "31": 1,
+              "32": 2,
+              "38": 1,
+              "40": 1,
+              "41": 1,
+              "54": 1,
+              "56": 2,
+              "57": 1,
+              "59": 1,
+              "60": 3,
+              "63": 1,
+              "64": 1,
+              "65": 1,
+              "83": 1,
+              "90": 1,
+              "97": 2,
+              "99": 1,
+              "100": 1,
+              "110": 1,
+              "116": 1,
+              "120": 6,
+              "121": 1,
+              "122": 3,
+              "124": 10,
+              "125": 5,
+              "126": 12,
+              "127": 5,
+              "128": 4403
+            }
+          },
+          {
+            "readWords": 2695318,
+            "writeWords": 3141341,
+            "scanBytes": 27369,
+            "ops": [
+              0,
+              1279,
+              524570,
+              63756,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 314304,
+              "2": 6111,
+              "3": 1727,
+              "4": 971,
+              "5": 190377,
+              "6": 5,
+              "7": 5,
+              "8": 9,
+              "9": 7,
+              "10": 2,
+              "12": 3048,
+              "14": 7295,
+              "15": 3,
+              "16": 5,
+              "30": 4,
+              "32": 4,
+              "60": 3,
+              "63": 1,
+              "64": 4,
+              "125": 3,
+              "127": 116,
+              "128": 566
+            },
+            "storeSizes": {
+              "1": 44282,
+              "2": 16390,
+              "3": 36,
+              "4": 10,
+              "5": 1153,
+              "6": 8,
+              "8": 7,
+              "12": 1072,
+              "15": 3,
+              "16": 4,
+              "30": 4,
+              "32": 4,
+              "60": 3,
+              "63": 1,
+              "64": 4,
+              "125": 3,
+              "127": 116,
+              "128": 656
+            }
+          }
+        ],
+        "lexicalSpans": {
+          "unique": 20473,
+          "uniqueBytes": 87898,
+          "repeatedVisits": 44193,
+          "maxVisits": 9,
+          "parserOnly": 14701,
+          "checkerOnly": 0,
+          "both": 5772,
+          "otherHandles": 0,
+          "rangeMismatch": 0,
+          "lengthMismatch": 0,
+          "histogram": {
+            "1": 101,
+            "2": 5942,
+            "3": 5069,
+            "4": 9346,
+            "5": 7,
+            "6": 4,
+            "7": 2,
+            "8": 1,
+            "9": 1
+          },
+          "zeroErrorCalls": 189504
+        },
+        "sourceBytes": 126947,
+        "words": 1515351,
+        "allocations": 1396,
+        "status": 0
+      },
+      "functionCounts": {
+        "arena_load": 750593,
+        "arena_reply": 750593,
+        "arena_zero": 2379090,
+        "av_load": 673483,
+        "av_append": 123329,
+        "av_reserve_alloc": 305,
+        "av_copy_page": 5173,
+        "ap_read": 649050,
+        "ap_word": 59630,
+        "ap_wordscan": 58863,
+        "ap_scanword": 64666,
+        "ap_scanbyte": 277242,
+        "ap_keyword": 64666,
+        "ap_opcode": 64666,
+        "pl_content": 121040,
+        "ac_error": 189504,
+        "ac_name": 5803,
+        "ac_type": 76205,
+        "ac_arg": 74843,
+        "ac_operand": 32744,
+        "ac_node": 5768,
+        "ac_linear": 32709,
+        "si_intern": 14143,
+        "tp_intern": 1074
+      },
+      "summary": {
+        "loadReplies": 750593,
+        "loadedPayloadWords": 3030194,
+        "repliesRequestingAtMost5Words": 725717,
+        "readWords": 4845958,
+        "writeWords": 5830833,
+        "logicalReplyArrayWordCapacity": 96075904,
+        "logicalArenaZeroArrayWordCapacity": 304523520
+      },
+      "loadSizes": {
+        "1": 323916,
+        "2": 104524,
+        "3": 5223,
+        "4": 17236,
+        "5": 274818,
+        "6": 852,
+        "7": 248,
+        "8": 343,
+        "9": 274,
+        "10": 5972,
+        "11": 20,
+        "12": 3086,
+        "13": 21,
+        "14": 7312,
+        "15": 12,
+        "16": 19,
+        "17": 7,
+        "18": 21,
+        "19": 14,
+        "20": 12,
+        "21": 8,
+        "22": 8,
+        "23": 9,
+        "24": 14,
+        "25": 8,
+        "26": 6,
+        "27": 10,
+        "28": 9,
+        "29": 2,
+        "30": 23,
+        "31": 5,
+        "32": 23,
+        "33": 8,
+        "34": 8,
+        "35": 5,
+        "37": 12,
+        "39": 16,
+        "40": 4,
+        "41": 2,
+        "43": 6,
+        "44": 4,
+        "46": 2,
+        "48": 2,
+        "49": 3,
+        "50": 2,
+        "51": 4,
+        "53": 8,
+        "56": 10,
+        "59": 3,
+        "60": 6,
+        "61": 4,
+        "63": 6,
+        "64": 9,
+        "65": 8,
+        "66": 4,
+        "68": 8,
+        "70": 2,
+        "71": 2,
+        "72": 2,
+        "73": 10,
+        "74": 2,
+        "75": 4,
+        "76": 2,
+        "77": 8,
+        "78": 4,
+        "79": 4,
+        "80": 4,
+        "82": 2,
+        "83": 4,
+        "84": 2,
+        "87": 4,
+        "90": 1,
+        "94": 1,
+        "98": 4,
+        "99": 1,
+        "102": 1,
+        "103": 1,
+        "104": 1,
+        "106": 2,
+        "108": 2,
+        "110": 1,
+        "111": 1,
+        "112": 2,
+        "117": 3,
+        "120": 7,
+        "122": 4,
+        "124": 10,
+        "125": 9,
+        "126": 12,
+        "127": 121,
+        "128": 6154
+      }
+    },
+    {
+      "unit": "site/docs.a0",
+      "sourceBytes": 44930,
+      "sourceSHA256": "2c50d0b8b90422a850693ab1c7432142356794553cb8d975ae97defda8a735ca",
+      "exactDumpSHA256": "c1c9b565ed375283e1dc17b6b3ecb536b1bc22aeddde11cbafdd19e14a91053b",
+      "dumpBytes": 2056052,
+      "instrumentationPreservesEveryStateAndAllocationWord": true,
+      "counts": {
+        "functions": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            54677,
+            54677,
+            160669,
+            20668,
+            36265,
+            90,
+            1649,
+            14819,
+            13619,
+            13433,
+            13433,
+            48820,
+            13433,
+            13433,
+            43519,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3021,
+            3
+          ],
+          [
+            300886,
+            300886,
+            1058587,
+            350964,
+            29876,
+            80,
+            160,
+            350280,
+            0,
+            0,
+            1334,
+            4991,
+            1334,
+            1334,
+            0,
+            79271,
+            1334,
+            53517,
+            53235,
+            25546,
+            1308,
+            25520,
+            263,
+            263
+          ]
+        ],
+        "phases": [
+          {
+            "readWords": 711,
+            "writeWords": 46693,
+            "scanBytes": 0,
+            "ops": [
+              0,
+              1,
+              0,
+              352,
+              0,
+              0
+            ],
+            "loadSizes": {},
+            "storeSizes": {
+              "2": 1,
+              "128": 351
+            }
+          },
+          {
+            "readWords": 662616,
+            "writeWords": 875077,
+            "scanBytes": 48820,
+            "ops": [
+              0,
+              103,
+              54677,
+              41289,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 2412,
+              "2": 24201,
+              "3": 2665,
+              "4": 11419,
+              "5": 9532,
+              "6": 179,
+              "7": 87,
+              "8": 80,
+              "9": 74,
+              "10": 1423,
+              "11": 43,
+              "12": 29,
+              "13": 15,
+              "14": 7,
+              "15": 23,
+              "16": 8,
+              "17": 11,
+              "18": 5,
+              "19": 7,
+              "20": 5,
+              "22": 4,
+              "23": 5,
+              "24": 3,
+              "26": 9,
+              "27": 1,
+              "28": 4,
+              "29": 2,
+              "30": 7,
+              "31": 9,
+              "32": 19,
+              "33": 2,
+              "34": 6,
+              "35": 4,
+              "36": 1,
+              "37": 4,
+              "38": 2,
+              "39": 4,
+              "40": 2,
+              "41": 4,
+              "44": 4,
+              "46": 2,
+              "47": 2,
+              "49": 3,
+              "50": 1,
+              "51": 3,
+              "53": 3,
+              "54": 2,
+              "56": 3,
+              "57": 2,
+              "60": 6,
+              "62": 1,
+              "63": 1,
+              "64": 5,
+              "65": 1,
+              "66": 2,
+              "67": 3,
+              "68": 4,
+              "69": 3,
+              "70": 2,
+              "71": 2,
+              "72": 1,
+              "73": 2,
+              "74": 8,
+              "77": 2,
+              "78": 1,
+              "80": 2,
+              "82": 1,
+              "84": 1,
+              "85": 2,
+              "88": 2,
+              "90": 5,
+              "91": 2,
+              "92": 3,
+              "94": 1,
+              "98": 2,
+              "102": 3,
+              "103": 1,
+              "104": 3,
+              "106": 4,
+              "108": 2,
+              "110": 3,
+              "111": 3,
+              "112": 4,
+              "114": 1,
+              "116": 1,
+              "117": 1,
+              "119": 1,
+              "120": 5,
+              "121": 1,
+              "122": 3,
+              "124": 8,
+              "125": 6,
+              "126": 9,
+              "127": 5,
+              "128": 2206
+            },
+            "storeSizes": {
+              "1": 77,
+              "2": 9967,
+              "3": 3,
+              "4": 7,
+              "5": 26861,
+              "7": 2,
+              "8": 2,
+              "9": 1,
+              "10": 1387,
+              "12": 1,
+              "14": 1336,
+              "15": 3,
+              "16": 2,
+              "19": 2,
+              "28": 3,
+              "30": 3,
+              "31": 1,
+              "32": 3,
+              "54": 1,
+              "56": 2,
+              "60": 3,
+              "63": 1,
+              "64": 1,
+              "65": 1,
+              "75": 1,
+              "103": 1,
+              "110": 1,
+              "119": 1,
+              "120": 4,
+              "121": 1,
+              "122": 2,
+              "124": 8,
+              "125": 5,
+              "126": 9,
+              "127": 5,
+              "128": 1581
+            }
+          },
+          {
+            "readWords": 1551921,
+            "writeWords": 1729687,
+            "scanBytes": 4991,
+            "ops": [
+              0,
+              347,
+              300886,
+              32852,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 162246,
+              "2": 1697,
+              "3": 605,
+              "4": 962,
+              "5": 132906,
+              "6": 4,
+              "7": 4,
+              "8": 9,
+              "9": 2,
+              "12": 602,
+              "14": 1704,
+              "15": 3,
+              "16": 5,
+              "30": 4,
+              "32": 4,
+              "60": 3,
+              "63": 1,
+              "64": 4,
+              "125": 3,
+              "127": 2,
+              "128": 116
+            },
+            "storeSizes": {
+              "1": 28164,
+              "2": 3852,
+              "3": 27,
+              "4": 10,
+              "5": 356,
+              "6": 8,
+              "8": 7,
+              "12": 262,
+              "15": 3,
+              "16": 4,
+              "23": 2,
+              "30": 4,
+              "32": 4,
+              "60": 3,
+              "63": 1,
+              "64": 4,
+              "125": 3,
+              "127": 2,
+              "128": 136
+            }
+          }
+        ],
+        "lexicalSpans": {
+          "unique": 4758,
+          "uniqueBytes": 17910,
+          "repeatedVisits": 10009,
+          "maxVisits": 9,
+          "parserOnly": 3455,
+          "checkerOnly": 0,
+          "both": 1303,
+          "otherHandles": 0,
+          "rangeMismatch": 0,
+          "lengthMismatch": 0,
+          "histogram": {
+            "1": 74,
+            "2": 1446,
+            "3": 1181,
+            "4": 2042,
+            "5": 7,
+            "6": 4,
+            "7": 2,
+            "8": 1,
+            "9": 1
+          },
+          "zeroErrorCalls": 79271
+        },
+        "sourceBytes": 44930,
+        "words": 513302,
+        "allocations": 451,
+        "status": 0
+      },
+      "functionCounts": {
+        "arena_load": 355563,
+        "arena_reply": 355563,
+        "arena_zero": 1219256,
+        "av_load": 371632,
+        "av_append": 66141,
+        "av_reserve_alloc": 170,
+        "av_copy_page": 1809,
+        "ap_read": 365099,
+        "ap_word": 13619,
+        "ap_wordscan": 13433,
+        "ap_scanword": 14767,
+        "ap_scanbyte": 53811,
+        "ap_keyword": 14767,
+        "ap_opcode": 14767,
+        "pl_content": 43519,
+        "ac_error": 79271,
+        "ac_name": 1334,
+        "ac_type": 53517,
+        "ac_arg": 53235,
+        "ac_operand": 25546,
+        "ac_node": 1308,
+        "ac_linear": 25520,
+        "si_intern": 3284,
+        "tp_intern": 266
+      },
+      "summary": {
+        "loadReplies": 355563,
+        "loadedPayloadWords": 1353779,
+        "repliesRequestingAtMost5Words": 348645,
+        "readWords": 2215248,
+        "writeWords": 2651457,
+        "logicalReplyArrayWordCapacity": 45512064,
+        "logicalArenaZeroArrayWordCapacity": 156064768
+      },
+      "loadSizes": {
+        "1": 164658,
+        "2": 25898,
+        "3": 3270,
+        "4": 12381,
+        "5": 142438,
+        "6": 183,
+        "7": 91,
+        "8": 89,
+        "9": 76,
+        "10": 1423,
+        "11": 43,
+        "12": 631,
+        "13": 15,
+        "14": 1711,
+        "15": 26,
+        "16": 13,
+        "17": 11,
+        "18": 5,
+        "19": 7,
+        "20": 5,
+        "22": 4,
+        "23": 5,
+        "24": 3,
+        "26": 9,
+        "27": 1,
+        "28": 4,
+        "29": 2,
+        "30": 11,
+        "31": 9,
+        "32": 23,
+        "33": 2,
+        "34": 6,
+        "35": 4,
+        "36": 1,
+        "37": 4,
+        "38": 2,
+        "39": 4,
+        "40": 2,
+        "41": 4,
+        "44": 4,
+        "46": 2,
+        "47": 2,
+        "49": 3,
+        "50": 1,
+        "51": 3,
+        "53": 3,
+        "54": 2,
+        "56": 3,
+        "57": 2,
+        "60": 9,
+        "62": 1,
+        "63": 2,
+        "64": 9,
+        "65": 1,
+        "66": 2,
+        "67": 3,
+        "68": 4,
+        "69": 3,
+        "70": 2,
+        "71": 2,
+        "72": 1,
+        "73": 2,
+        "74": 8,
+        "77": 2,
+        "78": 1,
+        "80": 2,
+        "82": 1,
+        "84": 1,
+        "85": 2,
+        "88": 2,
+        "90": 5,
+        "91": 2,
+        "92": 3,
+        "94": 1,
+        "98": 2,
+        "102": 3,
+        "103": 1,
+        "104": 3,
+        "106": 4,
+        "108": 2,
+        "110": 3,
+        "111": 3,
+        "112": 4,
+        "114": 1,
+        "116": 1,
+        "117": 1,
+        "119": 1,
+        "120": 5,
+        "121": 1,
+        "122": 3,
+        "124": 8,
+        "125": 9,
+        "126": 9,
+        "127": 7,
+        "128": 2322
+      }
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "sourceBytes": 1028160,
+      "sourceSHA256": "b6cc357736f4c84345fe6cdd719e9567bc5d78a3d68cc27b5a57d81915f02890",
+      "exactDumpSHA256": "29821b663f2c691be0033870ee94145410f4a8470fafa4504f7791732410e7b5",
+      "dumpBytes": 39102996,
+      "instrumentationPreservesEveryStateAndAllocationWord": true,
+      "counts": {
+        "functions": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            2519282,
+            2519282,
+            6535252,
+            1008979,
+            557962,
+            2802,
+            31609,
+            769773,
+            713452,
+            712448,
+            714803,
+            2143058,
+            714803,
+            714803,
+            969724,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            144947,
+            7066
+          ],
+          [
+            3418054,
+            3418054,
+            11419972,
+            3762886,
+            321576,
+            99,
+            2936,
+            3756073,
+            0,
+            0,
+            55065,
+            184663,
+            55065,
+            55065,
+            0,
+            1525004,
+            55065,
+            421258,
+            361917,
+            157594,
+            53941,
+            156470,
+            459,
+            459
+          ]
+        ],
+        "phases": [
+          {
+            "readWords": 16073,
+            "writeWords": 1068328,
+            "scanBytes": 0,
+            "ops": [
+              0,
+              1,
+              0,
+              8033,
+              0,
+              0
+            ],
+            "loadSizes": {},
+            "storeSizes": {
+              "64": 1,
+              "128": 8032
+            }
+          },
+          {
+            "readWords": 18946430,
+            "writeWords": 22590608,
+            "scanBytes": 2143058,
+            "ops": [
+              0,
+              9886,
+              2519282,
+              630034,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 272267,
+              "2": 1208465,
+              "3": 255658,
+              "4": 192277,
+              "5": 352071,
+              "6": 65694,
+              "7": 24329,
+              "8": 14607,
+              "9": 12393,
+              "10": 60986,
+              "11": 132,
+              "12": 19379,
+              "13": 107,
+              "14": 63,
+              "15": 75,
+              "16": 729,
+              "17": 31,
+              "18": 36,
+              "19": 58,
+              "20": 195,
+              "21": 41,
+              "22": 14,
+              "23": 23,
+              "24": 436,
+              "25": 25,
+              "26": 5,
+              "27": 28,
+              "28": 104,
+              "29": 3,
+              "30": 6,
+              "31": 5,
+              "32": 80,
+              "33": 10,
+              "34": 1,
+              "35": 6,
+              "36": 20,
+              "37": 25,
+              "38": 14,
+              "39": 32,
+              "41": 6,
+              "42": 3,
+              "44": 2,
+              "48": 25,
+              "49": 1,
+              "50": 2,
+              "51": 6,
+              "53": 1,
+              "55": 3,
+              "56": 18,
+              "57": 57,
+              "60": 12,
+              "61": 1,
+              "62": 1,
+              "64": 4,
+              "65": 1,
+              "66": 1,
+              "67": 15,
+              "68": 32,
+              "69": 2,
+              "71": 3,
+              "72": 1,
+              "73": 1,
+              "75": 9,
+              "76": 22,
+              "80": 26,
+              "81": 10,
+              "82": 10,
+              "84": 46,
+              "88": 4,
+              "91": 2,
+              "92": 11,
+              "95": 1,
+              "96": 14,
+              "97": 1,
+              "101": 2,
+              "102": 1,
+              "104": 4,
+              "110": 1,
+              "112": 1,
+              "114": 1,
+              "116": 1,
+              "117": 1,
+              "118": 3,
+              "120": 92,
+              "122": 3,
+              "124": 14,
+              "125": 10,
+              "126": 31,
+              "127": 84,
+              "128": 38249
+            },
+            "storeSizes": {
+              "1": 12531,
+              "2": 286347,
+              "3": 126,
+              "4": 354,
+              "5": 179740,
+              "6": 50,
+              "7": 32,
+              "8": 976,
+              "9": 10,
+              "10": 57343,
+              "11": 12,
+              "12": 6534,
+              "13": 9,
+              "14": 55069,
+              "15": 20,
+              "16": 226,
+              "17": 13,
+              "18": 13,
+              "19": 22,
+              "20": 24,
+              "21": 5,
+              "22": 10,
+              "23": 1,
+              "24": 35,
+              "25": 5,
+              "26": 1,
+              "27": 5,
+              "28": 40,
+              "30": 5,
+              "31": 7,
+              "32": 4,
+              "33": 1,
+              "34": 2,
+              "35": 2,
+              "36": 4,
+              "37": 3,
+              "38": 3,
+              "39": 1,
+              "40": 12,
+              "41": 1,
+              "44": 3,
+              "46": 2,
+              "48": 7,
+              "49": 1,
+              "51": 1,
+              "53": 1,
+              "54": 1,
+              "55": 2,
+              "56": 4,
+              "57": 1,
+              "58": 2,
+              "59": 2,
+              "60": 23,
+              "61": 3,
+              "63": 1,
+              "64": 8,
+              "66": 1,
+              "67": 1,
+              "68": 7,
+              "72": 9,
+              "73": 1,
+              "76": 16,
+              "77": 1,
+              "80": 2,
+              "81": 1,
+              "84": 4,
+              "88": 5,
+              "91": 2,
+              "92": 1,
+              "93": 1,
+              "95": 1,
+              "96": 2,
+              "97": 1,
+              "107": 1,
+              "108": 1,
+              "112": 29,
+              "114": 1,
+              "117": 1,
+              "118": 4,
+              "120": 10,
+              "122": 4,
+              "123": 1,
+              "124": 14,
+              "125": 10,
+              "126": 29,
+              "127": 84,
+              "128": 30129
+            }
+          },
+          {
+            "readWords": 16342421,
+            "writeWords": 19917170,
+            "scanBytes": 184663,
+            "ops": [
+              0,
+              558,
+              3418054,
+              381894,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 2294768,
+              "2": 17654,
+              "3": 16854,
+              "4": 13386,
+              "5": 1004701,
+              "6": 3652,
+              "7": 1659,
+              "8": 909,
+              "9": 607,
+              "10": 65,
+              "11": 7,
+              "12": 266,
+              "13": 1,
+              "14": 59438,
+              "15": 9,
+              "16": 562,
+              "17": 10,
+              "18": 4,
+              "19": 2,
+              "20": 184,
+              "21": 4,
+              "22": 4,
+              "24": 157,
+              "28": 50,
+              "30": 1,
+              "32": 64,
+              "36": 21,
+              "44": 3,
+              "48": 27,
+              "56": 12,
+              "63": 1,
+              "64": 4,
+              "68": 12,
+              "76": 15,
+              "80": 6,
+              "84": 3,
+              "88": 6,
+              "92": 6,
+              "96": 6,
+              "104": 6,
+              "120": 3,
+              "126": 3,
+              "127": 2,
+              "128": 2900
+            },
+            "storeSizes": {
+              "1": 265478,
+              "2": 109617,
+              "3": 1185,
+              "4": 160,
+              "5": 475,
+              "6": 208,
+              "7": 7,
+              "8": 747,
+              "9": 1,
+              "10": 161,
+              "12": 255,
+              "14": 79,
+              "15": 5,
+              "16": 104,
+              "17": 5,
+              "18": 42,
+              "19": 1,
+              "20": 43,
+              "21": 2,
+              "22": 28,
+              "24": 44,
+              "26": 24,
+              "28": 16,
+              "30": 9,
+              "32": 10,
+              "34": 1,
+              "36": 2,
+              "38": 1,
+              "40": 12,
+              "42": 1,
+              "44": 1,
+              "48": 5,
+              "60": 4,
+              "63": 1,
+              "64": 4,
+              "68": 5,
+              "72": 2,
+              "76": 1,
+              "80": 2,
+              "84": 2,
+              "88": 4,
+              "96": 2,
+              "112": 1,
+              "126": 3,
+              "127": 2,
+              "128": 3132
+            }
+          }
+        ],
+        "lexicalSpans": {
+          "unique": 254505,
+          "uniqueBytes": 773808,
+          "repeatedVisits": 515363,
+          "maxVisits": 502,
+          "parserOnly": 239625,
+          "checkerOnly": 0,
+          "both": 14880,
+          "otherHandles": 0,
+          "rangeMismatch": 0,
+          "lengthMismatch": 184,
+          "histogram": {
+            "1": 5747,
+            "2": 87890,
+            "3": 95279,
+            "4": 58474,
+            "5": 4343,
+            "6": 772,
+            "7": 401,
+            "8": 191,
+            "9": 358,
+            "10": 103,
+            "11": 79,
+            "12": 96,
+            "13": 87,
+            "14": 38,
+            "15": 59,
+            "16": 50,
+            "17": 45,
+            "18": 40,
+            "19": 17,
+            "20": 30,
+            "21": 20,
+            "22": 20,
+            "23": 20,
+            "24": 12,
+            "25": 8,
+            "26": 10,
+            "27": 11,
+            "28": 18,
+            "29": 5,
+            "30": 4,
+            "31": 7,
+            "32": 4,
+            "33": 8,
+            "34": 14,
+            "35": 14,
+            "36": 9,
+            "37": 4,
+            "38": 3,
+            "39": 7,
+            "40": 5,
+            "41": 4,
+            "42": 3,
+            "43": 4,
+            "44": 3,
+            "45": 7,
+            "46": 2,
+            "47": 5,
+            "48": 4,
+            "49": 1,
+            "50": 7,
+            "51": 2,
+            "52": 4,
+            "53": 5,
+            "54": 1,
+            "55": 2,
+            "56": 7,
+            "57": 7,
+            "58": 4,
+            "59": 5,
+            "60": 2,
+            "61": 4,
+            "62": 5,
+            "64": 115
+          },
+          "zeroErrorCalls": 1525004
+        },
+        "sourceBytes": 1028160,
+        "words": 9765044,
+        "allocations": 10445,
+        "status": 0
+      },
+      "functionCounts": {
+        "arena_load": 5937336,
+        "arena_reply": 5937336,
+        "arena_zero": 17955224,
+        "av_load": 4771865,
+        "av_append": 879538,
+        "av_reserve_alloc": 2901,
+        "av_copy_page": 34545,
+        "ap_read": 4525846,
+        "ap_word": 713452,
+        "ap_wordscan": 712448,
+        "ap_scanword": 769868,
+        "ap_scanbyte": 2327721,
+        "ap_keyword": 769868,
+        "ap_opcode": 769868,
+        "pl_content": 969724,
+        "ac_error": 1525004,
+        "ac_name": 55065,
+        "ac_type": 421258,
+        "ac_arg": 361917,
+        "ac_operand": 157594,
+        "ac_node": 53941,
+        "ac_linear": 156470,
+        "si_intern": 145406,
+        "tp_intern": 7525
+      },
+      "summary": {
+        "loadReplies": 5937336,
+        "loadedPayloadWords": 21358991,
+        "repliesRequestingAtMost5Words": 5628101,
+        "readWords": 35304924,
+        "writeWords": 43576106,
+        "logicalReplyArrayWordCapacity": 759979008,
+        "logicalArenaZeroArrayWordCapacity": 2298268672
+      },
+      "loadSizes": {
+        "1": 2567035,
+        "2": 1226119,
+        "3": 272512,
+        "4": 205663,
+        "5": 1356772,
+        "6": 69346,
+        "7": 25988,
+        "8": 15516,
+        "9": 13000,
+        "10": 61051,
+        "11": 139,
+        "12": 19645,
+        "13": 108,
+        "14": 59501,
+        "15": 84,
+        "16": 1291,
+        "17": 41,
+        "18": 40,
+        "19": 60,
+        "20": 379,
+        "21": 45,
+        "22": 18,
+        "23": 23,
+        "24": 593,
+        "25": 25,
+        "26": 5,
+        "27": 28,
+        "28": 154,
+        "29": 3,
+        "30": 7,
+        "31": 5,
+        "32": 144,
+        "33": 10,
+        "34": 1,
+        "35": 6,
+        "36": 41,
+        "37": 25,
+        "38": 14,
+        "39": 32,
+        "41": 6,
+        "42": 3,
+        "44": 5,
+        "48": 52,
+        "49": 1,
+        "50": 2,
+        "51": 6,
+        "53": 1,
+        "55": 3,
+        "56": 30,
+        "57": 57,
+        "60": 12,
+        "61": 1,
+        "62": 1,
+        "63": 1,
+        "64": 8,
+        "65": 1,
+        "66": 1,
+        "67": 15,
+        "68": 44,
+        "69": 2,
+        "71": 3,
+        "72": 1,
+        "73": 1,
+        "75": 9,
+        "76": 37,
+        "80": 32,
+        "81": 10,
+        "82": 10,
+        "84": 49,
+        "88": 10,
+        "91": 2,
+        "92": 17,
+        "95": 1,
+        "96": 20,
+        "97": 1,
+        "101": 2,
+        "102": 1,
+        "104": 10,
+        "110": 1,
+        "112": 1,
+        "114": 1,
+        "116": 1,
+        "117": 1,
+        "118": 3,
+        "120": 95,
+        "122": 3,
+        "124": 14,
+        "125": 10,
+        "126": 34,
+        "127": 86,
+        "128": 41149
+      }
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "sourceBytes": 114645,
+      "sourceSHA256": "c90c70cad5719c15c0c50260e445bf9b3d4636292b93af6bf297162ccfe1e268",
+      "exactDumpSHA256": "514a70e4d84b8384a670620018c6147e081e2a8753e953d07115118ec1e8da69",
+      "dumpBytes": 4952428,
+      "instrumentationPreservesEveryStateAndAllocationWord": true,
+      "counts": {
+        "functions": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            297537,
+            297537,
+            768904,
+            123169,
+            66301,
+            2103,
+            4877,
+            87199,
+            80289,
+            80102,
+            81305,
+            215614,
+            81305,
+            81305,
+            107234,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            16118,
+            1245
+          ],
+          [
+            365666,
+            365666,
+            1198959,
+            393177,
+            34361,
+            74,
+            385,
+            389190,
+            0,
+            0,
+            6467,
+            19567,
+            6467,
+            6467,
+            0,
+            167219,
+            6467,
+            43384,
+            34386,
+            14934,
+            6152,
+            14619,
+            322,
+            322
+          ]
+        ],
+        "phases": [
+          {
+            "readWords": 1799,
+            "writeWords": 119128,
+            "scanBytes": 0,
+            "ops": [
+              0,
+              1,
+              0,
+              896,
+              0,
+              0
+            ],
+            "loadSizes": {},
+            "storeSizes": {
+              "85": 1,
+              "128": 895
+            }
+          },
+          {
+            "readWords": 2263851,
+            "writeWords": 2715661,
+            "scanBytes": 215614,
+            "ops": [
+              0,
+              3361,
+              297537,
+              76685,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 43558,
+              "2": 142954,
+              "3": 37860,
+              "4": 8531,
+              "5": 38900,
+              "6": 3361,
+              "7": 1581,
+              "8": 1010,
+              "9": 1000,
+              "10": 8374,
+              "11": 621,
+              "12": 1861,
+              "13": 159,
+              "14": 182,
+              "15": 96,
+              "16": 701,
+              "17": 53,
+              "18": 30,
+              "19": 40,
+              "20": 1351,
+              "22": 10,
+              "23": 3,
+              "24": 247,
+              "25": 4,
+              "26": 5,
+              "27": 3,
+              "28": 3,
+              "29": 7,
+              "30": 6,
+              "31": 1,
+              "32": 40,
+              "33": 6,
+              "34": 7,
+              "36": 21,
+              "38": 2,
+              "40": 18,
+              "41": 1,
+              "42": 18,
+              "44": 49,
+              "46": 2,
+              "48": 1,
+              "52": 13,
+              "56": 2,
+              "57": 2,
+              "60": 14,
+              "62": 1,
+              "64": 36,
+              "66": 1,
+              "67": 32,
+              "69": 2,
+              "78": 1,
+              "79": 1,
+              "81": 2,
+              "82": 1,
+              "84": 46,
+              "91": 1,
+              "96": 1,
+              "111": 1,
+              "115": 1,
+              "116": 1,
+              "119": 15,
+              "120": 8,
+              "122": 3,
+              "124": 10,
+              "125": 39,
+              "126": 20,
+              "127": 5,
+              "128": 4601
+            },
+            "storeSizes": {
+              "1": 5513,
+              "2": 33666,
+              "3": 470,
+              "4": 188,
+              "5": 17302,
+              "6": 23,
+              "7": 13,
+              "8": 928,
+              "9": 21,
+              "10": 7101,
+              "11": 10,
+              "12": 958,
+              "14": 6472,
+              "15": 4,
+              "16": 97,
+              "19": 16,
+              "24": 16,
+              "26": 1,
+              "27": 1,
+              "28": 11,
+              "29": 4,
+              "30": 5,
+              "31": 1,
+              "32": 6,
+              "34": 1,
+              "36": 18,
+              "39": 1,
+              "44": 5,
+              "52": 1,
+              "56": 2,
+              "57": 1,
+              "60": 14,
+              "62": 1,
+              "64": 2,
+              "65": 1,
+              "76": 16,
+              "91": 1,
+              "99": 1,
+              "115": 1,
+              "119": 15,
+              "120": 8,
+              "122": 3,
+              "124": 10,
+              "125": 39,
+              "126": 20,
+              "127": 5,
+              "128": 3692
+            }
+          },
+          {
+            "readWords": 1767535,
+            "writeWords": 2158538,
+            "scanBytes": 19567,
+            "ops": [
+              0,
+              396,
+              365666,
+              42800,
+              0,
+              0
+            ],
+            "loadSizes": {
+              "1": 245722,
+              "2": 5123,
+              "3": 3354,
+              "4": 699,
+              "5": 101797,
+              "6": 156,
+              "7": 92,
+              "8": 74,
+              "9": 89,
+              "10": 57,
+              "11": 57,
+              "12": 47,
+              "13": 14,
+              "14": 7034,
+              "15": 8,
+              "16": 272,
+              "17": 2,
+              "19": 18,
+              "20": 459,
+              "24": 111,
+              "30": 1,
+              "32": 37,
+              "36": 18,
+              "40": 6,
+              "44": 24,
+              "52": 9,
+              "63": 1,
+              "64": 4,
+              "84": 27,
+              "126": 2,
+              "127": 1,
+              "128": 351
+            },
+            "storeSizes": {
+              "1": 27240,
+              "2": 13370,
+              "3": 469,
+              "4": 138,
+              "5": 322,
+              "6": 69,
+              "7": 6,
+              "8": 463,
+              "9": 8,
+              "10": 51,
+              "11": 3,
+              "12": 178,
+              "14": 6,
+              "15": 1,
+              "16": 41,
+              "18": 2,
+              "19": 9,
+              "20": 1,
+              "22": 1,
+              "24": 11,
+              "28": 6,
+              "30": 2,
+              "32": 6,
+              "36": 8,
+              "44": 3,
+              "47": 2,
+              "63": 1,
+              "64": 4,
+              "76": 9,
+              "126": 2,
+              "127": 1,
+              "128": 367
+            }
+          }
+        ],
+        "lexicalSpans": {
+          "unique": 30248,
+          "uniqueBytes": 84855,
+          "repeatedVisits": 57524,
+          "maxVisits": 273,
+          "parserOnly": 29177,
+          "checkerOnly": 0,
+          "both": 1071,
+          "otherHandles": 0,
+          "rangeMismatch": 0,
+          "lengthMismatch": 84,
+          "histogram": {
+            "1": 2147,
+            "2": 10440,
+            "3": 11280,
+            "4": 6083,
+            "5": 98,
+            "6": 47,
+            "7": 25,
+            "8": 8,
+            "9": 10,
+            "10": 9,
+            "11": 5,
+            "12": 5,
+            "13": 3,
+            "14": 6,
+            "15": 4,
+            "16": 4,
+            "17": 3,
+            "18": 5,
+            "19": 7,
+            "20": 1,
+            "21": 2,
+            "22": 1,
+            "23": 1,
+            "24": 2,
+            "25": 1,
+            "26": 1,
+            "27": 1,
+            "29": 2,
+            "31": 2,
+            "32": 1,
+            "33": 2,
+            "34": 2,
+            "37": 1,
+            "39": 1,
+            "40": 2,
+            "41": 1,
+            "42": 1,
+            "43": 1,
+            "45": 2,
+            "46": 1,
+            "48": 1,
+            "49": 1,
+            "54": 1,
+            "55": 1,
+            "57": 1,
+            "60": 1,
+            "64": 24
+          },
+          "zeroErrorCalls": 167219
+        },
+        "sourceBytes": 114645,
+        "words": 1234089,
+        "allocations": 3758,
+        "status": 0
+      },
+      "functionCounts": {
+        "arena_load": 663203,
+        "arena_reply": 663203,
+        "arena_zero": 1967863,
+        "av_load": 516346,
+        "av_append": 100662,
+        "av_reserve_alloc": 2177,
+        "av_copy_page": 5262,
+        "ap_read": 476389,
+        "ap_word": 80289,
+        "ap_wordscan": 80102,
+        "ap_scanword": 87772,
+        "ap_scanbyte": 235181,
+        "ap_keyword": 87772,
+        "ap_opcode": 87772,
+        "pl_content": 107234,
+        "ac_error": 167219,
+        "ac_name": 6467,
+        "ac_type": 43384,
+        "ac_arg": 34386,
+        "ac_operand": 14934,
+        "ac_node": 6152,
+        "ac_linear": 14619,
+        "si_intern": 16440,
+        "tp_intern": 1567
+      },
+      "summary": {
+        "loadReplies": 663203,
+        "loadedPayloadWords": 2454739,
+        "repliesRequestingAtMost5Words": 628498,
+        "readWords": 4033185,
+        "writeWords": 4993327,
+        "logicalReplyArrayWordCapacity": 84889984,
+        "logicalArenaZeroArrayWordCapacity": 251886464
+      },
+      "loadSizes": {
+        "1": 289280,
+        "2": 148077,
+        "3": 41214,
+        "4": 9230,
+        "5": 140697,
+        "6": 3517,
+        "7": 1673,
+        "8": 1084,
+        "9": 1089,
+        "10": 8431,
+        "11": 678,
+        "12": 1908,
+        "13": 173,
+        "14": 7216,
+        "15": 104,
+        "16": 973,
+        "17": 55,
+        "18": 30,
+        "19": 58,
+        "20": 1810,
+        "22": 10,
+        "23": 3,
+        "24": 358,
+        "25": 4,
+        "26": 5,
+        "27": 3,
+        "28": 3,
+        "29": 7,
+        "30": 7,
+        "31": 1,
+        "32": 77,
+        "33": 6,
+        "34": 7,
+        "36": 39,
+        "38": 2,
+        "40": 24,
+        "41": 1,
+        "42": 18,
+        "44": 73,
+        "46": 2,
+        "48": 1,
+        "52": 22,
+        "56": 2,
+        "57": 2,
+        "60": 14,
+        "62": 1,
+        "63": 1,
+        "64": 40,
+        "66": 1,
+        "67": 32,
+        "69": 2,
+        "78": 1,
+        "79": 1,
+        "81": 2,
+        "82": 1,
+        "84": 73,
+        "91": 1,
+        "96": 1,
+        "111": 1,
+        "115": 1,
+        "116": 1,
+        "119": 15,
+        "120": 8,
+        "122": 3,
+        "124": 10,
+        "125": 39,
+        "126": 22,
+        "127": 6,
+        "128": 4952
+      }
+    }
+  ],
+  "fixedDemandAudit": {
+    "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "functions": 612,
+    "apReadSites": 38,
+    "localFixedSites": 31,
+    "escapingSites": 7,
+    "weightedBootCalls": 3116699,
+    "allBootApReadCalls": 4525846,
+    "weightReuseProof": {
+      "scope": "Existing exact per-site operation counters are reused only after verifying its baseline generated C differs from the current C by the first66-to68 compiler-version banner alone. Its38site counts sum exactly to the newly instrumented current boot ap_read count.",
+      "oldC_SHA256": "7213bae05588b34929630cfb511ba8c1e6d2bfb679fb50c4b4325eba7c45cd05",
+      "currentC_SHA256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998",
+      "sameAfterOnlyBannerSubstitution": true
+    },
+    "rows": [
+      {
+        "function": "ap_seenread",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "page"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q4",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 12
+      },
+      {
+        "function": "ap_nodeexists",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "a"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q7",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 0
+      },
+      {
+        "function": "ac_error",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "line"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q9",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 1525004
+      },
+      {
+        "function": "ac_name",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 5
+        },
+        "aliases": [
+          "row"
+        ],
+        "uses": [
+          {
+            "op": "fold",
+            "node": "out",
+            "arg": 2,
+            "index": null
+          }
+        ],
+        "onlyFixedElementReads": false,
+        "bootCallCount": 55065
+      },
+      {
+        "function": "ac_type",
+        "node": "q1",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 5
+        },
+        "aliases": [],
+        "uses": [],
+        "onlyFixedElementReads": false,
+        "bootCallCount": 421258
+      },
+      {
+        "function": "ac_arg",
+        "node": "r",
+        "requestedCount": {
+          "kind": "node",
+          "id": "q2"
+        },
+        "aliases": [
+          "page"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q4",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 361917
+      },
+      {
+        "function": "ac_operand_param",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "page"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q15",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 14899
+      },
+      {
+        "function": "ac_operand_node",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "map"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q4",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q6",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q11",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q19",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 87099
+      },
+      {
+        "function": "ac_operand_node",
+        "node": "t",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "page"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q22",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 87099
+      },
+      {
+        "function": "ac_operand",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 5
+        },
+        "aliases": [
+          "o"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q1",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q2",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q3",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q9",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "fold",
+            "node": "q",
+            "arg": 2,
+            "index": null
+          },
+          {
+            "op": "get",
+            "node": "q16",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "fold",
+            "node": "q20",
+            "arg": 2,
+            "index": null
+          }
+        ],
+        "onlyFixedElementReads": false,
+        "bootCallCount": 157594
+      },
+      {
+        "function": "ac_linear",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 5
+        },
+        "aliases": [
+          "o"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q12",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q14",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q16",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q17",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q106",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q107",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 156470
+      },
+      {
+        "function": "ac_linear",
+        "node": "key",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "node"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q18",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 156470
+      },
+      {
+        "function": "ac_linear",
+        "node": "u",
+        "requestedCount": {
+          "kind": "node",
+          "id": "q28"
+        },
+        "aliases": [
+          "usage"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q89",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q91",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q98",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q110",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q113",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 156470
+      },
+      {
+        "function": "ac_linear",
+        "node": "idxop",
+        "requestedCount": {
+          "kind": "node",
+          "id": "q40"
+        },
+        "aliases": [
+          "fieldop"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q41",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q43",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 156470
+      },
+      {
+        "function": "ac_linear",
+        "node": "ft",
+        "requestedCount": {
+          "kind": "node",
+          "id": "q70"
+        },
+        "aliases": [
+          "child"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q74",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 156470
+      },
+      {
+        "function": "ac_iocount",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "a"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q7",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 7469
+      },
+      {
+        "function": "ac_op",
+        "node": "idx",
+        "requestedCount": {
+          "kind": "node",
+          "id": "q83"
+        },
+        "aliases": [
+          "index"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q87",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q93",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q99",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q101",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 49596
+      },
+      {
+        "function": "ac_op",
+        "node": "field",
+        "requestedCount": {
+          "kind": "node",
+          "id": "q104"
+        },
+        "aliases": [
+          "f"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q109",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q124",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 49596
+      },
+      {
+        "function": "ac_signature",
+        "node": "t",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "param"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q11",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 22188
+      },
+      {
+        "function": "ac_pred_signature",
+        "node": "a",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "av"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q9",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 167
+      },
+      {
+        "function": "ac_pred_signature",
+        "node": "b",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "bv"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q8",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 167
+      },
+      {
+        "function": "ac_predicate",
+        "node": "lookup",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "found"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q3",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q6",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q16",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 28
+      },
+      {
+        "function": "ac_predicate",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 14
+        },
+        "aliases": [
+          "pred"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q12",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q13",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q22",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 28
+      },
+      {
+        "function": "ac_call",
+        "node": "lookup",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "found"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q7",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q11",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q15",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q67",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 4345
+      },
+      {
+        "function": "ac_call",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 14
+        },
+        "aliases": [
+          "body"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q21",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q25",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q36",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q40",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q41",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q53",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q56",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q60",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q63",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "fold",
+            "node": "pred",
+            "arg": 2,
+            "index": null
+          },
+          {
+            "op": "get",
+            "node": "q111",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          }
+        ],
+        "onlyFixedElementReads": false,
+        "bootCallCount": 4345
+      },
+      {
+        "function": "ac_call",
+        "node": "pp",
+        "requestedCount": {
+          "kind": "node",
+          "id": "q43"
+        },
+        "aliases": [
+          "params"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q47",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q52",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q54",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q110",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 4345
+      },
+      {
+        "function": "ac_call",
+        "node": "bound",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 3
+        },
+        "aliases": [
+          "bb"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q82",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q85",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q88",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q92",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q93",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 4345
+      },
+      {
+        "function": "ac_call",
+        "node": "countop",
+        "requestedCount": {
+          "kind": "node",
+          "id": "q76"
+        },
+        "aliases": [
+          "co"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q77",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q79",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q80",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q95",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 4345
+      },
+      {
+        "function": "ac_node",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 14
+        },
+        "aliases": [
+          "n"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q2",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q3",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q4",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q5",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 6
+            }
+          },
+          {
+            "op": "get",
+            "node": "q6",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 7
+            }
+          },
+          {
+            "op": "get",
+            "node": "q7",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 8
+            }
+          },
+          {
+            "op": "get",
+            "node": "q11",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q22",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q24",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q26",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 4
+            }
+          },
+          {
+            "op": "get",
+            "node": "q30",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q32",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 5
+            }
+          },
+          {
+            "op": "get",
+            "node": "q36",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q40",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q44",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q48",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q52",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q53",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q54",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 7
+            }
+          },
+          {
+            "op": "get",
+            "node": "q55",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 8
+            }
+          },
+          {
+            "op": "get",
+            "node": "q61",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 4
+            }
+          },
+          {
+            "op": "get",
+            "node": "q62",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 5
+            }
+          },
+          {
+            "op": "get",
+            "node": "q67",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 53941
+      },
+      {
+        "function": "ac_node",
+        "node": "lookup",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "key"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q12",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q14",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 53941
+      },
+      {
+        "function": "ac_return_effect",
+        "node": "lookup",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "node"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q9",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 223
+      },
+      {
+        "function": "ac_return_effect",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 2
+        },
+        "aliases": [
+          "usage"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q18",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q21",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 223
+      },
+      {
+        "function": "ac_function_body",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 14
+        },
+        "aliases": [
+          "f"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q1",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q2",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q3",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 4
+            }
+          },
+          {
+            "op": "get",
+            "node": "q4",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 5
+            }
+          },
+          {
+            "op": "get",
+            "node": "q5",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q6",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 7
+            }
+          },
+          {
+            "op": "get",
+            "node": "q10",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "name",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "get",
+            "node": "q17",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q20",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q21",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 5
+            }
+          },
+          {
+            "op": "get",
+            "node": "q24",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 5
+            }
+          },
+          {
+            "op": "get",
+            "node": "q25",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q29",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 1
+            }
+          },
+          {
+            "op": "get",
+            "node": "q37",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 2
+            }
+          },
+          {
+            "op": "get",
+            "node": "q39",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 5
+            }
+          },
+          {
+            "op": "get",
+            "node": "q40",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 4
+            }
+          },
+          {
+            "op": "get",
+            "node": "q41",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 5
+            }
+          },
+          {
+            "op": "get",
+            "node": "q43",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 8
+            }
+          },
+          {
+            "op": "get",
+            "node": "q46",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 6
+            }
+          },
+          {
+            "op": "get",
+            "node": "q51",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 3
+            }
+          },
+          {
+            "op": "get",
+            "node": "q56",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 6
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 1124
+      },
+      {
+        "function": "ac_function_body",
+        "node": "dup",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "dd"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q14",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 1124
+      },
+      {
+        "function": "ac_function_body",
+        "node": "ro",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 5
+        },
+        "aliases": [
+          "retop"
+        ],
+        "uses": [
+          {
+            "op": "fold",
+            "node": "effect",
+            "arg": 2,
+            "index": null
+          }
+        ],
+        "onlyFixedElementReads": false,
+        "bootCallCount": 1124
+      },
+      {
+        "function": "ac_publish_function",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 1
+        },
+        "aliases": [
+          "row"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "name",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          }
+        ],
+        "onlyFixedElementReads": true,
+        "bootCallCount": 1124
+      },
+      {
+        "function": "ap_wordgo",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 2
+        },
+        "aliases": [
+          "span"
+        ],
+        "uses": [
+          {
+            "op": "fold",
+            "node": "q9",
+            "arg": 2,
+            "index": null
+          }
+        ],
+        "onlyFixedElementReads": false,
+        "bootCallCount": 712448
+      },
+      {
+        "function": "ap_line",
+        "node": "r",
+        "requestedCount": {
+          "kind": "u32",
+          "value": 10
+        },
+        "aliases": [
+          "line"
+        ],
+        "uses": [
+          {
+            "op": "get",
+            "node": "q2",
+            "arg": 0,
+            "index": {
+              "kind": "u32",
+              "value": 0
+            }
+          },
+          {
+            "op": "fold",
+            "node": "out",
+            "arg": 2,
+            "index": null
+          },
+          {
+            "op": "fold",
+            "node": "out_1",
+            "arg": 2,
+            "index": null
+          },
+          {
+            "op": "fold",
+            "node": "q21",
+            "arg": 2,
+            "index": null
+          }
+        ],
+        "onlyFixedElementReads": false,
+        "bootCallCount": 57313
+      }
+    ]
+  },
+  "interpretation": {
+    "supported": "Fixed128-word aggregate plumbing and tiny arena-row transactions deserve a general typed-IR demand analysis proof. Historical samples independently identify copy/zero work in several concrete callers; current exact structural counts establish the amount of page-valued source activity.",
+    "notSupported": "Semantic arena_zero calls and logical array capacities do not establish physical copy traffic, CPU percentages, potential speedup or the ability to close the full historical gap. The historical copy/zero sample share alone cannot explain a roughly sevenfold boot frontend gap. All protocol transactions remain a separate quantity.",
+    "target": "Effect-preserving interprocedural demand analysis and scalar replacement of private fixed aggregate results/continuations in typed SSA, before platform emission. Preserve original public signatures/value parameters and all effects; private projected results use scalar records and original array-index modulus, never a shortened array with changed semantics.",
+    "firstProof": "Conservative literal-field result demand through call/at/get, then rec/put and fold/loop continuation state. Unknown/dynamic/escaping demand retains the existing full value. Use one deterministic demand-joined private specialization per compatible context; measure compilation cost, emitted source/binary size and total package size. No shipping implementation has been started."
+  },
+  "profileArchive": {
+    "path": "results/source-frontend-bottleneck-profiles.zip",
+    "bytes": 110380,
+    "sha256": "a82910b379a31385f38819a4008c4ade04b63d27b21232e5e6f95b1de8318a4b",
+    "members": [
+      {
+        "path": "c-wasm-604-18.cpuprofile.json",
+        "bytes": 892926,
+        "sha256": "1792532fd43d0380d6f707acfb45e7b0018ec157a60bb6958faa745fb736834f"
+      },
+      {
+        "path": "direct-wasm-609-19.cpuprofile.json",
+        "bytes": 569298,
+        "sha256": "a13be2f2faedb8de94a8c40f48e64aa877488fbb60a4c26d4ef93df48b6722d0"
+      }
+    ]
+  },
+  "verification": {
+    "archivedInstrumenterRecreatesExecutedC_RuntimeAndHarnessByteExactly": true,
+    "archivedRunnerReproducesAllSixCountsAndDumpHashesByteExactly": true,
+    "repeatedNativeExecutions": 24,
+    "archivedStaticDemandAuditReproducesByteExactly": true,
+    "historicalProfileFieldsOtherThanNormalizedUrlsUnchanged": true,
+    "profileArchiveAndAllMembersHashVerified": true,
+    "prereview": {
+      "findings": 0,
+      "score": 0,
+      "verdict": "ok"
+    },
+    "applicableScope": {
+      "class": "docs-or-results",
+      "requiredSteps": [
+        "lint"
+      ]
+    },
+    "lint": {
+      "exitCode": 0,
+      "existingWarnings": 18,
+      "existingInfos": 164,
+      "unverifiedRecordedLosses": 0,
+      "filesRequiringScrub": 0
+    },
+    "formalTimingRunPerformed": false,
+    "shippingImplementationStarted": false,
+    "pushed": false
+  }
+}

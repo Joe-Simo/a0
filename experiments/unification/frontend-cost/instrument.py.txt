@@ -1,0 +1,58 @@
+from pathlib import Path
+import json,shutil,re,hashlib,sys
+if len(sys.argv)!=4:raise SystemExit('usage: instrument.py.txt ARTIFACT_DIR RUNTIME_DIR NEW_OUTPUT_DIR')
+original=Path(sys.argv[1]);runtime=Path(sys.argv[2]);root=Path(sys.argv[3]);root.mkdir(parents=True,exist_ok=False)
+for n in ['module.c','driver.c','api.h','build.json']:shutil.copyfile(original/n,root/n)
+assert hashlib.sha256((root/'module.c').read_bytes()).hexdigest()==json.loads((root/'build.json').read_text())['cSHA256']
+for n in ['arena_runtime.c','arena_runtime.h']:shutil.copyfile(runtime/n,root/n)
+functions=['arena_load','arena_reply','arena_zero','av_load','av_append','av_reserve_alloc','av_copy_page','ap_read','ap_word','ap_wordscan','ap_scanword','ap_scanbyte','ap_keyword','ap_opcode','pl_content','ac_error','ac_name','ac_type','ac_arg','ac_operand','ac_node','ac_linear','si_intern','tp_intern']
+ids={name:i for i,name in enumerate(functions)}
+pre='static uint32_t diag_phase,diag_source_bytes;\nstatic uint64_t diag_calls[3]['+str(len(functions))+'],diag_reads[3],diag_writes[3],diag_ops[3][6],diag_load_hist[3][129],diag_store_hist[3][129];\nstatic uint32_t *diag_word_visits,*diag_word_lengths,*diag_word_phases;\nstatic uint64_t diag_scan_bytes[3],diag_other_scan_handles,diag_scan_range_mismatch,diag_span_length_mismatch,diag_zero_errors;\n'
+module=(root/'module.c').read_text();result=[];defs={name:0 for name in functions}
+for line in module.splitlines(True):
+ result.append(line)
+ m=re.match(r'^.*\b(a0[orv]?_([A-Za-z0-9_]+))\([^\n]*\) \{\n$',line)
+ if not m:continue
+ name=m[2]
+ if name=='arena_parse':result.append('  diag_phase=1;\n')
+ if name=='arena_verify_begin':result.append('  diag_phase=2;\n')
+ if name in ids:result.append(f'  diag_calls[diag_phase][{ids[name]}]++;\n');defs[name]+=1
+ if name=='ac_error':
+  state='p0->f0' if m[1].startswith('a0o_') else 'p0.f0'
+  result.append(f'  if(p1==0u && {state}.e[0]==0u)diag_zero_errors++;\n')
+ if name=='ap_scanword':result.append('  diag_scan_bytes[diag_phase]+=p3; if(p1!=1u)diag_other_scan_handles++;else if(p2>=diag_source_bytes||p3>diag_source_bytes-p2)diag_scan_range_mismatch++;else {if(diag_word_visits[p2] && diag_word_lengths[p2]!=p3)diag_span_length_mismatch++;diag_word_visits[p2]++;diag_word_lengths[p2]=p3;diag_word_phases[p2]|=1u<<diag_phase;}\n')
+assert all(defs.values()),defs
+(root/'module.c').write_text(''.join(result))
+r=(root/'arena_runtime.c').read_text()
+for sig,extra in [('static void access_words(a0_arena_session *s, bool store) {','\n  uint32_t diag_size=s->arguments[2];if(diag_size<=128){if(store)diag_store_hist[diag_phase][diag_size]++;else diag_load_hist[diag_phase][diag_size]++;}'),('static void complete_request(a0_arena_session *s) {','\n  if(s->request_op<6)diag_ops[diag_phase][s->request_op]++;'),('uint32_t a0_runtime_read(a0_arena_session *s) {','\n  diag_reads[diag_phase]++;'),('void a0_runtime_write(a0_arena_session *s, uint32_t word) {','\n  diag_writes[diag_phase]++;')]:
+ assert r.count(sig)==1,sig;r=r.replace(sig,sig+extra)
+(root/'arena_runtime.c').write_text(r)
+h=Path(__file__).with_name('harness.c.txt').read_text()
+h=h.replace('#include "driver.c"',pre+'#include "driver.c"')
+h=h.replace('    uint32_t status = frontend_parse(bytes, (uint32_t)size, budget);','    diag_source_bytes=(uint32_t)size;diag_word_visits=calloc(size+1,sizeof(uint32_t));diag_word_lengths=calloc(size+1,sizeof(uint32_t));diag_word_phases=calloc(size+1,sizeof(uint32_t));if(!diag_word_visits||!diag_word_lengths||!diag_word_phases)return 70;\n    uint32_t status = frontend_parse(bytes, (uint32_t)size, budget);\n'+'''
+    FILE *counts=fopen("counts.json","w");if(!counts)return 74;
+    fprintf(counts,"{\\"functions\\":[");
+    for(uint32_t phase=0;phase<3;phase++){
+        fprintf(counts,"%s[",phase?",":"");
+        for(uint32_t fn=0;fn<sizeof diag_calls[0]/sizeof *diag_calls[0];fn++)fprintf(counts,"%s%" PRIu64,fn?",":"",diag_calls[phase][fn]);
+        fprintf(counts,"]");
+    }
+    fprintf(counts,"],\\"phases\\":[");
+    for(uint32_t phase=0;phase<3;phase++){
+        fprintf(counts,"%s{\\"readWords\\":%" PRIu64 ",\\"writeWords\\":%" PRIu64 ",\\"scanBytes\\":%" PRIu64 ",\\"ops\\":[",phase?",":"",diag_reads[phase],diag_writes[phase],diag_scan_bytes[phase]);
+        for(uint32_t op=0;op<6;op++)fprintf(counts,"%s%" PRIu64,op?",":"",diag_ops[phase][op]);
+        fprintf(counts,"],\\"loadSizes\\":{");bool comma=false;
+        for(uint32_t n=0;n<=128;n++)if(diag_load_hist[phase][n]){fprintf(counts,"%s\\"%u\\":%" PRIu64,comma?",":"",n,diag_load_hist[phase][n]);comma=true;}
+        fprintf(counts,"},\\"storeSizes\\":{");comma=false;
+        for(uint32_t n=0;n<=128;n++)if(diag_store_hist[phase][n]){fprintf(counts,"%s\\"%u\\":%" PRIu64,comma?",":"",n,diag_store_hist[phase][n]);comma=true;}
+        fprintf(counts,"}}");
+    }
+    uint64_t unique=0,uniqueBytes=0,repeated=0,maxVisits=0,parserOnly=0,checkerOnly=0,both=0,hist[65]={0};
+    for(uint32_t i=0;i<size;i++)if(diag_word_visits[i]){unique++;uniqueBytes+=diag_word_lengths[i];repeated+=diag_word_visits[i]-1;if(diag_word_visits[i]>maxVisits)maxVisits=diag_word_visits[i];hist[diag_word_visits[i]<64?diag_word_visits[i]:64]++;if(diag_word_phases[i]==2)parserOnly++;else if(diag_word_phases[i]==4)checkerOnly++;else if(diag_word_phases[i]==6)both++;}
+    fprintf(counts,"],\\"lexicalSpans\\":{\\"unique\\":%" PRIu64 ",\\"uniqueBytes\\":%" PRIu64 ",\\"repeatedVisits\\":%" PRIu64 ",\\"maxVisits\\":%" PRIu64 ",\\"parserOnly\\":%" PRIu64 ",\\"checkerOnly\\":%" PRIu64 ",\\"both\\":%" PRIu64 ",\\"otherHandles\\":%" PRIu64 ",\\"rangeMismatch\\":%" PRIu64 ",\\"lengthMismatch\\":%" PRIu64 ",\\"histogram\\":{",unique,uniqueBytes,repeated,maxVisits,parserOnly,checkerOnly,both,diag_other_scan_handles,diag_scan_range_mismatch,diag_span_length_mismatch);
+    bool comma=false;for(uint32_t i=1;i<=64;i++)if(hist[i]){fprintf(counts,"%s\\"%u\\":%" PRIu64,comma?",":"",i,hist[i]);comma=true;}
+    fprintf(counts,"},\\"zeroErrorCalls\\":%" PRIu64 "},\\"sourceBytes\\":%zu,\\"words\\":%u,\\"allocations\\":%u,\\"status\\":%u}\\n",diag_zero_errors,size,a0_arena_allocated_words(session),a0_arena_allocation_count(session),status);fclose(counts);
+''')
+(root/'harness.c').write_text(h)
+(root/'functions.json').write_text(json.dumps(functions))
+print(json.dumps({'functionDefinitionsInstrumented':defs,'originalC_SHA256':hashlib.sha256((original/'module.c').read_bytes()).hexdigest(),'instrumentedC_SHA256':hashlib.sha256((root/'module.c').read_bytes()).hexdigest()}))

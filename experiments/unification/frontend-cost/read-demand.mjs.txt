@@ -1,0 +1,19 @@
+import {readFile} from 'node:fs/promises';
+import {link} from './dist/src/link.js';
+import {formatProgram} from './dist/src/core.js';
+import {createHash} from 'node:crypto';
+const {program}=await link('compiler/source_frontend.a0',p=>readFile(p,'utf8'));
+const rows=[];
+for(const fn of program.functions){
+ for(const n of fn.nodes){
+  if(n.op!=='call'||n.callee!=='ap_read')continue;
+  const aliases=fn.nodes.filter(a=>a.op==='at'&&a.args[0]?.kind==='node'&&a.args[0].id===n.id&&a.args[1]?.kind==='u32'&&a.args[1].value===1);
+  const uses=[];
+  for(const alias of aliases){
+   for(const u of fn.nodes){for(let i=0;i<u.args.length;i++)if(u.args[i].kind==='node'&&u.args[i].id===alias.id)uses.push({op:u.op,node:u.id,arg:i,index:u.op==='get'?u.args[1]:null});}
+   if(fn.ret.kind==='node'&&fn.ret.id===alias.id)uses.push({op:'return'});
+  }
+  rows.push({function:fn.name,node:n.id,requestedCount:n.args[3],aliases:aliases.map(x=>x.id),uses,onlyFixedElementReads:uses.length>0&&uses.every(u=>u.op==='get'&&u.arg===0&&u.index?.kind==='u32')});
+ }
+}
+console.log(JSON.stringify({functions:program.functions.length,sourceSHA256:createHash('sha256').update(formatProgram(program)).digest('hex'),apReadSites:rows.length,localFixedSites:rows.filter(x=>x.onlyFixedElementReads).length,rows},null,2));
