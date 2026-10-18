@@ -46,6 +46,9 @@ The adapter performs one native parse per node/return payload, plus one signatur
 and complete native Program checking. This is a correctness staging boundary, not an efficiency
 claim. A future incremental instruction entry may reduce that cost by calling the same `ap_node`
 and `ap_ret` implementation; eager whole-reply parsing must first preserve protocol-error priority.
+Contextual headers and generated completion lines count against the native source/allocation bounds;
+this staged adapter does not claim unchanged maximum editing capacity. A refusal never invokes a
+different parser or checker. Capacity and total-cost measurements remain adoption requirements.
 No editing latency, memory, accepted-token or AI-success improvement is asserted.
 
 `test/source-native-node-edit.controls.ts` requires current `A0_EDIT_FRONTEND`, `A0_EDIT_DIRECT`,
