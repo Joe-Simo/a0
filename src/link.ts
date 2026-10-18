@@ -2,7 +2,13 @@
 import { dirname, resolve } from 'node:path';
 import { A0Error, formatSource, type Program, parse, stripComment, type Type } from './core.js';
 import type { Arities } from './dense.js';
-import { type Linked, linkProject, type ProjectLinkOptions, type ReadSource } from './linker.js';
+import {
+  checkProgramUnits,
+  type Linked,
+  linkProject,
+  type ProjectLinkOptions,
+  type ReadSource,
+} from './linker.js';
 
 export {
   type Linked,
@@ -61,6 +67,7 @@ export async function link(
     entry,
     read,
     {
+      check: checkProgramUnits,
       acceptsPath: (path) => path.endsWith('.a0') || isDensePath(path),
       prepare(shown, path) {
         const dense = options.dense === true || isDensePath(path);

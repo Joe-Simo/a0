@@ -44,6 +44,9 @@ const large = /^void a0_arena_verify_begin\((a0t_[A-Za-z0-9_]+) \*out/m.exec(c);
 assert.ok(normal || large, 'unsupported C ABI');
 const stateType = (normal ?? large)?.[1];
 assert.ok(stateType);
+const irStateType = /^(a0t_[A-Za-z0-9_]+) a0_source_ir_init\(/m.exec(c)?.[1];
+const irResultType = /^(a0t_[A-Za-z0-9_]+) a0_source_ir_symbol\(/m.exec(c)?.[1];
+assert.ok(irStateType && irResultType, 'unsupported IR construction ABI');
 await mkdir(out, { recursive: true });
 const driver = await readFile('tools/native/source_frontend.c', 'utf8');
 await writeFile(join(out, 'module.c'), c);
@@ -51,6 +54,8 @@ await writeFile(join(out, 'driver.c'), driver);
 await writeFile(
   join(out, 'api.h'),
   `#define SV_STATE ${stateType}
+#define IR_STATE ${irStateType}
+#define IR_RESULT ${irResultType}
 #define FRONTEND_BEGIN(s,t,h,n) ${normal ? '((s)=a0_arena_parse_verify_begin((t),(h),(n)))' : 'a0_arena_parse_verify_begin(&(s),(t),(h),(n))'}
 #define FRONTEND_UNIT(s,t,h,n) ${normal ? '((s)=a0_arena_source_unit((t),(h),(n)))' : 'a0_arena_source_unit(&(s),(t),(h),(n))'}
 #define FRONTEND_RESUME(s,n) ${normal ? '((s)=a0_arena_verify_resume((s),(n)))' : 'a0o_arena_verify_resume(&(s),(n))'}
@@ -77,6 +82,14 @@ tool(clang.path, [
   join(out, 'frontend.o'),
 ]);
 const exports = [
+  'frontend_ir_init',
+  'frontend_ir_upload',
+  'frontend_ir_symbol',
+  'frontend_ir_type',
+  'frontend_ir_state',
+  'frontend_ir_value',
+  'frontend_ir_finish',
+  'frontend_status',
   'frontend_abi',
   'frontend_parse',
   'frontend_parse_unit',
@@ -109,6 +122,17 @@ await writeReport(join(out, 'build.json'), {
   scope:
     'Candidate A0 source frontend built from shared compiler modules. Public TypeScript C backend bootstraps this artifact. No official source cutover or performance claim.',
   entry: 'compiler/source_frontend.a0',
+  frontendABI: 3,
+  nativeInputs: await Promise.all(
+    [
+      'tools/native/source_frontend.c',
+      'tools/native/arena_runtime.c',
+      'tools/native/arena_runtime.h',
+      'tools/source-native-build.ts',
+    ].map(async (path) => ({ path, sha256: hash(await readFile(path)) })),
+  ),
+  libcSHA256: hash(await readFile(join(sysroot, 'lib/wasm32-wasi/libc.a'))),
+  builtinsSHA256: hash(await readFile(builtins)),
   sourceSHA256: hash(source),
   cSHA256: hash(c),
   wasmSHA256: hash(wasm),

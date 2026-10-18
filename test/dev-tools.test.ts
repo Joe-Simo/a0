@@ -435,6 +435,30 @@ test('dev-gate: plans lint and typecheck before the build, then the dist steps',
   assert.deepEqual(order, ['lint', 'build', 'verify', 'test']);
 });
 
+test('step cache: native transport and bundled frontend changes invalidate the test pass', () => {
+  const repo = tempRepo();
+  try {
+    mkdirSync(join(repo, 'seed', 'source-frontend'), { recursive: true });
+    mkdirSync(join(repo, 'tools', 'native'), { recursive: true });
+    const files = [
+      ['seed/source-frontend/frontend.wasm', Buffer.from([0, 97, 115, 109])],
+      ['seed/source-frontend/build.json', Buffer.from('{}')],
+      ['tools/native/source_frontend.c', Buffer.from('transport')],
+      ['tools/native/arena_runtime.h', Buffer.from('runtime')],
+    ] as const;
+    for (const [path, bytes] of files) writeFileSync(join(repo, path), bytes);
+    let before = stepKey(repo, 'test', 'node --test');
+    for (const [path, bytes] of files) {
+      writeFileSync(join(repo, path), Buffer.concat([bytes, Buffer.from([1])]));
+      const after = stepKey(repo, 'test', 'node --test');
+      assert.notEqual(after, before, path);
+      before = after;
+    }
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
 test('step cache: key follows the closure, never caches timing steps, skips an unchanged passing step', async () => {
   const repo = tempRepo();
   const out = scratch();

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { test } from 'node:test';
 import { compile } from '../src/backends.js';
 import { formatProgram, run } from '../src/core.js';
@@ -45,7 +45,9 @@ test('whole-project source migration preserves legacy and Dense programs on ever
   try {
     const input = join(scratch, 'input');
     await mkdir(join(input, 'lib'), { recursive: true });
-    const entry = join(input, 'main.a0');
+    const alias = join(scratch, 'input-alias');
+    await symlink(input, alias, 'junction');
+    const entry = join(alias, 'main.a0');
     await writeFile(
       entry,
       '# main\nuse "lib/inc.a0" # import\nfn main -> u32\na call inc 41\nret a\nend\n',
@@ -59,10 +61,17 @@ test('whole-project source migration preserves legacy and Dense programs on ever
     const dense = await migrateProject(entry, denseRoot, input);
     const legacyRoot = join(scratch, 'legacy-dense-input');
     for (const unit of before.units ?? []) {
-      const path = join(legacyRoot, relative(input, unit.path));
+      const within = relative(await realpath(input), await realpath(unit.path));
+      assert.ok(!isAbsolute(within) && within !== '..' && !within.startsWith(`..${sep}`));
+      const path = join(legacyRoot, within);
       await mkdir(dirname(path), { recursive: true });
       await writeFile(path, formatDense(unit.program, { comments: true, known: unit.known }));
     }
+    assert.equal(
+      formatProgram((await link(entry, read, { root: input })).program),
+      formatProgram(before.program),
+      'fixture copies must not overwrite source files through aliases',
+    );
     const sources: readonly (readonly [string, string, string, boolean])[] = [
       ['legacy', entry, input, false],
       ['dense', join(denseRoot, dense.entry), denseRoot, false],

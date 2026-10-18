@@ -1,6 +1,12 @@
 /** Candidate source frontend connected to the shared linker without text conversion. */
 import { A0Error } from './core.js';
-import { type Linked, linkProject, type ProjectLinkOptions, type ReadSource } from './linker.js';
+import {
+  checkProgramUnits,
+  type Linked,
+  linkProject,
+  type ProjectLinkOptions,
+  type ReadSource,
+} from './linker.js';
 import { parseSourceUnit } from './source.js';
 
 export function linkSource(
@@ -12,6 +18,7 @@ export function linkSource(
     entry,
     read,
     {
+      check: checkProgramUnits,
       acceptsPath: (path) => path.endsWith('.a0'),
       prepare(text, path) {
         try {

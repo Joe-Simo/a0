@@ -9,6 +9,7 @@ import type {
   TypedFunc,
   TypedProgram,
 } from './core.js';
+import { applyFunctionComments, type ComposedComments } from './source-metadata.js';
 import type { Lit, Spec, SpecExample } from './spec.js';
 import { IR_OPS } from './word-ir.js';
 
@@ -42,6 +43,7 @@ function decodeNativeData(
   symbols: readonly string[],
   source: string,
   specTables: NativeTables,
+  metadata?: ComposedComments,
 ): { program: Program; type: (id: number) => Type } {
   const raw = new TextEncoder().encode(source);
   const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
@@ -153,7 +155,7 @@ function decodeNativeData(
       ...(word(r, 4) === NONE ? {} : { post: contract(word(r, 4)) }),
     });
   }
-  const functions: Func[] = Array.from({ length: table(tables, 41).length / 14 }, (_, id) => {
+  let functions: Func[] = Array.from({ length: table(tables, 41).length / 14 }, (_, id) => {
     const r = row(tables, 41, 14, id),
       c = comments(word(r, 7)),
       rc = comments(word(r, 8)),
@@ -174,6 +176,11 @@ function decodeNativeData(
   const tail = Array.from({ length: word(state, 26) }, (_, j) => comment(word(state, 25) + j));
   if (functions.length && tail.length)
     Object.assign(functions.at(-1) as Func, { afterComments: tail });
+  if (metadata !== undefined) {
+    if (metadata.functions.length !== functions.length)
+      throw new Error('native comment/function count mismatch');
+    functions = functions.map((fn, id) => applyFunctionComments(fn, need(metadata.functions[id])));
+  }
   const uses = Array.from({ length: table(tables, 53).length / 3 }, (_, id) => {
     const r = row(tables, 53, 3, id);
     return span(word(r, 0), word(r, 1));
@@ -187,7 +194,9 @@ function decodeNativeData(
     ...profile,
     ...(pc === undefined ? {} : { profileComments: pc }),
     ...(uc.some((c) => c !== undefined) ? { useComments: uc } : {}),
-    ...(!functions.length && tail.length ? { tailComments: tail } : {}),
+    ...(!functions.length && (metadata?.tailComments ?? tail).length
+      ? { tailComments: metadata?.tailComments ?? tail }
+      : {}),
   };
   return { program, type };
 }
@@ -208,8 +217,9 @@ export function decodeNativeSource(
   symbols: readonly string[],
   source: string,
   specTables: NativeTables,
+  metadata?: ComposedComments,
 ): { program: Program; typed: TypedProgram } {
-  const { program, type } = decodeNativeData(state, tables, symbols, source, specTables);
+  const { program, type } = decodeNativeData(state, tables, symbols, source, specTables, metadata);
   const functions = program.functions;
   const profile = program.profile === 'strict' ? { profile: 'strict' as const } : {};
   const byName = new Map<string, TypedFunc>();

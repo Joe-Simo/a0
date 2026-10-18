@@ -115,10 +115,27 @@ source IR, imports, comments and specifications without checking external callee
 specifications; `parse(source)` performs the whole-program check. The distinction is a compiler
 stage, not a source dialect. `tools/source-unit-audit.ts --artifact=DIR` compares both existing
 and flat-formatted source units and verifies that invalid whole programs can parse before the
-validation stage rejects them. Native dependency composition and diagnostic integration are
-still pending. The source-unit and full-frontend audit records for this stage are
+validation stage rejects them. The earlier source-unit and full-frontend audit records are
 `results/unified-source-unit-audit.json`, `results/unified-source-unit-frontend-audit.json` and
 `results/unified-source-unit-build.json`.
+
+The candidate now composes parsed dependency IR through `checkUnits` and `src/source-native-link.ts`.
+The same graph loader retains path, symlink, cycle, duplicate-definition, profile and resource
+policy. A source reader supplies one check stage: the native reader calls the A0 checker once,
+without full-source reparsing or TypeScript validation. Symbol/type identity comes from the shared
+A0 interners. Source spans, spec directories and comments are rebased; physical lines and filtered
+line-table indexes remain separate. Comment folding is shared with the reference linker.
+
+`NativeSourceError` currently exposes authoritative numeric failure facts and physical file/line
+origins. Complete catalog wording, suggestions and structured edits remain unfinished. This API
+is an internal candidate, not the public compiler default or a claim of diagnostic parity.
+
+The source-bound executable fixture under `seed/source-frontend/` lets integration tests run with
+ordinary Node, without a local WASI build toolchain. Its freshness check covers the full A0 closure,
+generated C, native transport and builder inputs. Tests execute that artifact, including actual
+compiler graphs, specifications, ownership/lifetime boundaries and independent backend controls.
+The artifact's build provenance and third-party notices are retained alongside it. The existing
+C bootstrap remains independent. Regeneration instructions are in its README.
 
 The artifact builder defaults to the WebAssembly MVP instruction set. The explicit research build
 option `--wasm-features=bulk-memory` enables standard bulk-memory code generation on compatible

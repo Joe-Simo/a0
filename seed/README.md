@@ -20,7 +20,7 @@ missing or stale seed. Updating it is the explicit regeneration command below; a
 build does not recreate the bootstrap with the TypeScript C backend. The remaining compiler
 dependencies are tracked in [Entire compiler in A0](../docs/design/compiler-selfhosting.md).
 
-The seed is C text, about 0.56 MB in all. Regenerate it after any change to `compiler/*.a0`:
+The C bootstrap seed is C text, about 0.56 MB in all. Regenerate it after any change to `compiler/*.a0`:
 
 ```sh
 bun run seed             # stage 1 (TypeScript C backend + clang) compiles the compiler; writes seed/;
@@ -30,3 +30,8 @@ bun run seed -- --check  # cheap freshness check (no build), also run by test/se
 
 Checked with Apple clang on macOS arm64; other C11 compilers with `-pthread` should work (the stage
 main runs the compiler on a 1 GiB thread stack).
+
+The separate [candidate source frontend fixture](source-frontend/README.md) is an import-free Wasm
+artifact used by integration tests. It is not loaded by `bootstrap.sh` and does not add a Node or
+WASI dependency to that C-only bootstrap. Changes in its A0 closure or native transport also need
+fixture regeneration; its tests reject stale source or binary hashes.

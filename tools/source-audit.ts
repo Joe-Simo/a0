@@ -5,12 +5,18 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { compile } from '../src/backends.js';
-import { formatProgram, formatSource as legacySource, parseAndValidate } from '../src/core.js';
+import {
+  formatProgram,
+  formatSource as legacySource,
+  parseAndValidate,
+  type TypedProgram,
+} from '../src/core.js';
 import { link, parseFile } from '../src/link.js';
 import { migrateSourceProject } from '../src/migrate.js';
 import { formatSource, parseSource } from '../src/source.js';
 import { linkSource } from '../src/source-link.js';
 import { nativeSource } from '../src/source-native.js';
+import { linkNativeSource } from '../src/source-native-link.js';
 import { isReject, listSources } from './dense-loader.js';
 import { committedTree } from './measurement-checkout.js';
 import { reportJson, writeReport } from './scrub-results.js';
@@ -18,6 +24,8 @@ import { reportJson, writeReport } from './scrub-results.js';
 const args = process.argv.slice(2);
 const option = (name: string): string | undefined =>
   args.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
+const nativeGraph = args.includes('--native-graph');
+assert.ok(!nativeGraph || option('native-artifact'), '--native-graph requires --native-artifact');
 const root = process.cwd();
 const identity = committedTree(root);
 const hash = (bytes: string | Uint8Array): string =>
@@ -45,6 +53,28 @@ if (artifact !== undefined) {
       ].map((key) => [key, build[key]]),
     ),
   };
+}
+function sameTyped(actual: TypedProgram, reference: TypedProgram): void {
+  assert.equal(
+    legacySource(actual),
+    legacySource(reference),
+    'native typed IR or metadata differs',
+  );
+  for (const fn of actual.functions) {
+    assert.equal(actual.byName.get(fn.name), fn, `${fn.name}: typed identity`);
+    for (const [name, callee] of fn.calls)
+      assert.equal(callee, actual.byName.get(name), `${fn.name}: callee identity`);
+    const expected = reference.byName.get(fn.name);
+    assert.ok(expected, fn.name);
+    assert.deepEqual([...fn.types], [...expected.types], `${fn.name}: types`);
+    assert.equal(fn.staticIterations, expected.staticIterations, `${fn.name}: iteration facts`);
+    assert.equal(
+      fn.literalIterations,
+      expected.literalIterations,
+      `${fn.name}: literal iteration facts`,
+    );
+    assert.deepEqual([...fn.calls.keys()], [...expected.calls.keys()], `${fn.name}: calls`);
+  }
 }
 const scratch = await mkdtemp(join(tmpdir(), 'a0-source-audit-'));
 const rows: {
@@ -83,24 +113,10 @@ try {
           legacySource(before.program),
           'native typed IR differs',
         );
-        for (const fn of actual.typed.functions) {
-          assert.equal(actual.typed.byName.get(fn.name), fn, `${fn.name}: typed identity`);
-          for (const [name, callee] of fn.calls)
-            assert.equal(callee, actual.typed.byName.get(name), `${fn.name}: callee identity`);
-          const expected = before.program.byName.get(fn.name);
-          assert.ok(expected, fn.name);
-          assert.deepEqual([...fn.types], [...expected.types], `${fn.name}: types`);
-          assert.equal(
-            fn.staticIterations,
-            expected.staticIterations,
-            `${fn.name}: iteration facts`,
-          );
-          assert.equal(
-            fn.literalIterations,
-            expected.literalIterations,
-            `${fn.name}: literal iteration facts`,
-          );
-          assert.deepEqual([...fn.calls.keys()], [...expected.calls.keys()], `${fn.name}: calls`);
+        sameTyped(actual.typed, before.program);
+        if (nativeGraph) {
+          const graph = await linkNativeSource(path, read, engine);
+          sameTyped(graph.program, before.program);
         }
       }
       const destination = join(scratch, `project-${rows.length}`);
@@ -113,6 +129,12 @@ try {
         formatProgram(before.program),
         'migrated linked program differs',
       );
+      if (nativeGraph && engine !== undefined) {
+        const graph = await linkNativeSource(join(destination, manifest.entry), read, engine, {
+          root: destination,
+        });
+        sameTyped(graph.program, before.program);
+      }
       rows.push({
         entry,
         status: 'pass',
@@ -154,8 +176,9 @@ try {
       'Candidate correctness and migration only; no public syntax cutover, performance or AI accuracy claim. Native checking, when present, uses the recorded compiler-module artifact and portable host IR decoder. Archived experiment proofs remain independent controls.',
     candidate: identity,
     method:
-      'All accepted source entries from the committed inventory; exact per-file IR/comments/imports/profiles and formatter fixed points; guarded whole-closure migration with staged shared validation and revision checks; optional A0 native parsed IR and typed facts. Existing native output/spec proofs remain separate.',
+      'All accepted source entries from the committed inventory; exact per-file IR/comments/imports/profiles and formatter fixed points; guarded whole-closure migration with staged shared validation and revision checks; optional A0 native parsed IR and typed facts. With --native-graph, original and migrated projects also use the shared graph policy with one native parse per source unit, direct IR composition and one native check; no TypeScript validation or full-source reparse on that route. Existing native output/spec proofs remain separate.',
     native,
+    nativeGraph,
     selfSource,
     entries: rows.length,
     failed,

@@ -2,7 +2,6 @@
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import {
   A0Error,
-  type Func,
   LIMITS,
   lineComment,
   type Profile,
@@ -16,11 +15,13 @@ import {
 } from './core.js';
 import { diag } from './diagnostics.js';
 import { existsSync, realpath } from './node-fs.js';
+import { applyFunctionComments, composeSourceComments } from './source-metadata.js';
 import { specLineOf } from './spec.js';
 
 type Arities = ReadonlyMap<string, number>;
 const USE_PATH = /^use\s+"([^"\\]+)"$/;
 export interface SourceReader {
+  check(units: readonly Program[], profile: Profile): TypedProgram & Program;
   acceptsPath(path: string): boolean;
   prepare(
     text: string,
@@ -104,45 +105,29 @@ export async function physicalPath(path: string): Promise<string> {
 
 /** Compose already parsed modules while preserving comments between source units. */
 function composePrograms(programs: readonly Program[], profile: Profile): Program {
-  const functions: Func[] = [];
-  let pending: string[] = [];
-  for (const program of programs) {
-    pending.push(...(program.profileComments?.leading ?? []));
-    if (program.profileComments?.trailing !== undefined)
-      pending.push(program.profileComments.trailing);
-    for (const comments of program.useComments ?? []) {
-      pending.push(...(comments?.leading ?? []));
-      if (comments?.trailing !== undefined) pending.push(comments.trailing);
-    }
-    for (const fn of program.functions) {
-      let body = fn;
-      if (fn.afterComments !== undefined) {
-        const { afterComments: _after, ...withoutTail } = fn;
-        body = withoutTail;
-      }
-      functions.push(
-        pending.length === 0
-          ? body
-          : {
-              ...body,
-              comments: {
-                ...body.comments,
-                leading: [...pending, ...(body.comments?.leading ?? [])],
-              },
-            },
-      );
-      pending = [...(fn.afterComments ?? [])];
-    }
-    pending.push(...(program.tailComments ?? []));
-  }
-  const last = functions.at(-1);
-  if (last !== undefined && pending.length > 0)
-    functions[functions.length - 1] = { ...last, afterComments: pending };
+  const metadata = composeSourceComments(programs);
+  const functions = programs
+    .flatMap((program) => program.functions)
+    .map((fn, index) =>
+      applyFunctionComments(
+        fn,
+        metadata.functions[index] as NonNullable<(typeof metadata.functions)[number]>,
+      ),
+    );
   return {
     functions,
     ...(profile === 'strict' ? { profile } : {}),
-    ...(last === undefined && pending.length > 0 ? { tailComments: pending } : {}),
+    ...(metadata.tailComments === undefined ? {} : { tailComments: metadata.tailComments }),
   };
+}
+
+/** Reference readers share one direct composition/check stage. */
+export function checkProgramUnits(
+  units: readonly Program[],
+  profile: Profile,
+): TypedProgram & Program {
+  const parsed = composePrograms(units, profile);
+  return { ...parsed, ...validate(parsed) };
 }
 
 /** Remove resolved directives from a parsed file's header, preserving physical LF lines. */
@@ -278,14 +263,13 @@ export async function linkProject(
   if (utf8Length(combined) > LIMITS.maxSourceBytes) throw diag('A0623', [LIMITS.maxSourceBytes]);
   // Linking composes already parsed IR in dependency order. Text remains the combined
   // source artifact for callers; source parsing and syntax expansion are never repeated.
-  const parsed = composePrograms(
-    order.map((o) => o.parsed),
-    profile,
-  );
   try {
     return {
       // Validation returns typed functions; retain source metadata on an empty graph too.
-      program: { ...parsed, ...validate(parsed) },
+      program: reader.check(
+        order.map((unit) => unit.parsed),
+        profile,
+      ),
       text: combined,
       sources,
       ...(options.includeUnits
