@@ -11,6 +11,7 @@ import type { DirectFunction } from '../src/source-direct.js';
 import { findWasmClang, runTool } from '../src/toolchain.js';
 import { committedTree } from './measurement-checkout.js';
 import { writeReport } from './scrub-results.js';
+import { wasmStackBound } from './wasm-stack-bound.js';
 
 const args = process.argv.slice(2);
 for (const arg of args)
@@ -90,6 +91,7 @@ const exports = [
   'a0_memory_view',
   'a0_memory_view_length',
 ];
+const transportStackArgument = 16777216;
 const transportLinkerFlags = [
   join(out, 'arena.o'),
   '-L',
@@ -100,14 +102,33 @@ const transportLinkerFlags = [
   ...exports.map((name) => `--export=${name}`),
   '--export-memory',
   '-z',
-  'stack-size=16777216',
+  `stack-size=${transportStackArgument}`,
   '--lto-O3',
   '--strip-all',
   '-o',
   join(out, 'arena.wasm'),
 ];
 run(toolchain.wasmLd, transportLinkerFlags);
+const baselineArena = await readFile(join(out, 'arena.wasm'));
+const baselineTransportStackProof = wasmStackBound(baselineArena);
+// LLVM's wasm32 ABI aligns stack frames to 16 bytes. Prove the linked libc too;
+// no caller or source-size assumption determines this transport-only reservation.
+const transportStackBytes = Math.max(16, baselineTransportStackProof.maxLinearStackBytes);
+assert.equal(transportStackBytes % 16, 0, 'unaligned linked transport stack bound');
+transportLinkerFlags[transportLinkerFlags.indexOf(`stack-size=${transportStackArgument}`)] =
+  `stack-size=${transportStackBytes}`;
+run(toolchain.wasmLd, transportLinkerFlags);
 const arena = await readFile(join(out, 'arena.wasm'));
+const transportStackProof = wasmStackBound(arena);
+assert.equal(
+  transportStackProof.maxLinearStackBytes,
+  baselineTransportStackProof.maxLinearStackBytes,
+  'transport stack requirements changed during relinking',
+);
+assert.deepEqual(transportStackProof.functions, baselineTransportStackProof.functions);
+assert.deepEqual(transportStackProof.exports, baselineTransportStackProof.exports);
+assert.ok(transportStackProof.maxLinearStackBytes <= transportStackBytes);
+assert.ok(transportStackProof.stackGlobal.initialValue >= transportStackBytes);
 assert.deepEqual(WebAssembly.Module.imports(new WebAssembly.Module(arena)), []);
 const hash = (bytes: string | Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 assert.deepEqual(committedTree(process.cwd()), identity, 'source changed during build');
@@ -143,7 +164,10 @@ await writeReport(join(out, 'build.json'), {
   arenaBytes: arena.length,
   totalWasmBytes: frontend.length + arena.length,
   requiredWasmFeatures: ['bulk-memory', 'simd'],
-  transportStackBytes: 16777216,
+  transportStackBytes,
+  baselineTransportStackBytes: transportStackArgument,
+  baselineTransportStackProof,
+  transportStackProof,
   libcSHA256: hash(await readFile(join(sysroot, 'lib/wasm32-wasi/libc.a'))),
   builtinsSHA256: hash(await readFile(builtins)),
   clang: run(toolchain.path, ['--version']).split('\n')[0],
@@ -157,6 +181,7 @@ await writeReport(join(out, 'build.json'), {
         'tools/native/arena_runtime.h',
         'tools/native/arena_memory.c',
         'tools/source-direct-build.ts',
+        'tools/wasm-stack-bound.ts',
       ]),
     ]
       .sort()
