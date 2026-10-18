@@ -39,7 +39,12 @@ export function composeCommentMetadata<T>(
     for (const fn of unit.functions) {
       const comments =
         pending.length === 0
-          ? fn.comments
+          ? fn.comments === undefined
+            ? undefined
+            : {
+                ...fn.comments,
+                ...(fn.comments.leading === undefined ? {} : { leading: [...fn.comments.leading] }),
+              }
           : { ...fn.comments, leading: [...pending, ...(fn.comments?.leading ?? [])] };
       functions.push(comments === undefined ? {} : { comments });
       pending = [...(fn.afterComments ?? [])];
