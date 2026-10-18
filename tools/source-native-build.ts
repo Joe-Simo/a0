@@ -18,7 +18,7 @@ const options = new Map(
 );
 for (const name of options.keys())
   assert.ok(
-    ['out', 'sysroot', 'builtins', 'wasm-features', 'symbols'].includes(name),
+    ['out', 'sysroot', 'builtins', 'wasm-features', 'symbols', 'opt-level'].includes(name),
     `unknown argument ${name}`,
   );
 for (const name of ['out', 'sysroot', 'builtins'])
@@ -28,6 +28,8 @@ assert.ok(
   ['mvp', 'bulk-memory'].includes(wasmFeatures),
   'wasm-features must be mvp or bulk-memory',
 );
+const optimization = options.get('opt-level') ?? 'O3';
+assert.ok(['O2', 'O3', 'Os', 'Oz'].includes(optimization), 'opt-level must be O2, O3, Os or Oz');
 const symbols = options.get('symbols') ?? 'strip';
 assert.ok(['strip', 'keep'].includes(symbols), 'symbols must be strip or keep');
 const featureFlags = wasmFeatures === 'bulk-memory' ? ['-mbulk-memory'] : [];
@@ -72,7 +74,7 @@ function tool(path: string, args: string[]): string {
 tool(clang.path, [
   '--target=wasm32-wasi',
   `--sysroot=${sysroot}`,
-  '-O3',
+  `-${optimization}`,
   ...featureFlags,
   '-flto',
   '-DNDEBUG',
@@ -141,8 +143,9 @@ await writeReport(join(out, 'build.json'), {
   wasmSHA256: hash(wasm),
   driverSHA256: hash(driver),
   functions: linked.program.functions.length,
-  clangFlags: ['--target=wasm32-wasi', '-O3', ...featureFlags, '-flto', '-DNDEBUG'],
+  clangFlags: ['--target=wasm32-wasi', `-${optimization}`, ...featureFlags, '-flto', '-DNDEBUG'],
   requiredWasmFeatures: wasmFeatures === 'bulk-memory' ? ['bulk-memory'] : [],
+  optimization,
   symbols,
   symbolFlags: symbols === 'strip' ? ['--strip-all'] : [],
   compilerHost: 'Node >=22 or a WebAssembly engine supporting the recorded required features',
