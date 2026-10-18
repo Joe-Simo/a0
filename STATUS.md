@@ -1,5 +1,10 @@
 # A0 status
 
+2026-10-18 native artifact packaging: the default frontend fixture is 356280 bytes, down from
+417837 bytes with debug metadata. Every standard Wasm section and import/export is byte-identical
+(`results/unified-native-release-sections.json`). `--symbols=keep` retains the debugging build.
+This establishes a packaging reduction; frontend timing and the public syntax cutover remain open.
+
 2026-10-18 bulk-memory control: all 240 backend hashes match in the paired six-workload run,
 but the result is mixed. Boot native time falls from 1270.91 to 1187.97 ms; frame rises from
 23.74 to 24.35 ms and boot live frontend RSS rises from 143.69 to 156.58 MiB. The artifact builder

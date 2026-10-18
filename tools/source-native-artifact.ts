@@ -16,6 +16,8 @@ interface Build {
   sourceSHA256: string;
   cSHA256: string;
   requiredWasmFeatures: string[];
+  symbols: string;
+  symbolFlags: string[];
   libcSHA256: string;
   builtinsSHA256: string;
   modules: { path: string; sha256: string }[];
@@ -35,6 +37,8 @@ export function nativeSourceArtifact(): Promise<WebAssembly.Module> {
     assert.equal(build.frontendABI, 3);
     assert.equal(build.entry, 'compiler/source_frontend.a0');
     assert.deepEqual(build.requiredWasmFeatures, [], 'the bundled default remains MVP');
+    assert.equal(build.symbols, 'strip');
+    assert.deepEqual(build.symbolFlags, ['--strip-all']);
     assert.match(build.libcSHA256, /^[0-9a-f]{64}$/);
     assert.match(build.builtinsSHA256, /^[0-9a-f]{64}$/);
     assert.deepEqual(
@@ -65,6 +69,12 @@ export function nativeSourceArtifact(): Promise<WebAssembly.Module> {
     );
     const module = new WebAssembly.Module(bytes);
     assert.deepEqual(WebAssembly.Module.imports(module), []);
+    for (const name of ['name', '.debug_info', '.debug_line'])
+      assert.deepEqual(
+        WebAssembly.Module.customSections(module, name),
+        [],
+        'release fixture contains debug metadata',
+      );
     return module;
   })();
   return artifact;

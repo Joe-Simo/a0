@@ -18,7 +18,7 @@ const options = new Map(
 );
 for (const name of options.keys())
   assert.ok(
-    ['out', 'sysroot', 'builtins', 'wasm-features'].includes(name),
+    ['out', 'sysroot', 'builtins', 'wasm-features', 'symbols'].includes(name),
     `unknown argument ${name}`,
   );
 for (const name of ['out', 'sysroot', 'builtins'])
@@ -28,6 +28,8 @@ assert.ok(
   ['mvp', 'bulk-memory'].includes(wasmFeatures),
   'wasm-features must be mvp or bulk-memory',
 );
+const symbols = options.get('symbols') ?? 'strip';
+assert.ok(['strip', 'keep'].includes(symbols), 'symbols must be strip or keep');
 const featureFlags = wasmFeatures === 'bulk-memory' ? ['-mbulk-memory'] : [];
 const out = resolve(options.get('out') as string);
 const sysroot = resolve(options.get('sysroot') as string);
@@ -113,6 +115,7 @@ tool(clang.wasmLd, [
   '-z',
   'stack-size=16777216',
   '--lto-O3',
+  ...(symbols === 'strip' ? ['--strip-all'] : []),
   '-o',
   join(out, 'frontend.wasm'),
 ]);
@@ -140,6 +143,8 @@ await writeReport(join(out, 'build.json'), {
   functions: linked.program.functions.length,
   clangFlags: ['--target=wasm32-wasi', '-O3', ...featureFlags, '-flto', '-DNDEBUG'],
   requiredWasmFeatures: wasmFeatures === 'bulk-memory' ? ['bulk-memory'] : [],
+  symbols,
+  symbolFlags: symbols === 'strip' ? ['--strip-all'] : [],
   compilerHost: 'Node >=22 or a WebAssembly engine supporting the recorded required features',
   aggregateBytes: 4096,
   stackBytes: 16777216,

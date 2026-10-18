@@ -110,6 +110,11 @@ The committed native corpus, own-source and specification checks are recorded in
 `results/unified-source-module-audit.json`, `results/unified-source-module-build.json` and
 `results/unified-source-module-specs.json`. These record correctness, not a timing improvement.
 
+The default native fixture omits linker debug metadata; `--symbols=keep` retains it for debugging.
+The executable-section and ABI comparison is recorded in
+`results/unified-native-release-sections.json`. This packaging change does not establish a frontend
+latency improvement or a completed syntax cutover.
+
 The same native grammar also exposes `nativeSource(module).parseUnit(source)`. This returns
 source IR, imports, comments and specifications without checking external callees or executing
 specifications; `parse(source)` performs the whole-program check. The distinction is a compiler

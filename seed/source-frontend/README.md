@@ -21,6 +21,9 @@ cp .a0-tmp/source-frontend-build/build.json seed/source-frontend/
 node --test dist/test/source-native-graph.test.js dist/test/wasm-words.test.js
 ```
 
+The default artifact omits linker debug sections and names. Build with `--symbols=keep` when
+those are needed for debugging; exported entry points and executable sections are retained.
+
 The build uses the public TypeScript C backend, Clang and WASI libc; this is not a claim of a fully
 A0-bootstrapped frontend build. The independent C bootstrap in the parent directory is unchanged.
 Performance, graph diagnostics and public tooling cutover remain separate acceptance gates.
