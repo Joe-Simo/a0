@@ -2,6 +2,7 @@
 import type { Type } from './core.js';
 import { compiledSource, PAGE_WORDS, sourceArena } from './source-compiled.js';
 import type { nativeSourceApi } from './source-native.js';
+import type { NativeFormatOptions } from './source-native-format.js';
 import type { NativeDiagnosticOptions } from './source-native-render.js';
 
 export interface JsSourceFunction {
@@ -62,6 +63,7 @@ function u32(value: unknown): number {
 export function jsSource(
   artifact: JsSourceArtifact,
   diagnostics?: NativeDiagnosticOptions,
+  formatting?: NativeFormatOptions,
 ): ReturnType<typeof nativeSourceApi> {
   const names = Object.keys(JS_SOURCE_FUNCTION_TYPES).sort();
   if (JSON.stringify(Object.keys(artifact.functions).sort()) !== JSON.stringify(names))
@@ -169,5 +171,5 @@ export function jsSource(
     unpack(signature.result, value);
     return typeof signature.result === 'string' ? (output[0] as number) : output;
   };
-  return compiledSource(arena, invoke, () => 0, diagnostics);
+  return compiledSource(arena, invoke, () => 0, diagnostics, formatting);
 }

@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type JsSourceFunction, jsSource } from '../src/source-js.js';
+import type { NativeFormatOptions } from '../src/source-native-format.js';
 import type { NativeDiagnosticOptions } from '../src/source-native-render.js';
 import { JS_ARENA_INPUTS } from './source-js-inputs.js';
 import { prepareJsCompiler } from './source-js-prepare.js';
@@ -77,8 +78,12 @@ export async function prepareJsSource(directory: string) {
   )) as Readonly<Record<string, unknown>>;
   return {
     build,
-    instantiate(diagnostics?: NativeDiagnosticOptions) {
-      return jsSource({ frontend: module, arena, functions: build.functions }, diagnostics);
+    instantiate(diagnostics?: NativeDiagnosticOptions, formatting?: NativeFormatOptions) {
+      return jsSource(
+        { frontend: module, arena, functions: build.functions },
+        diagnostics,
+        formatting,
+      );
     },
   };
 }

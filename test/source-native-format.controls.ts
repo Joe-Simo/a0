@@ -1,4 +1,4 @@
-/** Actual C-derived/direct arena integration; explicit current artifact paths, no skipped controls. */
+/** Actual C-derived/direct/JS arena integration; explicit current artifacts, no skipped controls. */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -12,6 +12,7 @@ import { type DirectFunction, directSource } from '../src/source-direct.js';
 import { nativeSource } from '../src/source-native.js';
 import type { NativeFormatOptions } from '../src/source-native-format.js';
 import type { NativeDiagnosticOptions } from '../src/source-native-render.js';
+import { prepareJsSource } from '../tools/source-js-load.js';
 import {
   prepareSourceDiagnostic,
   prepareSourceFormat,
@@ -31,10 +32,12 @@ const frontendPath = process.env.A0_FORMAT_FRONTEND;
 const formatPath = process.env.A0_FORMAT_COMPANION;
 const arenaPath = process.env.A0_FORMAT_ARENA;
 const diagnosticPath = process.env.A0_FORMAT_DIAGNOSTIC;
+const jsPath = process.env.A0_FORMAT_JS;
 assert.ok(
-  frontendPath && formatPath && arenaPath && diagnosticPath,
-  'A0_FORMAT_FRONTEND/COMPANION/ARENA/DIAGNOSTIC required',
+  frontendPath && formatPath && arenaPath && diagnosticPath && jsPath,
+  'A0_FORMAT_FRONTEND/COMPANION/ARENA/DIAGNOSTIC/JS required',
 );
+const js = await prepareJsSource(jsPath);
 const companion = await prepareSourceFormat(formatPath);
 const diagnostic = await prepareSourceDiagnostic(diagnosticPath);
 const native = await prepareSourceFrontend(frontendPath);
@@ -91,6 +94,11 @@ const factories = [
     'direct',
     (formatting?: NativeFormatOptions, diagnostics?: NativeDiagnosticOptions) =>
       directSource({ frontend: direct, arena, functions }, diagnostics, formatting),
+  ],
+  [
+    'JS',
+    (formatting?: NativeFormatOptions, diagnostics?: NativeDiagnosticOptions) =>
+      js.instantiate(diagnostics, formatting),
   ],
 ] as const;
 const simple = '# 😀\nfn identity\nret A\nend\n';
