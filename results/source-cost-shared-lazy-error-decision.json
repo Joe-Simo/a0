@@ -1,0 +1,527 @@
+{
+  "schema": 1,
+  "decision": "not-default-adopted",
+  "reason": "Frontend and pipeline medians are lower than the unchanged native C control on all six frozen inputs, but process CPU, live RSS and fresh-child wall losses remain. Every frontend, pipeline and child-wall median remains above both historical Canonical and Dense controls. This does not establish the required no-regression result or justify an official frontend/syntax cutover.",
+  "scope": "Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and compiled A0 frontend. Parser/checker plus one historical C text emitter. Frontend instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter, model inference and generated-target execution excluded. Every fresh process preloads the common candidate SDK and its selected artifact; candidate artifact also preloaded for historical and TS controls. Per-sample preload records identify every Wasm component, hash and size. Artifact validation and Wasm module compilation are outside frontend/pipeline phases; fresh-child wall time includes process startup and preparation. No official source cutover or no-regression conclusion is implied.",
+  "limitations": [
+    "Single machine and one frozen rotated run; no confidence interval or significance conclusion.",
+    "Generated target execution, shipping CLI startup, graph loading, model editing/inference and total AI computation were not measured.",
+    "Fresh-process wall includes the selected artifact preload and engine preparation. Smaller artifact size alone does not establish faster compilation or lower total cost.",
+    "Process frontend CPU includes all process threads in the phase; it is not a function self-time.",
+    "Initial peak RSS has a shared launch/preload floor on smaller inputs; live frontend memory and all raw fields are retained.",
+    "No C projection, read-array optimizer effect or combined source algorithm is attributed to this isolated comparison.",
+    "Independent correctness evidence 2dace596 is separate from the six frozen whole-program output checks in this measurement."
+  ],
+  "candidate": {
+    "commit": "85ac150d1915a2546a6533d7c63000b1c5f5725e",
+    "tree": "345bdc6b9924ed9cd7af520631680e5ed704362c"
+  },
+  "control": {
+    "commit": "b3c21472c52e3fc0dac88e9cc3ddb625829652b8",
+    "tree": "54976d27ee46ef82c1de133473f0db1a3fc824ce"
+  },
+  "baseline": {
+    "commit": "764de84ab99a156e41164518f14cc0676b6343dd",
+    "tree": "ab27dea02d1f5047601f0e1c310c6c3e625f08ea"
+  },
+  "controlMode": "same-compiler-source-algorithm",
+  "cells": 240,
+  "acceptedCells": 210,
+  "warmupRounds": 1,
+  "measuredRounds": 7,
+  "maxLoad1": 1.59,
+  "startedAt": "2026-10-18T11:07:54.577Z",
+  "finishedAt": "2026-10-18T11:10:02.961Z",
+  "nativeProvenance": {
+    "allFreshTsCompilers": 3,
+    "exactNativeRebuilds": 2,
+    "exactOutputWorkloads": 6,
+    "compilerInputDifferences": [],
+    "consumedApiSignaturesEqual": true,
+    "finalImmutableChecksPassed": true,
+    "restriction": "Strict native comparisons require stripped symbols; keep is refused because debug paths are not reproducible across output directories."
+  },
+  "sourceAlgorithmDifferences": {
+    "candidateSourceSHA256": "65312a1a18de6c0af7487c19688522215435ad382dba9e296b3524164aab1fa5",
+    "controlSourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "candidateFunctions": 618,
+    "controlFunctions": 612,
+    "modules": [
+      {
+        "path": "compiler/arena_shared.a0",
+        "candidateSHA256": "c6f8e7098857662b4b2f9c0fd7387dafedc3ddf11e512dc1214071953396abe5",
+        "controlSHA256": "7f2d51b37607b79abe0635b3363e8652f1b0546a7352a5c38686af2cd25886ab"
+      },
+      {
+        "path": "compiler/check_arena_shared.a0",
+        "candidateSHA256": "fbb3f5727bc6e787d886a843db6ea874017522fc036da5d3ffb06ff11ed465ee",
+        "controlSHA256": "0f53402ad4add2852e2ef721d4d152b0554468741e22ed2be1c8d316f4799119"
+      },
+      {
+        "path": "compiler/verify_arena_shared.a0",
+        "candidateSHA256": "b03936b8f8586d6306b40f097c4d321c25bc6b70ae735f8a0ecd23be1eed3b27",
+        "controlSHA256": "37cff40149d69a7402328bed66388f317b690c9f9a5b3c78d0154b7d06e69d90"
+      }
+    ]
+  },
+  "artifacts": {
+    "candidate": {
+      "sha256": "9f6e68789e1a278bc86671d3f8ff0fb5cbd9bab8f4e115acefd401f33fe0f8b5",
+      "sourceSha256": "65312a1a18de6c0af7487c19688522215435ad382dba9e296b3524164aab1fa5",
+      "bytes": 346838,
+      "backend": "clang-wasm",
+      "components": [
+        {
+          "file": "frontend.wasm",
+          "sha256": "9f6e68789e1a278bc86671d3f8ff0fb5cbd9bab8f4e115acefd401f33fe0f8b5",
+          "bytes": 346838
+        }
+      ],
+      "componentCount": 1,
+      "totalWasmBytes": 346838,
+      "artifactSha256": "9f6e68789e1a278bc86671d3f8ff0fb5cbd9bab8f4e115acefd401f33fe0f8b5"
+    },
+    "control": {
+      "backend": "clang-wasm",
+      "components": [
+        {
+          "file": "frontend.wasm",
+          "sha256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+          "bytes": 358233
+        }
+      ],
+      "componentCount": 1,
+      "totalWasmBytes": 358233,
+      "artifactSha256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926"
+    },
+    "sizeDifference": -11395
+  },
+  "losses": [
+    {
+      "unit": "examples/life.a0",
+      "comparisons": {
+        "old-canonical": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "rssBytes",
+            "heapUsedBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "old-dense": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "rssBytes",
+            "heapUsedBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-ts-control": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "pipelineMs",
+            "wallMs",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "rssBytes",
+            "heapUsedBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-a0-control": {
+          "increasedMedianFields": [
+            "emitCMs",
+            "wallMs",
+            "frontendRssBytes",
+            "frontendHeapUsedBytes",
+            "rssBytes",
+            "heapUsedBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 4
+        }
+      }
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "comparisons": {
+        "old-canonical": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "old-dense": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "rssBytes",
+            "heapUsedBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-ts-control": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-a0-control": {
+          "increasedMedianFields": [
+            "wallMs",
+            "initialRssBytes",
+            "frontendHeapUsedBytes",
+            "rssBytes",
+            "heapUsedBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 3
+        }
+      }
+    },
+    {
+      "unit": "site/page.a0",
+      "comparisons": {
+        "old-canonical": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendHeapUsedBytes",
+            "frontendExternalBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "old-dense": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendHeapUsedBytes",
+            "frontendExternalBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "heapUsedBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-ts-control": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendHeapUsedBytes",
+            "frontendExternalBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-a0-control": {
+          "increasedMedianFields": [
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendHeapUsedBytes",
+            "frontendExternalBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "heapUsedBytes"
+          ],
+          "slowerFrontendPairs": 1
+        }
+      }
+    },
+    {
+      "unit": "site/docs.a0",
+      "comparisons": {
+        "old-canonical": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "old-dense": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-ts-control": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-a0-control": {
+          "increasedMedianFields": [
+            "frontendRssBytes",
+            "rssBytes",
+            "heapUsedBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 1
+        }
+      }
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "comparisons": {
+        "old-canonical": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "frontendPeakRssBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "old-dense": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "pipelineMs",
+            "wallMs",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "frontendPeakRssBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-ts-control": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "frontendPeakRssBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-a0-control": {
+          "increasedMedianFields": [
+            "emitCMs",
+            "frontendRssBytes",
+            "frontendPeakRssBytes",
+            "peakRssBytes",
+            "rssBytes"
+          ],
+          "slowerFrontendPairs": 0
+        }
+      }
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "comparisons": {
+        "old-canonical": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "initialPeakRssBytes",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendHeapUsedBytes",
+            "frontendExternalBytes",
+            "frontendPeakRssBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "old-dense": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "emitCMs",
+            "pipelineMs",
+            "wallMs",
+            "initialPeakRssBytes",
+            "initialRssBytes",
+            "frontendExternalBytes",
+            "frontendPeakRssBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-ts-control": {
+          "increasedMedianFields": [
+            "frontendMs",
+            "pipelineMs",
+            "wallMs",
+            "initialPeakRssBytes",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendExternalBytes",
+            "frontendPeakRssBytes",
+            "peakRssBytes",
+            "rssBytes",
+            "externalBytes",
+            "wasmLinearMemoryBytes",
+            "frontendProcessCpuMs"
+          ],
+          "slowerFrontendPairs": 7
+        },
+        "flat-a0-control": {
+          "increasedMedianFields": [
+            "emitCMs",
+            "initialPeakRssBytes",
+            "initialRssBytes",
+            "frontendRssBytes",
+            "frontendPeakRssBytes",
+            "peakRssBytes",
+            "rssBytes"
+          ],
+          "slowerFrontendPairs": 1
+        }
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "path": "results/source-cost-shared-lazy-error.json",
+      "bytes": 83412,
+      "sha256": "c74a43308cbbc1eced4e7909606ccb7569c48db636b6ea4c58379afd5e98c75d"
+    },
+    {
+      "path": "results/source-cost-shared-lazy-error-samples.json",
+      "bytes": 313537,
+      "sha256": "9e1f46583f2c2320d8497e0b43b9665c294f02dc5fd0bd7e2ddcd23c8f2af0d8"
+    },
+    {
+      "path": "results/source-cost-shared-lazy-error-analysis.json",
+      "bytes": 107102,
+      "sha256": "bab38ddae13ad8d34c7902ed3fe4f7c73659ddb97996ba7678391afff4fdf11f"
+    },
+    {
+      "path": "results/source-cost-shared-lazy-error-preparation.json",
+      "bytes": 59258,
+      "sha256": "77fc25dd12dcb67fbb80db164a18f5b2a4ad67f4361bd110e25882c2246170b8"
+    },
+    {
+      "path": "results/source-cost-shared-lazy-error-source-bundle.json",
+      "bytes": 63695,
+      "sha256": "799918cf97263dbfde035f70000d564c96d4dff2ba084c959e9afe929a618f0b"
+    }
+  ]
+}

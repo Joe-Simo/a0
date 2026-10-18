@@ -1,5 +1,13 @@
 # A0 status
 
+2026-10-18 shared lazy-error source control: the isolated A0 algorithm has lower frontend and
+pipeline medians than its unchanged native C control on all six frozen inputs, while CPU, RSS
+and fresh-child wall losses remain. It is not adopted as a default, and all historical Canonical
+and Dense frontend medians remain lower. The complete run, raw cells, losses and exact source
+history are retained (`results/source-cost-shared-lazy-error-decision.json`,
+`results/source-cost-shared-lazy-error.json`, `results/source-cost-shared-lazy-error-samples.json`;
+replay in `experiments/unification/compiler-codegen/shared-lazy-error.md`).
+
 2026-10-18 read-array Wasm control: all 240 emitted C hashes match at maximum recorded load 1.9,
 but the direct frontend remains slower than the C-derived control on all six applications
 (1.23–2.08×). Boot takes 2640.11 ms versus 1299.51 ms for the C-derived frontend and 191.76 ms
