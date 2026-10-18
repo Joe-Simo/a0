@@ -15486,6 +15486,11 @@ q17 get p1 3
 q18 loop ad_utf_ok ad_utf_page pages q15 q16 q17 endpos
 ret q18
 end
+fn ad_header_bytes (u32,u32x128,io) u32 u32 u32 -> (u32,u32x128,io)
+t at p0 2
+r call arena_load t p2 p3 2
+ret r
+end
 fn ad_exact_kind io u32x128 -> (u32,u32,io)
 q0 get p1 1
 array eq q0 220
@@ -15543,9 +15548,12 @@ dofn and next q40
 q41 at wr 2
 q42 get p1 6
 q43 get word 0
-q44 select dofn q43 0
-q45 select dofn 2 0
-br call arena_load q41 q42 q44 q45
+# A source handle can be absent for an empty archive. Read header bytes only
+# when the missing-end repair actually needs to identify a following fn line.
+header_count select dofn 1 0
+empty_header call arena_zero
+header_initial rec 0 empty_header q41
+br fold ad_header_bytes header_count header_initial q42 q43
 bytes at br 1
 q46 get bytes 0
 q47 eq q46 102
