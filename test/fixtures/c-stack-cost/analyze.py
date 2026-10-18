@@ -96,6 +96,7 @@ for sample, wanted in zip(samples, expected):
     assert sample['exitStatus'] == 0 and sample['signal'] is None and 'error' not in sample
     measured = json.loads(stdout)
     assert sample['measurement'] == measured
+    sample['measurement'] = measured
     side = 'control' if sample['arm'] == 'flat-a0-control' else 'candidate'
     assert measured['preload'] == proof['subjects'][side]['preload']
     u = units[sample['id']]
