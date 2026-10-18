@@ -28,6 +28,10 @@ import {
   type NativeLiveDiagnostic,
   nativeDiagnosticRenderer,
 } from './source-native-render.js';
+import {
+  decodeNativeUnitOrigins,
+  type NativeUnitSourceOrigins,
+} from './source-native-unit-origins.js';
 import { losslessSourceString } from './source-utf8.js';
 import { readWasmWord, readWasmWords, writeWasmWord, writeWasmWords } from './wasm-words.js';
 
@@ -118,6 +122,8 @@ export function nativeSource(
   readonly memoryBytes: number;
   parse(source: string, budget?: number): NativeSourceResult;
   parseUnit(source: string, budget?: number): NativeUnitResult;
+  /** Detached source ownership from this engine's authentic retained unit, without arena mutation. */
+  unitSourceOrigins(unit: NativeUnitResult): NativeUnitSourceOrigins;
   /** Experimental compiler IR check through the same A0 checker; locations are synthetic. */
   checkProgram(program: Program, budget?: number): NativeSourceResult;
   /** Units must already be resolved, ordered and assigned a coherent profile by the graph loader. */
@@ -432,6 +438,13 @@ export function nativeSourceApi(
           ]),
         });
       return parsed;
+    },
+    unitSourceOrigins(unit) {
+      if (closed) throw new Error('source frontend is closed');
+      const snapshot = snapshots.get(unit);
+      if (!unit.ok || snapshot === undefined)
+        throw new Error('expected a parsed unit owned by this frontend');
+      return decodeNativeUnitOrigins(snapshot);
     },
     checkProgram(program, budget = 16_000_000) {
       checkBudget(budget);
