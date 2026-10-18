@@ -5,11 +5,13 @@ import { join, resolve } from 'node:path';
 import { after, test } from 'node:test';
 import {
   ALL_OPS,
+  type Func,
   isDirectCallee,
   isRetNodeForm,
   normalizeLine,
   OP_ARITY,
   opOf,
+  type Program,
   stripComment,
   validate,
   validateFunction,
@@ -17,6 +19,9 @@ import {
 import { A0Error } from '../src/diagnostics.js';
 import { link } from '../src/link.js';
 import { parseSource as parse } from '../src/source.js';
+import type { NativeIrBuilder } from '../src/source-native-compose.js';
+import { nativeDiagnostic } from '../src/source-native-diagnostic.js';
+import { encodeNativeProgram } from '../src/source-native-program.js';
 import { findClang, runTool } from '../src/toolchain.js';
 import { buildStage, closure, emitChunked, runStageChunk } from '../tools/bootstrap.js';
 import { readBootstrapSeed } from '../tools/seed.js';
@@ -1188,8 +1193,8 @@ function prepare(): Promise<string> {
     scratch = dir;
     const seed = await readBootstrapSeed();
     const [compiler] = await buildStage(clang, 'compiler', seed.c, 'emitchunkio', dir);
-    const linked = await link('compiler/diagnostics_arena.a0', (path) => readFile(path, 'utf8'));
-    const source = closure(linked.program.functions, 'arena_parse_diagnostic_options');
+    const linked = await link(join(fixtures, 'exports.a0'), (path) => readFile(path, 'utf8'));
+    const source = closure(linked.program.functions, 'diagnostic_controls');
     // TS links and plans chunks; the verified native A0 seed parses, checks and emits C.
     const emitted = emitChunked(source, (chunk, bounds) => runStageChunk(compiler, chunk, bounds));
     assert.equal(
@@ -1200,7 +1205,21 @@ function prepare(): Promise<string> {
     const result = /^(a0t\d+) a0_arena_parse_diagnostic_options\(/m.exec(emitted.text)?.[1];
     assert.ok(result);
     await writeFile(join(dir, 'module.c'), emitted.text);
-    await writeFile(join(dir, 'api.h'), `#define DIAG_RESULT ${result}\n`);
+    const resultType = (name: string): string => {
+      const type = new RegExp(`^(a0t[0-9]+) a0_${name}\\(`, 'm').exec(emitted.text)?.[1];
+      assert.ok(type, `native export ${name}`);
+      return type;
+    };
+    await writeFile(
+      join(dir, 'api.h'),
+      [
+        `#define DIAG_RESULT ${result}`,
+        `#define IR_STATE ${resultType('source_ir_init')}`,
+        `#define IR_SYMBOL ${resultType('source_ir_symbol')}`,
+        `#define VERIFIED ${resultType('arena_verify_begin')}`,
+        '',
+      ].join('\n'),
+    );
     for (const level of [0, 2]) {
       const built = runTool(
         clang.path,
@@ -1218,7 +1237,6 @@ function prepare(): Promise<string> {
           '-I',
           runtime,
           join(fixtures, 'driver.c'),
-          join(runtime, 'arena_runtime.c'),
           '-o',
           join(dir, `driver-O${level}`),
         ],
@@ -1279,6 +1297,241 @@ function reference(source: string, options = 1) {
   }
   return undefined;
 }
+
+const NONE = 0xffff_ffff;
+type RenderControl = readonly [options: number, fault: number, budget: number];
+
+async function structuredRequest(
+  dir: string,
+  level: number,
+  program: Program,
+  archive: string,
+  controls: readonly RenderControl[],
+  allocatedEmpty = false,
+) {
+  const names: string[] = [],
+    uploads: Uint32Array[] = [],
+    fields = new Map<number, number>();
+  const builder: NativeIrBuilder = {
+    initialize(source, strict) {
+      assert.equal(source, '', 'scalar controls require no identity-byte source pool');
+      assert.equal(strict, false);
+    },
+    symbol(name) {
+      names.push(name);
+      return names.length - 1;
+    },
+    type() {
+      throw new Error('scalar controls must use native primitive type identities');
+    },
+    upload(words) {
+      if (!words.length) return 0;
+      uploads.push(words.slice());
+      return uploads.length;
+    },
+    get(index) {
+      return fields.get(index) ?? 0;
+    },
+    set(index, value) {
+      fields.set(index, value);
+    },
+  };
+  // Reuse the production structured-IR serializer. The native driver resolves its
+  // logical handles and symbol IDs through actual storage/native interning.
+  encodeNativeProgram(program, builder);
+  const words = [0x41444952, allocatedEmpty ? 1 : 0, names.length];
+  for (const name of names) {
+    const bytes = Buffer.from(name);
+    words.push(bytes.length, ...bytes);
+  }
+  words.push(uploads.length);
+  for (const upload of uploads) {
+    words.push(upload.length);
+    for (const word of upload) words.push(word);
+  }
+  words.push(fields.size);
+  for (const [slot, value] of fields) words.push(slot, value);
+  words.push(controls.length);
+  for (const control of controls) words.push(...control);
+  const packet = Buffer.alloc(words.length * 4);
+  for (const [index, word] of words.entries()) packet.writeUInt32LE(word, index * 4);
+  const input = join(dir, 'structured.bin'),
+    source = join(dir, 'archive.bin'),
+    output = join(dir, 'structured-output.bin');
+  await writeFile(input, packet);
+  await writeFile(source, archive);
+  const ran = runTool(join(dir, `driver-O${level}`), [source, input, output], {
+    cwd: dir,
+    timeoutMs: 120_000,
+  });
+  assert.ok(ran.ok, `native structured diagnostic O${level}: ${ran.stderr}`);
+  const bytes = await readFile(output);
+  let offset = 0;
+  const word = (): number => {
+    assert.ok(offset + 4 <= bytes.length, 'complete structured word transport');
+    const value = bytes.readUInt32LE(offset);
+    offset += 4;
+    return value;
+  };
+  const status = word(),
+    state = Array.from({ length: 128 }, word);
+  assert.equal(word(), controls.length);
+  const rendered = controls.map(() => {
+    const status = word(),
+      facts = Array.from({ length: 128 }, word),
+      json = Buffer.from(
+        Array.from({ length: word() }, () => {
+          const byte = word();
+          assert.ok(byte <= 255, 'diagnostic output bytes');
+          return byte;
+        }),
+      );
+    return { status, facts, json };
+  });
+  assert.equal(offset, bytes.length, 'no trailing structured output');
+  return { status, state, rendered };
+}
+
+test('seed-built ordered verifier renders global limits without inventing function context', {
+  skip,
+}, async () => {
+  const dir = await prepare();
+  const base: Func = {
+    name: 'f',
+    params: [],
+    result: 'u32',
+    nodes: [],
+    ret: { kind: 'u32', value: 0 },
+  };
+  // The excessive count must precede invalid spelling, duplicate names and body
+  // errors. Every uploaded row is real structured IR, not a fabricated failure M.
+  const invalid: Func = { ...base, name: 'Bad', ret: { kind: 'bool', value: true } };
+  const excessive: Program = { functions: [invalid, ...Array<Func>(65536).fill(base)] };
+  let expected: ReturnType<A0Error['toJSON']> | undefined;
+  try {
+    validate(excessive);
+    assert.fail('public validator must reject excessive functions');
+  } catch (error) {
+    assert.ok(error instanceof A0Error);
+    expected = error.toJSON();
+  }
+  assert.equal(expected.id, 'A0029');
+  for (const level of [0, 2]) {
+    for (const [archive, allocatedEmpty] of [
+      ['', false],
+      ['', true],
+      ['λ😀\r\nx', false],
+    ] as const) {
+      const controls: RenderControl[] = [
+        [0, 0, NONE],
+        [1, 0, NONE],
+        [2, 0, NONE],
+        [0, 0, 0],
+        ...[1, 2, 3, 4, 5].map((status): RenderControl => [0, status + 10, NONE]),
+        ...(archive ? [[0, 3, NONE] as const] : []),
+      ];
+      const actual = await structuredRequest(
+        dir,
+        level,
+        excessive,
+        archive,
+        controls,
+        allocatedEmpty,
+      );
+      assert.equal(actual.status, 8, `O${level}: actual ordered verification failure`);
+      assert.equal(actual.state[1], 29, 'global limit precedes names, duplicate and body');
+      assert.deepEqual(actual.state.slice(109, 112), [NONE, NONE, NONE]);
+      assert.deepEqual(actual.state.slice(112, 114), [65536, 65537]);
+      assert.deepEqual(
+        actual.state.slice(2, 5),
+        [0, 0, 0],
+        'actual global error has no physical span',
+      );
+      for (const [index, result] of actual.rendered.entries()) {
+        const control = controls[index];
+        assert.ok(control);
+        const [options, fault, budget] = control;
+        const code = options > 1 ? 7 : budget === 0 ? 4 : fault >= 11 ? fault - 10 : 0;
+        assert.equal(result.status, code, `O${level} archive${archive.length} control${index}`);
+        assert.deepEqual(result.facts.slice(7, 10), [NONE, NONE, NONE], 'no fabricated owner');
+        assert.deepEqual(result.facts.slice(5, 7), [65536, 65537], 'original full-word bounds');
+        if (code !== 0) {
+          assert.equal(result.json.length, 0, 'atomic refusal has no JSON');
+          continue;
+        }
+        assert.deepEqual(
+          JSON.parse(result.json.toString('utf8')),
+          expected,
+          'independent public JSON oracle',
+        );
+        const decoded = nativeDiagnostic(result, [
+          {
+            path: 'archive.a0',
+            firstLine: 1,
+            lineCount: archive.split('\n').length,
+            byteStart: 0,
+            byteLength: Buffer.byteLength(archive),
+            utf16Start: 0,
+          },
+        ]);
+        assert.ok(decoded.ok, 'actual A0 packet passes the public-error transport adapter');
+        assert.deepEqual(decoded.error.toJSON(), expected);
+        assert.equal(
+          decoded.error.message,
+          'too many functions',
+          'global message gains no owner prefix',
+        );
+        assert.equal(decoded.location.path, fault === 3 ? 'archive.a0' : undefined);
+        if (fault === 3) {
+          assert.equal(decoded.location.localLine, 1);
+          assert.equal(decoded.location.localByteStart, 2);
+          assert.equal(decoded.location.localUtf16Start, 1);
+        }
+        assert.deepEqual(result.facts.slice(0, 2), [8, 29]);
+        assert.equal(result.facts[20], 15);
+        assert.deepEqual(result.facts.slice(2, 5), fault === 3 ? [1, 2, 4] : [0, 0, 0]);
+        assert.deepEqual(
+          result.facts.slice(12, 14),
+          fault === 3 ? [1, 2] : [0, 0],
+          'exact UTF16 physical sidecar',
+        );
+      }
+    }
+    // At and below the limit, real body verification still selects function 0.
+    // The existing structured preflight suite separately accepts 65536 unique functions.
+    for (const count of [65535, 65536]) {
+      const duplicate: Func['nodes'][number] = {
+        id: 'a',
+        op: 'mov',
+        args: [{ kind: 'u32', value: 0 }],
+      };
+      const body: Func = { ...base, nodes: [duplicate, duplicate] };
+      const actual = await structuredRequest(
+        dir,
+        level,
+        {
+          functions: [body, ...Array<Func>(count - 1).fill(base)],
+        },
+        '',
+        [
+          [0, 0, NONE],
+          [0, 1, NONE],
+          [0, 2, NONE],
+          [0, 21, NONE],
+          [0, 25, NONE],
+        ],
+      );
+      assert.equal(actual.status, 8);
+      assert.equal(actual.state[1], 303, 'a legal count reaches the earlier duplicate-node error');
+      assert.equal(actual.state[109], 0);
+      assert.equal(actual.rendered[0]?.status, 0, 'well-formed local context still renders');
+      for (const result of actual.rendered.slice(1)) {
+        assert.equal(result.status, 3, 'missing/out-of-range local function remains malformed');
+        assert.equal(result.json.length, 0);
+      }
+    }
+  }
+});
 
 test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 span facts', {
   skip,

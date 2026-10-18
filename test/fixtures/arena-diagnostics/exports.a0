@@ -1,0 +1,19 @@
+# Test-only root: retain the public component exports in one seed-built closure.
+use "../../../compiler/diagnostics_arena.a0"
+use "../../../compiler/verify_arena_shared.a0"
+use "../../../compiler/source_ir.a0"
+
+fn diagnostic_controls io u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+parsed call arena_parse_diagnostic_options p0 p1 p2 0
+token at parsed 3
+initialized call source_ir_init token p1 p2 0
+symbol call source_ir_symbol initialized p1 p2
+state at symbol 0
+next at symbol 2
+started call arena_verify_begin next state
+checked call arena_verify_resume started 1
+checkedstate at checked 1
+checkedtoken at checked 6
+result call arena_diagnostic_options checkedtoken checkedstate 0
+ret result
+end
