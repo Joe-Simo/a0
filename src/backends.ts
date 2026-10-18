@@ -2552,6 +2552,7 @@ export function assemble(
             ioOutputCapacity: options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
             ...(options.wasmExports === undefined ? {} : { exports: options.wasmExports }),
             ...(options.wasmIo === undefined ? {} : { wasmIo: options.wasmIo }),
+            ...(options.wasmDebugNames === undefined ? {} : { debugNames: options.wasmDebugNames }),
           },
           COMPILER_VERSION,
         ),
@@ -2653,6 +2654,12 @@ export interface CompileOptions {
    * function bodies and their cache entries are shared with the default buffered layout.
    */
   readonly wasmIo?: WasmIoImports;
+  /**
+   * Direct wasm only: append standard function names for profilers and debuggers. Names use
+   * final function indexes after pruning, include helpers and owned variants, and change
+   * assembly metadata only. Absent or false preserves the existing module bytes and caches.
+   */
+  readonly wasmDebugNames?: boolean;
   /**
    * wasm target only: simd128 for fill runs (default true; fixed-width SIMD is in every
    * current engine: Chrome/Edge 91+, Firefox 89+, Safari 16.4+, Node 16.4+). false emits

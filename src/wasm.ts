@@ -4049,6 +4049,8 @@ export interface WasmLayout {
   readonly ioInputCapacity: number;
   readonly ioOutputCapacity: number;
   readonly wasmIo?: WasmIoImports;
+  /** Standard custom name section for the final imported/defined function index space. */
+  readonly debugNames?: boolean;
   /**
    * Functions the host calls (A0 names). When given, only these are exported and functions no
    * export reaches (for instance ones every call site inlined) are left out of the module;
@@ -4354,6 +4356,12 @@ export function assembleWasm(
     ...section(7, vec(exports)),
     ...section(10, vec(bodiesOut)),
     ...(segments.length > 0 ? section(11, vec(segments)) : []),
+    ...(layout.debugNames
+      ? section(0, [
+          ...name('name'),
+          ...section(1, vec([...imports, ...fns].map((fn, i) => [...uleb(i), ...name(fn.symbol)]))),
+        ])
+      : []),
   ];
   return Uint8Array.from(module);
 }
