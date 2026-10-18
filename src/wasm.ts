@@ -3532,15 +3532,14 @@ class FunctionEmitter {
     c.local(OP.localSet, index);
     // Loop-invariant extras as splats, once before the loop.
     const splats = new Map<number, number>();
-    for (const n of run.nodes)
-      for (const a of [...n.args, run.value])
-        if (a.kind === 'param' && a.index >= 2 && !splats.has(a.index)) {
-          const v = this.newVLocal();
-          this.push(extra[a.index - 2] as Operand);
-          c.simd(SIMD.splat);
-          c.local(OP.localSet, v);
-          splats.set(a.index, v);
-        }
+    for (const a of [...run.nodes.flatMap((n) => n.args), run.value])
+      if (a.kind === 'param' && a.index >= 2 && !splats.has(a.index)) {
+        const v = this.newVLocal();
+        this.push(extra[a.index - 2] as Operand);
+        c.simd(SIMD.splat);
+        c.local(OP.localSet, v);
+        splats.set(a.index, v);
+      }
     const ptr = this.newLocal();
     c.local(OP.localGet, state);
     c.local(OP.localSet, ptr);
