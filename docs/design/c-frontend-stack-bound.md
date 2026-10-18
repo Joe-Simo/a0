@@ -51,3 +51,13 @@ buffer capacities and heap offsets do not establish lower process RSS or faster
 execution. Production builders and released artifacts still reserve 16MiB;
 platform gates and independent RSS/latency measurements remain pending before
 any adoption.
+
+The [preregistered cost comparison](../../results/source-frontend-c-stack-cost.json)
+then ran 144 fresh children across those six applications, including twelve
+declared warmups. The results are mixed: frontend latency medians decreased in
+three applications and increased in three; whole-child wall medians increased
+in five of six. Physical peak RSS also moved in both directions, including an
+increase for the parser application despite its smaller logical buffer. The
+archive preserves all raw observations and the independent replay of every
+metric. These measurements do not justify adopting the smaller reservation or
+claiming a general speed or resident-memory improvement.
