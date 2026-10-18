@@ -1,5 +1,16 @@
 # A0 status
 
+2026-10-18 transport controls: borrowing LOAD replies passes the wire and graph controls but
+loses on all six frontend latency and live RSS medians; boot rises from 1291.52 to 1350.19 ms
+(`results/unified-source-reply-view.json`, raw cells in
+`results/unified-source-reply-view-samples.json`). Its executable artifact grows from 356280 to
+407914 bytes. Factoring its failure path still yields 402760 bytes; generic bulk writes yield
+384748 bytes (`results/unified-source-transport-size-controls.json`). Those latter variants have
+no latency or memory measurements. All are rejected; the production runtime and native fixture
+retain the unchanged implementation. Replay patches and limits are in
+`experiments/unification/runtime-transport/README.md`. Native frontend cost still blocks the
+official single-syntax cutover.
+
 2026-10-18 native graph checking: the shared dependency loader now parses each source file once,
 composes its native IR and checks the complete graph once. Original and migrated projects pass all
 178 accepted entries (`results/unified-native-graph-source-audit.json`); per-file checks are in

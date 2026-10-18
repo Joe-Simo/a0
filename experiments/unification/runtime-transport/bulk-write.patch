@@ -1,0 +1,786 @@
+diff --git a/src/backends.ts b/src/backends.ts
+index 19f98b8..d326fc0 100644
+--- a/src/backends.ts
++++ b/src/backends.ts
+@@ -985,7 +985,13 @@ const cIoRuntime = (inCap: number, outCap: number): string =>
+   `struct a0_io { uint32_t input[${inCap}]; uint32_t ninput; uint32_t position; uint32_t output[${outCap}]; uint32_t noutput; };
+ static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; r.f0 = t->position < t->ninput && t->position < ${inCap}u ? t->input[t->position++] : 0u; r.f1 = t; return r; }
+ static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < ${outCap}u) t->output[t->noutput++] = v; return t; }
+-static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
++static inline a0_io *a0io_write_words(a0_io *t, const uint32_t *e, uint32_t n) { for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }
++${C_WRITE_ARRAY}
++static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); return a0io_write_words(t, e, n); }`;
++
++/** Canonical get wraps its index, so a longer fold replays the same array in order. */
++const C_WRITE_ARRAY =
++  'static inline a0_io *a0io_write_array(a0_io *t, const uint32_t *e, uint32_t length, uint32_t count) { while (count != 0u) { uint32_t n = count < length ? count : length; a0io_write_words(t, e, n); count -= n; } return t; }';
+ 
+ /** Host streams retain token identity; a false read denotes end of input. */
+ const C_HOST_IO = `#if !defined(A0_IO_READ) || !defined(A0_IO_WRITE)
+@@ -993,7 +999,16 @@ const C_HOST_IO = `#if !defined(A0_IO_READ) || !defined(A0_IO_WRITE)
+ #endif
+ static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; uint32_t v = 0u; bool present = A0_IO_READ(t, &v); r.f0 = present ? v : 0u; r.f1 = t; return r; }
+ static inline a0_io *a0_write(a0_io *t, uint32_t v) { A0_IO_WRITE(t, v); return t; }
+-static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
++static inline a0_io *a0io_write_words(a0_io *t, const uint32_t *e, uint32_t n) {
++#ifdef A0_IO_WRITE_WORDS
++  A0_IO_WRITE_WORDS(t, e, n);
++#else
++  for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]);
++#endif
++  return t;
++}
++${C_WRITE_ARRAY}
++static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); return a0io_write_words(t, e, n); }`;
+ 
+ export const cType = (t: Type): string =>
+   t === 'u32'
+@@ -1838,6 +1853,37 @@ function cNestedUpdate(ctx: CContext, outer: Node, inner: Node): string {
+   return `  ${cVal(ctx, target)}${cPart(ctx, outer)}${cPart(ctx, inner)} = ${cVal(ctx, inner.args[2] as Operand)};`;
+ }
+ 
++/** Exactly one ordered write per trip, with no other computation or effects. */
++function cWriteArrayLength(fn: TypedFunc, node: Node): number | undefined {
++  if (node.op !== 'fold' || fn.profile === 'strict' || node.args.length !== 3) return undefined;
++  const body = fn.calls.get(node.callee ?? '');
++  if (
++    body === undefined ||
++    body.profile === 'strict' ||
++    body.params.length !== 3 ||
++    body.params[0] !== 'io' ||
++    body.params[1] !== 'u32' ||
++    body.result !== 'io' ||
++    body.nodes.length !== 2
++  )
++    return undefined;
++  const array = body.params[2];
++  if (array === undefined || isPrimitive(array) || array.kind !== 'arr' || array.elem !== 'u32')
++    return undefined;
++  const [get, write] = body.nodes;
++  if (
++    get?.op !== 'get' ||
++    !sameOp(get.args[0] as Operand, { kind: 'param', index: 2 }) ||
++    !sameOp(get.args[1] as Operand, { kind: 'param', index: 1 }) ||
++    write?.op !== 'write' ||
++    !sameOp(write.args[0] as Operand, { kind: 'param', index: 0 }) ||
++    !sameOp(write.args[1] as Operand, { kind: 'node', id: get.id }) ||
++    !sameOp(body.ret, { kind: 'node', id: write.id })
++  )
++    return undefined;
++  return array.length;
++}
++
+ function cBody(
+   fn: TypedFunc,
+   variant: CVariant,
+@@ -1901,6 +1947,9 @@ function cBodyWith(
+       const markClose = marked ? ' a0_mark(0);' : '';
+       const [count, init, ...extra] = n.args.map((o) => cVal(ctx, o));
+       if (isPrimitive(fn.types.get(n.id) ?? 'u32')) {
++        const writeLength = trap ? undefined : cWriteArrayLength(fn, n);
++        if (writeLength !== undefined)
++          return `  a0_io *const n_${n.id} = a0io_write_array(${init}, ${extra[0]}.e, ${writeLength}u, ${count}); (void)n_${n.id};`;
+         // Ordinary scalar callbacks retain their public ABI: only large extras use pointers.
+         const passed = n.args.slice(2).map((o) => cArg(ctx, o));
+         // Both roles can borrow extras. A view parameter is read-only to the callee, so its
+@@ -2626,7 +2675,10 @@ export interface CompileOptions {
+    * including the module. READ returns false at end of input (zero in canonical,
+    * an input trap in strict); WRITE receives every word, including puts' length prefix.
+    * The token and host context remain live for the call; hooks must not reenter the module.
+-   * Absent, the existing fixed-capacity ABI and emitted bytes are unchanged.
++   * Optional A0_IO_WRITE_WORDS(token, words, count) must act as ordered WRITE calls
++   * over the supplied values, retaining token identity. It borrows a stable read-only
++   * array only for that call; it must not mutate it, retain it, or reenter the module.
++   * Absent, the existing fixed-capacity ABI is used.
+    */
+   readonly cIo?: 'host';
+   /** C target only: automatic parallel folds (src/parallel.ts `parallelC`); absent = sequential. */
+diff --git a/test/arena-bulk-write.test.ts b/test/arena-bulk-write.test.ts
+new file mode 100644
+index 0000000..bbd9cfc
+--- /dev/null
++++ b/test/arena-bulk-write.test.ts
+@@ -0,0 +1,39 @@
++import assert from 'node:assert/strict';
++import { join, resolve } from 'node:path';
++import { test } from 'node:test';
++import { findClang, runTool, withTempDir } from '../src/toolchain.js';
++
++const clang = findClang();
++test('bulk arena writes preserve scalar framing across all packet splits and unread replies', {
++  skip: clang.path === undefined ? 'clang is unavailable' : false,
++}, async () => {
++  assert.ok(clang.path);
++  await withTempDir(async (dir) => {
++    for (const level of ['-O0', '-O2']) {
++      const exe = join(dir, `bulk-write-${level}`);
++      const built = runTool(
++        clang.path as string,
++        [
++          '-std=c11',
++          level,
++          '-Wall',
++          '-Wextra',
++          '-Werror',
++          '-fsanitize=address,undefined',
++          '-fno-sanitize-recover=all',
++          '-I',
++          resolve('tools/native'),
++          resolve('test/fixtures/arena/bulk-write-test.c'),
++          resolve('tools/native/arena_runtime.c'),
++          '-o',
++          exe,
++        ],
++        { cwd: dir },
++      );
++      assert.ok(built.ok, built.stderr);
++      const result = runTool(exe, [], { cwd: dir });
++      assert.ok(result.ok, `${result.stderr}\n${result.stdout}`);
++      assert.equal(result.stdout, 'bulk arena writes match scalar protocol\n');
++    }
++  });
++});
+diff --git a/test/c-write-array.test.ts b/test/c-write-array.test.ts
+new file mode 100644
+index 0000000..59f9caf
+--- /dev/null
++++ b/test/c-write-array.test.ts
+@@ -0,0 +1,319 @@
++import assert from 'node:assert/strict';
++import { writeFile } from 'node:fs/promises';
++import { join } from 'node:path';
++import { test } from 'node:test';
++import { compile, FunctionCache, isLargeC } from '../src/backends.js';
++import {
++  A0Error,
++  formatTrap,
++  makeIo,
++  parseAndValidate,
++  run,
++  type TypedProgram,
++} from '../src/core.js';
++import { findClang, runTool, withTempDir } from '../src/toolchain.js';
++
++const LENGTHS = [1, 3, 7, 128, 1025];
++const SOURCE = `${LENGTHS.map(
++  (length) => `fn step_${length} io u32 u32x${length} -> io
++element get p2 p1
++written write p0 element
++ret written
++end
++fn replay_${length} io u32x${length} u32 -> io
++out fold step_${length} p2 p0 p1
++ret out
++end`,
++).join('\n')}
++fn write_array io u32 u32x7 -> io
++index add p1 1
++value get p2 index
++out write p0 value
++ret out
++end
++fn shifted io u32x7 u32 -> io
++out fold write_array p2 p0 p1
++ret out
++end
++fn twice io u32 u32x7 -> io
++value get p2 p1
++first write p0 value
++second write first p1
++ret second
++end
++fn effects io u32x7 u32 -> io
++out fold twice p2 p0 p1
++ret out
++end
++fn reads io u32 u32x7 -> io
++input read p0
++next at input 1
++value get p2 p1
++out write next value
++ret out
++end
++fn reading io u32x7 u32 -> io
++out fold reads p2 p0 p1
++ret out
++end
++fn always io u32 u32x7 -> bool
++ret true
++end
++fn looping io u32x7 u32 -> io
++out loop always step_7 p2 p0 p1
++ret out
++end
++fn message io u32x3 -> io
++out puts p0 p1
++ret out
++end
++`;
++const clang = findClang();
++const skip = clang.path === undefined ? 'clang is unavailable' : false;
++const u32 = (n: number): string => `${n}u`;
++
++interface Case {
++  readonly name: string;
++  readonly length: number;
++  readonly data: readonly number[];
++  readonly count?: number;
++  readonly direct?: boolean;
++  readonly bulk: boolean;
++}
++function cases(): Case[] {
++  let seed = 0x719c3e2d;
++  const random = (): number => {
++    seed ^= seed << 13;
++    seed ^= seed >>> 17;
++    seed ^= seed << 5;
++    return seed >>> 0;
++  };
++  const result: Case[] = [];
++  for (const length of LENGTHS) {
++    const data = Array.from({ length }, random);
++    const counts = new Set([
++      0,
++      1,
++      length - 1,
++      length,
++      length + 1,
++      2 * length,
++      3 * length + 1,
++      ...Array.from({ length: 8 }, () => random() % (4 * length + 1)),
++    ]);
++    for (const count of counts)
++      result.push({ name: `replay_${length}`, length, data, count, bulk: count !== 0 });
++  }
++  const data = Array.from({ length: 7 }, random);
++  for (const name of ['shifted', 'effects', 'reading', 'looping'])
++    for (const count of [0, 1, 6, 7, 8, 29])
++      result.push({ name, length: 7, data, count, bulk: false });
++  result.push({ name: 'step_7', length: 7, data, count: 19, direct: true, bulk: false });
++  result.push({ name: 'write_array', length: 7, data, count: 19, direct: true, bulk: false });
++  result.push({ name: 'message', length: 3, data: data.slice(0, 3), bulk: true });
++  return result;
++}
++
++const HOST = `struct a0_io { const uint32_t *expected; uint32_t count, position, bulk_calls; };
++static void record_word(struct a0_io *t, uint32_t value);
++#if USE_BULK
++static void record_words(struct a0_io *t, const uint32_t *words, uint32_t count);
++#define A0_IO_WRITE_WORDS(t, words, count) record_words((t), (words), (count))
++#endif
++#define A0_IO_READ(t, out) ((void)(t), *(out) = 0u, false)
++#define A0_IO_WRITE(t, word) record_word((t), (word))
++#include "module.c"
++static void record_word(a0_io *t, uint32_t value) {
++  if (t->position >= t->count || value != t->expected[t->position]) abort();
++  t->position++;
++}
++#if USE_BULK
++static void record_words(a0_io *t, const uint32_t *words, uint32_t count) {
++  if (count == 0u) abort();
++  t->bulk_calls++;
++  for (uint32_t i = 0; i < count; i++) record_word(t, words[i]);
++}
++#endif
++`;
++function driver(program: TypedProgram, host: boolean): string {
++  const statements = cases().map((c, id) => {
++    const fn = program.byName.get(c.name);
++    assert.ok(fn);
++    const token = makeIo([]);
++    const args = c.direct
++      ? [token, c.count ?? 0, c.data]
++      : [token, c.data, ...(c.count === undefined ? [] : [c.count])];
++    assert.equal(run(fn, args, { fuel: 1e8 }), token);
++    const expected = token.output;
++    const arrayType = { kind: 'arr' as const, elem: 'u32' as const, length: c.length };
++    const data = isLargeC(arrayType) ? '&data' : 'data';
++    const call = c.direct
++      ? `a0_${c.name}(&token, ${u32(c.count ?? 0)}, ${data})`
++      : `a0_${c.name}(&token, ${data}${c.count === undefined ? '' : `, ${u32(c.count)}`})`;
++    return `{
++  const a0t_a${c.length}_u data = {{${c.data.map(u32).join(',')}}};
++  static const uint32_t expected[] = {${expected.length ? expected.map(u32).join(',') : '0u'}};
++  ${host ? `a0_io token = { expected, ${expected.length}u, 0u, 0u };` : 'a0_io token = {0};'}
++  if (${call} != &token) return ${id + 1};
++  ${
++    host
++      ? `if (token.position != ${expected.length}u) return ${id + 1};
++  if (USE_BULK && ${c.bulk ? 'token.bulk_calls == 0u' : 'token.bulk_calls != 0u'}) return ${id + 1};`
++      : `if (token.noutput != ${Math.min(1024, expected.length)}u) return ${id + 1};
++  for (uint32_t i = 0; i < token.noutput; i++) if (token.output[i] != expected[i]) return ${id + 1};`
++  }
++}`;
++  });
++  return `#include <stdint.h>
++#include <stdbool.h>
++#include <stdlib.h>
++${host ? HOST : '#include "module.c"'}
++int main(void) {
++${statements.join('\n')}
++return 0;
++}
++`;
++}
++
++for (const optimize of [false, true])
++  test(`C array-write folds preserve wrapped words, callbacks and public calls: optimize=${optimize}`, {
++    skip,
++  }, async () => {
++    assert.ok(clang.path);
++    const program = parseAndValidate(SOURCE);
++    await withTempDir(async (dir) => {
++      for (const host of [false, true]) {
++        await writeFile(
++          join(dir, 'module.c'),
++          compile(program, 'c', { optimize, ...(host ? { cIo: 'host' as const } : {}) }).text,
++        );
++        await writeFile(join(dir, 'driver.c'), driver(program, host));
++        for (const bulk of host ? [false, true] : [false])
++          for (const level of ['-O0', '-O2']) {
++            const exe = join(dir, 'driver');
++            const built = runTool(
++              clang.path as string,
++              [
++                '-std=c11',
++                level,
++                '-Wall',
++                '-Wextra',
++                '-Wno-unused-parameter',
++                '-Werror',
++                '-fsanitize=undefined',
++                '-fno-sanitize-recover=all',
++                `-DUSE_BULK=${bulk ? 1 : 0}`,
++                'driver.c',
++                '-o',
++                exe,
++              ],
++              { cwd: dir },
++            );
++            assert.ok(built.ok, built.stderr);
++            const result = runTool(exe, [], { cwd: dir });
++            assert.ok(
++              result.ok,
++              `host=${host} bulk=${bulk} ${level}: ${result.stderr}; exit=${result.status}`,
++            );
++          }
++      }
++    });
++  });
++
++test('C host and buffered emission share cache entries without changing array-write behavior', () => {
++  const program = parseAndValidate(SOURCE);
++  for (const optimize of [false, true]) {
++    const cache = new FunctionCache();
++    const buffered = compile(program, 'c', { optimize }, cache);
++    const host = compile(program, 'c', { optimize, cIo: 'host' }, cache);
++    assert.equal(host.cacheHits, program.functions.length);
++    assert.equal(host.text, compile(program, 'c', { optimize, cIo: 'host' }).text);
++    assert.equal(buffered.text, compile(program, 'c', { optimize }, cache).text);
++    assert.match(host.text, /a0io_write_array\(p0, p1\.e, 7u, p2\)/);
++    assert.match(
++      host.text,
++      /a0_write_array\(/,
++      'a source function can use the helper description as its name',
++    );
++  }
++});
++
++const TRAP_SOURCE = `fn step io u32 u32x3 -> io
++value get p2 p1
++out write p0 value
++ret out
++end
++fn replay io u32x3 u32 -> io
++out fold step p2 p0 p1
++ret out
++end
++`;
++for (const strict of [false, true])
++  for (const optimize of [false, true])
++    test(`C array-write folds retain strict and instrumented trip traps: strict=${strict}, optimize=${optimize}`, {
++      skip,
++    }, async () => {
++      assert.ok(clang.path);
++      const program = parseAndValidate(`${strict ? 'profile strict\n' : ''}${TRAP_SOURCE}`);
++      const fn = program.byName.get('replay');
++      assert.ok(fn);
++      const options = strict ? {} : { cTrap: { maxTrips: 2 } };
++      let expectedTrap: string | undefined;
++      try {
++        run(fn, [makeIo([]), [11, 22, 33], 7], {
++          fuel: 1e8,
++          ...(strict ? {} : { maxTrips: 2 }),
++        });
++      } catch (error) {
++        assert.ok(error instanceof A0Error && error.trap);
++        expectedTrap = formatTrap(error.trap);
++      }
++      assert.ok(expectedTrap);
++      const text = compile(program, 'c', { ...options, optimize, cIo: 'host' }).text;
++      assert.equal(
++        text.match(/a0io_write_array\(/g)?.length,
++        1,
++        'only the helper definition remains',
++      );
++      const source = `#include <stdint.h>
++#include <stdbool.h>
++#include <stdlib.h>
++${HOST}
++int main(void) {
++  const uint32_t expected[] = {11u,22u,33u};
++  a0_io token = {expected, ${strict ? 3 : 2}u, 0u, 0u};
++  const a0t_a3_u data = {{11u,22u,33u}};
++  (void)a0_replay(&token, data, 7u);
++  return 9;
++}
++`;
++      await withTempDir(async (dir) => {
++        await writeFile(join(dir, 'module.c'), text);
++        await writeFile(join(dir, 'driver.c'), source);
++        for (const level of ['-O0', '-O2']) {
++          const exe = join(dir, 'driver');
++          const built = runTool(
++            clang.path as string,
++            [
++              '-std=c11',
++              level,
++              '-Wall',
++              '-Wextra',
++              '-Wno-unused-parameter',
++              '-Werror',
++              '-DUSE_BULK=0',
++              '-fsanitize=undefined',
++              '-fno-sanitize-recover=all',
++              'driver.c',
++              '-o',
++              exe,
++            ],
++            { cwd: dir },
++          );
++          assert.ok(built.ok, built.stderr);
++          const result = runTool(exe, [], { cwd: dir });
++          assert.equal(result.status, 3);
++          assert.equal(result.stderr.trim(), expectedTrap);
++        }
++      });
++    });
+diff --git a/test/fixtures/arena/bulk-write-test.c b/test/fixtures/arena/bulk-write-test.c
+new file mode 100644
+index 0000000..20cd91e
+--- /dev/null
++++ b/test/fixtures/arena/bulk-write-test.c
+@@ -0,0 +1,239 @@
++#include "arena_runtime.h"
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#define CHECK(x) do { if (!(x)) { \
++  fprintf(stderr, "bulk write failure at line %d: %s\n", __LINE__, #x); \
++  exit(1); \
++} } while (0)
++
++static uint32_t random_state = UINT32_C(0xb9514e27);
++static uint32_t random_word(void) {
++  random_state ^= random_state << 13;
++  random_state ^= random_state >> 17;
++  random_state ^= random_state << 5;
++  return random_state;
++}
++
++typedef struct {
++  a0_arena_session *scalar;
++  a0_arena_session *bulk;
++} pair;
++
++static void same(pair p) {
++  CHECK(a0_arena_protocol_failed(p.scalar) == a0_arena_protocol_failed(p.bulk));
++  CHECK(a0_arena_is_finished(p.scalar) == a0_arena_is_finished(p.bulk));
++  CHECK(a0_arena_is_complete(p.scalar) == a0_arena_is_complete(p.bulk));
++  CHECK(a0_arena_finish_code(p.scalar) == a0_arena_finish_code(p.bulk));
++  CHECK(a0_arena_allocated_words(p.scalar) == a0_arena_allocated_words(p.bulk));
++  CHECK(a0_arena_allocation_count(p.scalar) == a0_arena_allocation_count(p.bulk));
++  const uint32_t n = a0_arena_output_count(p.scalar);
++  CHECK(n == a0_arena_output_count(p.bulk));
++  if (n != 0)
++    CHECK(memcmp(a0_arena_output(p.scalar), a0_arena_output(p.bulk),
++                 (size_t)n * sizeof(uint32_t)) == 0);
++}
++
++static uint32_t read_word(pair p) {
++  const uint32_t a = a0_runtime_read(p.scalar);
++  CHECK(a == a0_runtime_read(p.bulk));
++  same(p);
++  return a;
++}
++
++static void read_expected(pair p, const uint32_t *words, uint32_t count) {
++  for (uint32_t i = 0; i < count; i++) CHECK(read_word(p) == words[i]);
++}
++
++static void write_words(pair p, const uint32_t *words, uint32_t count) {
++  for (uint32_t i = 0; i < count; i++) a0_runtime_write(p.scalar, words[i]);
++  a0_runtime_write_many(p.bulk, words, count);
++  same(p);
++}
++
++static void reset(pair p) {
++  a0_arena_reset(p.scalar);
++  a0_arena_reset(p.bulk);
++  same(p);
++  const uint32_t hello[] = {0, 2, A0_ARENA_MAGIC, A0_ARENA_VERSION};
++  read_expected(p, hello, 4);
++  write_words(p, NULL, 0);
++}
++
++static void split(pair p, const uint32_t *words, uint32_t count, uint32_t at) {
++  write_words(p, words, at);
++  write_words(p, NULL, 0);
++  write_words(p, words + at, count - at);
++}
++
++static void allocate(pair p) {
++  const uint32_t request[] = {1, 1, 256};
++  const uint32_t response[] = {0, 1, 1};
++  write_words(p, request, 3);
++  read_expected(p, response, 3);
++}
++
++static void ack(pair p, uint32_t status) {
++  const uint32_t response[] = {status, 0};
++  read_expected(p, response, 2);
++}
++
++static void test_splits(pair p) {
++  for (uint32_t n = 0; n <= 128; n++) {
++    uint32_t store[133] = {3, 3 + n, 1, 256 - n, n};
++    uint32_t emit[131] = {4, 1 + n, n};
++    uint32_t load[] = {2, 3, 1, 256 - n, n};
++    uint32_t expected[130] = {0, n};
++    for (uint32_t i = 0; i < n; i++) {
++      const uint32_t value = random_word();
++      store[5 + i] = value;
++      emit[3 + i] = value;
++      expected[2 + i] = value;
++    }
++    for (uint32_t at = 0; at <= 5 + n; at++) {
++      reset(p);
++      allocate(p);
++      split(p, store, 5 + n, at);
++      ack(p, 0);
++      write_words(p, load, 5);
++      read_expected(p, expected, 2 + n);
++    }
++    for (uint32_t at = 0; at <= 3 + n; at++) {
++      reset(p);
++      split(p, emit, 3 + n, at);
++      ack(p, 0);
++      CHECK(a0_arena_output_count(p.bulk) == n);
++      if (n != 0)
++        CHECK(memcmp(a0_arena_output(p.bulk), expected + 2,
++                       (size_t)n * sizeof(uint32_t)) == 0);
++    }
++    /* A write at every possible unread LOAD response position must retain the
++     * remaining response and append one sticky protocol-error frame. */
++    for (uint32_t consumed = 0; consumed < 2 + n; consumed++) {
++      reset(p);
++      allocate(p);
++      write_words(p, store, 5 + n);
++      ack(p, 0);
++      write_words(p, load, 5);
++      read_expected(p, expected, consumed);
++      const uint32_t finish[] = {5, 1, 31};
++      write_words(p, finish, 3);
++      read_expected(p, expected + consumed, 2 + n - consumed);
++      ack(p, 1);
++      CHECK(a0_arena_protocol_failed(p.bulk));
++      write_words(p, emit, 3 + n);
++      ack(p, 1);
++      CHECK(a0_arena_output_count(p.bulk) == 0);
++      CHECK(a0_arena_allocated_words(p.bulk) == 256);
++    }
++  }
++}
++
++static void test_headers_and_truncation(pair p) {
++  const uint32_t headers[][2] = {
++    {0, 0}, {UINT32_MAX, 1}, {1, 0}, {1, 2}, {2, 2}, {2, 4},
++    {3, 2}, {3, 132}, {4, 0}, {4, 130}, {5, 0}, {5, 2}, {3, UINT32_MAX}
++  };
++  for (size_t i = 0; i < sizeof headers / sizeof headers[0]; i++)
++    for (uint32_t at = 0; at <= 2; at++) {
++      reset(p);
++      split(p, headers[i], 2, at);
++      ack(p, 1);
++      const uint32_t ignored[] = {4, 2, 1, UINT32_MAX};
++      write_words(p, ignored, 4);
++      ack(p, 1);
++      CHECK(a0_arena_output_count(p.bulk) == 0);
++    }
++  const uint32_t frames[][8] = {
++    {3, 3, 1, 0, 1}, {3, 4, 1, 0, 0, 999},
++    {3, 4, 1, 0, UINT32_MAX, 9}, {4, 1, 1}, {4, 2, 0, 999},
++    {4, 2, UINT32_MAX, 9}, {2, 3, 0, UINT32_MAX, UINT32_MAX},
++    {2, 3, 1, 256, 1}, {1, 1, 0}, {1, 1, 257}
++  };
++  const uint32_t lengths[] = {5, 6, 6, 3, 4, 4, 5, 5, 3, 3};
++  for (uint32_t i = 0; i < sizeof lengths / sizeof lengths[0]; i++)
++    for (uint32_t at = 0; at <= lengths[i]; at++) {
++      reset(p);
++      allocate(p);
++      split(p, frames[i], lengths[i], at);
++      /* Read both the completed error and deliberately truncated requests. */
++      (void)read_word(p);
++      (void)read_word(p);
++      same(p);
++    }
++  uint32_t full[133] = {3, 131, 1, 0, 128};
++  for (uint32_t i = 0; i < 128; i++) full[i + 5] = random_word();
++  for (uint32_t end = 1; end < 133; end++) {
++    reset(p);
++    allocate(p);
++    write_words(p, full, end);
++    ack(p, 1);
++    CHECK(a0_arena_protocol_failed(p.bulk));
++  }
++  for (uint32_t at = 0; at <= 6; at++) {
++    reset(p);
++    const uint32_t joined[] = {1, 1, 7, 5, 1, 19};
++    split(p, joined, 6, at);
++    const uint32_t response[] = {0, 1, 1, 1, 0};
++    read_expected(p, response, 5);
++    CHECK(a0_arena_protocol_failed(p.bulk));
++    CHECK(!a0_arena_is_finished(p.bulk));
++  }
++  for (uint32_t at = 0; at <= 3; at++) {
++    reset(p);
++    allocate(p);
++    const uint32_t finish[] = {5, 1, UINT32_MAX};
++    split(p, finish, 3, at);
++    ack(p, 0);
++    CHECK(a0_arena_is_complete(p.bulk));
++    CHECK(a0_arena_finish_code(p.bulk) == UINT32_MAX);
++    CHECK(a0_arena_allocated_words(p.bulk) == 0);
++    const uint32_t after[] = {2, 3, 0, 0, 0};
++    write_words(p, after, 5);
++    ack(p, 5);
++  }
++}
++
++static void test_random_chunks(pair p) {
++  for (uint32_t round = 0; round < 512; round++) {
++    reset(p);
++    allocate(p);
++    const uint32_t n = random_word() % 129;
++    const uint32_t offset = random_word() % (257 - n);
++    uint32_t store[133] = {3, 3 + n, 1, offset, n};
++    for (uint32_t i = 0; i < n; i++) store[5 + i] = random_word();
++    for (uint32_t at = 0; at < 5 + n;) {
++      uint32_t chunk = random_word() % 17;
++      write_words(p, NULL, 0);
++      if (chunk == 0) chunk = 1;
++      if (chunk > 5 + n - at) chunk = 5 + n - at;
++      write_words(p, store + at, chunk);
++      at += chunk;
++    }
++    ack(p, 0);
++    const uint32_t load[] = {2, 3, 1, offset, n};
++    write_words(p, load, 5);
++    CHECK(read_word(p) == 0);
++    CHECK(read_word(p) == n);
++    read_expected(p, store + 5, n);
++  }
++}
++
++int main(void) {
++  pair p = {a0_arena_create(256, 256), a0_arena_create(256, 256)};
++  CHECK(p.scalar != NULL && p.bulk != NULL);
++  /* Undrained initial hello behaves just like every other unread response. */
++  const uint32_t frame[] = {1, 1, 1};
++  write_words(p, frame, 3);
++  const uint32_t failed_hello[] = {0, 2, A0_ARENA_MAGIC, A0_ARENA_VERSION, 1, 0};
++  read_expected(p, failed_hello, 6);
++  test_splits(p);
++  test_headers_and_truncation(p);
++  test_random_chunks(p);
++  a0_arena_destroy(p.scalar);
++  a0_arena_destroy(p.bulk);
++  puts("bulk arena writes match scalar protocol");
++  return 0;
++}
+diff --git a/tools/native/arena_runtime.c b/tools/native/arena_runtime.c
+index b465430..bd15f73 100644
+--- a/tools/native/arena_runtime.c
++++ b/tools/native/arena_runtime.c
+@@ -309,6 +309,29 @@ void a0_runtime_write(a0_arena_session *s, uint32_t word) {
+   if (s->arguments_received == s->argument_count) complete_request(s);
+ }
+ 
++void a0_runtime_write_many(a0_arena_session *s, const uint32_t *words,
++                           uint32_t count) {
++  assert(s != NULL);
++  assert(words != NULL || count == 0);
++  while (count != 0) {
++    if (s->protocol_failed) return;
++    if (s->response_position == s->response_count && s->request_phase == 2) {
++      const uint32_t remaining = s->argument_count - s->arguments_received;
++      const uint32_t n = count < remaining ? count : remaining;
++      assert(n != 0);
++      memcpy(s->arguments + s->arguments_received, words,
++             (size_t)n * sizeof(uint32_t));
++      s->arguments_received += n;
++      words += n;
++      count -= n;
++      if (s->arguments_received == s->argument_count) complete_request(s);
++    } else {
++      a0_runtime_write(s, *words++);
++      count--;
++    }
++  }
++}
++
+ bool a0_arena_protocol_failed(const a0_arena_session *s) {
+   assert(s != NULL);
+   return s->protocol_failed;
+diff --git a/tools/native/arena_runtime.h b/tools/native/arena_runtime.h
+index 2354dae..ad81315 100644
+--- a/tools/native/arena_runtime.h
++++ b/tools/native/arena_runtime.h
+@@ -90,6 +90,13 @@ void a0_arena_destroy(a0_arena_session *session);
+  */
+ uint32_t a0_runtime_read(a0_arena_session *session);
+ void a0_runtime_write(a0_arena_session *session, uint32_t word);
++/* Equivalent to count ordered calls to a0_runtime_write. A zero count reads no
++ * input and permits NULL. Otherwise words must name count live, stable words
++ * that do not overlap any mutable session storage (including arena allocations
++ * and output). The runtime borrows the input only for this call.
++ */
++void a0_runtime_write_many(a0_arena_session *session, const uint32_t *words,
++                           uint32_t count);
+ 
+ bool a0_arena_protocol_failed(const a0_arena_session *session);
+ bool a0_arena_is_finished(const a0_arena_session *session);
+diff --git a/tools/native/source_frontend.c b/tools/native/source_frontend.c
+index 27c1c12..48f68ba 100644
+--- a/tools/native/source_frontend.c
++++ b/tools/native/source_frontend.c
+@@ -8,6 +8,8 @@ static a0_arena_session *session;
+ static struct a0_io *token;
+ #define A0_IO_READ(t, out) ((void)(t), *(out) = a0_runtime_read(session), true)
+ #define A0_IO_WRITE(t, v) ((void)(t), a0_runtime_write(session, (v)))
++#define A0_IO_WRITE_WORDS(t, words, count) \
++    ((void)(t), a0_runtime_write_many(session, (words), (count)))
+ struct a0_io { uint32_t unused; };
+ #include "module.c"
+ #include "api.h"
+@@ -21,7 +23,7 @@ static bool ir_active;
+ static void send(uint32_t op, uint32_t n, const uint32_t *args) {
+     a0_runtime_write(session, op);
+     a0_runtime_write(session, n);
+-    for (uint32_t i = 0; i < n; i++) a0_runtime_write(session, args[i]);
++    a0_runtime_write_many(session, args, n);
+ }
+ 
+ static uint32_t reply(uint32_t expected) {
