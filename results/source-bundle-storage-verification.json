@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "scope": "Storage and replay verification of four existing experimental source archives. No measured source, raw sample, artifact or timing was changed.",
+  "previousCommit": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+  "cause": "Encoding opaque Git bundle bytes as base64 text introduced incidental case-insensitive three-letter matches in the public tree scan. Decoded bytes in all four bundles have no such text match.",
+  "change": "Preserve each exact original Git bundle as a binary .bundle file with JSON metadata and updated import recipes. The public tree scan and its patterns/exclusions are unchanged.",
+  "storage": [
+    {
+      "metadataPath": "results/source-cost-c-projection-source-bundle.json",
+      "previousMetadataBytes": 52481,
+      "previousMetadataSha256": "f61707b0140a97f8f38c3eaeb03d115a083efa5353e71c82342dba388d03fe26",
+      "bundlePath": "results/source-cost-c-projection-source.bundle",
+      "bundleBytes": 32405,
+      "bundleSha256": "a3a797a943866b33912647471f7898935d4e8b7b074b72c9a818a29e25efca07",
+      "metadataBytes": 5028,
+      "metadataSha256": "743c4a11b99409b13bca78062c83b86aa2ba38fd6c6946b88d79d8d7571fc379"
+    },
+    {
+      "metadataPath": "results/source-cost-shared-lazy-error-source-bundle.json",
+      "previousMetadataBytes": 63695,
+      "previousMetadataSha256": "799918cf97263dbfde035f70000d564c96d4dff2ba084c959e9afe929a618f0b",
+      "bundlePath": "results/source-cost-shared-lazy-error-source.bundle",
+      "bundleBytes": 41428,
+      "bundleSha256": "6228fc027869f0c7a9192844eed06853e1648d367cf3df853d78dceb633bcd07",
+      "metadataBytes": 4335,
+      "metadataSha256": "23d4c59e2e6e3f0149ce1cd99d15c83e0c0eee88b33177ab4497194fa150d0f6"
+    },
+    {
+      "metadataPath": "results/source-cost-scalar-ap-read-source-bundle.json",
+      "previousMetadataBytes": 56881,
+      "previousMetadataSha256": "b345a5d0e3bcc3bdf2ef376ba4bc86eb2756d6d05face736cef0aedcd42b9fcb",
+      "bundlePath": "results/source-cost-scalar-ap-read-source.bundle",
+      "bundleBytes": 35189,
+      "bundleSha256": "a8a86e5fcd67fa4020160be714edf546a494de00253ca73b948544cb0ba8698e",
+      "metadataBytes": 5326,
+      "metadataSha256": "666455f94229f7596363148fe43130397f493a12ebe70866b47dc30a963e3a66"
+    },
+    {
+      "metadataPath": "results/source-frontend-js-source-bundle.json",
+      "previousMetadataBytes": 73475,
+      "previousMetadataSha256": "d6ec6c9c78771add44c5e5c660150b02649133c11caab4ce35586f51c8ffa23a",
+      "bundlePath": "results/source-frontend-js-source.bundle",
+      "bundleBytes": 52154,
+      "bundleSha256": "6f23f98b378d0c74e5b00781ac56ad09c1b78c7a8bd98d93cb7647a22807b65e",
+      "metadataBytes": 4219,
+      "metadataSha256": "9eca28817162709f4753b6a21aaf6ace729b6500627b1afe8e0f4e8b78fbefc0"
+    }
+  ],
+  "isolatedImports": [
+    {
+      "path": "results/source-cost-c-projection-source.bundle",
+      "bytes": 32405,
+      "sha256": "a3a797a943866b33912647471f7898935d4e8b7b074b72c9a818a29e25efca07",
+      "prerequisite": "12fe5c8f646f2d339e2c4cf15bd0120f77084ae5",
+      "headsAbsentBeforeImport": true,
+      "verifiedCommitAndTreeAndParents": 7,
+      "bundleVerify": true,
+      "experimentalRefsOnly": true
+    },
+    {
+      "path": "results/source-cost-scalar-ap-read-source.bundle",
+      "bytes": 35189,
+      "sha256": "a8a86e5fcd67fa4020160be714edf546a494de00253ca73b948544cb0ba8698e",
+      "prerequisite": "12fe5c8f646f2d339e2c4cf15bd0120f77084ae5",
+      "headsAbsentBeforeImport": true,
+      "verifiedCommitAndTreeAndParents": 9,
+      "bundleVerify": true,
+      "experimentalRefsOnly": true
+    },
+    {
+      "path": "results/source-cost-shared-lazy-error-source.bundle",
+      "bytes": 41428,
+      "sha256": "6228fc027869f0c7a9192844eed06853e1648d367cf3df853d78dceb633bcd07",
+      "prerequisite": "12fe5c8f646f2d339e2c4cf15bd0120f77084ae5",
+      "headsAbsentBeforeImport": true,
+      "verifiedCommitAndTreeAndParents": 9,
+      "bundleVerify": true,
+      "experimentalRefsOnly": true
+    },
+    {
+      "path": "results/source-frontend-js-source.bundle",
+      "bytes": 52154,
+      "sha256": "6f23f98b378d0c74e5b00781ac56ad09c1b78c7a8bd98d93cb7647a22807b65e",
+      "prerequisite": "182c90a86880a211517cb59267a8759ea70b2518",
+      "headsAbsentBeforeImport": true,
+      "verifiedCommitAndTreeAndParents": 13,
+      "bundleVerify": true,
+      "experimentalRefsOnly": true
+    }
+  ],
+  "checks": {
+    "publicTree": {
+      "pass": true,
+      "tests": 1,
+      "skipped": 0
+    },
+    "hygiene": {
+      "pass": true,
+      "passed": 3,
+      "skipped": 1,
+      "skipReason": "Optional local denylist is not configured."
+    },
+    "scrub": {
+      "pass": true
+    },
+    "lint": {
+      "pass": true,
+      "existingWarnings": 18,
+      "existingInfos": 164
+    },
+    "prereview": {
+      "findings": [],
+      "score": 0,
+      "verdict": "ok"
+    },
+    "devTools": {
+      "pass": true,
+      "passed": 32,
+      "skipped": 0,
+      "logSha256": "db1a5015586e917af525c6908eea0e61135a28ef44877688d0ff27e50bee45c2"
+    }
+  },
+  "limits": "This verifies archive storage/replay and focused public tree controls; the combined compiler candidate still needs full platform gates."
+}

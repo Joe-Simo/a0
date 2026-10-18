@@ -10,7 +10,8 @@ Dense controls. The original run, every observed loss and the exact source histo
 - `results/source-cost-shared-lazy-error-analysis.json`: every median field and paired frontend
   ratio against all four controls, including increases.
 - `results/source-cost-shared-lazy-error-decision.json`: scope, losses and adoption decision.
-- `results/source-cost-shared-lazy-error-source-bundle.json`: exact experimental Git history.
+- `results/source-cost-shared-lazy-error-source.bundle`: exact experimental Git history, with
+  metadata in `results/source-cost-shared-lazy-error-source-bundle.json`.
 
 `results/source-cost-shared-lazy-error-preparation.json` records strict preparation for the
 shared lazy-error A0 algorithm from `0f9b4d34` against the unchanged `1b1fc66` frontend closure.
@@ -63,7 +64,7 @@ shipping CLI, graph loading, AI editing/inference or generated-target execution 
 The incremental bundle contains nine commits and excludes prerequisite
 `12fe5c8f646f2d339e2c4cf15bd0120f77084ae5` and its reachable history. The historical emitter
 `764de84ab99a156e41164518f14cc0676b6343dd` is in that prerequisite history. A shallow clone must
-fetch the full prerequisite history first. The decoded bundle is 41428 bytes with SHA-256
+fetch the full prerequisite history first. The bundle is 41428 bytes with SHA-256
 `6228fc027869f0c7a9192844eed06853e1648d367cf3df853d78dceb633bcd07`.
 Two creations were byte-identical. An isolated repository containing only prerequisite history
 could not resolve the candidate before import and recovered all nine exact commits/trees after
@@ -85,8 +86,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const [archivePath, bundlePath] = process.argv.slice(2);
 const archive = JSON.parse(readFileSync(archivePath, 'utf8'));
 assert.equal(archive.format, 'git-bundle-v2');
-assert.equal(archive.encoding, 'base64-lines');
-const bytes = Buffer.from(archive.data.join(''), 'base64');
+assert.equal(archive.encoding, 'binary');
+const bytes = readFileSync(archive.path);
 assert.equal(bytes.length, archive.bytes);
 assert.equal(createHash('sha256').update(bytes).digest('hex'), archive.sha256);
 assert.equal(archive.sha256, '6228fc027869f0c7a9192844eed06853e1648d367cf3df853d78dceb633bcd07');

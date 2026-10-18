@@ -114,7 +114,9 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFile,writeFile} from 'node:fs/promises';
 const record=JSON.parse(await readFile('results/source-frontend-js-source-bundle.json','utf8'));
-const bytes=Buffer.from(record.base64,'base64');
+assert.equal(record.format,'git-bundle-v2');
+assert.equal(record.encoding,'binary');
+const bytes=await readFile(record.path);
 assert.equal(bytes.length,record.bytes);
 assert.equal(createHash('sha256').update(bytes).digest('hex'),record.sha256);
 await writeFile('.a0-tmp/js-proof-source.bundle',bytes);
@@ -138,10 +140,11 @@ does not silently retag an existing artifact. Rebuilding on a different clean ch
 that checkout's actual identity. The conservative scope still requires the full repository and
 platform gate before a shipping push; the recorded checks do not stand in for that gate.
 
-[The incremental source bundle](../../../results/source-frontend-js-source-bundle.json) retains
+[The incremental source bundle](../../../results/source-frontend-js-source.bundle) retains
 all three exact experimental subjects even when the implementation was integrated by cherry-pick.
 Its sole prerequisite is already-integrated `182c90a86880a211517cb59267a8759ea70b2518`.
 It imports only an experimental ref, with no change to the checkout or production ancestry.
-The record includes all 13 commit/tree/parent identities, decoded size/SHA256 and deterministic
+The [metadata](../../../results/source-frontend-js-source-bundle.json) includes all 13
+commit/tree/parent identities, size/SHA256 and deterministic
 creation options. Two separate creations produced the same bytes; Git verifies the bundle and
 its prerequisite. Toolchain/dependency requirements remain those in the build records.

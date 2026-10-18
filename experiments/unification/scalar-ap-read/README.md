@@ -15,11 +15,12 @@ differ. No lazy-error, compact-metadata, C-projection or compiler-version change
 | Common control | `b3c21472c52e3fc0dac88e9cc3ddb625829652b8` | `54976d27ee46ef82c1de133473f0db1a3fc824ce` |
 | Scalar candidate | `f3799b1afc19bc601d1d21dd80406d4e7e0ed1e0` | `ff59eeae1039fb6f253c43300672a68d4c8d08b1` |
 
-`results/source-cost-scalar-ap-read-source-bundle.json` contains a base64 incremental Git
-bundle preserving eight common framework commits and the scalar change, with exact commit,
-tree and parent IDs. It excludes prerequisite `12fe5c8f646f2d339e2c4cf15bd0120f77084ae5` and its
+`results/source-cost-scalar-ap-read-source.bundle` preserves eight common framework commits
+and the scalar change. Metadata in `results/source-cost-scalar-ap-read-source-bundle.json`
+records exact commit, tree and parent IDs. It excludes prerequisite
+`12fe5c8f646f2d339e2c4cf15bd0120f77084ae5` and its
 reachable history. That history includes historical control `764de84ab99a156e41164518f14cc0676b6343dd`.
-The decoded bundle is 35189 bytes, SHA-256
+The bundle is 35189 bytes, SHA-256
 `a8a86e5fcd67fa4020160be714edf546a494de00253ca73b948544cb0ba8698e`.
 Two creations produced identical bytes. An isolated prerequisite-only repository confirmed both
 experimental heads absent before import, then recovered all nine exact commit and tree IDs.
@@ -43,8 +44,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const [archivePath, bundlePath] = process.argv.slice(2);
 const archive = JSON.parse(readFileSync(archivePath, 'utf8'));
 assert.equal(archive.format, 'git-bundle-v2');
-assert.equal(archive.encoding, 'base64-lines');
-const bytes = Buffer.from(archive.data.join(''), 'base64');
+assert.equal(archive.encoding, 'binary');
+const bytes = readFileSync(archive.path);
 assert.equal(bytes.length, 35189);
 assert.equal(bytes.length, archive.bytes);
 assert.equal(createHash('sha256').update(bytes).digest('hex'), archive.sha256);

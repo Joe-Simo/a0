@@ -7,8 +7,8 @@ increased on boot. The complete decision, every measured cell and all observed l
 `results/source-cost-c-projection-samples.json` and `results/source-cost-c-projection-analysis.json`.
 This archive does not change the production compiler or its default artifact.
 
-`results/source-cost-c-projection-source-bundle.json` contains a base64-encoded incremental Git
-bundle. It preserves the exact source, tests and strict comparison framework for these commits:
+`results/source-cost-c-projection-source.bundle` preserves the exact source, tests and strict
+comparison framework. Its metadata is in `results/source-cost-c-projection-source-bundle.json`:
 
 | Subject | Commit | Tree |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ already contains. The historical Canonical/Dense control commit
 `764de84ab99a156e41164518f14cc0676b6343dd` is in that prerequisite history. A shallow clone must
 fetch the full prerequisite history before importing the bundle.
 
-The decoded bundle is 32405 bytes with SHA-256
+The bundle is 32405 bytes with SHA-256
 `a3a797a943866b33912647471f7898935d4e8b7b074b72c9a818a29e25efca07`.
 The JSON records each commit, tree, parent, bundle ref and the bundle-creation configuration.
 Two creations produced identical bytes. An isolated repository containing only the prerequisite
@@ -48,8 +48,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const [archivePath, bundlePath] = process.argv.slice(2);
 const archive = JSON.parse(readFileSync(archivePath, 'utf8'));
 assert.equal(archive.format, 'git-bundle-v2');
-assert.equal(archive.encoding, 'base64-lines');
-const bytes = Buffer.from(archive.data.join(''), 'base64');
+assert.equal(archive.encoding, 'binary');
+const bytes = readFileSync(archive.path);
 assert.equal(bytes.length, archive.bytes);
 assert.equal(createHash('sha256').update(bytes).digest('hex'), archive.sha256);
 assert.equal(archive.sha256, 'a3a797a943866b33912647471f7898935d4e8b7b074b72c9a818a29e25efca07');
