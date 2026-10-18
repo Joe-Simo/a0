@@ -50,5 +50,9 @@ prints a space between arguments and around the arrow.
 `test/source-spec-grammar.controls.ts` contains explicit accepted and rejected spellings,
 phase-sensitive incomplete input, graph locations and error-priority checks for the C-derived,
 direct Wasm and generated JavaScript targets. These controls must pass on fresh authenticated
-artifacts before this implementation is considered verified. No performance claim follows from
+artifacts before this implementation is considered verified. The
+[native compatibility report](../../results/native-spec-grammar-parity.json) records a passing
+run, its exact source identity and artifact hashes. The
+[exhaustive golden comparison](../../results/native-spec-grammar-golden.json) records unchanged
+rows independently of the compiler modules changed here. No performance claim follows from
 the grammar controls.
