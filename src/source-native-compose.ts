@@ -55,7 +55,7 @@ export interface NativeIrBuilder {
   upload(words: Uint32Array): number;
   get(index: number): number;
   set(index: number, value: number): void;
-  authoring?(availability: NativeAuthoringAvailability): void;
+  authoring?(availability: NativeAuthoringAvailability, descriptor?: Uint32Array): void;
 }
 export interface NativeUnitOrigin {
   readonly firstLine: number;

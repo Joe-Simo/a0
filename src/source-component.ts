@@ -5,6 +5,7 @@ import { readWasmWords, writeWasmWords } from './wasm-words.js';
 export interface SourceComponentFunction {
   readonly params: readonly number[];
   readonly result: number;
+  readonly optional?: boolean;
 }
 
 export function sourceComponent(
@@ -46,6 +47,7 @@ export function sourceComponent(
     let scratch = 0;
     for (const [name, signature] of Object.entries(functions)) {
       const callee = candidate[`a0_${name}`];
+      if (callee === undefined && signature.optional) continue;
       if (
         typeof callee !== 'function' ||
         callee.length !== signature.params.length + 1 ||
@@ -73,6 +75,10 @@ export function sourceComponent(
   return {
     get memoryBytes(): number {
       return memory?.buffer.byteLength ?? 0;
+    },
+    has(name: string): boolean {
+      prepare();
+      return typeof exports?.[`a0_${name}`] === 'function';
     },
     invoke(name: string, args: readonly (number | Uint32Array)[]): Uint32Array {
       const signature = functions[name];

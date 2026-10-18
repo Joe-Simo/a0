@@ -147,6 +147,7 @@ export function nativeSourceApi(
   const formatter = formatting === undefined ? undefined : nativeSourceFormatter(api, formatting);
   let generation = 0;
   let authoring: NativeAuthoringAvailability = {};
+  let authoringDescriptor: Uint32Array | undefined;
   let formatStates = new WeakMap<
     object,
     {
@@ -155,6 +156,7 @@ export function nativeSourceApi(
       parsed: Uint32Array;
       specs: Uint32Array;
       authoring: NativeAuthoringAvailability;
+      descriptor: Uint32Array | undefined;
     }
   >();
   const remember = <T extends NativeState>(result: T): T => {
@@ -163,6 +165,7 @@ export function nativeSourceApi(
         generation,
         sourceStatus: result.status,
         authoring: { ...authoring },
+        descriptor: authoringDescriptor?.slice(),
         parsed: Uint32Array.from(result.state),
         specs: Uint32Array.from(result.specState),
       });
@@ -238,6 +241,7 @@ export function nativeSourceApi(
     const result = withSource(source, (pointer, length) => {
       generation++;
       authoring = {};
+      authoringDescriptor = undefined;
       return unit
         ? api.frontend_parse_unit(pointer, length, budget)
         : api.frontend_parse(pointer, length, budget);
@@ -275,6 +279,7 @@ export function nativeSourceApi(
         withSource(source, (pointer, length) => {
           generation++;
           authoring = {};
+          authoringDescriptor = undefined;
           return api.frontend_ir_init(pointer, length, budget, strict ? 1 : 0);
         }).value,
       );
@@ -283,8 +288,9 @@ export function nativeSourceApi(
     ...(formatter === undefined
       ? {}
       : {
-          authoring(value: NativeAuthoringAvailability) {
+          authoring(value: NativeAuthoringAvailability, descriptor?: Uint32Array) {
             authoring = { ...value };
+            authoringDescriptor = descriptor?.slice();
           },
         }),
     symbol(name) {
@@ -438,7 +444,7 @@ export function nativeSourceApi(
         ((request?.scope ?? 'source') === 'source' ? state.authoring.source : undefined);
       if (state.sourceStatus === 0 && detail !== undefined)
         return { ok: false, reason: 'authoring-metadata', detail };
-      return formatter.format(state.parsed, state.specs, request);
+      return formatter.format(state.parsed, state.specs, request, state.descriptor);
     },
     revision(result, request) {
       assertOpen();
@@ -450,7 +456,7 @@ export function nativeSourceApi(
         return { ok: false, reason: 'incomplete-ir', sourceStatus: state.sourceStatus };
       if (state.sourceStatus === 0 && state.authoring.text !== undefined)
         return { ok: false, reason: 'authoring-metadata', detail: state.authoring.text };
-      return formatter.revision(state.parsed, state.specs, request);
+      return formatter.revision(state.parsed, state.specs, request, state.descriptor);
     },
     close() {
       if (!closed) api.frontend_close();

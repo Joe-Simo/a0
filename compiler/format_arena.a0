@@ -1297,6 +1297,23 @@ fn af_text_escape (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x1
 q0 call af_byte p0 92
 ret q0
 end
+fn af_text_value (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 eq p1 92
+q1 eq p1 34
+q2 or q0 q1
+q3 eq p1 10
+q4 or q2 q3
+q5 eq p1 9
+q6 or q4 q5
+q7 select q6 1 0
+q8 fold af_text_escape q7 p0
+q9 eq p1 9
+q10 select q9 116 p1
+q11 eq p1 10
+q12 select q11 110 q10
+q13 call af_byte q8 q12
+ret q13
+end
 fn af_textbyte (u32,(u32,u32,u32),u32x128,io) u32 (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
 q0 eq p4 0
 q1 select q0 9 15
@@ -1314,20 +1331,7 @@ q9 le q5 255
 q10 and q8 q9
 q11 select q10 0 6
 a call af_fail q6 q11
-q12 eq q5 92
-q13 eq q5 34
-q14 or q12 q13
-q15 eq q5 10
-q16 or q14 q15
-q17 eq q5 9
-escaped or q16 q17
-q18 select escaped 1 0
-c fold af_text_escape q18 a
-q19 eq q5 10
-q20 eq q5 9
-q21 select q20 116 q5
-q22 select q19 110 q21
-d call af_byte c q22
+d call af_text_value a q5
 q23 at b 1
 q24 call af_end d q23
 ret q24
@@ -1712,6 +1716,98 @@ q5 select p7 0 1
 q6 fold af_node_arguments q5 e p2 p3 p4 p5 p6
 ret q6
 end
+fn af_authoring_node_load ((u32,(u32,u32,u32),u32x128,io),u32x128) u32 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32x128)
+q0 at p0 0
+q1 at q0 2
+q2 eq p3 0
+q3 select q2 45 48
+q4 get q1 q3
+q5 add q3 1
+q6 get q1 q5
+q7 add q3 2
+q8 get q1 q7
+q9 rec q4 q6 q8
+q10 call af_row q0 q9 p2 3
+q11 at q10 1
+q12 get q11 0
+q13 le q12 1
+q14 eq q12 1
+q15 get q11 1
+q16 eq q15 0
+q17 get q11 2
+q18 eq q17 0
+q19 and q16 q18
+q20 or q14 q19
+q21 and q13 q20
+q22 at q10 0
+q23 select q21 0 7
+q24 call af_fail q22 q23
+q25 rec q24 q11
+ret q25
+end
+fn af_authoring_node (u32,(u32,u32,u32),u32x128,io) u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32x128)
+q0 at p0 2
+q1 get q0 32
+q2 ne q1 0
+q3 call arena_zero
+q4 rec p0 q3
+q5 select q2 1 0
+q6 fold af_authoring_node_load q5 q4 p1 p2
+ret q6
+end
+fn af_authoring_prefix (u32,(u32,u32,u32),u32x128,io) u32 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 call af_begin p0 6 p2 p3
+q1 at q0 0
+q2 call af_opcode q1 24
+q3 at q0 1
+q4 call af_end q2 q3
+q5 call af_byte q4 32
+ret q5
+end
+fn af_leading_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> bool
+q0 at p0 0
+q1 eq q0 0
+ret q1
+end
+fn af_authoring_byte (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 6
+q1 get p2 7
+q2 rec q0 q1 q1
+q3 add p3 p1
+q4 call af_row p0 q2 q3 1
+q5 at q4 1
+q6 get q5 0
+q7 at q4 0
+q8 le q6 255
+q9 select q8 0 7
+q10 call af_fail q7 q9
+q11 call af_text_value q10 q6
+ret q11
+end
+fn af_authoring_text (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 2
+q1 get q0 15
+q2 ne q1 0
+q3 select q2 1 0
+q4 fold af_authoring_prefix q3 p0 p4 p5
+q5 get p3 1
+q6 get p3 2
+q7 get p2 7
+q8 le q5 q7
+q9 sub q7 q5
+q10 le q6 q9
+q11 and q8 q10
+q12 select q11 0 7
+q13 call af_fail q4 q12
+q14 call af_begin q13 23 p4 p5
+q15 at q14 0
+q16 call af_byte q15 34
+q17 loop af_leading_ok af_authoring_byte q6 q16 p2 q5
+q18 call af_byte q17 34
+q19 at q14 1
+q20 call af_end q18 q19
+ret q20
+end
 fn af_node (u32,(u32,u32,u32),u32x128,io) u32x128 (u32,u32,u32) (u32,u32,u32) u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
 q0 eq p5 0
 q1 select q0 4 14
@@ -1746,9 +1842,19 @@ q25 eq q24 24
 q26 or q23 q25
 known and q17 q26
 q27 at r 0
+auth call af_authoring_node q27 p4 p5
+hint at auth 1
+hint_present get hint 0
+has_hint ne hint_present 0
 q28 and operands known
-q29 select q28 0 7
-a call af_fail q27 q29
+hint_arr get row 1
+hint_array eq hint_arr 22
+hint_absent xor has_hint true
+hint_valid or hint_absent hint_array
+node_valid and q28 hint_valid
+q29 select node_valid 0 7
+auth_k at auth 0
+a call af_fail auth_k q29
 name call af_begin a 5 p4 p5
 q30 at name 0
 q31 get row 0
@@ -1761,7 +1867,8 @@ q35 eq q34 24
 q36 get row 11
 q37 and q36 2
 q38 ne q37 0
-text or q35 q38
+original_text or q35 q38
+text or original_text has_hint
 q39 at c 2
 q40 get q39 15
 q41 ne q40 0
@@ -1792,7 +1899,8 @@ aggregate and q57 q62
 q63 select aggregate 1 0
 q64 at direct 0
 d fold af_aggregate q63 q64 p1 p3 row p4 p5
-q65 and flat text
+q65_original and flat text
+q65 and q65_original hint_absent
 q66 select q65 1 0
 e fold af_flattext q66 d p3 row p4 p5
 q67 at direct 1
@@ -1805,10 +1913,13 @@ q72 and q69 q71
 q73 at direct 1
 q74 xor q73 true
 q75 and q72 q74
-q76 select q75 1 0
+regular and q75 hint_absent
+q76 select regular 1 0
 g fold af_regular q76 f p1 p3 row p4 p5 text
+hint_count select has_hint 1 0
+h fold af_authoring_text hint_count g p1 hint p4 p5
 q77 at b 1
-q78 call af_end g q77
+q78 call af_end h q77
 ret q78
 end
 fn af_lpush_do ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32)) u32 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32))
@@ -2794,11 +2905,6 @@ q10 at b 1
 q11 call af_end a q10
 ret q11
 end
-fn af_leading_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> bool
-q0 at p0 0
-q1 eq q0 0
-ret q1
-end
 fn af_leading (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
 q0 add p3 p1
 q1 call af_comment p0 p2 q0
@@ -3488,6 +3594,46 @@ q9 get p2 25
 q10 loop af_leading_ok af_tail_comment q8 b p2 q9
 ret q10
 end
+fn af_authoring_tail_range (u32,(u32,u32,u32),u32x128,io) u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p1 39
+q1 div q0 3
+q2 le p2 q1
+q3 sub q1 p2
+q4 le p3 q3
+q5 and q2 q4
+q6 select q5 0 7
+q7 call af_fail p0 q6
+ret q7
+end
+fn af_authoring_function_tail (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 2
+q1 get q0 39
+q2 get q0 40
+q3 get q0 41
+q4 rec q1 q2 q3
+q5 call af_row p0 q4 p3 3
+q6 at q5 1
+q7 get q6 0
+q8 get q6 1
+q9 get q6 2
+q10 le q7 1
+q11 eq q7 1
+q12 eq q9 0
+q13 or q11 q12
+q14 and q10 q13
+q15 at q5 0
+q16 select q14 0 7
+q17 call af_fail q15 q16
+q18 call af_authoring_tail_range q17 p2 q8 q9
+q19 eq q7 1
+q20 select q19 1 0
+q21 fold af_newline q20 q18
+q22 ne q9 0
+q23 select q22 1 0
+q24 fold af_newline q23 q21
+q25 loop af_leading_ok af_tail_comment q9 q24 p2 q8
+ret q25
+end
 fn af_function (u32,(u32,u32,u32),u32x128,io) u32x128 u32x128 u32 bool bool -> (u32,(u32,u32,u32),u32x128,io)
 begin call af_begin p0 19 p3 0
 q0 at begin 0
@@ -3529,10 +3675,18 @@ q25 and p4 q24
 q26 get p1 26
 q27 ne q26 0
 q28 and q25 q27
-q29 select q28 1 0
+tail_d at f 2
+tail_magic get tail_d 32
+authoring_tail ne tail_magic 0
+legacy_tail xor authoring_tail true
+legacy and q28 legacy_tail
+q29 select legacy 1 0
 g fold af_tail_fn q29 f p1
+auth_tail and p4 authoring_tail
+auth_count select auth_tail 1 0
+h fold af_authoring_function_tail auth_count g p1 p3
 q30 at begin 1
-q31 call af_end g q30
+q31 call af_end h q30
 ret q31
 end
 fn af_functions_ok (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 bool bool -> bool
@@ -3649,6 +3803,14 @@ q9 get p2 25
 q10 loop af_leading_ok af_leading q8 a p2 q9
 ret q10
 end
+fn af_authoring_program_tail (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 2
+q1 get q0 43
+q2 get q0 44
+q3 call af_authoring_tail_range p0 p2 q1 q2
+q4 loop af_leading_ok af_leading q2 q3 p2 q1
+ret q4
+end
 fn af_format_source (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
 q0 get p2 8
 q1 eq q0 1
@@ -3676,9 +3838,16 @@ q17 select q16 1 0
 d fold af_source_body q17 c p2 p3 p5
 q18 get p2 42
 q19 eq q18 0
-q20 select q19 1 0
+source_d at d 2
+source_magic get source_d 32
+source_auth ne source_magic 0
+source_legacy xor source_auth true
+legacy and q19 source_legacy
+q20 select legacy 1 0
 q21 fold af_source_tail q20 d p2
-ret q21
+source_auth_count select source_auth 1 0
+q22 fold af_authoring_program_tail source_auth_count q21 p2
+ret q22
 end
 fn af_same128 bool u32 u32x128 u32x128 -> bool
 q0 get p2 p1
@@ -3846,8 +4015,99 @@ q5 select q4 1 0
 q6 fold af_format_source q5 b p2 p3 p5 p6
 ret q6
 end
-fn af_format_start io u32x128 u32x128 u32 u32 bool bool bool -> (u32,(u32,u32,u32),u32x128,io)
-d call arena_zero
+fn af_authoring_copy u32x128 u32 u32x128 u32 -> u32x128
+q0 add p1 p3
+q1 get p2 q0
+q2 add p1 32
+q3 set p0 q2 q1
+ret q3
+end
+fn af_authoring_vector (u32,(u32,u32,u32),u32x128,io) u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 2
+q1 get q0 p1
+q2 add p1 1
+q3 get q0 q2
+q4 add p1 2
+q5 get q0 q4
+q6 eq q3 p2
+q7 le q3 q5
+q8 eq q5 0
+q9 ne q1 0
+q10 or q8 q9
+q11 and q6 q7
+q12 and q11 q10
+q13 select q12 0 7
+q14 call af_fail p0 q13
+ret q14
+end
+fn af_authoring_check (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 2
+q1 get q0 32
+q2 eq q1 1093681493
+q3 get q0 33
+q4 eq q3 1
+q5 get p2 6
+q6 get q0 34
+q7 eq q6 q5
+q8 get p2 7
+q9 get q0 35
+q10 eq q9 q8
+q11 get p2 42
+q12 div q11 14
+q13 get q0 36
+q14 eq q13 q12
+q15 get p2 45
+q16 div q15 14
+q17 get q0 37
+q18 eq q17 q16
+q19 get p3 48
+q20 div q19 14
+q21 get q0 38
+q22 eq q21 q20
+q23 get q0 42
+q24 le q23 1
+q25 get q0 42
+q26 eq q25 1
+q27 get q0 44
+q28 eq q27 0
+q29 or q26 q28
+q30 and q2 q4
+q31 and q30 q7
+q32 and q31 q10
+q33 and q32 q14
+q34 and q33 q18
+q35 and q34 q22
+q36 and q35 q24
+q37 and q36 q29
+q38 select q37 0 7
+q39 call af_fail p0 q38
+q40 get q0 36
+q41 mul q40 3
+q42 call af_authoring_vector q39 39 q41
+q43 get q0 37
+q44 mul q43 3
+q45 call af_authoring_vector q42 45 q44
+q46 get q0 38
+q47 mul q46 3
+q48 call af_authoring_vector q45 48 q47
+ret q48
+end
+fn af_authoring_schema (u32,(u32,u32,u32),u32x128,io) u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 at p0 2
+q1 get q0 32
+q2 ne q1 0
+required get q0 51
+explicit ne required 0
+active or q2 explicit
+q3 select active 1 0
+q4 fold af_authoring_check q3 p0 p1 p2
+ret q4
+end
+fn af_format_start_context io u32x128 u32x128 u32 u32 bool bool bool u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+empty call arena_zero
+context fold af_authoring_copy 19 empty p8 32
+required get p8 51
+d set context 51 required
 d_1 set d 1 1093682772
 d_2 set d_1 2 1
 q0 select p6 1 0
@@ -3865,12 +4125,15 @@ q4 select p7 1 0
 d_10 set d_9 15 q4
 q5 rec 0 0 0
 q6 rec 0 q5 d_10 p0
-checked call af_schema q6 p1 p2 p3 p4
+checked_ir call af_schema q6 p1 p2 p3 p4
+checked call af_authoring_schema checked_ir p1 p2
 q7 at checked 0
 q8 eq q7 0
 q9 select q8 1 0
 out fold af_run q9 checked p1 p2 p3 p4 p5
-q10 at out 2
+internal at out 2
+empty_auth call arena_zero
+q10 fold af_authoring_copy 20 internal empty_auth 0
 q11 at out 0
 d_11 set q10 0 q11
 q12 at out 0
@@ -3896,6 +4159,11 @@ q27 at out 3
 q28 rec q21 q26 public q27
 ret q28
 end
+fn af_format_start io u32x128 u32x128 u32 u32 bool bool bool -> (u32,(u32,u32,u32),u32x128,io)
+a call arena_zero
+r call af_format_start_context p0 p1 p2 p3 p4 p5 p6 p7 a
+ret r
+end
 fn arena_format_described io u32x128 u32x128 u32 u32 bool bool -> (u32,(u32,u32,u32),u32x128,io)
 q0 call af_format_start p0 p1 p2 p3 p4 p5 p6 false
 ret q0
@@ -3915,4 +4183,19 @@ q1 at r 1
 q2 at r 3
 q3 rec q0 q1 q2
 ret q3
+end
+fn arena_format_authoring io u32x128 u32x128 u32x128 u32 u32 bool bool -> (u32,(u32,u32,u32),u32x128,io)
+z call arena_zero
+context fold af_authoring_copy 19 z p3 0
+d set context 51 1
+r call af_format_start_context p0 p1 p2 p4 p5 p6 p7 false d
+ret r
+end
+fn af_revision_text_context io u32x128 u32x128 u32 u32 bool u32x128 -> (u32,(u32,u32,u32),io)
+r call af_format_start_context p0 p1 p2 p3 p4 p5 false true p6
+s at r 0
+v at r 1
+t at r 3
+out rec s v t
+ret out
 end

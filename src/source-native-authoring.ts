@@ -1,13 +1,13 @@
-/** Authoring metadata carried by existing schema1 line/comment tables, never source code. */
+/** Optional authoring metadata over schema1 tables and a private descriptor, never source code. */
 import type { Comments } from './core.js';
 import { losslessSourceString } from './source-utf8.js';
 
-export type NativeSourceMetadataIssue =
-  | 'intermediate-tail'
-  | 'empty-tail'
-  | 'program-tail'
-  | 'unrepresentable-comment';
-export type NativeTextMetadataIssue = 'text-mismatch' | 'unrepresentable-text';
+export type NativeSourceMetadataIssue = 'unrepresentable-comment';
+export type NativeTextMetadataIssue = 'unrepresentable-text';
+
+/** Private authoring schema1. Native parser/checker ABI3 and M/PS schema1 stay unchanged. */
+export const NATIVE_AUTHORING_MAGIC = 0x41304155;
+export const NATIVE_AUTHORING_WORDS = 128;
 export interface NativeAuthoringAvailability {
   readonly source?: NativeSourceMetadataIssue;
   readonly text?: NativeTextMetadataIssue;
@@ -54,9 +54,6 @@ export function nativeCommentEncoder(span: (value: string) => readonly [number, 
     comments,
     get issue(): NativeSourceMetadataIssue | undefined {
       return issue;
-    },
-    refuse(reason: NativeSourceMetadataIssue): void {
-      issue ??= reason;
     },
     tail,
     line(value?: Comments): number {

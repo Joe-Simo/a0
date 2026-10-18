@@ -10,6 +10,7 @@ import {
   type Func,
   formatFunction,
   formatProgram,
+  formatTextLiteral,
   isPrimitive,
   lineComment,
   type Node,
@@ -497,7 +498,83 @@ for (const [backend, factory] of factories) {
     }
   });
 
-  test(`${backend}: unsupported authoring metadata explicitly refuses formatting while checker semantics survive`, () => {
+  test(`${backend}: private authoring sidecar preserves independent function tails and whole-text overrides`, () => {
+    const engine = factory(companion);
+    try {
+      const tails = [undefined, [], ['# function tail Ω', '# function tail 😀']] as const;
+      for (const first of tails)
+        for (const second of tails)
+          for (const global of tails) {
+            const program: Program = {
+              functions: [
+                { ...identity, ...(first === undefined ? {} : { afterComments: first }) },
+                {
+                  ...identity,
+                  name: 'second',
+                  ...(second === undefined ? {} : { afterComments: second }),
+                },
+              ],
+              ...(global === undefined ? {} : { tailComments: global }),
+            };
+            assertOutputs(engine, engine.checkProgram(program), program, validate(program));
+          }
+      for (const text of ['', 'B', 'Ω 😀 "\t\\\n\ufeff']) {
+        const program: Program = {
+          functions: [
+            {
+              name: 'literal',
+              params: [],
+              result: { kind: 'arr', elem: 'u32', length: 1 },
+              nodes: [{ id: 'bytes', op: 'arr', args: [scalar(65)], text }],
+              ret: reference('bytes'),
+              afterComments: [],
+            },
+          ],
+          tailComments: ['# separate program tail'],
+        };
+        const before = JSON.stringify(program);
+        const result = engine.checkProgram(program);
+        assertOutputs(engine, result, program, validate(program));
+        assert.ok(result.ok);
+        assert.equal(JSON.stringify(program), before);
+        const formatted = engine.format(result, { mapping: true });
+        assert.ok(formatted.ok);
+        let hints = 0;
+        for (let offset = 0; offset < formatted.events.length; offset += 6) {
+          const kind = formatted.events[offset];
+          assert.notEqual(kind, 9, 'a text override never forges semantic operand ownership');
+          if (kind !== 23) continue;
+          hints++;
+          const parent = formatted.events[offset + 5] as number;
+          assert.ok(parent < offset / 6);
+          assert.equal(formatted.events[parent * 6], 4);
+          const parentStart = formatted.events[parent * 6 + 3] as number,
+            parentLength = formatted.events[parent * 6 + 4] as number;
+          const start = formatted.events[offset + 3] as number,
+            count = formatted.events[offset + 4] as number;
+          assert.ok(start >= parentStart && start + count <= parentStart + parentLength);
+          assert.equal(
+            new TextDecoder().decode(formatted.bytes.subarray(start, start + count)),
+            formatTextLiteral(text),
+          );
+          assert.equal(formatted.events[offset + 1], 0);
+          assert.equal(formatted.events[offset + 2], 0);
+        }
+        assert.equal(hints, 1);
+        const semantic = validate(semanticProgram(program));
+        for (const target of ['c', 'js', 'wasm'] as const)
+          assert.equal(
+            compile(result.typed, target).text,
+            compile(semantic, target).text,
+            `${target} keeps checked semantic bytes`,
+          );
+      }
+    } finally {
+      engine.close();
+    }
+  });
+
+  test(`${backend}: unrepresentable Unicode explicitly refuses formatting while checker semantics survive`, () => {
     let loads = 0;
     const engine = factory(
       {
@@ -513,26 +590,6 @@ for (const [backend, factory] of factories) {
       const bytes: Node = { id: 'bytes', op: 'arr', args: [scalar(65)], text: 'A' };
       const rows = [
         {
-          detail: 'intermediate-tail',
-          program: {
-            functions: [
-              { ...identity, afterComments: ['# between'] },
-              { ...identity, name: 'second' },
-            ],
-          },
-          text: false,
-        },
-        {
-          detail: 'empty-tail',
-          program: { functions: [{ ...identity, afterComments: [] }] },
-          text: false,
-        },
-        {
-          detail: 'program-tail',
-          program: { functions: [identity], tailComments: ['# extra'] },
-          text: false,
-        },
-        {
           detail: 'unrepresentable-comment',
           program: { functions: [{ ...identity, comments: { trailing: '# \ud800' } }] },
           text: false,
@@ -541,11 +598,6 @@ for (const [backend, factory] of factories) {
           detail: 'unrepresentable-comment',
           program: { functions: [], tailComments: ['# \udfff'] },
           text: false,
-        },
-        {
-          detail: 'text-mismatch',
-          program: { functions: [{ ...identity, nodes: [{ ...bytes, text: 'B' }] }] },
-          text: true,
         },
         {
           detail: 'unrepresentable-text',

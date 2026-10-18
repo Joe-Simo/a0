@@ -111,7 +111,13 @@ export async function prepareSourceFormat(directory: string) {
   const build = JSON.parse(await readFile(join(path, 'build.json'), 'utf8'));
   const bytes = await readFile(join(path, 'format.wasm'));
   assert.equal(build.schema, 1);
-  assert.equal(build.capability, 'arena-format-v1');
+  assert.ok(['arena-format-v1', 'arena-format-v2'].includes(build.capability));
+  if (build.capability === 'arena-format-v2') {
+    assert.equal(build.authoringSchema, 1);
+    assert.equal(build.authoringWords, 128);
+    assert.equal(build.roots?.arena_format_authoring?.resultWords, 133);
+    assert.equal(build.roots?.arena_revision_authoring?.resultWords, 5);
+  }
   assert.equal(build.entry, 'compiler/revision_arena.a0');
   assert.equal(build.parsedWords, 128);
   assert.equal(build.specWords, 128);

@@ -19,6 +19,16 @@ const roots = {
     result: '(u32,(u32,u32,u32),u32x128,io)',
     resultWords: 133,
   },
+  arena_format_authoring: {
+    params: ['io', 'u32x128', 'u32x128', 'u32x128', 'u32', 'u32', 'bool', 'bool'],
+    result: '(u32,(u32,u32,u32),u32x128,io)',
+    resultWords: 133,
+  },
+  arena_revision_authoring: {
+    params: ['io', 'u32x128', 'u32x128', 'u32x128', 'u32', 'u32'],
+    result: '(u32,(u32,u32,u32),io)',
+    resultWords: 5,
+  },
   arena_revision: {
     params: ['io', 'u32x128', 'u32x128', 'u32', 'u32'],
     result: '(u32,(u32,u32,u32),io)',
@@ -45,7 +55,9 @@ await mkdir(out, { recursive: true });
 await writeFile(join(out, 'format.wasm'), bytes);
 await writeReport(join(out, 'build.json'), {
   schema: 1,
-  capability: 'arena-format-v1',
+  capability: 'arena-format-v2',
+  authoringSchema: 1,
+  authoringWords: 128,
   entry: 'compiler/revision_arena.a0',
   roots,
   options,

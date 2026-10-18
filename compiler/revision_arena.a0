@@ -23,7 +23,7 @@ end
 fn arev_content (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
 d at p0 2
 q0 at p0 3
-r call af_revision_text q0 p2 p3 p4 p5 p6
+r call af_revision_text_context q0 p2 p3 p4 p5 p6 d
 q1 at r 0
 q2 at r 1
 q3 at r 2
@@ -504,8 +504,11 @@ fn arev_content_entry (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 u32
 q0 call arev_content_hash p0 p2 p3 p4 p5 false
 ret q0
 end
-fn arena_revision io u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),io)
-q0 call arena_zero
+fn arena_revision_context io u32x128 u32x128 u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+context fold af_authoring_copy 19 z p5 32
+required get p5 51
+q0 set context 51 required
 q1 set q0 1 1093685846
 d set q1 2 1
 q2 rec 0 0 0
@@ -515,7 +518,8 @@ q5 select q4 0 6
 a call af_fail q3 q5
 q6 eq p3 1
 q7 select q6 1 0
-b call af_schema a p1 p2 q7 p4
+b_ir call af_schema a p1 p2 q7 p4
+b call af_authoring_schema b_ir p1 p2
 q8 lt p3 2
 q9 select q8 1 0
 c fold arev_content_entry q9 b p1 p2 p3 p4
@@ -531,4 +535,16 @@ q17 select q14 q15 q16
 q18 at out 3
 q19 rec q12 q17 q18
 ret q19
+end
+fn arena_revision io u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),io)
+d call arena_zero
+r call arena_revision_context p0 p1 p2 p3 p4 d
+ret r
+end
+fn arena_revision_authoring io u32x128 u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),io)
+z call arena_zero
+context fold af_authoring_copy 19 z p3 0
+d set context 51 1
+r call arena_revision_context p0 p1 p2 p4 p5 d
+ret r
 end

@@ -9,7 +9,12 @@ import type {
   TypedFunc,
   TypedProgram,
 } from './core.js';
-import { type NativeTextMetadataIssue, nativeCommentEncoder } from './source-native-authoring.js';
+import {
+  NATIVE_AUTHORING_MAGIC,
+  NATIVE_AUTHORING_WORDS,
+  type NativeTextMetadataIssue,
+  nativeCommentEncoder,
+} from './source-native-authoring.js';
 import {
   installNativeVectors,
   type NativeIrBuilder,
@@ -100,8 +105,9 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
   }
   let textIssue: NativeTextMetadataIssue | undefined;
   const textFlags = metadata === undefined ? undefined : new Map<Node, number>();
+  const textSpans = metadata === undefined ? undefined : new Map<Node, readonly [number, number]>();
   const line = (entry: Node): number => {
-    if (entry.text !== undefined) {
+    if (entry.op === 'arr' && entry.text !== undefined && metadata !== undefined) {
       let text: string | undefined;
       try {
         text = losslessSourceString(entry.text, 'native authoring text');
@@ -111,13 +117,12 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
       if (text !== undefined) {
         const bytes = new TextEncoder().encode(text);
         const matching =
-          entry.op === 'arr' &&
           entry.args.length === bytes.length &&
           entry.args.every(
             (argument, index) => argument.kind === 'u32' && argument.value === bytes[index],
           );
         if (matching) textFlags?.set(entry, 2);
-        else textIssue ??= 'text-mismatch';
+        else textSpans?.set(entry, span(text));
       }
     }
     return metadata?.line(entry.comments) ?? 0;
@@ -125,7 +130,7 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
   const authoring =
     metadata === undefined
       ? undefined
-      : program.functions.map((fn, index) => {
+      : program.functions.map((fn) => {
           const header = metadata.line(fn.comments);
           const examples = (fn.spec?.examples ?? []).map((example) =>
             metadata.line(example.comments),
@@ -135,24 +140,41 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
           const nodes = fn.nodes.map(line);
           const ret = metadata.line(fn.retComments),
             end = metadata.line(fn.endComments);
-          if (fn.afterComments !== undefined) {
-            if (index + 1 !== program.functions.length) metadata.refuse('intermediate-tail');
-            else if (!fn.afterComments.length) metadata.refuse('empty-tail');
-          }
           return { header, examples, pre, post, nodes, ret, end };
         });
-  if (program.functions.length && program.tailComments?.length) metadata?.refuse('program-tail');
   const [tailFirst, tailCount] = metadata?.tail(
     program.functions.length
       ? (program.functions.at(-1)?.afterComments ?? [])
       : (program.tailComments ?? []),
   ) ?? [0, 0];
+  const extendedAuthoring =
+    metadata !== undefined &&
+    ((textSpans?.size ?? 0) > 0 ||
+      program.functions.some(
+        (fn, index) =>
+          fn.afterComments !== undefined &&
+          (index + 1 !== program.functions.length || fn.afterComments.length === 0),
+      ) ||
+      (program.functions.length > 0 && (program.tailComments?.length ?? 0) > 0));
+  const functionTails =
+    !extendedAuthoring || metadata === undefined
+      ? undefined
+      : program.functions.flatMap((fn, index) => {
+          const [first, count] =
+            index + 1 === program.functions.length
+              ? [tailFirst, tailCount]
+              : metadata.tail(fn.afterComments ?? []);
+          return [fn.afterComments === undefined ? 0 : 1, first, count];
+        });
+  const programTail =
+    !extendedAuthoring || metadata === undefined
+      ? undefined
+      : !program.functions.length
+        ? [tailFirst, tailCount]
+        : metadata.tail(program.tailComments ?? []);
+  const textRows = extendedAuthoring ? { body: [] as number[], spec: [] as number[] } : undefined;
   const source = strings.join('');
   builder.initialize(source, program.profile === 'strict');
-  builder.authoring?.({
-    ...(metadata?.issue === undefined ? {} : { source: metadata.issue }),
-    ...(textIssue === undefined ? {} : { text: textIssue }),
-  });
   const symbols = new Map<string, number>();
   const symbol = (name: string): number => {
     transportString(name);
@@ -223,6 +245,10 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     return id;
   };
   const node = (value: Node, lineId: number, spec = false): number => {
+    if (textRows) {
+      const text = textSpans?.get(value);
+      append(spec ? textRows.spec : textRows.body, text === undefined ? [0, 0, 0] : [1, ...text]);
+    }
     const first = table(spec ? 50 : 47, spec).length / 5;
     for (const argument of value.args) operand(argument, spec);
     const op = irOp(value.op);
@@ -342,6 +368,39 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     specs,
     metadata ? { profileLine, tailFirst, tailCount } : undefined,
   );
+  let descriptor: Uint32Array | undefined;
+  if (metadata && functionTails && programTail && textRows) {
+    const { body: bodyTexts, spec: specTexts } = textRows;
+    descriptor = new Uint32Array(NATIVE_AUTHORING_WORDS);
+    descriptor.set([
+      NATIVE_AUTHORING_MAGIC,
+      1,
+      builder.get(6),
+      builder.get(7),
+      program.functions.length,
+      bodyTexts.length / 3,
+      specTexts.length / 3,
+      builder.upload(Uint32Array.from(functionTails)),
+      functionTails.length,
+      functionTails.length,
+      program.tailComments === undefined ? 0 : 1,
+      ...programTail,
+      builder.upload(Uint32Array.from(bodyTexts)),
+      bodyTexts.length,
+      bodyTexts.length,
+      builder.upload(Uint32Array.from(specTexts)),
+      specTexts.length,
+      specTexts.length,
+    ]);
+  }
+  if (metadata)
+    builder.authoring?.(
+      {
+        ...(metadata.issue === undefined ? {} : { source: metadata.issue }),
+        ...(textIssue === undefined ? {} : { text: textIssue }),
+      },
+      descriptor,
+    );
   return source;
 }
 
