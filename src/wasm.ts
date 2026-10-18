@@ -1075,87 +1075,6 @@ interface PointerAccess {
   readonly offset: number;
 }
 
-interface ReadArrayState {
-  readonly length: number;
-  readonly arrayOffset: number;
-  readonly tokenOffset: number;
-}
-
-/** Exact canonical callback: read one word into state.array[p1], retaining the next IO token. */
-function readArrayState(body: TypedFunc): ReadArrayState | undefined {
-  const state = body.params[0];
-  if (
-    body.profile === 'strict' ||
-    body.params.length !== 2 ||
-    body.params[1] !== 'u32' ||
-    body.nodes.length !== 7 ||
-    state === undefined ||
-    isPrimitive(state) ||
-    state.kind !== 'rec' ||
-    state.fields.length !== 2 ||
-    formatType(body.result) !== formatType(state)
-  )
-    return undefined;
-  const arrayField = state.fields[0] === 'io' ? 1 : 0;
-  const tokenField = 1 - arrayField;
-  const arrayType = state.fields[arrayField];
-  if (
-    state.fields[tokenField] !== 'io' ||
-    arrayType === undefined ||
-    isPrimitive(arrayType) ||
-    arrayType.kind !== 'arr' ||
-    arrayType.elem !== 'u32'
-  )
-    return undefined;
-  const defs = new Map(body.nodes.map((node) => [node.id, node]));
-  const def = (operand: Operand | undefined, op: Node['op']): Node | undefined => {
-    const node = operand?.kind === 'node' ? defs.get(operand.id) : undefined;
-    return node?.op === op ? node : undefined;
-  };
-  const projection = (node: Node, operand: Operand, field: number): boolean =>
-    node.args.length === 2 &&
-    node.args[0] !== undefined &&
-    sameOp(node.args[0], operand) &&
-    literalIndex(node.args[1]) === field;
-  const result = def(body.ret, 'rec');
-  if (result === undefined || result.args.length !== 2) return undefined;
-  const set = def(result.args[arrayField], 'set');
-  const next = def(result.args[tokenField], 'at');
-  if (
-    set === undefined ||
-    set.args.length !== 3 ||
-    next === undefined ||
-    set.args[1]?.kind !== 'param' ||
-    set.args[1].index !== 1
-  )
-    return undefined;
-  const array = def(set.args[0], 'at');
-  const word = def(set.args[2], 'at');
-  if (array === undefined || word === undefined || word.args[0] === undefined) return undefined;
-  const read = def(word.args[0], 'read');
-  if (
-    read === undefined ||
-    read.args.length !== 1 ||
-    !projection(word, { kind: 'node', id: read.id }, 0) ||
-    !projection(next, { kind: 'node', id: read.id }, 1)
-  )
-    return undefined;
-  const token = def(read.args[0], 'at');
-  if (
-    token === undefined ||
-    !projection(array, { kind: 'param', index: 0 }, arrayField) ||
-    !projection(token, { kind: 'param', index: 0 }, tokenField)
-  )
-    return undefined;
-  if (new Set([result.id, set.id, next.id, array.id, word.id, read.id, token.id]).size !== 7)
-    return undefined;
-  return {
-    length: arrayType.length,
-    arrayOffset: arrayField === 0 ? 0 : 4,
-    tokenOffset: tokenField === 0 ? 0 : arrayType.length * 4,
-  };
-}
-
 /**
  * A fold or loop body over array state whose result is `set X w v` (its last store) and which
  * reads `get p0 r` where r at trip p1 + 1 is w at trip p1 (both affine in p1, see `affineNodes`):
@@ -2996,20 +2915,6 @@ class FunctionEmitter {
       this.push(init);
       c.local(OP.localSet, state);
     }
-    // Reuse precisely the state storage established above: borrowed/live initial values have
-    // already been copied, while private/unshared state retains its existing alias decision.
-    // Literal zero retains the existing empty-fold path, including its pruned IO imports.
-    const readArray =
-      node.op === 'fold' &&
-      fn.profile !== 'strict' &&
-      extra.length === 0 &&
-      !(count.kind === 'u32' && count.value === 0)
-        ? readArrayState(body)
-        : undefined;
-    if (readArray !== undefined) {
-      this.#readArrayFold(readArray, state, count);
-      return;
-    }
     const i = this.newLocal();
     const variant: Variant = aggregate ? 'owned' : 'value';
     const lit = count.kind === 'u32' ? count.value : undefined;
@@ -3328,39 +3233,6 @@ class FunctionEmitter {
       c.local(OP.localGet, local);
       c.mem(OP.store, k * 4);
     }
-  }
-
-  /** Read/store trips need no aggregate callback frame or per-trip record reconstruction. */
-  #readArrayFold(array: ReadArrayState, state: number, count: Operand): void {
-    const c = this.code,
-      i = this.newLocal();
-    c.i32(0);
-    c.local(OP.localSet, i);
-    c.op(OP.block, VOID);
-    this.push(count);
-    c.op(OP.eqz);
-    c.op(OP.br_if, 0);
-    c.loopOpen();
-    c.local(OP.localGet, state);
-    c.local(OP.localGet, i);
-    c.i32((array.length & (array.length - 1)) === 0 ? array.length - 1 : array.length);
-    c.op((array.length & (array.length - 1)) === 0 ? OP.and : OP.rem_u);
-    c.i32(2);
-    c.op(OP.shl);
-    c.op(OP.add);
-    c.local(OP.localGet, state);
-    c.mem(OP.load, array.tokenOffset);
-    c.call(IO_READ);
-    c.mem(OP.store, array.arrayOffset);
-    c.local(OP.localGet, i);
-    c.i32(1);
-    c.op(OP.add);
-    c.local(OP.localTee, i);
-    this.push(count);
-    c.op(OP.lt_u);
-    c.op(OP.br_if, 0);
-    c.loopClose();
-    c.op(OP.end);
   }
 
   /** An upper bound on a scalar operand: its constant value, or the host's bounded trip index. */

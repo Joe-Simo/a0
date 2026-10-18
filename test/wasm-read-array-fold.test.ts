@@ -222,7 +222,7 @@ function check(
   }
 }
 
-test('canonical read-array folds preserve values, ownership, wrapping and EOF across layouts', () => {
+test('read-array folds preserve values, ownership, wrapping and EOF across layouts', () => {
   for (const length of [1, 3, 4, 17])
     for (const swapped of [false, true]) {
       const program = parseAndValidate(source(length, swapped));
@@ -244,11 +244,8 @@ test('canonical read-array folds preserve values, ownership, wrapping and EOF ac
             };
             for (const name of ['collect', 'preserve', 'state', 'again']) {
               const emitted = calls(program, name, options);
-              assert.ok(emitted.includes('io:read'));
-              assert.ok(
-                !emitted.includes('a0o_receive'),
-                'exact callback should not be called per trip',
-              );
+              assert.ok(emitted.includes('a0o_receive'));
+              assert.ok(!emitted.includes('io:read'));
             }
             const module = new WebAssembly.Module(
               Buffer.from(compile(program, 'wasm', options).text, 'base64'),
@@ -283,7 +280,7 @@ test('extra/computed callbacks retain their calls and independent effects', () =
     }
 });
 
-test('read-array recognition follows operands across callback names and pure projection order', () => {
+test('read-array callbacks preserve effects across names and pure projection order', () => {
   const reordered = source(3, true)
     .replace(
       'array at p0 1\ntoken at p0 0\ninput read token\nword at input 0\nnext at input 1',
@@ -304,8 +301,8 @@ test('read-array recognition follows operands across callback names and pure pro
         ...(host ? { wasmIo: HOST } : {}),
       };
       const emitted = calls(program, 'collect', options);
-      assert.ok(emitted.includes('io:read'));
-      assert.ok(!emitted.includes('a0o_gather'));
+      assert.ok(emitted.includes('a0o_gather'));
+      assert.ok(!emitted.includes('io:read'));
       const module = new WebAssembly.Module(
         Buffer.from(compile(program, 'wasm', options).text, 'base64'),
       );
