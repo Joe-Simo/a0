@@ -1,6 +1,7 @@
 /** Transport adapter for the same A0 frontend compiled by the direct Wasm backend. */
 import { compiledSource, SOURCE_FUNCTION_WORDS, sourceArena } from './source-compiled.js';
 import type { nativeSourceApi } from './source-native.js';
+import type { NativeFormatOptions } from './source-native-format.js';
 import type { NativeDiagnosticOptions } from './source-native-render.js';
 import { readWasmWords, writeWasmWords } from './wasm-words.js';
 
@@ -21,6 +22,7 @@ export interface DirectSourceArtifact {
 export function directSource(
   artifact: DirectSourceArtifact,
   diagnostics?: NativeDiagnosticOptions,
+  formatting?: NativeFormatOptions,
 ): ReturnType<typeof nativeSourceApi> {
   const arena = sourceArena(artifact.arena);
   const imports = WebAssembly.Module.imports(artifact.frontend);
@@ -94,5 +96,5 @@ export function directSource(
       ? value >>> 0
       : Uint32Array.from(readWasmWords(memory.buffer, heapBase, fn.result.words));
   };
-  return compiledSource(arena, invoke, () => memory.buffer.byteLength, diagnostics);
+  return compiledSource(arena, invoke, () => memory.buffer.byteLength, diagnostics, formatting);
 }

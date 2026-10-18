@@ -1,5 +1,6 @@
 /** Shared generic arena/session transport for compiled targets of the same A0 frontend. */
 import { type NativeApi, nativeSourceApi } from './source-native.js';
+import type { NativeFormatOptions } from './source-native-format.js';
 import type { NativeDiagnosticOptions } from './source-native-render.js';
 import { readWasmWords, writeWasmWords } from './wasm-words.js';
 
@@ -60,6 +61,7 @@ export function compiledSource(
   invoke: SourceInvocation,
   extraMemoryBytes: () => number,
   diagnostics?: NativeDiagnosticOptions,
+  formatting?: NativeFormatOptions,
 ): ReturnType<typeof nativeSourceApi> {
   const aggregate = (name: string, args: readonly (number | Uint32Array)[]): Uint32Array => {
     const out = invoke(name, args);
@@ -244,5 +246,6 @@ export function compiledSource(
     api,
     () => arena.memory.buffer.byteLength + extraMemoryBytes(),
     diagnostics,
+    formatting,
   );
 }

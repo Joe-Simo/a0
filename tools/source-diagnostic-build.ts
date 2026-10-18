@@ -59,6 +59,7 @@ await writeReport(join(out, 'build.json'), {
         ...linked.sources.map(({ path }) => relative(process.cwd(), path)),
         ...execFileSync('git', ['ls-files', 'src/*.ts'], { encoding: 'utf8' }).trim().split('\n'),
         'src/source-native-render.ts',
+        'src/source-component.ts',
         'tools/source-diagnostic-build.ts',
       ]),
     ]

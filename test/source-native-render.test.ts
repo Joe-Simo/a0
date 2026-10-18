@@ -63,6 +63,6 @@ test('diagnostic transport refuses a missing arena and rejects invalid options o
       /invalid native diagnostic options/,
     );
   const live = nativeDiagnosticRenderer({ ...ports, frontend_arena_token: () => 1 }, { load });
-  assert.throws(() => live.snapshot(Array<number>(128).fill(0)), /renderer imports/);
+  assert.throws(() => live.snapshot(Array<number>(128).fill(0)), /component imports/);
   assert.equal(loads, 1);
 });

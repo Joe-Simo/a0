@@ -9,6 +9,14 @@ import {
   PARSED_VECTOR_WIDTHS,
   SPEC_VECTOR_WIDTHS,
 } from './source-native-compose.js';
+import {
+  type NativeFormatOptions,
+  type NativeFormatRequest,
+  type NativeFormatResult,
+  type NativeRevisionRequest,
+  type NativeRevisionResult,
+  nativeSourceFormatter,
+} from './source-native-format.js';
 import { decodeNativeSource, decodeNativeUnit } from './source-native-ir.js';
 import { encodeNativeProgram, restoreNativeProgramMetadata } from './source-native-program.js';
 import {
@@ -92,6 +100,7 @@ function commentSnapshot(program: Program): SourceUnitComments {
 export function nativeSource(
   module: WebAssembly.Module,
   diagnostics?: NativeDiagnosticOptions,
+  formatting?: NativeFormatOptions,
 ): {
   readonly memoryBytes: number;
   parse(source: string, budget?: number): NativeSourceResult;
@@ -104,12 +113,22 @@ export function nativeSource(
     profile: Profile,
     budget?: number,
   ): NativeGraphResult;
+  /** Formatting uses only this engine's current live result; output is detached. */
+  format(
+    result: NativeSourceResult | NativeUnitResult,
+    request?: NativeFormatRequest,
+  ): NativeFormatResult;
+  /** Content/semantic hashes retain the established private revision serialization. */
+  revision(
+    result: NativeSourceResult | NativeUnitResult,
+    request?: NativeRevisionRequest,
+  ): NativeRevisionResult;
   close(): void;
 } {
   if (WebAssembly.Module.imports(module).length)
     throw new Error('source frontend must be import-free');
   const api = new WebAssembly.Instance(module).exports as unknown as NativeApi;
-  return nativeSourceApi(api, undefined, diagnostics);
+  return nativeSourceApi(api, undefined, diagnostics, formatting);
 }
 
 /** Internal transport boundary shared by compiled backends of the same A0 frontend. */
@@ -117,12 +136,29 @@ export function nativeSourceApi(
   api: NativeApi,
   retainedMemoryBytes: () => number = () => api.memory.buffer.byteLength,
   diagnostics?: NativeDiagnosticOptions,
+  formatting?: NativeFormatOptions,
 ): ReturnType<typeof nativeSource> {
   if (typeof api.frontend_abi !== 'function' || api.frontend_abi() !== 3)
     throw new Error('unsupported source frontend ABI');
   let closed = false;
   const renderer =
     diagnostics === undefined ? undefined : nativeDiagnosticRenderer(api, diagnostics);
+  const formatter = formatting === undefined ? undefined : nativeSourceFormatter(api, formatting);
+  let generation = 0;
+  let formatStates = new WeakMap<
+    object,
+    { generation: number; sourceStatus: number; parsed: Uint32Array; specs: Uint32Array }
+  >();
+  const remember = <T extends NativeState>(result: T): T => {
+    if (formatter)
+      formatStates.set(result, {
+        generation,
+        sourceStatus: result.status,
+        parsed: Uint32Array.from(result.state),
+        specs: Uint32Array.from(result.specState),
+      });
+    return result;
+  };
   let snapshots = new WeakMap<NativeUnitResult, NativeUnitSnapshot>();
   const assertOpen = (): void => {
     if (closed) throw new Error('source frontend is closed');
@@ -190,11 +226,12 @@ export function nativeSourceApi(
   };
   const readSource = (source: string, budget: number, unit: boolean) => {
     checkBudget(budget);
-    const result = withSource(source, (pointer, length) =>
-      unit
+    const result = withSource(source, (pointer, length) => {
+      generation++;
+      return unit
         ? api.frontend_parse_unit(pointer, length, budget)
-        : api.frontend_parse(pointer, length, budget),
-    );
+        : api.frontend_parse(pointer, length, budget);
+    });
     return { ...readResult(result.value), byteLength: result.byteLength };
   };
   const checked = (status: number): void => {
@@ -225,9 +262,10 @@ export function nativeSourceApi(
   const irBuilder = (budget: number): NativeIrBuilder => ({
     initialize(source, strict) {
       checked(
-        withSource(source, (pointer, length) =>
-          api.frontend_ir_init(pointer, length, budget, strict ? 1 : 0),
-        ).value,
+        withSource(source, (pointer, length) => {
+          generation++;
+          return api.frontend_ir_init(pointer, length, budget, strict ? 1 : 0);
+        }).value,
       );
     },
     upload,
@@ -274,17 +312,20 @@ export function nativeSourceApi(
   };
   return {
     get memoryBytes() {
-      return retainedMemoryBytes() + (renderer?.memoryBytes ?? 0);
+      return retainedMemoryBytes() + (renderer?.memoryBytes ?? 0) + (formatter?.memoryBytes ?? 0);
     },
     parse(source, budget = 16_000_000) {
       const result = readSource(source, budget, false);
-      if (!result.ok) return result;
+      if (!result.ok) return remember(result);
       const { byteLength: _bytes, tables, specTables, symbols, ...state } = result;
-      return { ...state, ...decodeNativeSource(state.state, tables, symbols, source, specTables) };
+      return remember({
+        ...state,
+        ...decodeNativeSource(state.state, tables, symbols, source, specTables),
+      });
     },
     parseUnit(source, budget = 16_000_000) {
       const result = readSource(source, budget, true);
-      if (!result.ok) return result;
+      if (!result.ok) return remember(result);
       const { byteLength, tables, specTables, symbols, ...state } = result;
       const program = decodeNativeUnit(state.state, tables, symbols, source, specTables);
       const parsed = { ...state, program };
@@ -308,19 +349,19 @@ export function nativeSourceApi(
         typeFields: Uint32Array.from(tables.get(71) as Uint32Array),
         comments: commentSnapshot(program),
       });
-      return parsed;
+      return remember(parsed);
     },
     checkProgram(program, budget = 16_000_000) {
       checkBudget(budget);
       try {
         const source = encodeNativeProgram(program, irBuilder(budget));
         const result = readResult(api.frontend_ir_finish());
-        if (!result.ok) return result;
+        if (!result.ok) return remember(result);
         const { tables, specTables, symbols, ...state } = result;
         const decoded = decodeNativeSource(state.state, tables, symbols, source, specTables);
-        return { ...state, ...restoreNativeProgramMetadata(decoded, program) };
+        return remember({ ...state, ...restoreNativeProgramMetadata(decoded, program) });
       } catch (error) {
-        return irFailure(error);
+        return remember(irFailure(error));
       }
     },
     checkUnits(units, profile, budget = 16_000_000) {
@@ -336,9 +377,9 @@ export function nativeSourceApi(
       try {
         const composition = composeNativeUnits(inputs, irBuilder(budget), profile === 'strict');
         const result = readResult(api.frontend_ir_finish());
-        if (!result.ok) return { ...result, origins: composition.origins };
+        if (!result.ok) return remember({ ...result, origins: composition.origins });
         const { tables, specTables, symbols, ...state } = result;
-        return {
+        return remember({
           ...state,
           origins: composition.origins,
           ...decodeNativeSource(
@@ -349,18 +390,39 @@ export function nativeSourceApi(
             specTables,
             composition.comments,
           ),
-        };
+        });
       } catch (error) {
-        return {
+        return remember({
           ...irFailure(error),
           origins: [],
-        };
+        });
       }
+    },
+    format(result, request) {
+      assertOpen();
+      if (!formatter) return { ok: false, reason: 'unavailable' };
+      const state = formatStates.get(result);
+      if (!state || state.generation !== generation)
+        throw new Error('expected a current result owned by this frontend');
+      if (state.parsed[93] === 0)
+        return { ok: false, reason: 'incomplete-ir', sourceStatus: state.sourceStatus };
+      return formatter.format(state.parsed, state.specs, request);
+    },
+    revision(result, request) {
+      assertOpen();
+      if (!formatter) return { ok: false, reason: 'unavailable' };
+      const state = formatStates.get(result);
+      if (!state || state.generation !== generation)
+        throw new Error('expected a current result owned by this frontend');
+      if (state.parsed[93] === 0)
+        return { ok: false, reason: 'incomplete-ir', sourceStatus: state.sourceStatus };
+      return formatter.revision(state.parsed, state.specs, request);
     },
     close() {
       if (!closed) api.frontend_close();
       closed = true;
       snapshots = new WeakMap();
+      formatStates = new WeakMap();
     },
   };
 }
