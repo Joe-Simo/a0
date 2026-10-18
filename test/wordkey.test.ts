@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { parseAndValidate, run } from '../src/core.js';
 import { EditSession } from '../src/edit.js';
+import { link } from '../src/link.js';
 import { KEY_RULE, wordKey } from '../src/wordkey.js';
 
 test('wordKey: the keys compiler/parse.a0 compares', () => {
@@ -42,7 +43,7 @@ test('the legend changes neither the revision nor an apply that copies it back',
 });
 
 test('shared A0 opcode table classifies exact spellings and refuses malformed or long words', async () => {
-  const program = parseAndValidate(await readFile('compiler/wordkey.a0', 'utf8'));
+  const program = (await link('compiler/wordkey.a0', (path) => readFile(path, 'utf8'))).program;
   const key = program.byName.get('wordkey');
   const opcode = program.byName.get('opcode');
   assert.ok(key && opcode);

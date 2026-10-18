@@ -32,6 +32,7 @@ export type NativeUnitResult =
   | (NativeState & { readonly ok: true; readonly program: Program });
 
 export function nativeSource(module: WebAssembly.Module): {
+  readonly memoryBytes: number;
   parse(source: string, budget?: number): NativeSourceResult;
   parseUnit(source: string, budget?: number): NativeUnitResult;
   close(): void;
@@ -94,6 +95,9 @@ export function nativeSource(module: WebAssembly.Module): {
     return { ok: true as const, status, state, specState, tables, specTables, symbols };
   };
   return {
+    get memoryBytes() {
+      return api.memory.buffer.byteLength;
+    },
     parse(source, budget = 16_000_000) {
       const result = readSource(source, budget, false);
       if (!result.ok) return result;
