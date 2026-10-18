@@ -1,0 +1,166 @@
+{
+  "schema": 1,
+  "scope": "Prereview provenance and source-unit boundary controls with an explicit maximum allocation budget. The historical Canonical parser is recorded independently; the unified candidate widens explicit pure-array types to its value bit budget. Wide-type expectations use the candidate TypeScript type policy, so these are conformance controls rather than proof of historical syntax equivalence. This is not a gate note or a performance claim.",
+  "baseline": "732700343b860018917dd12fc45dfec94c10581d",
+  "baselineCoreSHA256": "a5130e0f2aef7920388ef9797a56b6e30330347fca1f9cbbc25b2882d9630898",
+  "artifactSHA256": "19b4e6f602bba699fea23f631c8580f91af8ae1da8386298f2385bfcb86b6cdb",
+  "review": {
+    "findings": [
+      {
+        "kind": "fabricated-const",
+        "file": "compiler/parse_arena_common_shared.a0",
+        "line": 1438,
+        "weight": 0.7,
+        "text": "q10 gt p9 65536"
+      },
+      {
+        "kind": "fabricated-const",
+        "file": "compiler/source_frontend.a0",
+        "line": 166,
+        "weight": 0.7,
+        "text": "wider gt possible 65536"
+      },
+      {
+        "kind": "fabricated-const",
+        "file": "compiler/source_frontend.a0",
+        "line": 167,
+        "weight": 0.7,
+        "text": "purelimit select wider possible 65536"
+      },
+      {
+        "kind": "fabricated-const",
+        "file": "compiler/source_frontend.a0",
+        "line": 170,
+        "weight": 0.7,
+        "text": "limit select isio 65536 purelimit"
+      },
+      {
+        "kind": "fabricated-const",
+        "file": "compiler/source_frontend.a0",
+        "line": 2290,
+        "weight": 0.7,
+        "text": "q2 ge q1 65536"
+      }
+    ],
+    "score": 3.5,
+    "verdict": "rework"
+  },
+  "reviewHypothesis": "These flagged values implement pre-existing language limits, not test-specific thresholds; their numeric spelling and the review heuristic are retained.",
+  "rows": [
+    {
+      "name": "u32x65536",
+      "sourceBytes": 32,
+      "sourceSha256": "eb4039a52d6a7f2781f4aea33fe56a3e98ff60744cfea99eb0b9c1ece4b80280",
+      "referenceCanonicalAccepted": true,
+      "referencePolicy": "candidate wide-pure-array policy derived from the published bit budget",
+      "referenceAccepted": true,
+      "nativeAccepted": true,
+      "nativeStatus": 0,
+      "nativeDiagnostic": 0
+    },
+    {
+      "name": "u32x65537",
+      "sourceBytes": 32,
+      "sourceSha256": "dcec03269b2a5bff440affd2a7541406411f2d3cf26aae488f2d424d43d8849f",
+      "referenceCanonicalAccepted": false,
+      "referencePolicy": "candidate wide-pure-array policy derived from the published bit budget",
+      "referenceAccepted": false,
+      "referenceDiagnostic": "A0001",
+      "nativeAccepted": false,
+      "nativeStatus": 6,
+      "nativeDiagnostic": 1
+    },
+    {
+      "name": "boolx65537",
+      "sourceBytes": 33,
+      "sourceSha256": "c1a96ca5b4c22faebe52d10d1522350a84874f67b4fa34a46c8f39fe5dc5343e",
+      "referenceCanonicalAccepted": false,
+      "referencePolicy": "candidate wide-pure-array policy derived from the published bit budget",
+      "referenceAccepted": true,
+      "nativeAccepted": true,
+      "nativeStatus": 0,
+      "nativeDiagnostic": 0
+    },
+    {
+      "name": "boolx2097152",
+      "sourceBytes": 35,
+      "sourceSha256": "cd1762fc61083b50c8f836edee8b3b8bc3d9d632685c6130c4f7a1ccbdecc513",
+      "referenceCanonicalAccepted": false,
+      "referencePolicy": "candidate wide-pure-array policy derived from the published bit budget",
+      "referenceAccepted": true,
+      "nativeAccepted": true,
+      "nativeStatus": 0,
+      "nativeDiagnostic": 0
+    },
+    {
+      "name": "boolx2097153",
+      "sourceBytes": 35,
+      "sourceSha256": "291e661894b320cdf2e18ebce266a2ea4bb42f1d46474e65302ca9dc83901f8b",
+      "referenceCanonicalAccepted": false,
+      "referencePolicy": "candidate wide-pure-array policy derived from the published bit budget",
+      "referenceAccepted": false,
+      "referenceDiagnostic": "A0001",
+      "nativeAccepted": false,
+      "nativeStatus": 6,
+      "nativeDiagnostic": 1
+    },
+    {
+      "name": "(io,u32)x65536",
+      "sourceBytes": 37,
+      "sourceSha256": "a5282bc4d28b2551d7a4dbe8e213a3559c2f12e18d6553aef08755d5e211dcbf",
+      "referenceCanonicalAccepted": false,
+      "referencePolicy": "candidate wide-pure-array policy derived from the published bit budget",
+      "referenceAccepted": false,
+      "referenceDiagnostic": "A0001",
+      "nativeAccepted": false,
+      "nativeStatus": 6,
+      "nativeDiagnostic": 1
+    },
+    {
+      "name": "text 65536 bytes",
+      "sourceBytes": 65568,
+      "sourceSha256": "bed51d9865e24d81bb50e083d2856448b257bdf1c0d1bf5ad47a533a696ed512",
+      "referenceCanonicalAccepted": true,
+      "referencePolicy": "published Canonical parser",
+      "referenceAccepted": true,
+      "nativeAccepted": true,
+      "nativeStatus": 0,
+      "nativeDiagnostic": 0
+    },
+    {
+      "name": "text 65537 bytes",
+      "sourceBytes": 65569,
+      "sourceSha256": "f2f4394b4d231c6a859c5d073b6f86f7b4bdec0ad8d804603662ba48b062fd3e",
+      "referenceCanonicalAccepted": false,
+      "referencePolicy": "published Canonical parser",
+      "referenceAccepted": false,
+      "referenceDiagnostic": "A0007",
+      "nativeAccepted": false,
+      "nativeStatus": 6,
+      "nativeDiagnostic": 7
+    },
+    {
+      "name": "65536 functions",
+      "sourceBytes": 1758362,
+      "sourceSha256": "00c147f04e2bc616191c4b0ed134bdd34bc85da035faf514e506a1d51d6b3cf0",
+      "referenceCanonicalAccepted": true,
+      "referencePolicy": "published Canonical parser",
+      "referenceAccepted": true,
+      "nativeAccepted": true,
+      "nativeStatus": 0,
+      "nativeDiagnostic": 0
+    },
+    {
+      "name": "65537 functions",
+      "sourceBytes": 1758389,
+      "sourceSha256": "90883397748f21d4fd7d0292c9b6f189a7d19fe719136566e38dd7ca3b099e48",
+      "referenceCanonicalAccepted": false,
+      "referencePolicy": "published Canonical parser",
+      "referenceAccepted": false,
+      "referenceDiagnostic": "A0029",
+      "nativeAccepted": false,
+      "nativeStatus": 6,
+      "nativeDiagnostic": 29
+    }
+  ]
+}
