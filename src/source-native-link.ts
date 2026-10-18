@@ -1,7 +1,8 @@
 /** Candidate native source reader using the existing dependency and storage policy. */
 import type { Profile, Program } from './core.js';
-import type { A0Error } from './diagnostics.js';
+import { type A0Error, DIAGNOSTICS, diag, isDiagId } from './diagnostics.js';
 import { type Linked, linkProject, type ProjectLinkOptions, type ReadSource } from './linker.js';
+import type { SourceDependencyReader, SourceGraphLoader } from './source-graph.js';
 import type {
   NativeGraphResult,
   NativeSourceResult,
@@ -74,6 +75,50 @@ interface OwnedUnit {
   readonly unit: Extract<NativeUnitResult, { readonly ok: true }>;
   readonly path: string;
   readonly text: string;
+}
+
+function parseUnit(frontend: Frontend, text: string, path: string) {
+  const unit = frontend.parseUnit(text);
+  if (!unit.ok)
+    throw new NativeSourceError(unit, path, unit.state[2] || undefined, [
+      {
+        path,
+        firstLine: 1,
+        lineCount: text.split('\n').length,
+        byteStart: 0,
+        byteLength: new TextEncoder().encode(text).length,
+        utf16Start: 0,
+      },
+    ]);
+  return unit;
+}
+
+/** Borrow one frontend serially; inventory resets invalidate its earlier live formatting inputs. */
+export function nativeSourceDependencies(frontend: Frontend): SourceDependencyReader {
+  return {
+    acceptsPath: (path) => path.endsWith('.a0'),
+    uses(bytes, path) {
+      if (!path.endsWith('.a0')) throw diag('A0802', [path]);
+      const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+      return parseUnit(frontend, text, path).program.uses ?? [];
+    },
+    isSourceError(error) {
+      if (
+        !(error instanceof NativeSourceError) ||
+        error.status !== 6 ||
+        error.result.state[0] !== 6 ||
+        error.result.state[93] !== 1
+      )
+        return false;
+      const id = `A${String(error.diagnostic).padStart(4, '0')}`;
+      return isDiagId(id) && DIAGNOSTICS[id].cls !== 'limit';
+    },
+  };
+}
+
+/** No frontend is acquired, closed or replaced by this graph-loading dependency. */
+export function nativeSourceGraphLoader(frontend: Frontend): SourceGraphLoader {
+  return (entry, read, options) => linkNativeSource(entry, read, frontend, options);
 }
 
 function checkGraph(
@@ -158,6 +203,7 @@ async function loadNativeSource(
   linked: Linked;
   checked: { units: readonly OwnedUnit[]; profile: Profile; result: NativeCheckedGraph };
 }> {
+  if (!entry.endsWith('.a0')) throw diag('A0802', [entry]);
   const units = new WeakMap<Program, OwnedUnit>();
   let checked:
     | { units: readonly OwnedUnit[]; profile: Profile; result: NativeCheckedGraph }
@@ -168,18 +214,7 @@ async function loadNativeSource(
     {
       acceptsPath: (path) => path.endsWith('.a0'),
       prepare(text, path) {
-        const unit = frontend.parseUnit(text);
-        if (!unit.ok)
-          throw new NativeSourceError(unit, path, unit.state[2] || undefined, [
-            {
-              path,
-              firstLine: 1,
-              lineCount: text.split('\n').length,
-              byteStart: 0,
-              byteLength: new TextEncoder().encode(text).length,
-              utf16Start: 0,
-            },
-          ]);
+        const unit = parseUnit(frontend, text, path);
         units.set(unit.program, { unit, path, text });
         return {
           uses: unit.program.uses ?? [],

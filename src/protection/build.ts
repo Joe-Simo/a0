@@ -5,6 +5,7 @@ import { type ArtifactCache, compileCached } from '../cache.js';
 import type { Profile } from '../core.js';
 import { link } from '../link.js';
 import { protectionPolicy, requireProtectedTarget } from '../protection-policy.js';
+import type { SourceGraphLoader } from '../source-graph.js';
 import { wasmModuleBytes } from '../wasm.js';
 import { protectWasm } from './artifact.js';
 import { digest, ProtectionError, utf8 } from './crypto.js';
@@ -16,13 +17,14 @@ export async function linkSealed(
   project: SealedProject,
   entry: string,
   profile?: Profile,
+  load: SourceGraphLoader = link,
 ): ReturnType<typeof link> {
   if (project.status.phase !== 'on') throw new ProtectionError('MIGRATION_IN_PROGRESS');
   safePath(entry);
   const source = project.sourceAccess('compiler');
   // Virtual paths use the linker's normal grammar/validator, with a portable source adapter.
   const root = resolve('a0-sealed-virtual-root');
-  return link(
+  return load(
     resolve(root, entry),
     async (path) => source.read(relative(root, path).split(sep).join('/')),
     { root, canonicalPath: async (p) => resolve(p), ...(profile === undefined ? {} : { profile }) },
@@ -38,13 +40,14 @@ export async function compileSealed(
     readonly projectRoot?: string;
     readonly compilerOptions?: CompileOptions;
     readonly profile?: Profile;
+    readonly graphLoader?: SourceGraphLoader;
   } = {},
 ): Promise<Uint8Array> {
   const protect =
     options.protect === true ||
     (options.projectRoot !== undefined && protectionPolicy(options.projectRoot, true).protect);
   if (protect) requireProtectedTarget(target);
-  const linked = await linkSealed(project, entry, options.profile);
+  const linked = await linkSealed(project, entry, options.profile, options.graphLoader);
   const sourceHash = await digest(utf8.encode(linked.text));
   const cache = new SealedCache(project);
   let result: { text: string };

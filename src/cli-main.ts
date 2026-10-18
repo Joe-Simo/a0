@@ -22,8 +22,8 @@
  * and linked by wasm-ld (the build the site ships); both have the same exports and io layout.
  */
 
+import { cliCheckDiagnostic, loadCliProgram } from './cli-source.js';
 import {
-  A0Error,
   checkArgument,
   formatDiagnostic,
   formatSource,
@@ -41,6 +41,7 @@ import { readFile, writeFd, writeFile } from './node-fs.js';
 import { protectionPolicy, requireProtectedTarget } from './protection-policy.js';
 import type { ContractResult } from './prove.js';
 import { revision } from './revision.js';
+import { sourceDiagnostic } from './source-graph.js';
 import { COMPILER_VERSION, isTarget, TARGETS } from './targets.js';
 import { A0_VERSION } from './version.js';
 
@@ -95,24 +96,21 @@ let denseA0 = false;
 async function loadProgram(path: string, dense = false): Promise<TypedProgram> {
   // the reader written in A0 is loaded only under --dense=a0
   const readDenseA0 = denseA0 ? (await import('./dense-a0.js')).readDenseA0 : undefined;
-  return (
-    await link(
-      path,
-      (p) => {
-        protectionPolicy(p);
-        return readFile(p, 'utf8');
-      },
-      {
+  return loadCliProgram(
+    path,
+    (entry, read, options) =>
+      link(entry, read, {
         dense,
         ...(readDenseA0 !== undefined
           ? {
               denseReader: (text, used, p) => readDenseA0(text, used, p).text,
             }
           : {}),
-        ...(profileOverride === undefined ? {} : { profile: profileOverride }),
-      },
-    )
-  ).program;
+        ...options,
+      }),
+    profileOverride === undefined ? {} : { profile: profileOverride },
+    (path) => readFile(path, 'utf8'),
+  );
 }
 
 /** Take `--profile=NAME` or `--profile NAME` out of the arguments and remember it. */
@@ -242,15 +240,13 @@ async function main(args: readonly string[]): Promise<void> {
           program = await loadProgram(file, dense);
         } catch (e) {
           failed++;
-          if (json && e instanceof A0Error) {
-            const source = await readFile(file, 'utf8').catch(() => '');
-            const { diagnosticLine } = await import('./fix.js');
-            const line = diagnosticLine(source, e) ?? e.line ?? null;
+          const diagnostic = await sourceDiagnostic(e);
+          if (json && diagnostic !== undefined) {
             stdout(
-              `${JSON.stringify({ ok: false, file, diagnostics: [{ ...e.toJSON(), line }] })}\n`,
+              `${JSON.stringify({ ok: false, file, diagnostics: [await cliCheckDiagnostic(file, diagnostic)] })}\n`,
             );
           } else {
-            stderr(`${file}: error: ${formatDiagnostic(e, hints)}\n`);
+            stderr(`${file}: error: ${formatDiagnostic(diagnostic?.error ?? e, hints)}\n`);
           }
           continue;
         }
@@ -505,9 +501,10 @@ async function main(args: readonly string[]): Promise<void> {
   }
 }
 
-main(process.argv.slice(2)).catch((err: unknown) => {
+main(process.argv.slice(2)).catch(async (err: unknown) => {
+  const diagnostic = await sourceDiagnostic(err);
   stderr(
-    `error: ${formatDiagnostic(err, process.argv[2] === 'check' && process.argv.includes('--hints') ? '`a0 check --fix`' : false)}\n`,
+    `error: ${formatDiagnostic(diagnostic?.error ?? err, process.argv[2] === 'check' && process.argv.includes('--hints') ? '`a0 check --fix`' : false)}\n`,
   );
   process.exit(1);
 });

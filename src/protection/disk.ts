@@ -13,8 +13,8 @@ import {
   unlink,
 } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { A0Error } from '../core.js';
-import { sourceUses } from '../link.js';
+import { sourceDependencies } from '../link.js';
+import type { SourceDependencyReader } from '../source-graph.js';
 import { digest, opaqueId, ProtectionError, utf8 } from './crypto.js';
 import {
   type Head,
@@ -231,7 +231,11 @@ export interface Inventory {
   readonly incompleteGraphs: readonly string[];
 }
 /** Explicit A0-managed files only. Existing VCS, backups, build outputs and tool caches are outside this inventory. */
-export async function inventory(root: string, include: readonly string[] = []): Promise<Inventory> {
+export async function inventory(
+  root: string,
+  include: readonly string[] = [],
+  dependencies: SourceDependencyReader = sourceDependencies,
+): Promise<Inventory> {
   const items: { path: string; role: Role; hash: string }[] = [];
   const unmanaged: string[] = [];
   const incompleteGraphs: string[] = [];
@@ -285,20 +289,26 @@ export async function inventory(root: string, include: readonly string[] = []): 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (!item || item.role !== 'source') continue;
+    if (!dependencies.acceptsPath(item.path))
+      throw new ProtectionError('UNSUPPORTED_SOURCE_DEPENDENCY');
     const file = join(root, item.path);
+    const bytes = await readFile(file);
     let uses: readonly string[];
     try {
-      uses = sourceUses(await readFile(file, 'utf8'), item.path);
+      uses = dependencies.uses(bytes, item.path);
     } catch (e) {
-      if (!(e instanceof A0Error)) throw e;
+      if (!dependencies.isSourceError(e)) throw e;
       incompleteGraphs.push(item.path);
       continue;
+    } finally {
+      bytes.fill(0);
     }
     for (const use of uses) {
       const path = relative(resolve(root), resolve(dirname(file), use))
         .split(sep)
         .join('/');
-      if (!/\.a0d?$/.test(path)) throw new ProtectionError('UNSUPPORTED_SOURCE_DEPENDENCY');
+      if (!dependencies.acceptsPath(path))
+        throw new ProtectionError('UNSUPPORTED_SOURCE_DEPENDENCY');
       await add(path, 'source');
     }
   }
@@ -345,6 +355,7 @@ export async function resumeMigration(
   project: SealedProject,
   root: string,
   checkpoint: (step: string) => Promise<void> = async () => {},
+  dependencies: SourceDependencyReader = sourceDependencies,
 ): Promise<void> {
   const migration = project.migration;
   if (!migration) throw new ProtectionError('NO_MIGRATION');
@@ -365,6 +376,7 @@ export async function resumeMigration(
       const now = await inventory(
         root,
         migration.items.map((i) => i.path),
+        dependencies,
       );
       if (JSON.stringify(now.items) !== JSON.stringify(migration.items))
         throw new ProtectionError('INVENTORY_CHANGED');
@@ -396,7 +408,8 @@ export async function resumeMigration(
       await syncDir(dirname(path));
       await checkpoint('delete');
     }
-    if ((await inventory(root)).items.length !== 0) throw new ProtectionError('PLAINTEXT_REMAINS');
+    if ((await inventory(root, [], dependencies)).items.length !== 0)
+      throw new ProtectionError('PLAINTEXT_REMAINS');
     // Empty directory names are metadata too. Remove only directories that are now empty.
     const parents = [
       ...new Set(

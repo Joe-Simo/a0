@@ -2,8 +2,14 @@
 import { readFileSync } from 'node:fs';
 import { lstat, mkdir, readFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { A0Error, checkArgument, LIMITS, run, type Value } from '../core.js';
+import { checkArgument, LIMITS, run, type Value } from '../core.js';
+import { link } from '../link.js';
 import { POLICY_FILE, protectionPolicy } from '../protection-policy.js';
+import {
+  type SourceGraphLoader,
+  type SourceGraphServices,
+  sourceDiagnostic,
+} from '../source-graph.js';
 import { isTarget } from '../targets.js';
 import { compileSealed, linkSealed } from './build.js';
 import {
@@ -132,6 +138,7 @@ export async function serveUnlocked(
   root: string,
   consumer: Consumer,
   approval?: object,
+  load: SourceGraphLoader = link,
 ): Promise<void> {
   const access = project.sourceAccess(consumer, approval);
   output({
@@ -219,12 +226,12 @@ export async function serveUnlocked(
           continue;
         }
         if (request.op === 'check') {
-          const linked = await linkSealed(project, request.path, request.profile);
+          const linked = await linkSealed(project, request.path, request.profile, load);
           output({ ok: true, functions: linked.program.functions.length });
           continue;
         }
         if (request.op === 'run') {
-          const linked = await linkSealed(project, request.path, request.profile),
+          const linked = await linkSealed(project, request.path, request.profile, load),
             fn = linked.program.byName.get(request.function ?? '');
           if (!fn || !Array.isArray(request.args) || fn.params.length !== request.args.length)
             throw new ProtectionError('INVALID_RUN_ARGUMENTS');
@@ -242,6 +249,7 @@ export async function serveUnlocked(
             throw new ProtectionError('PLAINTEXT_ARTIFACT_CONFIRMATION_REQUIRED');
           const bytes = await compileSealed(project, request.path, request.target, {
             projectRoot: root,
+            graphLoader: load,
             ...(request.profile === undefined ? {} : { profile: request.profile }),
           });
           output({ ok: true, artifact: Buffer.from(bytes).toString('base64') });
@@ -253,14 +261,15 @@ export async function serveUnlocked(
         }
         throw new ProtectionError('UNKNOWN_OPERATION');
       } catch (e) {
+        const diagnostic = e instanceof ProtectionError ? undefined : await sourceDiagnostic(e);
         // No source excerpts, host paths, key material or underlying library errors in managed logs/protocol errors.
         output({
           ok: false,
           code:
             e instanceof ProtectionError
               ? e.code
-              : e instanceof A0Error
-                ? e.id
+              : diagnostic !== undefined
+                ? diagnostic.error.id
                 : 'OPERATION_FAILED',
         });
       }
@@ -294,6 +303,7 @@ async function* sessionLines(input: AsyncIterable<Buffer>): AsyncGenerator<strin
 export async function protectionCli(
   command: 'seal' | 'protect',
   args: readonly string[],
+  source: SourceGraphServices = {},
 ): Promise<void> {
   const [action, ...rest] = args;
   if (action === undefined || action === 'help' || args.includes('--help')) {
@@ -342,7 +352,7 @@ export async function protectionCli(
     .filter((a) => a.startsWith('--include='))
     .map((a) => a.slice('--include='.length));
   const planOn = async () => {
-    const plan = await inventory(root, include);
+    const plan = await inventory(root, include, source.dependencies);
     const key = flag(rest, 'key');
     if (key && plan.items.some((i) => resolve(root, i.path) === resolve(key)))
       throw new ProtectionError('KEEP_IDENTITY_OUTSIDE_MANAGED_SOURCE');
@@ -482,7 +492,7 @@ export async function protectionCli(
         }
         approval = await project.approveDisclosure(request, async () => true);
       }
-      await serveUnlocked(project, root, consumer, approval);
+      await serveUnlocked(project, root, consumer, approval, source.load);
       return;
     }
     if (action === 'off') {
@@ -500,7 +510,7 @@ export async function protectionCli(
       }
       authorized(rest, plan.digest);
       await project.setMigration('unsealing', plan.migration);
-      await resumeMigration(project, root);
+      await resumeMigration(project, root, undefined, source.dependencies);
       await archiveDisabledStore(store);
     } else if (action === 'on') {
       if (project.status.phase === 'off') {
@@ -508,9 +518,9 @@ export async function protectionCli(
         authorized(rest, plan.digest);
         await project.startSealing({ direction: 'on', stage: 'copy', items: plan.items });
       }
-      if (project.migration) await resumeMigration(project, root);
+      if (project.migration) await resumeMigration(project, root, undefined, source.dependencies);
     } else if (action === 'resume') {
-      if (project.migration) await resumeMigration(project, root);
+      if (project.migration) await resumeMigration(project, root, undefined, source.dependencies);
       if (project.status.phase === 'off') await archiveDisabledStore(store);
     } else if (action === 'rotate' || action === 'revoke') {
       if (!rest.includes('--acknowledge-old-copies'))
