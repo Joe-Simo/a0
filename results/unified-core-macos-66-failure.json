@@ -1,0 +1,174 @@
+{
+  "schema": 1,
+  "scope": "Actual failed Mac verification of the compiler66 integration candidate. Failure remains recorded; no passing gate, merge or publication is claimed.",
+  "run": {
+    "id": 39118913171,
+    "url": "https://github.com/Joe-Simo/a0/actions/runs/39118913171",
+    "subject": "e1be677b97782b907d313237ef8b60b7bc4b8a3a",
+    "conclusion": "failure"
+  },
+  "artifact": {
+    "id": 12134613538,
+    "bytes": 5968280,
+    "sha256": "592f6451e25464946a0e01c2ae8c3271da4414a34ff58c50e8c729b77c96bcc0"
+  },
+  "logs": {
+    "gateSHA256": "a2af8ed72bdf75b6322aeaf4b238e3c3a7e34a73e0be54ac426ab2ab69b45e8d",
+    "testSHA256": "a3322934532c1b2ab62c90ab3987e80ceda60387f9f54fefd69564627df0d62d",
+    "summarySHA256": "0c29f8b4e1918bb9875fc4ab37083fe17dbd96d277ba638fde19ee4c5f7bcec3"
+  },
+  "result": {
+    "line": "GATE RESULT: fail lint=0 typecheck=0 build=0 tokens=not-run test=1 app=not-run bootstrap=not-run dotnet=not-run gpu=not-run site=0 selfhost=not-run selfhost-c=not-run verify=not-run equiv=not-run hw=not-run",
+    "steps": [
+      {
+        "id": "lint",
+        "outcome": "pass",
+        "rc": 0,
+        "ms": 3905
+      },
+      {
+        "id": "typecheck",
+        "outcome": "pass",
+        "rc": 0,
+        "ms": 17016
+      },
+      {
+        "id": "build",
+        "outcome": "pass",
+        "rc": 0,
+        "ms": 3286
+      },
+      {
+        "id": "tokens",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      },
+      {
+        "id": "test",
+        "outcome": "fail",
+        "rc": 1,
+        "ms": 3110950
+      },
+      {
+        "id": "app",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      },
+      {
+        "id": "bootstrap",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      },
+      {
+        "id": "dotnet",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      },
+      {
+        "id": "gpu",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      },
+      {
+        "id": "site",
+        "outcome": "pass",
+        "rc": 0,
+        "ms": 322068
+      },
+      {
+        "id": "selfhost",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      },
+      {
+        "id": "selfhost-c",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      },
+      {
+        "id": "verify",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      },
+      {
+        "id": "equiv",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      },
+      {
+        "id": "hw",
+        "outcome": "not-run",
+        "rc": null,
+        "ms": 0
+      }
+    ],
+    "tests": {
+      "passed": 1137,
+      "failed": 5,
+      "skipped": 22,
+      "total": 1164
+    },
+    "noted": false,
+    "resultsCommitted": false
+  },
+  "failures": [
+    {
+      "test": "test/dense-a0.test.ts",
+      "budget": "16 KB",
+      "chunks": 377,
+      "programsRead": 176,
+      "allProgramTextAndReaderStatusComparisonsPassed": true,
+      "terminalInventory": {
+        "expected": 171,
+        "actual": 176
+      },
+      "classification": "stale inventory assertion; full reader rerun required after refresh"
+    },
+    {
+      "test": "test/dense-a0.test.ts",
+      "budget": "4 KB",
+      "chunks": 1039,
+      "programsRead": 176,
+      "allProgramTextAndReaderStatusComparisonsPassed": true,
+      "terminalInventory": {
+        "expected": 171,
+        "actual": 176
+      },
+      "classification": "stale inventory assertion; full reader rerun required after refresh"
+    },
+    {
+      "test": "test/dense-a0.test.ts",
+      "budget": "one function per chunk",
+      "chunks": 7116,
+      "programsRead": 176,
+      "allProgramTextAndReaderStatusComparisonsPassed": true,
+      "terminalInventory": {
+        "expected": 171,
+        "actual": 176
+      },
+      "classification": "stale inventory assertion; full reader rerun required after refresh"
+    },
+    {
+      "test": "test/source-cost-control.test.ts",
+      "case": "direct provenance re-emits real Wasm and rejects changed inputs, closure, ABI and compiler output",
+      "failure": "Dependency paths used mixed lexical and physical identities under a macOS temporary-root symlink.",
+      "classification": "real cross-platform path identity bug; canonicalize both exact closure inventories and retain all provenance checks"
+    },
+    {
+      "test": "test/spec.test.ts",
+      "case": "spec-free text, hashes, dense text and diagnostics",
+      "failure": "Five newly added compiler modules absent from frozen inventory. The key comparison stopped the test before per-file value comparisons.",
+      "classification": "stale inventory; separately recompute every old historical row and review every actual source edit before refreshing"
+    }
+  ],
+  "next": "Fix and verify against current compiler68 integration, then run a new full combined gate. This failed subject also contains the subsequently rejected Wasm read-array fusion and must not be promoted."
+}
