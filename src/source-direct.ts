@@ -1,5 +1,6 @@
 /** Transport adapter for the same A0 frontend compiled by the direct Wasm backend. */
 import { type NativeApi, nativeSourceApi } from './source-native.js';
+import type { NativeDiagnosticOptions } from './source-native-render.js';
 import { readWasmWords, writeWasmWords } from './wasm-words.js';
 
 export interface DirectValue {
@@ -41,7 +42,10 @@ const REQUIRED: Readonly<Record<string, readonly number[]>> = {
   source_ir_type: [IR_WORDS, 1, 1, 1, 1, IR_WORDS + 1],
 };
 
-export function directSource(artifact: DirectSourceArtifact): ReturnType<typeof nativeSourceApi> {
+export function directSource(
+  artifact: DirectSourceArtifact,
+  diagnostics?: NativeDiagnosticOptions,
+): ReturnType<typeof nativeSourceApi> {
   if (WebAssembly.Module.imports(artifact.arena).length)
     throw new Error('generic arena module must be import-free');
   const arena = new WebAssembly.Instance(artifact.arena).exports as unknown as ArenaApi;
@@ -241,6 +245,9 @@ export function directSource(artifact: DirectSourceArtifact): ReturnType<typeof 
     frontend_status: () => status,
     frontend_view: (handle) => arena.a0_memory_view(session, handle) >>> 0,
     frontend_view_length: (handle) => arena.a0_memory_view_length(session, handle) >>> 0,
+    a0_runtime_read: arena.a0_runtime_read,
+    a0_runtime_write: arena.a0_runtime_write,
+    frontend_arena_token: () => session,
     frontend_ir_init(p, n, budget, strict) {
       if (start(budget)) return status;
       const handle = upload(p, n, true);
@@ -292,5 +299,9 @@ export function directSource(artifact: DirectSourceArtifact): ReturnType<typeof 
       arena.free(pages);
     },
   };
-  return nativeSourceApi(api, () => arena.memory.buffer.byteLength + memory.buffer.byteLength);
+  return nativeSourceApi(
+    api,
+    () => arena.memory.buffer.byteLength + memory.buffer.byteLength,
+    diagnostics,
+  );
 }

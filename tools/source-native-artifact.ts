@@ -11,6 +11,7 @@ import { defaultRepo } from './dev/repo.js';
 interface Build {
   entry: string;
   frontendABI: number;
+  diagnosticPorts?: string;
   wasmSHA256: string;
   wasmBytes: number;
   sourceSHA256: string;
@@ -60,6 +61,11 @@ export function nativeSourceArtifact(): Promise<WebAssembly.Module> {
     assert.equal(sha(bytes), build.wasmSHA256, 'candidate frontend artifact hash mismatch');
     assert.equal(bytes.length, build.wasmBytes);
     assert.equal(build.frontendABI, 3);
+    assert.equal(
+      build.diagnosticPorts ?? 'disabled',
+      'disabled',
+      'bundled frontend diagnostic ports remain opt-in',
+    );
     assert.equal(build.entry, 'compiler/source_frontend.a0');
     assert.deepEqual(build.requiredWasmFeatures, [], 'the bundled default remains MVP');
     assert.equal(

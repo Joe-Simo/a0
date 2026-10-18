@@ -18,7 +18,15 @@ const options = new Map(
 );
 for (const name of options.keys())
   assert.ok(
-    ['out', 'sysroot', 'builtins', 'wasm-features', 'symbols', 'opt-level'].includes(name),
+    [
+      'out',
+      'sysroot',
+      'builtins',
+      'wasm-features',
+      'symbols',
+      'opt-level',
+      'diagnostic-ports',
+    ].includes(name),
     `unknown argument ${name}`,
   );
 for (const name of ['out', 'sysroot', 'builtins'])
@@ -33,6 +41,12 @@ assert.ok(['O2', 'O3', 'Os', 'Oz'].includes(optimization), 'opt-level must be O2
 const symbols = options.get('symbols') ?? 'strip';
 assert.ok(['strip', 'keep'].includes(symbols), 'symbols must be strip or keep');
 const featureFlags = wasmFeatures === 'bulk-memory' ? ['-mbulk-memory'] : [];
+const diagnosticPorts = options.get('diagnostic-ports') ?? 'disabled';
+assert.ok(
+  ['disabled', 'arena-v1'].includes(diagnosticPorts),
+  'diagnostic-ports must be disabled or arena-v1',
+);
+const diagnosticFlags = diagnosticPorts === 'arena-v1' ? ['-DA0_FRONTEND_DIAGNOSTIC_PORTS'] : [];
 const out = resolve(options.get('out') as string);
 const sysroot = resolve(options.get('sysroot') as string);
 const builtins = resolve(options.get('builtins') as string);
@@ -78,6 +92,7 @@ tool(clang.path, [
   ...featureFlags,
   '-flto',
   '-DNDEBUG',
+  ...diagnosticFlags,
   '-c',
   join(out, 'driver.c'),
   '-I',
@@ -104,6 +119,9 @@ const exports = [
   'frontend_close',
   'malloc',
   'free',
+  ...(diagnosticPorts === 'arena-v1'
+    ? ['a0_runtime_read', 'a0_runtime_write', 'frontend_arena_token']
+    : []),
 ];
 tool(clang.wasmLd, [
   join(out, 'frontend.o'),
@@ -128,6 +146,7 @@ await writeReport(join(out, 'build.json'), {
     'Candidate A0 source frontend built from shared compiler modules. Public TypeScript C backend bootstraps this artifact. No official source cutover or performance claim.',
   entry: 'compiler/source_frontend.a0',
   frontendABI: 3,
+  diagnosticPorts,
   nativeInputs: await Promise.all(
     [
       'tools/native/source_frontend.c',
@@ -143,7 +162,14 @@ await writeReport(join(out, 'build.json'), {
   wasmSHA256: hash(wasm),
   driverSHA256: hash(driver),
   functions: linked.program.functions.length,
-  clangFlags: ['--target=wasm32-wasi', `-${optimization}`, ...featureFlags, '-flto', '-DNDEBUG'],
+  clangFlags: [
+    '--target=wasm32-wasi',
+    `-${optimization}`,
+    ...featureFlags,
+    '-flto',
+    '-DNDEBUG',
+    ...diagnosticFlags,
+  ],
   requiredWasmFeatures: wasmFeatures === 'bulk-memory' ? ['bulk-memory'] : [],
   optimization,
   symbols,

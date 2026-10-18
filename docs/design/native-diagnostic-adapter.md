@@ -22,6 +22,55 @@ remain available. The message mapping uses the ordinary linker's `rewrite` polic
 global checker errors with no owning function retain their unowned message;
 structured edits and spec metadata remain intact. No source scan discovers an owner.
 
+## Optional live rendering
+
+`nativeSource(module, diagnostics)` and `directSource(artifact, diagnostics)` can
+render a failure before its arena is reset. The optional configuration supplies a
+synchronous `load()` callback for the separate A0 renderer module and its existing
+options value. Successful parses/checks never call that loader or instantiate the
+renderer. `memoryBytes` includes the renderer's retained memory after loading it.
+No public compiler route changes.
+
+The renderer exports only `arena_diagnostic_options`, takes the failed parsed
+page and uses generic arena read/write imports. The host copies its JSON vector
+through an existing readonly storage view. It does not call the renderer's parse
+entry or reconstruct diagnostic arguments. Parsed and specification pages are
+copied before rendering; packets, JSON bytes and hydrated errors survive another
+parse, memory growth and frontend closure.
+
+The direct backend already has these generic Wasm arena ports. The import-free
+C-derived frontend exposes them only when built with
+`--diagnostic-ports=arena-v1`; its build record declares that optional capability.
+ABI3's mandatory exports stay unchanged. Legacy artifacts still parse/check and
+return an explicit `unavailable` diagnostic refusal when configured for rendering.
+An absent arena reports `no-arena`; IR construction that did not reach verification
+reports `incomplete-ir`. Existing A0 renderer refusal statuses remain intact, with
+no parser, message or semantic fallback.
+
+`NativeSourceError.result` retains raw failure state and any rendered packet.
+Its `a0Error` retains supported catalog fields and repairs; `rendered` retains
+original byte/UTF16 spans and mapped unit origins. The linker's existing unit
+order supplies byte and UTF16 prefixes. Resolution and duplicate ownership errors
+continue through the existing graph policy. Complete packets for unowned global
+checker errors keep their global message; a refusal supplies no catalog error.
+
+Build the optional artifacts with:
+
+```sh
+bun tools/source-native-build.ts --out=.a0-tmp/live-frontend --sysroot=WASI_SYSROOT --builtins=WASI_BUILTINS --diagnostic-ports=arena-v1
+bun tools/source-diagnostic-build.ts --out=.a0-tmp/live-renderer
+```
+
+`prepareSourceDiagnostic` verifies artifact hashes and recorded inputs, returning
+a lazy module loader. `prepareSourceFrontend` accepts that optional configuration.
+The explicit `source-native-live-diagnostics.controls.ts` suite requires artifact
+paths for the frontend, renderer and generic arena; missing artifacts fail instead
+of skipping. It runs the actual A0 renderer against both frontend backends and
+compares retained native packet JSON and independent linked-source errors.
+The artifact byte comparison is recorded in
+`results/source-native-live-diagnostics.json`; it establishes default executable
+identity and optional artifact sizes, without a latency or memory-performance claim.
+
 ## Existing coverage and remaining integration
 
 The ID set declared by `ad_known` in `compiler/diagnostics_arena.a0` is:
@@ -40,9 +89,9 @@ supported cases. Other IDs and unsupported options return renderer status 7.
 
 | Open area | Evidence and required connection |
 | --- | --- |
-| Candidate frontend error transport | `source-native.ts` returns failed `status`, parsed `state` and `specState`, while `source-native-link.ts` wraps them in `NativeSourceError`. They are not diagnostic-renderer packets and cannot be passed to this adapter. |
-| Live renderer hook | `NativeApi` has no diagnostic entry. A transport hook must invoke the existing A0 renderer while the failed parse/check's arena and symbol/type tables are alive, then copy its complete JSON/facts. Re-parsing source to recreate that state would violate the frontend goal. |
+| Default routing | The live hook is optional. Raw `state` and `specState` are not renderer facts and must not be passed directly to the packet adapter. Shipping the renderer by default requires separate artifact/performance and coverage decisions. |
 | New structured-IR preflight errors | A0021, A0301–A0302 and A0304–A0308 are outside the renderer's declared set. The shared checker must supply the required names/arguments to A0 rendering before those cases can use the public adapter. |
+| Structured-IR global count | A real A0029 global function-count failure has no owning function. Although the ID is declared, the existing A0 renderer returns transport status 3 with no JSON for this IR state. The live controls retain that refusal; catalog hydration remains unavailable. |
 | Module errors | File resolution, imports and duplicate ownership still use the existing graph policy. Source-unit origins can map renderer locations; they do not supply missing module diagnostic content. |
 | Specifications | A0714–A0716 and A0719 do not have complete native public rendering. Ordered verification retains phase/example/trap/value facts, but those session-lived facts still need A0 rendering. The adapter can preserve a complete `SpecFault` payload; its synthetic transport test does not establish native spec rendering. |
 | Runtime traps | Public runtime errors carry `trap` separately from `Diagnostic` JSON. This compile-diagnostic packet adapter does not synthesize or claim runtime-trap transport. |

@@ -11,12 +11,18 @@ import {
 } from './source-native-compose.js';
 import { decodeNativeSource, decodeNativeUnit } from './source-native-ir.js';
 import { encodeNativeProgram, restoreNativeProgramMetadata } from './source-native-program.js';
+import {
+  type NativeDiagnosticOptions,
+  type NativeDiagnosticPorts,
+  type NativeLiveDiagnostic,
+  nativeDiagnosticRenderer,
+} from './source-native-render.js';
 import { readWasmWord, readWasmWords, writeWasmWord, writeWasmWords } from './wasm-words.js';
 
 const OFFSETS = [
   32, 35, 38, 41, 44, 47, 50, 53, 56, 59, 62, 68, 71, 74, 97, 100, 103, 106, 115, 118, 121, 124,
 ];
-export interface NativeApi {
+export interface NativeApi extends NativeDiagnosticPorts {
   memory: WebAssembly.Memory;
   frontend_abi(): number;
   malloc(size: number): number;
@@ -43,10 +49,10 @@ interface NativeState {
   readonly specState: readonly number[];
 }
 export type NativeSourceResult =
-  | (NativeState & { readonly ok: false })
+  | (NativeState & { readonly ok: false; readonly diagnostic?: NativeLiveDiagnostic })
   | (NativeState & { readonly ok: true; readonly program: Program; readonly typed: TypedProgram });
 export type NativeUnitResult =
-  | (NativeState & { readonly ok: false })
+  | (NativeState & { readonly ok: false; readonly diagnostic?: NativeLiveDiagnostic })
   | (NativeState & { readonly ok: true; readonly program: Program });
 
 export type NativeGraphResult = NativeSourceResult & {
@@ -82,7 +88,10 @@ function commentSnapshot(program: Program): SourceUnitComments {
   };
 }
 
-export function nativeSource(module: WebAssembly.Module): {
+export function nativeSource(
+  module: WebAssembly.Module,
+  diagnostics?: NativeDiagnosticOptions,
+): {
   readonly memoryBytes: number;
   parse(source: string, budget?: number): NativeSourceResult;
   parseUnit(source: string, budget?: number): NativeUnitResult;
@@ -99,17 +108,20 @@ export function nativeSource(module: WebAssembly.Module): {
   if (WebAssembly.Module.imports(module).length)
     throw new Error('source frontend must be import-free');
   const api = new WebAssembly.Instance(module).exports as unknown as NativeApi;
-  return nativeSourceApi(api);
+  return nativeSourceApi(api, undefined, diagnostics);
 }
 
 /** Internal transport boundary shared by compiled backends of the same A0 frontend. */
 export function nativeSourceApi(
   api: NativeApi,
   retainedMemoryBytes: () => number = () => api.memory.buffer.byteLength,
+  diagnostics?: NativeDiagnosticOptions,
 ): ReturnType<typeof nativeSource> {
   if (typeof api.frontend_abi !== 'function' || api.frontend_abi() !== 3)
     throw new Error('unsupported source frontend ABI');
   let closed = false;
+  const renderer =
+    diagnostics === undefined ? undefined : nativeDiagnosticRenderer(api, diagnostics);
   let snapshots = new WeakMap<NativeUnitResult, NativeUnitSnapshot>();
   const assertOpen = (): void => {
     if (closed) throw new Error('source frontend is closed');
@@ -132,7 +144,14 @@ export function nativeSourceApi(
   const readResult = (status: number) => {
     const state = page(api.frontend_state()),
       specState = page(api.frontend_specs());
-    if (status !== 0) return { ok: false as const, status, state, specState };
+    if (status !== 0)
+      return {
+        ok: false as const,
+        status,
+        state,
+        specState,
+        ...(renderer === undefined ? {} : { diagnostic: renderer.snapshot(state) }),
+      };
     const tables = new Map(
       OFFSETS.map((offset) => [offset, view(state[offset] as number, state[offset + 1] as number)]),
     );
@@ -240,11 +259,21 @@ export function nativeSourceApi(
       status: error.status,
       state,
       specState: Array<number>(128).fill(0),
+      ...(renderer === undefined
+        ? {}
+        : {
+            diagnostic: {
+              rendered: {
+                ok: false as const,
+                reason: 'incomplete-ir' as const,
+              },
+            },
+          }),
     };
   };
   return {
     get memoryBytes() {
-      return retainedMemoryBytes();
+      return retainedMemoryBytes() + (renderer?.memoryBytes ?? 0);
     },
     parse(source, budget = 16_000_000) {
       const result = readSource(source, budget, false);
