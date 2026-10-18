@@ -32,6 +32,7 @@ assert.equal(prepared.build.diagnosticPorts, 'arena-v1');
 const module = new WebAssembly.Module(await readFile(join(frontendPath, 'frontend.wasm')));
 const formatting = await prepareSourceFormat(formatPath);
 const diagnostics = await prepareSourceDiagnostic(diagnosticPath);
+assert.equal(diagnostics.verification, true, 'complete native spec diagnostic companion required');
 const engine = () => nativeSource(module, diagnostics, formatting);
 type Engine = ReturnType<typeof engine>;
 interface Publication { uri: string; version?: number; diagnostics: Diagnostic[] }
@@ -332,5 +333,66 @@ test('native LSP real-handler scheduling refuses old formatting and diagnostics 
     assert.equal(edits?.[0]?.newText ?? newText, formatSource(parseSource(newText)));
     for (const report of session.publications.slice(after))
       if (report.uri === uri && report.version === 1) assert.deepEqual(report.diagnostics, []);
+  } finally { await session.close(); host.close(); }
+}));
+
+test('native LSP preserves genuine spec diagnostic JSON and ownership across direct and imported failures', async () => fixture(async (root) => {
+  const main = join(root, 'main.a0'), library = join(root, 'libλ.a0');
+  const baseLibrary = '# dependency π 😀\nprofile strict\nfn spec\nret 0\nend\nfn helper\nret A\nend\n';
+  const baseMain = '# entry Ω\nprofile strict\nuse "libλ.a0"\nfn top\nx helper A\nret x\nend\n';
+  const cases = [
+    ['A0714', 'fn target\nex nope -> 1\nret A\nend\n'],
+    ['A0714', 'fn target\npre eq missing 0\nret A\nend\n'],
+    ['A0715', 'fn target\nex 3 -> 9\nret A\nend\n'],
+    ['A0716', 'fn target\nex 3 -> 3\npre lt A 2\nret A\nend\n'],
+    ['A0716', 'fn target\nex 3 -> 3\npost lt r 2\nret A\nend\n'],
+    ['A0719', 'fn target\nex 3 -> 3\nx div A 0\nret x\nend\n'],
+    ['A0719', 'fn exploding _ -> bool\nx div A 0\ny eq x 0\nret y\nend\nfn target\nex 3 -> 3\npre exploding A\nret A\nend\n'],
+  ] as const;
+  await writeFile(main, baseMain); await writeFile(library, baseLibrary);
+  const host = engine(), session = await protocol(root, host);
+  try {
+    assert.deepEqual((await session.open(library, baseLibrary)).diagnostics, []);
+    assert.deepEqual((await session.open(main, baseMain)).diagnostics, []);
+    let version = 1;
+    for (const imported of [false, true]) {
+      for (const [id, source] of cases) {
+        const mainSource = baseMain + (imported ? '' : source);
+        const librarySource = baseLibrary + (imported ? source : '');
+        const sources = new Map([[main, mainSource], [library, librarySource]]);
+        await session.change(library, librarySource, ++version);
+        const report = await session.change(main, mainSource, ++version);
+        const actual = report.diagnostics[0];
+        assert.ok(actual, `${imported ? 'imported' : 'direct'}/${id}`);
+        let expected: A0Error | undefined;
+        try { await linkSource(main, async path => sources.get(path) as string, { root }); }
+        catch (error) { assert.ok(error instanceof A0Error); expected = error; }
+        assert.ok(expected);
+        assert.equal(expected.id, id);
+        assert.equal(actual.code, expected.code);
+        assert.deepEqual(actual.data, {
+          id: expected.id ?? null,
+          code: expected.code,
+          fix: expected.fix ?? null,
+          applicability: expected.applicability ?? null,
+          edits: expected.edits,
+          spec: expected.spec ?? null,
+        });
+        const location = /^(.*\.a0):(\d+): ([\s\S]*)$/.exec(expected.message);
+        assert.ok(location, expected.message);
+        const expectedBody = `${imported ? `libλ.a0:${location[2]}: ` : ''}${location[3]}`;
+        assert.equal(actual.message, expected.fix === undefined ? expectedBody : `${expected.fix}\n${expectedBody}`);
+        assert.equal(actual.range.start.line, imported ? 2 : Number(location[2]) - 1);
+        assert.ok(!JSON.stringify(actual).includes(root));
+        if (id === 'A0715') {
+          const actions = await session.client.sendRequest<{ edit: { changes: Record<string, TextEdit[]> } }[]>('textDocument/codeAction', {
+            textDocument: { uri: pathToFileURL(main).href }, context: { diagnostics: [actual] }, range: actual.range,
+          });
+          // The existing lexical action only edits an example in the requested document.
+          if (!imported) assert.ok(actions.some(action => action.edit.changes[pathToFileURL(main).href]?.[0]?.newText.includes('ex 3 -> 3')));
+          else assert.deepEqual(actions, []);
+        }
+      }
+    }
   } finally { await session.close(); host.close(); }
 }));

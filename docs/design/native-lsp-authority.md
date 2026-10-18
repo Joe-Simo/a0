@@ -70,6 +70,9 @@ performance gates remain explicit prerequisites to changing defaults.
 `A0_LSP_FRONTEND`, `A0_LSP_FORMAT` and `A0_LSP_DIAGNOSTIC`, and tests the real JSON-RPC/LSP connection
 with live imported buffers, file formatting/fixed points, structured diagnostics, complete graph
 revision/backend equivalence, resource/capability/encoding/confinement refusals and buffer lifetime.
+The verified diagnostic companion also supplies direct and imported A0714/A0715/A0716/A0719
+controls. Their existing LSP data, message, spec ownership and physical line are compared with an
+independent graph oracle, including an unrelated function named `spec` and existing quick fixes.
 A separately labelled handler-scheduling control invokes the actual registered TextDocuments and
 formatting callbacks in one JS stack around real asynchronous file lookup, then closes/reopens the
 URI at the same version. This deterministically exercises document identity without sleeps,
