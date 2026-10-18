@@ -126,6 +126,8 @@ export function nativeSource(
     profile: Profile,
     budget?: number,
   ): NativeGraphResult;
+  /** Upload structured IR for formatting only; no source or semantic acceptance is granted. */
+  activateProgramForFormat(program: Program, budget?: number): NativeUnitFormatActivation;
   /** Explicitly reset the live arena to an authentic retained unit, only for formatting. */
   activateUnitForFormat(unit: NativeUnitResult, budget?: number): NativeUnitFormatActivation;
   /** Formatting uses only this engine's current live result; output is detached. */
@@ -187,6 +189,18 @@ export function nativeSourceApi(
   };
   let snapshots = new WeakMap<NativeUnitResult, NativeUnitSnapshot>();
   let unitFormatStates = new WeakMap<NativeUnitResult, NativeUnitFormatSnapshot>();
+  const formatInput = (parsed: Uint32Array, specs: Uint32Array): NativeUnitFormatInput => {
+    const input = Object.freeze({}) as NativeUnitFormatInput;
+    formatStates.set(input, {
+      generation,
+      sourceStatus: 0,
+      parsed: parsed.slice(),
+      specs: specs.slice(),
+      authoring: { ...authoring },
+      descriptor: authoringDescriptor?.slice(),
+    });
+    return input;
+  };
   const assertOpen = (): void => {
     if (closed) throw new Error('source frontend is closed');
   };
@@ -466,6 +480,23 @@ export function nativeSourceApi(
         });
       }
     },
+    activateProgramForFormat(program, budget = 16_000_000) {
+      checkBudget(budget);
+      if (!formatter || !api.a0_runtime_read || !api.a0_runtime_write || !api.frontend_arena_token)
+        return { ok: false, reason: 'unavailable' };
+      try {
+        const builder = irBuilder(budget);
+        encodeNativeProgram(program, builder);
+        // The active generic builder, not frontend_state/specs, owns these unchecked pages.
+        const parsed = Uint32Array.from({ length: 128 }, (_, index) => builder.get(index));
+        if (parsed[96] !== 0) throw new Error('native formatting IR unexpectedly checked');
+        const specs = view(parsed[59] as number, 128);
+        return { ok: true, input: formatInput(parsed, specs) };
+      } catch (error) {
+        if (!(error instanceof NativeIrFailure)) throw error;
+        return { ok: false, status: error.status };
+      }
+    },
     activateUnitForFormat(unit, budget = 16_000_000) {
       checkBudget(budget);
       const snapshot = snapshots.get(unit);
@@ -476,16 +507,7 @@ export function nativeSourceApi(
       if (retained === undefined) throw new Error('missing retained source-unit formatting state');
       try {
         const restored = restoreNativeUnitForFormat(snapshot, retained, irBuilder(budget));
-        const input = Object.freeze({}) as NativeUnitFormatInput;
-        formatStates.set(input, {
-          generation,
-          sourceStatus: 0,
-          parsed: restored.parsed,
-          specs: restored.specs,
-          authoring: {},
-          descriptor: undefined,
-        });
-        return { ok: true, input };
+        return { ok: true, input: formatInput(restored.parsed, restored.specs) };
       } catch (error) {
         if (!(error instanceof NativeIrFailure)) throw error;
         return { ok: false, status: error.status };

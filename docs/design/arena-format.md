@@ -88,6 +88,33 @@ the new input. Native resource refusal returns its status without a partial inpu
 or arena ports return `unavailable` without resetting. Detached outputs and the retained units for
 `checkUnits` survive these resets. Structured-authoring/A128 snapshot activation is outside this API.
 
+`activateProgramForFormat(program, budget?)` uploads structured Program IR through the existing
+generic IR builder solely for formatting and historical content revisions. It returns the same
+opaque formatting-input type used by unit activation. It performs no source parsing, checker finish
+or spec execution, and it grants no parsed-unit or typed-program acceptance. This permits historical
+file units with unresolved imported calls to be printed before the complete output graph is checked.
+The active builder's M page and its actual M59 specification directory are copied privately with the
+current optional A128 context. Previously published frontend result pages are never used. Native
+M96 remains unchecked, so semantic revision refuses this input; `checkUnits` cannot accept it.
+
+Missing formatter/ports, invalid budgets and closed engines reject before upload. Representation
+errors are explicit: an invalid span detected before initialization preserves the previous current
+input; an error or resource refusal after initialization invalidates it and returns no partial
+formatting identity. A later valid activation recovers. Successful activation and subsequent
+parse/check/activation/close follow the same generation rules as unit activation. Later mutations to
+the input Program cannot alter active bytes or private authoring metadata. Comments and text that
+cannot be represented retain the existing optional metadata refusal; no host printer/hash fallback
+is introduced. Printed files still need ordinary native parsing and a complete graph check before
+compilation or acceptance. Historical text hints remain authoring metadata and do not rewrite their
+structured semantic operands.
+
+The explicit `test/source-native-program-format.controls.ts` runs the C components first, including
+transport hooks that refuse stale published state, parsing or checker finish during activation.
+The shared controls are also registered for C/direct/JS in `test/source-native-format.controls.ts`.
+They include Unicode/comments/specs/A128 ownership, copied/foreign inputs, pre/post-reset failures,
+resource recovery, current output detachment and real checked import graphs from the printed files.
+No public migration or command mode has been switched by this API.
+
 The companion uses the same live arena read/write/token/view ports as diagnostics. Both codecs share `src/source-component.ts` for lazy import validation, flat-word ABI calls and detached vector reads. The existing compiled-source session driver is shared with the direct frontend; this adds no arena protocol, parser, source printer or host hash fallback. Loading, companion memory and private result registration occur only when configured/used. Formatter scratch consumes the current frontend allocation budget and remains until its session ends. No compilation, memory or latency equivalence is claimed.
 
 Source parse/check-unit results carry original native comment/line tables. Structured `checkProgram` IR carries synthetic locations. When the optional formatter is configured, the shared IR encoder also encodes profile/import/function/node/spec/return/end comments into the existing native line/comment tables. Graph composition uses the same comment ownership policy as the existing linker while retaining original source-unit byte/line sidecars. The [ABI-free metadata proof](../../results/native-source-authoring-metadata.json) records the initial authenticated-spec-directory failure and its correction. Checker-only engines do not allocate or upload optional authoring vectors. Public CLI/editor/default syntax routes are unchanged.

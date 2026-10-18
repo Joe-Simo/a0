@@ -28,6 +28,10 @@ import {
   type SourceCase,
   selfCase,
 } from './fixtures/arena-format/cases.js';
+import {
+  assertProgramFormatting,
+  assertProgramFormattingFailures,
+} from './fixtures/arena-format/program-activation.js';
 import type { ComponentResult } from './fixtures/arena-format/transport.js';
 
 const frontendPath = process.env.A0_FORMAT_FRONTEND;
@@ -224,6 +228,27 @@ function checkRows(engine: ReturnType<typeof nativeSource>, rows: readonly Sourc
 }
 
 for (const [backend, factory] of factories) {
+  test(`${backend}: structured formatting-only activation retains authoring and reenters checked graphs through source`, async () => {
+    const engine = factory(companion),
+      peer = factory(companion);
+    try {
+      await assertProgramFormatting(engine, peer);
+    } finally {
+      engine.close();
+      peer.close();
+    }
+  });
+  test(`${backend}: structured formatting activation preserves refusals, recovery and lifetime`, () => {
+    const engine = factory(companion),
+      peer = factory(companion);
+    try {
+      assertProgramFormattingFailures(engine, peer);
+    } finally {
+      engine.close();
+      peer.close();
+    }
+  });
+
   test(`${backend}: explicit unit formatting activation restores imports and metadata after graph checking`, () => {
     const engine = factory(companion);
     const peer = factory(companion);

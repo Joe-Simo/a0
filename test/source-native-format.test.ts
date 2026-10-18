@@ -100,11 +100,21 @@ test('unit format activation validates ownership, budgets and closed state befor
     for (const invalid of [refused, foreign, { ...unit }])
       assert.throws(() => engine.activateUnitForFormat(invalid), /parsed unit owned/);
     assert.deepEqual(engine.activateUnitForFormat(unit), { ok: false, reason: 'unavailable' });
+    for (const budget of [-1, 0.5, NaN, Infinity, 0x1_0000_0000])
+      assert.throws(
+        () => engine.activateProgramForFormat(unit.program, budget),
+        /allocation budget/,
+      );
+    assert.deepEqual(engine.activateProgramForFormat(unit.program), {
+      ok: false,
+      reason: 'unavailable',
+    });
     assert.deepEqual(engine.format(unit), { ok: false, reason: 'unavailable' });
     assert.deepEqual(peer.activateUnitForFormat(foreign), { ok: false, reason: 'unavailable' });
     assert.equal(loads, 0);
     engine.close();
     assert.throws(() => engine.activateUnitForFormat(unit), /closed/);
+    assert.throws(() => engine.activateProgramForFormat(unit.program), /closed/);
   } finally {
     engine.close();
     peer.close();
