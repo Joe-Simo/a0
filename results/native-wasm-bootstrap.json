@@ -1,0 +1,596 @@
+{
+  "schema": 1,
+  "status": "partial-targeted-controls-selfhost-blocked",
+  "sourceCommit": "de15f97c1f3bc8d356ff246899234f42dcc8aa0a",
+  "sourceTree": "7220bff1884ffe03617db33bc76bd68b5a50c3b0",
+  "cleanAtVerification": true,
+  "sourceInputs": [
+    {
+      "path": "tools/selfhost-wasm.ts",
+      "bytes": 84020,
+      "sha256": "e43b2b69f07039df61713e0f70e3928754c902cce134e5055e20ce677d49773e"
+    },
+    {
+      "path": "tools/site-build.ts",
+      "bytes": 23752,
+      "sha256": "f7786898429f12f9a063eb865ff2694726bcb0842268f5f73d4b1da5dd3e8084"
+    },
+    {
+      "path": "tools/bootstrap-source.ts",
+      "bytes": 4341,
+      "sha256": "10dd678ed8e9dfc9cadb6eb1bf8735a43a4b1fdd40897397b771753a44ca8229"
+    },
+    {
+      "path": "test/selfhost-wasm-transport.test.ts",
+      "bytes": 985,
+      "sha256": "7802bc3c64c9607da7e3c92156ffccfd3d811e27c726f3becece2c91e86c7b5b"
+    },
+    {
+      "path": "test/native-wasm-bootstrap.controls.ts",
+      "bytes": 15735,
+      "sha256": "71d587aaa3255325fa1d1e416d1110e3ba5d0bba9ce1835f5edadbbc4bc80023"
+    }
+  ],
+  "verificationCommands": [
+    "bun run build",
+    "bun run lint",
+    "bun run typecheck",
+    "node --test dist/test/selfhost-wasm-transport.test.js",
+    "node --test --test-concurrency=1 dist/test/native-wasm-bootstrap.controls.js"
+  ],
+  "scope": "Opt-in native source graph/formatter to checked compiler IR, existing TS C setup and existing A0 table-driven optimizer/emitter. Public/default bootstrap routes unchanged.",
+  "checks": {
+    "build": "passed",
+    "lint": "passed",
+    "typecheck": "passed",
+    "seedFreshness": "passed",
+    "prereview": {
+      "findings": [],
+      "score": 0,
+      "verdict": "ok"
+    },
+    "transportUnit": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nativeControls": {
+      "tests": 4,
+      "passed": 3,
+      "failed": 1,
+      "skipped": 0,
+      "failure": "actual A0 emitter closure child-module byte parity"
+    },
+    "fullRepositoryGate": "not run for this isolated increment"
+  },
+  "authority": {
+    "sourceGraph": "shared A0 parser/checker/spec verifier",
+    "sourceFormatting": "shared A0 formatter",
+    "stage1Backend": "existing TS C backend; optimized transformed IR can be retyped in TS",
+    "runtimeCompiler": "unchanged A0 table optimizer/emitter implementation",
+    "sourceReparseInBridge": false,
+    "callbackTransport": "same modes/encoders/decoders, input and output snapshots",
+    "optimizerCache": "program identity and transport value",
+    "existingSourceMode1": "still present in implementation and artifact; not called by these native paths or retired",
+    "strict": "A0713 before transport for both optimizer settings; no weakened profile semantics"
+  },
+  "package": {
+    "manifestSHA256": "8031ed6c6ddae333de799dcbd061f14af64dde8c355dda484b25fda042fd7fed",
+    "components": {
+      "frontend.wasm": {
+        "bytes": 359944,
+        "sha256": "ed1de3810216510b88fe318d56dd519c44fd79ffbfce5fe776bea7305b96c147",
+        "buildSHA256": "17554161dadfbb44e0c9e63081e3afc3b124bf01d04d68ddcb2e95490c7040cb",
+        "sourceSHA256": "2eee18e1f62244f16d496be873c1347ca8d75a008ad4f67b92e9b9df1e54f515"
+      },
+      "diagnostic.wasm": {
+        "bytes": 324308,
+        "sha256": "cfcf2dec46654da2025a140adf324432868e6451fe34f05bfbc4dc48d56141f1",
+        "buildSHA256": "0fee03e5acde4d95ac99bda2b595a339189c271b8e54b216d7a66909590be55c",
+        "sourceSHA256": "8e66ade4f45809e5a5a0e9ccc2a0e5c91becd87ea3cefd108e969e5b73359bc2"
+      },
+      "format.wasm": {
+        "bytes": 67979,
+        "sha256": "06018437873a08eea5ded83955f9b0ee29816aebaf40830c8f4dd5e7ba37c46b",
+        "buildSHA256": "03b9df9dd27880e21918ee4bae35465d7f9f662f4e5312ceaffbe27e521ba01b",
+        "sourceSHA256": "29300f8e5e282f63538c032d9511bbe956dafbf6fcd9b4d00022bd2ef529f0fd"
+      }
+    },
+    "artifactBytes": 752231,
+    "suppliedArtifactEpoch": "separate frozen runtime package built at 3094cd4; this is not fresh combined-source build provenance",
+    "compilerAndSeedBytesUnchangedSinceA341": true
+  },
+  "setup": {
+    "nativeChecksOnMissAndHit": 2,
+    "compilerFunctions": 866,
+    "nativeSource": {
+      "bytes": 856819,
+      "sha256": "3222a2a801b6e06b73fcda8aac8934bcd99a434c348b2224c44281c7c688cb81"
+    },
+    "nativeC": {
+      "bytes": 3894342,
+      "sha256": "715a1a12a8fcac06a0a868d409e6b62e038ab3d0605c1c2e02b553f703727683"
+    },
+    "verifiedSeedC": {
+      "bytes": 4208569,
+      "sha256": "898005041739b6727a9d953ed332b15c697e69fc76ada742f227b59e632e02d4"
+    },
+    "nativeExecutable": {
+      "bytes": 1283472,
+      "sha256": "1050fd70fb8cf8277b90e16559d754651cf9856f97e25b78659442b7f10197a9"
+    },
+    "legacyExecutable": {
+      "bytes": 1770280,
+      "sha256": "4b74dc9d4e021f8ed702e8f5726990ce0f3f397c707dad60eec4a45f14f2624e"
+    }
+  },
+  "setupSizeComparison": {
+    "nativeCBytes": 3894342,
+    "verifiedSeedCBytes": 4208569,
+    "deltaCBytes": -314227,
+    "interpretation": "Exact setup C sizes only. No total cost, compilation, memory or execution improvement claim."
+  },
+  "ioContract": {
+    "inputWords": 2097152,
+    "outputWords": 4194304,
+    "explicitTSBackendOptions": true,
+    "mainLayoutMatches": true
+  },
+  "programs": {
+    "modules": [
+      {
+        "label": "checked",
+        "optimize": false,
+        "bytes": 2592,
+        "sha256": "0d93ae280243aa3813006adeab598726b3ea362e31c3ac76450990990f4efefa",
+        "chunks": 1
+      },
+      {
+        "label": "life",
+        "optimize": false,
+        "bytes": 2868,
+        "sha256": "84dd5bb2090cb3e38b87acd37fc95aff0b04139a9845700b2789a67c512cb9d7",
+        "chunks": 1
+      },
+      {
+        "label": "checked",
+        "optimize": true,
+        "bytes": 2853,
+        "sha256": "5cefdd04dc2e113cef0244086976807ed748cc98a51227d6f67f1a7e937bf451",
+        "chunks": 1
+      },
+      {
+        "label": "life",
+        "optimize": true,
+        "bytes": 2829,
+        "sha256": "a153e80368fef975fc81b91f2a015d8b4d290a1fad35d1ce6590418e3863597c",
+        "chunks": 1
+      }
+    ],
+    "checkedOracleCasesPerOptimizerSetting": 2356,
+    "lifeCasesPerOptimizerSetting": 4,
+    "strictRefusal": "A0713 before transport, both optimizer settings"
+  },
+  "selfhost": {
+    "status": "blocked",
+    "compilerFunctions": 866,
+    "image": {
+      "bytes": 627407,
+      "sha256": "0639587b1f52dbc9f1c04a4e1be9642ffc22c85209364df0722db09d45472292",
+      "valid": true
+    },
+    "independentOldSetup": "Full-image comparison was still running at this proof snapshot; no inherited-versus-native-setup attribution is established.",
+    "childModules": [
+      {
+        "optimize": false,
+        "native": {
+          "bytes": 157,
+          "sha256": "662549ed92f9322a55bf670f96e70181073d8b4e93178cfe6e63accf4aa82178",
+          "valid": true,
+          "sections": [
+            {
+              "id": 0,
+              "offset": 8,
+              "payloadOffset": 10,
+              "declaredBytes": 13,
+              "availableBytes": 147,
+              "sizeLEB": [
+                13
+              ]
+            },
+            {
+              "id": 1,
+              "offset": 23,
+              "payloadOffset": 25,
+              "declaredBytes": 12,
+              "availableBytes": 132,
+              "sizeLEB": [
+                12
+              ]
+            },
+            {
+              "id": 3,
+              "offset": 37,
+              "payloadOffset": 39,
+              "declaredBytes": 3,
+              "availableBytes": 118,
+              "sizeLEB": [
+                3
+              ]
+            },
+            {
+              "id": 5,
+              "offset": 42,
+              "payloadOffset": 44,
+              "declaredBytes": 3,
+              "availableBytes": 113,
+              "sizeLEB": [
+                3
+              ]
+            },
+            {
+              "id": 6,
+              "offset": 47,
+              "payloadOffset": 49,
+              "declaredBytes": 13,
+              "availableBytes": 108,
+              "sizeLEB": [
+                13
+              ]
+            },
+            {
+              "id": 7,
+              "offset": 62,
+              "payloadOffset": 64,
+              "declaredBytes": 45,
+              "availableBytes": 93,
+              "sizeLEB": [
+                45
+              ]
+            },
+            {
+              "id": 10,
+              "offset": 109,
+              "payloadOffset": 111,
+              "declaredBytes": 46,
+              "availableBytes": 46,
+              "sizeLEB": [
+                46
+              ]
+            }
+          ],
+          "executions": [
+            {
+              "input": 0,
+              "actual": 21,
+              "expected": 21
+            },
+            {
+              "input": 1,
+              "actual": 22,
+              "expected": 22
+            },
+            {
+              "input": 4294967295,
+              "actual": 20,
+              "expected": 20
+            }
+          ]
+        },
+        "wasm": {
+          "bytes": 160,
+          "sha256": "c3f41d978dc633e9948fb194783719f4c351b308abb40f8eec8ca03a1555ff0e",
+          "valid": false,
+          "sections": [
+            {
+              "id": 0,
+              "offset": 8,
+              "payloadOffset": 10,
+              "declaredBytes": 13,
+              "availableBytes": 150,
+              "sizeLEB": [
+                13
+              ]
+            },
+            {
+              "id": 1,
+              "offset": 23,
+              "payloadOffset": 25,
+              "declaredBytes": 12,
+              "availableBytes": 135,
+              "sizeLEB": [
+                12
+              ]
+            },
+            {
+              "id": 3,
+              "offset": 37,
+              "payloadOffset": 39,
+              "declaredBytes": 3,
+              "availableBytes": 121,
+              "sizeLEB": [
+                3
+              ]
+            },
+            {
+              "id": 5,
+              "offset": 42,
+              "payloadOffset": 44,
+              "declaredBytes": 3,
+              "availableBytes": 116,
+              "sizeLEB": [
+                3
+              ]
+            },
+            {
+              "id": 6,
+              "offset": 47,
+              "payloadOffset": 49,
+              "declaredBytes": 13,
+              "availableBytes": 111,
+              "sizeLEB": [
+                13
+              ]
+            },
+            {
+              "id": 7,
+              "offset": 62,
+              "payloadOffset": 64,
+              "declaredBytes": 45,
+              "availableBytes": 96,
+              "sizeLEB": [
+                45
+              ]
+            },
+            {
+              "id": 10,
+              "offset": 109,
+              "payloadOffset": 114,
+              "declaredBytes": 36175873,
+              "availableBytes": 46,
+              "sizeLEB": [
+                129,
+                128,
+                160,
+                17
+              ]
+            }
+          ],
+          "instantiationError": "CompileError: WebAssembly.instantiate(): section (code 10, \"Code\") extends past end of the module (length 36175873, remaining bytes 46) @+109"
+        }
+      },
+      {
+        "optimize": true,
+        "native": {
+          "bytes": 128,
+          "sha256": "01263d5255bf0f445b21e36255e36de854956027bde1a91f819e7cdcc371ca0b",
+          "valid": true,
+          "sections": [
+            {
+              "id": 0,
+              "offset": 8,
+              "payloadOffset": 10,
+              "declaredBytes": 13,
+              "availableBytes": 118,
+              "sizeLEB": [
+                13
+              ]
+            },
+            {
+              "id": 1,
+              "offset": 23,
+              "payloadOffset": 25,
+              "declaredBytes": 12,
+              "availableBytes": 103,
+              "sizeLEB": [
+                12
+              ]
+            },
+            {
+              "id": 3,
+              "offset": 37,
+              "payloadOffset": 39,
+              "declaredBytes": 3,
+              "availableBytes": 89,
+              "sizeLEB": [
+                3
+              ]
+            },
+            {
+              "id": 5,
+              "offset": 42,
+              "payloadOffset": 44,
+              "declaredBytes": 3,
+              "availableBytes": 84,
+              "sizeLEB": [
+                3
+              ]
+            },
+            {
+              "id": 6,
+              "offset": 47,
+              "payloadOffset": 49,
+              "declaredBytes": 13,
+              "availableBytes": 79,
+              "sizeLEB": [
+                13
+              ]
+            },
+            {
+              "id": 7,
+              "offset": 62,
+              "payloadOffset": 64,
+              "declaredBytes": 45,
+              "availableBytes": 64,
+              "sizeLEB": [
+                45
+              ]
+            },
+            {
+              "id": 10,
+              "offset": 109,
+              "payloadOffset": 111,
+              "declaredBytes": 17,
+              "availableBytes": 17,
+              "sizeLEB": [
+                17
+              ]
+            }
+          ],
+          "executions": [
+            {
+              "input": 0,
+              "actual": 21,
+              "expected": 21
+            },
+            {
+              "input": 1,
+              "actual": 22,
+              "expected": 22
+            },
+            {
+              "input": 4294967295,
+              "actual": 20,
+              "expected": 20
+            }
+          ]
+        },
+        "wasm": {
+          "bytes": 131,
+          "sha256": "147dd59304518eb1a7d0b96a4e441dff0f8aca3543d814a2b7e9e3a7eae81dc3",
+          "valid": false,
+          "sections": [
+            {
+              "id": 0,
+              "offset": 8,
+              "payloadOffset": 10,
+              "declaredBytes": 13,
+              "availableBytes": 121,
+              "sizeLEB": [
+                13
+              ]
+            },
+            {
+              "id": 1,
+              "offset": 23,
+              "payloadOffset": 25,
+              "declaredBytes": 12,
+              "availableBytes": 106,
+              "sizeLEB": [
+                12
+              ]
+            },
+            {
+              "id": 3,
+              "offset": 37,
+              "payloadOffset": 39,
+              "declaredBytes": 3,
+              "availableBytes": 92,
+              "sizeLEB": [
+                3
+              ]
+            },
+            {
+              "id": 5,
+              "offset": 42,
+              "payloadOffset": 44,
+              "declaredBytes": 3,
+              "availableBytes": 87,
+              "sizeLEB": [
+                3
+              ]
+            },
+            {
+              "id": 6,
+              "offset": 47,
+              "payloadOffset": 49,
+              "declaredBytes": 13,
+              "availableBytes": 82,
+              "sizeLEB": [
+                13
+              ]
+            },
+            {
+              "id": 7,
+              "offset": 62,
+              "payloadOffset": 64,
+              "declaredBytes": 45,
+              "availableBytes": 67,
+              "sizeLEB": [
+                45
+              ]
+            },
+            {
+              "id": 10,
+              "offset": 109,
+              "payloadOffset": 114,
+              "declaredBytes": 5767169,
+              "availableBytes": 17,
+              "sizeLEB": [
+                129,
+                128,
+                224,
+                2
+              ]
+            }
+          ],
+          "instantiationError": "CompileError: WebAssembly.instantiate(): section (code 10, \"Code\") extends past end of the module (length 5767169, remaining bytes 17) @+109"
+        }
+      }
+    ],
+    "transport": "Supplementary saved-image replay: modes2 and7 responses match native word-for-word; mode3 produces invalid code section sizes in both child optimizer settings.",
+    "observedBackendDefect": "wkmod loop entry tests variant bound parameter11; generated backedge instead reads local22 holding K[0]. Exact faulty emitter pass remains under investigation.",
+    "attribution": "Cause unclassified between existing backend and new setup; generated wrong loop bound is established. No source grammar fallback, IO widening, encoder branch, or weakened byte assertion.",
+    "scope": "The full emitter closure emits to a valid image and executes, but cannot yet link the controlled child modules correctly. No successful Wasm selfhost or fixed point is established."
+  },
+  "site": {
+    "page": {
+      "bytes": 121371,
+      "sha256": "dc87bc25cc2e2e36f274bc515233b8318e32da3cc1d9b84f487c837715a32ca0"
+    },
+    "docs": {
+      "bytes": 105686,
+      "sha256": "9655db675b6da74adce030d837898bf2bb8608e7f85e62cac975601579fce986"
+    },
+    "pageCacheMissThenHit": true,
+    "currentSourceCheckedBeforeHit": true,
+    "prerenderParity": true
+  },
+  "initialFailure": {
+    "sourceCommit": "1b759cc119a63888513288f812ceea89b611bbb9",
+    "tests": 4,
+    "passed": 1,
+    "failed": 3,
+    "skipped": 0,
+    "cause": "TS C setup used literal 256/1024 default IO layout while the shared main assumed 2097152/4194304. Runtime controls detected capacity exit65, SIGSEGV and optimizer code5.",
+    "correction": "Pass existing CompileOptions.ioInputCapacity/ioOutputCapacity explicitly. No generated-C rewriting, source fallback or acceptance-assertion relaxation.",
+    "retained": [
+      "initial/native-wrong-io.c",
+      "initial/main.c",
+      "initial/failed-controls.log",
+      "initial/observations.json"
+    ]
+  },
+  "review": {
+    "independentSourceReview": "No production blocker; control cache repeatability issue fixed with unique owned run directories.",
+    "parentReviewOfIOFix": "Confirmed explicit capacities match main; default path and C flags preserved.",
+    "independentStaticDiagnosis": "Stdlib binary decoder plus source/index mapping identifies wrong wkmod loop bound; source/image digests and instruction offsets retained. Exact faulty pass unproven."
+  },
+  "archive": {
+    "path": "results/native-wasm-bootstrap-artifacts.zip",
+    "bytes": 3538979,
+    "sha256": "9be38ce3cef4c11da3ec814ee01dd88c51fbc1ea8a44a5368325404392254f65",
+    "members": 81,
+    "digestPolicy": "Program/C/Wasm/seed bytes unchanged. Only metadata paths normalized; members.json records raw and stored digests."
+  },
+  "limitations": [
+    "No public/default source or site build cutover, old parser removal, checked-in seed migration, or AArch64 bootstrap migration.",
+    "Historical source mode1 remains in the compiled emitter implementation; these paths use checked tables only.",
+    "The table backend still refuses strict profiles before transport; acceptance is not converted to canonical behavior.",
+    "Existing table, arena, source, IO, stack and process limits apply; no unlimited capacity claim.",
+    "Correctness controls ran on Linux x86_64 with a C compiler and Node Wasm; new Windows/macOS platform verification is pending.",
+    "Actual Wasm-hosted emitter child-module verification failed and remains open; no full selfhost suite, recursive emitter/assembly/executable fixed point, full site build, or full repository gate is established here.",
+    "No benchmark timings, RSS, peak memory, binary-size superiority, AI success-rate or total-cost improvement is claimed."
+  ]
+}

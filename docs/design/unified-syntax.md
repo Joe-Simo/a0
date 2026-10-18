@@ -328,6 +328,17 @@ the shared formatter provenance helper. Standalone and isolated VM controls are 
 `results/native-source-package.json`. Public defaults and release integration remain pending;
 the VM check does not establish real-browser behavior or performance.
 
+The opt-in Wasm/site build bridge now accepts native checked IR through the shared
+bootstrap closure, then runs the existing A0 table optimizer and emitter. Native setup,
+independent arithmetic/Life checks, and page/docs/cache/prerender parity pass in
+`results/native-wasm-bootstrap.json`. The actual compiler emitted as Wasm fails its
+child-module check: its linker writes an invalid code-section length. The report retains
+the failing bytes and an independent trace showing a wrong loop bound; the faulty
+emission pass and old-bootstrap comparison are not yet established by this snapshot.
+Historical source mode 1 remains in the artifact, strict-profile table emission remains
+unsupported, and public defaults are unchanged. This is not a completed Wasm selfhost or
+source cutover, and no performance improvement is claimed.
+
 The formal generated-JS frontend cohort is retained in
 `results/source-frontend-js-cost-quiet.json`. Its measured frontend, pipeline, child-wall and
 process-memory losses keep that backend experimental. Correctness across compilation targets
