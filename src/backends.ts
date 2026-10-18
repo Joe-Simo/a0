@@ -176,7 +176,9 @@ function a0_check(v, shape, name) {
   }
 }
 function a0_with(a, i, v) { const c = a.slice(); c[i] = v; return c; }
-// io token: { input: number[], position, output: number[] }. Exhausted input reads 0.
+`;
+
+const JS_BUFFERED_IO = `// io token: { input: number[], position, output: number[] }. Exhausted input reads 0.
 function a0_io(v, name) {
   if (typeof v !== 'object' || v === null || !Array.isArray(v.input) || !Array.isArray(v.output) || typeof v.position !== 'number') throw new TypeError(name + ': expected io token');
   return v;
@@ -185,6 +187,38 @@ export function a0_make_io(input) { return { input: input.slice(), position: 0, 
 function a0_read(t) { const v = t.position < t.input.length ? t.input[t.position++] : 0; return [v, t]; }
 function a0_write(t, v) { t.output.push(v); return t; }
 function a0_puts(t, a) { t.output.push(a.length); for (let i = 0; i < a.length; i++) t.output.push(a[i]); return t; }
+`;
+
+/** Explicit host streams share the ordinary function bodies and preserve the io token. */
+const JS_HOST_IO = `const a0_host_io = new WeakMap();
+function a0_io(v, name) {
+  if (!a0_host_io.has(v)) throw new TypeError(name + ': expected io token');
+  return v;
+}
+export function a0_make_host_io(read, write) {
+  if (typeof read !== 'function' || typeof write !== 'function') throw new TypeError('host io: expected read and write callbacks');
+  const token = {};
+  a0_host_io.set(token, { read, write });
+  return token;
+}
+export function a0_make_io(input) {
+  const t = a0_make_host_io(() => t.position < t.input.length ? t.input[t.position++] : undefined, (v) => { t.output.push(v); });
+  t.input = input.slice(); t.position = 0; t.output = [];
+  return t;
+}
+function a0_host_read(t) {
+  try {
+    const read = a0_host_io.get(t).read;
+    const v = read();
+    return v === undefined ? undefined : a0_u32(v, 'host read');
+  } catch (error) { a0_host_abort(); throw error; }
+}
+function a0_read(t) { const v = a0_host_read(t); return [v === undefined ? 0 : v, t]; }
+function a0_write(t, v) {
+  try { const write = a0_host_io.get(t).write; write(v); return t; }
+  catch (error) { a0_host_abort(); throw error; }
+}
+function a0_puts(t, a) { a0_write(t, a.length); for (let i = 0; i < a.length; i++) a0_write(t, a[i]); return t; }
 `;
 
 const JS_CHECKED = `// Checked ops: total, (value, ok) records, the same in both profiles.
@@ -204,8 +238,9 @@ export const STRICT_TRAPS = [
 ] as const;
 
 /** The strict profile's runtime for JS: the shadow stack of frames and the trap raiser. */
-const jsStrictRuntime =
-  (): string => `// Strict profile: a trap is an A0Trap; its .trap is the interpreter's {kind, fn, at, trip, chain}.
+const jsStrictRuntime = (
+  hostIo: boolean,
+): string => `// Strict profile: a trap is an A0Trap; its .trap is the interpreter's {kind, fn, at, trip, chain}.
 export class A0Trap extends Error {
   constructor(id, message, trap) { super(message); this.name = 'A0Error'; this.code = 'runtime'; this.id = id; this.trap = trap; }
 }
@@ -222,13 +257,17 @@ function a0_strap(k) {
   a0_depth = 0;
   throw new A0Trap(A0_TRAPS[k][1], A0_TRAPS[k][2].replace('{0}', fn), { kind: A0_TRAPS[k][0], fn, at, trip, chain });
 }
-function a0_sread(t) { if (t.position >= t.input.length) a0_strap(2); return [t.input[t.position++], t]; }
+${hostIo ? 'function a0_sread(t) { const v = a0_host_read(t); if (v === undefined) a0_strap(2); return [v, t]; }' : 'function a0_sread(t) { if (t.position >= t.input.length) a0_strap(2); return [t.input[t.position++], t]; }'}
 `;
 
 /** The runtime a program needs beyond the fixed prelude; empty for a canonical program without checked ops. */
-const jsExtras = (program: TypedProgram): string => {
+const jsExtras = (program: TypedProgram, hostIo: boolean): string => {
   const checked = program.functions.some((f) => f.nodes.some((n) => CHECKED_OPS.has(n.op)));
-  return `${checked ? JS_CHECKED : ''}${program.functions.some(mayTrapFn) ? jsStrictRuntime() : ''}`;
+  const strict = program.functions.some(mayTrapFn);
+  // A host refusal unwinds JS frames without going through a0_strap. Forget those frames
+  // before rethrowing the same exception, so a later invocation has a fresh trap chain.
+  const abort = hostIo ? `function a0_host_abort() {${strict ? ' a0_depth = 0;' : ''} }\n` : '';
+  return `${checked ? JS_CHECKED : ''}${strict ? jsStrictRuntime(hostIo) : ''}${abort}`;
 };
 
 function jsOperand(o: Operand): string {
@@ -2560,7 +2599,7 @@ export function assemble(
     case 'arm32':
       return assembleArm32(bodies, COMPILER_VERSION);
     case 'js':
-      return `${JS_PRELUDE}\n${jsExtras(program)}${bodies.join('\n\n')}\n`;
+      return `${JS_PRELUDE}${options.jsIo === 'host' ? JS_HOST_IO : JS_BUFFERED_IO}\n${jsExtras(program, options.jsIo === 'host')}${bodies.join('\n\n')}\n`;
     case 'c': {
       const decls = types.map(cTypeDecl).filter((d) => d.length > 0);
       if (io)
@@ -2622,6 +2661,16 @@ export interface CompileOptions {
   /** C/wasm/x86_64/Java/C# io capacities in words (defaults C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY); prelude only, bodies are unaffected. */
   readonly ioInputCapacity?: number;
   readonly ioOutputCapacity?: number;
+  /**
+   * JavaScript target only: add a0_make_host_io(read, write) for synchronous host word
+   * streams. Read returns a u32 or undefined at EOF (zero in canonical, A0712 in strict);
+   * write receives every word, including puts' length prefix. Operations return the same
+   * token. a0_make_io remains available with its buffered input/position/output. Callback
+   * exceptions propagate unchanged and unwind strict trap frames; callbacks must not reenter
+   * the module. This changes assembly only: absent, emitted bytes
+   * and function-body cache entries are unchanged.
+   */
+  readonly jsIo?: 'host';
   /**
    * C target only: host word streams instead of fixed input/output arrays. The caller
    * defines struct a0_io and A0_IO_READ(token, out)/A0_IO_WRITE(token, word) before
