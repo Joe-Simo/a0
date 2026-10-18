@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "scope": "Structured IR callee diagnostics and staged whole-function editing correctness. No public route change or performance claim.",
+  "checkout": {
+    "commit": "be7a052ace8351beb9b34834b0ad604afbbd0fa0",
+    "tree": "eb129de7656e356904cb1717406730b47f6a338f"
+  },
+  "control": "test/source-native-edit.controls.ts",
+  "command": "node --test dist/test/source-native-edit.controls.js",
+  "artifacts": {
+    "c": {
+      "fileSHA256": "ed1de3810216510b88fe318d56dd519c44fd79ffbfce5fe776bea7305b96c147",
+      "sourceSHA256": "2eee18e1f62244f16d496be873c1347ca8d75a008ad4f67b92e9b9df1e54f515",
+      "backend": "c-derived"
+    },
+    "direct": {
+      "fileSHA256": "43fd1f818ead977761419ec270272ce4b674f5208ba34fce01c73229272afd22",
+      "sourceSHA256": "2eee18e1f62244f16d496be873c1347ca8d75a008ad4f67b92e9b9df1e54f515",
+      "backend": "direct-wasm"
+    },
+    "js": {
+      "fileSHA256": "a1905675f14f4fa64fd79a501cbe22ffaca4a7e3260b3f15d871b68b63170241",
+      "sourceSHA256": "2eee18e1f62244f16d496be873c1347ca8d75a008ad4f67b92e9b9df1e54f515",
+      "backend": "generated-js"
+    },
+    "diagnostic": {
+      "fileSHA256": "9c56996e430972e7a75dab756f6c70231cb7c930c47a74c50a85d9f7df427743",
+      "sourceSHA256": "4673ad262e07547865a196267955cb4014dbe5dd85ed2bba2bccce877732a7c6",
+      "backend": "direct-wasm companion"
+    },
+    "format": {
+      "fileSHA256": "06018437873a08eea5ded83955f9b0ee29816aebaf40830c8f4dd5e7ba37c46b",
+      "sourceSHA256": "29300f8e5e282f63538c032d9511bbe956dafbf6fcd9b4d00022bd2ef529f0fd",
+      "backend": "direct-wasm companion"
+    }
+  },
+  "sourceClosure": "C-derived frontend source hash checked against freshly linked current compiler/source_frontend.a0 closure. Direct and generated-JS strict artifact input/provenance loaders succeeded; diagnostic and formatting loaders checked current source inventories.",
+  "result": {
+    "tests": 16,
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "backends": [
+      "C-derived",
+      "direct Wasm",
+      "generated JS"
+    ]
+  },
+  "controls": [
+    "Existing whole-function program-edit controls and unchanged strict A0Error assertions.",
+    "Both ordinary and verification diagnostic entries render A0102 unknown, self, forward and operation-alias calls; A0103 fold bodies; A0104 loop predicates. Complete JSON equals the independent host checker oracle.",
+    "Comment-owned synthetic IR rows and nonempty symbol/comment byte pools retain source-less ownership and zero original callee spans.",
+    "Second semantic failure preserves first rendered error object; prior raw-error identity, renderer acceptance parity and real allocation-budget refusals remain covered.",
+    "Eight source-vector corruptions (leading blank/comments, original or forged zero error-line, absent word table) and three malformed IR-vector geometries retain transport status3 with no JSON.",
+    "Copied results survive arena reuse; failures leave original program unchanged."
+  ],
+  "verification": {
+    "build": "passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "seedRegeneration": "passed: stage2 equals stage3 and stage3 equals stage4 byte-for-byte; no tracked seed changes",
+    "hostDiagnosticBoundaryAndRetryTests": "11 passed, zero skips",
+    "seedTests": "5 passed, zero skips, with configured repository toolchain"
+  },
+  "logSHA256": "2938dd9824649ff59d7d127450322c5b9890cdc3c2d3ef60524a3c0b0c662cbc",
+  "limitations": [
+    "Fresh C/direct frontend artifacts were reused only because the shared parser/checker source closure is unchanged; new diagnostic/format companions and fresh generated-JS proof bind the tested tree.",
+    "This correctness run is not a benchmark or full repository gate. Public node/session/CLI/MCP routes remain staged."
+  ]
+}
