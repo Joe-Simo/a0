@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
@@ -70,7 +70,8 @@ async function fixture(root: string) {
   return files;
 }
 
-async function manifest(root: string): Promise<SourceCostBuild> {
+async function manifest(checkout: string): Promise<SourceCostBuild> {
+  const root = await realpath(checkout);
   const compiler = await sourceCompilerInputs(root);
   const program = await link(join(root, 'compiler/source_frontend.a0'), (path) =>
     readFile(path, 'utf8'),
@@ -628,6 +629,9 @@ test('strict C provenance resolves symlinked checkout roots and retains compiler
     const record = await manifest(root);
     const compiler = { link, formatProgram, compile, version: COMPILER_VERSION };
     await symlink(root, alias, 'dir');
+    const aliasRecord = await manifest(alias);
+    assert.deepEqual(aliasRecord, record);
+    verifySourceCostControl(aliasRecord, record, 'source-algorithm');
     await verifyCSourceCostBuild(alias, record, compiler, true);
     const modules = record.modules as { path: string; sha256: string }[];
     for (const change of [
