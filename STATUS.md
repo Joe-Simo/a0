@@ -1,5 +1,30 @@
 # A0 status
 
+2026-10-18 shared lazy-error source control: the isolated A0 algorithm has lower frontend and
+pipeline medians than its unchanged native C control on all six frozen inputs, while CPU, RSS
+and fresh-child wall losses remain. It is not adopted as a default, and all historical Canonical
+and Dense frontend medians remain lower. The complete run, raw cells, losses and exact source
+history are retained (`results/source-cost-shared-lazy-error-decision.json`,
+`results/source-cost-shared-lazy-error.json`, `results/source-cost-shared-lazy-error-samples.json`;
+replay in `experiments/unification/compiler-codegen/shared-lazy-error.md`).
+
+2026-10-18 read-array Wasm control: all 240 emitted C hashes match at maximum recorded load 1.9,
+but the direct frontend remains slower than the C-derived control on all six applications
+(1.23–2.08×). Boot takes 2640.11 ms versus 1299.51 ms for the C-derived frontend and 191.76 ms
+for old Canonical. The two direct components total 143092 bytes, with a proved 16-byte arena stack;
+smaller artifacts and lower linear memory do not clear the latency losses. This paired run does not
+isolate the read-array fold optimization against the earlier direct backend. The official frontend
+remains unchanged; full cells, audits and scope are in `results/unified-source-read-array-wasm.json`,
+`results/unified-source-read-array-wasm-samples.json` and
+`results/unified-source-read-array-wasm-decision.json`.
+
+2026-10-18 direct Wasm control: all 240 emitted C hashes match at maximum recorded load 1.7,
+but the boot frontend median is 2716.08 ms versus 189.73 ms for old Canonical and 1291.83 ms
+for the C-derived frontend. The direct components total 143167 bytes and use less linear Wasm
+memory than the C control after deriving the generic arena stack bound; these reductions do not
+clear the latency loss. The public default is unchanged (`results/unified-source-direct-wasm.json`,
+`results/unified-source-direct-wasm-samples.json`, `results/unified-source-direct-wasm-decision.json`).
+
 2026-10-18 transport controls: borrowing LOAD replies passes the wire and graph controls but
 loses on all six frontend latency and live RSS medians; boot rises from 1291.52 to 1350.19 ms
 (`results/unified-source-reply-view.json`, raw cells in
@@ -50,7 +75,7 @@ must not be read as proof of equal frontend memory. That source revision's corre
 2026-10-16 publication update: first-party A0 source, editor and plugin packages use Apache 2.0 with copyright notices; third-party notices retain their original licenses. The website now includes the corrected independent Codex syntax study and its complete replay archive (`results/unification-codex-v2-replication.json`, `experiments/unification/README.md`). Earlier Dense-guide comparative conclusions are withdrawn (`results/unification-codex-guide-erratum.json`). This publication keeps the current compiler: unified syntax, native frontend performance, migration and the tool cutover remain unfinished. Historical language benchmarks retain their dates and scope.
 
 
-Last updated 2026-10-17, compiler `a0c-0.1.63` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
+Last updated 2026-10-18, compiler `a0c-0.1.66` (`COMPILER_VERSION` in `src/targets.ts`). This is the current state of the project:
 what exists, what is measured and where the numbers live, what is lost or unknown, how to reproduce it, and what comes next.
 Every number on this page is in the `results/` file named beside it, or is reproduced by the command shown. The long record of
 how the project got here, session by session, is in [docs/history/](docs/history/) (index at the end). Contributing rules are in

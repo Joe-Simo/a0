@@ -1,0 +1,183 @@
+{
+  "status": "local-passed-windows-pending",
+  "scope": "Portable internal C-only stage; public readers, checked-in seed, ARM64 and formatter defaults unchanged",
+  "baseCommit": "468c96b7244b36e0a4fa08011169eaee0588b165",
+  "host": {
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "sourceBytes": 439967,
+  "sourceSHA256": "289d3fab2ff8c56b3380d18db5d748e8e6a0059c39f745d209563cb553ac06e5",
+  "seedSHA256": "3ed1284a3ba79243079fd39c5792a8de671f31e76dccecbc4ffe6adc06cd2660",
+  "COnlyPhase": {
+    "javascriptRuntimeOnPath": false,
+    "sourceAndShimImmutable": true,
+    "generatedCVerbatim": true,
+    "compilers": [
+      {
+        "compiler": "gcc",
+        "version": "gcc (Debian 14.2.0-19) 14.2.0",
+        "optimization": "O2",
+        "sanitizer": false,
+        "warningErrors": true,
+        "pthreads": true,
+        "stages": [
+          {
+            "stage": 2,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          },
+          {
+            "stage": 3,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          },
+          {
+            "stage": 4,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          }
+        ]
+      },
+      {
+        "compiler": "clang",
+        "version": "Debian clang version 19.1.7 (3+b1)",
+        "optimization": "O2",
+        "sanitizer": false,
+        "warningErrors": true,
+        "pthreads": true,
+        "stages": [
+          {
+            "stage": 2,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          },
+          {
+            "stage": 3,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          },
+          {
+            "stage": 4,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          }
+        ]
+      }
+    ]
+  },
+  "shim": [
+    {
+      "file": "c_arena_stage.c",
+      "sha256": "11113cf3b373abc5f80dc3b1216c866471fa97d49a902e9b3b1087de17dce05d"
+    },
+    {
+      "file": "arena_runtime.c",
+      "sha256": "6c18b83ad9d6006bb831baf4d06eae805680cf41c84f70f360f8f01b65048432"
+    },
+    {
+      "file": "arena_runtime.h",
+      "sha256": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9"
+    }
+  ],
+  "controls": {
+    "clangFull": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "optimization": "O2",
+      "ubsan": true
+    },
+    "gccSourceTransportHost": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "optimization": "O2",
+      "ubsan": true,
+      "reproduction": "separate C-only shell proof"
+    },
+    "finalBinaryHostEcho": {
+      "clang": "passed",
+      "gcc": "passed",
+      "bytes": [
+        "NUL",
+        "CR",
+        "LF",
+        "CTRL-Z",
+        "255"
+      ],
+      "unicodePaths": true,
+      "spacedPaths": true
+    },
+    "hostFaults": [
+      "thread-create",
+      "thread-join",
+      "exclusive-temp-create",
+      "write",
+      "flush",
+      "commit",
+      "close",
+      "replace",
+      "directory-destination"
+    ],
+    "finalAllocationLifetime": "failed join publishes nothing and does not destroy session; successful FINISH releases all allocations",
+    "arenaRuntime": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "optimizations": [
+        "O0",
+        "O2"
+      ]
+    },
+    "actual32BitRuntime": {
+      "status": "passed",
+      "target": "wasm32-wasi",
+      "sizeTBits": 32,
+      "compiler": "Clang 19",
+      "fixture": "test/fixtures/c-arena-stage/arena32.c",
+      "fixtureSHA256": "32c1708b432fce58ffb9050df49badcc065ac8bb293c1660cf4e37b0cf499d74",
+      "overflowAllocationRefused": true,
+      "smallAllocationAndFinishPassed": true,
+      "nativeGccM32": "unavailable: missing 32-bit libc headers"
+    },
+    "staticRepositoryChecks": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 1,
+      "skip": "optional A0_PUBLIC_DENYLIST file was not configured"
+    }
+  },
+  "windows": {
+    "status": "pending-real-run",
+    "workflow": ".github/workflows/gate-windows-c-stage.yml",
+    "msys2Action": {
+      "version": "v2.31.0",
+      "commit": "cafece8e6baf9247cf9b1bf95097b0b983cc558d",
+      "source": "https://github.com/msys2/setup-msys2.git"
+    },
+    "compilers": [
+      "MSYS2 UCRT64 GCC/winpthreads",
+      "MSYS2 UCRT64 Clang"
+    ],
+    "additionalNativeControls": [
+      "locked destination",
+      "exclusive temporary collision"
+    ],
+    "phase": "PATH=/ucrt64/bin:/usr/bin; fail if node or bun resolves"
+  },
+  "checks": {
+    "build": "passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "prereviewScore": 0,
+    "shellSyntax": "passed"
+  },
+  "timingClaims": false
+}

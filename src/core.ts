@@ -706,6 +706,7 @@ export function parseType(
   line?: number,
   header?: string,
   widePureArrays = false,
+  primitiveAliases?: Readonly<Record<string, 'u32' | 'bool' | 'io'>>,
 ): Type {
   let pos = 0;
   const fail = (msg: string, word?: string): never => {
@@ -727,7 +728,16 @@ export function parseType(
   };
   const parseOne = (): Type => {
     let base: Type;
-    if (text.startsWith('u32', pos)) {
+    // Single-character source aliases keep the original token and error position intact.
+    const aliasWord = text[pos] ?? '';
+    const alias =
+      primitiveAliases !== undefined && Object.hasOwn(primitiveAliases, aliasWord)
+        ? primitiveAliases[aliasWord]
+        : undefined;
+    if (alias !== undefined) {
+      base = alias;
+      pos += 1;
+    } else if (text.startsWith('u32', pos)) {
       base = 'u32';
       pos += 3;
     } else if (text.startsWith('bool', pos)) {
@@ -935,6 +945,7 @@ function nestedFix(
   id: string,
   head: readonly string[],
   rest: readonly string[],
+  sourceAliases?: Readonly<Record<string, Op>>,
 ): { fix: string; to: string; exact: boolean } {
   const text = rest.join(' ');
   const open = text.indexOf('(');
@@ -948,7 +959,9 @@ function nestedFix(
   // `(a, b)` or `(a b)` is a record; `(OP …)` or `(F …)` an inner op or call.
   const tuple =
     text.slice(open, close < 0 ? undefined : close).includes(',') ||
-    (opOf(innerOp) === undefined && !(isDirectCallee(innerOp) && inner.length > 1));
+    (!(sourceAliases !== undefined && Object.hasOwn(sourceAliases, innerOp)) &&
+      opOf(innerOp) === undefined &&
+      !(isDirectCallee(innerOp) && inner.length > 1));
   if (tuple) inner.unshift('rec');
   const pairs = text.split('(').length - 1 === 1 && text.split(')').length - 1 === 1;
   if (id === 'ret' && text.startsWith('(') && (close < 0 || close === text.length - 1)) {
@@ -976,8 +989,9 @@ function nestedError(
   lineText: string,
   line: number | undefined,
   cls: DiagnosticCode,
+  sourceAliases?: Readonly<Record<string, Op>>,
 ): A0Error {
-  const { fix, to, exact } = nestedFix(id, head, rest);
+  const { fix, to, exact } = nestedFix(id, head, rest, sourceAliases);
   const e = diag('A0010', [], {
     ...(line === undefined ? {} : { line }),
     fix,
@@ -1033,6 +1047,7 @@ export function parseNodeOf(
   line: number | undefined,
   words: readonly string[] | undefined,
   readOperand = parseOperand,
+  sourceAliases?: Readonly<Record<string, Op>>,
 ): Node {
   // TEXT_LINE needs a quote: a line without one skips the regular expression.
   const textMatch =
@@ -1072,9 +1087,13 @@ export function parseNodeOf(
       break;
     }
   }
-  if (nested) throw nestedError(id, [id, word], rest, lineText, line, 'parse');
+  if (nested) throw nestedError(id, [id, word], rest, lineText, line, 'parse', sourceAliases);
   // `id F args…` with F a function name (not an op) is the direct form of `id call F args…`.
-  const op = opOf(word);
+  const sourceOp =
+    sourceAliases !== undefined && Object.hasOwn(sourceAliases, word)
+      ? sourceAliases[word]
+      : undefined;
+  const op = sourceOp ?? opOf(word);
   if (op === undefined && isDirectCallee(word))
     return { id, op: 'call', callee: word, args: operandsOf(rest, line, lineText, readOperand) };
   if (op === undefined) {
@@ -1108,6 +1127,7 @@ export function parseNodeOf(
               }),
     });
   }
+  const opWord = sourceOp === undefined ? op : word;
   if (op === 'loop') {
     const [pred, callee, ...args] = rest;
     if (
@@ -1160,7 +1180,7 @@ export function parseNodeOf(
             const target = i === all.length - 1 ? id : `${id}t${i}`;
             return `${target} ${op} ${i === 0 ? rest[0] : `${id}t${i - 1}`} ${r}`;
           });
-    throw diag('A0014', [op, OP_ARITY[op], rest.length], {
+    throw diag('A0014', [opWord, OP_ARITY[op], rest.length], {
       ...lineAt(line),
       expected: String(OP_ARITY[op]),
       actual: String(rest.length),
@@ -1196,9 +1216,17 @@ export function freshRetId(nodes: readonly { readonly id: string }[]): string {
  * Whether a `ret` line (split on whitespace) is `ret OP ARGS…` or `ret F ARGS…`: sugar for a
  * fresh node computing the value and `ret` of it. `ret NAME` alone is always the operand NAME.
  */
-export function isRetNodeForm(parts: readonly string[]): boolean {
+export function isRetNodeForm(
+  parts: readonly string[],
+  sourceAliases?: Readonly<Record<string, Op>>,
+): boolean {
   const word = parts[1] ?? '';
-  return parts.length > 2 && (opOf(word) !== undefined || isDirectCallee(word));
+  return (
+    parts.length > 2 &&
+    ((sourceAliases !== undefined && Object.hasOwn(sourceAliases, word)) ||
+      opOf(word) !== undefined ||
+      isDirectCallee(word))
+  );
 }
 
 /** The error for a `ret` line with more than one word that is not `ret OP ARGS…`. */
@@ -1206,10 +1234,11 @@ export function retOperandError(
   parts: readonly string[],
   line: number | undefined,
   code: DiagnosticCode,
+  sourceAliases?: Readonly<Record<string, Op>>,
 ): A0Error {
   const rest = parts.slice(1);
   const nested = rest.some((r) => r.includes('('));
-  if (nested) return nestedError('ret', ['ret'], rest, parts.join(' '), line, code);
+  if (nested) return nestedError('ret', ['ret'], rest, parts.join(' '), line, code, sourceAliases);
   const e = diag('A0030', [], line === undefined ? {} : { line });
   return code === e.code ? e : new A0Error(e.detail, e.line, { ...e.detailOf(), code });
 }
@@ -1234,6 +1263,7 @@ export interface ProgramReader {
   operand(text: string, line: number, lineText: string): Operand;
   specs(name: string): SpecBuilder;
   finish(fn: Func): Func;
+  readonly opAliases?: Readonly<Record<string, Op>>;
   origin?(fn: string, node: string | undefined, line: number): void;
 }
 
@@ -1399,7 +1429,7 @@ export function parseProgram(source: string, reader?: ProgramReader): Program {
       if (first === 'ret') {
         retComments = body.comments;
         reader?.origin?.(name, 'ret', body.line);
-        if (isRetNodeForm(parts)) {
+        if (isRetNodeForm(parts, reader?.opAliases)) {
           // `ret OP ARGS…` is sugar for a fresh node followed by `ret` of it.
           const id = freshRetId(nodes);
           try {
@@ -1414,7 +1444,8 @@ export function parseProgram(source: string, reader?: ProgramReader): Program {
           }
           ret = { kind: 'node', id };
         } else {
-          if (parts.length !== 2) throw retOperandError(parts, body.line, 'parse');
+          if (parts.length !== 2)
+            throw retOperandError(parts, body.line, 'parse', reader?.opAliases);
           ret = (reader?.operand ?? parseOperand)(parts[1] ?? '', body.line, body.text);
         }
         const endLine = next();

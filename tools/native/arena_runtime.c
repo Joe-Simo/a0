@@ -114,7 +114,9 @@ static void allocate_words(a0_arena_session *s, uint32_t count) {
     return;
   }
   if (count > s->max_words - s->allocated_words ||
+#if SIZE_MAX <= UINT32_MAX
       (uint64_t)count > SIZE_MAX / sizeof(uint32_t) ||
+#endif
       s->allocation_count == UINT32_MAX || !reserve_allocation_slot(s)) {
     response(s, A0_ARENA_ALLOCATION, NULL, 0);
     return;

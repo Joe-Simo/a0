@@ -1,0 +1,120 @@
+{
+  "schema": 2,
+  "scope": "Source-history archive for a rejected experimental projection comparison. Importing its experimental refs does not merge or promote them.",
+  "decision": "rejected-for-default-promotion",
+  "evidence": "results/source-cost-c-projection-decision.json",
+  "format": "git-bundle-v2",
+  "encoding": "binary",
+  "sha256": "a3a797a943866b33912647471f7898935d4e8b7b074b72c9a818a29e25efca07",
+  "bytes": 32405,
+  "prerequisite": {
+    "commit": "12fe5c8f646f2d339e2c4cf15bd0120f77084ae5",
+    "excluded": "This commit and all of its reachable history are already in the publication history and are excluded from this incremental bundle."
+  },
+  "refs": [
+    {
+      "ref": "refs/heads/measure/c-projection-common",
+      "commit": "b9c35ca6d162e60e7e1945ca41c8652f5b22cc7d",
+      "tree": "1961e784af14d290fc1fa719974a93bb8f362feb"
+    },
+    {
+      "ref": "refs/heads/measure/c-projection-candidate",
+      "commit": "41682e2265077a3d69adfd6cbdc9fa8f5e140a95",
+      "tree": "9b2ae63db6634b1eff424fc20521c3583081550c"
+    }
+  ],
+  "commits": [
+    {
+      "commit": "bed6791461b4a161c95a6baf66476d0d582c6702",
+      "tree": "735d824add3ca189b4ec7374783b0eeacbb6b48e",
+      "parents": [
+        "12fe5c8f646f2d339e2c4cf15bd0120f77084ae5"
+      ],
+      "subject": "Add strict same-source C compiler codegen controls"
+    },
+    {
+      "commit": "0c86d4c99990a8f3e3bb1dbc69a2bee4a3f6f82f",
+      "tree": "a5c84d93af35f52c24eab5bc513578fafb95f1e7",
+      "parents": [
+        "bed6791461b4a161c95a6baf66476d0d582c6702"
+      ],
+      "subject": "Capture effective Clang command from actual verbose compile"
+    },
+    {
+      "commit": "b17ef3787594a054e264b3512d4d21ea1e01bec4",
+      "tree": "b593ea5d3e672e916c5f2a5d556503a7a5860f0d",
+      "parents": [
+        "0c86d4c99990a8f3e3bb1dbc69a2bee4a3f6f82f"
+      ],
+      "subject": "Distinguish Clang effective command from cc1 version trace"
+    },
+    {
+      "commit": "4a89593a6b4bb67fe835f3e5d3493c46d73193c6",
+      "tree": "50ecc7b1e81861c3e93e82dd6c1a6128559a6888",
+      "parents": [
+        "b17ef3787594a054e264b3512d4d21ea1e01bec4"
+      ],
+      "subject": "Record exact native compiler codegen preparation control"
+    },
+    {
+      "commit": "b9c35ca6d162e60e7e1945ca41c8652f5b22cc7d",
+      "tree": "1961e784af14d290fc1fa719974a93bb8f362feb",
+      "parents": [
+        "4a89593a6b4bb67fe835f3e5d3493c46d73193c6"
+      ],
+      "subject": "Keep diagnostic capability presence mutation independent"
+    },
+    {
+      "commit": "f657fc417e82c56a1fb97b92e0f105ff6e576872",
+      "tree": "8ad733e5f4bf717550dcd1f8d16aeebb4f83fe3e",
+      "parents": [
+        "b9c35ca6d162e60e7e1945ca41c8652f5b22cc7d"
+      ],
+      "subject": "Reuse owned C record projections across nested iterations"
+    },
+    {
+      "commit": "41682e2265077a3d69adfd6cbdc9fa8f5e140a95",
+      "tree": "9b2ae63db6634b1eff424fc20521c3583081550c",
+      "parents": [
+        "f657fc417e82c56a1fb97b92e0f105ff6e576872"
+      ],
+      "subject": "Invalidate caches for C projection emission"
+    }
+  ],
+  "creation": {
+    "gitVersion": "git version 2.52.0",
+    "config": {
+      "pack.threads": 1,
+      "pack.compression": 9,
+      "pack.window": 10,
+      "pack.depth": 50
+    },
+    "arguments": [
+      "bundle",
+      "create",
+      "--version=2",
+      "<output.bundle>",
+      "refs/heads/measure/c-projection-common",
+      "refs/heads/measure/c-projection-candidate",
+      "^12fe5c8f646f2d339e2c4cf15bd0120f77084ae5"
+    ],
+    "repeatedCreation": "Two independent bundle creations with the recorded arguments and configuration produced byte-identical output."
+  },
+  "verification": {
+    "isolatedRepository": "A new bare repository first fetched only the prerequisite commit and its reachable history. Both experimental commits were confirmed absent before bundle import.",
+    "bundleImport": "git bundle verify and git fetch succeeded with no experimental source objects supplied from any other repository.",
+    "exactTrees": "All seven imported commit and tree IDs match the frozen recorded history.",
+    "controlCommitsAboveBase": 5,
+    "candidateCommitsAboveBase": 7,
+    "archiveOnly": "No measured checkout, artifact, harness, option or timing report was modified or rerun.",
+    "readmeCommands": "The README extraction, SHA-256 validation, git bundle verify, experimental-ref fetch and all three detached-worktree commands were executed verbatim in a separate prerequisite-base checkout. All three resulting worktrees had exact clean recorded commit and tree IDs; no builds or timing were run.",
+    "originalJsonDecode": "Decoded bytes match the recorded length and SHA-256 and the original bundle byte for byte."
+  },
+  "path": "results/source-cost-c-projection-source.bundle",
+  "storage": {
+    "previousMetadataCommit": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+    "previousMetadataBytes": 52481,
+    "previousMetadataSha256": "f61707b0140a97f8f38c3eaeb03d115a083efa5353e71c82342dba388d03fe26",
+    "preservedBundleBytes": true
+  }
+}

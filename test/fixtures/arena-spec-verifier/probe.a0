@@ -1,1 +1,43 @@
 use "../../../compiler/verify_arena.a0"
+use "../../../compiler/specs_arena.a0"
+
+# Test the standalone phase through the ordinary A0 directory publication path.
+# Whole-source parse and transport failures bypass this callback unchanged.
+fn probe_fresh_specs (u32x128,io) u32 -> (u32x128,io)
+m at p0 0
+t at p0 1
+active set m 0 0
+fresh call arena_specs t active
+syntax at fresh 1
+next at fresh 2
+pair rec active syntax next
+published call as_publish pair
+out at published 0
+code get out 0
+ok eq code 0
+specflag get out 30
+has ne specflag 0
+deferred and ok has
+status select deferred 7 code
+ready set out 0 status
+io at published 1
+result rec ready io
+ret result
+end
+
+fn probe_standalone_begin io u32 u32 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+parsed call arena_parse p0 p1 p2
+m at parsed 1
+t at parsed 2
+code at parsed 0
+success eq code 0
+pending eq code 7
+complete or success pending
+count select complete 1 0
+pair rec m t
+fresh fold probe_fresh_specs count pair
+ready at fresh 0
+io at fresh 1
+result call arena_verify_begin io ready
+ret result
+end

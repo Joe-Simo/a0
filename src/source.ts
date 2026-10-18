@@ -8,6 +8,7 @@ import {
   isValidIdentifier,
   LIMITS,
   type Node,
+  type Op,
   type Operand,
   type Program,
   parseNodeOf,
@@ -21,6 +22,9 @@ import {
 } from './core.js';
 import { A0Error, diag } from './diagnostics.js';
 import { type Lit, SpecBuilder } from './spec.js';
+
+const SOURCE_OP_ALIASES: Readonly<Record<string, Op>> = { '<<': 'shl', '>>': 'shr' };
+const SOURCE_TYPE_ALIASES = { _: 'u32' } as const;
 
 export interface ParsedSource {
   readonly program: Program;
@@ -69,12 +73,13 @@ export function parseSourceUnit(source: string): ParsedSource {
       if (cursor.pos !== cursor.text.length) fail('unexpected text after aggregate literal');
       return { id, op: value.kind, args: value.items };
     }
-    // Operator tokens normalize directly in the existing node parser, preserving original text.
-    const tokens =
-      word === '<<' || word === '>>'
-        ? [id, word === '<<' ? 'shl' : 'shr', ...parts.slice(2)]
-        : parts;
-    return parseNodeOf(text, line, text.includes('"') ? undefined : tokens, operand);
+    return parseNodeOf(
+      text,
+      line,
+      text.includes('"') ? undefined : parts,
+      operand,
+      SOURCE_OP_ALIASES,
+    );
   };
   const program = parseProgram(source, {
     header(words, line, text) {
@@ -82,13 +87,14 @@ export function parseSourceUnit(source: string): ParsedSource {
       const arrow = words.indexOf('->');
       inferred = arrow < 0 && words.length === 2;
       if (!inferred && (arrow < 2 || arrow !== words.length - 2)) throw diag('A0023', [], { line });
-      const type = (word: string): Type => parseType(word.replaceAll('_', 'u32'), line, text, true);
+      const type = (word: string): Type => parseType(word, line, text, true, SOURCE_TYPE_ALIASES);
       const params = inferred ? [] : words.slice(2, arrow).map(type);
       if (params.length > LIMITS.maxParams) throw diag('A0024', [], { line });
       return { params, result: inferred ? 'u32' : type(words[arrow + 1] ?? '') };
     },
     node,
     operand,
+    opAliases: SOURCE_OP_ALIASES,
     specs: (name) => new SpecBuilder(name, { node, compact: true }),
     finish(fn) {
       if (!inferred) return fn;

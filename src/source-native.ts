@@ -9,13 +9,29 @@ import {
   PARSED_VECTOR_WIDTHS,
   SPEC_VECTOR_WIDTHS,
 } from './source-native-compose.js';
+import {
+  type NativeFormatOptions,
+  type NativeFormatRequest,
+  type NativeFormatResult,
+  type NativeRevisionRequest,
+  type NativeRevisionResult,
+  nativeSourceFormatter,
+} from './source-native-format.js';
 import { decodeNativeSource, decodeNativeUnit } from './source-native-ir.js';
+import { encodeNativeProgram, restoreNativeProgramMetadata } from './source-native-program.js';
+import {
+  type NativeDiagnosticOptions,
+  type NativeDiagnosticPorts,
+  type NativeLiveDiagnostic,
+  nativeDiagnosticRenderer,
+} from './source-native-render.js';
+import { losslessSourceString } from './source-utf8.js';
 import { readWasmWord, readWasmWords, writeWasmWord, writeWasmWords } from './wasm-words.js';
 
 const OFFSETS = [
   32, 35, 38, 41, 44, 47, 50, 53, 56, 59, 62, 68, 71, 74, 97, 100, 103, 106, 115, 118, 121, 124,
 ];
-interface NativeApi {
+export interface NativeApi extends NativeDiagnosticPorts {
   memory: WebAssembly.Memory;
   frontend_abi(): number;
   malloc(size: number): number;
@@ -42,10 +58,10 @@ interface NativeState {
   readonly specState: readonly number[];
 }
 export type NativeSourceResult =
-  | (NativeState & { readonly ok: false })
+  | (NativeState & { readonly ok: false; readonly diagnostic?: NativeLiveDiagnostic })
   | (NativeState & { readonly ok: true; readonly program: Program; readonly typed: TypedProgram });
 export type NativeUnitResult =
-  | (NativeState & { readonly ok: false })
+  | (NativeState & { readonly ok: false; readonly diagnostic?: NativeLiveDiagnostic })
   | (NativeState & { readonly ok: true; readonly program: Program });
 
 export type NativeGraphResult = NativeSourceResult & {
@@ -81,24 +97,68 @@ function commentSnapshot(program: Program): SourceUnitComments {
   };
 }
 
-export function nativeSource(module: WebAssembly.Module): {
+export function nativeSource(
+  module: WebAssembly.Module,
+  diagnostics?: NativeDiagnosticOptions,
+  formatting?: NativeFormatOptions,
+): {
   readonly memoryBytes: number;
   parse(source: string, budget?: number): NativeSourceResult;
   parseUnit(source: string, budget?: number): NativeUnitResult;
+  /** Experimental compiler IR check through the same A0 checker; locations are synthetic. */
+  checkProgram(program: Program, budget?: number): NativeSourceResult;
   /** Units must already be resolved, ordered and assigned a coherent profile by the graph loader. */
   checkUnits(
     units: readonly NativeUnitResult[],
     profile: Profile,
     budget?: number,
   ): NativeGraphResult;
+  /** Formatting uses only this engine's current live result; output is detached. */
+  format(
+    result: NativeSourceResult | NativeUnitResult,
+    request?: NativeFormatRequest,
+  ): NativeFormatResult;
+  /** Content/semantic hashes retain the established private revision serialization. */
+  revision(
+    result: NativeSourceResult | NativeUnitResult,
+    request?: NativeRevisionRequest,
+  ): NativeRevisionResult;
   close(): void;
 } {
   if (WebAssembly.Module.imports(module).length)
     throw new Error('source frontend must be import-free');
   const api = new WebAssembly.Instance(module).exports as unknown as NativeApi;
+  return nativeSourceApi(api, undefined, diagnostics, formatting);
+}
+
+/** Internal transport boundary shared by compiled backends of the same A0 frontend. */
+export function nativeSourceApi(
+  api: NativeApi,
+  retainedMemoryBytes: () => number = () => api.memory.buffer.byteLength,
+  diagnostics?: NativeDiagnosticOptions,
+  formatting?: NativeFormatOptions,
+): ReturnType<typeof nativeSource> {
   if (typeof api.frontend_abi !== 'function' || api.frontend_abi() !== 3)
     throw new Error('unsupported source frontend ABI');
   let closed = false;
+  const renderer =
+    diagnostics === undefined ? undefined : nativeDiagnosticRenderer(api, diagnostics);
+  const formatter = formatting === undefined ? undefined : nativeSourceFormatter(api, formatting);
+  let generation = 0;
+  let formatStates = new WeakMap<
+    object,
+    { generation: number; sourceStatus: number; parsed: Uint32Array; specs: Uint32Array }
+  >();
+  const remember = <T extends NativeState>(result: T): T => {
+    if (formatter)
+      formatStates.set(result, {
+        generation,
+        sourceStatus: result.status,
+        parsed: Uint32Array.from(result.state),
+        specs: Uint32Array.from(result.specState),
+      });
+    return result;
+  };
   let snapshots = new WeakMap<NativeUnitResult, NativeUnitSnapshot>();
   const assertOpen = (): void => {
     if (closed) throw new Error('source frontend is closed');
@@ -121,7 +181,14 @@ export function nativeSource(module: WebAssembly.Module): {
   const readResult = (status: number) => {
     const state = page(api.frontend_state()),
       specState = page(api.frontend_specs());
-    if (status !== 0) return { ok: false as const, status, state, specState };
+    if (status !== 0)
+      return {
+        ok: false as const,
+        status,
+        state,
+        specState,
+        ...(renderer === undefined ? {} : { diagnostic: renderer.snapshot(state) }),
+      };
     const tables = new Map(
       OFFSETS.map((offset) => [offset, view(state[offset] as number, state[offset + 1] as number)]),
     );
@@ -147,7 +214,7 @@ export function nativeSource(module: WebAssembly.Module): {
     return { ok: true as const, status, state, specState, tables, specTables, symbols };
   };
   const withSource = (source: string, action: (pointer: number, length: number) => number) => {
-    const bytes = new TextEncoder().encode(source),
+    const bytes = new TextEncoder().encode(losslessSourceString(source)),
       pointer = api.malloc(bytes.length || 1);
     if (!pointer) throw new Error('source frontend host allocation failed');
     try {
@@ -159,11 +226,12 @@ export function nativeSource(module: WebAssembly.Module): {
   };
   const readSource = (source: string, budget: number, unit: boolean) => {
     checkBudget(budget);
-    const result = withSource(source, (pointer, length) =>
-      unit
+    const result = withSource(source, (pointer, length) => {
+      generation++;
+      return unit
         ? api.frontend_parse_unit(pointer, length, budget)
-        : api.frontend_parse(pointer, length, budget),
-    );
+        : api.frontend_parse(pointer, length, budget);
+    });
     return { ...readResult(result.value), byteLength: result.byteLength };
   };
   const checked = (status: number): void => {
@@ -191,19 +259,73 @@ export function nativeSource(module: WebAssembly.Module): {
     if (!pointer) throw new Error('native IR builder is not active');
     return pointer;
   };
+  const irBuilder = (budget: number): NativeIrBuilder => ({
+    initialize(source, strict) {
+      checked(
+        withSource(source, (pointer, length) => {
+          generation++;
+          return api.frontend_ir_init(pointer, length, budget, strict ? 1 : 0);
+        }).value,
+      );
+    },
+    upload,
+    symbol(name) {
+      const bytes = new TextEncoder().encode(name),
+        // Empty identities still need a valid zero-length span for native classification.
+        handle = upload(bytes.length ? Uint32Array.from(bytes) : new Uint32Array(1));
+      checked(api.frontend_ir_symbol(handle, bytes.length));
+      return api.frontend_ir_value();
+    },
+    type(kind, a, b, fields) {
+      const handle = upload(fields);
+      checked(api.frontend_ir_type(kind, a, b, handle));
+      return api.frontend_ir_value();
+    },
+    get(index) {
+      return readWasmWord(api.memory.buffer, builderPointer() + index * 4);
+    },
+    set(index, value) {
+      writeWasmWord(api.memory.buffer, builderPointer() + index * 4, value);
+    },
+  });
+  const irFailure = (error: unknown) => {
+    if (!(error instanceof NativeIrFailure)) throw error;
+    const pointer = api.frontend_ir_state(),
+      state = pointer ? page(pointer) : Array<number>(128).fill(0);
+    state[0] = error.status;
+    return {
+      ok: false as const,
+      status: error.status,
+      state,
+      specState: Array<number>(128).fill(0),
+      ...(renderer === undefined
+        ? {}
+        : {
+            diagnostic: {
+              rendered: {
+                ok: false as const,
+                reason: 'incomplete-ir' as const,
+              },
+            },
+          }),
+    };
+  };
   return {
     get memoryBytes() {
-      return api.memory.buffer.byteLength;
+      return retainedMemoryBytes() + (renderer?.memoryBytes ?? 0) + (formatter?.memoryBytes ?? 0);
     },
     parse(source, budget = 16_000_000) {
       const result = readSource(source, budget, false);
-      if (!result.ok) return result;
+      if (!result.ok) return remember(result);
       const { byteLength: _bytes, tables, specTables, symbols, ...state } = result;
-      return { ...state, ...decodeNativeSource(state.state, tables, symbols, source, specTables) };
+      return remember({
+        ...state,
+        ...decodeNativeSource(state.state, tables, symbols, source, specTables),
+      });
     },
     parseUnit(source, budget = 16_000_000) {
       const result = readSource(source, budget, true);
-      if (!result.ok) return result;
+      if (!result.ok) return remember(result);
       const { byteLength, tables, specTables, symbols, ...state } = result;
       const program = decodeNativeUnit(state.state, tables, symbols, source, specTables);
       const parsed = { ...state, program };
@@ -227,7 +349,20 @@ export function nativeSource(module: WebAssembly.Module): {
         typeFields: Uint32Array.from(tables.get(71) as Uint32Array),
         comments: commentSnapshot(program),
       });
-      return parsed;
+      return remember(parsed);
+    },
+    checkProgram(program, budget = 16_000_000) {
+      checkBudget(budget);
+      try {
+        const source = encodeNativeProgram(program, irBuilder(budget));
+        const result = readResult(api.frontend_ir_finish());
+        if (!result.ok) return remember(result);
+        const { tables, specTables, symbols, ...state } = result;
+        const decoded = decodeNativeSource(state.state, tables, symbols, source, specTables);
+        return remember({ ...state, ...restoreNativeProgramMetadata(decoded, program) });
+      } catch (error) {
+        return remember(irFailure(error));
+      }
     },
     checkUnits(units, profile, budget = 16_000_000) {
       checkBudget(budget);
@@ -239,39 +374,12 @@ export function nativeSource(module: WebAssembly.Module): {
           throw new Error('expected a parsed unit owned by this frontend');
         return snapshot;
       });
-      const builder: NativeIrBuilder = {
-        initialize(source, strict) {
-          checked(
-            withSource(source, (pointer, length) =>
-              api.frontend_ir_init(pointer, length, budget, strict ? 1 : 0),
-            ).value,
-          );
-        },
-        upload,
-        symbol(name) {
-          const bytes = new TextEncoder().encode(name),
-            handle = upload(Uint32Array.from(bytes));
-          checked(api.frontend_ir_symbol(handle, bytes.length));
-          return api.frontend_ir_value();
-        },
-        type(kind, a, b, fields) {
-          const handle = upload(fields);
-          checked(api.frontend_ir_type(kind, a, b, handle));
-          return api.frontend_ir_value();
-        },
-        get(index) {
-          return readWasmWord(api.memory.buffer, builderPointer() + index * 4);
-        },
-        set(index, value) {
-          writeWasmWord(api.memory.buffer, builderPointer() + index * 4, value);
-        },
-      };
       try {
-        const composition = composeNativeUnits(inputs, builder, profile === 'strict');
+        const composition = composeNativeUnits(inputs, irBuilder(budget), profile === 'strict');
         const result = readResult(api.frontend_ir_finish());
-        if (!result.ok) return { ...result, origins: composition.origins };
+        if (!result.ok) return remember({ ...result, origins: composition.origins });
         const { tables, specTables, symbols, ...state } = result;
-        return {
+        return remember({
           ...state,
           origins: composition.origins,
           ...decodeNativeSource(
@@ -282,25 +390,39 @@ export function nativeSource(module: WebAssembly.Module): {
             specTables,
             composition.comments,
           ),
-        };
+        });
       } catch (error) {
-        if (!(error instanceof NativeIrFailure)) throw error;
-        const pointer = api.frontend_ir_state(),
-          state = pointer ? page(pointer) : Array<number>(128).fill(0);
-        state[0] = error.status;
-        return {
-          ok: false as const,
-          status: error.status,
-          state,
-          specState: Array<number>(128).fill(0),
+        return remember({
+          ...irFailure(error),
           origins: [],
-        };
+        });
       }
+    },
+    format(result, request) {
+      assertOpen();
+      if (!formatter) return { ok: false, reason: 'unavailable' };
+      const state = formatStates.get(result);
+      if (!state || state.generation !== generation)
+        throw new Error('expected a current result owned by this frontend');
+      if (state.parsed[93] === 0)
+        return { ok: false, reason: 'incomplete-ir', sourceStatus: state.sourceStatus };
+      return formatter.format(state.parsed, state.specs, request);
+    },
+    revision(result, request) {
+      assertOpen();
+      if (!formatter) return { ok: false, reason: 'unavailable' };
+      const state = formatStates.get(result);
+      if (!state || state.generation !== generation)
+        throw new Error('expected a current result owned by this frontend');
+      if (state.parsed[93] === 0)
+        return { ok: false, reason: 'incomplete-ir', sourceStatus: state.sourceStatus };
+      return formatter.revision(state.parsed, state.specs, request);
     },
     close() {
       if (!closed) api.frontend_close();
       closed = true;
       snapshots = new WeakMap();
+      formatStates = new WeakMap();
     },
   };
 }

@@ -62,14 +62,14 @@ const DROPPED_BEFORE = [
 ];
 
 const text = (u: Unit, style: DenseStyle): string =>
-  formatDense(normalizeProgram(u.program), { known: u.known, style }).trimEnd();
+  formatDense(normalizeProgram(u.program, u.known), { known: u.known, style }).trimEnd();
 
 const total = (units: readonly Unit[], style: DenseStyle, f: (s: string) => string = (s) => s) =>
   units.reduce((n, u) => n + tokens(f(text(u, style))), 0);
 
 /** Lossless and a fixed point with `style` on, for the program as written and normalized. */
 function roundTrips(u: Unit, style: DenseStyle): string | undefined {
-  for (const p of [u.program, normalizeProgram(u.program)]) {
+  for (const p of [u.program, normalizeProgram(u.program, u.known)]) {
     let dense: string;
     let back: Program;
     try {

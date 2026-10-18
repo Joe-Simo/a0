@@ -1,0 +1,1054 @@
+{
+  "scope": "Manual review of every prereview heuristic finding for the frozen integration tree. This records review evidence; it does not alter the heuristic score, gate floor or compiler code.",
+  "commit": "1b1fc66f850df2a124b1b67d356364b23097c938",
+  "base": "383472392a0634c328a024d084a6a5b4a10230a5",
+  "heuristic": {
+    "score": 35.69,
+    "verdict": "rework",
+    "exitCode": 1,
+    "findings": 51
+  },
+  "basis": "tools/dev/prereview.ts explicitly describes findings as heuristics over added lines: a flag asks for a look, it is not a verdict. Numeric findings match protocol or language bounds also exercised by tests; the documentation finding comes from its adapter filename. Every finding is reviewed below. No source literal or prereview rule was changed to evade the tool.",
+  "findings": [
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/check_arena_shared.a0",
+      "line": 82,
+      "weight": 0.7,
+      "text": "out call ac_error state diagnostic 4294967295 4294967295 4294967295 0",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "Unsigned 32-bit all-ones is the existing absent function/node/operand context sentinel in the native diagnostic ABI. New name and structural checks use the same sentinel; no expected output is substituted.",
+      "controls": [
+        "test/source-native-preflight.test.ts",
+        "test/source-native-program.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/check_arena_shared.a0",
+      "line": 82,
+      "weight": 0.7,
+      "text": "out call ac_error state diagnostic 4294967295 4294967295 4294967295 0",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "Unsigned 32-bit all-ones is the existing absent function/node/operand context sentinel in the native diagnostic ABI. New name and structural checks use the same sentinel; no expected output is substituted.",
+      "controls": [
+        "test/source-native-preflight.test.ts",
+        "test/source-native-program.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/check_arena_shared.a0",
+      "line": 82,
+      "weight": 0.7,
+      "text": "out call ac_error state diagnostic 4294967295 4294967295 4294967295 0",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "Unsigned 32-bit all-ones is the existing absent function/node/operand context sentinel in the native diagnostic ABI. New name and structural checks use the same sentinel; no expected output is substituted.",
+      "controls": [
+        "test/source-native-preflight.test.ts",
+        "test/source-native-program.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/check_arena_shared.a0",
+      "line": 1555,
+      "weight": 0.7,
+      "text": "x1 call ac_error named q19 64 q20 4294967295 0",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "Unsigned 32-bit all-ones is the existing absent function/node/operand context sentinel in the native diagnostic ABI. New name and structural checks use the same sentinel; no expected output is substituted.",
+      "controls": [
+        "test/source-native-preflight.test.ts",
+        "test/source-native-program.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/diagnostics_arena.a0",
+      "line": 14401,
+      "weight": 0.7,
+      "text": "q32 eq q31 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The native diagnostic ABI uses all-ones for absent node/argument context. Header-only structured errors require absent node; all these errors require absent operand selection. Body errors additionally verify node membership within the selected function. These checks reject malformed contexts; no expected diagnostic is substituted.",
+      "controls": [
+        "test/arena-diagnostics.test.ts",
+        "test/source-native-ir-diagnostics.controls.ts",
+        "results/source-frontend-68-build-provenance.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/diagnostics_arena.a0",
+      "line": 14403,
+      "weight": 0.7,
+      "text": "q34 eq q33 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The native diagnostic ABI uses all-ones for absent node/argument context. Header-only structured errors require absent node; all these errors require absent operand selection. Body errors additionally verify node membership within the selected function. These checks reject malformed contexts; no expected diagnostic is substituted.",
+      "controls": [
+        "test/arena-diagnostics.test.ts",
+        "test/source-native-ir-diagnostics.controls.ts",
+        "results/source-frontend-68-build-provenance.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 238,
+      "weight": 0.7,
+      "text": "q9 eq p7 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "All-ones represents the absent parent event. Other parent IDs must precede this event; output intervals are also bounded. It is protocol identity validation, not an expected output.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 1778,
+      "weight": 0.7,
+      "text": "q51 ne q50 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "All-ones is the existing absent callee identifier. Direct-call abbreviation requires an actual callee plus the shared word classifier; no test-specific name table is introduced.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 2990,
+      "weight": 0.7,
+      "text": "q6 ne q5 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The largest u32 parameter ID has no representable next index. This sentinel check and the preserved big-decimal marker prevent unsafe inferred headers and retain explicit arity.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 3118,
+      "weight": 0.7,
+      "text": "q2 ne q1 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The shared specification rows use all-ones for an absent pre/post contract. Only present contracts contribute parameter use to inferred headers.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 3129,
+      "weight": 0.7,
+      "text": "q12 ne q11 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The shared specification rows use all-ones for an absent pre/post contract. Only present contracts contribute parameter use to inferred headers.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 126,
+      "weight": 0.7,
+      "text": "let valid=(start<=out#1)&(length<=out#1-start)&((parent==4294967295)|(parent<v#1/6))",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "All-ones represents the absent parent event. Other parent IDs must precede this event; output intervals are also bounded. It is protocol identity validation, not an expected output.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 871,
+      "weight": 0.7,
+      "text": "let direct=fold(af_direct,(c#0==0)&flat&!text&(row[1]==19)&(row[4]!=4294967295)?1:0,(c,false),m,row[4])",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "All-ones is the existing absent callee identifier. Direct-call abbreviation requires an actual callee plus the shared word classifier; no test-specific name table is introduced.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 1223,
+      "weight": 0.7,
+      "text": "let bounded=((row[4]&4)==0)&(row[1]!=4294967295)",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The largest u32 parameter ID has no representable next index. This sentinel check and the preserved big-decimal marker prevent unsafe inferred headers and retain explicit arity.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 1259,
+      "weight": 0.7,
+      "text": "let b=fold(af_hcontract,(row[3]!=4294967295)&r#2?1:0,(a#0,r#1,r#2),ps,row[3])",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The shared specification rows use all-ones for an absent pre/post contract. Only present contracts contribute parameter use to inferred headers.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 1260,
+      "weight": 0.7,
+      "text": "return fold(af_hcontract,(row[4]!=4294967295)&b#2?1:0,b,ps,row[4])",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The shared specification rows use all-ones for an absent pre/post contract. Only present contracts contribute parameter use to inferred headers.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 978,
+      "weight": 0.7,
+      "text": "limit select q2 q4 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 1347
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 1220,
+      "weight": 0.7,
+      "text": "q5 eq q4 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/parse_arena_common.a0",
+          "line": 282
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 1589
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 1348,
+      "weight": 0.7,
+      "text": "q24 rec q22 4294967295 q23",
+      "baseExactMatches": [
+        {
+          "file": "compiler/parse_arena_common.a0",
+          "line": 343
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 1717
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 1575,
+      "weight": 0.7,
+      "text": "dq_1 set dq 86 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/parse_arena_common.a0",
+          "line": 569
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 1944
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 1576,
+      "weight": 0.7,
+      "text": "dq_2 set dq_1 87 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/parse_arena_common.a0",
+          "line": 570
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 1945
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 1645,
+      "weight": 0.7,
+      "text": "fixed ne arity 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/parse_arena_common.a0",
+          "line": 639
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2014
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 1733,
+      "weight": 0.7,
+      "text": "q34 call ab_node checked q30 kind first q31 4294967295 4294967295 p3 q32 q33 q9 1 0 0 0",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2102
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 1733,
+      "weight": 0.7,
+      "text": "q34 call ab_node checked q30 kind first q31 4294967295 4294967295 p3 q32 q33 q9 1 0 0 0",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2102
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 1782,
+      "weight": 0.7,
+      "text": "q25 rec p 0 1 4294967295 0 q24",
+      "baseExactMatches": [
+        {
+          "file": "compiler/parse_arena_common.a0",
+          "line": 717
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2151
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 1921,
+      "weight": 0.7,
+      "text": "q2 ge q1 65536",
+      "baseExactMatches": [
+        {
+          "file": "compiler/parse_arena_common.a0",
+          "line": 852
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2290
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 2054,
+      "weight": 0.7,
+      "text": "q_5 set q_4 20 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2423
+        },
+        {
+          "file": "compiler/specs_arena.a0",
+          "line": 635
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 2066,
+      "weight": 0.7,
+      "text": "limit select q4 q6 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2435
+        },
+        {
+          "file": "compiler/specs_arena.a0",
+          "line": 647
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 2337,
+      "weight": 0.7,
+      "text": "q7 select q4 4294967295 q6",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2706
+        },
+        {
+          "file": "compiler/specs_arena.a0",
+          "line": 965
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 2343,
+      "weight": 0.7,
+      "text": "q12 select q9 4294967295 q11",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2712
+        },
+        {
+          "file": "compiler/specs_arena.a0",
+          "line": 971
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 2377,
+      "weight": 0.7,
+      "text": "q8 ne q7 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/diagnostics_arena.a0",
+          "line": 17718
+        },
+        {
+          "file": "compiler/eval_arena_shared.a0",
+          "line": 2400
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2746
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 2583,
+      "weight": 0.7,
+      "text": "q4 ne q3 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/format_arena.a0",
+          "line": 1264
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2952
+        },
+        {
+          "file": "compiler/spec_hooks_arena.a0",
+          "line": 109
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 2590,
+      "weight": 0.7,
+      "text": "sp_2 set q9 24 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 2959
+        },
+        {
+          "file": "compiler/spec_hooks_arena.a0",
+          "line": 116
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_grammar.a0",
+      "line": 2854,
+      "weight": 0.7,
+      "text": "s5 set s4 24 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/parse_arena.a0",
+          "line": 250
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 3223
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_type_grammar.a0",
+      "line": 154,
+      "weight": 0.7,
+      "text": "wider gt possible 65536",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 166
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_type_grammar.a0",
+      "line": 155,
+      "weight": 0.7,
+      "text": "purelimit select wider possible 65536",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 167
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_type_grammar.a0",
+      "line": 158,
+      "weight": 0.7,
+      "text": "limit select isio 65536 purelimit",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 170
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_type_grammar.a0",
+      "line": 242,
+      "weight": 0.7,
+      "text": "q0 sub 4294967295 p3",
+      "baseExactMatches": [
+        {
+          "file": "compiler/link_paths_arena.a0",
+          "line": 34
+        },
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 254
+        },
+        {
+          "file": "compiler/types_arena.a0",
+          "line": 234
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/source_type_grammar.a0",
+      "line": 248,
+      "weight": 0.7,
+      "text": "steps select q2 q4 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/source_frontend.a0",
+          "line": 260
+        },
+        {
+          "file": "compiler/types_arena.a0",
+          "line": 240
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "These exact lines already exist on the base branch in the source frontend and/or legacy arena grammar. Grammar extraction preserves the u32 overflow sentinel, reserved arity marker and existing 65536 array/aggregate limit.",
+      "controls": [
+        "test/source-native-ir.test.ts",
+        "test/source-native-limits.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/specs_arena.a0",
+      "line": 33,
+      "weight": 0.7,
+      "text": "q15 ne q14 4294967295",
+      "baseExactMatches": [
+        {
+          "file": "compiler/format_arena.a0",
+          "line": 2133
+        },
+        {
+          "file": "compiler/lines_arena_shared.a0",
+          "line": 161
+        }
+      ],
+      "disposition": "reviewed-false-positive",
+      "reason": "The all-ones sentinel marks no selected specification function. The shared specification grammar retains the same initialization and comparison, rather than a task-derived value.",
+      "controls": [
+        "test/arena-spec-verifier.test.ts",
+        "test/source.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/verify_arena_shared.a0",
+      "line": 50,
+      "weight": 0.7,
+      "text": "b set a 10 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "65536 is the published maxFunctions language limit in src/core.ts. The check runs before function/name/body checks, accepts exactly65536 and refuses65537. All-ones clears function/node context for this global error, as independently asserted in the boundary test.",
+      "controls": [
+        "test/source-native-preflight.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/verify_arena_shared.a0",
+      "line": 51,
+      "weight": 0.7,
+      "text": "c set b 11 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "65536 is the published maxFunctions language limit in src/core.ts. The check runs before function/name/body checks, accepts exactly65536 and refuses65537. All-ones clears function/node context for this global error, as independently asserted in the boundary test.",
+      "controls": [
+        "test/source-native-preflight.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/verify_arena_shared.a0",
+      "line": 57,
+      "weight": 0.7,
+      "text": "r call ac_error input 29 65536 p2 4294967295 0",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "65536 is the published maxFunctions language limit in src/core.ts. The check runs before function/name/body checks, accepts exactly65536 and refuses65537. All-ones clears function/node context for this global error, as independently asserted in the boundary test.",
+      "controls": [
+        "test/source-native-preflight.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/verify_arena_shared.a0",
+      "line": 57,
+      "weight": 0.7,
+      "text": "r call ac_error input 29 65536 p2 4294967295 0",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "65536 is the published maxFunctions language limit in src/core.ts. The check runs before function/name/body checks, accepts exactly65536 and refuses65537. All-ones clears function/node context for this global error, as independently asserted in the boundary test.",
+      "controls": [
+        "test/source-native-preflight.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/verify_arena_shared.a0",
+      "line": 1226,
+      "weight": 0.7,
+      "text": "too_many gt functions 65536",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "65536 is the published maxFunctions language limit in src/core.ts. The check runs before function/name/body checks, accepts exactly65536 and refuses65537. All-ones clears function/node context for this global error, as independently asserted in the boundary test.",
+      "controls": [
+        "test/source-native-preflight.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "src/source-component.ts",
+      "line": 68,
+      "weight": 0.7,
+      "text": "candidate.memory.grow(Math.ceil((end - candidate.memory.buffer.byteLength) / 65536));",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "WebAssembly memory pages contain65536bytes. The existing diagnostic marshaller memory reservation was moved into one shared component marshaller used by diagnostics and formatting; this divides required bytes by the standard page size and introduces no test-specific output.",
+      "controls": [
+        "test/source-native-render.test.ts",
+        "test/source-native-format.controls.ts",
+        "results/unified-core-68-integration.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "src/source-direct.ts",
+      "line": 72,
+      "weight": 0.7,
+      "text": "memory.grow(Math.ceil((end - memory.buffer.byteLength) / 65536));",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "WebAssembly.Memory.grow counts standard 64KiB pages;65536 converts requested byte growth to pages. This is a platform-defined unit, independent of source/test identity.",
+      "controls": [
+        "test/source-native-provenance.test.ts",
+        "test/wasm-host-io.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "src/source-native-diagnostic.ts",
+      "line": 250,
+      "weight": 0.7,
+      "text": "origin.firstLine + origin.lineCount <= 0x100000000 &&",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "0x100000000 is the exclusive u32 address-space bound for a line interval endpoint; individual fields remain validated u32. This prevents interval arithmetic overflow and ambiguous origin ownership.",
+      "controls": [
+        "test/source-native-diagnostic.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "tools/source-direct-build.ts",
+      "line": 94,
+      "weight": 0.7,
+      "text": "const transportStackArgument = 16777216;",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "This is the existing16MiB transport linker stack argument, named so the complete effective flags and the independently computed stack proof can be recorded and cross-checked. No stack size, runtime behavior or test-specific output is introduced.",
+      "controls": [
+        "test/source-cost-control.test.ts",
+        "test/wasm-stack-bound.test.ts",
+        "tools/wasm-stack-bound.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "tools/wasm-stack-bound.ts",
+      "line": 304,
+      "weight": 0.7,
+      "text": "requireProof(fn.cumulativeFrameBytes <= 0xffffffff, 'frame chain exceeds wasm32 memory');",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "0xffffffff is the wasm32 byte-address bound. The fail-closed proof rejects a cumulative static frame chain that cannot fit this address space; this is not an inferred or guessed stack size.",
+      "controls": [
+        "test/wasm-stack-bound.test.ts"
+      ]
+    },
+    {
+      "kind": "thick-shim",
+      "file": "docs/design/native-diagnostic-adapter.md",
+      "line": 0,
+      "weight": 0.695,
+      "text": "139 added lines in a shim-like file",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The filename contains adapter, but the flagged139 added lines are documentation of the native packet ABI, refusal boundaries, optional capabilities, evidence and remaining integration. They add no shim implementation or fallback.",
+      "controls": [
+        "docs/design/native-diagnostic-adapter.md"
+      ]
+    }
+  ],
+  "reviewedCodeCommit": "1cfca9fd784a9a973928b95e65b848688bcbe4e9",
+  "integrationEvidence": [
+    "results/source-native-global-diagnostic-integration.json",
+    "results/arena-format-unified.json",
+    "results/source-frontend-68-build-provenance.json",
+    "results/c-arena-stage-portable.json",
+    "results/source-frontend-js-correctness.json",
+    "results/source-corpus-inventory-68.json",
+    "results/wasm-read-array-loop-confirmation.json",
+    "results/unified-core-68-integration.json",
+    "results/native-source-format-sdk.json",
+    "results/c-stage-standard-optimizer.json",
+    "results/unified-core-68-platform-failures.json",
+    "results/dense-helper-name-collision-repair.json",
+    "results/compiler-0.1.68-emission-parity.json",
+    "results/c-arena-stage-windows-send-fix.json",
+    "results/source-bundle-storage-verification.json"
+  ],
+  "reviewedSourceInputs": [
+    {
+      "path": "compiler/check_arena_shared.a0",
+      "sha256": "0f53402ad4add2852e2ef721d4d152b0554468741e22ed2be1c8d316f4799119"
+    },
+    {
+      "path": "compiler/diagnostics_arena.a0",
+      "sha256": "ab6959d32a21293b5133aec0ce7a6f87b1b39dc82d2c7e508ee1063800f46174"
+    },
+    {
+      "path": "compiler/format_arena.a0",
+      "sha256": "384fcebb54d575681cf6c34f771dcb1a3ffa05e3169b9e73ee3856edae0a86c5"
+    },
+    {
+      "path": "compiler/format_arena.a0s",
+      "sha256": "253b569d89be0b3c0ff3771b3401bd18d32075e8545c3901883465fde15b9fdb"
+    },
+    {
+      "path": "compiler/source_grammar.a0",
+      "sha256": "11107bb07b24e810eb0f9064baa1d3ab10b3ee276a4296fcb173c947d63c90eb"
+    },
+    {
+      "path": "compiler/source_type_grammar.a0",
+      "sha256": "c0624db52b8ab322f68e6f7e66c8379ad7e8771b00e9d7d9aa721c6c728ac5fb"
+    },
+    {
+      "path": "compiler/specs_arena.a0",
+      "sha256": "700359d197c624ba1c6c1e4bd41ffd722592d5e8c4d989ebdbff158fa74210ab"
+    },
+    {
+      "path": "compiler/verify_arena_shared.a0",
+      "sha256": "37cff40149d69a7402328bed66388f317b690c9f9a5b3c78d0154b7d06e69d90"
+    },
+    {
+      "path": "docs/design/native-diagnostic-adapter.md",
+      "sha256": "6e6dcad62265df961adc4d54617eeca83cef4c8f3c6bcc73d230ca59c3c188c7"
+    },
+    {
+      "path": "src/source-component.ts",
+      "sha256": "34211587606157a34e97e88a792bb6dc61fa70de5333044c051bfdea8b25f977"
+    },
+    {
+      "path": "src/source-direct.ts",
+      "sha256": "8f39d841a0c51b53745a8bfd8b5bc36fad76d6ab2aec303dca8dcd01989a04a7"
+    },
+    {
+      "path": "src/source-native-diagnostic.ts",
+      "sha256": "1e139b2d1e763ecf8095e5f17ab45f06c9f036c6bbd7f36506644c146e5a15eb"
+    },
+    {
+      "path": "tools/source-direct-build.ts",
+      "sha256": "b76bcd797a5705b81fcb693eda6fb05cb153f8d3c6a973a84e429a13bddc5006"
+    },
+    {
+      "path": "tools/wasm-stack-bound.ts",
+      "sha256": "5c080d515272325d9687ca0a6eba0940bc4836785fada51cf71ab45592096655"
+    }
+  ],
+  "postCiFixReview": {
+    "base": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+    "sourceCommit": "1cfca9fd784a9a973928b95e65b848688bcbe4e9",
+    "rawFindingsUnchanged": true,
+    "reviewedSourceBytesUnchanged": true,
+    "productionChanges": [
+      "Reserve local/imported names during Dense normal-form helper renaming; parser and inline planner retain legacy behavior.",
+      "Rename private C stage helper to avoid Winsock declaration collision."
+    ],
+    "testAndEvidenceChanges": [
+      "Canonicalize source-cost fixture roots and exercise alias construction.",
+      "Refresh complete emission golden only after exact frozen64/66/68 byte comparisons.",
+      "Store exact experimental Git bundles as binary files and verify isolated replay.",
+      "Archive rejected readonly69 measurements with every loss retained; frozen source uses .a0.txt outside shipped inventories."
+    ],
+    "noRulesOrGateFloorChanged": true
+  }
+}

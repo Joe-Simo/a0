@@ -448,7 +448,7 @@ async function main(args: readonly string[]): Promise<void> {
         return readFile(p, 'utf8');
       });
       const { formatDense, normalizeProgram } = await import('./dense.js');
-      const shown = flags.includes('--normalize') ? normalizeProgram(program) : program;
+      const shown = flags.includes('--normalize') ? normalizeProgram(program, known) : program;
       const text = formatDense(shown, { known, comments: flags.includes('--comments') });
       if (out === undefined) stdout(text);
       else await writeFile(out, text, 'utf8');

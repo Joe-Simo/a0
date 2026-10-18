@@ -1,0 +1,153 @@
+{
+  "status": "local-passed-windows-rerun-pending",
+  "scope": "Private C stage helper rename for a measured Windows header namespace collision; no ABI, arena protocol, resource, generated C or warning policy changes. No timing claim.",
+  "baseCommit": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+  "fixCommit": "ae6c515c1df1c69af0960d0dac9d53277a099a45",
+  "host": {
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "windows": {
+    "status": "failed-before-fix-rerun-pending",
+    "workflow": ".github/workflows/gate-windows-c-stage.yml",
+    "failedJob": "https://github.com/Joe-Simo/a0/actions/runs/39124410382/job/117666415506",
+    "failedCommit": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+    "logSHA256": "e564945fb4d3a6b2947b8e1f3ed28d347117cfc5b172d52eca427f4b05d8f127",
+    "diagnosis": "windows.h includes winsock.h:301 declaring send; the private static send helper conflicts at c_arena_stage.c:51 and both three-argument calls then fail. The real Windows job reports three errors.",
+    "passClaim": false
+  },
+  "change": {
+    "privateHelper": "send -> cstage_send",
+    "references": 3,
+    "exactRenameOnly": true,
+    "baseShimSHA256": "11113cf3b373abc5f80dc3b1216c866471fa97d49a902e9b3b1087de17dce05d",
+    "fixedShimSHA256": "2e7ed715b482a9bfa94127af28a1f4873c694421bf139363eb5b398b7751ef05"
+  },
+  "controls": {
+    "clangFull": {
+      "tests": 4,
+      "pass": 4,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSHA256": "e06c1c82223934a5def034e754ecabdf9ea67ac8a3deb42be4fe1ba0b1605645"
+    },
+    "gccNativeHost": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSHA256": "bc25b29013bba65e1a5a04582a911ae726d5b6e2b0c3cbcf50d0cea11e9bf401"
+    },
+    "runtimeAndHygiene": {
+      "tests": 6,
+      "pass": 5,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 1,
+      "logSHA256": "9541f447d0f04971aabbf1a0248c40eb95232aa0edceca3d3435d8f720c7db74",
+      "skip": "optional A0_PUBLIC_DENYLIST file was not configured"
+    }
+  },
+  "COnlyPhase": {
+    "javascriptRuntimeOnPath": false,
+    "sourceAndShimImmutable": true,
+    "generatedCVerbatim": true,
+    "generatedCIdenticalAcrossStagesAndCompilers": true,
+    "sourceBytes": 439967,
+    "sourceSHA256": "289d3fab2ff8c56b3380d18db5d748e8e6a0059c39f745d209563cb553ac06e5",
+    "seedSHA256": "3ed1284a3ba79243079fd39c5792a8de671f31e76dccecbc4ffe6adc06cd2660",
+    "compilers": [
+      {
+        "compiler": "gcc",
+        "version": "gcc (Debian 14.2.0-19) 14.2.0",
+        "optimization": "O2",
+        "sanitizer": false,
+        "warningErrors": true,
+        "pthreads": true,
+        "stages": [
+          {
+            "stage": 2,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          },
+          {
+            "stage": 3,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          },
+          {
+            "stage": 4,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          }
+        ],
+        "proofSHA256": "6a36f4df38b5e8a26e6ae5824781a6bb6b9142e57c234ade765935ae4bdc68a3"
+      },
+      {
+        "compiler": "clang",
+        "version": "Debian clang version 19.1.7 (3+b1)",
+        "optimization": "O2",
+        "sanitizer": false,
+        "warningErrors": true,
+        "pthreads": true,
+        "stages": [
+          {
+            "stage": 2,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          },
+          {
+            "stage": 3,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          },
+          {
+            "stage": 4,
+            "bytes": 2453258,
+            "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3",
+            "nativeBuilt": true
+          }
+        ],
+        "proofSHA256": "6a36f4df38b5e8a26e6ae5824781a6bb6b9142e57c234ade765935ae4bdc68a3"
+      }
+    ],
+    "shim": [
+      {
+        "file": "c_arena_stage.c",
+        "sha256": "2e7ed715b482a9bfa94127af28a1f4873c694421bf139363eb5b398b7751ef05"
+      },
+      {
+        "file": "arena_runtime.c",
+        "sha256": "6c18b83ad9d6006bb831baf4d06eae805680cf41c84f70f360f8f01b65048432"
+      },
+      {
+        "file": "arena_runtime.h",
+        "sha256": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9"
+      }
+    ]
+  },
+  "checks": {
+    "build": {
+      "status": "passed",
+      "logSHA256": "5aafe095f318850006c85d11866ad2679cd9b530f533c78440f619f6ce89d411"
+    },
+    "lint": {
+      "status": "passed",
+      "logSHA256": "11e8f3b0cc6aab4c10f80c1479b44b317b7661b449f338d6b65a3348f8418b81"
+    },
+    "typecheck": {
+      "status": "passed",
+      "logSHA256": "38ac890c60e7f38d59ddfb410325cdfb5fca83c9411765c5481754e01c021630"
+    },
+    "prereviewScore": 0
+  },
+  "fullUnitGate": "pending combined integration gate; local evidence here is the existing C-stage, arena runtime and hygiene suites",
+  "timingClaims": false
+}

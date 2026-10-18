@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "decision": "rejected-for-public-cutover",
+  "candidate": {
+    "commit": "31d25e5289a12ce164fdd74aacd3573dcf53f7a1",
+    "tree": "7d9e4f8ba6b72794cbc3f9ca2d28d9c7783fa8fd"
+  },
+  "control": {
+    "commit": "768375accc9949f00c069a71bf3b9ff7af717704",
+    "tree": "822e78f6247a0192465e357d38e6e4b6bd22a5b5"
+  },
+  "baseline": {
+    "commit": "764de84ab99a156e41164518f14cc0676b6343dd",
+    "tree": "ab27dea02d1f5047601f0e1c310c6c3e625f08ea"
+  },
+  "scope": "Direct Wasm compilation of the unchanged 609-function, 19-module A0 frontend after generic structural read-array fold lowering, with the same separately compiled generic arena. The comparison is against the published C-derived frontend and historical Canonical/Dense controls, through one fixed historical C text emitter. No official source syntax/frontend cutover, shipping CLI, model accuracy, target execution, or frontend build-time claim.",
+  "causality": "The paired experiment compares compiled backends. It does not include a pre-optimization direct Wasm arm and cannot establish a read-array optimization speedup or regression relative to that arm. General old64-versus66 loop execution/codegen controls remain separate pending work.",
+  "timing": {
+    "samples": 240,
+    "measuredSamples": 210,
+    "measuredRounds": 7,
+    "warmups": 1,
+    "maxLoad1": 1.9,
+    "outputMatches": 240,
+    "startedAt": "2026-10-18T09:32:40.402Z",
+    "finishedAt": "2026-10-18T09:35:06.468Z"
+  },
+  "frontendLosses": [
+    {
+      "unit": "examples/life.a0",
+      "frontendMs": {
+        "oldCanonical": 5.841514000000004,
+        "directWasm": 21.869535,
+        "clangWasm": 17.830203999999995
+      },
+      "directOverClang": 1.2265442952868069,
+      "directOverCanonical": 3.743812819758711,
+      "pipelineMs": {
+        "directWasm": 40.556931000000006,
+        "clangWasm": 35.895786
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "frontendMs": {
+        "oldCanonical": 7.277155999999991,
+        "directWasm": 31.13385199999999,
+        "clangWasm": 24.135523000000006
+      },
+      "directOverClang": 1.2899596996510074,
+      "directOverCanonical": 4.278299379592801,
+      "pipelineMs": {
+        "directWasm": 59.528289,
+        "clangWasm": 63.63314799999999
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "site/page.a0",
+      "frontendMs": {
+        "oldCanonical": 39.52656300000001,
+        "directWasm": 388.401074,
+        "clangWasm": 199.17943599999998
+      },
+      "directOverClang": 1.9500058931786515,
+      "directOverCanonical": 9.826330561551732,
+      "pipelineMs": {
+        "directWasm": 483.57386,
+        "clangWasm": 298.556469
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "site/docs.a0",
+      "frontendMs": {
+        "oldCanonical": 24.687955999999986,
+        "directWasm": 195.223697,
+        "clangWasm": 94.062561
+      },
+      "directOverClang": 2.0754665291326693,
+      "directOverCanonical": 7.907649260230377,
+      "pipelineMs": {
+        "directWasm": 248.605365,
+        "clangWasm": 147.58572399999997
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "frontendMs": {
+        "oldCanonical": 191.759842,
+        "directWasm": 2640.112921,
+        "clangWasm": 1299.511607
+      },
+      "directOverClang": 2.031619345897847,
+      "directOverCanonical": 13.767809221494874,
+      "pipelineMs": {
+        "directWasm": 3776.679454,
+        "clangWasm": 2419.0478649999995
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "frontendMs": {
+        "oldCanonical": 34.23391199999999,
+        "directWasm": 324.480135,
+        "clangWasm": 178.683738
+      },
+      "directOverClang": 1.8159466475902806,
+      "directOverCanonical": 9.478324738347172,
+      "pipelineMs": {
+        "directWasm": 523.865652,
+        "clangWasm": 367.16422
+      },
+      "reason": "Direct frontend slower than both controls"
+    }
+  ],
+  "artifact": {
+    "directWasmBytes": 143092,
+    "clangWasmBytes": 356280,
+    "components": [
+      {
+        "file": "frontend.wasm",
+        "sha256": "4f972722760f7982f0dc103cd01c7c5fd897e872ad7017dd5724c87825113ac2",
+        "bytes": 126670
+      },
+      {
+        "file": "arena.wasm",
+        "sha256": "fffd7aa76fe43d3ca3fa2b173b9f484c291fa4579ab3fe7cbf7ca6f5f88faa75",
+        "bytes": 16422
+      }
+    ],
+    "transportStackBytes": 16,
+    "stackProof": "Both recorded generic arena analyses prove a maximum linear stack bound of 16 bytes; the final proof is recomputed against the exact final arena bytes during benchmark provenance checks."
+  },
+  "memory": "Direct linear Wasm memory and live frontend RSS medians are lower than the C-derived control on all six inputs in this run. Live frontend RSS exceeds old Canonical on four inputs. Initial peak RSS has a shared inherited/preload floor on small inputs, so equal peak values cannot establish memory parity. The memory and artifact reductions do not clear the frontend latency losses.",
+  "correctness": {
+    "focusedAdapterProvenanceAndReadFoldTests": {
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sourceEntries": 178,
+    "sourceSpellingsPerEntry": 2,
+    "graphOriginalAndMigrated": true,
+    "grammarAndErrorPriorityControls": 3168,
+    "fullWasmFocusedTests": {
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0
+    },
+    "wasmBehaviorCases": 3083,
+    "literalZeroModuleLayouts": 288,
+    "stale65CacheControl": "Genuine pre-fix emission requires an otherwise unused host read import; memory and reopened disk caches reject it under version66.",
+    "standardEmissionMatrix": "results/compiler-0.1.66-emission-parity.json"
+  },
+  "remaining": "Keep the official frontend unchanged. Measure old64-versus66 generic read-array code generation and execution separately; pursue source/frontend improvements only with preserved semantics and matched whole-program controls.",
+  "evidence": {
+    "summary": "results/unified-source-read-array-wasm.json",
+    "samples": "results/unified-source-read-array-wasm-samples.json",
+    "preparation": "results/unified-source-read-array-wasm-preparation.json",
+    "build": "results/unified-source-read-array-wasm-build.json",
+    "unitAudit": "results/unified-source-read-array-wasm-unit-audit.json",
+    "graphAudit": "results/unified-source-read-array-wasm-graph-audit.json",
+    "grammarControls": "results/unified-source-read-array-wasm-grammar-controls.json",
+    "reproduction": "experiments/unification/read-array-wasm/README.md"
+  }
+}

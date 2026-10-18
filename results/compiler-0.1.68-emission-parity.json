@@ -1,0 +1,1605 @@
+{
+  "schema": 1,
+  "candidateCommit": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+  "baseline": "31d25e5289a12ce164fdd74aacd3573dcf53f7a1",
+  "preservedUnfusedBaseline": "5735960e15850db79c05ae002b81d47284729825",
+  "candidateCompiler": "a0c-0.1.68",
+  "scope": "Complete existing profile-golden fixture/target/optimization matrix, with the same IR passed to independently built compiler64, compiler66, and compiler68. Frozen compiler66 must reproduce every existing golden entry. Every compiler68 emission must equal compiler64 after replacing only the compiler version in the first-line generated comment or the decoded Wasm a0 custom section. No other byte is normalized. Changes from compiler66 beyond the version are enumerated per emitted Wasm function and restore compiler64 bodies after the rejected fusion was removed. All refusals remain equal. This is byte equivalence evidence, not a performance or execution claim.",
+  "fixtureIRSHA256": {
+    "corpus": "2e98e7f28506960f2dba25829bacdc5e9445eaf218ba4d43de9c01c6eae313b5",
+    "corpus-scalar": "33ecdffd467b4d9338841d36e0ce9d8d22ae19b3f0938e2dc12a780faf92036b",
+    "examples/kernels.a0": "f6238c598d59629c94a846fee7a8846215b291b21e23d10b49c59dab1e57254b",
+    "examples/life.a0": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+    "compiler/lex.a0": "fe638c2b7a0cf9ee926f32a34d4dc1c071743a62987d2a95610352ccfe042df7",
+    "compiler/parse.a0": "953a3d316c7977ecdfc9535cd6a65d94855e780fc35fa1dec0d0853ff382d8e8",
+    "compiler/check.a0": "1fbf755da9561942027aed35b0b9de718ae7055eb97dfbad70c072fe9debc94c",
+    "compiler/optimize.a0": "ddbc2cb76f76bd6668cfd8b1e86dcb54ed16e97fc4e0d26d8dc4728d846aee6c"
+  },
+  "beforeGoldenSHA256": "13ec46b9ca685f39f7051bceb69e374fcc6b8d31eb73d45dd3dce9cd62f02ab4",
+  "rows": [
+    {
+      "fixture": "corpus",
+      "target": "js",
+      "optimize": true,
+      "beforeSHA256": "c5548f0f648e5a1bc584c483da7e8e9f7d564b356c3df9879b9bcf910ee7f465",
+      "afterSHA256": "d9fd703e3a47b41952e4c2cf6ab20548a99612522c2b50c1fcb8ca8d8377f8c3",
+      "normalizedUnfusedSHA256": "8455adc7251ad253b4dec5d7ae5fa1243bc560b82491b7a5fe57471347dc1f89",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "js",
+      "optimize": false,
+      "beforeSHA256": "4928042865d53fc93855fb579a57785440d35ebedf848ccb0976226aee579f0e",
+      "afterSHA256": "4f2041a9885d4c2dcfb9a3af6798f46933d6c28c9376c666017e473bccc5d47c",
+      "normalizedUnfusedSHA256": "f51d808006bb5a5e698329ab440ec6443137631f98cb627c003a265dd1d17a3b",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "c",
+      "optimize": true,
+      "beforeSHA256": "a207fb16dca7481244058e7a2e20d954f110f5542d0faceb53201a4af5a6f91d",
+      "afterSHA256": "37c1a22fb29dcc8613e308da00b6050825cff5125a3a263d9ebe878df2f82b10",
+      "normalizedUnfusedSHA256": "7c86c37bd32d6c58a612c16523a3cf1d22ad05e31a4cc0b87345f0596f9605ec",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "c",
+      "optimize": false,
+      "beforeSHA256": "1f969a66d8897763d3194270595daaa3258c8e807aa8185e367e4d51fc57f44f",
+      "afterSHA256": "4f883e2c6bf6611d5505fca7c8e00adf53e3df3ff25daaffbdf2100c0d1d5878",
+      "normalizedUnfusedSHA256": "23ed69c42775932fb7bb9805cc493fb0380ca415d391253ea41a4ba8f2d2a592",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "java",
+      "optimize": true,
+      "beforeSHA256": "b876168ee8cb43f7144559b2a22da9005a7f80733545acb445f05bdcd847156f",
+      "afterSHA256": "49502de9cc03d5d045abc531cc34cf67ff6ccadd5c022bd8de77bc5ba1807c69",
+      "normalizedUnfusedSHA256": "05eb56989f6c5d270d3716fb976ff4358cf7215f4437ac290416270f91fb842c",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "java",
+      "optimize": false,
+      "beforeSHA256": "8e0bc2f8680d7038b254f0d0119e6352ff1301bce0d9a1800e2a9f1d46dc83f4",
+      "afterSHA256": "2c690b3392524fc83244034d1630e5f69bb9942d1f43b08cb0277fa3c1ad1dec",
+      "normalizedUnfusedSHA256": "f39c912f9f40a11604334f7c343e84414a4adc8e64ad2463247b419c8926fdc5",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "sv",
+      "optimize": true,
+      "beforeSHA256": "5b271aedea04031337dda4c3917ef9849cab6c8568759dfc9beac74c477d8039",
+      "afterSHA256": "4064c014822e8ba82bb53432a0b51b8903c8dd3eebc917744f333f631e4ed677",
+      "normalizedUnfusedSHA256": "bc7beaca1b9f1ac6b38acba9492afa297ea1e8f9f914218c7b13724d9c92ad5b",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "sv",
+      "optimize": false,
+      "beforeSHA256": "a9d795b035a3f2a850198f541a1b8eebcfdb75b77236e707dc13de9b4c1933d8",
+      "afterSHA256": "0b1f2778ffdcda4d3e87e6e6b134c9e302254610e03a16e19f865e1e1ebc63fb",
+      "normalizedUnfusedSHA256": "cb4a19e77dc34ebf2e0d23472e15b4ee959a547df4a155a33d2f40cd0be573bb",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "arm64",
+      "optimize": true,
+      "beforeSHA256": "refused: arm64: function g1 uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function g1 uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "corpus",
+      "target": "arm64",
+      "optimize": false,
+      "beforeSHA256": "refused: arm64: function g1 uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function g1 uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "corpus",
+      "target": "x86_64",
+      "optimize": true,
+      "beforeSHA256": "a8339eef6b1010bbd956dc612c9010fa52b010f5962a5a616f6e2764173221a8",
+      "afterSHA256": "656b1a6c361aae9ac2205d0c5d9d1f8c22cd97f42599f5dd90cf17947f304337",
+      "normalizedUnfusedSHA256": "33a168d76988c55c542de3b229d0b52c6595f4777237c84a72b205141d3f8986",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "x86_64",
+      "optimize": false,
+      "beforeSHA256": "92067577b6359a18b8cab8fc508d0f8069d944442a2b7ab7f1a584b6a976509b",
+      "afterSHA256": "31bf16fd00053349ac9e583f9c2feab071bd99334f51308aa84951129bae9cdd",
+      "normalizedUnfusedSHA256": "c1bf1ce954888851511d8b7e17ee42ed905ec67038b80fe1653a5a12d0ee50bf",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "riscv64",
+      "optimize": true,
+      "beforeSHA256": "refused: riscv64: function g1 uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function g1 uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "corpus",
+      "target": "riscv64",
+      "optimize": false,
+      "beforeSHA256": "refused: riscv64: function g1 uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function g1 uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "corpus",
+      "target": "avr",
+      "optimize": true,
+      "beforeSHA256": "refused: avr: function g1 uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: avr: function g1 uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "corpus",
+      "target": "avr",
+      "optimize": false,
+      "beforeSHA256": "refused: avr: function g1 uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: avr: function g1 uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "corpus",
+      "target": "wasm",
+      "optimize": true,
+      "beforeSHA256": "b83a8c05168348c8f07b12cbcb69966e8c3316cedcbe97bd965021f177bd7d76",
+      "afterSHA256": "05df386046fd24c96eca1fd8fbf0db6bb89b2886622250831190f0e89ea88256",
+      "normalizedUnfusedSHA256": "d800197ede269045b0dda1a1a6a36489a15249b58bf4012788459e4f790e2173",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "wasm",
+      "optimize": false,
+      "beforeSHA256": "61be30d4c4d8a9b8bc5cbefd8168631a8dc5a20a4e945d0a303eab4e3abe1ea6",
+      "afterSHA256": "44f20c7afe7ad486608cac203065b2eec4ee7741368254f665b5b450e0380f4c",
+      "normalizedUnfusedSHA256": "f6307a0fef2dc57b6f1e17f59e950c9a5a63591a08d2c71e29e4a9705ce36a91",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus",
+      "target": "arm32",
+      "optimize": true,
+      "beforeSHA256": "refused: arm32: function g1 uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function g1 uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "corpus",
+      "target": "arm32",
+      "optimize": false,
+      "beforeSHA256": "refused: arm32: function g1 uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function g1 uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "js",
+      "optimize": true,
+      "beforeSHA256": "6d3d1f56e51fe74b2289bbd9b17ee97f908c887f51a5f765bf7975b89f30d2a0",
+      "afterSHA256": "0e3b7757fcf6378204e892b4c3ff9a5d2a1c37c1e0ed31ec4cf5e6377d26b39f",
+      "normalizedUnfusedSHA256": "d620a8f38045d83d2acbe750855a07014c55aafd720c39bd8f1a19530b8949f1",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "js",
+      "optimize": false,
+      "beforeSHA256": "ed77f8240df8639f521eeb66849fe2f95bc13b3b572cb9c460e947cb2ac53124",
+      "afterSHA256": "bd5c313d79fbde81344c5192ed9dd2d0ac070af2132a4bd847ae417ac78d08da",
+      "normalizedUnfusedSHA256": "0741109ed359b6fd24d5496b2e4daace414aba8e43fd8a8bd92a372eb7c1bb93",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "c",
+      "optimize": true,
+      "beforeSHA256": "4282839798bc31fd6f21e5367a0e207564c17081a0bef86335a51633794735fd",
+      "afterSHA256": "1cdf34c3f8afdb543ad88e51b3288de6cbe82a7742452b40a98653ab249a0f1c",
+      "normalizedUnfusedSHA256": "88a8377b13353a19f6924e8e4764dd8fb24048c47be264369ec2f02222c87516",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "c",
+      "optimize": false,
+      "beforeSHA256": "34b37424ad906b4946cf80749b5527a180a65acc92b9ff39b720d1e5aa763453",
+      "afterSHA256": "8f5a61f95f7f34523cd0c93a676941ec7737967f9922f6c3a6b6462a68b2e3b0",
+      "normalizedUnfusedSHA256": "7b3370005605443d36cd79dd27cee0b82679a85db7dee72fae7ea890efd78d74",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "java",
+      "optimize": true,
+      "beforeSHA256": "f45591cbbe8183c151d16434efcb45a3a1403b64e537a652f485c50d6e3d3705",
+      "afterSHA256": "18dcae67f65fed3d8d79a68945cacb159625ec11a477b543fe8ff618d3cb1caf",
+      "normalizedUnfusedSHA256": "f9e5ee4cf6862c047e3d4290396fd9d0f8bf448d7711e5e8f35ff6318588c6f6",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "java",
+      "optimize": false,
+      "beforeSHA256": "35ac716935b85360450786be8817baaebb9c215cbf15ab28bf53c2cee22cd6fc",
+      "afterSHA256": "04d344df2ac22b1db9936b43faf05b8ebc37c1c888df3aadc355e3530c639a43",
+      "normalizedUnfusedSHA256": "072f0c7835845d692c0fc1469eae684924eed8fb5fe4588f51c48494b57d38a5",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "sv",
+      "optimize": true,
+      "beforeSHA256": "11e82b6c0d8fd1b6db216fe819e4cf8b5f53fee3a5f2b4b111487e25e02abf84",
+      "afterSHA256": "63508a30f0978c866209a435ec03ae0bce1f92e485283c69dc792281b66daf8a",
+      "normalizedUnfusedSHA256": "7162578b6cc309d8288f5951e3f0e4102a1c726d9a796af59f272562ce7929ea",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "sv",
+      "optimize": false,
+      "beforeSHA256": "af882cd176245a4004778da29cd57f1e7f2038141ab2a3031270d5e9ebe74bfd",
+      "afterSHA256": "7d8ef5690d55401262cbdc911b894ee007fdbe99fd28efd9a8c8ce1e02325d86",
+      "normalizedUnfusedSHA256": "3bffdb3893f21bb29acd183277d0d2b627c5172098cd06f0acfa43ae172fd797",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "arm64",
+      "optimize": true,
+      "beforeSHA256": "e5c45b59360cd8ba2e9c3085073e8f3490233b6e47153e5f7a7c6ca624377c15",
+      "afterSHA256": "dee3e196ecb18421ea48cdf47dbc64f31990a0ff4ccde657ef892ac39ddaa2a3",
+      "normalizedUnfusedSHA256": "00991e8dab65e5acbc7183d5d823950a04c21e44ea6f9b1eb3409bc1248339b8",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "arm64",
+      "optimize": false,
+      "beforeSHA256": "06310232e584acabdcd840cb864831dd784aa58e43c758e1fa68363bfdb1e88b",
+      "afterSHA256": "37583104514ab55df0b525418b6bccc0bbcafd3d05e7af7e0d819328db3ef7f2",
+      "normalizedUnfusedSHA256": "c0593e1ea37e02fa13ae5d1bd01ef2331c1540a354c93e5a5dadb3f904ef2879",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "x86_64",
+      "optimize": true,
+      "beforeSHA256": "39b2c897bc88bd50723b31c7fc44dab78b8e293ed5d0e79ec8df06b91e34dc7c",
+      "afterSHA256": "9635b5d3db4a27783fe240b2fd677b74cfe6027812363a80b476aeb1dd338f27",
+      "normalizedUnfusedSHA256": "4b1c857ca3ac6f62e2ecd17fa7f6fcba843c6cac7556f48d270ed97aedef6b88",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "x86_64",
+      "optimize": false,
+      "beforeSHA256": "9183aa8dd94466786b725b4aedda6880e39539b7e9839d22b9088c3ad389c271",
+      "afterSHA256": "2df51e06ae0663d29fe46be52b5ce701815f239f644e073bf3bd4b1cbba68a5c",
+      "normalizedUnfusedSHA256": "3e182b14932eb1c22a0d1ff4f0b670af94daef67e3bececb23886708751e7479",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "riscv64",
+      "optimize": true,
+      "beforeSHA256": "45f2d0850bacef79ad99f9265abde363d5d03232b980ba2271aa67e1948b7a92",
+      "afterSHA256": "3c68673c7de381045a60ea564c4f0ff5996afc3e7c608eae9c64a0813eb83972",
+      "normalizedUnfusedSHA256": "fd75c54e5dfa571cfd85e179ad58d699eb74a19758a9e2c343a484517a7ee986",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "riscv64",
+      "optimize": false,
+      "beforeSHA256": "3660b2670722e8fd00a2ad39221bb43b13e8ea79f00f59dda4cb93ff0dcb2e76",
+      "afterSHA256": "be2daaadb4af098d58b0039ac6432a6b63ee2ed71f8dbb2076b02ca231035a70",
+      "normalizedUnfusedSHA256": "db21ac87eb41167dbe2b68871f840441d5ed562c1f8f47ae2c4fd5b5de078818",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "avr",
+      "optimize": true,
+      "beforeSHA256": "77149005b694fc2db32d8bf5835e73a3e8d30b39e8c87c65458e08fe4bf3c6a0",
+      "afterSHA256": "d11814ae720233d46ce9855e591930fa7aa55dc658e7311f72a994822495c811",
+      "normalizedUnfusedSHA256": "e280279945c25d3d49dcad29182b6ef58c97e78896838a503ca6e00d93ad018c",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "avr",
+      "optimize": false,
+      "beforeSHA256": "417da05609f191f615e3a1dd91fbc1583e3db02501838d80ed60c190faef59fa",
+      "afterSHA256": "f29e49fe32dcf31392ac1aea238b0626a4351cd111a5445b33c3ecd1dad07aa3",
+      "normalizedUnfusedSHA256": "fdacc19e2930aa5351482690980dd1cba9aeffa2bd409257de9dc2752da3f359",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "wasm",
+      "optimize": true,
+      "beforeSHA256": "3dc08ca4d986f3067fc51980f35e4a3a5fd716c40f9264ab6836f0f00250dbda",
+      "afterSHA256": "90498cb4e037e0ff8e9ba25dd9f54e739f86d9156462c6e527c255729aba3150",
+      "normalizedUnfusedSHA256": "522934290786b02ab7b7e19ac6978bdcf43af11a4aae297e42cd1d152bf88b03",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "wasm",
+      "optimize": false,
+      "beforeSHA256": "2afc9b38db83346e0cc08150b84d517cdb2243187fa37fb2fe822afef3af0be2",
+      "afterSHA256": "8bb61178163eed6900873263840ade787acfcf21fdf7231aee5c28f05cbbb900",
+      "normalizedUnfusedSHA256": "0a5b42994c31098dc7a2a9dd0c6f2085f0e5bfe79cc175b0d949a98913027c04",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "arm32",
+      "optimize": true,
+      "beforeSHA256": "6d5130a6e45736b8fe61fa46b0c896c6f8d2b045c6c6cd49051704ea7e336f30",
+      "afterSHA256": "b537b9ebddc676116fd4a538460aaeb829aa09e3e21c58d01d9805bdbd352402",
+      "normalizedUnfusedSHA256": "211e220dc580d48ea30ce16bd79264e98c1882866cb220df1d7c5ba6f5d97c4b",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "corpus-scalar",
+      "target": "arm32",
+      "optimize": false,
+      "beforeSHA256": "763d9085ab88c05778874bb4e1d338398c1e3a040d4aabbd6ff3646a5deef1c6",
+      "afterSHA256": "6a7394203c75c6c9f0c76a72d41d40b001096160e1ac90e5efad3cc6c9171531",
+      "normalizedUnfusedSHA256": "f466c4e9ad0fcc1515b024811dd1743090bbd510fde8e24d83dd6119ebbdf4b0",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "js",
+      "optimize": true,
+      "beforeSHA256": "4e4672d7c4c8bd4b83b26355784e067491a32c8f8a5e23dd61943053a7cb774a",
+      "afterSHA256": "5add81227573aab6e2d8470910f06b19edaf7bb00376dcc396e97725bae39783",
+      "normalizedUnfusedSHA256": "13761ca50f3c67a486f109029574692e0e037ceafd143143c3b49f54dea523b8",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "js",
+      "optimize": false,
+      "beforeSHA256": "4e4672d7c4c8bd4b83b26355784e067491a32c8f8a5e23dd61943053a7cb774a",
+      "afterSHA256": "5add81227573aab6e2d8470910f06b19edaf7bb00376dcc396e97725bae39783",
+      "normalizedUnfusedSHA256": "13761ca50f3c67a486f109029574692e0e037ceafd143143c3b49f54dea523b8",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "c",
+      "optimize": true,
+      "beforeSHA256": "da2ae8727907928a720365c1c912b5e1d2742c8d349891da34718e54597435d4",
+      "afterSHA256": "ed3a25bc0718930bbc006f361d65f6833990dec79920fa68d0b8c62c4fb34ac2",
+      "normalizedUnfusedSHA256": "b367932dddb8dd8decb4ce90529038bc55836f9a1c63e77415c8a40e2a8127b3",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "c",
+      "optimize": false,
+      "beforeSHA256": "da2ae8727907928a720365c1c912b5e1d2742c8d349891da34718e54597435d4",
+      "afterSHA256": "ed3a25bc0718930bbc006f361d65f6833990dec79920fa68d0b8c62c4fb34ac2",
+      "normalizedUnfusedSHA256": "b367932dddb8dd8decb4ce90529038bc55836f9a1c63e77415c8a40e2a8127b3",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "java",
+      "optimize": true,
+      "beforeSHA256": "05c70cd41ddd90d3a0095f11a04493e666e0f98de424e5ac646af5a3920702c4",
+      "afterSHA256": "7316ce0853ecae8783623a248352317f857b77d7e86102d5a94d522afabefe0f",
+      "normalizedUnfusedSHA256": "45fd0b8cf3002aae1c84fe70871c58378dd4801023cd629f166e88c24c0a4696",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "java",
+      "optimize": false,
+      "beforeSHA256": "05c70cd41ddd90d3a0095f11a04493e666e0f98de424e5ac646af5a3920702c4",
+      "afterSHA256": "7316ce0853ecae8783623a248352317f857b77d7e86102d5a94d522afabefe0f",
+      "normalizedUnfusedSHA256": "45fd0b8cf3002aae1c84fe70871c58378dd4801023cd629f166e88c24c0a4696",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "sv",
+      "optimize": true,
+      "beforeSHA256": "08479ab3aeba533d4479b694089d1093fabd70b1759825fbe89d1fbd7d298e2f",
+      "afterSHA256": "896fa720947705031108f3af063e3f9e031e9086bd33f030edba97fe9e9b92f6",
+      "normalizedUnfusedSHA256": "e6c185abcece480d1e76f1e81a26c3ca1436e7881d2245e8df4a780ac88ee145",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "sv",
+      "optimize": false,
+      "beforeSHA256": "08479ab3aeba533d4479b694089d1093fabd70b1759825fbe89d1fbd7d298e2f",
+      "afterSHA256": "896fa720947705031108f3af063e3f9e031e9086bd33f030edba97fe9e9b92f6",
+      "normalizedUnfusedSHA256": "e6c185abcece480d1e76f1e81a26c3ca1436e7881d2245e8df4a780ac88ee145",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "arm64",
+      "optimize": true,
+      "beforeSHA256": "571970612ec55242bb5583b44fbc65266f5e013c36c2cca3b30a5141d521212b",
+      "afterSHA256": "98e5af87e9ccb116b56d11299f57eba5150481db1b56e6f438e872661167a233",
+      "normalizedUnfusedSHA256": "507c8fff0f070a99e053680537c583254aa84cdc16273d999935039ee6d335cb",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "arm64",
+      "optimize": false,
+      "beforeSHA256": "571970612ec55242bb5583b44fbc65266f5e013c36c2cca3b30a5141d521212b",
+      "afterSHA256": "98e5af87e9ccb116b56d11299f57eba5150481db1b56e6f438e872661167a233",
+      "normalizedUnfusedSHA256": "507c8fff0f070a99e053680537c583254aa84cdc16273d999935039ee6d335cb",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "x86_64",
+      "optimize": true,
+      "beforeSHA256": "9d27c2a14bcf1ce93b1406ec1fd10666a8aadec3e753a60d9cbd45642c8ae4a4",
+      "afterSHA256": "02339fca050f22ff85014eed8f2957dc563d0cc3d456beb04c1e6baf15dd4597",
+      "normalizedUnfusedSHA256": "7303daee8596290585ba8cb6083218b5e610eccf39e171cc7d334299de9a2ad5",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "x86_64",
+      "optimize": false,
+      "beforeSHA256": "9d27c2a14bcf1ce93b1406ec1fd10666a8aadec3e753a60d9cbd45642c8ae4a4",
+      "afterSHA256": "02339fca050f22ff85014eed8f2957dc563d0cc3d456beb04c1e6baf15dd4597",
+      "normalizedUnfusedSHA256": "7303daee8596290585ba8cb6083218b5e610eccf39e171cc7d334299de9a2ad5",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "riscv64",
+      "optimize": true,
+      "beforeSHA256": "588d46636d2c3a296d0b208007fc22434fa64ecff3208cc4c6cfb0643fccdfa9",
+      "afterSHA256": "b93922244763dce6aca8adb2d0903524b6825d94d2bb4aa53c8ab96fd39057fb",
+      "normalizedUnfusedSHA256": "19fafe190408e09ec5d67634aa2efcf343f4ada3736261b60b92a99580d3e5d7",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "riscv64",
+      "optimize": false,
+      "beforeSHA256": "588d46636d2c3a296d0b208007fc22434fa64ecff3208cc4c6cfb0643fccdfa9",
+      "afterSHA256": "b93922244763dce6aca8adb2d0903524b6825d94d2bb4aa53c8ab96fd39057fb",
+      "normalizedUnfusedSHA256": "19fafe190408e09ec5d67634aa2efcf343f4ada3736261b60b92a99580d3e5d7",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "avr",
+      "optimize": true,
+      "beforeSHA256": "4d5aa93f8bfdee9a6a7955bcb126b724f2a7a53ca7473d5150d9c8fe692250ab",
+      "afterSHA256": "f7a7eb6008a9842e1c67080786a7420fa3c44406a77c97f8b6b8546ba2ba897e",
+      "normalizedUnfusedSHA256": "ce6723dddd2040408d67b58f76293bc0ad4bf7dec2e5be98623241c0fe000222",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "avr",
+      "optimize": false,
+      "beforeSHA256": "4d5aa93f8bfdee9a6a7955bcb126b724f2a7a53ca7473d5150d9c8fe692250ab",
+      "afterSHA256": "f7a7eb6008a9842e1c67080786a7420fa3c44406a77c97f8b6b8546ba2ba897e",
+      "normalizedUnfusedSHA256": "ce6723dddd2040408d67b58f76293bc0ad4bf7dec2e5be98623241c0fe000222",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "wasm",
+      "optimize": true,
+      "beforeSHA256": "f027b18a6a8a21c5bf7495b5f19283afe5001793f9204af73ff9493b257a6348",
+      "afterSHA256": "13dd29ff23e6cbdb53521862802a6d003a8084313439043b746150939637b0ad",
+      "normalizedUnfusedSHA256": "bdc71197eacdb2843f658a0f173ee650c05bc7b74829ba4642e33592c616f681",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "wasm",
+      "optimize": false,
+      "beforeSHA256": "f027b18a6a8a21c5bf7495b5f19283afe5001793f9204af73ff9493b257a6348",
+      "afterSHA256": "13dd29ff23e6cbdb53521862802a6d003a8084313439043b746150939637b0ad",
+      "normalizedUnfusedSHA256": "bdc71197eacdb2843f658a0f173ee650c05bc7b74829ba4642e33592c616f681",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "arm32",
+      "optimize": true,
+      "beforeSHA256": "714995eb17e4964604d788b9c747621c133e2a0c7b38b701289fe3bf6b036e17",
+      "afterSHA256": "d2b84b854d1b67b226437414ecda21ac08bf0474a918d2ae22a861e7053a4e27",
+      "normalizedUnfusedSHA256": "5d9b7a9424917d605219599e6b67941745410234772757f12e904a8c2c31c67d",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/kernels.a0",
+      "target": "arm32",
+      "optimize": false,
+      "beforeSHA256": "714995eb17e4964604d788b9c747621c133e2a0c7b38b701289fe3bf6b036e17",
+      "afterSHA256": "d2b84b854d1b67b226437414ecda21ac08bf0474a918d2ae22a861e7053a4e27",
+      "normalizedUnfusedSHA256": "5d9b7a9424917d605219599e6b67941745410234772757f12e904a8c2c31c67d",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "js",
+      "optimize": true,
+      "beforeSHA256": "63b9e0c5938f698c3309e1e050905a3138aede5538bd091b32185bb44ebdffbc",
+      "afterSHA256": "788c1d8d45054644b8d4127a51d0b0fcbd275acd94ab96d35fd674b093c9cf70",
+      "normalizedUnfusedSHA256": "0a6acd45c00d1ea6fc289846d221ee4fc6370288beb2cbb28919f04ea86efbea",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "js",
+      "optimize": false,
+      "beforeSHA256": "855a4065882d7ce73bd47237a8af03b0e2a4ea350b5fd4bfd4e933de0d10f0ba",
+      "afterSHA256": "cb8832b66e1e02af30b4b71f2a4e39f0636e7b8e806f42fcaaa8ba12c254101f",
+      "normalizedUnfusedSHA256": "dc1f557cb028128c6603ba6f96ca03d465daf284bd4d0aae97c0b9e103f6fdb5",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "c",
+      "optimize": true,
+      "beforeSHA256": "41a9a0b8601b51f0ccecaad1200c8df8fd15714d1ca6b06362eb64aabe7bb2ae",
+      "afterSHA256": "0588b542f54104db080b1d285ce24d50a091bf9f0e220eb4b1e7ac11d3b71f92",
+      "normalizedUnfusedSHA256": "e7375d1d10aa25ca9efb3f524ad4b889e434b0955dac62a9867a7fe1a40844d9",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "c",
+      "optimize": false,
+      "beforeSHA256": "900f95d7e9e6d82f283a630a578368d358444406651be6bdb335faef023d1163",
+      "afterSHA256": "98fb78731739f404a3f4c1258ac86206b184bdd63ca7c71bd110abe6e989b706",
+      "normalizedUnfusedSHA256": "181c86c2a41b1d5533a668a0bc81c79d716edf6eba14a272ba68abf64ddd327c",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "java",
+      "optimize": true,
+      "beforeSHA256": "41da7de874adc39d6e19c1eb839fda0693da9ec66e5e2ec22b7d68b6ba5df8b7",
+      "afterSHA256": "8b61bd398be3da205cb684ab8c13a1463378ad10a9c3484d2db2138b22544107",
+      "normalizedUnfusedSHA256": "5b203ead370b02e48eba27c73b68a8b77dfc289dbf9a69c52286ad1660fb0c5f",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "java",
+      "optimize": false,
+      "beforeSHA256": "05810487201b110f8420effd00b0a705c0ac71ab2803a414e1435cec9d507e31",
+      "afterSHA256": "90ac2cf415c331562552d3f0ca6f404c43afdae453534623f83791125e02739a",
+      "normalizedUnfusedSHA256": "540d0156e1c2d051d99830d80a68d40abc2a609021a8d9e000cb47e7fc1134fb",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "sv",
+      "optimize": true,
+      "beforeSHA256": "0ab18385878fb474a6199fc023724d3c66198b6c7ff73795f9ca805d1e946e39",
+      "afterSHA256": "fb9638829b2285bf6598b9781026fbb3c0373973ab6e03d14c61f0642451c0e0",
+      "normalizedUnfusedSHA256": "4d343c3f8d5179d9fc72af1c9ae2533a102338be17c651e8d46cbed4acc0177b",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "sv",
+      "optimize": false,
+      "beforeSHA256": "fe366d5a5a5d14a115ea3dff5b838fc391084b86f7cc26aff621b8d6b0229718",
+      "afterSHA256": "a6d04e31b4befe897700a6072ae7652dc1224e28da6b78a5515e43ec32426a62",
+      "normalizedUnfusedSHA256": "7e5d0296d1f612419b828f087151b6f7c9bd91cf181ac043d1f691ab9db9e1b1",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "arm64",
+      "optimize": true,
+      "beforeSHA256": "refused: arm64: function readrow uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function readrow uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "arm64",
+      "optimize": false,
+      "beforeSHA256": "refused: arm64: function readrow uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function readrow uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "x86_64",
+      "optimize": true,
+      "beforeSHA256": "e65ba55c4dbff4500fd368c3285946254f8f23699cf5c6e329df0637be2838ca",
+      "afterSHA256": "def2e3cc6cdeed98dbd8438cbc558b35bd4f76f294ea6acecf9148b0bd3e6683",
+      "normalizedUnfusedSHA256": "b1e4b61d2c25a88921e8a2e95f8226ab071adeed86cfb5a08b0b667dbbe08b39",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "x86_64",
+      "optimize": false,
+      "beforeSHA256": "2c1fb27f39b083967f36a66ee0657d880539480d183b492b84f02d9858907ae0",
+      "afterSHA256": "898554d2382d099cd4862fe3bb71f7beac3cb2ef7f4cde559e3f5e8d8a833e7e",
+      "normalizedUnfusedSHA256": "6a64b991382e507d29259d1376cbaa3a028943cefd6d60028eca0288bd2ca6f7",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "riscv64",
+      "optimize": true,
+      "beforeSHA256": "refused: riscv64: function readrow uses io; io functions are out of scope for this backen",
+      "afterSHA256": "refused: riscv64: function readrow uses io; io functions are out of scope for this backen",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "riscv64",
+      "optimize": false,
+      "beforeSHA256": "refused: riscv64: function readrow uses io; io functions are out of scope for this backen",
+      "afterSHA256": "refused: riscv64: function readrow uses io; io functions are out of scope for this backen",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "avr",
+      "optimize": true,
+      "beforeSHA256": "refused: avr: function readrow uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: avr: function readrow uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "avr",
+      "optimize": false,
+      "beforeSHA256": "refused: avr: function readrow uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: avr: function readrow uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "wasm",
+      "optimize": true,
+      "beforeSHA256": "8fc4771abaa814966f0af55890e0d05ac6e5447aec37fa9b91ac121df315f8d6",
+      "afterSHA256": "1d4970f8d9f5cd6eb28cba7a6cf981f86c82e59b38f4ab634f1195bbd67d9955",
+      "normalizedUnfusedSHA256": "ebc4b7eeab1daf354e45f0387b8fa5e03b9a2e0130a3eb4f727fca6f08cd4a77",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "wasm",
+      "optimize": false,
+      "beforeSHA256": "22fa7de152bcd98d08148e24233ddd52bc8c89ffacad72c84dc159f97b209fab",
+      "afterSHA256": "bbeb260db24b2d9cd0e941aafe441f0e45b219b491885519ba33020e69bd70da",
+      "normalizedUnfusedSHA256": "b312d8eb7d2c2b3a4b19efc54a7ce647a4591bf291c544067b3817c6167f38ae",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "arm32",
+      "optimize": true,
+      "beforeSHA256": "refused: arm32: function readrow uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function readrow uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "examples/life.a0",
+      "target": "arm32",
+      "optimize": false,
+      "beforeSHA256": "refused: arm32: function readrow uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function readrow uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "js",
+      "optimize": true,
+      "beforeSHA256": "c60595765656c64516666bbbd41e6b77bc8ad64bef3a0b13a2a7d61b0caee8c8",
+      "afterSHA256": "9912f0fdc063856063f19949d0899130a6d40d5ac154e1db5782853d8a534c7d",
+      "normalizedUnfusedSHA256": "f4ffb2f2d2f44e6b5d0992629df79ed8d3074e25d3095c0e368c2cd0a71e6fa4",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "js",
+      "optimize": false,
+      "beforeSHA256": "444903dba24d9d15f1cd15fd8ba8b19b66877565bbe7424c8b06593e61b54b91",
+      "afterSHA256": "85d4139ee94c6f6b09134bf4465d5f13c036c8ffdba144b5fe0ae178064e1f2e",
+      "normalizedUnfusedSHA256": "54ecde29e61fe28c9566462f3459d92e0602664a6895b0b1a43b78dd8d105ec4",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "c",
+      "optimize": true,
+      "beforeSHA256": "029359a08bc3e1c64eb19cd3f053aabbb431e525d0a97ced15ac399a2d4e7c55",
+      "afterSHA256": "98c47e13774eff250a6519741561099eaee1bca171f852b8aca1db644adaa824",
+      "normalizedUnfusedSHA256": "478907ad560aaad6b96ec3a01dcaf0468a3c528ddaa53170683d92205a4a232c",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "c",
+      "optimize": false,
+      "beforeSHA256": "90edb52fc9b129006dd1d347476c551e98f9f5e05eaeb9b528eca68ab2b49bfe",
+      "afterSHA256": "34def5f2c47df1cd8f723a1fed0697be93165e96c187819328a1bc2005a37566",
+      "normalizedUnfusedSHA256": "5d80df36a354bb2b3446cdb469232bae7c15909eb39ba69549a20ea230f3b757",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "java",
+      "optimize": true,
+      "beforeSHA256": "1e3513316311a9dd3735b654b804b7f55805463a4cb62dadeb842f95b3d0ecce",
+      "afterSHA256": "e5652fa6dfd091925b0bb727b5f1d511dcb39da8d4cb9aa30c5ddb7f4710f446",
+      "normalizedUnfusedSHA256": "12f024c5801d25b12bd0f73a8be8894824334ed0546bc7e5df5791c7024c8254",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "java",
+      "optimize": false,
+      "beforeSHA256": "9ce91898d0818b573c0bfd2b1ddb7109fadd594438a494e4ff6f0bf8b675067f",
+      "afterSHA256": "27e84b841c1da5559cc4c16dd70499a5cabfee6fd0b10de1fdd417163620b1e9",
+      "normalizedUnfusedSHA256": "f30f2dff93e9a7c385a920275bf07918b1826c5cb5ab959add36b59f86a7bd24",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "sv",
+      "optimize": true,
+      "beforeSHA256": "f0c4ac6a4e18be2f821d095a03248f666204d23f497640895f3fca47877fcf1e",
+      "afterSHA256": "fc0a358383db6078c94ddac83d2a8b55e1f4ba4751af86c57afdee0714d4497e",
+      "normalizedUnfusedSHA256": "a14d4989ecbb85a6bebfaf59522e683740891dfe7dd2438fe03c32b3482c0e00",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "sv",
+      "optimize": false,
+      "beforeSHA256": "c96eb0830b505f480ad487cd3a1923bb6f7a96ef659a5c048ef4852e20c4f3d7",
+      "afterSHA256": "81d6d887c0f326f85a8531e1680b3831a0bb6558f12be15e8d243404cfbab158",
+      "normalizedUnfusedSHA256": "66988e0ccb04135e6f68f61918f0356fc85e92328eb0ade14c43cab27f26215f",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "arm64",
+      "optimize": true,
+      "beforeSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "arm64",
+      "optimize": false,
+      "beforeSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "x86_64",
+      "optimize": true,
+      "beforeSHA256": "d69d65fafb605d21eb5ad4f1c5caa48047a355236e6c5004a3c9056b1ebc1f14",
+      "afterSHA256": "21a430821829e99bded067b2d0b4cb733c8726d7a973fd8c06c77ebcb1790759",
+      "normalizedUnfusedSHA256": "32bfa7784bb30212f06a7c2d2aeef1ca5f63d01c58215e4d042cf762452f830b",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "x86_64",
+      "optimize": false,
+      "beforeSHA256": "cd679aef73e3235fee3b85067081f5b4e867d4e69fe984248cf80ff8194221e9",
+      "afterSHA256": "4e1d17e7bc6defa235df86cb0e7e03baf0d10e2eb026f616b81c19aec49c6fbe",
+      "normalizedUnfusedSHA256": "e4c0128255785b0ec564e9b8b81418fcce3cd15afe2d71ca1a5e76aa1d0cda88",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "riscv64",
+      "optimize": true,
+      "beforeSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "riscv64",
+      "optimize": false,
+      "beforeSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "avr",
+      "optimize": true,
+      "beforeSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "afterSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "avr",
+      "optimize": false,
+      "beforeSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "afterSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "wasm",
+      "optimize": true,
+      "beforeSHA256": "a616d6e368a02ab60ffa9aac34154a7949daa9730fc4f1dd70761a74aad8ed12",
+      "afterSHA256": "0d931a0a38b9c6244f472a21b058275a29d234e3052873cec3f0f9d8630626f4",
+      "normalizedUnfusedSHA256": "605056f8b6fc2c9c747d72c0bc4dcf7c80ea3aceb036d57787f611a12ec43df9",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "wasm",
+      "optimize": false,
+      "beforeSHA256": "9cf0af0b0434b733f252bfe7c62cb62013faeeb6aa375307255f9664df39b4d3",
+      "afterSHA256": "a32b622434d9d4f1efea03e47458ecd816e10575352866439a8b1c9d68485c0a",
+      "normalizedUnfusedSHA256": "1cac0fab9d5abe30d0d358602d2db956c51fee91180b587356f5b359b29cdbaf",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "arm32",
+      "optimize": true,
+      "beforeSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/lex.a0",
+      "target": "arm32",
+      "optimize": false,
+      "beforeSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "js",
+      "optimize": true,
+      "beforeSHA256": "900608d90ce4961877c61df6913f513e43c8dcc49ed6d140d1d53e193932fb37",
+      "afterSHA256": "b6c71f2ee80687a932323540b43828bc0e259fe8dcc91c4238bf703d688b16e0",
+      "normalizedUnfusedSHA256": "10beacb776a4fbba630ebc42247b6e4dae91237a600cd800f862fe6a0597d1a6",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "js",
+      "optimize": false,
+      "beforeSHA256": "d89fc2b060a841f70993604b22201e6958df19ac417bb362f70d6434d2706cbc",
+      "afterSHA256": "41151189b901a8561f8afea2f1755cd7b9bf251de7152e9cc2b3516bca2b8c03",
+      "normalizedUnfusedSHA256": "d4088214dd558967b137f42c7b95e4a04311ef6389cae45594f31b22e38335ec",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "c",
+      "optimize": true,
+      "beforeSHA256": "66de9f2a7f018253923be78698c125bdee543bef5a99c99581804039743afae5",
+      "afterSHA256": "b520bd5eb04d8e67354f9dc12c7a0eabc7fb4c706845a3ce198334c8a006e25b",
+      "normalizedUnfusedSHA256": "64b4ee3526c90991708a5da7dc16b16f534a3702f5d357be6ea02c7062c8326b",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "c",
+      "optimize": false,
+      "beforeSHA256": "d7893c882c3d1f8365d11d7c5b40706f9eecfd1cd1126679b74316fc7bc22419",
+      "afterSHA256": "f984e7cfc6c2559538abba2eb60a4d0380a01982e960715f11b4e21893c66f72",
+      "normalizedUnfusedSHA256": "a0088137989c20f7da6ed77a016210991b382a38d152795ceb525e6ed3c35715",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "java",
+      "optimize": true,
+      "beforeSHA256": "99490a9114d545bd96f49a478801ae932605ef4162eb9a31a43e78b0579db58e",
+      "afterSHA256": "0d7dd717d3b87f828eb737da893361f28b217509ffe37c90b73dbece4d2e45b6",
+      "normalizedUnfusedSHA256": "76238c39882762c2b688ba17f420e653186fdb25607bc27654e084cfa8b568ab",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "java",
+      "optimize": false,
+      "beforeSHA256": "a069ddcac2f4de7e3025d7c64d376b9c72e520b915664b65465665390e34f31b",
+      "afterSHA256": "0afd37d1e5b291106b46fe4cda1078798d124e1f8e28a7a73be518e50297b282",
+      "normalizedUnfusedSHA256": "e74f0754daa06b4e9ceb939ac8199746246c060c516a93cb5253a409c16decad",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "sv",
+      "optimize": true,
+      "beforeSHA256": "929bb89f65cd74a449f8eb17a093f624122bca52154112df7158a392b04f0a96",
+      "afterSHA256": "aa99258ffd93718eb36622fdd4284e473e36e4a4ad4ddf5d87287965c3cd23e6",
+      "normalizedUnfusedSHA256": "f984105724cf8645ddaabec06b3daf505f07e984b1275ad5cb6b47195864510c",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "sv",
+      "optimize": false,
+      "beforeSHA256": "428102f8e79e13b495555add61ff7a1f57809987651668076d116b545dc968e4",
+      "afterSHA256": "35124d97e25e07766d58380456bafe463cc0d68e820e2be555123d7f5bcd3bba",
+      "normalizedUnfusedSHA256": "df61198cbfb8f4cd2ffb8173ad9431e6229e8fdff013d8824967e8b2f26adede",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "arm64",
+      "optimize": true,
+      "beforeSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "arm64",
+      "optimize": false,
+      "beforeSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "x86_64",
+      "optimize": true,
+      "beforeSHA256": "238fc90195848e949cb956e7afc7fb3116441eb98cd3c67fa64b0bfc501e62c1",
+      "afterSHA256": "d796bb93cc985eb523724e5e6a6f98c7e68ded20014d5e3f303973cd1db635f4",
+      "normalizedUnfusedSHA256": "67b3e53ac7cf738e1b6e248468171c4704763948fb033440e9f71b26990e06a6",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "x86_64",
+      "optimize": false,
+      "beforeSHA256": "b351e18276f068a00a77728834f5bc052e37dd989c0be96fd07bbbf9a53c2ade",
+      "afterSHA256": "d91547358a90b8fbb7f11fbacb3f217a753334cfac623b4b72696ab4298b4adf",
+      "normalizedUnfusedSHA256": "202a84692a2ce778fac127c71aba33d3e85ef0e9e60725fecf973386784ec31f",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "riscv64",
+      "optimize": true,
+      "beforeSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "riscv64",
+      "optimize": false,
+      "beforeSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "avr",
+      "optimize": true,
+      "beforeSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "afterSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "avr",
+      "optimize": false,
+      "beforeSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "afterSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "wasm",
+      "optimize": true,
+      "beforeSHA256": "454cafc2613675f246d7bf9f96e18b0cf7a771be406c4d013d817ffe8736312a",
+      "afterSHA256": "078b8acaeffb813943c382f1d3679a5f9d021ae6fb91e8d6a61aa6788062df60",
+      "normalizedUnfusedSHA256": "4064a8b228d25b647c057fbd8a614d59b60d8b96df71314661fda8e8cd8da34f",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "wasm",
+      "optimize": false,
+      "beforeSHA256": "b9b006402b678cfbb9f74d44bbc226c88c2406346dbd061195c0b94a77a76d0d",
+      "afterSHA256": "faf6fe88e70f79eb3589c3e3b2b1bf386bf85adae37f15abc40c00c3557da6a4",
+      "normalizedUnfusedSHA256": "7a9cd1e5ae869e5ccfa216b3743b6f46428890ce0ac48a4069c052f5b2d9fae3",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "arm32",
+      "optimize": true,
+      "beforeSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/parse.a0",
+      "target": "arm32",
+      "optimize": false,
+      "beforeSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "js",
+      "optimize": true,
+      "beforeSHA256": "fefd60258b8ca8592564b0e0d425fd945d3b8ee7f0212da1d8ec17b16e9b3bb1",
+      "afterSHA256": "4a3f4606af876e372820fc38c8b53cbc910404c82ea9ad380bea075ed0e751cc",
+      "normalizedUnfusedSHA256": "3be3d48cd13e952d32dde443231d0c5f50bb067ccf7b5d2201de2f311ec774e5",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "js",
+      "optimize": false,
+      "beforeSHA256": "e76cb0e58e57127703c336144fb8a1e28e00f1cf535408453860f15fc34b744a",
+      "afterSHA256": "72e8372f9e9ff0c47a62e894cae0ba8c7a9006ef642f39a9fd8b7de4ab913bc1",
+      "normalizedUnfusedSHA256": "9b185071e8ae0f8441f99bccfd02ccdcf93315d3277fdf3299d1667ce4e7a722",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "c",
+      "optimize": true,
+      "beforeSHA256": "4760d4b544c8ff2cb460aa4f83efeeceb26e5acc62416ec7116214ae139aae49",
+      "afterSHA256": "2affb558a7389e6e4185ea120ef8b670080932f493381fd01521618ecce9e943",
+      "normalizedUnfusedSHA256": "9d34fdae0f330e4757918a7229b7c5e3632893031a8118cff7c091c6ae14cbbb",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "c",
+      "optimize": false,
+      "beforeSHA256": "0d1054ad133d66ad12c9131fce9fb4b11e489981d25f0135cb5775291c6d6a89",
+      "afterSHA256": "78e3cd0add97a3b970cbf09204966e1ff0a0673cc26e16a828f09d260b457ef0",
+      "normalizedUnfusedSHA256": "dc8a01429cafa6950645e0eeb642bd5102d01191515229e4223ca13e731168ed",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "java",
+      "optimize": true,
+      "beforeSHA256": "409b44bb42d18211e7e612b7ee68d021e56e4871fb563da4789ce98d4d6a5a8a",
+      "afterSHA256": "00d6ef0e16b2a257338af47898818c3e62b7d04e5dbc1c8d6318bb8a84580c7e",
+      "normalizedUnfusedSHA256": "a5c192a3c1a17aee8111c66b3d530e07b47498b08e34d57766ad0ecf168780ea",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "java",
+      "optimize": false,
+      "beforeSHA256": "6c45a9a07c03506c53bc70436281215336602b1e1898679e486f00aaf05ea2ed",
+      "afterSHA256": "775719735d906ca0bcb0faaba8c8bc366526a51b366a4ef8b07839a3cd543591",
+      "normalizedUnfusedSHA256": "ffb00bc861fa1be52046736e15a7ca5e1d7e3ce45c030bb4d9c14b904a1e2ba2",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "sv",
+      "optimize": true,
+      "beforeSHA256": "refused: zeros4096: array length 4096 exceeds the SystemVerilog limit 1024",
+      "afterSHA256": "refused: zeros4096: array length 4096 exceeds the SystemVerilog limit 1024",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "sv",
+      "optimize": false,
+      "beforeSHA256": "refused: zeros4096: array length 4096 exceeds the SystemVerilog limit 1024",
+      "afterSHA256": "refused: zeros4096: array length 4096 exceeds the SystemVerilog limit 1024",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "arm64",
+      "optimize": true,
+      "beforeSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "arm64",
+      "optimize": false,
+      "beforeSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "x86_64",
+      "optimize": true,
+      "beforeSHA256": "0db388b51cb95dd445970ae46bbf771af95350b457d2d2d19560f4b64206ce40",
+      "afterSHA256": "1ca0681cfe9ffb4a948bfac9894284ac0ce08e930f63526ba234dd3c78ef76c4",
+      "normalizedUnfusedSHA256": "84b1f6333a4cd41fbad0718eabacbf1839ccbc1b436184bc064927b480fb5397",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "x86_64",
+      "optimize": false,
+      "beforeSHA256": "818a0fe7839939db954e1dee08fa3710f5feca7546017a053b6116f9f1c5f766",
+      "afterSHA256": "f707a48f0e884073fbbf44bdef7f14321913fb2b6797b29eaf2a4e6f1710629d",
+      "normalizedUnfusedSHA256": "624cb5282f8b7f436e920a61bd0eea59d8f65ac8c62433caa81495ee5b3f9044",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "riscv64",
+      "optimize": true,
+      "beforeSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "riscv64",
+      "optimize": false,
+      "beforeSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "avr",
+      "optimize": true,
+      "beforeSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "afterSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "avr",
+      "optimize": false,
+      "beforeSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "afterSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "wasm",
+      "optimize": true,
+      "beforeSHA256": "862e5b33666c4a73a651a28a8a07ee0c051b5e424f5e3a72ac4c3359045e8b8f",
+      "afterSHA256": "b0b46f1b637434f72820a63a5a85f851dcd8e387f6e319a5c501bff4eba3d7f3",
+      "normalizedUnfusedSHA256": "599b3c674504a1f1e7a5c7da1f583ddd2334240f06329a8662e1cfde7d2aee3d",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "wasm",
+      "optimize": false,
+      "beforeSHA256": "15c472f920a5ad8ec81be851f475b0ae77b3df16a98fdb16375248e6713027ab",
+      "afterSHA256": "1a7fff70c1ff740efe78df6ec4179afe91bbdf5ef045ac5ad043bd0fe719ba06",
+      "normalizedUnfusedSHA256": "89f96f808b843d5e77730b401e9bc223d5fe767ec6d950a4fbe83da52fcfedb2",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "arm32",
+      "optimize": true,
+      "beforeSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/check.a0",
+      "target": "arm32",
+      "optimize": false,
+      "beforeSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "js",
+      "optimize": true,
+      "beforeSHA256": "8eb37bd218537390097e7721a51aca2b37d0331b4063093b0feec9627ceaf22c",
+      "afterSHA256": "212de3fd25f0baffbd1917faf53163e099bff024a14dc3993da71f0430d918f9",
+      "normalizedUnfusedSHA256": "eb221392e3f6eb28e900a73b141342ecf771f8075e8c482d50b4fff75875340a",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "js",
+      "optimize": false,
+      "beforeSHA256": "e1c928808d5bd46ebfe5a1b3dcf136d0e27e64c4dccb7f9ed4f7fd305284b851",
+      "afterSHA256": "1cf339f4d24d02760a47be2a9c4bcdb9389776d14e198181e87c99134e774a46",
+      "normalizedUnfusedSHA256": "71fbff1b39b8bfca3b3670ed34609c2610ba8d94b09c21ffcd5ccb3a3d7e598d",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "c",
+      "optimize": true,
+      "beforeSHA256": "073a01aaaba4f99d087a7a8d00203b61dd1590723098a6404837d98d243378c6",
+      "afterSHA256": "8508f1965b33bafdf5f8b6d13914fd10b046437c2ef9f217be3963eb5c2ab2d8",
+      "normalizedUnfusedSHA256": "3552a498a57ab6036a625d9692ffc91d59cec99564d4d444ef8e4bf014fde64e",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "c",
+      "optimize": false,
+      "beforeSHA256": "65f7f1bce10518b9bbaaee167934d64f5d69b2adc3b623295229f0129cfe5662",
+      "afterSHA256": "a44541e4187dd86eafff1acc714179855e942b6a5cab62588169c98f9cee9c08",
+      "normalizedUnfusedSHA256": "f7e0816b6397b5b2198b452d577dd5be48d65ca9a416b3f156d9ef7986868dd8",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "java",
+      "optimize": true,
+      "beforeSHA256": "83e48355f321c056fffb76b7129d178a20b4213bba0e94e21a445e8fd3562aad",
+      "afterSHA256": "96db830fe719471cdcad4dae3e5baa976932e7211e5e5d47f6e05ed4e5fc6720",
+      "normalizedUnfusedSHA256": "8f8ad2544c5391f865e14e8a5f1341079ff35b117f30bd53e3e51f4b92634ef7",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "java",
+      "optimize": false,
+      "beforeSHA256": "7a1694ffc31ec2fcfde23ce80438f07a8bcae05f0791dbeceefe76a18b03de71",
+      "afterSHA256": "7616ee8a94cc17106ff68da45853c8bca4091195ce01a796bb2f74509fad2604",
+      "normalizedUnfusedSHA256": "c3bcfa4819cec40104122fb6d07aa83c44d050360c777cb6e60798bae8a21100",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "sv",
+      "optimize": true,
+      "beforeSHA256": "refused: zeros4096: array length 4096 exceeds the SystemVerilog limit 1024",
+      "afterSHA256": "refused: zeros4096: array length 4096 exceeds the SystemVerilog limit 1024",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "sv",
+      "optimize": false,
+      "beforeSHA256": "refused: zeros4096: array length 4096 exceeds the SystemVerilog limit 1024",
+      "afterSHA256": "refused: zeros4096: array length 4096 exceeds the SystemVerilog limit 1024",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "arm64",
+      "optimize": true,
+      "beforeSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "arm64",
+      "optimize": false,
+      "beforeSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "x86_64",
+      "optimize": true,
+      "beforeSHA256": "166bf192d3e4d1fca5429f7fa6f270e05c5f1d4320b39f3b9c21a77d2dd09df2",
+      "afterSHA256": "d31f314a0ddcc1799c260f0cc3a37223fb1eb51ba07d593670d9e95bed4446c9",
+      "normalizedUnfusedSHA256": "bf7540a80c0fe4f971887b12baba3964662a49a54decc54f530aab97a81bb6af",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "x86_64",
+      "optimize": false,
+      "beforeSHA256": "567a3515275e3a4728f56637fea323e5a20ecb84b332dc5fd410c832a877ca82",
+      "afterSHA256": "92c8cdcc05778c06350e691f56a01306fefd3bff7bc3e9cf2458390c2985d3e9",
+      "normalizedUnfusedSHA256": "2adc1ee900f53435e624d2f85f86a44144d1c0f2b1e087b1a9c6ef1a8d9adf22",
+      "status": "identical except compiler version tag"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "riscv64",
+      "optimize": true,
+      "beforeSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "riscv64",
+      "optimize": false,
+      "beforeSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: riscv64: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "avr",
+      "optimize": true,
+      "beforeSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "afterSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "avr",
+      "optimize": false,
+      "beforeSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "afterSHA256": "refused: avr: function srcpg has a 131072-byte aggregate in its signature; the limit is 2",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "wasm",
+      "optimize": true,
+      "beforeSHA256": "d40f83e731e38dace1bf0f5d1b3ab05a67a33c0e4dd8abae82e7e9af8ed9aad8",
+      "afterSHA256": "d54d69f71053f46cf5c6af7d876297b03e8a32fe770d3109f1630a2143bae1c2",
+      "normalizedUnfusedSHA256": "f9ffbaf12a55ef2f2f87ff3113900e78b9d4ea6c8b433ffaa0742112307079da",
+      "status": "reverts read-array fold fusion to preserved compiler64 emission",
+      "changedFunctions": [
+        {
+          "name": "wart16",
+          "beforeSHA256": "6685491abe90a41d9eae05e96416688db5efdd20f5fa03dd212eca1259168b2d",
+          "afterSHA256": "2df2af31d0553e071b60dba97024b6857bf2b35d1545db1b6de0622e8e6c7c22"
+        },
+        {
+          "name": "wart24",
+          "beforeSHA256": "26a001daadf42543c6d833b3ced0f9baab9b8aba080abd6563907ecad260ba71",
+          "afterSHA256": "72c17592070bcea56b3e6399a6faf691a8d5644acebb8f4a81a627ca9ca95544"
+        },
+        {
+          "name": "wart45",
+          "beforeSHA256": "bbcfe39fac1c693ce853e1f5ec8569909797eec27c00b581d1c74c368f70a1fb",
+          "afterSHA256": "c9ab70056a16e3cf5e645065637aa62d5ca29add0c4ea1d3b0a86e6d1217762c"
+        },
+        {
+          "name": "wart65",
+          "beforeSHA256": "7c0578edd0dd6fdb07110aca1a20b171830ceec66cd6026e2dbb7e50d137e8fe",
+          "afterSHA256": "09aa1cbd06881c09c7b60859ea67e351ed09e865fc18b94a7d19ffd9cf752e1a"
+        },
+        {
+          "name": "wart132",
+          "beforeSHA256": "7f78d5f0753cdb477dc597027eddc59f452aede884eb6b6db25917d5531db75f",
+          "afterSHA256": "6c9302b5a75b8c7f5c1650e5f0e15c1c16c7bbaa3e06a76312922ece86074056"
+        },
+        {
+          "name": "wart128",
+          "beforeSHA256": "86bbdf49ce7becacb7cafb5798b4fa1aab797fa805ff90b57d361f6c49e50640",
+          "afterSHA256": "45f58c25ee26965c0882efdce1c05093ff24821c464d222fde11c5112cf953eb"
+        },
+        {
+          "name": "wart400",
+          "beforeSHA256": "d0c85b33152d411c4ee92fe575e0aec0f34a6c52f1ccc57eee31e9ecc7d87a30",
+          "afterSHA256": "5c0f125c63657b27c9b012bf785f61f4487656bacac92521528b3653b02d33d7"
+        },
+        {
+          "name": "wart512",
+          "beforeSHA256": "ed623ee0f0532498bf1762237495ea2b4105d0d5e76ce9e5976ba59be7c303e7",
+          "afterSHA256": "745724c801302cbb42a817db4c75de177db9be2aa5d8d102db8fe8f3654db224"
+        },
+        {
+          "name": "wartty",
+          "beforeSHA256": "b52f470d4956ffd106cb9a95b179e10037d3d676d9fda3c0530e8b22365046a2",
+          "afterSHA256": "9a539c7bbdcd23789833baaa134734504d6db2d9760ea856ebaf4225e2ae7255"
+        },
+        {
+          "name": "wart200",
+          "beforeSHA256": "dcbb1efd7b43c0ec265f93b1bb6a4c165e3e91cef806245a87e58aed4d4da26c",
+          "afterSHA256": "c301653455cf5a343c2d10a41f576eab384f26b0837640a8ddf40e3612e0907f"
+        },
+        {
+          "name": "wkcpg",
+          "beforeSHA256": "3ac95c29b2cace77d262102e6cedd7fe45c0654533d71541baee269a47ca0a07",
+          "afterSHA256": "67db8c79376445ee0fb8f2a0abb033f0544342186ef086f5a5eab9b93562bdce"
+        },
+        {
+          "name": "walink",
+          "beforeSHA256": "6adfbc698ace0cf582d9998d356d355678cedde717ed77b8795eac4714190c3d",
+          "afterSHA256": "0be5392ff80308fcac00ed682431d0e1cb15ec3340e849a34d7d188e4759afe8"
+        }
+      ]
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "wasm",
+      "optimize": false,
+      "beforeSHA256": "bd924fb96f84f84dd53a1a5a5097f6a3a886fcf7272c6d948290b85132bd8229",
+      "afterSHA256": "094c047b8703a4c612d12a63af2be9005ec8e77374e0b4579d6e388242f6f375",
+      "normalizedUnfusedSHA256": "2f84ec623da30a49c396cacf8bb6838c76e0c8f73ebbb2433c506f805d26e216",
+      "status": "reverts read-array fold fusion to preserved compiler64 emission",
+      "changedFunctions": [
+        {
+          "name": "wart16",
+          "beforeSHA256": "6685491abe90a41d9eae05e96416688db5efdd20f5fa03dd212eca1259168b2d",
+          "afterSHA256": "2df2af31d0553e071b60dba97024b6857bf2b35d1545db1b6de0622e8e6c7c22"
+        },
+        {
+          "name": "wart24",
+          "beforeSHA256": "26a001daadf42543c6d833b3ced0f9baab9b8aba080abd6563907ecad260ba71",
+          "afterSHA256": "72c17592070bcea56b3e6399a6faf691a8d5644acebb8f4a81a627ca9ca95544"
+        },
+        {
+          "name": "wart45",
+          "beforeSHA256": "bbcfe39fac1c693ce853e1f5ec8569909797eec27c00b581d1c74c368f70a1fb",
+          "afterSHA256": "c9ab70056a16e3cf5e645065637aa62d5ca29add0c4ea1d3b0a86e6d1217762c"
+        },
+        {
+          "name": "wart65",
+          "beforeSHA256": "7c0578edd0dd6fdb07110aca1a20b171830ceec66cd6026e2dbb7e50d137e8fe",
+          "afterSHA256": "09aa1cbd06881c09c7b60859ea67e351ed09e865fc18b94a7d19ffd9cf752e1a"
+        },
+        {
+          "name": "wart132",
+          "beforeSHA256": "7f78d5f0753cdb477dc597027eddc59f452aede884eb6b6db25917d5531db75f",
+          "afterSHA256": "6c9302b5a75b8c7f5c1650e5f0e15c1c16c7bbaa3e06a76312922ece86074056"
+        },
+        {
+          "name": "wart128",
+          "beforeSHA256": "86bbdf49ce7becacb7cafb5798b4fa1aab797fa805ff90b57d361f6c49e50640",
+          "afterSHA256": "45f58c25ee26965c0882efdce1c05093ff24821c464d222fde11c5112cf953eb"
+        },
+        {
+          "name": "wart400",
+          "beforeSHA256": "d0c85b33152d411c4ee92fe575e0aec0f34a6c52f1ccc57eee31e9ecc7d87a30",
+          "afterSHA256": "5c0f125c63657b27c9b012bf785f61f4487656bacac92521528b3653b02d33d7"
+        },
+        {
+          "name": "wart512",
+          "beforeSHA256": "ed623ee0f0532498bf1762237495ea2b4105d0d5e76ce9e5976ba59be7c303e7",
+          "afterSHA256": "745724c801302cbb42a817db4c75de177db9be2aa5d8d102db8fe8f3654db224"
+        },
+        {
+          "name": "wartty",
+          "beforeSHA256": "b52f470d4956ffd106cb9a95b179e10037d3d676d9fda3c0530e8b22365046a2",
+          "afterSHA256": "9a539c7bbdcd23789833baaa134734504d6db2d9760ea856ebaf4225e2ae7255"
+        },
+        {
+          "name": "wart200",
+          "beforeSHA256": "dcbb1efd7b43c0ec265f93b1bb6a4c165e3e91cef806245a87e58aed4d4da26c",
+          "afterSHA256": "c301653455cf5a343c2d10a41f576eab384f26b0837640a8ddf40e3612e0907f"
+        },
+        {
+          "name": "wkcpg",
+          "beforeSHA256": "3ac95c29b2cace77d262102e6cedd7fe45c0654533d71541baee269a47ca0a07",
+          "afterSHA256": "67db8c79376445ee0fb8f2a0abb033f0544342186ef086f5a5eab9b93562bdce"
+        },
+        {
+          "name": "walink",
+          "beforeSHA256": "d94bedbd1faabe14ab55e062acb7e091af2107a0e283611c7e6c6d1b01a0a566",
+          "afterSHA256": "7ca7dbbda4d2fb2781769f2ca905da7e4d34d5c2de65687dcd03738f01d204c2"
+        }
+      ]
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "arm32",
+      "optimize": true,
+      "beforeSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    },
+    {
+      "fixture": "compiler/optimize.a0",
+      "target": "arm32",
+      "optimize": false,
+      "beforeSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "afterSHA256": "refused: arm32: function rbyte uses io; io functions are out of scope for this backend",
+      "status": "same refusal"
+    }
+  ],
+  "summary": {
+    "rows": 160,
+    "versionOnly": 106,
+    "sameRefusal": 52,
+    "revertedFusion": 2,
+    "goldenChangedRows": 108,
+    "currentMatchesPreservedCompiler64BeyondVersionInEveryRow": true,
+    "revertedFunctionHashesExactlyReverseCompiler66ParityEvidence": true
+  },
+  "metadataNormalization": {
+    "text": "Only replace the exact expected compiler version in the first line, which must be the generated-by-A0 comment and must contain that version exactly once. Preserve all remaining bytes.",
+    "wasm": "Decode base64, parse section lengths and names, and require exactly one custom section named a0 whose entire payload is the exact expected compiler version. Replace only that same-length payload. Preserve every other byte, including section order, lengths, code and other metadata.",
+    "test": "The committed profile test continues to compare complete raw emitted-text hashes. No normalization was added to that test."
+  },
+  "afterGoldenSHA256": "4440018a150aa0d999dd0543a655df518b6e712a2da46dceb573b4b7953f36cb",
+  "validation": {
+    "before": {
+      "command": "node --test --test-name-pattern=\"golden: canonical emission\" dist/test/profile.test.js",
+      "exit": 1,
+      "logSHA256": "d72e1713072904a198f64bea01af5d02bbf237f516f9700192d443445b0b3e01"
+    },
+    "independentMatrix": {
+      "assertions": [
+        "All old compiler66 outputs match the previously committed golden exactly.",
+        "All eight fixture IR serializations are unchanged from frozen compiler66.",
+        "Each current compiler68 output matches preserved compiler64 after only compiler-version metadata normalization.",
+        "The two non-version Wasm differences have exact per-function reversal hashes against results/compiler-0.1.66-emission-parity.json."
+      ],
+      "exit": 0,
+      "logSHA256": "76be532c84266f57d8cce6932fccae969ac722dc617e39995d83e1aa2354c755"
+    },
+    "profile": {
+      "command": "node --test dist/test/profile.test.js",
+      "exit": 0,
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "logSHA256": "433bdac3c5f77017317f2398ba96e29f75e728cc1d8bb40438d3e9a7206b81a3"
+    },
+    "lint": {
+      "command": "bun run lint",
+      "exit": 0,
+      "logSHA256": "e9b762d4b80c5c3a868b5c2ee9c1b1e553b47dbe2b6217ecfa935938f5f9d022"
+    },
+    "typecheck": {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "logSHA256": "38ac890c60e7f38d59ddfb410325cdfb5fca83c9411765c5481754e01c021630"
+    },
+    "prereview": {
+      "base": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+      "findings": 0,
+      "score": 0,
+      "verdict": "ok"
+    },
+    "scope": {
+      "base": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+      "requiredSteps": [
+        "lint",
+        "typecheck",
+        "test"
+      ],
+      "combinedFullSuite": "To run with the other independently fixed failures on the combined verification subject."
+    }
+  },
+  "reproduction": [
+    "Create clean checkouts of candidateCommit, baseline and preservedUnfusedBaseline and independently run bun run build in each.",
+    "Use the eight fixtures, ten targets, optimization levels and x86Platform=darwin from test/profile.test.ts. Confirm each linked source fixture formats identically against baseline before compiling the same typed IR objects with all three built backends.",
+    "Require baseline raw output hashes or full refusal strings to reproduce every entry of the pre-refresh golden (beforeGoldenSHA256).",
+    "Compare candidate and preserved-unfused bytes with exactly metadataNormalization, and hash the full original emitted text for the refreshed raw golden. Enumerate every changed Wasm emitFunction result and compare its hashes against the reversed compiler66 parity report.",
+    "Run the unchanged profile test against the refreshed raw golden."
+  ]
+}

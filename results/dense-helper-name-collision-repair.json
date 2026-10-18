@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "testedCommit": "7e64eee1733caa1676460dee0adbbc527e794248",
+  "baseCommit": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+  "status": "local-controls-pass; integrated platform and full gate verification remain separate",
+  "problem": "Normalizing the diagnostic renderer assigned ad_message_19 and ad_message_20 to unique fold bodies despite unrelated functions already owning those names, producing invalid programs.",
+  "change": "Select movable helpers before allocating deterministic unoccupied suffixes. Reserve local declarations and supplied import names. Keep inline parser and planner behavior unchanged; helpers with suffix gaps remain named.",
+  "compatibility": {
+    "parserAndInlinePlannerUnchanged": true,
+    "compilerA0Changed": false,
+    "normalizerIsFixedPoint": true,
+    "intentionalInlineCollisionsStillRejected": true,
+    "importedNameInput": "Optional known arities passed through existing CLI and Dense studies when already available.",
+    "supersededAttempt": {
+      "commit": "1b0870fb32763a5172d7270761891a80a1435afc",
+      "issue": "General fresh-name acceptance in the source parser failed the existing A0 Dense B2 parity control.",
+      "resolution": "Follow-up 7e64eee restores the original parser and inline planner. No legacy A0 grammar extension or test weakening."
+    }
+  },
+  "checks": {
+    "build": "pass",
+    "typecheck": "pass",
+    "lint": "pass",
+    "focused": {
+      "pass": 2,
+      "fail": 0,
+      "skip": 0
+    },
+    "completeDenseCorpus": {
+      "pass": 35,
+      "fail": 0,
+      "skip": 0
+    },
+    "a0DenseB2Parity": {
+      "pass": 1,
+      "fail": 0,
+      "skip": 0,
+      "referenceMatches": 46,
+      "rejected": 37,
+      "explicitRefusals": 4
+    },
+    "prereviewOfCodeAgainstBase": {
+      "findings": 0,
+      "score": 0,
+      "verdict": "ok"
+    },
+    "fullGate": "not run by this control; root integration must run required scope"
+  },
+  "corpusByteAndTokenInventory": {
+    "base": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+    "subject": "7e64eee1733caa1676460dee0adbbc527e794248",
+    "files": 174,
+    "unchangedNormalizedPrograms": 173,
+    "changedNormalizedPrograms": 1,
+    "spellingsPerProgram": 3,
+    "exactRoundtripAndPrintFixedPointChecks": 522,
+    "tokenizer": "o200k_base",
+    "note": "Invalid old normalized text is diagnostic accounting, not an accepted-cost baseline. No timing or superiority claim.",
+    "changed": [
+      {
+        "path": "compiler/diagnostics_arena.a0",
+        "oldDuplicateNames": [
+          "ad_message_19",
+          "ad_message_20"
+        ],
+        "spellings": [
+          {
+            "spelling": "plain",
+            "oldInvalidNormalizedTokens": 110610,
+            "repairedNormalizedTokens": 110610,
+            "validAsWrittenTokens": 220122,
+            "oldOutputError": "line 746: duplicate function 'ad_message_19'",
+            "oldInvalidOutputSha256": "fc0afc46664846a304707b053e0fc319adbc756b3de99abb03601f59f8d0d0ba",
+            "repairedOutputSha256": "63a53231e9fceb28ea3292f8e2e36e23c9b24eef121468916e1392efb665172b"
+          },
+          {
+            "spelling": "compact",
+            "oldInvalidNormalizedTokens": 109518,
+            "repairedNormalizedTokens": 109518,
+            "validAsWrittenTokens": 210510,
+            "oldOutputError": "line 373: duplicate function 'ad_message_19'",
+            "oldInvalidOutputSha256": "a7a4722273c0b94e5830816bf45f20d58b6fd87fdd0b8b35189d84016e8f083f",
+            "repairedOutputSha256": "294a28fdedfeeda5575eb1490499a00ba1ffa5afd3f48c84ec9bd603bd0185ac"
+          },
+          {
+            "spelling": "combined-digit",
+            "oldInvalidNormalizedTokens": 98376,
+            "repairedNormalizedTokens": 98376,
+            "validAsWrittenTokens": 197077,
+            "oldOutputError": "line 373: duplicate function 'ad_message_19'",
+            "oldInvalidOutputSha256": "7fb2b07541cccbdcfa068a7f4b2e14045e74ed1bf626e197cb310e594fdf9acf",
+            "repairedOutputSha256": "3bf1f3d91a4faec1e1b80156bf9af772ee46ecf039dff0d32d22de77e921f496"
+          }
+        ]
+      }
+    ]
+  },
+  "inventoryMethod": [
+    "Enumerate git ls-files *.a0, excluding dense/ copies and corpus/reject/. Read each source with parseFile and its import arities.",
+    "Compare frozen base normalizeProgram and repaired normalizeProgram(program, known). Check repaired normalization is a fixed point.",
+    "For plain, all six compact rules, and combined parameter-digit rules, prove exact parse/format roundtrips and compare unchanged-source output bytes.",
+    "Count actual o200k_base tokens only for changed normalized programs and their valid as-written Dense forms. Confirm the old normalized output is rejected.",
+    "The old module came from git show of the recorded base; only its relative imports were relocated, then types erased. No baseline algorithm edits."
+  ],
+  "logs": [
+    {
+      "file": "<repo>/.a0-tmp/build-compatible.log",
+      "sha256": "5aafe095f318850006c85d11866ad2679cd9b530f533c78440f619f6ce89d411",
+      "command": "bun run build",
+      "outcome": "pass"
+    },
+    {
+      "file": "<repo>/.a0-tmp/typecheck-compatible.log",
+      "sha256": "38ac890c60e7f38d59ddfb410325cdfb5fca83c9411765c5481754e01c021630",
+      "command": "bun run typecheck",
+      "outcome": "pass"
+    },
+    {
+      "file": "<repo>/.a0-tmp/lint-compatible.log",
+      "sha256": "31649d3f699cd08847baf920644027ff511779452846c91df680a37253021980",
+      "command": "bun run lint",
+      "outcome": "pass"
+    },
+    {
+      "file": "<repo>/.a0-tmp/focused-compatible.log",
+      "sha256": "d93a6fb61820c82209dfb24f95b3c6c1f377bafed7438d6fa1344831fcfd02a9",
+      "command": "node --test --test-name-pattern='normalized helpers|fold and loop bodies' dist/test/dense.test.js",
+      "outcome": "pass"
+    },
+    {
+      "file": "<repo>/.a0-tmp/dense-corpus-compatible.log",
+      "sha256": "8dc3ac186904c3be089c6386914abd106f59b8a28a4e0c48513396d1b635f085",
+      "command": "node --test dist/test/dense.test.js",
+      "outcome": "pass"
+    },
+    {
+      "file": "<repo>/.a0-tmp/dense-a0-b2-compatible.log",
+      "sha256": "ee8459cbc8b86ef550077dabdd52d837c562a9c9812ffb40cc79b5cadc21165b",
+      "command": "node --test --test-name-pattern='B2 reader: fold, loop, inline' dist/test/dense-a0.test.js",
+      "outcome": "pass"
+    },
+    {
+      "file": "<repo>/.a0-tmp/before-regression.log",
+      "sha256": "e6f309a3ab151e04521e1c2c8d51b11a942eefd6454c10c0f4f11d8ff6ccca57",
+      "command": "frozen original Dense source against compiler/diagnostics_arena.a0",
+      "outcome": "expected-rejection"
+    },
+    {
+      "file": "<repo>/.a0-tmp/dense-a0-b2.log",
+      "sha256": "91ba29b6e8de704570c6751c8a59997a7dd97de417db39342471f3f037286a43",
+      "command": "same B2 parity control at superseded 1b0870f",
+      "outcome": "fail"
+    }
+  ],
+  "limits": "Correctness and token accounting only. No compilation, execution, memory, latency or AI-success performance claim. The invalid old output is not an accepted-cost baseline."
+}

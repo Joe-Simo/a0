@@ -122,7 +122,7 @@ async function check(rows: readonly SourceCase[]): Promise<void> {
   for (const exe of exes) for (const row of rows) assertCase(row, runNative(exe, row));
 }
 
-test('native A0 canonical function/program/source bytes preserve specs, comments, text and Number spelling', {
+test('native A0 flat function/program/source bytes preserve specs, comments, text and Number spelling', {
   skip,
   timeout: 240000,
 }, async () => {
@@ -146,7 +146,7 @@ test('native A0 formatter retains full-word rows/spans and growing type/literal 
 }, async () => {
   await check(pressureCases());
 });
-test('native A0 formatter canonically prints and hashes its own compiler implementation', {
+test('native A0 formatter prints flat source and preserves internal hashes of its compiler implementation', {
   skip,
   timeout: 240000,
 }, async () => {

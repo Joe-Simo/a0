@@ -1,0 +1,146 @@
+# Internal raw-source C service. All source and backend decisions execute in A0.
+# Complete ordered verification before lowering/emission; callers resume opaque state.
+use "backend_service_arena.a0"
+use "emit_c_arena.a0"
+
+fn acs_failure (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32)) u32 u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32))
+e at p0 0
+code set e 0 p2
+done set code 1 1
+b at p0 1
+options at p0 2
+out rec done b options
+ret out
+end
+
+fn acs_emit (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32)) u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32))
+b at p0 1
+q at b 3
+t at q 6
+ctx at b 1
+options at p0 2
+input at options 0
+output at options 1
+flags at options 2
+r call c_emit t ctx input output flags
+e at p0 0
+status at r 0
+code set e 0 status
+done set code 1 1
+v at r 1
+h at v 0
+length at v 1
+capacity at v 2
+eh set done 3 h
+el set eh 4 length
+ec set el 5 capacity
+vv at q 0
+m at q 1
+g at q 2
+bb at q 3
+am at q 4
+ae at q 5
+next at r 2
+nq rec vv m g bb am ae next
+bv at b 0
+d at b 2
+nb rec bv ctx d nq
+out rec ec nb options
+ret out
+end
+
+fn acs_check (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32)) -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32))
+e at p0 0
+options at p0 2
+b at p0 1
+v at b 0
+done call arena_backend_service_done v
+code call arena_backend_service_status v
+okay eq code 0
+emit and done okay
+times select emit 1 0
+initial rec e b options
+a fold acs_emit times initial
+failed ne code 0
+terminal and done failed
+failtimes select terminal 1 0
+out fold acs_failure failtimes a code
+ret out
+end
+
+fn arena_c_source_begin io u32 u32 u32 u32 u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32))
+b call arena_backend_service_begin p0 p1 p2
+e call arena_zero
+options rec p3 p4 p5
+initial rec e b options
+out call acs_check initial
+ret out
+end
+
+fn acs_resume (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32)) u32 u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32))
+prior at p0 1
+b call arena_backend_service_resume prior p2
+e at p0 0
+options at p0 2
+next rec e b options
+out call acs_check next
+ret out
+end
+
+fn arena_c_source_resume (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32)) u32 -> (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32))
+e at p0 0
+done get e 1
+pending eq done 0
+times select pending 1 0
+out fold acs_resume times p0 p1
+ret out
+end
+
+fn arena_c_source_done u32x128 -> bool
+done get p0 1
+out ne done 0
+ret out
+end
+
+fn arena_c_source_status u32x128 -> u32
+done get p0 1
+pending eq done 0
+status get p0 0
+out select pending 7 status
+ret out
+end
+
+fn arena_c_source_result (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32)) -> (u32,(u32,u32,u32),io)
+e at p0 0
+b at p0 1
+q at b 3
+code call arena_c_source_status e
+okay eq code 0
+h get e 3
+length get e 4
+capacity get e 5
+v rec h length capacity
+zero rec 0 0 0
+public select okay v zero
+t at q 6
+out rec code public t
+ret out
+end
+
+fn acs_publish (u32,io) u32 (u32,u32,u32) -> (u32,io)
+t at p0 1
+out call ew_emit t p2
+ret out
+end
+
+fn arena_c_source_publish (u32x128,(u32x128,u32x16,u32x128,(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)),(u32,u32,u32)) -> (u32,io)
+r call arena_c_source_result p0
+code at r 0
+okay eq code 0
+times select okay 1 0
+t at r 2
+initial rec code t
+v at r 1
+out fold acs_publish times initial v
+ret out
+end

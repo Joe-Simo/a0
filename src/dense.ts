@@ -1186,6 +1186,20 @@ interface Inline {
 
 type Expression<T = Operand> = Generator<undefined, T, Operand>;
 
+/** A deterministic unoccupied name for a helper in the normal form. */
+function nextLambdaName(
+  fnName: string,
+  counter: { n: number },
+  reserved: ReadonlySet<string>,
+): string {
+  let name: string;
+  do {
+    counter.n += 1;
+    name = `${fnName}_${counter.n}`;
+  } while (reserved.has(name));
+  return name;
+}
+
 /** Statement parser for one function body; the edit protocol drives it line by line too. */
 export class FunctionParser {
   readonly nodes: Pending[] = [];
@@ -2402,10 +2416,14 @@ export function planLambdas(program: Program): Map<string, string[]> {
 
 /**
  * Rename each helper that only a fold or loop in the function right after it calls to the name
- * the dense form writes inline (`G_1`, ...), moving it directly before that function: part of
+ * the dense form writes inline (`G_1`, ... with occupied names skipped), moving it directly before
+ * that function: part of
  * the normal form, since the rename changes the program text (not its behavior).
  */
-export function liftHelpers(program: Program): Program {
+export function liftHelpers(
+  program: Program,
+  known: ReadonlyMap<string, number> = new Map(),
+): Program {
   let fns = [...program.functions];
   const sigs = (): Map<string, Sig> =>
     new Map(fns.map((f) => [f.name, { params: f.params, result: f.result }] as const));
@@ -2422,7 +2440,7 @@ export function liftHelpers(program: Program): Program {
   for (const gName of program.functions.map((f) => f.name)) {
     const g = fns.find((f) => f.name === gName) as Func;
     const typeOf = typerFor(g, sigs());
-    const renames = new Map<string, string>();
+    const selected = new Set<string>();
     for (const node of g.nodes) {
       if (node.op !== 'fold' && node.op !== 'loop') continue;
       const state = typeOf(node.args[1] as Operand);
@@ -2440,13 +2458,21 @@ export function liftHelpers(program: Program): Program {
           f.spec !== undefined ||
           f.nodes.some((n) => n.op === 'fold' || n.op === 'loop') ||
           fns.indexOf(f) > fns.findIndex((x) => x.name === gName) ||
-          renames.has(name)
+          selected.has(name)
         )
           continue;
-        renames.set(name, `${gName}_${renames.size + 1}`);
+        selected.add(name);
       }
     }
-    if (renames.size === 0) continue;
+    if (selected.size === 0) continue;
+    const reserved = new Set([
+      ...known.keys(),
+      ...fns.filter((f) => !selected.has(f.name)).map((f) => f.name),
+    ]);
+    const counter = { n: 0 };
+    const renames = new Map(
+      [...selected].map((name) => [name, nextLambdaName(gName, counter, reserved)] as const),
+    );
     const moved = [...renames.keys()].map((n) => fns.find((f) => f.name === n) as Func);
     const rest = fns.filter((f) => !moved.includes(f));
     const at = rest.findIndex((f) => f.name === gName);
@@ -2534,6 +2560,9 @@ export function normalizeFunction(fn: Func): Func {
 }
 
 /** `normalizeFunction` on every function of a program. */
-export function normalizeProgram(program: Program): Program {
-  return liftHelpers({ ...program, functions: program.functions.map(normalizeFunction) });
+export function normalizeProgram(
+  program: Program,
+  known: ReadonlyMap<string, number> = new Map(),
+): Program {
+  return liftHelpers({ ...program, functions: program.functions.map(normalizeFunction) }, known);
 }

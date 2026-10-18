@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import test from 'node:test';
 import { compile } from '../src/backends.js';
 import { formatProgram, formatSource, type TypedProgram, validate } from '../src/core.js';
@@ -43,6 +44,19 @@ function backends(
 
 test('native source artifact matches its complete source and native transport inputs', async () => {
   await nativeSourceArtifact();
+});
+test('native source and backend services compose through the shared verification entry', async () => {
+  const entry = resolve('compiler/source_frontend.a0');
+  const read = async (path: string): Promise<string> =>
+    `${path === entry ? 'use "backend_service_arena.a0"\n' : ''}${await readFile(path, 'utf8')}`;
+  const expected = await link(entry, read, { root: process.cwd() });
+  const frontend = nativeSource(await nativeSourceArtifact());
+  try {
+    const actual = await linkNativeSource(entry, read, frontend, { root: process.cwd() });
+    backends(actual.program, expected.program, ['c']);
+  } finally {
+    frontend.close();
+  }
 });
 test('native source graph composes imports, comments, literals, types and specs without another source parse', async () => {
   const frontend = nativeSource(await nativeSourceArtifact());

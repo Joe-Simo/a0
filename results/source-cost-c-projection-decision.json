@@ -1,0 +1,951 @@
+{
+  "schema": 1,
+  "decision": "rejected-for-default-promotion",
+  "authority": "Maintainer review of this complete matched run.",
+  "scope": "Experimental generic C projection change and compiler version 67. This evidence commit contains results only and does not promote its compiler branch.",
+  "candidate": {
+    "commit": "41682e2265077a3d69adfd6cbdc9fa8f5e140a95",
+    "tree": "9b2ae63db6634b1eff424fc20521c3583081550c"
+  },
+  "control": {
+    "commit": "b9c35ca6d162e60e7e1945ca41c8652f5b22cc7d",
+    "tree": "1961e784af14d290fc1fa719974a93bb8f362feb"
+  },
+  "reason": "The candidate binary is 969 bytes smaller, but frontend medians increase for page/docs/parser and boot frontend live/peak RSS increases. Other cells improve. The measured tradeoffs do not establish the required no-regression result.",
+  "evidence": [
+    {
+      "path": "results/source-cost-c-projection-preparation.json",
+      "sha256": "b980db4d3eb1749dfb60f5cafeb8b299819d7d333968fdb5c8bbde0a31a23e16",
+      "bytes": 54687
+    },
+    {
+      "path": "results/source-cost-c-projection.json",
+      "sha256": "488a16a0f24cb91013fc1029581a6cf9ad4f8bf4c48ed7f62c8a23ca9ca15a37",
+      "bytes": 79462
+    },
+    {
+      "path": "results/source-cost-c-projection-samples.json",
+      "sha256": "9d528f191a1acad0fd221d07e5d45e9db25b871087ba5131748b643a70c02900",
+      "bytes": 313398
+    },
+    {
+      "path": "results/source-cost-c-projection-analysis.json",
+      "sha256": "d9655e0e1a5f28949c1ca660c1b93d1378c0b21f48fe2204eebc8daa718b74fa",
+      "bytes": 215897
+    }
+  ],
+  "completeCells": {
+    "cells": 240,
+    "warmupCells": 30,
+    "measuredCells": 210,
+    "rounds": 7,
+    "units": 6,
+    "arms": [
+      "old-canonical",
+      "old-dense",
+      "flat-ts-control",
+      "flat-a0",
+      "flat-a0-control"
+    ]
+  },
+  "load": {
+    "source": "loadavg",
+    "minLoad1": 1.09,
+    "maxLoad1": 1.72
+  },
+  "size": {
+    "controlBytes": 358233,
+    "candidateBytes": 357264,
+    "deltaBytes": -969,
+    "percentChange": -0.270494343067218
+  },
+  "frontendAndPipeline": [
+    {
+      "unit": "examples/life.a0",
+      "metric": "frontendMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 18.546640999999994,
+      "control": 18.697414999999992,
+      "delta": -0.1507739999999984,
+      "ratio": 0.9919361045363758,
+      "percentChange": -0.8063895463624182,
+      "observed": "decrease"
+    },
+    {
+      "unit": "examples/life.a0",
+      "metric": "pipelineMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 36.896603999999996,
+      "control": 37.158103,
+      "delta": -0.2614990000000006,
+      "ratio": 0.9929625309451346,
+      "percentChange": -0.7037469054865353,
+      "observed": "decrease"
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "metric": "frontendMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 22.65417099999999,
+      "control": 23.372073,
+      "delta": -0.7179020000000094,
+      "ratio": 0.9692837687097756,
+      "percentChange": -3.0716231290224383,
+      "observed": "decrease"
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "metric": "pipelineMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 49.915458,
+      "control": 52.392044999999996,
+      "delta": -2.476586999999995,
+      "ratio": 0.95272971306999,
+      "percentChange": -4.727028693001001,
+      "observed": "decrease"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "frontendMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 211.05756399999996,
+      "control": 203.735477,
+      "delta": 7.322086999999954,
+      "ratio": 1.0359391850050739,
+      "percentChange": 3.593918500507387,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "pipelineMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 303.04704599999997,
+      "control": 296.736698,
+      "delta": 6.310347999999976,
+      "ratio": 1.0212658159322106,
+      "percentChange": 2.126581593221055,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "frontendMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 99.02848099999999,
+      "control": 96.96653500000001,
+      "delta": 2.0619459999999776,
+      "ratio": 1.021264511514204,
+      "percentChange": 2.1264511514204054,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "pipelineMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 152.935312,
+      "control": 152.396144,
+      "delta": 0.5391680000000179,
+      "ratio": 1.0035379372853424,
+      "percentChange": 0.3537937285342352,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "frontendMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 1315.580994,
+      "control": 1343.986979,
+      "delta": -28.4059850000001,
+      "ratio": 0.9788643897270971,
+      "percentChange": -2.1135610272902894,
+      "observed": "decrease"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "pipelineMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 2481.71886,
+      "control": 2489.832737,
+      "delta": -8.11387700000023,
+      "ratio": 0.9967411959528749,
+      "percentChange": -0.32588040471250856,
+      "observed": "decrease"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "frontendMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 182.055481,
+      "control": 177.96550699999997,
+      "delta": 4.089974000000012,
+      "ratio": 1.0229818354632059,
+      "percentChange": 2.298183546320587,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "pipelineMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 385.173443,
+      "control": 378.424021,
+      "delta": 6.749422000000038,
+      "ratio": 1.0178356066884031,
+      "percentChange": 1.7835606688403116,
+      "observed": "increase"
+    }
+  ],
+  "everyObservedMatchedIncrease": [
+    {
+      "unit": "examples/life.a0",
+      "metric": "wallMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 148.29685500002233,
+      "control": 145.95115900001838,
+      "delta": 2.3456960000039544,
+      "ratio": 1.0160717874121414,
+      "percentChange": 1.6071787412141436,
+      "observed": "increase"
+    },
+    {
+      "unit": "examples/life.a0",
+      "metric": "rssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 52416512,
+      "control": 50311168,
+      "delta": 2105344,
+      "ratio": 1.0418464544492387,
+      "percentChange": 4.1846454449238735,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "metric": "frontendRssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 64180224,
+      "control": 63528960,
+      "delta": 651264,
+      "ratio": 1.0102514506769826,
+      "percentChange": 1.0251450676982632,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "frontendMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 211.05756399999996,
+      "control": 203.735477,
+      "delta": 7.322086999999954,
+      "ratio": 1.0359391850050739,
+      "percentChange": 3.593918500507387,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "emitCMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 94.87614299999996,
+      "control": 91.91324299999997,
+      "delta": 2.9628999999999905,
+      "ratio": 1.0322358335240112,
+      "percentChange": 3.223583352401116,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "pipelineMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 303.04704599999997,
+      "control": 296.736698,
+      "delta": 6.310347999999976,
+      "ratio": 1.0212658159322106,
+      "percentChange": 2.126581593221055,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "wallMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 418.9144440000091,
+      "control": 411.0515890000097,
+      "delta": 7.862854999999399,
+      "ratio": 1.0191286330242095,
+      "percentChange": 1.912863302420953,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "frontendHeapUsedBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 18799920,
+      "control": 18593512,
+      "delta": 206408,
+      "ratio": 1.0111010765475614,
+      "percentChange": 1.1101076547561428,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "frontendExternalBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 25555946,
+      "control": 25555943,
+      "delta": 3,
+      "ratio": 1.0000001173895245,
+      "percentChange": 0.000011738952454543039,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "rssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 87105536,
+      "control": 85254144,
+      "delta": 1851392,
+      "ratio": 1.0217161525896032,
+      "percentChange": 2.1716152589603244,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "heapUsedBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 23094144,
+      "control": 22916800,
+      "delta": 177344,
+      "ratio": 1.0077386022481323,
+      "percentChange": 0.7738602248132276,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "frontendMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 99.02848099999999,
+      "control": 96.96653500000001,
+      "delta": 2.0619459999999776,
+      "ratio": 1.021264511514204,
+      "percentChange": 2.1264511514204054,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "pipelineMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 152.935312,
+      "control": 152.396144,
+      "delta": 0.5391680000000179,
+      "ratio": 1.0035379372853424,
+      "percentChange": 0.3537937285342352,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "frontendRssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 60071936,
+      "control": 59895808,
+      "delta": 176128,
+      "ratio": 1.0029405730698215,
+      "percentChange": 0.29405730698215393,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "frontendHeapUsedBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 11870576,
+      "control": 11857952,
+      "delta": 12624,
+      "ratio": 1.0010646020493252,
+      "percentChange": 0.10646020493252362,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "frontendExternalBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 21337661,
+      "control": 21337373,
+      "delta": 288,
+      "ratio": 1.0000134974441324,
+      "percentChange": 0.0013497444132370973,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "rssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 74698752,
+      "control": 72810496,
+      "delta": 1888256,
+      "ratio": 1.0259338433843384,
+      "percentChange": 2.593384338433835,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "externalBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 21337625,
+      "control": 21337337,
+      "delta": 288,
+      "ratio": 1.000013497466905,
+      "percentChange": 0.001349746690504361,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "initialRssBytes",
+      "category": "initial-context",
+      "controlArm": "flat-a0-control",
+      "candidate": 52690944,
+      "control": 52559872,
+      "delta": 131072,
+      "ratio": 1.0024937655860349,
+      "percentChange": 0.24937655860348684,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "frontendRssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 149303296,
+      "control": 147828736,
+      "delta": 1474560,
+      "ratio": 1.009974785957718,
+      "percentChange": 0.9974785957717947,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "frontendExternalBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 60599469,
+      "control": 60597582,
+      "delta": 1887,
+      "ratio": 1.0000311398563726,
+      "percentChange": 0.0031139856372597308,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "frontendPeakRssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 149303296,
+      "control": 147828736,
+      "delta": 1474560,
+      "ratio": 1.009974785957718,
+      "percentChange": 0.9974785957717947,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "peakRssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 285507584,
+      "control": 285356032,
+      "delta": 151552,
+      "ratio": 1.0005310979373305,
+      "percentChange": 0.05310979373305269,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "rssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 285376512,
+      "control": 285356032,
+      "delta": 20480,
+      "ratio": 1.0000717699915311,
+      "percentChange": 0.007176999153113428,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "heapUsedBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 78144648,
+      "control": 74035328,
+      "delta": 4109320,
+      "ratio": 1.0555048530344864,
+      "percentChange": 5.550485303448638,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "externalBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 60599469,
+      "control": 60597582,
+      "delta": 1887,
+      "ratio": 1.0000311398563726,
+      "percentChange": 0.0031139856372597308,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "frontendMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 182.055481,
+      "control": 177.96550699999997,
+      "delta": 4.089974000000012,
+      "ratio": 1.0229818354632059,
+      "percentChange": 2.298183546320587,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "emitCMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 192.064274,
+      "control": 188.678988,
+      "delta": 3.385286000000008,
+      "ratio": 1.0179420402657662,
+      "percentChange": 1.794204026576618,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "pipelineMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 385.173443,
+      "control": 378.424021,
+      "delta": 6.749422000000038,
+      "ratio": 1.0178356066884031,
+      "percentChange": 1.7835606688403116,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "wallMs",
+      "category": "latency",
+      "controlArm": "flat-a0-control",
+      "candidate": 502.9908609999984,
+      "control": 489.67438300000504,
+      "delta": 13.316477999993367,
+      "ratio": 1.0271945571634962,
+      "percentChange": 2.719455716349617,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "initialRssBytes",
+      "category": "initial-context",
+      "controlArm": "flat-a0-control",
+      "candidate": 43122688,
+      "control": 42860544,
+      "delta": 262144,
+      "ratio": 1.0061162079510704,
+      "percentChange": 0.6116207951070374,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "frontendHeapUsedBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 14913624,
+      "control": 14770920,
+      "delta": 142704,
+      "ratio": 1.0096611450065398,
+      "percentChange": 0.9661145006539806,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "rssBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 80949248,
+      "control": 79929344,
+      "delta": 1019904,
+      "ratio": 1.0127600696935533,
+      "percentChange": 1.2760069693553255,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "heapUsedBytes",
+      "category": "memory",
+      "controlArm": "flat-a0-control",
+      "candidate": 17439960,
+      "control": 17037072,
+      "delta": 402888,
+      "ratio": 1.0236477253837983,
+      "percentChange": 2.3647725383798335,
+      "observed": "increase"
+    }
+  ],
+  "everyObservedCpuIncrease": [
+    {
+      "unit": "examples/life.a0",
+      "metric": "frontendCpu.userMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 37294,
+      "control": 35048,
+      "delta": 2246,
+      "ratio": 1.0640835425701896,
+      "percentChange": 6.408354257018956,
+      "observed": "increase"
+    },
+    {
+      "unit": "examples/life.a0",
+      "metric": "frontendCpu.systemMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 6187,
+      "control": 4911,
+      "delta": 1276,
+      "ratio": 1.259824882915903,
+      "percentChange": 25.98248829159031,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "metric": "frontendCpu.userMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 69885,
+      "control": 65171,
+      "delta": 4714,
+      "ratio": 1.0723327860551473,
+      "percentChange": 7.233278605514726,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "frontendCpu.userMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 352813,
+      "control": 348273,
+      "delta": 4540,
+      "ratio": 1.0130357506898324,
+      "percentChange": 1.3035750689832426,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "frontendCpu.systemMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 27663,
+      "control": 25532,
+      "delta": 2131,
+      "ratio": 1.0834638884537051,
+      "percentChange": 8.346388845370512,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "frontendCpu.totalMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 388176,
+      "control": 377047,
+      "delta": 11129,
+      "ratio": 1.0295162141589775,
+      "percentChange": 2.951621415897754,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "frontendCpu.userMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 191959,
+      "control": 185278,
+      "delta": 6681,
+      "ratio": 1.036059327065275,
+      "percentChange": 3.6059327065274926,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "frontendCpu.totalMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 197214,
+      "control": 194900,
+      "delta": 2314,
+      "ratio": 1.0118727552591071,
+      "percentChange": 1.1872755259107137,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "frontendCpu.systemMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 52235,
+      "control": 43417,
+      "delta": 8818,
+      "ratio": 1.203100168136905,
+      "percentChange": 20.31001681369049,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "frontendCpu.systemMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 27936,
+      "control": 21599,
+      "delta": 6337,
+      "ratio": 1.2933932126487337,
+      "percentChange": 29.339321264873377,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "frontendCpu.totalMicroseconds",
+      "category": "cpu",
+      "controlArm": "flat-a0-control",
+      "candidate": 364962,
+      "control": 356781,
+      "delta": 8181,
+      "ratio": 1.0229300327091408,
+      "percentChange": 2.2930032709140846,
+      "observed": "increase"
+    }
+  ],
+  "everyObservedRssGrowthIncrease": [
+    {
+      "unit": "examples/life.a0",
+      "metric": "endRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 10473472,
+      "control": 8237056,
+      "delta": 2236416,
+      "ratio": 1.2715067130780706,
+      "percentChange": 27.150671307807063,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "metric": "frontendRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 21712896,
+      "control": 21192704,
+      "delta": 520192,
+      "ratio": 1.0245458059528412,
+      "percentChange": 2.454580595284117,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/page.a0",
+      "metric": "endRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 42799104,
+      "control": 40882176,
+      "delta": 1916928,
+      "ratio": 1.0468890892696123,
+      "percentChange": 4.688908926961233,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "frontendRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 17543168,
+      "control": 17297408,
+      "delta": 245760,
+      "ratio": 1.0142079090693819,
+      "percentChange": 1.4207909069381852,
+      "observed": "increase"
+    },
+    {
+      "unit": "site/docs.a0",
+      "metric": "endRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 32100352,
+      "control": 30474240,
+      "delta": 1626112,
+      "ratio": 1.0533602150537635,
+      "percentChange": 5.336021505376354,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "frontendRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 96874496,
+      "control": 95182848,
+      "delta": 1691648,
+      "ratio": 1.0177726138221879,
+      "percentChange": 1.7772613822187866,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "frontendPeakRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 40386560,
+      "control": 38912000,
+      "delta": 1474560,
+      "ratio": 1.0378947368421052,
+      "percentChange": 3.7894736842105203,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "endRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 232816640,
+      "control": 232603648,
+      "delta": 212992,
+      "ratio": 1.0009156864126223,
+      "percentChange": 0.09156864126222963,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "metric": "peakRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 176590848,
+      "control": 176439296,
+      "delta": 151552,
+      "ratio": 1.0008589469774352,
+      "percentChange": 0.08589469774351599,
+      "observed": "increase"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "metric": "endRssGrowthBytes",
+      "category": "memory-growth",
+      "controlArm": "flat-a0-control",
+      "candidate": 37883904,
+      "control": 37068800,
+      "delta": 815104,
+      "ratio": 1.0219889502762431,
+      "percentChange": 2.1988950276243147,
+      "observed": "increase"
+    }
+  ],
+  "otherArms": "All Canonical, Dense and TypeScript outcomes and every increase against them remain in the complete results/analysis. The candidate frontend and pipeline medians exceed all three on all six inputs.",
+  "memoryContext": "Initial peak/live RSS and per-sample phase growth are retained. Five small inputs retain an inherited maxRSS floor, so equal peak RSS is not evidence of frontend memory parity.",
+  "reproduction": {
+    "repositoryBase": "12fe5c8f646f2d339e2c4cf15bd0120f77084ae5",
+    "commonCommit": "b9c35ca6d162e60e7e1945ca41c8652f5b22cc7d",
+    "candidateCommit": "41682e2265077a3d69adfd6cbdc9fa8f5e140a95",
+    "historicalCommit": "764de84ab99a156e41164518f14cc0676b6343dd",
+    "frameworkOriginCommits": [
+      "e88285f",
+      "0352f3b",
+      "352959b",
+      "c741a85"
+    ],
+    "commonComposition": [
+      "bed6791461b4a161c95a6baf66476d0d582c6702 Add strict same-source C compiler codegen controls",
+      "0c86d4c99990a8f3e3bb1dbc69a2bee4a3f6f82f Capture effective Clang command from actual verbose compile",
+      "b17ef3787594a054e264b3512d4d21ea1e01bec4 Distinguish Clang effective command from cc1 version trace",
+      "4a89593a6b4bb67fe835f3e5d3493c46d73193c6 Record exact native compiler codegen preparation control",
+      "b9c35ca6d162e60e7e1945ca41c8652f5b22cc7d Keep diagnostic capability presence mutation independent"
+    ],
+    "candidateChanges": [
+      "compiler/emit_wasm_arena.a0",
+      "compiler/emit_wasm_arena.a0s",
+      "src/backends.ts",
+      "src/targets.ts",
+      "test/c-projection-ownership.test.ts",
+      "test/fixtures/c-projection-ownership.ts"
+    ],
+    "candidateProjectionOrigin": "6b223e465f5a9467d944865d479553d41d4cd424",
+    "version": "a0c-0.1.67 with matching regenerated compiler/emit_wasm_arena.a0s and .a0 tag",
+    "compilerInputDifferences": [
+      {
+        "path": "src/backends.ts",
+        "candidateSHA256": "eff391835d2d9a17b641296a28401f9a49b5c24b1621b0db8e0d4b42b045b090",
+        "controlSHA256": "28787115570c85d97c8d93e3e1637394ba8db238f5e98c2baff675df9f245304"
+      },
+      {
+        "path": "src/targets.ts",
+        "candidateSHA256": "27a818c8e908f1fe92c1419722053d5f40d407c0116656b547ac42b4fcc0b8f6",
+        "controlSHA256": "b39e9ec2500e6a09c4edf3356834156309d7f8706c8ff0509cfd906961a12e88"
+      }
+    ],
+    "sourceIdentity": {
+      "functions": 612,
+      "modules": 23,
+      "sha256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+      "diagnosticPorts": "disabled"
+    },
+    "build": "In each clean own subject checkout, install its locked dependencies, freshly compile TS, then use its own node dist/tools/source-native-build.js --out=<artifact> --sysroot=<wasi-sysroot> --builtins=<builtins> --opt-level=O3 --wasm-features=mvp --symbols=strip --diagnostic-ports=disabled. Match recorded Node/TypeScript, Clang/LLD, libc, builtins, actual header hashes and complete flags.",
+    "preparation": "From candidate: node dist/tools/source-cost-bench.js --compiler-codegen --baseline=<historical-checkout> --artifact=<candidate-artifact> --control-artifact=<control-artifact> --control-checkout=<control-checkout> --sysroot=<wasi-sysroot> --builtins=<builtins> --out=<fresh-preparation-output> --prepare-only",
+    "formal": "After explicit machine isolation, run the identical command with another fresh output directory and without --prepare-only. The unchanged harness performs fresh TypeScript and exact native rebuilds, then five rotated arms, one discarded warmup and seven measured rounds over all six frozen inputs; it aborts on changed snapshots, output hashes or load above 10.",
+    "isolatedInputs": "Source-algorithm and compact-metadata changes were excluded. Only src/backends.ts and src/targets.ts differ in the actual compiler inventory; the source closure of 612 functions across 23 modules is identical."
+  },
+  "validation": {
+    "focusedTests": {
+      "passed": 103,
+      "failed": 0,
+      "skipped": 0
+    },
+    "commonFrameworkTests": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    "behavior": {
+      "cClangCases": 3083,
+      "cppCases": 3083,
+      "failed": 0,
+      "blocked": 0,
+      "skipped": 0
+    },
+    "seed": "Stages 2, 3 and 4 reproduce identical C; no tracked seed changes.",
+    "lint": "passed",
+    "typecheck": "passed",
+    "prereviewScore": 0,
+    "metadataRegeneration": "tools/a0s.ts compiler/emit_wasm_arena.a0s compiler/emit_wasm_arena.a0 --check passed"
+  }
+}

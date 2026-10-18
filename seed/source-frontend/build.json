@@ -2,14 +2,564 @@
   "scope": "Candidate A0 source frontend built from shared compiler modules. Public TypeScript C backend bootstraps this artifact. No official source cutover or performance claim.",
   "entry": "compiler/source_frontend.a0",
   "frontendABI": 3,
+  "diagnosticPorts": "disabled",
+  "frontendOptions": {
+    "cIo": "host",
+    "optimize": true
+  },
+  "frontendFunctions": [
+    {
+      "name": "arena_parse_verify_begin",
+      "params": [
+        "io",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)"
+    },
+    {
+      "name": "arena_source_unit",
+      "params": [
+        "io",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)"
+    },
+    {
+      "name": "arena_verify_begin",
+      "params": [
+        "io",
+        "u32x128"
+      ],
+      "result": "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)"
+    },
+    {
+      "name": "arena_verify_resume",
+      "params": [
+        "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)",
+        "u32"
+      ],
+      "result": "(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)"
+    },
+    {
+      "name": "arena_verify_status",
+      "params": [
+        "u32x128"
+      ],
+      "result": "u32"
+    },
+    {
+      "name": "source_ir_init",
+      "params": [
+        "io",
+        "u32",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,io)"
+    },
+    {
+      "name": "source_ir_symbol",
+      "params": [
+        "(u32x128,io)",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,u32,io)"
+    },
+    {
+      "name": "source_ir_type",
+      "params": [
+        "(u32x128,io)",
+        "u32",
+        "u32",
+        "u32",
+        "u32"
+      ],
+      "result": "(u32x128,u32,io)"
+    }
+  ],
+  "compilerVersion": "a0c-0.1.68",
+  "compilerInputs": [
+    {
+      "path": "bun.lock",
+      "sha256": "c6c62e4be66a74752fba49beeda3616817841300ee620efa7a0d9da8ee7d20b5"
+    },
+    {
+      "path": "package.json",
+      "sha256": "8090e94f7d09fa4d1b501c408e259b4a55c6fbbbdc9fb114b77a79224e6011d8"
+    },
+    {
+      "path": "src/a0.ts",
+      "sha256": "af84ec894223e44281aa2a4aa0b5f913bc1c0e09d37f3b2a449c970a2f2eb40b"
+    },
+    {
+      "path": "src/agents.ts",
+      "sha256": "c434a5699375a5b0c08516d44e47158b717bcd115d9dc9693f34da9ad5275703"
+    },
+    {
+      "path": "src/aggregate.ts",
+      "sha256": "61320c0a26a3fad2f3a58fe2100f05815661b8ef6e38d705a9e2b2db8e6d09af"
+    },
+    {
+      "path": "src/arm32.ts",
+      "sha256": "7aa6e90c474c4f53b436161de64cc4334e5881a537703e673dcf07a35421dd1d"
+    },
+    {
+      "path": "src/arm64.ts",
+      "sha256": "49f64c5081863735dbf8e8c310c070c73fa2e1d7f3a58dd1c3e0ca6eb3736a2c"
+    },
+    {
+      "path": "src/arm64enc.ts",
+      "sha256": "b44396870263b718eb02358ce281dce57050a12fbe95a3ff3983835111ebf3ed"
+    },
+    {
+      "path": "src/avr.ts",
+      "sha256": "b5733623854ec4aa73f4a759291bfb604f8308e2345d5667018d7da05e7abd90"
+    },
+    {
+      "path": "src/backends.ts",
+      "sha256": "6204742a286ac61440a758e96cce7e127bfbe3afe7a94dd941fadc922b5217a9"
+    },
+    {
+      "path": "src/cache.ts",
+      "sha256": "3c21d0530281d38f05fe18ea3877ab599a5075b84c74270fac34afddd01d41d8"
+    },
+    {
+      "path": "src/cli-main.ts",
+      "sha256": "d4756bab7304821f0441677fb620c0f70ab7c7ac69545d9a5cfb8545a954ca73"
+    },
+    {
+      "path": "src/cli.ts",
+      "sha256": "f02b62a2a9c3818dd73048c044b8172606427800f688243dd698b12595e09503"
+    },
+    {
+      "path": "src/core.ts",
+      "sha256": "8cc1232799e4924a631fab095bdcdf1ba32cd8e5fc691d85000990f5badfdbbb"
+    },
+    {
+      "path": "src/dense-a0.ts",
+      "sha256": "2814679fcff2dffe55971251a2c026b3054dddcfeddc75acf975dfb9415976c9"
+    },
+    {
+      "path": "src/dense-edit.ts",
+      "sha256": "21edb6cfb1931dd3d0fefd913c05cffa5e75d54654635c7919202b42e5b54a6e"
+    },
+    {
+      "path": "src/dense.ts",
+      "sha256": "e0e643be2ec4cd50e9f6e55f61e8163d5d81e88186ff494a382df158b6e75a39"
+    },
+    {
+      "path": "src/diagnostics.ts",
+      "sha256": "be653e625af8a95d76fec0eeae46f7f1dfca88193dc955b070dda24fa809b878"
+    },
+    {
+      "path": "src/dotnet.ts",
+      "sha256": "88e5dacefe829a1308511aa687842921b7b003545a30234b999d2557250b466c"
+    },
+    {
+      "path": "src/edit.ts",
+      "sha256": "ff9ba329008116c6e793c4668f0bcdfd87f919fed7ea737a89163c0dcf224601"
+    },
+    {
+      "path": "src/elf.ts",
+      "sha256": "ddc0ffd26a0988f3c128e773e7917c717ad0481ca92336b640d47a77d4d70a1a"
+    },
+    {
+      "path": "src/explain.ts",
+      "sha256": "11b45696a0c21c5a2e2e726ee4780641d65c2aeaa07283a20373921d336cc4ee"
+    },
+    {
+      "path": "src/fix.ts",
+      "sha256": "541faebbd3b298da2efb5267ee59aa727cba919b1aabdfd9f87b0e173cc2385f"
+    },
+    {
+      "path": "src/hw.ts",
+      "sha256": "fc8646e1326c0c1718ce232d48dc1c2713730883d424c8debc95f0218a13f740"
+    },
+    {
+      "path": "src/lazy.ts",
+      "sha256": "8fb578aef1ffdd507c994df9316beeb5b5c2d1b76138bf848e631d9cdcb43bea"
+    },
+    {
+      "path": "src/link.ts",
+      "sha256": "1fe8c719ff072ea01fdb273d43a18fb70f73dbc6ba1ee533760fbc004f402a85"
+    },
+    {
+      "path": "src/linker.ts",
+      "sha256": "1c31e02d0e0106b138c1a531d454c5df9823413bf15c32589b9b2fa328ef4596"
+    },
+    {
+      "path": "src/lsp.ts",
+      "sha256": "f675760e873e9f8e78561838f28b0902f5b5772c2393e757e09b7474874fc56a"
+    },
+    {
+      "path": "src/macho.ts",
+      "sha256": "5f55e07935e16b98394f34b5f207044e3c86475ac2385e42a25db7b01fdbcb2e"
+    },
+    {
+      "path": "src/mcp.ts",
+      "sha256": "5ec4cc7b813c4262c2cdfa54a2e808b2a09f9b47d858c3f92f29d1d399a5ab41"
+    },
+    {
+      "path": "src/metal.ts",
+      "sha256": "9c8a7d8c1cf2d52f61ac770bc60a370bdb19889382d51943f6c00125b722ee6f"
+    },
+    {
+      "path": "src/migrate.ts",
+      "sha256": "b2a81c79efa52d59ec2f81af74a3597a3c961985a7317a712134757ffd72713d"
+    },
+    {
+      "path": "src/names.ts",
+      "sha256": "b5927c227fa13c6b7ff557f7ba2962ad477a9b0a8abf51d7a2077411e79b8ae2"
+    },
+    {
+      "path": "src/native-fast.ts",
+      "sha256": "ec5d2bd134cba22397dc792c4ed201670e522c5b7e9b56b2c710f4ffe8f98abb"
+    },
+    {
+      "path": "src/native-trap.ts",
+      "sha256": "3032314667d9c4d4581a84a018ae9460c285cee7d9eeeceadeb6cab7e1a62fbf"
+    },
+    {
+      "path": "src/node-fs.ts",
+      "sha256": "cb6aa3bc7d542de66b87ef133e1a2b4ef2205d2059201a9d6529798b655b0e59"
+    },
+    {
+      "path": "src/optimize.ts",
+      "sha256": "c7b25b1997fd1c0815d632f6a5dedbff803643714cbc2ca1364adb6d25dd1a4e"
+    },
+    {
+      "path": "src/parallel.ts",
+      "sha256": "42a677a319edb237c6f8deec5d3e98c7110345c848379cc13ff4238fae74e3dc"
+    },
+    {
+      "path": "src/pe.ts",
+      "sha256": "086249d0902ef3e76ef2db0c87fb1d5b6de1fc3fe5b5731617a191017596286c"
+    },
+    {
+      "path": "src/protection-policy.ts",
+      "sha256": "c61d68f7cf1fb3174a19b24228f3cd45735a5d94ced17ebead912c00312a73c0"
+    },
+    {
+      "path": "src/protection/artifact.ts",
+      "sha256": "671465fdb4655042ef077055ede017a4993476c9f00f4dbb7ad3cfc013af0c56"
+    },
+    {
+      "path": "src/protection/build.ts",
+      "sha256": "946026d2586ef686beec770264c97d60271cdefe87b3c9e01a03fd06afe9aa50"
+    },
+    {
+      "path": "src/protection/cli.ts",
+      "sha256": "64f2fd0d3a2fcc6bbc0cb4f202feb037853ea49ca63bec864c66ddb8efb56e66"
+    },
+    {
+      "path": "src/protection/crypto.ts",
+      "sha256": "0592f0e000f26249b017f4844f5c60dc95f7e8b1eb45f3d4808d75a2097a18b0"
+    },
+    {
+      "path": "src/protection/disk.ts",
+      "sha256": "ed63575ae45a0ed3e300d8c31629c89cbd476bda4a3856a3606197d5e21edfdf"
+    },
+    {
+      "path": "src/protection/errors.ts",
+      "sha256": "4cf7a15a4ac6c4240ea22ffda607d78025c9cda4e017015e77fd7a87cc4feb36"
+    },
+    {
+      "path": "src/protection/store.ts",
+      "sha256": "5f440a143c22e91ac9c29683fd7d060cfe9e2690ab36a43627aa486b4e91e350"
+    },
+    {
+      "path": "src/protection/vault.ts",
+      "sha256": "f687d730509aecadd0465e4e938ba54d628ca9a9aa35bd102fbf197fa54b6d8d"
+    },
+    {
+      "path": "src/prove.ts",
+      "sha256": "cad357c42aa6edb1d9f9b13c8b8eac842c5d59bc7ff88565f3dece23bd0e2af6"
+    },
+    {
+      "path": "src/revision.ts",
+      "sha256": "ca707451816fa2893c9261303f2341d021b2a8c57ec6ab042b3720390d1eb37f"
+    },
+    {
+      "path": "src/riscv64.ts",
+      "sha256": "1603d8bcc77a8f96d429b33d5fc3d98587d8b6b5e4cc9111e9146544f838a857"
+    },
+    {
+      "path": "src/source-compiled.ts",
+      "sha256": "dd8043ed116976ddf2c7e856b7430ba22b86cbcdd98ee1e766054bdb169e1872"
+    },
+    {
+      "path": "src/source-direct.ts",
+      "sha256": "6831415d1e925a4f991cf6631e174d1ade452b952dba4910d6effdbb97296cc2"
+    },
+    {
+      "path": "src/source-js.ts",
+      "sha256": "a9529cf04a26a5bc016c78be5d5a0daba3ac0084910016a3b4ea5c1cace7d811"
+    },
+    {
+      "path": "src/source-link.ts",
+      "sha256": "42afbf7dab463a34528e7fc4805e8514846922b565763d628b3e514efd36b7b3"
+    },
+    {
+      "path": "src/source-metadata.ts",
+      "sha256": "08ec608fb16775722925240f886844c164e979b31f23b099ab05f47a6c726458"
+    },
+    {
+      "path": "src/source-native-compose.ts",
+      "sha256": "9960f826fddf3ca15286740f72967a52a9e8f043d7095cd5b3278839f61b13a1"
+    },
+    {
+      "path": "src/source-native-diagnostic.ts",
+      "sha256": "1e139b2d1e763ecf8095e5f17ab45f06c9f036c6bbd7f36506644c146e5a15eb"
+    },
+    {
+      "path": "src/source-native-ir.ts",
+      "sha256": "28ea886c131c219a28c86855dc16602d3ce6f5d07a2d721269e642de87654bd3"
+    },
+    {
+      "path": "src/source-native-link.ts",
+      "sha256": "03bb7181f6fb640ea73cdd33787abdf1cb3abe8ddabdff63cdf4a4c99c310f33"
+    },
+    {
+      "path": "src/source-native-program.ts",
+      "sha256": "1bfd5c2a183772e5ad4ee0934737ad79a068de3c793820fe3dde03279f162f38"
+    },
+    {
+      "path": "src/source-native-render.ts",
+      "sha256": "0cf687f6854a6a7bf40d3cf70c943f83467f6297ffd4018c85820e5a0f15b3d8"
+    },
+    {
+      "path": "src/source-native.ts",
+      "sha256": "d1153a685f9389e434a7736ab0ea730eb0019674cf00f76684ced1281c94d245"
+    },
+    {
+      "path": "src/source.ts",
+      "sha256": "4322b9c6e8a869d24ed964c2b79734dec17b75bc843fe6690e3a6c66c452687d"
+    },
+    {
+      "path": "src/spec.ts",
+      "sha256": "4642296e5c553e1106485c90ca2322de8a6167f8e2b1906382419d15260a2edc"
+    },
+    {
+      "path": "src/targets.ts",
+      "sha256": "8111d1193160b9edf040a1e46253cfb2f08cecc50cc88e68616a9aaff8144aa4"
+    },
+    {
+      "path": "src/toolchain.ts",
+      "sha256": "39f70667fd673311e714034e1201229dcc542bbba1a0063e14d547548f38c436"
+    },
+    {
+      "path": "src/trap-host.ts",
+      "sha256": "7db49714d319dd704a8ec1b89b38c2e933ddb614e91f32e603674879208f615e"
+    },
+    {
+      "path": "src/version.ts",
+      "sha256": "6b04ab35b07aa16e9204f997a4d5e2c84018a9b6c8eb6927a8de7a1322b8008c"
+    },
+    {
+      "path": "src/wasm-words.ts",
+      "sha256": "e893d95fa54c67c991fdc7ed6df321d9863ddc912f102797b28408f33b49eec1"
+    },
+    {
+      "path": "src/wasm.ts",
+      "sha256": "e8ad9ba08911bd8c97fa5a5d2501f360033b5454132ed36563ab8948664c79d7"
+    },
+    {
+      "path": "src/word-ir.ts",
+      "sha256": "16846f21a360c7072b0f3a34a904c8633851416e66eeb4929e3c27c1c219ce93"
+    },
+    {
+      "path": "src/wordkey.ts",
+      "sha256": "398b4e7283cbea0daf96e4e377af6d93f8a963271206e4dde91a787479852af5"
+    },
+    {
+      "path": "src/x86_64.ts",
+      "sha256": "083711e47194c3aad5edc83b954186c571e2780c36b45cff9f569f0091090f58"
+    },
+    {
+      "path": "src/x86_64enc.ts",
+      "sha256": "1df50873869aa47cb53417696ce8404ac8c4522bf5358fc10655c27621655960"
+    },
+    {
+      "path": "src/z3enc.ts",
+      "sha256": "aec0b9412067ba50a11d0fc557cb63986a64bc72e50db83ac409163e64f115e9"
+    },
+    {
+      "path": "tools/scrub-results.ts",
+      "sha256": "124b95e01d35648cfad176606205457594b96c7c52a3cfc0c159fa5c052b2d6e"
+    },
+    {
+      "path": "tools/source-compiler-inputs.ts",
+      "sha256": "e410c2367ab1c14128c7459a5ec3ae6e446f016bd89b8983383ac63218869d5a"
+    },
+    {
+      "path": "tools/source-native-build.ts",
+      "sha256": "ef8b175053459d8688494bc7f013b35f320ec24821aab8208f175661ccbad805"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "2d784c958f93956a8f592e3cca76f32eec705b6660503034f89bd2e0162a8732"
+    }
+  ],
+  "compilerConfiguration": [
+    "bun.lock",
+    "package.json",
+    "tsconfig.json"
+  ],
+  "compilerBuild": {
+    "node": "v24.19.0",
+    "typescript": "5.9.3"
+  },
+  "compilerCheckout": {
+    "commit": "3ef2db0f9160dada89e1c513fd8170d78649d7ef",
+    "tree": "ec2d513896d8caa947fa033128e683841bec3acb",
+    "dirty": false
+  },
+  "nativeCompileInputs": [
+    {
+      "path": "<artifact>/api.h",
+      "sha256": "59bfe369db25e6069df9030dec7f91eeb04eb7f1474d84110bfe448688be1926"
+    },
+    {
+      "path": "<artifact>/driver.c",
+      "sha256": "db64c81f7d7036b69d4e42bed1bd6e0c364df36f90701f039083ed0c77ab8753"
+    },
+    {
+      "path": "<artifact>/module.c",
+      "sha256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998"
+    },
+    {
+      "path": "<checkout>/tools/native/arena_runtime.c",
+      "sha256": "6c18b83ad9d6006bb831baf4d06eae805680cf41c84f70f360f8f01b65048432"
+    },
+    {
+      "path": "<checkout>/tools/native/arena_runtime.h",
+      "sha256": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9"
+    },
+    {
+      "path": "<resource>/include/__stddef_header_macro.h",
+      "sha256": "4cf46e8fbb809df048eecbbd63686fa741da27afa8db4245bd1f61c1fb1611dc"
+    },
+    {
+      "path": "<resource>/include/__stddef_max_align_t.h",
+      "sha256": "3c1e4de47f4f06b35e2c5890d670052e84f716760505ff51b022fc8b21a9400f"
+    },
+    {
+      "path": "<resource>/include/__stddef_null.h",
+      "sha256": "b1d71b08563ab3d2c22a1e4f8ddf4d9a1111c89e9404b859a45c307e8ebc6c69"
+    },
+    {
+      "path": "<resource>/include/__stddef_offsetof.h",
+      "sha256": "e5f0f4ff8ff5fc6a1cc8b535f5065f1728eadd2bf1e1401f021f803ec7b4222f"
+    },
+    {
+      "path": "<resource>/include/__stddef_ptrdiff_t.h",
+      "sha256": "b4178a57f3711b7013cba747a72a2f178c29fa9364e77d75b2159754072ced43"
+    },
+    {
+      "path": "<resource>/include/__stddef_size_t.h",
+      "sha256": "d86ddc0238da09b385846ebef814ffc50a44e40cf85d4e3793f485952b7e73ad"
+    },
+    {
+      "path": "<resource>/include/__stddef_wchar_t.h",
+      "sha256": "1900d4998aef3698b06399ed686db0c21e26509b08638a25734fb97ae89b1001"
+    },
+    {
+      "path": "<resource>/include/stdbool.h",
+      "sha256": "48655faf4ebd4ca0af26a1ee8e3e16f8dc68385c9cd550ffb3629320681305b3"
+    },
+    {
+      "path": "<resource>/include/stddef.h",
+      "sha256": "b3e62a046ddf28d09eedebe6eb9461cb7060e47cad2c69964b222c4eea10347e"
+    },
+    {
+      "path": "<resource>/include/stdint.h",
+      "sha256": "655616d8fcb2c92b38c039019685c658c2346b3dd0021aed4ea057b43f621247"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/__functions_malloc.h",
+      "sha256": "5863f80c3bfe06df3c6879d5de3f757f90501e3113ba7d3fc230093fe0c9edcf"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/__functions_memcpy.h",
+      "sha256": "76b832386fd0b0289dbeef26cd50fd11ca9b4b2157a2ed8e044d6cb6b00d7d24"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/__header_stdlib.h",
+      "sha256": "076be483fea034975836ec11cce1890a475c87794956963c18dd0c694388d80e"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/__header_string.h",
+      "sha256": "43d4b8c865bb42ebdfc02cb564f67ac773ea691beadfcd705605520592351f83"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/__struct_iovec.h",
+      "sha256": "6bccfbe5ebf424721acafd747227663d76c120d83994f4d7221bbbeacdc86517"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/__struct_timespec.h",
+      "sha256": "b19b09edfe60735c5dd38da0416e722409473ec94885e465aab7c4fd98202840"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/__struct_timeval.h",
+      "sha256": "de2c55503d9440a3504115b35a78735c5449f63975059ebb5b6bf745071c6130"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/__typedef_suseconds_t.h",
+      "sha256": "c258310734c92f07ec10b86b756183d66c277fec85bdff84d82a695b925b38cb"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/__typedef_time_t.h",
+      "sha256": "b1ad083733361f8b5077ff9dc3412bd7d7a5f455fdd1eef5fb66d188fada1e98"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/alloca.h",
+      "sha256": "8768404d7cf4af5fb135b1a2ca91765bd2be311ac072e0ec8b68f5cb3e6e0f3e"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/assert.h",
+      "sha256": "477f9fcf67e8eccb59dea935f0dc7abd40829f8d61a3e73e4151ff6a18ef25f9"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/bits/alltypes.h",
+      "sha256": "64fc420ff336e0b2e67f5b0ed78d108aa419d5d1ad093acb1e25b38a6d9eb038"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/bits/stdint.h",
+      "sha256": "30a580cfc966c1ee5f0d5e4c1d6deb7e18b49bbbf9e90e9b078848ae103ff8df"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/features.h",
+      "sha256": "6d228e77b88b69f70f9157548b6ec673ffc6b998ce6035fbbee0caddb8442903"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/stdint.h",
+      "sha256": "b6e77f1611e56cf499233172cab8bc09c0f7d937f3daa5ad552e1712fc6663e5"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/stdlib.h",
+      "sha256": "6df011eea78c82f61965073ea04ce64f6ed5aa36065e7a25a823a9b9815d8cc8"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/string.h",
+      "sha256": "afc5af42b016fd8df0d73da8ee78691a9f27b36f5556bf5d6ce865e8e0b96496"
+    },
+    {
+      "path": "<sysroot>/include/wasm32-wasi/strings.h",
+      "sha256": "e3263b440f52fe7acd9ede39a526a2a10dd6ea88277853436d786db24f614c22"
+    }
+  ],
+  "effectiveCompileSHA256": "58decd72015030783dd316ebf4aa54019225b89b159d9a00e466058a7bd9a210",
   "nativeInputs": [
     {
       "path": "tools/native/source_frontend.c",
-      "sha256": "d7cca684c9ee56330539b07588ca6a02a9673694940d2cce357201e900014be6"
+      "sha256": "db64c81f7d7036b69d4e42bed1bd6e0c364df36f90701f039083ed0c77ab8753"
     },
     {
       "path": "tools/native/arena_runtime.c",
-      "sha256": "ff4ab723d8976ec7982589756a500740a7e804252e0091cd5d6f08e6ba15acba"
+      "sha256": "6c18b83ad9d6006bb831baf4d06eae805680cf41c84f70f360f8f01b65048432"
     },
     {
       "path": "tools/native/arena_runtime.h",
@@ -17,21 +567,69 @@
     },
     {
       "path": "tools/source-native-build.ts",
-      "sha256": "4dfd58c3c2464def6974775c34c786266a9d9b7466058c005e98dbc644cfbb4d"
+      "sha256": "ef8b175053459d8688494bc7f013b35f320ec24821aab8208f175661ccbad805"
     }
   ],
   "libcSHA256": "a4874785cb53513f899604e31348e59767bd859bf88b53ffe86ed24434ea5a74",
   "builtinsSHA256": "d532620c772bf91a4dfee336087b0f1f6a8d6c7c220a802d9d139e36d9e21e2a",
-  "sourceSHA256": "5d6098033eb9d5bf851ca1361bb128a06f7cb88c01fc0aaaa6c2a3167ebd0077",
-  "cSHA256": "c78cde5338126bd704c30e6737950c905bf383bf2a5e46b8ce9c7d89ba1a8d14",
-  "wasmSHA256": "19b4e6f602bba699fea23f631c8580f91af8ae1da8386298f2385bfcb86b6cdb",
-  "driverSHA256": "d7cca684c9ee56330539b07588ca6a02a9673694940d2cce357201e900014be6",
-  "functions": 609,
+  "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+  "cSHA256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998",
+  "wasmSHA256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+  "driverSHA256": "db64c81f7d7036b69d4e42bed1bd6e0c364df36f90701f039083ed0c77ab8753",
+  "functions": 612,
   "clangFlags": [
     "--target=wasm32-wasi",
     "-O3",
     "-flto",
     "-DNDEBUG"
+  ],
+  "compileFlags": [
+    "--target=wasm32-wasi",
+    "--sysroot=<wasi-sysroot>",
+    "-O3",
+    "-flto",
+    "-DNDEBUG",
+    "-v",
+    "-H",
+    "-c",
+    "<artifact>/driver.c",
+    "-I",
+    "<repo>/tools/native",
+    "-o",
+    "<artifact>/frontend.o"
+  ],
+  "linkerFlags": [
+    "<artifact>/frontend.o",
+    "-L",
+    "<wasi-sysroot>/lib/wasm32-wasi",
+    "-lc",
+    "<builtins>",
+    "--no-entry",
+    "--export=frontend_ir_init",
+    "--export=frontend_ir_upload",
+    "--export=frontend_ir_symbol",
+    "--export=frontend_ir_type",
+    "--export=frontend_ir_state",
+    "--export=frontend_ir_value",
+    "--export=frontend_ir_finish",
+    "--export=frontend_status",
+    "--export=frontend_abi",
+    "--export=frontend_parse",
+    "--export=frontend_parse_unit",
+    "--export=frontend_state",
+    "--export=frontend_specs",
+    "--export=frontend_view",
+    "--export=frontend_view_length",
+    "--export=frontend_close",
+    "--export=malloc",
+    "--export=free",
+    "--export-memory",
+    "-z",
+    "stack-size=16777216",
+    "--lto-O3",
+    "--strip-all",
+    "-o",
+    "<artifact>/frontend.wasm"
   ],
   "requiredWasmFeatures": [],
   "optimization": "O3",
@@ -42,7 +640,7 @@
   "compilerHost": "Node >=22 or a WebAssembly engine supporting the recorded required features",
   "aggregateBytes": 4096,
   "stackBytes": 16777216,
-  "wasmBytes": 356280,
+  "wasmBytes": 358233,
   "modules": [
     {
       "path": "compiler/arena_shared.a0",
@@ -89,8 +687,20 @@
       "sha256": "93d4ccfebc782566fbdb3319d538bcca551e7d1cddd6c55b1929c4ba47112be8"
     },
     {
+      "path": "compiler/opcode.a0",
+      "sha256": "e7d27b6086233dc4bc0624fd2c3047a9554a284dc937752f3545cb5b56d271c6"
+    },
+    {
+      "path": "compiler/wordkey.a0",
+      "sha256": "ca804e351c436b363f952962680877bf631683209400a36ee487731d25b50fa4"
+    },
+    {
+      "path": "compiler/word_classify_shared.a0",
+      "sha256": "c341713c298554ab2462dd39ba6809183543eed711acc337b0889908c5f8b516"
+    },
+    {
       "path": "compiler/check_arena_shared.a0",
-      "sha256": "34a152b785c5c4e419871be53f480403278caabf9e8edb7569d73e2e32611ea4"
+      "sha256": "0f53402ad4add2852e2ef721d4d152b0554468741e22ed2be1c8d316f4799119"
     },
     {
       "path": "compiler/eval_arena_shared.a0",
@@ -102,23 +712,27 @@
     },
     {
       "path": "compiler/verify_arena_shared.a0",
-      "sha256": "0861a0a0151975d60ca8ed2db32e549c39d1fc62fd4571a901df15812fcbc652"
-    },
-    {
-      "path": "compiler/opcode.a0",
-      "sha256": "e7d27b6086233dc4bc0624fd2c3047a9554a284dc937752f3545cb5b56d271c6"
-    },
-    {
-      "path": "compiler/wordkey.a0",
-      "sha256": "ca804e351c436b363f952962680877bf631683209400a36ee487731d25b50fa4"
+      "sha256": "37cff40149d69a7402328bed66388f317b690c9f9a5b3c78d0154b7d06e69d90"
     },
     {
       "path": "compiler/source_ir.a0",
       "sha256": "5a999f01c0b0d5bb034468bf7e3d54cd5ac1c34e1bf502eb77526771521c3554"
     },
     {
+      "path": "compiler/source_type_grammar.a0",
+      "sha256": "c0624db52b8ab322f68e6f7e66c8379ad7e8771b00e9d7d9aa721c6c728ac5fb"
+    },
+    {
+      "path": "compiler/source_grammar.a0",
+      "sha256": "11107bb07b24e810eb0f9064baa1d3ab10b3ee276a4296fcb173c947d63c90eb"
+    },
+    {
+      "path": "compiler/source_verify_arena_shared.a0",
+      "sha256": "10828847b22d0328d7edaa7201c9c91efc81fc2097b4b671eb00bc5a0885627e"
+    },
+    {
       "path": "compiler/source_frontend.a0",
-      "sha256": "22fd9d2fbb54566434eef3139527d573d6f98aa8bf062afcd4926ed9911df145"
+      "sha256": "bc36cc4527dc40e7fda17dda239da43a80655beb4c95e3ecb49e4308dec42f43"
     }
   ],
   "clang": "Debian clang version 19.1.7 (3+b1)",

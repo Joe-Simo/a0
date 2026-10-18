@@ -1193,6 +1193,8 @@ fn aw_code_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32
  let e=loop(aw_ok,aw_code_kept,get(s#1,11),runtime)
  return aw_section(e,10,aw_vec(e#0,21))
 end
+raw # Keep the emitted compiler tag synchronized with COMPILER_VERSION in src/targets.ts.
+raw # The custom-section payload below is the ASCII string a0c-0.1.68.
 fn aw_custom_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u32x128,u32x128,io)
  let v0=aw_uleb(aw_reset(s,21),2)
  let v1=aw_byte(v0,97)
@@ -1206,7 +1208,7 @@ fn aw_custom_section(s:(u32x128,u32x16,u32x128,u32x128,io)) -> (u32x128,u32x16,u
  let v9=aw_byte(v8,49)
  let v10=aw_byte(v9,46)
  let v11=aw_byte(v10,54)
- let v12=aw_byte(v11,51)
+ let v12=aw_byte(v11,56)
  return aw_section(v12,0,aw_vec(v12#0,21))
 end
 

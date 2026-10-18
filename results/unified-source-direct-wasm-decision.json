@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "decision": "rejected-for-public-cutover",
+  "candidate": {
+    "commit": "6161963fcc166fd9defed9447bb04292f2b492ec",
+    "tree": "0a176b834e9514825503fcfaf200e08707208e47"
+  },
+  "scope": "Direct Wasm compilation of the unchanged modular A0 frontend with a separately compiled generic arena. The public frontend and bundled C-derived artifact are unchanged. This is a backend experiment, not another source dialect.",
+  "timing": {
+    "samples": 240,
+    "measuredRounds": 7,
+    "warmups": 1,
+    "maxLoad1": 1.7,
+    "outputMatches": 240
+  },
+  "loss": [
+    {
+      "unit": "examples/life.a0",
+      "frontendMs": {
+        "oldCanonical": 5.8749369999999885,
+        "directWasm": 22.667528000000004,
+        "clangWasm": 19.151286999999996
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "site/lib/frame.a0",
+      "frontendMs": {
+        "oldCanonical": 6.958980999999994,
+        "directWasm": 30.425776,
+        "clangWasm": 24.694107000000002
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "site/page.a0",
+      "frontendMs": {
+        "oldCanonical": 37.44538899999999,
+        "directWasm": 396.743361,
+        "clangWasm": 204.763129
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "site/docs.a0",
+      "frontendMs": {
+        "oldCanonical": 24.498515000000012,
+        "directWasm": 197.46184,
+        "clangWasm": 96.08170000000001
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "compiler/boot.a0",
+      "frontendMs": {
+        "oldCanonical": 189.72996099999997,
+        "directWasm": 2716.074726,
+        "clangWasm": 1291.833861
+      },
+      "reason": "Direct frontend slower than both controls"
+    },
+    {
+      "unit": "compiler/parse_arena.a0",
+      "frontendMs": {
+        "oldCanonical": 36.38523600000002,
+        "directWasm": 338.15882200000004,
+        "clangWasm": 172.289675
+      },
+      "reason": "Direct frontend slower than both controls"
+    }
+  ],
+  "memory": "Linear Wasm memory is lower than the C-derived control in every workload after proving the arena stack bound. Live RSS is not lower than old Canonical in every workload. Neither the memory reduction nor the smaller artifact clears the measured frontend latency losses.",
+  "correctness": {
+    "sourceEntries": 178,
+    "sourceSpellingsPerEntry": 2,
+    "graphOriginalAndMigrated": true,
+    "grammarAndErrorPriorityControls": 3168,
+    "adapterLifecycleControls": 3,
+    "standardEmissionMatrix": "results/compiler-0.1.64-emission-parity.json"
+  },
+  "remaining": "Profile the compiled frontend and test proven transport work in isolation. Grammar compatibility, diagnostics, IR edits, native/bootstrap readers and the official cutover remain unfinished.",
+  "evidence": {
+    "summary": "results/unified-source-direct-wasm.json",
+    "samples": "results/unified-source-direct-wasm-samples.json",
+    "build": "results/unified-source-direct-wasm-build.json",
+    "unitAudit": "results/unified-source-direct-wasm-unit-audit.json",
+    "graphAudit": "results/unified-source-direct-wasm-graph-audit.json"
+  }
+}

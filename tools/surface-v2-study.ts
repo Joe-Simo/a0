@@ -115,7 +115,9 @@ interface Unit {
 /** Dense text after normalizeProgram, as dense-tokens.ts counts it; undefined when the converter refuses. */
 function denseText(u: Unit): string | undefined {
   try {
-    return formatDense(normalizeProgram(u.program), { known: u.arities ?? new Map() }).trimEnd();
+    return formatDense(normalizeProgram(u.program, u.arities), {
+      known: u.arities ?? new Map(),
+    }).trimEnd();
   } catch {
     return undefined;
   }

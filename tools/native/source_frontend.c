@@ -70,6 +70,11 @@ static uint32_t upload(const void *input, uint32_t count, bool bytes) {
 
 uint32_t frontend_abi(void) { return 3; }
 
+/* Optional generic transport capability for a separate failure-only A0 renderer. */
+#ifdef A0_FRONTEND_DIAGNOSTIC_PORTS
+uintptr_t frontend_arena_token(void) { return (uintptr_t)session; }
+#endif
+
 static uint32_t parse_source(const uint8_t *source, uint32_t length, uint32_t budget, bool unit) {
     uint32_t status = start_session(budget);
     if (status) return status;

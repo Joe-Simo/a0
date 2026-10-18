@@ -1,0 +1,252 @@
+{
+  "schema": 1,
+  "status": "correctness-passed-default-rejected-size",
+  "scope": "Isolated normal optimizer preparation of the C-stage compiler implementation. User source is not optimized. No public/default/seed route changes.",
+  "decision": "The derived C alone exceeds the unchanged recursive two MiB seed ceiling. No seed substitution or size waiver.",
+  "compilerVersion": "a0c-0.1.68",
+  "originalProof": "results/c-arena-stage.json (unchanged)",
+  "preparation": {
+    "status": "prepared-not-yet-reproduced",
+    "frontend": {
+      "buildSHA256": "5f5be39fb11f1209aa8b138b70738e93539cd2fa05d7e58cc7479072de07405f",
+      "wasmSHA256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+      "wasmBytes": 358233,
+      "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+      "cSHA256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998"
+    },
+    "originalBytes": 439967,
+    "originalSHA256": "289d3fab2ff8c56b3380d18db5d748e8e6a0059c39f745d209563cb553ac06e5",
+    "originalFunctions": 982,
+    "originalNodes": 20348,
+    "optimizedAllFunctions": 982,
+    "optimizedAllNodes": 18572,
+    "frozenFunctions": 972,
+    "frozenNodes": 18520,
+    "frozenBytes": 414227,
+    "frozenSHA256": "6d536d369a0e437fbf286bc5db2fafe0671869c59f5f2606b0aac9abb0d3a29a",
+    "removedFunctions": [
+      "arena_expect",
+      "av_growth",
+      "ap_digit",
+      "ap_letter",
+      "ap_wordchar",
+      "sp_digit",
+      "wordkey_code",
+      "sp_atom_char",
+      "ac_bitlen",
+      "ae_bitlen"
+    ],
+    "root": "arena_c_stage",
+    "allocationBudget": 100000000,
+    "acceptance": "A0 source parse/check/spec; optimized IR and entry closure checked directly in A0",
+    "preparation": "existing optimize(TypedProgram); source/spec metadata restored before A0 checking",
+    "frozenSpelling": "existing formatProgram; no generated C transformation"
+  },
+  "reproduction": {
+    "status": "passed",
+    "kind": "correctness-only; comparative timing not measured",
+    "sourceBytes": 414227,
+    "sourceSHA256": "6d536d369a0e437fbf286bc5db2fafe0671869c59f5f2606b0aac9abb0d3a29a",
+    "originalProofUnchanged": true,
+    "compiler": {
+      "name": "clang",
+      "version": "Debian clang version 19.1.7 (3+b1)"
+    },
+    "flags": [
+      "-std=c11",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-Wno-unused-parameter",
+      "-fsanitize=undefined",
+      "-fno-sanitize-recover=all",
+      "-pthread"
+    ],
+    "resources": {
+      "arenaWords": 100000000,
+      "outputWords": 100000000,
+      "quantum": 97,
+      "resumes": 10000000,
+      "inputCapacity": 1,
+      "outputCapacity": 1,
+      "flags": 0,
+      "stackBytes": 1073741824
+    },
+    "shim": [
+      {
+        "file": "c_arena_stage.c",
+        "sha256": "b17e8812a064ceac922d4791c580d80b047334799966b652eb035f277f66bbfc"
+      },
+      {
+        "file": "arena_runtime.c",
+        "sha256": "ff4ab723d8976ec7982589756a500740a7e804252e0091cd5d6f08e6ba15acba"
+      },
+      {
+        "file": "arena_runtime.h",
+        "sha256": "56511960687bda7b940a028a85fdc12a7b14a26020a60c8c58146aebbc6564e9"
+      }
+    ],
+    "rows": [
+      {
+        "stage": 2,
+        "nativeBuilt": true,
+        "cBytes": 2272967,
+        "cSHA256": "5f10f4306b26fc4407aac70e3c7ebae8c004e5e24caee29357fdd3e03aa54d6d",
+        "compilerInputSHA256": "6d536d369a0e437fbf286bc5db2fafe0671869c59f5f2606b0aac9abb0d3a29a"
+      },
+      {
+        "stage": 3,
+        "status": 0,
+        "stderr": "",
+        "cBytes": 2272967,
+        "cSHA256": "5f10f4306b26fc4407aac70e3c7ebae8c004e5e24caee29357fdd3e03aa54d6d",
+        "identicalToPrevious": true,
+        "nativeBuilt": true
+      },
+      {
+        "stage": 4,
+        "status": 0,
+        "stderr": "",
+        "cBytes": 2272967,
+        "cSHA256": "5f10f4306b26fc4407aac70e3c7ebae8c004e5e24caee29357fdd3e03aa54d6d",
+        "identicalToPrevious": true,
+        "nativeBuilt": true
+      }
+    ]
+  },
+  "checks": {
+    "helperTests": {
+      "passed": 4,
+      "skipped": 0
+    },
+    "originalSourceStatusCParity": 66,
+    "nativeTargetGroups": 19,
+    "nativeOptimizationLevels": [
+      "O0",
+      "O2"
+    ],
+    "nativeSanitizers": [
+      "undefined"
+    ],
+    "independentCasesPerOptimizationLevel": {
+      "alias": 62,
+      "checked": 4712,
+      "arithmetic": 160,
+      "life": 5,
+      "io": 3
+    },
+    "statusScope": "FINISH status/error classes and exact target bytes. The scalar facade does not expose detailed diagnostic fields.",
+    "specCasesOutsideSelectedRun": [
+      "pre-body-post-each-fresh-fuel",
+      "each-example-fresh-fuel",
+      "body-fuel-refusal",
+      "pre-fuel-refusal-has-no-input-field",
+      "post-fuel-refusal-has-no-input-field"
+    ],
+    "controlReportSHA256": "889a99ef1a09b94bb729361e3da942a349f444be737a44164e2ff770acdefb62",
+    "actualTransportFaults": {
+      "status": "passed",
+      "compilerModuleSHA256": "5f10f4306b26fc4407aac70e3c7ebae8c004e5e24caee29357fdd3e03aa54d6d",
+      "rows": [
+        {
+          "fault": "load",
+          "status": 5,
+          "atomicRefusal": true
+        },
+        {
+          "fault": "alloc",
+          "status": 4,
+          "atomicRefusal": true
+        },
+        {
+          "fault": "finish",
+          "status": 65,
+          "atomicRefusal": true
+        },
+        {
+          "fault": "nonbyte",
+          "status": 69,
+          "atomicRefusal": true
+        }
+      ]
+    },
+    "lint": "passed",
+    "typecheck": "passed",
+    "provenanceControls": {
+      "staleModuleNativeInputIrAndC": true,
+      "loadedBytesSurviveDirectoryReplacement": true,
+      "symlinkCheckoutRoot": true,
+      "missingAndDuplicateClosureMembersRejected": true,
+      "priorNonstrictLoaderMutation": "fails missing-expected-rejection",
+      "priorLogicalPathMutation": "fails physical closure comparison"
+    }
+  },
+  "sameInputCBytes": {
+    "kind": "artifact bytes only; no timing comparison",
+    "sourceBytes": 439967,
+    "sourceSHA256": "289d3fab2ff8c56b3380d18db5d748e8e6a0059c39f745d209563cb553ac06e5",
+    "functions": 982,
+    "rows": [
+      {
+        "backend": "TypeScript C",
+        "optimize": false,
+        "file": "ts-optimize-false.c",
+        "bytes": 2212187,
+        "sha256": "796e7ae0e88ef3c429a37a6c76a5079993ec495973fb37c9548f3de90f066054"
+      },
+      {
+        "backend": "TypeScript C",
+        "optimize": true,
+        "file": "ts-optimize-true.c",
+        "bytes": 2058620,
+        "sha256": "74ae1682729daf5c7f57d28e06744e836174133f0c539364fc417a45f86ea5ee"
+      },
+      {
+        "backend": "old paged A0 C",
+        "bytes": 1936044,
+        "sha256": "7d5bd1806aaf7754c897db2b19ba6c134a425c693e21201e1e8c44d784c57a4a"
+      },
+      {
+        "backend": "arena A0 C",
+        "bytes": 2453258,
+        "sha256": "a02367c160c970a54a6340b029b0c8bce0e7ef14be3c59491a74c3f6e781fbf3"
+      }
+    ]
+  },
+  "remainingCostEvidence": "Complete prospective package inventory and same-flags production native/compiler build CPU/RSS require the portable host freeze and coordinated quiet measurement; not claimed in this report.",
+  "inputs": [
+    {
+      "path": "tools/c-stage-optimizer-experiment.ts",
+      "sha256": "41bca27952b40de50a03e7ea1a79ce04ed0bd56573c6e76c3f18c30f157d2b05"
+    },
+    {
+      "path": "test/c-stage-optimizer-experiment.test.ts",
+      "sha256": "82738001d96aeeab36c59d4787ac61ee4543e6a0646ffe6aaaad1d91891e57c8"
+    },
+    {
+      "path": "test/fixtures/c-stage-optimizer/controls.mjs",
+      "sha256": "3d963be48dfc9834fbafa4e1b47abc9fa68f31073880305ce78f963bf0c2795a"
+    },
+    {
+      "path": "test/fixtures/c-stage-optimizer/faults.mjs",
+      "sha256": "1a62ae0f65bcbd4da0f9c490d7b91b0568e8d0e67646fede57372f7f853134c6"
+    },
+    {
+      "path": "test/fixtures/arena-source-c/life-model.mjs",
+      "sha256": "fee97a8b1646d9f19611cd6bdeaf02011ab0c35c3601d517e6e78bc938b8fdd9"
+    },
+    {
+      "path": "test/fixtures/arena-spec-verifier/cases.mjs",
+      "sha256": "d4347d7580d188d7cec1110c23c58ba2ab45c45900321050638e39e800e6f2b0"
+    },
+    {
+      "path": "test/fixtures/arena-wasm/alias-models.mjs",
+      "sha256": "9ce0cedc3c01565b63c136fb3b671320650686054942c48f5e2835b90f56ae2e"
+    },
+    {
+      "path": "tools/source-native-artifact.ts",
+      "sha256": "c05661a3704e3ff2f37cdf72788a181e695a8b0c9219c14c1154894ce47b3349"
+    }
+  ]
+}

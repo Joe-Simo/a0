@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "provenance": {
+    "commit": "c95daca1f6fb69f2de3a6827d7542dd7abd5f53c",
+    "renderer": "compiler/diagnostics_arena.a0",
+    "entry": "arena_parse_diagnostic_options",
+    "build": "Verified A0 seed emits C; Clang O0/O2 with undefined-behavior sanitizer. Both binaries returned identical complete packets.",
+    "driverSHA256": {
+      "O0": "cc1f23c987551fade868427cd77f78d14d53f2a2bce29153d56ab3b8bb2cff56",
+      "O2": "4704ff961f030bb89f96ac27346647c7ad79100ddb8540da098ee0f35fba91fe"
+    }
+  },
+  "cases": [
+    {
+      "name": "literal-overflow",
+      "source": "# Unicode🙂\nfn f u32 -> u32\nret 4294967296\nend\n",
+      "budget": 50000000,
+      "options": 1,
+      "status": 0,
+      "facts": [
+        6, 4, 3, 34, 10, 0, 0, 0, 0, 0, 1, 49, 32, 10, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0
+      ],
+      "jsonText": "{\"code\":\"limit\",\"id\":\"A0004\",\"message\":\"line 3: literal 4294967296 exceeds u32\",\"line\":3,\"expected\":null,\"actual\":null,\"fix\":null,\"applicability\":null,\"edits\":[]}",
+      "sourceSHA256": "4cb2846b083eb92c3fd2a0fb0775636e91d46eb28ff98fc5f6540f37012ce0ed",
+      "jsonUTF8SHA256": "6de55851c3aa0967cac9883ae88a4091d5e888f493cc68652be5b1ec44809879",
+      "packetSHA256": "08359b9fe628011cbeb8d734b3dfbb0872d7480e4afc69e3702929a32384c008"
+    },
+    {
+      "name": "undefined-node-suggestion",
+      "source": "fn f u32 -> u32\nvalue mov p0\nret valu\nend\n",
+      "budget": 50000000,
+      "options": 1,
+      "status": 0,
+      "facts": [
+        8, 101, 3, 33, 4, 4294967295, 4294967295, 0, 1, 4294967295, 1, 42, 33, 4, 0, 0, 0, 0, 0, 0,
+        15, 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      ],
+      "jsonText": "{\"code\":\"structure\",\"id\":\"A0101\",\"message\":\"f.ret: reference to undefined or later node 'valu'\",\"line\":null,\"expected\":null,\"actual\":null,\"fix\":\"did you mean 'value'?\",\"applicability\":\"maybe\",\"edits\":[{\"op\":\"rename\",\"rule\":\"typo\",\"fn\":\"f\",\"node\":\"ret\",\"from\":\"valu\",\"to\":\"value\" }]}",
+      "sourceSHA256": "f8ec9940187554a597e704eb467948e2317251234d8d7df7b9fa1b299f458419",
+      "jsonUTF8SHA256": "8a1a344f3db32a0ec2bd845244522abb2b186dd49ba192edb9f63b58f0698b6c",
+      "packetSHA256": "93ee2724e6295917d1e174b3b1aa806250f4efd1f6c290347720653c5d7ce99a"
+    },
+    {
+      "name": "associative-chain",
+      "source": "fn f u32 -> u32\na add p0 1 2\nret a\nend\n",
+      "budget": 50000000,
+      "options": 1,
+      "status": 0,
+      "facts": [
+        6, 14, 2, 18, 3, 0, 0, 0, 0, 0, 1, 39, 18, 3, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 3, 1, 0,
+        1, 4294967295, 7, 16, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      ],
+      "jsonText": "{\"code\":\"parse\",\"id\":\"A0014\",\"message\":\"line 2: add expects 2 operands, got 3\",\"line\":2,\"expected\":\"2\",\"actual\":\"3\",\"fix\":\"write exactly 2 operands after add; to combine 3 operands chain two at a time: at0 add p0 1, then a add at0 2\",\"applicability\":\"exact\",\"edits\":[{\"op\":\"lines\",\"rule\":\"chain\",\"text\":\"a add p0 1 2\",\"to\":\"at0 add p0 1\\u000aa add at0 2\",\"line\":2 }]}",
+      "sourceSHA256": "bccd685c4bbf2849f6fd8b16121578fe6a12a42ad08f4996830405435feca95f",
+      "jsonUTF8SHA256": "6947ae392160b762405e126669d2b7cf04c59273e7ed19e5ba09b87b426c566e",
+      "packetSHA256": "d35d3b542263a01d0937ddb0925cb6e3ade82cb3944ffc5420268f661b82d5ba"
+    },
+    {
+      "name": "type-mismatch",
+      "source": "fn f u32 -> u32\na add true p0\nret a\nend\n",
+      "budget": 50000000,
+      "options": 1,
+      "status": 0,
+      "facts": [
+        8, 201, 2, 16, 1, 0, 1, 0, 0, 0, 1, 40, 16, 1, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0
+      ],
+      "jsonText": "{\"code\":\"type\",\"id\":\"A0201\",\"message\":\"f.a: expected u32, got bool\",\"line\":null,\"expected\":\"u32\",\"actual\":\"bool\",\"fix\":\"replace the operand at f.a with a value of type u32\",\"applicability\":\"maybe\",\"edits\":[]}",
+      "sourceSHA256": "fe58925461814487732cd090a8ad46763f0f25dae0a62ade22d6f11aa8bdf49d",
+      "jsonUTF8SHA256": "8f78e5d3f5a9cab1f44a1917b6d4a644aa3921a1244f6419cd70008a59c1b653",
+      "packetSHA256": "c191a6d7609dd19091bb75536712f30b01c58f8c1e6b840ca45f4cb1b39919d1"
+    },
+    {
+      "name": "short-parameter-range",
+      "source": "fn f u32 -> u32\nret B\nend\n",
+      "budget": 50000000,
+      "options": 1,
+      "status": 0,
+      "facts": [
+        8, 105, 2, 20, 1, 4294967295, 4294967295, 0, 0, 4294967295, 1, 26, 20, 1, 0, 0, 0, 0, 0, 0,
+        15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 1072693248, 1, 0, 20, 1, 1, 0, 20, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      ],
+      "jsonText": "{\"code\":\"type\",\"id\":\"A0105\",\"message\":\"f.ret: parameter p1 out of range\",\"line\":null,\"expected\":null,\"actual\":null,\"fix\":\"f has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn f ...` block with the parameter in its signature\",\"applicability\":\"maybe\",\"edits\":[]}",
+      "sourceSHA256": "f9a9a334fac52fb87a081e09c6c64de89d726c2f3695806e2fad811e9b639958",
+      "jsonUTF8SHA256": "0278561069ebe52779d374868b475125391166c9ba600014c16985969ea699de",
+      "packetSHA256": "172855e9ecc2a3d6e057ffd24587110845df11dc07017e9e4f50da9944f8fe2a"
+    },
+    {
+      "name": "record-bound",
+      "source": "fn f (u32,bool) -> u32\na at p0 2\nret a\nend\n",
+      "budget": 50000000,
+      "options": 1,
+      "status": 0,
+      "facts": [
+        8, 222, 2, 23, 1, 2, 2, 0, 0, 1, 1, 43, 23, 1, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0
+      ],
+      "jsonText": "{\"code\":\"structure\",\"id\":\"A0222\",\"message\":\"f.a: field 2 out of range for (u32,bool)\",\"line\":null,\"expected\":null,\"actual\":null,\"fix\":null,\"applicability\":null,\"edits\":[]}",
+      "sourceSHA256": "aa046c78f5f1027ff446f001ea233ec98ba46d38efd2a05b0bd7a414e9c9a01c",
+      "jsonUTF8SHA256": "4b11200c74f11852fa97dbfab48604f2c09e968f73a557b78c87979fa3e516e1",
+      "packetSHA256": "33cd8a41c0989b1a82ce31197956548d49f10ac11271fd8867c335e150807b43"
+    },
+    {
+      "name": "node-case",
+      "source": "fn f u32 -> u32\nBad mov p0\nret p0\nend\n",
+      "budget": 50000000,
+      "options": 1,
+      "status": 0,
+      "facts": [
+        6, 5, 2, 16, 3, 0, 0, 0, 0, 0, 1, 38, 16, 3, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0
+      ],
+      "jsonText": "{\"code\":\"parse\",\"id\":\"A0005\",\"message\":\"line 2: invalid node identifier 'Bad'\",\"line\":2,\"expected\":null,\"actual\":null,\"fix\":\"write 'bad' and use it everywhere: ids are lowercase letters, numbers and _\",\"applicability\":\"maybe\",\"edits\":[]}",
+      "sourceSHA256": "d9c070df679e28b4ef810324bf81cf9d9f3fb64d6289082221a2eb41e2be48b4",
+      "jsonUTF8SHA256": "a1800abafd495b4984d63cc2668a3c4d26377f752d4145b45186d6170cd1e80b",
+      "packetSHA256": "109f1aad647151f5a3cc03ad9d12e44125f49c1e53b648dece41192723a6bb43"
+    },
+    {
+      "name": "resource-refusal",
+      "source": "fn f u32 -> u32\na add true p0\nret a\nend\n",
+      "budget": 64,
+      "options": 1,
+      "status": 4,
+      "facts": [
+        4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0
+      ],
+      "jsonText": "",
+      "sourceSHA256": "fe58925461814487732cd090a8ad46763f0f25dae0a62ade22d6f11aa8bdf49d",
+      "jsonUTF8SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "packetSHA256": "242b46aaa4114f60c64ae06b060269f12b2f1fe8ad6a73a6a3e4d47c18ab6074"
+    },
+    {
+      "name": "valid-refusal",
+      "source": "fn f u32 -> u32\nret p0\nend\n",
+      "budget": 50000000,
+      "options": 1,
+      "status": 7,
+      "facts": [
+        0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0
+      ],
+      "jsonText": "",
+      "sourceSHA256": "270db381f5f1d273da447408b22931840d62c2a26979646becd3d172ef34c275",
+      "jsonUTF8SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "packetSHA256": "2d9cfa217c3aaeffa70dcc608f3f5d6715b64b5cb5de3e407af72b050e1f1e49"
+    },
+    {
+      "name": "spec-refusal",
+      "source": "fn f u32 -> u32\nex 1 -> 1\nret p0\nend\n",
+      "budget": 50000000,
+      "options": 1,
+      "status": 7,
+      "facts": [
+        7, 0, 4, 0, 0, 0, 0, 0, 0, 0, 1, 37, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0
+      ],
+      "jsonText": "",
+      "sourceSHA256": "db6de2f26ab78124a117a4ff0286a2a5a98b0434e6fca838511df7a785edd431",
+      "jsonUTF8SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "packetSHA256": "9167c138b7b533a3d9d1dc81da54c65573c49722be97fcf1cbb8076ccdcb9add"
+    }
+  ]
+}

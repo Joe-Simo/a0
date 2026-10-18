@@ -1,0 +1,11 @@
+# One ordered parse/check/spec entry for source and backend services.
+use "source_grammar.a0"
+use "verify_arena_shared.a0"
+
+fn arena_parse_verify_begin io u32 u32 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+p call arena_parse p0 p1 p2
+q0 at p 2
+q1 at p 1
+q2 call arena_verify_begin q0 q1
+ret q2
+end

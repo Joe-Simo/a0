@@ -1,0 +1,135 @@
+{
+  "schema": 2,
+  "scope": "Source-history archive for a rejected experimental scalar source-algorithm comparison. Importing its experimental refs does not merge or promote them.",
+  "decision": "rejected-for-default-promotion",
+  "evidence": "results/source-cost-scalar-ap-read-decision.json",
+  "format": "git-bundle-v2",
+  "encoding": "binary",
+  "sha256": "a8a86e5fcd67fa4020160be714edf546a494de00253ca73b948544cb0ba8698e",
+  "bytes": 35189,
+  "prerequisite": {
+    "commit": "12fe5c8f646f2d339e2c4cf15bd0120f77084ae5",
+    "excluded": "This commit and all of its reachable history are already in the publication history and are excluded from this incremental bundle."
+  },
+  "refs": [
+    {
+      "ref": "refs/heads/experiment/scalar-read-common",
+      "commit": "b3c21472c52e3fc0dac88e9cc3ddb625829652b8",
+      "tree": "54976d27ee46ef82c1de133473f0db1a3fc824ce"
+    },
+    {
+      "ref": "refs/heads/experiment/scalar-read-candidate",
+      "commit": "f3799b1afc19bc601d1d21dd80406d4e7e0ed1e0",
+      "tree": "ff59eeae1039fb6f253c43300672a68d4c8d08b1"
+    }
+  ],
+  "commits": [
+    {
+      "commit": "bed6791461b4a161c95a6baf66476d0d582c6702",
+      "tree": "735d824add3ca189b4ec7374783b0eeacbb6b48e",
+      "parents": [
+        "12fe5c8f646f2d339e2c4cf15bd0120f77084ae5"
+      ],
+      "subject": "Add strict same-source C compiler codegen controls"
+    },
+    {
+      "commit": "0c86d4c99990a8f3e3bb1dbc69a2bee4a3f6f82f",
+      "tree": "a5c84d93af35f52c24eab5bc513578fafb95f1e7",
+      "parents": [
+        "bed6791461b4a161c95a6baf66476d0d582c6702"
+      ],
+      "subject": "Capture effective Clang command from actual verbose compile"
+    },
+    {
+      "commit": "b17ef3787594a054e264b3512d4d21ea1e01bec4",
+      "tree": "b593ea5d3e672e916c5f2a5d556503a7a5860f0d",
+      "parents": [
+        "0c86d4c99990a8f3e3bb1dbc69a2bee4a3f6f82f"
+      ],
+      "subject": "Distinguish Clang effective command from cc1 version trace"
+    },
+    {
+      "commit": "4a89593a6b4bb67fe835f3e5d3493c46d73193c6",
+      "tree": "50ecc7b1e81861c3e93e82dd6c1a6128559a6888",
+      "parents": [
+        "b17ef3787594a054e264b3512d4d21ea1e01bec4"
+      ],
+      "subject": "Record exact native compiler codegen preparation control"
+    },
+    {
+      "commit": "b9c35ca6d162e60e7e1945ca41c8652f5b22cc7d",
+      "tree": "1961e784af14d290fc1fa719974a93bb8f362feb",
+      "parents": [
+        "4a89593a6b4bb67fe835f3e5d3493c46d73193c6"
+      ],
+      "subject": "Keep diagnostic capability presence mutation independent"
+    },
+    {
+      "commit": "3b626586ef4bca54369374fafeaa2c7ffcd042d8",
+      "tree": "b0b00a5e22f1a3f04ce524b6b9b2597ada5a1e95",
+      "parents": [
+        "b9c35ca6d162e60e7e1945ca41c8652f5b22cc7d"
+      ],
+      "subject": "Add strict fixed-compiler A0 source algorithm controls"
+    },
+    {
+      "commit": "cc49dc41c3bc54c524d41d4797b72cb28a4620c0",
+      "tree": "95ebda746ee3993ff8677b2569caa0c86fb84c9b",
+      "parents": [
+        "3b626586ef4bca54369374fafeaa2c7ffcd042d8"
+      ],
+      "subject": "Record fixed-compiler source algorithm preparation control"
+    },
+    {
+      "commit": "b3c21472c52e3fc0dac88e9cc3ddb625829652b8",
+      "tree": "54976d27ee46ef82c1de133473f0db1a3fc824ce",
+      "parents": [
+        "cc49dc41c3bc54c524d41d4797b72cb28a4620c0"
+      ],
+      "subject": "Make legacy provenance rejection independent of live seed metadata"
+    },
+    {
+      "commit": "f3799b1afc19bc601d1d21dd80406d4e7e0ed1e0",
+      "tree": "ff59eeae1039fb6f253c43300672a68d4c8d08b1",
+      "parents": [
+        "b3c21472c52e3fc0dac88e9cc3ddb625829652b8"
+      ],
+      "subject": "Measure scalar frontend reads with fixed compiler and host"
+    }
+  ],
+  "creation": {
+    "gitVersion": "git version 2.52.0",
+    "config": {
+      "pack.threads": 1,
+      "pack.compression": 9,
+      "pack.window": 10,
+      "pack.depth": 50
+    },
+    "arguments": [
+      "bundle",
+      "create",
+      "--version=2",
+      "<output.bundle>",
+      "refs/heads/experiment/scalar-read-common",
+      "refs/heads/experiment/scalar-read-candidate",
+      "^12fe5c8f646f2d339e2c4cf15bd0120f77084ae5"
+    ],
+    "repeatedCreation": "Two independent bundle creations with the recorded arguments and configuration produced byte-identical output."
+  },
+  "verification": {
+    "isolatedRepository": "A new bare repository first fetched only the prerequisite commit and its reachable history. Both experimental commits were confirmed absent before bundle import.",
+    "bundleImport": "git bundle verify and git fetch succeeded with no experimental source objects supplied from any other repository.",
+    "exactTrees": "All nine imported commit and tree IDs match the frozen recorded history.",
+    "controlCommitsAboveBase": 8,
+    "candidateCommitsAboveBase": 9,
+    "archiveOnly": "No measured checkout, artifact, harness, option or timing report was modified or rerun.",
+    "originalJsonDecode": "Decoded bytes match the recorded length and SHA-256 and the original bundle byte for byte."
+  },
+  "path": "results/source-cost-scalar-ap-read-source.bundle",
+  "storage": {
+    "previousMetadataCommit": "f03a575e82fa25cfb88930bf5f4d28fad3fcf21d",
+    "previousMetadataBytes": 56881,
+    "previousMetadataSha256": "b345a5d0e3bcc3bdf2ef376ba4bc86eb2756d6d05face736cef0aedcd42b9fcb",
+    "preservedBundleBytes": true
+  }
+}

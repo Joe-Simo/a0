@@ -304,8 +304,24 @@ export function composeNativeUnits(
     byteBase = add(byteBase, add(unit.byteLength, unitIndex + 1 < units.length ? 1 : 0));
     physicalBase = add(physicalBase, lineCount);
   }
+  installNativeVectors(builder, tables, specs);
+  return {
+    source,
+    comments: composeSourceComments(units.map((unit) => unit.comments)),
+    origins,
+  };
+}
+
+/** One ABI publication path for parsed units and grammar-independent structured IR. */
+export function installNativeVectors(
+  builder: NativeIrBuilder,
+  tables: ReadonlyMap<number, Uint32Array | readonly number[]>,
+  specs: ReadonlyMap<number, Uint32Array | readonly number[]>,
+): void {
+  const upload = (words: Uint32Array | readonly number[]): number =>
+    builder.upload(words instanceof Uint32Array ? words : Uint32Array.from(words));
   for (const [slot, words] of tables) {
-    builder.set(slot, builder.upload(words));
+    builder.set(slot, upload(words));
     builder.set(slot + 1, words.length);
     builder.set(slot + 2, words.length);
   }
@@ -313,7 +329,7 @@ export function composeNativeUnits(
   directory[6] = builder.get(6);
   directory[92] = 1;
   for (const [slot, words] of specs) {
-    directory[slot] = builder.upload(words);
+    directory[slot] = upload(words);
     directory[slot + 1] = words.length;
     directory[slot + 2] = words.length;
   }
@@ -321,12 +337,9 @@ export function composeNativeUnits(
   builder.set(59, builder.upload(directory));
   builder.set(60, directory.length);
   builder.set(61, directory.length);
-  builder.set(30, table(tables, 56).length ? 1 : 0);
+  const raw = tables.get(56);
+  if (raw === undefined) throw new Error('missing native specification rows');
+  builder.set(30, raw.length ? 1 : 0);
   builder.set(25, 0);
   builder.set(26, 0);
-  return {
-    source,
-    comments: composeSourceComments(units.map((unit) => unit.comments)),
-    origins,
-  };
 }

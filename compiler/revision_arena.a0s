@@ -13,7 +13,7 @@ extern af_byte((u32,(u32,u32,u32),u32x128,io),u32) -> (u32,(u32,u32,u32),u32x128
 extern af_row((u32,(u32,u32,u32),u32x128,io),(u32,u32,u32),u32,u32) -> ((u32,(u32,u32,u32),u32x128,io),u32x128)
 extern af_symbol((u32,(u32,u32,u32),u32x128,io),u32x128,u32) -> (u32,(u32,u32,u32),u32x128,io)
 extern af_schema((u32,(u32,u32,u32),u32x128,io),u32x128,u32x128,u32,u32) -> (u32,(u32,u32,u32),u32x128,io)
-extern arena_format(io,u32x128,u32x128,u32,u32,bool) -> (u32,(u32,u32,u32),io)
+extern af_revision_text(io,u32x128,u32x128,u32,u32,bool) -> (u32,(u32,u32,u32),io)
 extern arena_sha256_hex(io,u32,u32) -> (u32,(u32,u32,u32),io)
 def arev_vec(m:u32x128,o:u32) -> (u32,u32,u32)
  return (m[o],m[o+1],m[o+2])
@@ -36,7 +36,7 @@ fn arev_copy(k:(u32,(u32,u32,u32),u32x128,io),h:u32,start:u32,length:u32) -> (u3
 end
 fn arev_content(k:(u32,(u32,u32,u32),u32x128,io),i:u32,m:u32x128,ps:u32x128,mode:u32,id:u32,skip:bool) -> (u32,(u32,u32,u32),u32x128,io)
  let d=k#2
- let r=arena_format(k#3,m,ps,mode,id,skip)
+ let r=af_revision_text(k#3,m,ps,mode,id,skip)
  return (r#0,r#1,d,r#2)
 end
 fn arev_hash(k:(u32,(u32,u32,u32),u32x128,io),i:u32) -> (u32,(u32,u32,u32),u32x128,io)

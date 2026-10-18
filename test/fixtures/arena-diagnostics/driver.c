@@ -1,41 +1,4 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "arena_runtime.h"
-
-static a0_arena_session *session;
-#define A0_COMPILER_READ(t) ((void)(t), a0_runtime_read(session))
-#define A0_COMPILER_WRITE(t, v) ((void)(t), a0_runtime_write(session, (v)))
-#include "module.c"
-#include "api.h"
-
-static void die(const char *message) {
-  fprintf(stderr, "%s\n", message);
-  exit(1);
-}
-
-static void want(uint32_t expected) {
-  uint32_t got = a0_runtime_read(session);
-  if (got != expected) {
-    fprintf(stderr, "protocol got %u expected %u\n", got, expected);
-    exit(2);
-  }
-}
-
-static void send(uint32_t op, uint32_t count, const uint32_t *words) {
-  a0_runtime_write(session, op);
-  a0_runtime_write(session, count);
-  for (uint32_t i = 0; i < count; i++) a0_runtime_write(session, words[i]);
-}
-
-static void out(FILE *file, uint32_t word) {
-  const unsigned char bytes[] = {
-    (unsigned char)word, (unsigned char)(word >> 8),
-    (unsigned char)(word >> 16), (unsigned char)(word >> 24)
-  };
-  if (fwrite(bytes, 1, 4, file) != 4) die("write word");
-}
+#include "structured.c"
 
 static void load(uint32_t handle, uint32_t start, uint32_t count, uint32_t *page) {
   const uint32_t args[] = {handle, start, count};
@@ -47,6 +10,7 @@ static void load(uint32_t handle, uint32_t start, uint32_t count, uint32_t *page
 
 /* Host responsibilities are source upload, word transport and session checks. */
 int main(int argc, char **argv) {
+  if (argc == 4) return structured_main(argc, argv);
   if (argc != 5) die("source output budget options");
   FILE *file = fopen(argv[1], "rb");
   if (!file) die("open source");

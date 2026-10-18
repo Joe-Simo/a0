@@ -164,7 +164,7 @@ const ABLATIONS: readonly {
 ];
 
 function render(u: Unit, style: DenseStyle): string {
-  return formatDense(normalizeProgram(u.program), { known: u.known, style }).trimEnd();
+  return formatDense(normalizeProgram(u.program, u.known), { known: u.known, style }).trimEnd();
 }
 
 async function main(): Promise<void> {

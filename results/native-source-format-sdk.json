@@ -1,0 +1,161 @@
+{
+  "schema": 1,
+  "scope": "Optional SDK transport for the existing shared A0 flat formatter and private revision serializer. C-derived and direct Wasm source frontends, original full-word parsed/typed IR, no host parse/print/hash fallback. No public source default change or performance comparison.",
+  "base": "1d937df6c981c8b80a9923eb9eefb81a540a24d4",
+  "checks": [
+    {
+      "name": "native-format",
+      "tests": 10,
+      "pass": 10,
+      "fail": 0,
+      "skipped": 0
+    },
+    {
+      "name": "live-diagnostics",
+      "tests": 9,
+      "pass": 9,
+      "fail": 0,
+      "skipped": 0
+    },
+    {
+      "name": "host-ir-graph-utf8",
+      "tests": 39,
+      "pass": 39,
+      "fail": 0,
+      "skipped": 0
+    }
+  ],
+  "additionalChecks": [
+    "build",
+    "lint",
+    "typecheck",
+    "prereview --base=1d937df (score0)"
+  ],
+  "corpusPerBackend": {
+    "fixtureSources": 291,
+    "fixtureRequests": 2452,
+    "fixtureMappingRequests": 2171,
+    "fixtureRevisionRequests": 281,
+    "additionalCompletePrograms": [
+      "examples/life.a0",
+      "compiler/source_frontend.a0"
+    ]
+  },
+  "artifacts": {
+    "format": {
+      "wasmSHA256": "e71347987afc147cb9afa9cb2e6a030c9e8516f222f1309c7e5150d551e8635b",
+      "wasmBytes": 64698,
+      "sourceSHA256": "d6c35674edb90553489f42744b9775d6ef83f583528bca08c79ec7b2160dbee2",
+      "roots": {
+        "arena_format_described": {
+          "params": [
+            "io",
+            "u32x128",
+            "u32x128",
+            "u32",
+            "u32",
+            "bool",
+            "bool"
+          ],
+          "result": "(u32,(u32,u32,u32),u32x128,io)",
+          "resultWords": 133
+        },
+        "arena_revision": {
+          "params": [
+            "io",
+            "u32x128",
+            "u32x128",
+            "u32",
+            "u32"
+          ],
+          "result": "(u32,(u32,u32,u32),io)",
+          "resultWords": 5
+        }
+      }
+    },
+    "frontend": {
+      "wasmSHA256": "e14da183e6301c667a24ec351101c6e014d706f11967f29f7e326b8e4678e076",
+      "wasmBytes": 358579,
+      "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+      "diagnosticPorts": "arena-v1"
+    },
+    "diagnostic": {
+      "wasmSHA256": "76026e10f59f31c2548ce10d66c630ffe81dfc6768b30b2675f9bc55099d47b1",
+      "wasmBytes": 218010,
+      "sourceSHA256": "63e82e0ad588510f02bb816e0076064c60f54333c1fcd1255a8ae43e906c96e8"
+    },
+    "defaultFrontend": {
+      "unchangedFromBase": true,
+      "wasmSHA256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+      "wasmBytes": 358233
+    },
+    "genericArena": {
+      "wasmSHA256": "aedc7ce67a95d51bce8311246fe1d038247bdbb5989a28e656013b0de2d2d870"
+    }
+  },
+  "inputSHA256": [
+    {
+      "path": "src/source-component.ts",
+      "sha256": "34211587606157a34e97e88a792bb6dc61fa70de5333044c051bfdea8b25f977"
+    },
+    {
+      "path": "src/source-native-format.ts",
+      "sha256": "951b91ca663b05a59b550008c45dc870d8ce22e94595fcc1a4c310b183398f95"
+    },
+    {
+      "path": "src/source-native-render.ts",
+      "sha256": "afbb067a9d99371ce5b23ba16a8e585c3b178af0bdacc20a5801eda1e8beab7e"
+    },
+    {
+      "path": "src/source-native.ts",
+      "sha256": "3f394c93a8961d8a1108926655fa8c98694e4bf81e3bac11f146032e6226b5c6"
+    },
+    {
+      "path": "src/source-compiled.ts",
+      "sha256": "a9b3415ae7d3dad7585f8ea9bdfc377724571d251e9c19c9f6ec6ad5aeddc2d9"
+    },
+    {
+      "path": "src/source-direct.ts",
+      "sha256": "8f39d841a0c51b53745a8bfd8b5bc36fad76d6ab2aec303dca8dcd01989a04a7"
+    },
+    {
+      "path": "src/source-native-program.ts",
+      "sha256": "12f22e8f90f5212efb09b29aacd212a0dea53b22944c7a1e22017b18f3db5740"
+    },
+    {
+      "path": "src/source-utf8.ts",
+      "sha256": "b59c39f9ad27037fec19b67a9d97c34a5a698a820ac06bb1a36dd6ee4be34669"
+    },
+    {
+      "path": "test/source-native-format.controls.ts",
+      "sha256": "3005bee5d179b966e2dfee0792a09b883bac80e1c4f6df49930113f7e64639c6"
+    },
+    {
+      "path": "test/source-native-format.test.ts",
+      "sha256": "7ca57810803564918ee6543d6a6ca0e125a6351db6b6ede68fed5ba9cbb4843e"
+    },
+    {
+      "path": "test/source-utf8.test.ts",
+      "sha256": "9e37494aede1c16badbcb4ccba58511285725818fd6deae4b2e5b905ed841ef7"
+    },
+    {
+      "path": "tools/source-format-build.ts",
+      "sha256": "2d044af75d9e042c68912b71e97a05d81c8c6c620a240e01f5eadcfe5934dcac"
+    },
+    {
+      "path": "tools/source-native-load.ts",
+      "sha256": "e52d33a94dee3bed860f26300ae096e871140ff7ac1de1c4110db2eee2d2d217"
+    },
+    {
+      "path": "tools/source-diagnostic-build.ts",
+      "sha256": "4eab7c58f6a01e71aad013078a9018ad4cf53094b85e714b08b8550f42d13ffc"
+    }
+  ],
+  "boundaries": {
+    "sourceUnitSpecStatus": "The SDK source-unit API completes raw spec grammar with status0; lower-level arena_parse fixture status7 is not a verification claim. All exact format/hash/mapping assertions remain.",
+    "incompleteFrontend": "If no schema1 M exists, SDK returns incomplete-ir with original sourceStatus, without a formatter call. Complete schema1 state preserves native runtime/checker first-error status and publishes no partial output.",
+    "typedIrMetadata": "checkProgram native tables lack host-restored comments; native formatting can print represented IR but is not a source-preserving structured-edit replacement.",
+    "utf8": "Lossless source/IR scalar transport is a separate correctness change with a UTF16 scan. Fatal UTF8 helper is available; public filesystem readers are not rerouted.",
+    "publicRoutes": "CLI/editor syntax routes unchanged; no latency/memory/execution equivalence claim."
+  }
+}
