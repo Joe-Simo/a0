@@ -126,16 +126,9 @@ c nav
 >
 .div wrap
 .div hcopy
-.a badge
-+href /benchmarks
-<b
-"MEASURED
->
-"\sEvery number links to its results file
->
-=h1 A typed language AI edits one function at a time.
+=h1 A typed programming language for AI.
 .p lede
-"A model changes one function; A0 checks it against the whole program and compiles to C, native arm64 and WebAssembly.
+"Edit individual functions with revision-checked patches. Compile to native code, WebAssembly, C and other targets.
 >
 .div switch
 .div install pane on
@@ -526,48 +519,20 @@ w $wt_pct$
 >
 >
 }
-{sec_update
-<section
-+id development
-.div wrap
-.p eyebrow
-"Development update · 16 October 2026
->
-=h2 Apache 2.0 and the path to one syntax.
-=p A0's first-party source is now licensed under Apache 2.0. We have published independent Codex edit trials comparing Canonical, Dense and an experimental unified syntax.
-=p The syntax refactor remains in development. The compiler and tools still use the existing syntax. Compilation performance, complete migration and tooling integration still block adoption.
-<a
-+href /benchmarks#syntax-research
-"Read the new measurements and their limits →
->
-<p
-<a
-+href /LICENSE.txt
-"Apache 2.0 license
->
-" · 
-<a
-+href /NOTICE.txt
-"Copyright notice
->
->
->
->
-}
 {sec_what
 <section
 +id what
 .div wrap
 .p eyebrow
-"01 / What A0 is
+"01 / Language and tools
 >
-=h2 A typed language built for model edits.
+=h2 Write, check and compile.
 .div grid
 .div card
 .span tag
 "Language
 >
-=h3 Typed, explicit, short
+=h3 Typed functions
 =p Every function states its types. One operation per line.
 .div cmd
 "a0 check sq.a0
@@ -577,8 +542,8 @@ w $wt_pct$
 .span tag
 "Edits
 >
-=h3 One function, checked
-=p A patch replaces one function; A0 re-validates the program or rejects the patch with a diagnostic.
+=h3 Revision-checked patches
+=p Change instructions or replace a function. A0 checks the patch before applying it.
 .div cmd
 "a0 patch sq.a0 edit.patch
 >
@@ -588,7 +553,7 @@ w $wt_pct$
 "Targets
 >
 =h3 C, arm64, WebAssembly
-=p One front end; the same behaviour table runs on every target.
+=p Compile the same source to different targets. See the benchmarks for verification coverage.
 .div cmd
 "a0 emit arm64 sq.a0
 >
@@ -598,7 +563,7 @@ w $wt_pct$
 "Agents
 >
 =h3 MCP server
-=p Models read, edit and check A0 through tools instead of raw text.
+=p Open function views, apply patches, run checks and save changes through MCP.
 .div cmd
 "a0 mcp .
 >
@@ -612,9 +577,9 @@ w $wt_pct$
 +id minute
 .div wrap
 .p eyebrow
-"02 / A minute with A0
+"02 / Quick start
 >
-=h2 From install to a checked edit.
+=h2 Run your first function.
 .ul steps
 <li
 .div cmd
@@ -626,7 +591,7 @@ w $wt_pct$
 .div cmd
 "a0 run sq.a0 sq 12
 >
-=p Prints the square.
+=p Prints 144.
 >
 <li
 .div cmd
@@ -637,14 +602,14 @@ w $wt_pct$
 .span mono
 "--fix
 >
-"\sapplies the exact fixes.
+"\sapplies supported diagnostic fixes.
 >
 >
 <li
 .div cmd
 "a0 emit arm64 sq.a0
 >
-=p A0's own machine code; also c, js, java, sv.
+=p Emits ARM64 machine code. Other targets include C, JavaScript, Java and SystemVerilog.
 >
 <li
 .div cmd
@@ -665,142 +630,14 @@ w $wt_pct$
 >
 >
 }
-{sec_vs
-<section
-+id against
-.div wrap
-.p eyebrow
-"03 / Against other languages
->
-=h2 Edit cost and speed against other languages.
-<p
-+class lede
-"Full tables and methods on\s
-<a
-+href /benchmarks
-"Benchmarks
->
-".
->
-.div grid two
-.div panel chart
-.h3 ct
-"The same $tk_nk$ programs, written by hand
->
-.p sub
-"o200k tokens · sum over the programs · lower is better
->
-.div bars
-[tkrows tk_top
-.div brow{tk_me| me}
-.span lbl
-"$tk_label$
->
-.div track $tk_cls$
-.div fill
-w 12
-w 1
-w $tk_pct$
->
->
-.span val
-"$tk_val$
->
->
-]
->
-.p verdict
-"{tk_dwin|+ A0 dense: $tk_dv$ against Forth $tk_forth$|A0 dense: $tk_dv$, place $tk_dr$}
->
-<ul
-+class losses
-<li
-"− A0 canonical: $tk_cv$, place $tk_cr$ of $n_langs1$
->
->
-.p src
-"Source:\s
-<a
-+href https://github.com/Joe-Simo/a0/blob/main/results/lang-axes.json
-"results/lang-axes.json
->
-"\s·\s
-<a
-+href https://github.com/Joe-Simo/a0/blob/main/results/dense-tokens.json
-"results/dense-tokens.json
->
-"\s·\s
-<a
-+href /benchmarks#tokens
-"method →
->
->
->
-}
-{sec_vs2
-.div panel chart
-.h3 ct
-"Small programs, compiled
->
-.p sub
-# claim-ok: axis note of the chart; every value is a variable from results/exec-benchmark-full.json
-"Time per call as a multiple of A0's · geometric mean · log scale · shorter is faster
->
-.div bars
-[langs lg_top
-.div brow{lg_me| me}
-.span lbl
-"$lg_label$
->
-.div track $lg_cls$
-.div fill
-w 12
-w 1
-w $lg_pct$
->
->
-.span val
-n a mov $lg_g100$
-c putratio %a
-"x
->
->
-]
->
-.p verdict
-"$n_ties$ of $n_langs$ languages within 5% of A0; $n_ahead$ faster
->
-<ul
-+class losses
-<li
-"− Slower than the best of C, Rust and Zig on $bk_nloss$ of $bk_n$ programs, worst $bk_slow$x ($bk_slowk$)
->
->
-.p src
-"Source:\s
-<a
-+href https://github.com/Joe-Simo/a0/blob/main/results/exec-benchmark-full.json
-"results/exec-benchmark-full.json
->
-"\s·\s
-<a
-+href /benchmarks#native
-"method →
->
->
->
->
->
->
-}
 {sec_limits
 <section
 +id limits
 .div wrap
 .p eyebrow
-"04 / Where A0 loses
+"03 / Limits
 >
-=h2 Measured losses.
+=h2 Limits and benchmark results.
 .div tblwrap
 +tabindex 0
 +role group
@@ -858,7 +695,7 @@ c putratio %a
 +id install
 .div wrap
 .p eyebrow
-"05 / Install
+"04 / Install
 >
 =h2 Install
 .div install

@@ -109,7 +109,7 @@ test('the benchmarks page explains every benchmark in plain words', {
 });
 
 // The home page is short: the pitch with the install line and the measured charts (edit cost, tokens,
-// speed), what A0 is, a minute with A0, the comparison charts, the losses, install; every number is
+// speed), language tools, quick start, limits and install; every number is
 // computed from results/*.json, the rest is on /benchmarks.
 test('the home page is short: a pitch with measured charts, what A0 is, the losses, install', {
   timeout: 600_000,
@@ -120,9 +120,9 @@ test('the home page is short: a pitch with measured charts, what A0 is, the loss
   assert.ok(!html.includes('<details'), 'no hidden lists on the home page');
   assert.ok(!html.includes('class="rail"'), 'the section rail is on /benchmarks only');
   for (const h of [
-    'A typed language AI edits one function at a time.',
-    'A typed language built for model edits.',
-    'Measured losses.',
+    'A typed programming language for AI.',
+    'Write, check and compile.',
+    'Limits and benchmark results.',
     'Install',
   ])
     assert.ok(text.includes(h), `missing: ${h}`);

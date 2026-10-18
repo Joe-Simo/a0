@@ -1,10 +1,15 @@
 name: gate-macos
 # Runs the full gate (tools/dev/a0-dev.ts gate) on Apple silicon for a branch pushed as gate/<name>, so branches built on
 # Windows or Linux can clear the steps that need macOS (bootstrap's arm64 stage, selfhost-arm64, the arm64 behavior
-# targets). It only reports: the log and results are uploaded as an artifact, nothing is committed or merged.
+# targets). Logs/results are uploaded. gate/publish-* or prepare_merge also runs the normal merge pipeline locally
+# and uploads a Git bundle plus tree-bound gate notes. Repository permissions stay read-only; nothing is pushed.
 on:
   workflow_dispatch:
     inputs:
+      prepare_merge:
+        description: Prepare a verified merge bundle for local publication (never pushes)
+        type: boolean
+        default: false
       diagnose_macos_tests:
         description: Run tests except the slow dense reader before the full gate
         type: boolean
@@ -62,6 +67,37 @@ jobs:
           trap dump_gate_logs EXIT
           node dist/tools/dev/a0-dev.js gate 2>&1 | tee gate.log
           grep -q "GATE RESULT: pass" gate.log
+      - name: Prepare verified merge bundle
+        if: startsWith(github.ref, 'refs/heads/gate/publish-') || (github.event_name == 'workflow_dispatch' && inputs.prepare_merge)
+        shell: bash
+        env:
+          A0_GATE_SUBJECT: ${{ github.sha }}
+          A0_GATE_SCRATCH: ${{ runner.temp }}/a0-gate
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge-base --is-ancestor origin/main "$A0_GATE_SUBJECT"
+          git rev-parse origin/main > "$RUNNER_TEMP/merge-base.sha"
+          # Preserve the actual verification reports before restoring generated files for the merge.
+          cp -R results "$A0_GATE_SCRATCH/verified-results"
+          git diff --exit-code -- . ':!results'
+          git restore --worktree -- results
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git branch gate-candidate "$A0_GATE_SUBJECT"
+          git switch --create gate-merged origin/main
+          node dist/tools/dev/a0-dev.js plan --base=origin/main gate-candidate | tee "$RUNNER_TEMP/merge-plan.log"
+          node dist/tools/dev/a0-dev.js drive --base=origin/main --merge gate-candidate | tee "$RUNNER_TEMP/merge.log"
+          grep -q "GATE RESULT: pass" "$RUNNER_TEMP/merge.log"
+          # The integrated code must be the tested candidate; only generated reports may differ.
+          git diff --exit-code "$A0_GATE_SUBJECT" HEAD -- . ':!results'
+          git merge-base --is-ancestor "$A0_GATE_SUBJECT" HEAD
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git rev-parse HEAD > "$RUNNER_TEMP/merge-head.sha"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/merge-tree.sha"
+          git rev-parse "$A0_GATE_SUBJECT" > "$RUNNER_TEMP/merge-subject.sha"
+          git bundle create "$RUNNER_TEMP/merge.bundle" gate-merged refs/notes/a0-gate ^origin/main
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -70,3 +106,10 @@ jobs:
             gate.log
             results/
             ${{ runner.temp }}/a0-gate/
+            ${{ runner.temp }}/merge.bundle
+            ${{ runner.temp }}/merge-base.sha
+            ${{ runner.temp }}/merge-head.sha
+            ${{ runner.temp }}/merge-tree.sha
+            ${{ runner.temp }}/merge-subject.sha
+            ${{ runner.temp }}/merge-plan.log
+            ${{ runner.temp }}/merge.log
