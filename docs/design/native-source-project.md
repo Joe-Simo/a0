@@ -1,6 +1,10 @@
 # Native source project ownership
 
-`linkNativeSource(entry, read, frontend, options)` returns the existing linked program/text/source data plus a `.native` project session. Dependency ordering, path confinement and symlink policy, injected reading, source limits, profile agreement/override and duplicate-function diagnostics still run through `linkProject`. Source grammar, type checking and specs run through the supplied A0 frontend. No host source parser, printer or validator is a fallback.
+`linkNativeSource(entry, read, frontend, options)` performs one-shot native linking and returns the existing detached linked program/text/source data. It exposes no project session and does not keep a per-file parsed-unit owner alive after return. `openNativeSourceProject(entry, read, frontend, options)` explicitly retains those authentic units and returns the linked data plus a `.native` project session. Both APIs share one private load/check implementation.
+
+The caller-owned frontend keeps its ordinary current arena until reset or close, and `includeUnits: true` still intentionally returns host migration Programs; one-shot linking does not claim to free that current arena or those requested host outputs.
+
+Dependency ordering, path confinement and symlink policy, injected reading, source limits, profile agreement/override and duplicate-function diagnostics still run through `linkProject`. Source grammar, type checking and specs run through the supplied A0 frontend. No host source parser, printer or validator is a fallback.
 
 The session retains the authentic parsed units privately. Its `files` list contains immutable, project-owned identities with the resolved file paths. These identities expose no Program, parser state or checked-acceptance flag. Copying an identity or taking one from another project cannot select a file, even when both projects use the same frontend and path. Public linked data and optional migration units are host snapshots; changing them cannot alter the retained native inputs.
 
@@ -12,7 +16,7 @@ The session retains the authentic parsed units privately. Its `files` list conta
 Activation and graph rechecking reset the shared frontend. Earlier graph/activation formatting inputs become stale, including inputs from another project sharing that frontend. Missing formatting capability returns the existing explicit refusal. Foreign/copy file handles and invalid budgets fail before reset. A real resource failure can reset the live arena; a later successful check or activation recovers from the retained inputs. Closing the frontend makes every project's subsequent native operation fail. The project session performs no implicit activation, background read or retry.
 
 ```ts
-const linked = await linkNativeSource(entry, read, frontend, options);
+const linked = await openNativeSourceProject(entry, read, frontend, options);
 const project = linked.native;
 const file = project.files.find((file) => file.path === selectedPath);
 if (file) {
@@ -26,4 +30,4 @@ project.close();
 frontend.close();
 ```
 
-This is a private candidate API for the later CLI/LSP cutover. Public source readers and command modes have not changed. Keeping a project alive intentionally retains its parsed-unit snapshots and original source text; no compilation, memory or latency improvement is claimed. The explicit C frontend controls in `test/source-native-project.controls.ts` compare file/graph output and revisions with the independent reference, include the compiler's real module graph, and exercise profile, import, mutation, budget and lifetime boundaries.
+This is a private candidate API for the later CLI/LSP cutover. Public source readers and command modes have not changed. Choosing the explicit project API and keeping its session alive intentionally retains its parsed-unit snapshots and original source text; no compilation, memory or latency improvement is claimed. The explicit C frontend controls in `test/source-native-project.controls.ts` compare file/graph output and revisions with the independent reference, include the compiler's real module graph, and exercise profile, import, mutation, budget and lifetime boundaries.

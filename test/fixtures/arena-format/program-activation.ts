@@ -8,7 +8,7 @@ import { programRevision, revision } from '../../../src/revision.js';
 import { formatSource, parseSource } from '../../../src/source.js';
 import { linkSource } from '../../../src/source-link.js';
 import type { NativeUnitResult, nativeSource } from '../../../src/source-native.js';
-import { linkNativeSource } from '../../../src/source-native-link.js';
+import { openNativeSourceProject } from '../../../src/source-native-link.js';
 
 type Engine = ReturnType<typeof nativeSource>;
 export function authoringProgram(): Program {
@@ -156,7 +156,7 @@ export async function assertProgramFormatting(engine: Engine, peer: Engine): Pro
   const options = { root, canonicalPath: async (path: string) => path };
   const entry = resolve(root, 'entry.a0');
   const expectedGraph = await linkSource(entry, read, options);
-  const checked = await linkNativeSource(entry, read, engine, options);
+  const checked = await openNativeSourceProject(entry, read, engine, options);
   assert.equal(formatProgram(checked.program), formatProgram(expectedGraph.program));
   for (const target of ['c', 'js', 'wasm'] as const)
     assert.equal(

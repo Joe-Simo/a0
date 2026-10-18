@@ -149,12 +149,15 @@ function sourceProject(
   });
 }
 
-export async function linkNativeSource(
+async function loadNativeSource(
   entry: string,
   read: ReadSource,
   frontend: Frontend,
-  options: ProjectLinkOptions = {},
-): Promise<NativeLinkedSource> {
+  options: ProjectLinkOptions,
+): Promise<{
+  linked: Linked;
+  checked: { units: readonly OwnedUnit[]; profile: Profile; result: NativeCheckedGraph };
+}> {
   const units = new WeakMap<Program, OwnedUnit>();
   let checked:
     | { units: readonly OwnedUnit[]; profile: Profile; result: NativeCheckedGraph }
@@ -199,6 +202,28 @@ export async function linkNativeSource(
     options,
   );
   if (checked === undefined) throw new Error('native project was not checked');
+  return { linked, checked };
+}
+
+/** One-shot native linking; parsed-unit snapshots have no retained project owner after return. */
+export async function linkNativeSource(
+  entry: string,
+  read: ReadSource,
+  frontend: Frontend,
+  options: ProjectLinkOptions = {},
+): Promise<Linked> {
+  const { linked } = await loadNativeSource(entry, read, frontend, options);
+  return linked;
+}
+
+/** Explicitly retain authentic units for later file formatting and complete graph rechecks. */
+export async function openNativeSourceProject(
+  entry: string,
+  read: ReadSource,
+  frontend: Frontend,
+  options: ProjectLinkOptions = {},
+): Promise<NativeLinkedSource> {
+  const { linked, checked } = await loadNativeSource(entry, read, frontend, options);
   return {
     ...linked,
     native: sourceProject(frontend, checked.units, checked.profile, checked.result),

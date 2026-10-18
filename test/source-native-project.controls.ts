@@ -19,6 +19,7 @@ import {
   linkNativeSource,
   type NativeProjectFile,
   NativeSourceError,
+  openNativeSourceProject,
 } from '../src/source-native-link.js';
 import { readWasmWords } from '../src/wasm-words.js';
 import {
@@ -78,6 +79,56 @@ function checkedOutput(actual: TypedProgram, expected: TypedProgram): void {
     assert.equal(compile(actual, target).text, compile(expected, target).text, target);
 }
 
+test('one-shot linking shares native checking and returns detached Linked data without retained project authority', async () => {
+  const host = engine();
+  let parses = 0,
+    checks = 0;
+  const wrapped: ReturnType<typeof nativeSource> = {
+    ...host,
+    parseUnit(source, budget) {
+      parses++;
+      return host.parseUnit(source, budget);
+    },
+    checkUnits(units, profile, budget) {
+      checks++;
+      return host.checkUnits(units, profile, budget);
+    },
+  };
+  try {
+    for (const strict of [false, true]) {
+      const files = graph(strict);
+      const reference = await linkSource(entry, readFrom(files), options);
+      const linked = await linkNativeSource(entry, readFrom(files), wrapped, {
+        ...options,
+        includeUnits: true,
+      });
+      assert.equal('native' in linked, false);
+      assert.equal('checkGraph' in linked, false);
+      assert.equal('files' in linked, false);
+      checkedOutput(linked.program, reference.program);
+      assert.deepEqual(linked.sources, reference.sources);
+      assert.equal(linked.units?.length, reference.units?.length ?? 4);
+      const serialized = formatSource(linked.program);
+      host.parse('fn unrelated\nret A\nend\n');
+      assert.equal(
+        formatSource(linked.program),
+        serialized,
+        'one-shot output survives later native resets',
+      );
+    }
+    assert.equal(parses, 8);
+    assert.equal(checks, 2);
+    const retained = await openNativeSourceProject(entry, readFrom(graph()), host, options);
+    assert.ok('native' in retained);
+    const file = retained.native.files[0];
+    assert.ok(file);
+    assert.ok(retained.native.activateFileForFormat(file).ok);
+    retained.native.close();
+  } finally {
+    host.close();
+  }
+});
+
 for (const strict of [false, true])
   test(`project retains ${strict ? 'strict' : 'canonical'} file ownership and rechecks the full graph after explicit activations`, async () => {
     const host = engine();
@@ -101,7 +152,7 @@ for (const strict of [false, true])
       const files = graph(strict);
       const read = readFrom(files);
       const reference = await linkSource(entry, read, options);
-      const linked = await linkNativeSource(
+      const linked = await openNativeSourceProject(
         entry,
         async (path) => {
           assert.equal(loaded, false, 'project operation reread a file');
@@ -310,9 +361,9 @@ test('project file capabilities reject foreign/copy handles and preserve reset/b
     peer = engine();
   try {
     const files = graph();
-    const first = (await linkNativeSource(entry, readFrom(files), host, options)).native;
-    const second = (await linkNativeSource(entry, readFrom(files), host, options)).native;
-    const foreign = (await linkNativeSource(entry, readFrom(files), peer, options)).native;
+    const first = (await openNativeSourceProject(entry, readFrom(files), host, options)).native;
+    const second = (await openNativeSourceProject(entry, readFrom(files), host, options)).native;
+    const foreign = (await openNativeSourceProject(entry, readFrom(files), peer, options)).native;
     const file = first.files[0] as NativeProjectFile;
     const current = first.checkGraph();
     for (const invalid of [{ ...file }, second.files[0], foreign.files[0], {}])
@@ -369,7 +420,10 @@ test('declared file profiles survive checked graph overrides in both directions'
       const files = graph(declaredStrict);
       const profile = declaredStrict ? 'canonical' : 'strict';
       const reference = await linkSource(entry, readFrom(files), { ...options, profile });
-      const linked = await linkNativeSource(entry, readFrom(files), host, { ...options, profile });
+      const linked = await openNativeSourceProject(entry, readFrom(files), host, {
+        ...options,
+        profile,
+      });
       assert.equal(linked.native.profile, profile);
       assert.equal(linked.native.graph.typed.profile ?? 'canonical', profile);
       checkedOutput(linked.program, reference.program);
@@ -406,7 +460,7 @@ test('unconfigured formatting refuses activation without resetting the current c
   });
   try {
     const files = graph();
-    const linked = await linkNativeSource(entry, readFrom(files), host, options);
+    const linked = await openNativeSourceProject(entry, readFrom(files), host, options);
     const count = initializations;
     const state = readWasmWords(api.memory.buffer, api.frontend_state(), 128).slice();
     assert.deepEqual(
@@ -453,7 +507,7 @@ test('native project loader keeps shared confinement, cycles, profile and duplic
         expected = e;
       }
       assert.ok(expected);
-      await assert.rejects(linkNativeSource(entry, readFrom(files), host, options), (e) => {
+      await assert.rejects(openNativeSourceProject(entry, readFrom(files), host, options), (e) => {
         assert.ok(e instanceof A0Error);
         assert.deepEqual(e.toJSON(), expected?.toJSON());
         return true;
@@ -462,7 +516,7 @@ test('native project loader keeps shared confinement, cycles, profile and duplic
     const escaped = new Map([[entry, 'use "alias.a0"\n']]);
     const read = readFrom(escaped);
     await assert.rejects(
-      linkNativeSource(entry, read, host, {
+      openNativeSourceProject(entry, read, host, {
         ...options,
         canonicalPath: async (path) =>
           path.endsWith('alias.a0') ? resolve(root, '../outside.a0') : path,
@@ -481,7 +535,7 @@ test('native project errors retain owning file/local line and do not publish a p
       [join(root, 'bad.a0'), '# helper Ω\nfn bad -> bool\nret 1\nend\n'],
       [entry, '# entry\nuse "bad.a0"\nfn top\nret A\nend\n'],
     ]);
-    await assert.rejects(linkNativeSource(entry, readFrom(files), host, options), (e) => {
+    await assert.rejects(openNativeSourceProject(entry, readFrom(files), host, options), (e) => {
       assert.ok(e instanceof NativeSourceError);
       assert.equal(e.path, join(root, 'bad.a0'));
       assert.equal(e.line, 3);
@@ -489,7 +543,7 @@ test('native project errors retain owning file/local line and do not publish a p
       return true;
     });
     files.set(join(root, 'bad.a0'), '# malformed Ω\nfn bad\nend\n');
-    await assert.rejects(linkNativeSource(entry, readFrom(files), host, options), (e) => {
+    await assert.rejects(openNativeSourceProject(entry, readFrom(files), host, options), (e) => {
       assert.ok(e instanceof NativeSourceError);
       assert.equal(e.path, join(root, 'bad.a0'));
       assert.equal(e.line, 3);
@@ -508,7 +562,7 @@ test('real compiler project retains authentic original modules across file and g
     const reference = await linkSource(path, (file) => readFile(file, 'utf8'), {
       root: process.cwd(),
     });
-    const linked = await linkNativeSource(
+    const linked = await openNativeSourceProject(
       path,
       async (file) => {
         reads++;
