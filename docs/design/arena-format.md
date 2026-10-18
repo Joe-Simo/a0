@@ -1,6 +1,6 @@
 # A0 source formatting and internal revisions, schema 1
 
-This shared component passed an isolated native proof at O0 and O2; [results](../../results/arena-format-native.json) record every output. It is not yet routed through the public CLI or editor, and has no host formatting/hash fallback. Inputs are original full-word schema1 parser/checker states, not optimized backend contexts. Source bytes are the frozen valid UTF-8 snapshot; raw malformed-byte/unpaired-surrogate decoding remains a separate boundary.
+The shared flat formatter and private revision serializer pass the combined native checks at O0 and O2; [current integration results](../../results/arena-format-unified.json) record the verified source inputs and checks. They are not yet routed through the public CLI or editor and have no host formatting/hash fallback. Inputs are original full-word schema1 parser/checker states, not optimized backend contexts. Source bytes are the frozen valid UTF-8 snapshot; raw malformed-byte/unpaired-surrogate decoding remains a separate boundary.
 
 ## APIs
 
@@ -59,12 +59,12 @@ Flat spelling can omit a token or represent several origins with one printed val
 
 ## Validation and integration status
 
-The native component proof covers 544 source sessions and 4188 component requests, with 4132 exact byte/SHA checks, 3568 mapping checks and 56 expected explicit failures; see [native results](../../results/arena-format-native.json) and [provenance](../../results/arena-format-provenance.json). The same original-source fixture protocol is packaged in `test/fixtures/arena-format` with five permanent native test groups. They create a fresh verified seed and compile the current fixed implementation closure under UBSan/Werror at O0/O2 in their own temporary directory. The recorded isolated proof additionally used ASan. The permanent test package needs its normal repository run after integration; static package checks are not a new native proof.
+The earlier isolated component proof covered 544 source sessions and 4188 component requests, with 4132 exact byte/SHA checks, 3568 mapping checks and 56 expected explicit failures; see its [native results](../../results/arena-format-native.json) and [provenance](../../results/arena-format-provenance.json) for those source identities. The original-source fixture protocol is packaged in `test/fixtures/arena-format` with five permanent native test groups. They create a fresh verified seed and compile the current implementation closure under UBSan/Werror at O0/O2 in their own temporary directory. The [combined integration run](../../results/arena-format-unified.json) passes those groups with the flat formatter and the native global-diagnostic fixes. The earlier isolated proof additionally used ASan.
 
 Nine actual A0 source mutation controls were detected under the explicit development bootstrap, as separately recorded in [development mutation results](../../results/arena-format-mutations.json). They are not nine native compiler builds. Native status/table corruption controls remain in the permanent fixture driver. The failed pre-Clang driver-manifest attempt and unchanged-emission reuse are recorded in provenance rather than relabelled as a successful build.
 
 Raw malformed UTF8/filesystem decoding, unpaired host surrogates, optimized A0BO views, direct DenseOrigin3 composition, public-route removal and performance equivalence are outside this milestone. Semantic dependency insertion is quadratic, and earlier unrelated functions can increase scratch/work. These costs remain explicit rather than causing a hidden fallback.
 
-The permanent assertions additionally check descriptor mode/ID/spec flags, zero disabled event views and explicit event identity/spelling for a small example (body and return operand rows, spec literals, types and function name). These assertion-only additions do not alter the frozen runtime requests or byte/hash expectations; they await the normal fresh-seed repository run.
+The permanent assertions also check descriptor mode/ID/spec flags, zero disabled event views and explicit event identity/spelling for a small example (body and return operand rows, spec literals, types and function name). These assertions run in the current combined native checks.
 
 Integration renamed private revision helpers from `ar_` to `arev_` to avoid collisions with the RISC-V emitter. The recorded isolated proof retains its original source identities; permanent tests build the current renamed implementation.

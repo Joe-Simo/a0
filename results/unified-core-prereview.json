@@ -3,10 +3,10 @@
   "commit": "1b1fc66f850df2a124b1b67d356364b23097c938",
   "base": "383472392a0634c328a024d084a6a5b4a10230a5",
   "heuristic": {
-    "score": 26.45,
+    "score": 33.45,
     "verdict": "rework",
     "exitCode": 1,
-    "findings": 38
+    "findings": 48
   },
   "basis": "tools/dev/prereview.ts explicitly describes findings as heuristics over added lines: a flag asks for a look, it is not a verdict. Numeric findings match protocol or language bounds also exercised by tests; the documentation finding comes from its adapter filename. Every finding is reviewed below. No source literal or prereview rule was changed to evade the tool.",
   "findings": [
@@ -64,6 +64,156 @@
       "controls": [
         "test/source-native-preflight.test.ts",
         "test/source-native-program.test.ts"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 238,
+      "weight": 0.7,
+      "text": "q9 eq p7 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "All-ones represents the absent parent event. Other parent IDs must precede this event; output intervals are also bounded. It is protocol identity validation, not an expected output.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 1778,
+      "weight": 0.7,
+      "text": "q51 ne q50 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "All-ones is the existing absent callee identifier. Direct-call abbreviation requires an actual callee plus the shared word classifier; no test-specific name table is introduced.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 2990,
+      "weight": 0.7,
+      "text": "q6 ne q5 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The largest u32 parameter ID has no representable next index. This sentinel check and the preserved big-decimal marker prevent unsafe inferred headers and retain explicit arity.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 3118,
+      "weight": 0.7,
+      "text": "q2 ne q1 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The shared specification rows use all-ones for an absent pre/post contract. Only present contracts contribute parameter use to inferred headers.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0",
+      "line": 3129,
+      "weight": 0.7,
+      "text": "q12 ne q11 4294967295",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The shared specification rows use all-ones for an absent pre/post contract. Only present contracts contribute parameter use to inferred headers.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 126,
+      "weight": 0.7,
+      "text": "let valid=(start<=out#1)&(length<=out#1-start)&((parent==4294967295)|(parent<v#1/6))",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "All-ones represents the absent parent event. Other parent IDs must precede this event; output intervals are also bounded. It is protocol identity validation, not an expected output.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 871,
+      "weight": 0.7,
+      "text": "let direct=fold(af_direct,(c#0==0)&flat&!text&(row[1]==19)&(row[4]!=4294967295)?1:0,(c,false),m,row[4])",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "All-ones is the existing absent callee identifier. Direct-call abbreviation requires an actual callee plus the shared word classifier; no test-specific name table is introduced.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 1223,
+      "weight": 0.7,
+      "text": "let bounded=((row[4]&4)==0)&(row[1]!=4294967295)",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The largest u32 parameter ID has no representable next index. This sentinel check and the preserved big-decimal marker prevent unsafe inferred headers and retain explicit arity.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 1259,
+      "weight": 0.7,
+      "text": "let b=fold(af_hcontract,(row[3]!=4294967295)&r#2?1:0,(a#0,r#1,r#2),ps,row[3])",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The shared specification rows use all-ones for an absent pre/post contract. Only present contracts contribute parameter use to inferred headers.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
+      ]
+    },
+    {
+      "kind": "fabricated-const",
+      "file": "compiler/format_arena.a0s",
+      "line": 1260,
+      "weight": 0.7,
+      "text": "return fold(af_hcontract,(row[4]!=4294967295)&b#2?1:0,b,ps,row[4])",
+      "baseExactMatches": [],
+      "disposition": "reviewed-false-positive",
+      "reason": "The shared specification rows use all-ones for an absent pre/post contract. Only present contracts contribute parameter use to inferred headers.",
+      "controls": [
+        "test/arena-format.test.ts",
+        "test/fixtures/arena-format/cases.ts",
+        "results/arena-format-unified.json"
       ]
     },
     {
@@ -765,8 +915,11 @@
       ]
     }
   ],
-  "reviewedCodeCommit": "c95704e8511d118e11a49c686a435c9e98489513",
-  "integrationEvidence": "results/source-native-global-diagnostic-integration.json",
+  "reviewedCodeCommit": "b5d7bcee7349e7d1a89b5af4940c3ec79a9eb763",
+  "integrationEvidence": [
+    "results/source-native-global-diagnostic-integration.json",
+    "results/arena-format-unified.json"
+  ],
   "reviewedSourceInputs": [
     {
       "path": "docs/design/native-diagnostic-adapter.md",
@@ -775,6 +928,26 @@
     {
       "path": "test/source-native-live-diagnostics.controls.ts",
       "sha256": "2877e22d6073e12dbff6556eb1de1efe57d5003aa28805ac9febea66b13e3ee7"
+    },
+    {
+      "path": "docs/design/arena-format.md",
+      "sha256": "5305a8737a49e1bf19d52d219ec9ca85b0d0f2917ef5874e2ff3d8e72b0a3716"
+    },
+    {
+      "path": "compiler/format_arena.a0",
+      "sha256": "384fcebb54d575681cf6c34f771dcb1a3ffa05e3169b9e73ee3856edae0a86c5"
+    },
+    {
+      "path": "compiler/format_arena.a0s",
+      "sha256": "253b569d89be0b3c0ff3771b3401bd18d32075e8545c3901883465fde15b9fdb"
+    },
+    {
+      "path": "compiler/revision_arena.a0",
+      "sha256": "fb39aa2015f7a41c9e15755d3f20713d81ed389df97cf7f87b9112f2b635338b"
+    },
+    {
+      "path": "compiler/revision_arena.a0s",
+      "sha256": "1abf0ad64e025ebfa403e26c16765d72e6f97bed852c6eb606888a46abc8960d"
     }
   ]
 }
