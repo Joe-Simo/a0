@@ -1,0 +1,251 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-18T15:36:43.726Z",
+  "scope": "Final strict generated-JS experiment preparation and real-worker checksum verification only. No formal timing, memory comparison, no-regression result, public syntax migration or release gate is claimed.",
+  "candidate": {
+    "commit": "acb686bea705e23097b7433d03b4c231dc361a66",
+    "tree": "be3222d447dd764cb12fbf49f6f6081d000c22cc"
+  },
+  "historical": {
+    "commit": "764de84ab99a156e41164518f14cc0676b6343dd",
+    "tree": "ab27dea02d1f5047601f0e1c310c6c3e625f08ea"
+  },
+  "cControl": {
+    "commit": "3ef2db0f9160dada89e1c513fd8170d78649d7ef",
+    "tree": "ec2d513896d8caa947fa033128e683841bec3acb"
+  },
+  "harnessCommits": [
+    "ef1bd5837caa710b18c253cda7e59c90553b7289",
+    "1a1ef03e5aade0e0bdca3728e0118668124e8e7a",
+    "acb686bea705e23097b7433d03b4c231dc361a66"
+  ],
+  "source": {
+    "sha256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "functions": 612,
+    "modules": 23,
+    "consumedFunctions": 8,
+    "unchangedA0AndBackendSources": true
+  },
+  "artifacts": {
+    "backend": "generated-js",
+    "components": [
+      {
+        "file": "frontend.mjs",
+        "sha256": "cf960c46885e8cf76c0014d84e8d2cbbec0b57e449cb3800d565e11dc16293f5",
+        "bytes": 968559
+      },
+      {
+        "file": "arena.wasm",
+        "sha256": "fffd7aa76fe43d3ca3fa2b173b9f484c291fa4579ab3fe7cbf7ca6f5f88faa75",
+        "bytes": 16422
+      }
+    ],
+    "componentCount": 2,
+    "totalWasmBytes": 16422,
+    "totalJavaScriptBytes": 968559,
+    "totalArtifactBytes": 984981,
+    "artifactSha256": "8148b7dd4ecb47d3b0cf5ace83041c339d41a5e3f64d66dae7e7097ed93f8326"
+  },
+  "cControlArtifact": {
+    "backend": "clang-wasm",
+    "components": [
+      {
+        "file": "frontend.wasm",
+        "sha256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+        "bytes": 358233
+      }
+    ],
+    "componentCount": 1,
+    "totalWasmBytes": 358233,
+    "artifactSha256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926"
+  },
+  "checks": {
+    "sourceCostProofTests": {
+      "pass": 16,
+      "fail": 0,
+      "skip": 0,
+      "files": [
+        "test/source-cost-codegen.test.ts",
+        "test/source-cost-control.test.ts",
+        "test/source-cost-js.test.ts"
+      ]
+    },
+    "actualJsLoaderProofTests": {
+      "pass": 2,
+      "fail": 0,
+      "skip": 0,
+      "file": "test/source-js.controls.ts",
+      "selection": "JS artifact loading|prepared JS provenance"
+    },
+    "strictPreparation": {
+      "result": "pass",
+      "inputs": 6,
+      "nativeRebuilds": {
+        "candidate": {
+          "arenaSHA256": "fffd7aa76fe43d3ca3fa2b173b9f484c291fa4579ab3fe7cbf7ca6f5f88faa75",
+          "origin": {
+            "backend": "direct-wasm",
+            "components": [
+              {
+                "file": "frontend.wasm",
+                "sha256": "934a4e59ba26fcea16e88fefb529505979bf1fefa46a22e3ff6088158e235486",
+                "bytes": 127599
+              },
+              {
+                "file": "arena.wasm",
+                "sha256": "fffd7aa76fe43d3ca3fa2b173b9f484c291fa4579ab3fe7cbf7ca6f5f88faa75",
+                "bytes": 16422
+              }
+            ],
+            "componentCount": 2,
+            "totalWasmBytes": 144021,
+            "artifactSha256": "1ad0190915d332f9c267f372de09b505f21ea7ef1f30815b652d2f3297e9ee5a"
+          }
+        },
+        "control": {
+          "cSHA256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998",
+          "backend": "clang-wasm",
+          "components": [
+            {
+              "file": "frontend.wasm",
+              "sha256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+              "bytes": 358233
+            }
+          ],
+          "componentCount": 1,
+          "totalWasmBytes": 358233,
+          "artifactSha256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926"
+        }
+      }
+    },
+    "freshWorkerSmoke": {
+      "result": "pass",
+      "cells": 30,
+      "units": 6,
+      "arms": 5,
+      "timeoutMs": 240000,
+      "finalImmutabilityCheck": "pass"
+    },
+    "build": "pass",
+    "lint": "pass",
+    "typecheck": "pass",
+    "prereview": {
+      "findings": 0,
+      "score": 0,
+      "verdict": "ok"
+    }
+  },
+  "snapshots": {
+    "preparation": {
+      "path": "results/source-frontend-js-cost-preparation.json",
+      "bytes": 551602,
+      "sha256": "13815b836b7cecb46be8764317398da221cf1d7150d76cb2c8f3002c93051320",
+      "original": {
+        "file": "preparation.json",
+        "bytes": 529148,
+        "sha256": "1fe953701711cbf8432dff6c83482c771fea83d6e8cd04a16ba35e38fa19e571"
+      }
+    },
+    "worker-proof": {
+      "path": "results/source-frontend-js-cost-worker-proof.json",
+      "bytes": 367219,
+      "sha256": "0d92860004ad6f5516903e7b2ec12075bf6105762d58bbe51510c84aac28f385",
+      "original": {
+        "file": "worker-proof.json",
+        "bytes": 355241,
+        "sha256": "9289917a6b33c39680192e233e81d309386d98af90a76fd2952bde7183fcad13"
+      }
+    },
+    "smoke": {
+      "path": "results/source-frontend-js-cost-smoke.json",
+      "bytes": 11232,
+      "sha256": "675269699e68c284eea6243df48d0e08dc5d625d25c999ea7e99025bcea50e81",
+      "original": {
+        "file": "js-worker-final-checksums.json",
+        "bytes": 10008,
+        "sha256": "033aaa1a75cfd55b5bd4699a32cdb64d4941b2651bd23608e07198304422d40e"
+      }
+    },
+    "candidate-build": {
+      "path": "results/source-frontend-js-cost-candidate-build.json",
+      "bytes": 130126,
+      "sha256": "3b1414973f23c6fa6dfa6670991f1d9e9515a363fd5e5f9327274e6d099cf9ce",
+      "original": {
+        "file": "build.json",
+        "bytes": 120896,
+        "sha256": "116ea98acff12eb696a6aa6acdc81a300017ccefe3b716a2ecbe4ba9b81a47b3"
+      }
+    },
+    "arena-origin": {
+      "path": "results/source-frontend-js-cost-arena-origin.json",
+      "bytes": 41285,
+      "sha256": "4f371d7ec5f99b7012cb42151b264d85c93d69e031e888d4dc4f2ec7cc12c02f",
+      "original": {
+        "file": "build.json",
+        "bytes": 37419,
+        "sha256": "c26db8efcf5b90f8b87060d4b4fba69ba59bfc0f7d6fbe91eb8cf5dcb6851f90"
+      }
+    },
+    "c-control-build": {
+      "path": "results/source-frontend-js-cost-c-control-build.json",
+      "bytes": 25954,
+      "sha256": "efde12909bdd1f43e32295f1d595a32d68aeb9b3fe686e4265b0afa3779e1ff7",
+      "original": {
+        "file": "build.json",
+        "bytes": 23786,
+        "sha256": "e063a4e3f6de9c171b5c4cfe3853867b3e72a3d5ebbda030976ff8afe096f718"
+      }
+    }
+  },
+  "sourceBundle": {
+    "path": "results/source-frontend-js-cost-source-bundle.json",
+    "sha256": "ec54900f3d52d83b0a0341890dcf4469f106a6621c1cffcabc06f988ed52a6eb"
+  },
+  "logs": {
+    "path": "results/source-frontend-js-cost-validation-logs.json",
+    "sha256": "2e375ae716bb0f6dc6a092f34a5900c19c06d2534272b2665e64bc803da91ebf"
+  },
+  "smokeRunner": {
+    "language": "JavaScript ESM",
+    "sha256": "b7d90922e0ebfa5bf4bd4c0973405c70f4aa9b16dcd436551cbcb3e2ad848626",
+    "source": "import assert from 'node:assert/strict';\nimport { spawnSync } from 'node:child_process';\nimport { createHash } from 'node:crypto';\nimport { readFile } from 'node:fs/promises';\nimport { join, resolve } from 'node:path';\nimport { pathToFileURL } from 'node:url';\nimport { committedTree } from '../dist/tools/measurement-checkout.js';\nimport { writeReport } from '../dist/tools/scrub-results.js';\nimport { sourceCostArtifact } from '../dist/tools/source-cost-artifact.js';\nimport { verifySourceCostFrozenC } from '../dist/tools/source-cost-control.js';\nimport { readSourceCostWorkerProof, verifySourceCostWorkerSubject } from '../dist/tools/source-cost-worker-proof.js';\n\nconst [preparationArg, artifactArg, controlArtifactArg, controlCheckoutArg, historicalArg, outputArg] = process.argv.slice(2);\nassert.ok(preparationArg && artifactArg && controlArtifactArg && controlCheckoutArg && historicalArg && outputArg);\nconst directory = resolve(preparationArg), artifact = resolve(artifactArg),\n  controlArtifact = resolve(controlArtifactArg), controlCheckout = resolve(controlCheckoutArg),\n  historical = resolve(historicalArg), output = resolve(outputArg), root = process.cwd();\nconst hash = bytes => createHash('sha256').update(bytes).digest('hex');\nconst preparation = JSON.parse(await readFile(join(directory, 'preparation.json'), 'utf8'));\nassert.deepEqual(committedTree(root), preparation.candidate);\nassert.deepEqual(committedTree(controlCheckout), preparation.control);\nassert.deepEqual(committedTree(historical), preparation.baseline);\nconst proofPath = join(directory, 'worker-proof.json');\nconst proofSHA256 = hash(await readFile(proofPath));\nassert.equal(proofSHA256, preparation.workerProofSHA256);\nconst proof = await readSourceCostWorkerProof(root, proofPath, proofSHA256, historical);\nconst oldCore = await import(pathToFileURL(join(historical, 'dist/src/core.js')).href);\nconst oldBackends = await import(pathToFileURL(join(historical, 'dist/src/backends.js')).href);\nconst indexPath = 'experiments/unification/frontend-a0/inputs/index.json';\nassert.equal(hash(await readFile(indexPath)), preparation.inputIndexSHA256);\nconst units = JSON.parse(await readFile(indexPath, 'utf8'));\nconst arms = ['old-canonical', 'old-dense', 'flat-ts-control', 'flat-a0', 'flat-a0-control'];\nconst fields = ['modulePreparationMs', 'postCheckMs', 'frontendMs', 'emitCMs', 'pipelineMs',\n  'beforePreparationRssBytes', 'beforePreparationHeapUsedBytes', 'beforePreparationExternalBytes',\n  'initialPeakRssBytes', 'initialRssBytes', 'frontendRssBytes', 'frontendHeapUsedBytes',\n  'frontendHeapTotalBytes', 'frontendArrayBufferBytes', 'frontendExternalBytes',\n  'frontendPeakRssBytes', 'peakRssBytes', 'rssBytes', 'heapUsedBytes', 'heapTotalBytes',\n  'arrayBufferBytes', 'externalBytes', 'wasmLinearMemoryBytes'];\nconst rows = [];\nconst startedAt = new Date().toISOString();\nfor (const unit of units) {\n  const inputPath = join(directory, unit.input);\n  const raw = await readFile(inputPath);\n  assert.equal(hash(raw), preparation.preparedInputs[unit.input]);\n  const input = JSON.parse(raw.toString('utf8'));\n  const expected = oldBackends.compile(oldCore.parseAndValidate(input.canonical), 'c').text;\n  verifySourceCostFrozenC(expected, unit.outputSHA256);\n  for (const arm of arms) {\n    const control = arm === 'flat-a0-control';\n    const child = spawnSync(process.execPath, [\n      resolve('dist/tools/source-cost-worker.js'), arm, inputPath,\n      control ? controlArtifact : artifact, historical,\n      control ? controlCheckout : root, proofPath, proofSHA256,\n    ], { cwd: root, encoding: 'utf8', timeout: 240000, maxBuffer: 8 * 1024 * 1024 });\n    assert.equal(child.status, 0, `${unit.unit}/${arm}: ${child.error ?? ''}\\n${child.stderr}`);\n    const cell = JSON.parse(child.stdout);\n    assert.equal(cell.outputSha256, hash(expected));\n    assert.equal(cell.outputBytes, Buffer.byteLength(expected));\n    assert.deepEqual(cell.preload, control ? preparation.controlArtifact : preparation.artifact);\n    for (const field of fields) assert.ok(Number.isFinite(cell[field]) && cell[field] >= 0, field);\n    for (const phase of ['modulePreparationCpu', 'frontendCpu'])\n      for (const field of ['user', 'system'])\n        assert.ok(Number.isFinite(cell[phase][field]) && cell[phase][field] >= 0, `${phase}.${field}`);\n    rows.push({ unit: unit.unit, arm, outputSHA256: cell.outputSha256,\n      outputBytes: cell.outputBytes, artifactSHA256: cell.preload.artifactSha256 });\n    await writeReport(output, {\n      schema: 1, scope: 'Correctness smoke only. Phase and memory observations are validated for presence and discarded; no performance or memory comparison.',\n      startedAt, candidate: preparation.candidate, baseline: preparation.baseline,\n      control: preparation.control, workerProofSHA256: proofSHA256,\n      verifiedNumericFields: fields, timeoutMs: 240000, rows,\n    });\n    console.log(`PASS ${unit.unit}/${arm}`);\n  }\n}\nassert.equal(rows.length, 30);\nassert.deepEqual(await readSourceCostWorkerProof(root, proofPath, proofSHA256, historical), proof);\nverifySourceCostWorkerSubject(await sourceCostArtifact(artifact), proof.subjects.candidate);\nverifySourceCostWorkerSubject(await sourceCostArtifact(controlArtifact), proof.subjects.control);\nawait writeReport(output, {\n  schema: 1, scope: 'Correctness smoke only. Phase and memory observations are validated for presence and discarded; no performance or memory comparison.',\n  startedAt, finishedAt: new Date().toISOString(), candidate: preparation.candidate,\n  baseline: preparation.baseline, control: preparation.control, workerProofSHA256: proofSHA256,\n  verifiedNumericFields: fields, timeoutMs: 240000, finalImmutabilityCheck: 'pass', rows,\n});\nconsole.log('PASS all 30 strict worker checksums; no performance comparison');\n"
+  },
+  "replay": {
+    "cleanCheckouts": {
+      "candidate": "acb686bea705e23097b7433d03b4c231dc361a66",
+      "historical": "764de84ab99a156e41164518f14cc0676b6343dd",
+      "cControl": "3ef2db0f9160dada89e1c513fd8170d78649d7ef"
+    },
+    "environment": "Install locked dependencies in each independent checkout, use the same recorded Clang/WASI inputs, and build all TypeScript before native artifact creation. Keep the tested candidate checkout clean; read reports from a separate evidence checkout.",
+    "candidateCommands": [
+      "bun run build",
+      "node --test dist/test/source-cost-codegen.test.js dist/test/source-cost-control.test.js dist/test/source-cost-js.test.js",
+      "node dist/tools/source-direct-build.js --out=.a0-tmp/direct-final --sysroot=\"$WASI_SYSROOT\" --builtins=\"$WASI_BUILTINS\"",
+      "node dist/tools/source-js-build.js --out=.a0-tmp/js-final --arena-artifact=.a0-tmp/direct-final",
+      "node dist/tools/source-diagnostic-build.js --out=.a0-tmp/diagnostic-final",
+      "A0_JS_SOURCE_ARTIFACT=.a0-tmp/js-final A0_JS_SOURCE_DIRECT_ARTIFACT=.a0-tmp/direct-final A0_JS_SOURCE_RENDERER=.a0-tmp/diagnostic-final node --test --test-name-pattern=\"JS artifact loading|prepared JS provenance\" dist/test/source-js.controls.js",
+      "node dist/tools/source-cost-bench.js --cross-backend --prepare-only --baseline=\"$HISTORICAL_CHECKOUT\" --artifact=.a0-tmp/js-final --control-checkout=\"$C_CONTROL_CHECKOUT\" --control-artifact=\"$C_ARTIFACT\" --sysroot=\"$WASI_SYSROOT\" --builtins=\"$WASI_BUILTINS\" --out=.a0-tmp/js-cost-final-preparation"
+    ],
+    "controlCommands": [
+      "bun run build",
+      "node dist/tools/source-native-build.js --out=.a0-tmp/c-control --sysroot=\"$WASI_SYSROOT\" --builtins=\"$WASI_BUILTINS\" --diagnostic-ports=disabled"
+    ],
+    "smoke": "Write smokeRunner.source byte-for-byte to .a0-tmp/strict-worker-smoke.mjs inside the clean candidate checkout, then run: node .a0-tmp/strict-worker-smoke.mjs .a0-tmp/js-cost-final-preparation .a0-tmp/js-final \"$C_ARTIFACT\" \"$C_CONTROL_CHECKOUT\" \"$HISTORICAL_CHECKOUT\" .a0-tmp/js-worker-final-checksums.json",
+    "identity": "Raw manifest and worker-proof hashes depend on the local excluded dist path emitted by tsc --showConfig. Rebuild them at the new checkout; published path-normalized inspection copies are not executable worker proofs."
+  },
+  "phaseAccounting": {
+    "frontend": "Instantiation, upload, parsing/checking and typed-IR decoding; first-call JS JIT remains included.",
+    "pipeline": "Frontend plus the same fixed historical C emitter.",
+    "modulePreparation": "Exact artifact/SDK checks, fresh ESM import, Wasm compilation and the post-load immutable-proof checks, outside frontend/pipeline and inside child wall.",
+    "postCheck": "Final immutable-code/artifact checks outside frontend/pipeline and inside child wall.",
+    "memory": "Worker fields retain RSS/peak RSS, JS heap used/total, external and array-buffer counters. JS Wasm-linear memory is arena-only; it excludes JS heap, generated code, JIT and GC. Smoke numeric observations are checked for presence and discarded."
+  },
+  "limits": [
+    "No formal quiet comparison has run for generated JS; a separate authorized quiet window and new output directory are required.",
+    "No same-process warm cohort or total-engine-memory equivalence is established.",
+    "The existing per-word record/page copies and JS/Wasm transitions are unchanged.",
+    "The same 240-second worker timeout remains in force.",
+    "Public source routing, compiler targets, A0 modules and backend lowering are unchanged by this harness.",
+    "The full repository and supported-platform release gates remain required before publication."
+  ]
+}

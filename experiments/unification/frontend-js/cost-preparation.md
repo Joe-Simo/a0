@@ -56,3 +56,16 @@ Existing per-word page/record copying and JS/Wasm calls remain unchanged for the
 
 No comparative performance or no-regression conclusion follows from preparation or correctness
 smokes. Every latency, memory or size loss must be retained in the subsequent comparison.
+
+The [final preparation record](../../../results/source-frontend-js-cost-validation.json) freezes
+the clean harness at `acb686bea705e23097b7433d03b4c231dc361a66`. It records all six strict parent
+input checks, 30 fresh-worker output checks, 16 source-cost proof controls and two actual JS loader
+corruption/stale-output controls. The original source history is retained in a
+[raw Git bundle](../../../results/source-frontend-js-cost-source-bundle.json), with its prerequisite,
+byte hash and a verified recovery from a repository holding only that prerequisite.
+
+Published manifest and worker-proof snapshots replace local checkout paths with named placeholders.
+They are inspection copies, with the original raw byte hashes recorded separately; they are not
+executable manifests or worker proofs. Replay rebuilds exact artifacts and proof files in its own
+clean checkouts. The smoke runner and replay commands are included in the preparation record.
+Formal quiet timing and the same-process warm cohort remain unrun.

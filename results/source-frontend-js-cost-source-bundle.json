@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "format": "git bundle",
+  "scope": "Original immutable harness history for independent replay. The raw bundle is unchanged, not encoded into JSON.",
+  "path": "experiments/unification/frontend-js/cost-source.bundle",
+  "bytes": 18396,
+  "sha256": "6a77d88ae1c1ab605773f93d6af6855191e77bf69b8186741206e2abc6fad0a2",
+  "prerequisite": {
+    "commit": "3ef2db0f9160dada89e1c513fd8170d78649d7ef",
+    "tree": "ec2d513896d8caa947fa033128e683841bec3acb"
+  },
+  "ref": "refs/heads/verify/source-js-cost-final",
+  "tip": {
+    "commit": "acb686bea705e23097b7433d03b4c231dc361a66",
+    "tree": "be3222d447dd764cb12fbf49f6f6081d000c22cc"
+  },
+  "includedCommits": [
+    "ced561ef116f9340fc3f9b4f326c3b220520d6e2",
+    "ef1bd5837caa710b18c253cda7e59c90553b7289",
+    "1a1ef03e5aade0e0bdca3728e0118668124e8e7a",
+    "acb686bea705e23097b7433d03b4c231dc361a66"
+  ],
+  "verification": {
+    "bundleVerification": "pass",
+    "prerequisiteOnlyRepositoryRecovery": "pass",
+    "recoveredTree": "be3222d447dd764cb12fbf49f6f6081d000c22cc",
+    "publicTreeExpressionMatches": 0
+  },
+  "recovery": [
+    "Use a repository containing prerequisite 3ef2db0f9160dada89e1c513fd8170d78649d7ef; verify the raw bundle byte count and SHA-256 above.",
+    "git bundle verify \"$BUNDLE\"",
+    "git fetch \"$BUNDLE\" refs/heads/verify/source-js-cost-final:refs/heads/replay/source-js-cost-final",
+    "git worktree add --detach \"$CANDIDATE_CHECKOUT\" acb686bea705e23097b7433d03b4c231dc361a66"
+  ]
+}
