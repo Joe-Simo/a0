@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "snapshot": {
+    "commit": "743b1df09cc3dfbea0acd06ecb6c99743007a681",
+    "tree": "956a957f2dee98d2cd60f50b334767863e530b28",
+    "dirty": false
+  },
+  "scope": "Dormant detached multi-field recurrence correctness and structural evidence. Original public roots, source and default compilation retained. No ap_read closure, performance, physical-copy or adoption claim.",
+  "sourceFiles": [
+    {
+      "path": "src/owned-scalar-fold.ts",
+      "sha256": "6ab190662001415c0564dffb952bb666398fd61134fc6b33870a9adc8ac10c17"
+    },
+    {
+      "path": "test/owned-scalar-fold.test.ts",
+      "sha256": "230d63107a04fd8c761236078ca5b65c636a3dee35f0fb1bb4d25234c78e88ea"
+    },
+    {
+      "path": "src/aggregate-demand.ts",
+      "sha256": "d8374b2400045c4cd0c6e9877da616ae03c8d5aac418547094b5c277c84a7483"
+    },
+    {
+      "path": "src/optimize.ts",
+      "sha256": "450c3aa6b15406a7cfe2eb3335149747133c37e745207e02beaac31e95df557a"
+    },
+    {
+      "path": "src/read-after-set.ts",
+      "sha256": "510c06274b9e3b1b3c665812395b417ddaa30f7e89375afc318b5d828f3db859"
+    },
+    {
+      "path": "docs/design/owned-scalar-fold-proof.md",
+      "sha256": "0f78f566b99a3b3f79a438cf2ff0dad9de555f6a69cd97a7e7f163925028db63"
+    },
+    {
+      "path": "experiments/unification/aggregate-return-demand/multi-field-recurrence.mjs.txt",
+      "sha256": "360c372bfeb8b328f3ccd7202cc88d5a6c83e5d7081851705c02c51c20b4e835"
+    }
+  ],
+  "demand": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      2,
+      1
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      3
+    ]
+  ],
+  "projection": {
+    "elements": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "originalLength": 128,
+    "recurrenceSites": 4,
+    "factoryProjected": true,
+    "requiresUninstrumentedEmission": true
+  },
+  "structures": {
+    "projectedBeforeClosure": {
+      "rootNodes": 18,
+      "graphFunctions": 4,
+      "graphNodes": 36,
+      "arrayOrSetNodes": 2,
+      "root": "fn multifieldprobe io -> (u32,u32,u32,u32,u32,u32,io)\nh call arena_reply_header p0\ncode at h 0\ncount at h 1\nn at h 2\nt1 at h 3\nz call arena_zero\ns rec z t1\nv fold arena_reply_word n s\na at v 0\nt2 at v 1\nout rec code count a t2\ndemand2 at out 2\ndemand3 get demand2 0\ndemand4 get demand2 1\ndemand5 get demand2 2\ndemand6 get demand2 3\ndemand7 at out 3\ndemand8 rec code count demand3 demand4 demand5 demand6 demand7\nret demand8\nend\n"
+    },
+    "ownedClosure": {
+      "rootNodes": 20,
+      "graphFunctions": 4,
+      "graphNodes": 49,
+      "arrayOrSetNodes": 0,
+      "root": "fn multifieldprobe io -> (u32,u32,u32,u32,u32,u32,io)\nh call arena_reply_header p0\ncode at h 0\ncount at h 1\nn at h 2\nt1 at h 3\nz call aggregate1\nfoldvalue0 at z 0\nfoldvalue1 at z 1\nfoldvalue2 at z 2\nfoldvalue3 at z 3\ns rec foldvalue0 foldvalue1 foldvalue2 foldvalue3 t1\nv fold aggregate2 n s\nt2 at v 4\nfoldconsumer0 at v 0\nfoldconsumer1 at v 1\nfoldconsumer2 at v 2\nfoldconsumer3 at v 3\nout rec code count foldconsumer0 foldconsumer1 foldconsumer2 foldconsumer3 t2\ndemand7 at out 6\ndemand8 rec code count foldconsumer0 foldconsumer1 foldconsumer2 foldconsumer3 demand7\nret demand8\nend\n"
+    }
+  },
+  "artifacts": {
+    "c": {
+      "originalOnly": {
+        "bytes": 9018,
+        "sha256": "72eb8eed487f5edb50569871d5ed380447daf34025724ebb9972bdf592c1410d"
+      },
+      "originalPlusProjected": {
+        "bytes": 11412,
+        "sha256": "15d2893b5d8184d7625cb67a9fcb101b20f2a14b3630d47e49cc007f47880169"
+      },
+      "originalPlusOwned": {
+        "bytes": 15437,
+        "sha256": "0c1b9228b0908e62d3db7aa8188bd151641b743f7117a3a77c053ebc6d5da27a"
+      },
+      "ownedMinusOriginalOnly": 6419,
+      "ownedMinusProjected": 4025
+    },
+    "js": {
+      "originalOnly": {
+        "bytes": 5651,
+        "sha256": "b0a145c1c804aa434aa1f8c6f5821d6ba6c6981bfd6767e03bae1e3cef435a1d"
+      },
+      "originalPlusProjected": {
+        "bytes": 7136,
+        "sha256": "909a323e2ef11eab63d06d243eac242900f5260b49a7449e4bfade4b7e0acc82"
+      },
+      "originalPlusOwned": {
+        "bytes": 9566,
+        "sha256": "b907ea12708f0d7e8fd8c67b772136441c9cb16db74b6cc9be175c9ad6a420b7"
+      },
+      "ownedMinusOriginalOnly": 3915,
+      "ownedMinusProjected": 2430
+    },
+    "wasm": {
+      "originalOnly": {
+        "bytes": 547,
+        "sha256": "fb9265c3da29783f0d97cebc150c7d1a6a65984ae6dfb2f7146237a14ceaa943"
+      },
+      "originalPlusProjected": {
+        "bytes": 840,
+        "sha256": "f0fea5a8b69a0ee90f8eb3de39ed7584ed1b78b04c973814fbdd15476b1c1f74"
+      },
+      "originalPlusOwned": {
+        "bytes": 1124,
+        "sha256": "e74a40cc4dac6fc4378458049e36e8b22d8e7b6fa6bccac3d75f5567db5ec52e"
+      },
+      "ownedMinusOriginalOnly": 577,
+      "ownedMinusProjected": 284
+    }
+  },
+  "fullCompiler": {
+    "functions": 612,
+    "modules": 23,
+    "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "defaultCBytes": 1183666,
+    "defaultC_SHA256": "02e9846c99ecc253974ae46ff786f3ac8d97e3adb519666e829239b55c589998",
+    "apReadRefusal": "unsupported-state"
+  },
+  "limits": [
+    "Only a private two-field flat scalar-array/IO fold and literal selected-element consumers close.",
+    "Actual ap_read and av_load guarded three-field states, parameter/effect summaries and private returned-field provenance remain unimplemented.",
+    "Strict profiles refuse; detached interpreter fuel/resource frames differ. Emission requires optimize:false without trap instrumentation.",
+    "Original-plus-helper artifacts are not a production package or private-only size gain. Earlier negative whole-package measurements remain binding.",
+    "No formal timings, memory or whole-bootstrap2MiB gate, no default activation, no production integration."
+  ],
+  "decision": "Freeze the bounded multi-field law. Continue generic known-call/effect and guarded0-or-1 closure only; measure combined costs after the actual ap_read context succeeds."
+}
