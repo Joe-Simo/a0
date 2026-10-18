@@ -43,6 +43,7 @@ await writeFile(
   join(out, 'api.h'),
   `#define SV_STATE ${stateType}
 #define FRONTEND_BEGIN(s,t,h,n) ${normal ? '((s)=a0_arena_parse_verify_begin((t),(h),(n)))' : 'a0_arena_parse_verify_begin(&(s),(t),(h),(n))'}
+#define FRONTEND_UNIT(s,t,h,n) ${normal ? '((s)=a0_arena_source_unit((t),(h),(n)))' : 'a0_arena_source_unit(&(s),(t),(h),(n))'}
 #define FRONTEND_RESUME(s,n) ${normal ? '((s)=a0_arena_verify_resume((s),(n)))' : 'a0o_arena_verify_resume(&(s),(n))'}
 #define FRONTEND_STATUS(m) ${normal ? 'a0_arena_verify_status(m)' : 'a0_arena_verify_status(&(m))'}
 `,
@@ -68,6 +69,7 @@ tool(clang.path, [
 const exports = [
   'frontend_abi',
   'frontend_parse',
+  'frontend_parse_unit',
   'frontend_state',
   'frontend_specs',
   'frontend_view',

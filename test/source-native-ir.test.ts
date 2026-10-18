@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { decodeNativeSource } from '../src/source-native-ir.js';
+import { decodeNativeSource, decodeNativeUnit } from '../src/source-native-ir.js';
 
 function fixture(depth: number) {
   const state = Array<number>(128).fill(0);
@@ -58,4 +58,14 @@ test('native IR decoding rejects truncated rows and cyclic or forward type refer
       /frontend IR|type children/,
     );
   }
+});
+
+test('source-unit IR decoding requires no whole-program type or iteration tables', () => {
+  const { state, tables, specs } = fixture(0);
+  tables.delete(97);
+  tables.delete(103);
+  const program = decodeNativeUnit(state, tables, ['identity'], '', specs);
+  assert.equal(program.functions[0]?.name, 'identity');
+  assert.deepEqual(program.functions[0]?.ret, { kind: 'param', index: 0 });
+  assert.throws(() => decodeNativeSource(state, tables, ['identity'], '', specs), /frontend IR/);
 });

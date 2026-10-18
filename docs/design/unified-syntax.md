@@ -110,6 +110,14 @@ The committed native corpus, own-source and specification checks are recorded in
 `results/unified-source-module-audit.json`, `results/unified-source-module-build.json` and
 `results/unified-source-module-specs.json`. These record correctness, not a timing improvement.
 
+The same native grammar also exposes `nativeSource(module).parseUnit(source)`. This returns
+source IR, imports, comments and specifications without checking external callees or executing
+specifications; `parse(source)` performs the whole-program check. The distinction is a compiler
+stage, not a source dialect. `tools/source-unit-audit.ts --artifact=DIR` compares both existing
+and flat-formatted source units and verifies that invalid whole programs can parse before the
+validation stage rejects them. Native dependency composition and diagnostic integration are
+still pending.
+
 Build the internal candidate with an installed Clang/WASI toolchain (no downloads are performed):
 
 ```sh

@@ -36,13 +36,13 @@ const row = (tables: NativeTables, offset: number, width: number, id: number): U
   slice(table(tables, offset), id * width, width);
 const word = (words: Uint32Array | readonly number[], index: number): number => need(words[index]);
 
-export function decodeNativeSource(
+function decodeNativeData(
   state: readonly number[],
   tables: NativeTables,
   symbols: readonly string[],
   source: string,
   specTables: NativeTables,
-): { program: Program; typed: TypedProgram } {
+): { program: Program; type: (id: number) => Type } {
   const raw = new TextEncoder().encode(source);
   const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
   const span = (start: number, count: number): string => {
@@ -189,6 +189,29 @@ export function decodeNativeSource(
     ...(uc.some((c) => c !== undefined) ? { useComments: uc } : {}),
     ...(!functions.length && tail.length ? { tailComments: tail } : {}),
   };
+  return { program, type };
+}
+
+export function decodeNativeUnit(
+  state: readonly number[],
+  tables: NativeTables,
+  symbols: readonly string[],
+  source: string,
+  specTables: NativeTables,
+): Program {
+  return decodeNativeData(state, tables, symbols, source, specTables).program;
+}
+
+export function decodeNativeSource(
+  state: readonly number[],
+  tables: NativeTables,
+  symbols: readonly string[],
+  source: string,
+  specTables: NativeTables,
+): { program: Program; typed: TypedProgram } {
+  const { program, type } = decodeNativeData(state, tables, symbols, source, specTables);
+  const functions = program.functions;
+  const profile = program.profile === 'strict' ? { profile: 'strict' as const } : {};
   const byName = new Map<string, TypedFunc>();
   const float = new DataView(new ArrayBuffer(8));
   const typedFunctions = functions.map((fn, id): TypedFunc => {

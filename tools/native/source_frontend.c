@@ -29,9 +29,9 @@ static uint32_t reply(uint32_t expected) {
     return count == expected ? 0 : 5;
 }
 
-uint32_t frontend_abi(void) { return 1; }
+uint32_t frontend_abi(void) { return 2; }
 
-uint32_t frontend_parse(const uint8_t *source, uint32_t length, uint32_t budget) {
+static uint32_t parse_source(const uint8_t *source, uint32_t length, uint32_t budget, bool unit) {
     if (session) a0_arena_destroy(session);
     memset(&state, 0, sizeof state);
     memset(&frontend_io, 0, sizeof frontend_io);
@@ -56,9 +56,21 @@ uint32_t frontend_parse(const uint8_t *source, uint32_t length, uint32_t budget)
         if (status) return last_status = status;
         i += count;
     }
-    FRONTEND_BEGIN(state, token, handle, length);
-    while (state.f0.e[1] != 11) FRONTEND_RESUME(state, 97);
+    if (unit) {
+        FRONTEND_UNIT(state, token, handle, length);
+    } else {
+        FRONTEND_BEGIN(state, token, handle, length);
+        while (state.f0.e[1] != 11) FRONTEND_RESUME(state, 97);
+    }
     return last_status = FRONTEND_STATUS(state.f0);
+}
+
+uint32_t frontend_parse(const uint8_t *source, uint32_t length, uint32_t budget) {
+    return parse_source(source, length, budget, false);
+}
+
+uint32_t frontend_parse_unit(const uint8_t *source, uint32_t length, uint32_t budget) {
+    return parse_source(source, length, budget, true);
 }
 
 uintptr_t frontend_state(void) { return (uintptr_t)state.f1.e; }

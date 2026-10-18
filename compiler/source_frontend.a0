@@ -3272,3 +3272,44 @@ q1 at p 1
 q2 call arena_verify_begin q0 q1
 ret q2
 end
+
+# Parse one source unit without checking external callees or executing specifications.
+# The same parser builds its ordinary source and Spec IR; whole-program checking is a later stage.
+fn arena_source_unit_load (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io) u32 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+p at p0 1
+t at p0 6
+input rec p t
+loaded call as_resume input
+parsed at loaded 0
+spec at loaded 1
+io at loaded 2
+v at p0 0
+code get parsed 0
+status set v 0 code
+z call arena_zero
+out rec status parsed spec z z z io
+ret out
+end
+
+fn arena_source_unit io u32 u32 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+parsed call arena_parse p0 p1 p2
+code at parsed 0
+p at parsed 1
+t at parsed 2
+pending eq code 7
+has_specs get p 30
+present ne has_specs 0
+pending_specs and pending present
+error get p 1
+no_error eq error 0
+unverified and pending_specs no_error
+status select unverified 0 code
+z call arena_zero
+v0 set z 0 status
+v set v0 1 11
+initial rec v p z z z z t
+success eq status 0
+count select success 1 0
+out fold arena_source_unit_load count initial
+ret out
+end
