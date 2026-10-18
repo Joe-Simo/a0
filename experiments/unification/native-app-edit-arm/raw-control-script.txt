@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
-import {startPrograms,controlReply,judge} from '../tools/app-edit-bench.ts';
+import {startPrograms,controlReply,judge,prompt} from '../tools/app-edit-bench.ts';
 import {nativeAppEditArm} from '../tools/app-edit-native.ts';
 import {APP_TASKS} from '../tools/app-edit-tasks.ts';
 const historical=await startPrograms();
@@ -20,9 +20,13 @@ try{
  assert.equal(received,reply);
  assert.deepEqual(accepted.failures,[]);
  const handle=reference.split('\n')[0]!;
+ assert.match(handle,/^g[0-9]+$/);
+ const shown=prompt('a0',task,arm.programs,'guide','native',arm.services);
+ assert.match(shown.user,/^e0$/m);
+ assert.match(shown.user,/^g0$/m);
  const bad=await judge('a0',task,arm.programs,handle+'\nfn bad\nx [1;2]\nret 0\nend','native',arm.services);
  assert.ok(bad.error);
  assert.ok(!bad.error.includes('unknown handle'));
- await writeFile('.a0-tmp/raw-control.final.json',JSON.stringify({rawReplyPreserved:true,fencedCrlfUnicodeReferencePasses:true,historicalAggregateRefused:true,refusal:bad.error,modelCalls:0},null,2));
+ await writeFile('.a0-tmp/raw-control.final.json',JSON.stringify({rawReplyPreserved:true,fencedCrlfUnicodeReferencePasses:true,functionHandle:'e0',programHandle:handle,historicalAggregateRefused:true,refusal:bad.error,modelCalls:0},null,2));
  console.log('raw reply boundary and native grammar refusal controls pass');
 }finally{arm.close()}
