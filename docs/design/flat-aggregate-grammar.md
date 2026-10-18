@@ -50,6 +50,8 @@ prints a space between arguments and around the arrow.
 Native spec diagnostics use the same flat literal formatter for their input, expected value,
 actual value and suggested example repairs. Literal hints show `[1 2 3]` and `(1 true)`.
 The separate internal serialization used to compute existing revision hashes is unchanged.
+The [native diagnostic controls](../../results/native-flat-spec-literal-parity.json) record
+complete JSON checks, accepted example repairs and independent revision-hash checks.
 
 `test/source-spec-grammar.controls.ts` contains explicit accepted and rejected spellings,
 phase-sensitive incomplete input, graph locations and error-priority checks for the C-derived,
