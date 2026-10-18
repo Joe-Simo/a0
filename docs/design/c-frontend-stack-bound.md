@@ -61,3 +61,6 @@ increase for the parser application despite its smaller logical buffer. The
 archive preserves all raw observations and the independent replay of every
 metric. These measurements do not justify adopting the smaller reservation or
 claiming a general speed or resident-memory improvement.
+
+[Archive replay instructions](c-stack-cost-replay.md) restore the original
+preparation layout in a separate checkout of the measured source commit.
