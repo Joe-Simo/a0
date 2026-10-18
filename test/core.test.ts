@@ -931,8 +931,8 @@ test('site page program: A0 UI protocol, stylesheet, and sized bars', async () =
     'Docs',
     'Benchmarks',
     'GitHub',
-    'Numbers from results/*.json',
-    'Measured losses.',
+    'A typed programming language for AI.',
+    'Limits and benchmark results.',
   ])
     assert.ok(all.includes(needle), `missing ${needle}`);
   assert.ok(!all.includes('Clicked'), 'demo removed');

@@ -263,7 +263,7 @@ x254 puts x252 x253
 x255 call close x254 
 x256 call open x255 2
 x257 write x256 2
-x258 text "A0 is a small language written by AI models, one operation per line, with exact integer arithmetic. A model edits a function through a view and a short reply instead of rewriting the file."
+x258 text "A0 uses typed functions, one operation per line and unsigned integer arithmetic. Function views let a model submit patches without rewriting the file."
 x259 puts x257 x258
 x260 call close x259 
 x261 call open x260 15
@@ -368,7 +368,7 @@ x359 call close x358
 x360 call close x359 
 x361 call open x360 2
 x362 write x361 2
-x363 text "The edit is applied only if it parses, type-checks and was written against the current revision. Otherwise it is rejected with a code and the one fix that resolves it, and the handle stays valid."
+x363 text "The edit is applied only if it parses, type-checks and was written against the current revision. Rejected edits leave the source unchanged and return a diagnostic. Some diagnostics include a suggested fix."
 x364 puts x362 x363
 x365 call close x364 
 x366 call open x365 15
@@ -431,7 +431,7 @@ x419 puts x417 x418
 x420 call close x419 
 x421 call open x420 2
 x422 write x421 2
-x423 text "This is everything a model is told before it writes or edits A0. The sections below say the same thing in full."
+x423 text "A compact language reference for model prompts. The sections below explain each construct."
 x424 puts x422 x423
 x425 call close x424 
 x426 call open x425 10
@@ -546,7 +546,7 @@ x534 puts x532 x533
 x535 call close x534 
 x536 call open x535 2
 x537 write x536 2
-x538 text "u32 is an exact 32-bit unsigned integer; every arithmetic result wraps modulo 2^32. bool is true or false, never a number. Arrays u32xN and records (T,T,...) are values: get, set, at, and put return a copy, they never alias. io is a linear token, meaning every io value is used exactly once; that is what makes output order checkable."
+x538 text "u32 is a 32-bit unsigned integer. Arithmetic wraps modulo 2^32 in the default profile. bool is true or false. Arrays u32xN and records (T,T,...) are values: set and put return updated values without changing the original. io is a linear token; each io value must be used exactly once so the checker can track output order."
 x539 puts x537 x538
 x540 call close x539 
 x541 call close x540 
@@ -562,7 +562,7 @@ x550 puts x548 x549
 x551 call close x550 
 x552 call open x551 2
 x553 write x552 2
-x554 text "A function body has no loops. Repetition is fold and loop over an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. A literal count is checked against a per-function budget when the program is checked. A variable count is bounded by fuel (a step budget) in the reference interpreter, the plain slow implementation that every target is compared with; compiled targets have no execution budget."
+x554 text "Use fold and loop to repeat calls to an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. A literal count is checked against a per-function budget when the program is checked. A variable count is bounded by fuel (a step budget) in the reference interpreter, used as the oracle in target verification; compiled targets have no execution budget."
 x555 puts x553 x554
 x556 call close x555 
 x557 call open x556 10
@@ -637,7 +637,7 @@ x622 puts x620 x621
 x623 call close x622 
 x624 call open x623 2
 x625 write x624 2
-x626 text "A model never sees a whole file. It asks for a view of one function: the function with a handle line on top (e0), one signature line per callee, and a program handle (g0). The program view is scoped to the target, its transitive callees and its direct callers, so it stays the same size as the program grows. The revision is a short hash of the program text; an edit written against an older revision is rejected rather than applied to code that has moved. A reply is the handle line followed by edits, one per line, as in the quick start."
+x626 text "A function view includes an edit handle (e0) and callee signatures. A program view has a program handle (g0) and can be scoped to a target, its transitive callees and its direct callers. Its size depends on those dependencies. The revision is a short hash of the program text; an edit written against an older revision is rejected rather than applied to code that has moved. A reply is the handle line followed by edits, one per line, as in the quick start."
 x627 puts x625 x626
 x628 call close x627 
 x629 call open x628 10
@@ -685,7 +685,7 @@ x670 puts x668 x669
 x671 call close x670 
 x672 call open x671 2
 x673 write x672 2
-x674 text "Every rejection carries a stable code (parse, type, structure, handle, revision, limit), what was expected, what was seen, and the one fix that resolves it. The compiler never guesses: an ambiguous reply is rejected with the fix, not applied approximately."
+x674 text "Diagnostics identify parse, type, structure, handle, revision and resource-limit errors. They report the location and cause where available; some include a suggested fix. Ambiguous edits are rejected."
 x675 puts x673 x674
 x676 call close x675 
 x677 call close x676 
@@ -1010,7 +1010,7 @@ x992 puts x990 x991
 x993 call close x992 
 x994 call open x993 2
 x995 write x994 2
-x996 text "Static caps: 65536 functions per program (also after linking), 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. io output is bounded by the caller's buffer. There is no heap, no recursion, no exceptions, and no undefined behavior: div and rem by zero are defined, shifts mask the count, indices wrap modulo the array length."
+x996 text "Static caps: 65536 functions per program (also after linking), 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. io output is bounded by the caller's buffer. There is no heap, recursion or exception handling. In the default profile, div and rem by zero have defined results, shifts mask the count, and indices wrap modulo the array length."
 x997 puts x995 x996
 x998 call close x997 
 x999 call close x998 
@@ -1055,7 +1055,7 @@ x1037 call close x1036
 x1038 call close x1037 
 x1039 call open x1038 2
 x1040 write x1039 2
-x1041 text "Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal come from the verification tools (bun run dotnet, bun run gpu). The home page Targets section gives the verified split: which targets are checked against the reference interpreter, and on which cases."
+x1041 text "Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal come from the verification tools (bun run dotnet, bun run gpu). The benchmarks page lists which targets and cases are checked against the reference interpreter."
 x1042 puts x1040 x1041
 x1043 call close x1042 
 x1044 call open x1043 2

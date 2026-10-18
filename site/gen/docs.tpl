@@ -100,7 +100,7 @@ c nav
 <section
 +id quickstart
 =h2 Quick start
-=p A0 is a small language written by AI models, one operation per line, with exact integer arithmetic. A model edits a function through a view and a short reply instead of rewriting the file.
+=p A0 uses typed functions, one operation per line and unsigned integer arithmetic. Function views let a model submit patches without rewriting the file.
 =h3 1. Install
 .pre code
 <code
@@ -137,7 +137,7 @@ c nav
 "-fn name             remove a function
 >
 >
-=p The edit is applied only if it parses, type-checks and was written against the current revision. Otherwise it is rejected with a code and the one fix that resolves it, and the handle stays valid.
+=p The edit is applied only if it parses, type-checks and was written against the current revision. Rejected edits leave the source unchanged and return a diagnostic. Some diagnostics include a suggested fix.
 =h3 4. Connect an agent
 <p
 =code a0 mcp .
@@ -160,7 +160,7 @@ c nav
 <section
 +id primer
 =h2 The primer
-=p This is everything a model is told before it writes or edits A0. The sections below say the same thing in full.
+=p A compact language reference for model prompts. The sections below explain each construct.
 .pre code wrap
 <code
 l primer
@@ -195,12 +195,12 @@ l primer
 <section
 +id types
 =h2 Types and values
-=p u32 is an exact 32-bit unsigned integer; every arithmetic result wraps modulo 2^32. bool is true or false, never a number. Arrays u32xN and records (T,T,...) are values: get, set, at, and put return a copy, they never alias. io is a linear token, meaning every io value is used exactly once; that is what makes output order checkable.
+=p u32 is a 32-bit unsigned integer. Arithmetic wraps modulo 2^32 in the default profile. bool is true or false. Arrays u32xN and records (T,T,...) are values: set and put return updated values without changing the original. io is a linear token; each io value must be used exactly once so the checker can track output order.
 >
 <section
 +id iteration
 =h2 Iteration
-=p A function body has no loops. Repetition is fold and loop over an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. A literal count is checked against a per-function budget when the program is checked. A variable count is bounded by fuel (a step budget) in the reference interpreter, the plain slow implementation that every target is compared with; compiled targets have no execution budget.
+=p Use fold and loop to repeat calls to an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. A literal count is checked against a per-function budget when the program is checked. A variable count is bounded by fuel (a step budget) in the reference interpreter, used as the oracle in target verification; compiled targets have no execution budget.
 .pre code
 <code
 .span cm
@@ -229,7 +229,7 @@ l primer
 <section
 +id editing
 =h2 Views and edits
-=p A model never sees a whole file. It asks for a view of one function: the function with a handle line on top (e0), one signature line per callee, and a program handle (g0). The program view is scoped to the target, its transitive callees and its direct callers, so it stays the same size as the program grows. The revision is a short hash of the program text; an edit written against an older revision is rejected rather than applied to code that has moved. A reply is the handle line followed by edits, one per line, as in the quick start.
+=p A function view includes an edit handle (e0) and callee signatures. A program view has a program handle (g0) and can be scoped to a target, its transitive callees and its direct callers. Its size depends on those dependencies. The revision is a short hash of the program text; an edit written against an older revision is rejected rather than applied to code that has moved. A reply is the handle line followed by edits, one per line, as in the quick start.
 .pre code
 <code
 .span cm
@@ -246,7 +246,7 @@ l primer
 <section
 +id diagnostics
 =h2 Diagnostics
-=p Every rejection carries a stable code (parse, type, structure, handle, revision, limit), what was expected, what was seen, and the one fix that resolves it. The compiler never guesses: an ambiguous reply is rejected with the fix, not applied approximately.
+=p Diagnostics identify parse, type, structure, handle, revision and resource-limit errors. They report the location and cause where available; some include a suggested fix. Ambiguous edits are rejected.
 >
 }
 {sec_run
@@ -366,7 +366,7 @@ l primer
 <section
 +id bounds
 =h2 Bounds and safety
-=p Static caps: 65536 functions per program (also after linking), 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. io output is bounded by the caller's buffer. There is no heap, no recursion, no exceptions, and no undefined behavior: div and rem by zero are defined, shifts mask the count, indices wrap modulo the array length.
+=p Static caps: 65536 functions per program (also after linking), 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. io output is bounded by the caller's buffer. There is no heap, recursion or exception handling. In the default profile, div and rem by zero have defined results, shifts mask the count, and indices wrap modulo the array length.
 >
 <section
 +id cli
@@ -382,7 +382,7 @@ l primer
 "a0 patch <file.a0> <patch>             # apply a revision-checked patch
 >
 >
-=p Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal come from the verification tools (bun run dotnet, bun run gpu). The home page Targets section gives the verified split: which targets are checked against the reference interpreter, and on which cases.
+=p Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal come from the verification tools (bun run dotnet, bun run gpu). The benchmarks page lists which targets and cases are checked against the reference interpreter.
 =p --parallel makes the C backend split reductions (add, mul, and, or, xor, min, max) and element-wise array maps across threads when a cost model says the loop is large enough; --parallel=gpu also offloads to Metal when built as Objective-C. Results are the same bits as the serial program.
 >
 >

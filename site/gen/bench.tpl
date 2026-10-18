@@ -107,7 +107,7 @@ c nav
 {sec_bhead
 .div center bench
 =h1 Benchmarks
-=p What we measured, how, and where A0 loses.
+=p Execution time, token counts, edit acceptance and verification coverage.
 <p
 .a pill
 +href https://github.com/Joe-Simo/a0/tree/main/scripts/bench-repro
@@ -132,7 +132,7 @@ c nav
 >
 <a
 +href #syntax-research
-"New syntax research
+"Syntax experiments
 >
 <a
 +href #method
@@ -255,7 +255,7 @@ c nav
 +role group
 +aria-label Table, scrolls sideways
 .table ops rank fit
-=caption The headline numbers, one question per row; the section named in the first column has the chart, the method and the files
+=caption Summary; each linked section contains the method and source data
 <tr
 =th Question
 =th A0's result
@@ -339,7 +339,7 @@ c nav
 +id method
 =h2 Method
 .p q
-"How every number on this page was produced, so you can decide whether to trust it.
+"Machines, tool versions, sampling and load limits.
 >
 .div tblwrap
 +tabindex 0
@@ -353,7 +353,7 @@ c nav
 >
 <tr
 =td Machine
-=td Native speed: one Apple M3, 2026-09-30 and 2026-10-01. WebAssembly: one Windows x64 PC. Edit-check latency: that PC, a Linux x64 runner and a macOS arm64 runner. Results from different machines are never combined into one claim.
+=td Native speed: one Apple M3, 2026-09-30 and 2026-10-01. WebAssembly: one Windows x64 PC. Edit-check latency: that PC, a Linux x64 runner and a macOS arm64 runner. Results are grouped by machine.
 >
 <tr
 =td OS and cores
@@ -382,13 +382,6 @@ c nav
 >
 ". Experiments that need a model cannot be re-run without one, so their replies are committed.
 >
-.p nx
-"Next: where A0 loses, then the measurements.\s
-<a
-+href #limits
-"Where A0 loses
->
->
 >
 }
 {sec_limits
@@ -397,7 +390,7 @@ c nav
 =h2 Where A0 loses
 .p q
 # claim-ok: a statement of what the section lists; the figures are in the table below, each with its results file
-"Every place A0 is slower, costlier or unable, one line each, with the file that records it.
+"Recorded performance regressions, editing failures and unsupported features.
 >
 .div limits
 .div tblwrap
@@ -405,7 +398,7 @@ c nav
 +role group
 +aria-label Table, scrolls sideways
 .table ops rank fit
-=caption Known losses; the loss ledger lists every one and can only shrink
+=caption Known losses and their source data
 <tr
 =th Where
 =th What
@@ -454,13 +447,6 @@ c nav
 >
 >
 >
-.p nx
-"Next: the measurements, starting with native speed.\s
-<a
-+href #native
-"Native speed
->
->
 >
 }
 {sec_native
@@ -468,7 +454,7 @@ c nav
 +id native
 =h2 Native speed on small test programs
 .p q
-"Is machine code from A0 as fast as C, Rust and Zig on the same small functions?
+"A0, C, Rust and Zig run the same small functions.
 >
 .p take
 "The slowest test program is $bk_slow$x slower on $bk_slowk$ against baselines with the same calling convention, and $rk_max$x slower on $rk_maxk$ against each language's own inlined driver. Same calling convention (A0 and the best of C, Rust and Zig, both called out of line): $bk_nwin$ wins, $bk_ntie$ ties, $bk_nloss$ losses of $bk_n$. Inlined drivers: $rk_nw2$ wins, $rk_nt2$ ties, $rk_nl2$ losses. Against hand-written C alone, A0 takes $c_ratio$x as long, a geometric mean over the test programs; 1.00x would be equal.
@@ -569,14 +555,7 @@ c putratio %a
 >
 >
 .p cap
-"Reading a row: the third column names the fastest of the other languages and its time per call; the last column is A0's time divided by that time. Below 1.00x, A0 is faster than every other language on that test program; above 1.00x, that language is faster and the number is the gap A0 has to close.
->
->
-.p nx
-"Next: the same programs against $n_langs$ other languages.\s
-<a
-+href #languages
-"Languages
+"Reading a row: the third column names the fastest of the other languages and its time per call; the last column is A0's time divided by that time. Below 1.00x, A0 is faster than every other language on that test program; above 1.00x, that language is faster and the number gives the ratio.
 >
 >
 }
@@ -588,7 +567,7 @@ c putratio %a
 +id languages
 =h2 Speed against $n_langs$ other languages
 .p q
-"Where does A0 stand among every language we could run on the same test programs?
+"Execution time across languages, normalized to A0.
 >
 .p take
 "$n_ahead$ of the other $n_langs$ languages are more than 5% faster than A0{ahead| ($ahead$)}; $n_ties$ are within 5% of A0; the rest are slower.
@@ -667,14 +646,7 @@ c putratio %a
 ]
 >
 .p cap
-"Shown first: A0 and the best-known languages. All $n_langs1$ languages are behind the disclosure, in the same order. A0 here is machine code from A0's own AArch64 code generator, with no C compiler in between. Numbers, toolchains and iteration tiers are in results/exec-benchmark.json.
->
->
-.p nx
-"Next: how quickly each language starts.\s
-<a
-+href #startup
-"Startup
+"Shown first: A0 and selected languages. All $n_langs1$ languages are behind the disclosure, in the same order. A0 here is machine code from A0's own AArch64 code generator, with no C compiler in between. Numbers, toolchains and iteration tiers are in results/exec-benchmark.json.
 >
 >
 }
@@ -686,7 +658,7 @@ c putratio %a
 +id startup
 =h2 Startup
 .p q
-"How long from launching a program to its first result?
+"Time from process launch to the first result.
 >
 .p take
 "A0 takes $start_a0$ ms from launch to first result: place $start_rank$ of $n_starts$ languages (1 = fastest). Node takes $start_node$ ms and Python $start_py$ ms.
@@ -768,14 +740,7 @@ c putfix %a
 ]
 >
 .p cap
-"Shown first: A0 and the best-known languages; all $n_starts$ are behind the disclosure, in the same order. The A0 binary for startup is the C-path build; startup of the direct AArch64 binary is not yet measured.
->
->
-.p nx
-"Next: A0's WebAssembly output against clang, on another machine.\s
-<a
-+href #wasm
-"WebAssembly
+"Shown first: A0 and selected languages; all $n_starts$ are behind the disclosure, in the same order. The A0 binary for startup is the C-path build; startup of the direct AArch64 binary is not yet measured.
 >
 >
 }
@@ -787,7 +752,7 @@ c putfix %a
 +id wasm
 =h2 WebAssembly on Windows
 .p q
-"Does A0's own WebAssembly output run as fast as clang's, on a machine that is not the one used for native speed?
+"A0 and clang WebAssembly output, measured on Windows x64.
 >
 .p take
 "clang's time divided by A0's has a geometric mean of 1.08 over 19 test programs: A0 is faster on 7, ties on 7 and is slower on 5, the worst being arrfill at 0.78. Source: results/wasm-benchmark.json.
@@ -1089,13 +1054,6 @@ c putfix %a
 .p cap
 "Load time (compile plus instantiate) is a separate result: A0 is slower than clang on some test programs, noisy between runs; every one is in the loss ledger. results/wasm-benchmark.json, results/loss-ledger.json.
 >
-.p nx
-"Next: tokens, what it costs to read and write the same program.\s
-<a
-+href #tokens
-"Tokens
->
->
 }
 {endsec$k$
 >
@@ -1105,7 +1063,7 @@ c putfix %a
 +id tokens
 =h2 Tokens
 .p q
-"How many tokens does it take to write the same program in each language, and one small edit to it?
+"Token counts for equivalent programs and edits.
 >
 .p take
 "Writing the $tk_nk$ token test programs, A0 (canonical) takes $tk_cv$ tokens: place $tk_cr$ of $n_langs1$ (1 = fewest), fewer than $tk_cw$ of the other $n_langs$ languages, equal to $tk_ct$ and more than $tk_cl$. A0 (dense) takes $tk_dv$: place $tk_dr$, fewer than $tk_dw$, equal to $tk_dt$, more than $tk_dl$; its lossless form, with the same ids and node order, takes $tk_dx$: place $tk_xr$. The dense totals are over the same $tk_nk$ programs (results/dense-tokens.json); the speed tests below time more programs ($bk_n$), but only $tk_nk$ of them are counted for tokens.
@@ -1192,7 +1150,7 @@ c putnum %a
 ]
 >
 .p cap
-"Program length is one input; what a whole edit costs, measured with models, is in the Cost section. Shown first: A0 and the best-known languages; all $tkrows$ rows are behind the disclosure, in the same order. Source: results/lang-axes.json, and the dense totals in results/dense-tokens.json.
+"Program length is one input; what a whole edit costs, measured with models, is in the Cost section. Shown first: A0 and selected languages; all $tkrows$ rows are behind the disclosure, in the same order. Source: results/lang-axes.json, and the dense totals in results/dense-tokens.json.
 >
 >
 }
@@ -1370,15 +1328,6 @@ c putnum %h
 >
 >
 }
-{tokens_next
-.p nx
-"Next: what a whole edit costs with real models.\s
-<a
-+href #cost
-"Cost
->
->
-}
 {endsec$k$
 >
 }
@@ -1387,13 +1336,13 @@ c putnum %h
 +id cost
 =h2 Cost
 .p q
-"What does a whole edit cost a model, counting the instructions, the code it reads and its reply?
+"Prompt, source and reply tokens per edit.
 >
 .p take
 "At 4000 functions an A0 edit costs $cmax_a0$ tokens against $cmax_ts$ for TypeScript, which is $cmax_ratio$x fewer than TypeScript shown the whole numbered file (A0's scoped view against a whole-file workflow, not both with scoped views). At 1 function A0 costs $cmin_100$x TypeScript's tokens and $cmin_rs100$x Rust's, measured with an earlier guide whose primer was longer than today's; the newer one-function runs in results/ai-edit-b48-dense.json do not show this loss. Sonnet, cache-adjusted.
 >
 <p
-"Cost here is every token a model reads and writes to make one edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view stays the same size as the program grows; a numbered whole file does not, so against a whole-file workflow A0's advantage grows with program size and reverses on a one-function file, where the primer dominates.
+"Cost here counts the supplied text for an edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view contains relevant functions rather than the whole file. These results compare that scoped workflow with a whole-file workflow; primer overhead matters most on small files.
 >
 <p
 "That is an advantage of the workflow, not of the language. When TypeScript, Rust, Python, Go, Java, C and Ruby are given an equal view (a parse-derived function and its callees, numbered line edits), pooled over the four program sizes (96 trials per cell) A0 canonical costs 318 tokens for one cold task and 176 in an unbounded session, against 386 and 138 for TypeScript and 375 and 115 for Ruby, so it is cheaper cold and dearer once the primer is cached; A0 dense costs 273 and 99. results/ai-edit-scoped.json.
@@ -1848,13 +1797,6 @@ c putratio %a
 >
 >
 >
-.p nx
-"Next: how fast an edit is known to be right.\s
-<a
-+href #validation
-"Validation
->
->
 {endsec$k$
 >
 }
@@ -1863,7 +1805,7 @@ c putratio %a
 +id validation
 =h2 Validation
 .p q
-"How long after an edit is it known to be right?
+"Time to validate an edit. These checks do not prove that it meets the requested behavior.
 >
 .p take
 "After an edit, A0's native checker answers in $ck_a0$ ms: place $ck_rank$ of $ckrows$ languages that have a separate check step (1 = fastest). Checking and running the edit takes A0 $cr_a0$ ms: place $cr_rank$ of $crrows$ languages.
@@ -2098,7 +2040,7 @@ c putfix %a
 ]
 >
 .p cap
-"Languages with no separate check step (they run the file directly) are only in the next chart. A0 here is the native self-hosted checker, run as a cold process with no Node (A0 (Node CLI) is the previous path). Shown first: A0 and the best-known languages; all $ckrows$ are behind the disclosure, in the same order. results/lang-axes.json.
+"Languages with no separate check step (they run the file directly) are only in the next chart. A0 here is the native self-hosted checker, run as a cold process with no Node (A0 (Node CLI) is the previous path). Shown first: A0 and selected languages; all $ckrows$ are behind the disclosure, in the same order. results/lang-axes.json.
 >
 >
 }
@@ -2151,13 +2093,6 @@ c putfix %a
 "{el_loaded|Measured on a loaded machine (load average up to $el_load$ on 8 cores); absolute times will move on a quiet run, which will replace these. }Cold rows start the compiler per edit; warm rows reuse a running one. Only these languages have model-written edits to replay, because the model-edit experiment exists only for them (Cost section); every language is checked on a fixed edit in the two charts above. results/edit-loop{el_quiet|.quiet}.json.
 >
 >
-.p nx
-"Next: splitting a loop across cores.\s
-<a
-+href #parallel
-"Parallel folds
->
->
 }
 {endsec$k$
 >
@@ -2167,7 +2102,7 @@ c putfix %a
 +id parallel
 =h2 Parallel folds
 .p q
-"Does A0's automatic multi-core split beat hand-parallel code in other languages?
+"Automatic parallel folds compared with manually parallelized implementations.
 >
 .p take
 "A0 --parallel is the fastest implementation on $par_nwin$ of $par_nk$ test programs; on the others, at least one other implementation is faster (listed under the chart).
@@ -2232,13 +2167,6 @@ c putratio %a
 "{par_loaded|Measured on a loaded machine (load average up to $par_load$ on $par_cpus$ cores when timing started); ratios are interleaved, absolute times will move on a quiet run. }Hand-parallel C is OpenMP parallel-for with a reduction. Where another implementation is faster, its time as a multiple of A0 --parallel's is in parentheses: $par_losses$. On the 64K-element kernels the cost model keeps A0 serial. results/parallel.json.
 >
 >
-.p nx
-"Next: the hardware output.\s
-<a
-+href #hardware
-"Hardware
->
->
 }
 {endsec$k$
 >
@@ -2248,7 +2176,7 @@ c putratio %a
 +id hardware
 =h2 Hardware
 .p q
-"How big is the circuit A0 generates, and how many clock cycles does it take?
+"Generated circuit size and cycle counts.
 >
 .p take
 "The $hw_fns$ corpus functions compile to $hw_mods$ synthesized modules (the shared divider counts as one): $hw_cells$ generic cells in all, $hw_max$ in the largest, simulated on $hw_cases$ oracle cases.
@@ -2322,13 +2250,6 @@ c putratio %a
 >
 >
 >
-.p nx
-"Next: which targets are checked against the oracle.\s
-<a
-+href #targets
-"Verification
->
->
 }
 {endsec$k$
 >
@@ -2338,7 +2259,7 @@ c putratio %a
 +id targets
 =h2 Verification
 .p q
-"Is every target checked against the same oracle, and what is not checked?
+"Verification coverage by target.
 >
 =p One source, checked against one oracle: $vr_nfull$ paths (the interpreter, the optimizer, JavaScript, native C, C++, WebAssembly and the JVM) ran all $vr_full$ generated cases; the native assembly targets ran the $vr_part$ cases that need no io ($vr_npart$ targets); SystemVerilog is simulated separately on $hw_cases$ cases and is unverified in this run ($vr_nskip$ target).
 >
