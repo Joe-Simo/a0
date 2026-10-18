@@ -47,6 +47,10 @@ complete arguments such as `ex [1][2] -> [1]`, `ex 1[2] -> 1`, and `ex 1true -> 
 accepted when they fit the function signature. Whitespace around `->` is optional. The formatter
 prints a space between arguments and around the arrow.
 
+Native spec diagnostics use the same flat literal formatter for their input, expected value,
+actual value and suggested example repairs. Literal hints show `[1 2 3]` and `(1 true)`.
+The separate internal serialization used to compute existing revision hashes is unchanged.
+
 `test/source-spec-grammar.controls.ts` contains explicit accepted and rejected spellings,
 phase-sensitive incomplete input, graph locations and error-priority checks for the C-derived,
 direct Wasm and generated JavaScript targets. These controls must pass on fresh authenticated

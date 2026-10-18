@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { formatProgram, validate } from '../src/core.js';
-import { A0Error } from '../src/diagnostics.js';
+import { A0Error, type Diagnostic } from '../src/diagnostics.js';
 import { link } from '../src/link.js';
 import { parseSource } from '../src/source.js';
 import { linkSource } from '../src/source-link.js';
@@ -13,6 +13,7 @@ import { linkNativeSource, NativeSourceError } from '../src/source-native-link.j
 import { writeReport } from '../tools/scrub-results.js';
 import { prepareJsSource } from '../tools/source-js-load.js';
 import { prepareSourceDiagnostic, prepareSourceFrontend } from '../tools/source-native-load.js';
+import { flatSpecLiteralError } from './fixtures/source-flat-spec-diagnostics.js';
 
 const cPath = process.env.A0_SPEC_C_ARTIFACT;
 const directPath = process.env.A0_SPEC_DIRECT_ARTIFACT;
@@ -110,20 +111,30 @@ function expectedError(source: string): A0Error {
 }
 function compareFailure(
   result: NativeSourceResult | NativeUnitResult,
-  expected: A0Error,
+  expected: Diagnostic,
   label: string,
 ): void {
   assert.ok(!result.ok, label);
   assert.equal(result.status, 6, label);
   assert.equal(result.state[1], 714, label);
   assert.ok(result.diagnostic?.rendered.ok, `${label}: complete A0 diagnostic required`);
-  assert.deepEqual(result.diagnostic.rendered.error.toJSON(), expected.toJSON(), label);
+  assert.deepEqual(result.diagnostic.rendered.error.toJSON(), expected, label);
   assert.ok('packet' in result.diagnostic);
   assert.equal(
     Buffer.from(result.diagnostic.packet.json).toString(),
-    JSON.stringify(expected.toJSON()),
+    JSON.stringify(expected),
     `${label}/JSON bytes`,
   );
+}
+const flatGrammarExpectations: Readonly<Record<string, Diagnostic>> = {
+  arraySpacedSemicolon: flatSpecLiteralError(';', 2),
+  doubledComma: flatSpecLiteralError(',', 2),
+};
+function expectedJSON(name: string, source: string): Diagnostic {
+  const historical = expectedError(source).toJSON();
+  const explicit = flatGrammarExpectations[name];
+  if (explicit) assert.notDeepEqual(explicit, historical, `${name}/intentional flat hint delta`);
+  return explicit ?? historical;
 }
 const passed: string[] = [];
 test('one flat aggregate grammar preserves valid spellings and top-level argument adjacency', () => {
@@ -145,7 +156,7 @@ test('one flat aggregate grammar preserves valid spellings and top-level argumen
 });
 test('invalid separators, adjacency and incomplete aggregates return complete native A0714 JSON', () => {
   for (const [name, source] of Object.entries(rejected)) {
-    const expected = expectedError(source);
+    const expected = expectedJSON(name, source);
     assert.equal(expected.id, 'A0714', name);
     for (const [target, engine] of engines) {
       compareFailure(engine.parse(source), expected, `${target}/${name}`);
@@ -160,7 +171,7 @@ test('aggregate grammar refusal precedes validation and keeps graph ownership an
     const whole = `# π 😀\n${source}`;
     const expected = expectedError(whole);
     for (const [target, engine] of engines)
-      compareFailure(engine.parse(whole), expected, `${target}/${fixture}/priority`);
+      compareFailure(engine.parse(whole), expected.toJSON(), `${target}/${fixture}/priority`);
     const units = new Map([
       ['/r/lib.a0', '# π 😀\nfn spec -> u32\nret 0\nend\n'],
       ['/r/main.a0', `use "lib.a0"\n${source}`],
@@ -202,7 +213,8 @@ test.after(async () => {
       rejected: Object.entries(rejected).map(([name, source]) => ({
         name,
         sourceSHA256: hash(source),
-        diagnosticJSONSHA256: hash(JSON.stringify(expectedError(source).toJSON())),
+        diagnosticJSONSHA256: hash(JSON.stringify(expectedJSON(name, source))),
+        intentionalFlatLiteralChange: Object.hasOwn(flatGrammarExpectations, name),
       })),
       passed,
       complete: passed.length === 3,

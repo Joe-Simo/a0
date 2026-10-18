@@ -15,6 +15,10 @@ import { linkNativeSource, NativeSourceError } from '../src/source-native-link.j
 import { writeReport } from '../tools/scrub-results.js';
 import { prepareJsSource } from '../tools/source-js-load.js';
 import { prepareSourceDiagnostic, prepareSourceFrontend } from '../tools/source-native-load.js';
+import {
+  flatSpecDiagnosticExpectations,
+  flatSpecGraphWordDiagnostic,
+} from './fixtures/source-flat-spec-diagnostics.js';
 
 const cPath = process.env.A0_SPEC_C_ARTIFACT;
 const directPath = process.env.A0_SPEC_DIRECT_ARTIFACT;
@@ -138,17 +142,27 @@ function rendered(result: NativeSourceResult, label: string): A0Error {
   );
   return result.diagnostic.rendered.error;
 }
-const evidence: { name: string; sourceSHA256: string; jsonSHA256: string; id: string }[] = [];
+const evidence: {
+  name: string;
+  sourceSHA256: string;
+  jsonSHA256: string;
+  historicalJSONSHA256: string;
+  intentionalFlatLiteralChange: boolean;
+  id: string;
+}[] = [];
 const passedGroups: string[] = [];
-test('complete spec JSON equals independent source oracle on C, direct and JS targets', () => {
+test('complete spec JSON matches independent oracle and explicit flat literal fixtures on every target', () => {
   for (const [name, source] of Object.entries(sources)) {
-    const expected = reference(source);
-    const json = JSON.stringify(expected.toJSON());
+    const historical = reference(source);
+    const explicit = flatSpecDiagnosticExpectations[name];
+    const expected = explicit ?? historical.toJSON();
+    const json = JSON.stringify(expected);
+    if (explicit) assert.notDeepEqual(expected, historical.toJSON(), `${name}/intentional delta`);
     for (const [target, engine] of engines) {
       const result = engine.parse(source);
       assert.deepEqual(
         rendered(result, `${target}/${name}`).toJSON(),
-        expected.toJSON(),
+        expected,
         `${target}/${name}`,
       );
       assert.ok(!result.ok && result.diagnostic && 'packet' in result.diagnostic);
@@ -157,10 +171,10 @@ test('complete spec JSON equals independent source oracle on C, direct and JS ta
         json,
         `${target}/${name}/JSON bytes`,
       );
-      if (expected.line !== undefined) {
+      if (historical.line !== undefined) {
         const unit = engine.parseUnit(source);
         assert.ok(!unit.ok, `${target}/${name}/unit grammar`);
-        assert.deepEqual(rendered(unit, `${target}/${name}/unit`).toJSON(), expected.toJSON());
+        assert.deepEqual(rendered(unit, `${target}/${name}/unit`).toJSON(), expected);
         assert.ok(unit.diagnostic && 'packet' in unit.diagnostic);
         assert.equal(Buffer.from(unit.diagnostic.packet.json).toString(), json);
       }
@@ -169,6 +183,8 @@ test('complete spec JSON equals independent source oracle on C, direct and JS ta
       name,
       sourceSHA256: hash(source),
       jsonSHA256: hash(json),
+      historicalJSONSHA256: hash(JSON.stringify(historical.toJSON())),
+      intentionalFlatLiteralChange: explicit !== undefined,
       id: expected.id as string,
     });
   }
@@ -294,7 +310,11 @@ test('graph errors preserve structured owners, line policy and Unicode source ma
         (error: unknown) => {
           assert.ok(error instanceof NativeSourceError);
           assert.ok(error.a0Error, `${name}/${fixture}`);
-          assert.deepEqual(error.a0Error.toJSON(), expected.toJSON(), `${name}/${fixture}`);
+          assert.deepEqual(
+            error.a0Error.toJSON(),
+            fixture === 'word' ? flatSpecGraphWordDiagnostic : expected.toJSON(),
+            `${name}/${fixture}`,
+          );
           return true;
         },
       );
@@ -340,6 +360,7 @@ test.after(async () => {
       targets: factories.map(([name]) => name),
       cases: evidence,
       sourceCaseCount: Object.keys(sources).length,
+      intentionalFlatLiteralCases: Object.keys(flatSpecDiagnosticExpectations),
       passedGroups,
       complete: passedGroups.length === 6 && evidence.length === Object.keys(sources).length,
     });
