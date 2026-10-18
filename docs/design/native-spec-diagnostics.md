@@ -60,3 +60,9 @@ adjacent elements that the current public compact aggregate reader rejects. An u
 aggregate can still terminate with a native transport/incomplete status instead of A0714. Those
 are parser compatibility work, not conditions for a host-side diagnostic fallback. There is no
 public cutover or performance claim in this change.
+
+The compiled compatibility controls and artifact hashes are recorded in
+[the native spec diagnostic parity report](../../results/native-spec-diagnostic-parity.json).
+The report identifies the exact source commit tested and keeps correctness evidence separate
+from the combined candidate's required gates. The independent exhaustive spec-free emission
+comparison is recorded in [the golden report](../../results/native-spec-diagnostic-golden.json).
