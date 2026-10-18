@@ -292,6 +292,12 @@ the executable bytes, provenance, logs and initial failed renderer. This include
 CLI/encrypted-storage graph-loading seams. Full platform verification for that increment is still
 required. Public CLI/MCP defaults continue using the historical readers and editing paths.
 
+The source-bound package loader prepares the existing frontend, formatter and diagnostic assets
+for loading outside a compiler checkout. The assembler reuses strict source/compiler guards and
+the shared formatter provenance helper. Standalone and isolated VM controls are recorded in
+`results/native-source-package.json`. Public defaults and release integration remain pending;
+the VM check does not establish real-browser behavior or performance.
+
 The formal generated-JS frontend cohort is retained in
 `results/source-frontend-js-cost-quiet.json`. Its measured frontend, pipeline, child-wall and
 process-memory losses keep that backend experimental. Correctness across compilation targets
