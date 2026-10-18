@@ -1,0 +1,46 @@
+fn g2_selector_more (u32,u32) u32 u32x128x512 u32 -> bool
+pos at p0 0
+par at p0 1
+inside lt pos p3
+b call sb p2 pos
+comma eq b 44
+par0 eq par 0
+hit and comma par0
+keep select hit false true
+r and inside keep
+ret r
+end
+fn g2_selector_step (u32,u32) u32 u32x128x512 u32 -> (u32,u32)
+pos at p0 0
+par at p0 1
+b call sb p2 pos
+lp eq b 40
+rp eq b 41
+plus add par 1
+minus sub par 1
+gt0 gt par 0
+less select gt0 minus 0
+par0 select lp plus par
+pn select rp less par0
+np add pos 1
+r rec np pn
+ret r
+end
+fn g2_selector_end u32x128x512 u32 u32 -> u32
+s rec p1 0
+n sub p2 p1
+x loop g2_selector_more g2_selector_step n s p0 p2
+r at x 0
+ret r
+end
+fn segstep u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+a call hd p0 113
+c call g2_selector_end p0 a p3
+nf gt a p2
+cc select nf 1 0
+s1 fold apb cc p0 44
+s2 fold apsel 1 s1 a c p4 p5
+c1 add c 1
+s3 fold whd 1 s2 113 c1
+ret s3
+end

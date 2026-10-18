@@ -1,0 +1,431 @@
+{
+  "schemaVersion": 1,
+  "kind": "application-fixture-candidates",
+  "baselineCommit": "fcf0702849888f030772bd1959a6e7f6d8fd4813",
+  "entry": "site/gen/sitegen.a0#sitegen",
+  "g1": {
+    "truthContract": {
+      "n_k": "nonempty string from a real exec dataset",
+      "missing": "undefined"
+    },
+    "inputContract": "Run each literal templateBody inside the common valid generated-session template, with frozen tags and real exec data before the template body. Check decoded TEXT and title ATTR bytes independently; an empty expansion emits neither command.",
+    "cases": [
+      {
+        "id": "ordinary-true",
+        "templateBody": "<div\n+title {n_k|yes|no}\n\"{n_k|yes|no}\n>\n",
+        "rawExpansion": "{n_k|yes|no}",
+        "expectedText": "yes",
+        "expectedAttributes": {
+          "title": "yes"
+        }
+      },
+      {
+        "id": "ordinary-false",
+        "templateBody": "<div\n+title {missing|yes|no}\n\"{missing|yes|no}\n>\n",
+        "rawExpansion": "{missing|yes|no}",
+        "expectedText": "no",
+        "expectedAttributes": {
+          "title": "no"
+        }
+      },
+      {
+        "id": "omitted-false",
+        "templateBody": "<div\n+title {missing|yes}\n\"{missing|yes}\n>\n",
+        "rawExpansion": "{missing|yes}",
+        "expectedText": "",
+        "expectedAttributes": {}
+      },
+      {
+        "id": "omitted-true",
+        "templateBody": "<div\n+title {n_k|yes}\n\"{n_k|yes}\n>\n",
+        "rawExpansion": "{n_k|yes}",
+        "expectedText": "yes",
+        "expectedAttributes": {
+          "title": "yes"
+        }
+      },
+      {
+        "id": "empty-true",
+        "templateBody": "<div\n+title {n_k||no}\n\"{n_k||no}\n>\n",
+        "rawExpansion": "{n_k||no}",
+        "expectedText": "",
+        "expectedAttributes": {}
+      },
+      {
+        "id": "empty-false",
+        "templateBody": "<div\n+title {missing|yes|}\n\"{missing|yes|}\n>\n",
+        "rawExpansion": "{missing|yes|}",
+        "expectedText": "",
+        "expectedAttributes": {}
+      },
+      {
+        "id": "true-escaped-pipe",
+        "templateBody": "<div\n+title {n_k|a\\|b|no}\n\"{n_k|a\\|b|no}\n>\n",
+        "rawExpansion": "{n_k|a\\|b|no}",
+        "expectedText": "a|b",
+        "expectedAttributes": {
+          "title": "a|b"
+        }
+      },
+      {
+        "id": "false-skips-escaped-pipe",
+        "templateBody": "<div\n+title {missing|a\\|b|yes}\n\"{missing|a\\|b|yes}\n>\n",
+        "rawExpansion": "{missing|a\\|b|yes}",
+        "expectedText": "yes",
+        "expectedAttributes": {
+          "title": "yes"
+        }
+      },
+      {
+        "id": "false-escaped-pipe",
+        "templateBody": "<div\n+title {missing|no|a\\|b}\n\"{missing|no|a\\|b}\n>\n",
+        "rawExpansion": "{missing|no|a\\|b}",
+        "expectedText": "a|b",
+        "expectedAttributes": {
+          "title": "a|b"
+        }
+      },
+      {
+        "id": "true-escaped-close",
+        "templateBody": "<div\n+title {n_k|a\\}b|no}\n\"{n_k|a\\}b|no}\n>\n",
+        "rawExpansion": "{n_k|a\\}b|no}",
+        "expectedText": "a}b",
+        "expectedAttributes": {
+          "title": "a}b"
+        }
+      },
+      {
+        "id": "false-skips-escaped-close",
+        "templateBody": "<div\n+title {missing|a\\}b|yes}\n\"{missing|a\\}b|yes}\n>\n",
+        "rawExpansion": "{missing|a\\}b|yes}",
+        "expectedText": "yes",
+        "expectedAttributes": {
+          "title": "yes"
+        }
+      },
+      {
+        "id": "false-escaped-close",
+        "templateBody": "<div\n+title {missing|no|a\\}b}\n\"{missing|no|a\\}b}\n>\n",
+        "rawExpansion": "{missing|no|a\\}b}",
+        "expectedText": "a}b",
+        "expectedAttributes": {
+          "title": "a}b"
+        }
+      },
+      {
+        "id": "adjacent-and-trailing",
+        "templateBody": "<div\n+title left:{n_k|a\\|b|no}{missing|no|c\\}d}:right\n\"left:{n_k|a\\|b|no}{missing|no|c\\}d}:right\n>\n",
+        "rawExpansion": "left:{n_k|a\\|b|no}{missing|no|c\\}d}:right",
+        "expectedText": "left:a|bc}d:right",
+        "expectedAttributes": {
+          "title": "left:a|bc}d:right"
+        }
+      },
+      {
+        "id": "unicode-delimiters",
+        "templateBody": "<div\n+title 前{n_k|é\\|雪\\}後|no}終\n\"前{n_k|é\\|雪\\}後|no}終\n>\n",
+        "rawExpansion": "前{n_k|é\\|雪\\}後|no}終",
+        "expectedText": "前é|雪}後終",
+        "expectedAttributes": {
+          "title": "前é|雪}後終"
+        }
+      },
+      {
+        "id": "ordinary-escape-bytes",
+        "templateBody": "<div\n+title {n_k|a\\nb\\sc\\\"d\\\\e|no}\n\"{n_k|a\\nb\\sc\\\"d\\\\e|no}\n>\n",
+        "rawExpansion": "{n_k|a\\nb\\sc\\\"d\\\\e|no}",
+        "expectedText": "a\nb c\"d\\e",
+        "expectedAttributes": {
+          "title": "a\nb c\"d\\e"
+        }
+      },
+      {
+        "id": "ordinary-escape-false",
+        "templateBody": "<div\n+title {missing|no|a\\nb\\sc\\\"d\\\\e}\n\"{missing|no|a\\nb\\sc\\\"d\\\\e}\n>\n",
+        "rawExpansion": "{missing|no|a\\nb\\sc\\\"d\\\\e}",
+        "expectedText": "a\nb c\"d\\e",
+        "expectedAttributes": {
+          "title": "a\nb c\"d\\e"
+        }
+      },
+      {
+        "id": "plain-preservation",
+        "templateBody": "<div\n+title plain\\svalue\\|with\\}bytes\\\\end\n\"plain\\svalue\\|with\\}bytes\\\\end\n>\n",
+        "rawExpansion": "plain\\svalue\\|with\\}bytes\\\\end",
+        "expectedText": "plain value|with}bytes\\end",
+        "expectedAttributes": {
+          "title": "plain value|with}bytes\\end"
+        }
+      },
+      {
+        "id": "two-backslashes-before-pipe",
+        "templateBody": "<div\n+title {n_k|a\\\\|no}\n\"{n_k|a\\\\|no}\n>\n",
+        "rawExpansion": "{n_k|a\\\\|no}",
+        "expectedText": "a\\",
+        "expectedAttributes": {
+          "title": "a\\"
+        }
+      },
+      {
+        "id": "three-backslashes-before-pipe",
+        "templateBody": "<div\n+title {n_k|a\\\\\\|b|no}\n\"{n_k|a\\\\\\|b|no}\n>\n",
+        "rawExpansion": "{n_k|a\\\\\\|b|no}",
+        "expectedText": "a\\|b",
+        "expectedAttributes": {
+          "title": "a\\|b"
+        }
+      },
+      {
+        "id": "four-backslashes-before-pipe",
+        "templateBody": "<div\n+title {n_k|a\\\\\\\\|no}\n\"{n_k|a\\\\\\\\|no}\n>\n",
+        "rawExpansion": "{n_k|a\\\\\\\\|no}",
+        "expectedText": "a\\\\",
+        "expectedAttributes": {
+          "title": "a\\\\"
+        }
+      },
+      {
+        "id": "two-backslashes-before-close",
+        "templateBody": "<div\n+title {n_k|a\\\\}tail\n\"{n_k|a\\\\}tail\n>\n",
+        "rawExpansion": "{n_k|a\\\\}tail",
+        "expectedText": "a\\tail",
+        "expectedAttributes": {
+          "title": "a\\tail"
+        }
+      },
+      {
+        "id": "three-backslashes-before-close",
+        "templateBody": "<div\n+title {n_k|a\\\\\\}b|no}\n\"{n_k|a\\\\\\}b|no}\n>\n",
+        "rawExpansion": "{n_k|a\\\\\\}b|no}",
+        "expectedText": "a\\}b",
+        "expectedAttributes": {
+          "title": "a\\}b"
+        }
+      },
+      {
+        "id": "four-backslashes-before-close",
+        "templateBody": "<div\n+title {n_k|a\\\\\\\\}tail\n\"{n_k|a\\\\\\\\}tail\n>\n",
+        "rawExpansion": "{n_k|a\\\\\\\\}tail",
+        "expectedText": "a\\\\tail",
+        "expectedAttributes": {
+          "title": "a\\\\tail"
+        }
+      },
+      {
+        "id": "false-three-backslashes-before-pipe",
+        "templateBody": "<div\n+title {missing|no|a\\\\\\|b}\n\"{missing|no|a\\\\\\|b}\n>\n",
+        "rawExpansion": "{missing|no|a\\\\\\|b}",
+        "expectedText": "a\\|b",
+        "expectedAttributes": {
+          "title": "a\\|b"
+        }
+      },
+      {
+        "id": "false-three-backslashes-before-close",
+        "templateBody": "<div\n+title {missing|no|a\\\\\\}b}\n\"{missing|no|a\\\\\\}b}\n>\n",
+        "rawExpansion": "{missing|no|a\\\\\\}b}",
+        "expectedText": "a\\}b",
+        "expectedAttributes": {
+          "title": "a\\}b"
+        }
+      },
+      {
+        "id": "false-even-pipe-after-true-branch",
+        "templateBody": "<div\n+title {missing|a\\\\|yes}\n\"{missing|a\\\\|yes}\n>\n",
+        "rawExpansion": "{missing|a\\\\|yes}",
+        "expectedText": "yes",
+        "expectedAttributes": {
+          "title": "yes"
+        }
+      },
+      {
+        "id": "false-even-close-before-tail",
+        "templateBody": "<div\n+title {missing|no|a\\\\}tail\n\"{missing|no|a\\\\}tail\n>\n",
+        "rawExpansion": "{missing|no|a\\\\}tail",
+        "expectedText": "a\\tail",
+        "expectedAttributes": {
+          "title": "a\\tail"
+        }
+      }
+    ]
+  },
+  "g2": {
+    "oracleContract": "selectors is the author-supplied list of complete selector segments, not a string to split. Join with a comma to construct the input rule. Preserve declarations verbatim. If theme is null, preserve the whole CSS. Otherwise independently prefix each trimmed segment: an initial :root becomes :root:where(COND) plus its suffix; others become :where(:rootCOND) SPACE plus the segment. The system block uses :not([data-theme=OTHER]); the following forced-theme copy uses [data-theme=THEME].",
+    "inputContract": "Input CSS is prefixCss + @media (prefers-color-scheme:THEME){SELECTORS{DECLARATIONS}} + suffixCss; for null theme omit the media wrapper. Exercise the same file via a plain s 9 css line and via sectioned s 9 css LO HI lines. Preserve the generator existing appended-newline policy.",
+    "templateTransports": ["ordinary-css", "sectioned-css"],
+    "cases": [
+      {
+        "id": "ordinary-list",
+        "theme": "dark",
+        "selectors": [".card", ".note"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "trim-and-root",
+        "theme": "light",
+        "selectors": [" \t:root .card\n", "  .note  "],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "is-function",
+        "theme": "dark",
+        "selectors": [":is(.a,.b)", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "nested-functions",
+        "theme": "dark",
+        "selectors": [":is(.a,:not(.b,.c))", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "where-and-nth-of",
+        "theme": "light",
+        "selectors": [":where(.a,.b)", ":nth-child(2n of :is(.a,.b))"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "double-quoted-attribute",
+        "theme": "dark",
+        "selectors": ["[data-note=\"a,b\"]", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "single-quoted-attribute",
+        "theme": "light",
+        "selectors": ["[data-note='a,b']", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "escaped-double-quote",
+        "theme": "dark",
+        "selectors": ["[data-note=\"a\\\",b\"]", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "escaped-single-quote",
+        "theme": "light",
+        "selectors": ["[data-note='a\\',b']", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "quoted-backslash-pair",
+        "theme": "dark",
+        "selectors": ["[data-note=\"a\\\\,b\"]", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "escaped-identifier-comma",
+        "theme": "dark",
+        "selectors": [".a\\,b", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "escaped-identifier-paren",
+        "theme": "light",
+        "selectors": [".a\\(.b\\,c", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "quoted-brackets-and-parens",
+        "theme": "dark",
+        "selectors": ["[data-note=\"(],)\"]", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "selector-comment",
+        "theme": "dark",
+        "selectors": [".a/* , ), ], (, [, */.b", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "quoted-comment-markers",
+        "theme": "light",
+        "selectors": ["[data-note=\"/*,*/\"]", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "backslash-pair-before-separator",
+        "theme": "dark",
+        "selectors": [".a\\\\", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "three-backslashes-before-protected-comma",
+        "theme": "dark",
+        "selectors": [".a\\\\\\,b", ".tail"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "root-function-and-attribute",
+        "theme": "light",
+        "selectors": [":root:is(.a,.b)", ":root[data-note=\"a,b\"]"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "unicode-identifiers",
+        "theme": "dark",
+        "selectors": [":is(.雪,.é)", "[data-note=\"前,後\"]", ".終"],
+        "declarations": "color:red;--token:42",
+        "prefixCss": "",
+        "suffixCss": ""
+      },
+      {
+        "id": "preserve-declarations-and-neighbors",
+        "theme": "light",
+        "selectors": ["[data-note=\"a,b\"]", ".tail"],
+        "declarations": "color:rgb(1,2,3);font-family:\"a,b\",serif;--quoted:\"x,y\"",
+        "prefixCss": "body{margin:0}",
+        "suffixCss": ".after{padding:0}"
+      },
+      {
+        "id": "no-theme-passthrough",
+        "theme": null,
+        "selectors": [":is(.a,.b)", "[data-note=\"a,b\"]"],
+        "declarations": "color:rgb(1,2,3)",
+        "prefixCss": "body{margin:0}",
+        "suffixCss": ".after{padding:0}"
+      }
+    ]
+  },
+  "preservation": {
+    "required": "Execute a frozen real page template with its original full data/file closure and verify the selected unchanged-output contract; these focused fixtures do not replace that application preservation control.",
+    "surroundingGrammar": "CSS media/rules keep the existing flat-block subset; no nested rule or declaration brace support is asserted."
+  }
+}

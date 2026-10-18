@@ -1,0 +1,50 @@
+fn g1_delim_more u32 u32 u32x128x512 u32 u32 -> bool
+inside lt p0 p3
+b call sb p2 p0
+hit eq b p4
+keep select hit false true
+r and inside keep
+ret r
+end
+fn g1_delim_step u32 u32 u32x128x512 u32 u32 -> u32
+b call sb p2 p0
+esc eq b 92
+delta select esc 2 1
+next add p0 delta
+inside lt next p3
+r select inside next p3
+ret r
+end
+fn g1_delim u32x128x512 u32 u32 u32 -> u32
+n sub p2 p1
+r loop g1_delim_more g1_delim_step n p1 p0 p2 p3
+ret r
+end
+fn xcond (io,u32,u32) u32 bool bool bool u32x128x512 u32x128x256 u32x32 u32 u32 u32 u32 -> (io,u32,u32)
+pos at p0 2
+t at p0 0
+cc at p0 1
+bar call sfind p5 pos p11 124
+e call g1_delim p5 bar p11 125
+b1 add bar 1
+bar2 call g1_delim p5 b1 e 124
+a1 add pos 1
+nl sub bar a1
+h call shash p5 a1 nl
+ref call vget p6 h p8 p9
+rl and ref 4095
+ne gt rl 0
+b21 add bar2 1
+has2 lt bar2 e
+bs select has2 b21 e
+sa select ne b1 bs
+se select ne bar2 e
+n sub se sa
+s0 rec t cc sa
+x loop ximore xistep n s0 p2 p3 p4 p5 p6 p7 p8 p9 p10 se
+xt at x 0
+xc at x 1
+e1 add e 1
+r rec xt xc e1
+ret r
+end

@@ -1,0 +1,104 @@
+fn g2_selector_more (u32,u32,u32,u32,bool) u32 u32x128x512 u32 -> bool
+pos at p0 0
+par at p0 1
+bracket at p0 2
+quote at p0 3
+comment at p0 4
+inside lt pos p3
+b call sb p2 pos
+comma eq b 44
+par0 eq par 0
+bracket0 eq bracket 0
+quote0 eq quote 0
+normal select comment false quote0
+depth0 and par0 bracket0
+outer and normal depth0
+hit and comma outer
+keep select hit false true
+r and inside keep
+ret r
+end
+fn g2_selector_step (u32,u32,u32,u32,bool) u32 u32x128x512 u32 -> (u32,u32,u32,u32,bool)
+pos at p0 0
+par at p0 1
+bracket at p0 2
+quote at p0 3
+comment at p0 4
+b call sb p2 pos
+next add pos 1
+nextin lt next p3
+d call sb p2 next
+slash eq b 47
+star eq b 42
+dslash eq d 47
+dstar eq d 42
+open0 and slash dstar
+open1 and open0 nextin
+close0 and star dslash
+close1 and close0 nextin
+quote0 eq quote 0
+normal select comment false quote0
+open and normal open1
+close and comment close1
+noncomment select comment false true
+backslash eq b 92
+escape and noncomment backslash
+skip0 or open close
+skip or skip0 escape
+delta select skip 2 1
+after add pos delta
+afterin lt after p3
+np select afterin after p3
+cm0 or comment open
+cm select close false cm0
+active0 select open false normal
+active select escape false active0
+single eq b 39
+double eq b 34
+quotechar or single double
+beginquote and active quotechar
+samequote eq b quote
+quoted select quote0 false noncomment
+end0 and quoted samequote
+endquote select escape false end0
+q0 select beginquote b quote
+q select endquote 0 q0
+lp eq b 40
+rp eq b 41
+lb eq b 91
+rb eq b 93
+parplus add par 1
+parminus sub par 1
+pargt gt par 0
+parless select pargt parminus 0
+par0 select lp parplus par
+par1 select rp parless par0
+pn select active par1 par
+bracketplus add bracket 1
+bracketminus sub bracket 1
+bracketgt gt bracket 0
+bracketless select bracketgt bracketminus 0
+bracket0 select lb bracketplus bracket
+bracket1 select rb bracketless bracket0
+bn select active bracket1 bracket
+r rec np pn bn q cm
+ret r
+end
+fn g2_selector_end u32x128x512 u32 u32 -> u32
+s rec p1 0 0 0 false
+n sub p2 p1
+x loop g2_selector_more g2_selector_step n s p0 p2
+r at x 0
+ret r
+end
+fn segstep u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+a call hd p0 113
+c call g2_selector_end p0 a p3
+nf gt a p2
+cc select nf 1 0
+s1 fold apb cc p0 44
+s2 fold apsel 1 s1 a c p4 p5
+c1 add c 1
+s3 fold whd 1 s2 113 c1
+ret s3
+end
