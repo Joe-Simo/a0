@@ -17858,6 +17858,32 @@ q5 sub q4 1
 q6 call number_integer q0 q1 q3 q5
 ret q6
 end
+# Short parameter spellings have a checked u32 cache but no source decimal span.
+# Reuse the ordinary decimal renderer and Number conversion, including resource statuses.
+fn ad_parameter_short_read (u32,(u32,u32),(u32,u32,u32),io) u32 (u32,u32,u32) -> (u32,(u32,u32),(u32,u32,u32),io)
+t at p0 3
+handle at p2 0
+length at p2 1
+out call number_integer t handle 0 length
+ret out
+end
+fn ad_parameter_short_number (u32,(u32,u32),(u32,u32,u32),io) u32 u32x128 u32x128 -> (u32,(u32,u32),(u32,u32,u32),io)
+t at p0 3
+status at p0 0
+z rec 0 0 0
+initial rec status z t
+cached get p3 1
+decimal call ad_number initial cached
+code at decimal 0
+bits at p0 1
+io at decimal 2
+pending rec code bits z io
+success eq code 0
+count select success 1 0
+digits at decimal 1
+out fold ad_parameter_short_read count pending digits
+ret out
+end
 fn ad_parameter_args (u32,u32x128,io) u32 u32x128 -> (u32,u32x128,io)
 q0 at p0 2
 q1 get p2 41
@@ -17911,7 +17937,7 @@ q40 sub q38 q39
 q41 le q37 q40
 q42 and q36 q41
 q43 get op 3
-q44 ge q43 2
+q44 gt q43 0
 range and q42 q44
 q45 at operand 2
 q46 get p2 6
@@ -17925,7 +17951,24 @@ q51 eq q50 1
 q52 and range q51
 q53 get bytes 0
 q54 eq q53 112
-q55 and q52 q54
+longlength ge q43 2
+longprefix and q54 longlength
+longvalid and q52 longprefix
+shortlength eq q43 1
+shortlow ge q53 65
+shorthigh le q53 90
+shortletter and shortlow shorthigh
+shortshape and shortlength shortletter
+shortindex sub q53 65
+cached get op 1
+shortcache eq cached shortindex
+flags get op 4
+overflow and flags 4
+bounded eq overflow 0
+shortvalue and shortcache bounded
+shortmatched and shortshape shortvalue
+shortvalid and q52 shortmatched
+q55 or longvalid shortvalid
 q56 get op 2
 q57 get p2 3
 q58 eq q56 q57
@@ -17956,12 +17999,17 @@ q81 select q70 q71 q80
 q82 select q67 q68 q81
 status select q64 q65 q82
 q83 eq status 0
-q84 select q83 1 0
+notshort xor shortvalid true
+longgo and q83 notshort
+q84 select longgo 1 0
 q85 rec 0 0
 q86 rec 0 0 0
 q87 at prefix 2
 q88 rec status q85 q86 q87
-number fold ad_parameter_number q84 q88 p2 op
+legacy fold ad_parameter_number q84 q88 p2 op
+shortgo and q83 shortvalid
+shortcount select shortgo 1 0
+number fold ad_parameter_short_number shortcount legacy p2 op
 q89 at number 0
 q90 eq q89 6
 q91 at number 0
@@ -20913,7 +20961,11 @@ facts_53 set facts_52 58 q466
 q467 get p1 1
 q468 eq q467 105
 q469 get arguments 120
-q470 add q469 1
+# A..Z has no source decimal digits: its empty decimal view starts at the token.
+parameterlength get arguments 121
+shortparameter eq parameterlength 1
+decimalprefix select shortparameter 0 1
+q470 add q469 decimalprefix
 q471 select q468 q470 0
 facts_54 set facts_53 59 q471
 q472 get p1 1
@@ -20925,7 +20977,7 @@ facts_55 set facts_54 60 q476
 q477 get p1 1
 q478 eq q477 105
 q479 at utf 1
-q480 add q479 1
+q480 add q479 decimalprefix
 q481 select q478 q480 0
 facts_56 set facts_55 61 q481
 q482 get p1 1

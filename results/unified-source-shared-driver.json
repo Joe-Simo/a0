@@ -1,0 +1,120 @@
+{
+  "scope": "Move the identical parse/check/spec driver from source_frontend and verify_arena into one shared module. The source closure has no duplicate driver symbol; the normalized linked A0 functions and stripped executable Wasm are unchanged. This is a structural correctness control, not a performance result.",
+  "baseline": {
+    "commit": "d6eed83",
+    "functions": 612,
+    "modules": 22,
+    "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "wasmSHA256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+    "wasmBytes": 358233
+  },
+  "candidate": {
+    "functions": 612,
+    "modules": 23,
+    "sourceSHA256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+    "wasmSHA256": "48e232862ed57f335c84cf3cd46bc12bbff482ac0c75bb242763409de5298926",
+    "wasmBytes": 358233,
+    "modulesInventory": [
+      {
+        "path": "compiler/arena_shared.a0",
+        "sha256": "7f2d51b37607b79abe0635b3363e8652f1b0546a7352a5c38686af2cd25886ab"
+      },
+      {
+        "path": "compiler/arena_vector_shared.a0",
+        "sha256": "b20b396b730c2ff9977954ffbc7d3f2f338ed16f932f6ca18fbba6ccb10e3b2a"
+      },
+      {
+        "path": "compiler/ir_builder_arena_shared.a0",
+        "sha256": "02f04981e386cef52f0d4cd9fc0ef55a2bbb35b45e7c7ded14372af6c58b4b94"
+      },
+      {
+        "path": "compiler/symbol_arena_shared.a0",
+        "sha256": "3a618114c46167063b7ac03b35d214bf2f819a17445a89faca53462045ab766b"
+      },
+      {
+        "path": "compiler/parse_arena_common_shared.a0",
+        "sha256": "fe839414a3dfadc297e9834b12a5dbab756ad29b4537bd91eda505bc1b5193a8"
+      },
+      {
+        "path": "compiler/lex_arena_shared.a0",
+        "sha256": "5a809ce51d7aff0b63c82c465b3ae815af63c2b4373b6404c053312f6273873a"
+      },
+      {
+        "path": "compiler/lines_arena_shared.a0",
+        "sha256": "1c92973ce233808946b9c1eb2fd5072f4357525f566650dc3925131d1ae8b709"
+      },
+      {
+        "path": "compiler/types_arena_shared.a0",
+        "sha256": "9d39c2890923e1ca1c1915f7d887dd6601d0ddcc014df091924d9a4985fbc85d"
+      },
+      {
+        "path": "compiler/parse_arena_shared.a0",
+        "sha256": "0a9b5a0887bd87c132b787ddf74cb21f884ec10c0a2bd1a72eb4442020d51194"
+      },
+      {
+        "path": "compiler/spec_hooks_arena_shared.a0",
+        "sha256": "f0ec54ac69d5456d30c435e6f4f57e7b629012f654df978d69f343e5a705a60e"
+      },
+      {
+        "path": "compiler/specs_arena_shared.a0",
+        "sha256": "93d4ccfebc782566fbdb3319d538bcca551e7d1cddd6c55b1929c4ba47112be8"
+      },
+      {
+        "path": "compiler/opcode.a0",
+        "sha256": "e7d27b6086233dc4bc0624fd2c3047a9554a284dc937752f3545cb5b56d271c6"
+      },
+      {
+        "path": "compiler/wordkey.a0",
+        "sha256": "ca804e351c436b363f952962680877bf631683209400a36ee487731d25b50fa4"
+      },
+      {
+        "path": "compiler/word_classify_shared.a0",
+        "sha256": "c341713c298554ab2462dd39ba6809183543eed711acc337b0889908c5f8b516"
+      },
+      {
+        "path": "compiler/check_arena_shared.a0",
+        "sha256": "0f53402ad4add2852e2ef721d4d152b0554468741e22ed2be1c8d316f4799119"
+      },
+      {
+        "path": "compiler/eval_arena_shared.a0",
+        "sha256": "51ca1c6ad2fab8d171a4b60e0e582eb747df5c951602ae220156ac8154222f15"
+      },
+      {
+        "path": "compiler/spec_types_arena_shared.a0",
+        "sha256": "9a22c424b5522b14c45820201ef6cdbf51ce3b89f219a10650384ea571e889c6"
+      },
+      {
+        "path": "compiler/verify_arena_shared.a0",
+        "sha256": "37cff40149d69a7402328bed66388f317b690c9f9a5b3c78d0154b7d06e69d90"
+      },
+      {
+        "path": "compiler/source_ir.a0",
+        "sha256": "5a999f01c0b0d5bb034468bf7e3d54cd5ac1c34e1bf502eb77526771521c3554"
+      },
+      {
+        "path": "compiler/source_type_grammar.a0",
+        "sha256": "c0624db52b8ab322f68e6f7e66c8379ad7e8771b00e9d7d9aa721c6c728ac5fb"
+      },
+      {
+        "path": "compiler/source_grammar.a0",
+        "sha256": "11107bb07b24e810eb0f9064baa1d3ab10b3ee276a4296fcb173c947d63c90eb"
+      },
+      {
+        "path": "compiler/source_verify_arena_shared.a0",
+        "sha256": "10828847b22d0328d7edaa7201c9c91efc81fc2097b4b671eb00bc5a0885627e"
+      },
+      {
+        "path": "compiler/source_frontend.a0",
+        "sha256": "bc36cc4527dc40e7fda17dda239da43a80655beb4c95e3ecb49e4308dec42f43"
+      }
+    ]
+  },
+  "executable": "byte-identical",
+  "compositionControl": "test/source-native-graph.test.ts: native source and backend services compose through the shared verification entry; independent legacy linking and native unit composition produce identical checked IR and C",
+  "focusedControls": {
+    "command": "node --test dist/test/source.test.js dist/test/source-native-program.test.js dist/test/source-native-preflight.test.js dist/test/source-native-graph.test.js",
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0
+  }
+}

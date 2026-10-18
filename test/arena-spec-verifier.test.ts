@@ -91,3 +91,8 @@ test(
   { skip },
   async () => compare('boundaries'),
 );
+test(
+  'shared source grammar preserves persisted and standalone specs, literals and first failures',
+  { skip },
+  async () => compare('shared-source'),
+);

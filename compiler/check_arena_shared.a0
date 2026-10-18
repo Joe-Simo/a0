@@ -3,6 +3,7 @@ use "arena_vector_shared.a0"
 use "ir_builder_arena_shared.a0"
 use "parse_arena_common_shared.a0"
 use "types_arena_shared.a0"
+use "word_classify_shared.a0"
 
 fn ac_error (u32x128,io) u32 u32 u32 u32 u32 -> (u32x128,io)
 p at p0 0
@@ -59,6 +60,41 @@ q34 set l 114 q33
 q35 at r 2
 q36 rec q34 q35
 ret q36
+end
+
+# Validate a symbol with the same word classifier used by source grammar.
+# p2 selects function-name flag0 or node-identifier flag1; p3 is the checker diagnostic.
+fn ac_name_scan (u32x128,io) u32 u32x128 u32 u32 -> (u32x128,io)
+t at p0 1
+handle get p2 0
+start get p2 1
+length get p2 2
+r call ap_scanword t handle start length
+p at p0 0
+code at r 0
+checked set p 0 code
+info at r 1
+valid get info p3
+bad eq valid 0
+diagnostic select bad p4 0
+next at r 2
+state rec checked next
+out call ac_error state diagnostic 4294967295 4294967295 4294967295 0
+ret out
+end
+
+fn ac_name (u32x128,io) u32 u32 u32 -> (u32x128,io)
+offset mul p1 5
+r call ap_read p0 62 offset 5
+p at r 0
+row at r 1
+t at r 2
+code get p 0
+ready eq code 0
+count select ready 1 0
+state rec p t
+out fold ac_name_scan count state row p2 p3
+ret out
 end
 
 fn ac_expect (u32x128,io) u32 u32 u32 u32 -> (u32x128,io)
@@ -1350,7 +1386,8 @@ q8 set k 125 0
 q9 at r 2
 q10 rec q8 q9
 q11 get n 0
-lookup call ap_read q10 121 q11 1
+named call ac_name q10 q11 1 302
+lookup call ap_read named 121 q11 1
 key at lookup 1
 q12 get key 0
 q13 ne q12 0
@@ -1509,11 +1546,13 @@ q14 get dd 0
 q15 ne q14 0
 q16 select q15 21 0
 x0 call ac_error q13 q16 4294967295 4294967295 4294967295 0
+name get f 0
+named call ac_name x0 name 0 301
 q17 get f 2
 q18 gt q17 64
 q19 select q18 315 0
 q20 get f 2
-x1 call ac_error x0 q19 64 q20 4294967295 0
+x1 call ac_error named q19 64 q20 4294967295 0
 q21 get f 5
 q22 gt q21 4096
 q23 select q22 316 0

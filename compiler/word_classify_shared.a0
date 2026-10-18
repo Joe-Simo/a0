@@ -1,0 +1,126 @@
+# Shared word and identifier classification for source grammar and structured IR.
+# Both callers use the same identifier, reserved-word and parameter-word decisions.
+use "parse_arena_common_shared.a0"
+use "wordkey.a0"
+
+fn ap_opcode u32x128 u32 -> u32
+key call wordkey p0 p1
+base call opcode key
+shortlen eq p1 2
+first get p0 0
+second get p0 1
+shl_first eq first 60
+shl_second eq second 60
+shl_pair and shl_first shl_second
+left and shortlen shl_pair
+shr_first eq first 62
+shr_second eq second 62
+shr_pair and shr_first shr_second
+right and shortlen shr_pair
+leftop select left 8 base
+shortop select right 9 leftop
+ret shortop
+end
+
+fn ap_scanword io u32 u32 u32 -> (u32,u32x128,io)
+q0 gt p3 128
+n select q0 128 p3
+prefix call arena_load p0 p1 p2 n
+q1 div p3 128
+q2 rem p3 128
+q3 eq q2 0
+q4 select q3 0 1
+pages add q1 q4
+q5 at prefix 0
+q6 gt p3 0
+q7 select q6 1 0
+q8 gt p3 1
+q9 select q8 1 0
+q10 gt p3 0
+q11 le p3 64
+q12 and q10 q11
+q13 select q12 1 0
+q14 at prefix 2
+q15 rec q5 q7 q9 q13 0 0 0 0 0 0 q14
+prefix_status at prefix 0
+prefix_ok eq prefix_status 0
+prefix_count select prefix_ok n 0
+prefix_bytes at prefix 1
+prefix_scan fold ap_scanbyte prefix_count q15 prefix_bytes 0 p3
+has_pages gt pages 0
+remaining_pages sub pages 1
+tail_count select has_pages remaining_pages 0
+r loop ap_scanok ap_scantail tail_count prefix_scan p1 p2 p3
+q16 at prefix 1
+kw call ap_keyword q16 p3
+q17 eq kw 1
+q18 eq kw 2
+q19 or q17 q18
+q20 eq kw 3
+q21 or q19 q20
+q22 eq kw 5
+q23 or q21 q22
+q24 eq kw 6
+q25 or q23 q24
+q26 eq kw 7
+reserved or q25 q26
+q27 at r 3
+q28 ne q27 0
+q29 xor reserved true
+fnok and q28 q29
+q30 at r 2
+q31 eq q30 0
+idok and fnok q31
+z call arena_zero
+q32 select fnok 1 0
+a set z 0 q32
+q33 select idok 1 0
+b set a 1 q33
+q34 at r 1
+c set b 2 q34
+q35 at r 2
+prefixpage at prefix 1
+letter get prefixpage 0
+low ge letter 65
+high le letter 90
+inrange and low high
+one eq p3 1
+shortparam and one inrange
+oldparam ne q35 0
+isparam or oldparam shortparam
+paramflag select isparam 1 0
+d set c 3 paramflag
+q36 at r 4
+e set d 4 q36
+q37 at r 6
+f set e 5 q37
+q38 at r 5
+letterindex sub letter 65
+paramindex select shortparam letterindex q38
+g set f 6 paramindex
+q39 at r 7
+h set g 7 q39
+q40 at prefix 1
+q41 call ap_opcode q40 p3
+j set h 8 q41
+k set j 9 kw
+q42 at prefix 1
+first get q42 0
+l set k 10 first
+q43 at r 8
+m set l 11 q43
+q44 eq first 40
+q45 at r 8
+q46 eq q45 41
+q47 or q44 q46
+q48 select q47 1 0
+o set m 12 q48
+p set o 13 p2
+q set p 14 p3
+q49 at r 9
+info set q 15 q49
+q50 at r 0
+q51 at r 10
+q52 rec q50 info q51
+ret q52
+end

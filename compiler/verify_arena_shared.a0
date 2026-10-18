@@ -43,6 +43,31 @@ q16 rec v_2 m q11 q12 q13 q14 q15
 ret q16
 end
 
+# The whole-program function bound precedes every body/name/spec check.
+fn sv_function_limit (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io) u32 u32 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+m at p0 1
+a set m 0 0
+b set a 10 4294967295
+c set b 11 4294967295
+d set c 80 0
+e set d 81 0
+f set e 82 0
+t at p0 6
+input rec f t
+r call ac_error input 29 65536 p2 4294967295 0
+checked at r 0
+next at r 1
+v at p0 0
+grammar at p0 2
+binder at p0 3
+machine at p0 4
+ir at p0 5
+state rec v checked grammar binder machine ir next
+code get checked 0
+out call sv_runtime state code
+ret out
+end
+
 fn sv_appendgo (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io) u32 u32 u32 u32x128 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
 q0 at p0 6
 q1 at p0 0
@@ -1195,8 +1220,18 @@ v_2 set v_1 0 code
 q22 at r 2
 q23 eq code 0
 q24 and complete q23
-q25 select q24 1 0
 q26 rec v_2 p1 p z z z q22
-q27 fold sv_init q25 q26
+words get p1 42
+functions div words 14
+too_many gt functions 65536
+limit_active and q24 too_many
+limit_count select limit_active 1 0
+bounded fold sv_function_limit limit_count q26 functions
+status at bounded 0
+selected get status 0
+success eq selected 0
+ready and complete success
+q25 select ready 1 0
+q27 fold sv_init q25 bounded
 ret q27
 end

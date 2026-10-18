@@ -45,13 +45,14 @@ static uint32_t *copy_table(uint32_t handle,uint32_t n){
 static void same_table(uint32_t handle,uint32_t n,const uint32_t *before){
  for(uint32_t at=0;at<n;){uint32_t count=n-at>128?128:n-at,page[128];load(handle,at,count,page);if(memcmp(page,before+at,(size_t)count*sizeof(uint32_t)))die("original source IR changed");at+=count;}
 }
-int main(void){
+int main(int argc,char **argv){
 #ifdef _WIN32
  _setmode(_fileno(stdin),_O_BINARY);_setmode(_fileno(stdout),_O_BINARY);
 #endif
+int standalone=argc==2&&!strcmp(argv[1],"--standalone");if(argc!=1&&!standalone)die("unknown driver argument");
 if(word()!=0x41535646u)die("packet magic");uint32_t max=word(),quantum=word(),length=word(),observation=word();if(!quantum&&!observation)die("zero scheduling quantum");session=a0_arena_create(max,0);if(!session)die("session allocation");want(0);want(2);want(A0_ARENA_MAGIC);want(1);
  uint32_t n=length?length:1;send(1,1,&n);want(0);want(1);uint32_t source=a0_runtime_read(session);for(uint32_t i=0;i<length;){uint32_t k=length-i>128?128:length-i,a[131]={source,i,k};for(uint32_t z=0;z<k;z++)a[z+3]=word();send(3,k+3,a);want(0);want(0);i+=k;}
- a0_io io,before;memset(&io,0xa5,sizeof io);memcpy(&before,&io,sizeof io);SV_STATE s=a0_arena_parse_verify_begin(&io,source,length);
+ a0_io io,before;memset(&io,0xa5,sizeof io);memcpy(&before,&io,sizeof io);SV_STATE s=standalone?a0_probe_standalone_begin(&io,source,length):a0_arena_parse_verify_begin(&io,source,length);
  const uint32_t offsets[]={41,44,47,50};uint32_t handles[4],table_lengths[4];uint32_t *original[4];for(uint32_t i=0;i<4;i++){uint32_t o=offsets[i];handles[i]=s.f1.e[o];table_lengths[i]=s.f1.e[o+1];original[i]=copy_table(handles[i],table_lengths[i]);}
  uint64_t count=0;while(s.f0.e[1]!=11){if(observation&&count>=observation)break;s=a0_arena_verify_resume(s,quantum);if(++count>10000000)die("continuation ceiling");}
  for(uint32_t i=0;i<4;i++){uint32_t o=offsets[i];if(s.f1.e[o]!=handles[i]||s.f1.e[o+1]!=table_lengths[i])die("original source IR changed");same_table(handles[i],table_lengths[i],original[i]);free(original[i]);}

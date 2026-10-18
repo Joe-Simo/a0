@@ -92,6 +92,16 @@ function compare(dir: string, capacity: boolean): void {
   assert.ok(ran.ok, `${ran.stderr}\n${ran.stdout}`);
 }
 
+test('seed-built arena services read the shared source grammar without conversion', {
+  skip,
+}, async () => {
+  const dir = await prepare();
+  const ran = runTool(process.execPath, [join(fixtures, 'oracle.mjs'), dir, 'shared-source'], {
+    timeoutMs: 180_000,
+  });
+  assert.ok(ran.ok, `${ran.stderr}\n${ran.stdout}`);
+});
+
 test(
   'seed-built A0 frontend preserves original IR, types, diagnostic IDs and metadata',
   {

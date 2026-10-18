@@ -86,7 +86,7 @@ export function nativeSource(module: WebAssembly.Module): {
   readonly memoryBytes: number;
   parse(source: string, budget?: number): NativeSourceResult;
   parseUnit(source: string, budget?: number): NativeUnitResult;
-  /** Experimental compiler IR check; lexical/count preflight and source locations remain open. */
+  /** Experimental compiler IR check through the same A0 checker; locations are synthetic. */
   checkProgram(program: Program, budget?: number): NativeSourceResult;
   /** Units must already be resolved, ordered and assigned a coherent profile by the graph loader. */
   checkUnits(
@@ -213,7 +213,8 @@ export function nativeSourceApi(
     upload,
     symbol(name) {
       const bytes = new TextEncoder().encode(name),
-        handle = upload(Uint32Array.from(bytes));
+        // Empty identities still need a valid zero-length span for native classification.
+        handle = upload(bytes.length ? Uint32Array.from(bytes) : new Uint32Array(1));
       checked(api.frontend_ir_symbol(handle, bytes.length));
       return api.frontend_ir_value();
     },

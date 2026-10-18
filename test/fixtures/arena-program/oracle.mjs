@@ -527,6 +527,35 @@ cases.push(
   await readFile('examples/life.a0', 'utf8'),
 );
 const capacity = process.argv[3] === 'capacity';
+// These pairs are independent fixtures, not output from either candidate printer/parser.
+// The shared arena service must construct the established IR and typed facts directly.
+const shared = process.argv[3] === 'shared-source';
+const sharedSources = [
+  ['fn inc\nx add A 1\nret x\nend\n', 'fn inc u32 -> u32\nx add p0 1\nret x\nend\n'],
+  ['fn keep _ _ -> _\nret A\nend\n', 'fn keep u32 u32 -> u32\nret p0\nend\n'],
+  [
+    'fn flags -> boolx3\na [true,false,true]\nret a\nend\n',
+    'fn flags -> boolx3\na arr true false true\nret a\nend\n',
+  ],
+  [
+    'fn packet _ bool -> (_,bool)\na (A B)\nret a\nend\n',
+    'fn packet u32 bool -> (u32,bool)\na rec p0 p1\nret a\nend\n',
+  ],
+  [
+    'fn shifted\nx << A 3\ny >> x 1\nret y\nend\n',
+    'fn shifted u32 -> u32\nx shl p0 3\ny shr x 1\nret y\nend\n',
+  ],
+  ['fn high\nret p26\nend\n', `fn high ${Array(27).fill('u32').join(' ')} -> u32\nret p26\nend\n`],
+  [
+    'profile strict\nfn checked _ -> (_,bool)\nx cadd A 1\nret x\nend\n',
+    'profile strict\nfn checked u32 -> (u32,bool)\nx cadd p0 1\nret x\nend\n',
+  ],
+  [
+    'fn echo io -> io\nr read A\nv at r 0\nt at r 1\nout write t v\nret out\nend\n',
+    'fn echo io -> io\nr read p0\nv at r 0\nt at r 1\nout write t v\nret out\nend\n',
+  ],
+];
+const sharedInput = shared ? sharedSources.map(([source]) => source) : undefined;
 const sources = capacity
   ? [
       `fn f u32 -> u32
@@ -572,12 +601,13 @@ end
 `,
       ).join(''),
     ]
-  : cases;
+  : (sharedInput ?? cases);
 const modes = capacity ? ['-O2'] : ['-O0', '-O2'];
 const report = [];
 for (const mode of modes) {
   for (let index = 0; index < sources.length; index++) {
     const source = sources[index];
+    const reference = shared ? sharedSources[index][1] : source;
     await writeFile(`${root}/source.bin`, source);
     const r = runTool(
       `${root}/driver${mode}`,
@@ -588,7 +618,7 @@ for (const mode of modes) {
     let expected, error;
     let phase = 'parse';
     try {
-      const parsed = parse(source);
+      const parsed = parse(reference);
       phase = 'check';
       expected = validate(parsed);
     } catch (e) {
@@ -659,7 +689,7 @@ ${source}`,
         `${mode} case${index} id${got.state[1]}
 ${source}`,
       );
-      assert.deepEqual(got.program, parse(source));
+      assert.deepEqual(got.program, parse(reference));
       let nodeIndex = 0;
       for (const [fi, fn] of expected.functions.entries()) {
         assert.equal(got.tables.get(103)[fi * 3], fn.literalIterations);
@@ -719,7 +749,7 @@ ex `) && phase === 'check'
   console.log(`${mode}: ${sources.length} cases passed`);
 }
 await writeFile(
-  `${root}/${capacity ? 'capacity' : 'small'}-results.json`,
+  `${root}/${shared ? 'shared-source' : capacity ? 'capacity' : 'small'}-results.json`,
   JSON.stringify(
     {
       note: 'Private actual A0 C emission; TS link is development bootstrap and TS parse/validate independent oracle only. No TS semantic fallback. Strict profile preserved. IEEE754 staticIterations metadata matches oracle; full diagnostic payload remains unimplemented.',

@@ -38,9 +38,9 @@ function boolean(value: boolean): number {
 }
 
 /**
- * Program is internal structured IR: naming and total-function-count preflight still belong
- * to its producer until shared A0 structural preflight is integrated. Locations are synthetic.
- * This boundary checks representation and extents, never repeats the language type checker.
+ * Program is internal structured IR; locations are synthetic. The shared native grammar
+ * classifies names and the A0 checker enforces the program/function/node limits.
+ * This host boundary checks representation and extents, never repeats the type checker.
  */
 export function encodeNativeProgram(program: Program, builder: NativeIrBuilder): string {
   const tables = new Map<number, number[]>(PARSED_VECTOR_WIDTHS.map(([slot]) => [slot, []]));

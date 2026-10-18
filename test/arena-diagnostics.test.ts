@@ -10,18 +10,20 @@ import {
   normalizeLine,
   OP_ARITY,
   opOf,
-  parse,
   stripComment,
   validate,
   validateFunction,
 } from '../src/core.js';
 import { A0Error } from '../src/diagnostics.js';
 import { link } from '../src/link.js';
+import { parseSource as parse } from '../src/source.js';
 import { findClang, runTool } from '../src/toolchain.js';
 import { buildStage, closure, emitChunked, runStageChunk } from '../tools/bootstrap.js';
 import { readBootstrapSeed } from '../tools/seed.js';
 
-// This bounded subset compares complete public core JSON, including fixes and edits.
+// This private frontend uses the candidate source grammar. The TypeScript source reader
+// and checker are independent test oracles, including complete fixes and edits.
+// Public core diagnostic controls remain in their own tests against the public grammar.
 // Unsupported IDs remain explicit refusals; no host repair follows an A0 refusal.
 const f = (body: string, result = 'u32', params = 'u32') =>
   `fn f ${params} -> ${result}\n${body}\nend\n`;
@@ -1146,6 +1148,29 @@ nestedCases.push(...capacityCases);
 
 cases.push(...nestedCases);
 
+// Candidate aliases are checked directly, including accepted forms that the public reader rejects.
+const sourceCases = [
+  f('ret A'),
+  f('a << A 1\nret a'),
+  f('ret >> A 1'),
+  'fn inferred\nret C\nend\n',
+  f('ret A', '_', '_'),
+  f('a <<\nret a'),
+  f('ret << A'),
+  f('a >> A 1 2\nret a'),
+  f('ret B'),
+  f('ret A', 'u32', ''),
+  f('a mov Z\nret a'),
+  f('a write A 1\nb write A 2\nret b', 'io', 'io'),
+  f('a at A 1\nret A', '(u32,io)', '(u32,io)'),
+  f('ret 0', 'bool_'),
+  f('ret 0', '_bool'),
+  f('a mov (<< A 1)\nret a'),
+  f('ret << (>> A 1) 2'),
+  f('ret (>> A 1)'),
+  'fn constructor u32 -> u32\nret p0\nend\nfn main u32 -> u32\nret constructor A\nend\n',
+];
+
 const clang = findClang();
 const skip = clang.path === undefined ? 'clang is unavailable' : false;
 const fixtures = resolve('test/fixtures/arena-diagnostics');
@@ -1252,7 +1277,7 @@ function reference(source: string, options = 1) {
     if (before === undefined) delete process.env.A0_NEW_FIXES;
     else process.env.A0_NEW_FIXES = before;
   }
-  assert.fail('fixture must produce a reference diagnostic');
+  return undefined;
 }
 
 test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 span facts', {
@@ -1275,6 +1300,9 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
   for (const level of [0, 2]) {
     for (const { index, source, options } of [
       ...cases.map((source, index) => ({ index, source, options: 1 })),
+      ...sourceCases.flatMap((source, index) =>
+        [0, 1].map((options) => ({ index: `source ${index}`, source, options })),
+      ),
       ...[
         ...callCases,
         ...operandCases,
@@ -1294,8 +1322,16 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
       })),
     ]) {
       const expected = reference(source, options);
-      assert.ok(expected.id);
       const { status, facts, json } = await request(dir, level, source, 50_000_000, options);
+      if (expected === undefined) {
+        const label = `O${level} case ${index} accepted fixes${options}`;
+        assert.equal(facts[0], 0, `${label}: successful candidate parse/check`);
+        assert.equal(facts[1], 0, `${label}: no diagnostic ID`);
+        assert.equal(status, 7, `${label}: renderer has no diagnostic to publish`);
+        assert.equal(json.length, 0, `${label}: no diagnostic JSON`);
+        continue;
+      }
+      assert.ok(expected.id);
       const label = `O${level} case ${index} ${expected.id} fixes${options}`;
       assert.equal(status, 0, label);
       assert.deepEqual(JSON.parse(json.toString('utf8')), expected, label);
@@ -1332,10 +1368,12 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
       }
       if (/^A031[0-4]$/.test(expected.id)) {
         const target = raw.subarray(start, start + length).toString('utf8');
-        assert.ok(expected.message.includes(`'${target}'`), `${label}: original IO operand span`);
-        if (/^p[0-9]+$/.test(target)) {
+        const short = /^[A-Z]$/.test(target);
+        const semantic = short ? `p${target.charCodeAt(0) - 65}` : target;
+        assert.ok(expected.message.includes(`'${semantic}'`), `${label}: original IO operand span`);
+        if (short || /^p[0-9]+$/.test(target)) {
           assert.equal(facts[25], 1, `${label}: parameter operand`);
-          assert.equal(facts[26], Number(target.slice(1)), `${label}: parameter index`);
+          assert.equal(facts[26], Number(semantic.slice(1)), `${label}: parameter index`);
         } else assert.equal(facts[25], 0, `${label}: node operand`);
         if (['A0311', 'A0312', 'A0313'].includes(expected.id)) {
           const field = /io field ([0-9]+)/.exec(expected.message)?.[1];
@@ -1450,8 +1488,11 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
       }
       if (expected.id === 'A0105') {
         const word = raw.subarray(start, start + length).toString('utf8');
-        assert.match(word, /^p[0-9]+$/, `${label}: original parameter span`);
-        const decimal = word.slice(1);
+        assert.match(word, /^(?:p[0-9]+|[A-Z])$/, `${label}: original parameter span`);
+        const short = word.length === 1;
+        const decimal = short ? String(word.charCodeAt(0) - 65) : word.slice(1);
+        const decimalStart = start + (short ? 0 : 1);
+        const decimalLength = short ? 0 : length - 1;
         const value = Number(decimal);
         const bits = Buffer.alloc(8);
         bits.writeDoubleLE(value);
@@ -1465,10 +1506,10 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
         assert.ok(expected.message.includes(`parameter p${String(value)} out of range`), label);
         assert.equal(facts[55], start, `${label}: whole parameter byte start`);
         assert.equal(facts[56], length, `${label}: whole parameter byte length`);
-        assert.equal(facts[59], start + 1, `${label}: decimal byte start`);
-        assert.equal(facts[60], length - 1, `${label}: decimal byte length`);
-        assert.equal(facts[61], raw.subarray(0, start + 1).toString('utf8').length);
-        assert.equal(facts[62], decimal.length, `${label}: decimal UTF16 length`);
+        assert.equal(facts[59], decimalStart, `${label}: decimal byte start`);
+        assert.equal(facts[60], decimalLength, `${label}: decimal byte length`);
+        assert.equal(facts[61], raw.subarray(0, decimalStart).toString('utf8').length);
+        assert.equal(facts[62], decimalLength, `${label}: decimal UTF16 length`);
         let cache = 0;
         for (const digit of decimal) cache = (cache * 10 + Number(digit)) >>> 0;
         assert.equal(facts[57], cache, `${label}: original wrapped u32 cache`);
@@ -1664,7 +1705,7 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
       }
       if (expected.id === 'A0010') {
         const words = normalizeLine(source.split('\n')[(expected.line ?? 1) - 1] ?? '').split(' '),
-          sugar = words[0] === 'ret' && isRetNodeForm(words),
+          sugar = words[0] === 'ret' && isRetNodeForm(words, { '<<': 'shl', '>>': 'shr' }),
           direct = words[0] === 'ret' && !sugar;
         const rest = words.slice(direct ? 1 : 2).join(' '),
           open = rest.indexOf('('),
@@ -1679,7 +1720,9 @@ test('seed-built A0 diagnostics preserve supported full JSON, fixes and UTF16 sp
           innerOp = inner[0] ?? '';
         const tuple =
           rest.slice(open, close < 0 ? undefined : close).includes(',') ||
-          (opOf(innerOp) === undefined && !(isDirectCallee(innerOp) && inner.length > 1));
+          (!['<<', '>>'].includes(innerOp) &&
+            opOf(innerOp) === undefined &&
+            !(isDirectCallee(innerOp) && inner.length > 1));
         const exact = opens === 1 && closes === 1 && close >= 0,
           shortcut = direct && rest.startsWith('(') && (close < 0 || close === rest.length - 1);
         assert.equal(facts[109], exact ? 1 : 0, label);
