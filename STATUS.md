@@ -21,9 +21,10 @@ Scope, migration instructions and outstanding gates: [unified syntax](docs/desig
 The flat candidate now builds from `compiler/source_frontend.a0` and shared compiler modules,
 with a portable host that decodes checked IR without a second parser or validator. The committed
 corpus audit passes all 176 accepted source entries, including guarded migration and exact native
-IR/type facts, and parses its own 598-function source to identical optimized C
-(`results/unified-source-module-audit.json`, `results/unified-source-module-build.json`). The
-independent specification controls pass 30 cases (`results/unified-source-module-specs.json`).
+IR/type facts, and parses its own 604-function source to identical optimized C
+(`results/unified-source-unit-frontend-audit.json`, `results/unified-source-unit-build.json`).
+Source units use the same parser before whole-program checking (`results/unified-source-unit-audit.json`).
+The independent specification controls pass 30 cases (`results/unified-source-unit-specs.json`).
 These are correctness results. Native graph/tool integration, full gates and the recorded frontend
 performance losses still prevent an official source cutover; no compilation or AI accuracy gain
 is claimed by this increment.
