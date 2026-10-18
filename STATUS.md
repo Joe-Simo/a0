@@ -1,5 +1,12 @@
 # A0 status
 
+2026-10-18 C frontend stack-size comparison: all 144 fresh child runs completed, including
+declared warmups, but the smaller reservation does not justify adoption. Frontend latency
+improves on three of six applications and worsens on three; whole-child wall time worsens on
+five, and physical peak RSS is mixed. Production keeps its current reservation. Raw observations,
+source bindings and replay instructions accompany `results/source-frontend-c-stack-cost.json`
+and [the stack proof](docs/design/c-frontend-stack-bound.md).
+
 2026-10-18 combined native tooling verification: a clean, freshly built source cohort passes
 all 92 targeted controls with no skips, covering native edit sessions across the C-derived,
 direct Wasm and generated-JS frontends, MCP transactions, runtime packages and C bootstrapping.
