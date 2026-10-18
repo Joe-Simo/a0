@@ -19,7 +19,11 @@ import type * as Dense from '../src/dense.js';
 import type * as Link from '../src/link.js';
 import { committedTree } from './measurement-checkout.js';
 import { writeReport } from './scrub-results.js';
-import { sourceCostArtifact, verifyDirectSourceCostBuild } from './source-cost-artifact.js';
+import {
+  sourceCostArtifact,
+  verifyDirectSourceCostBuild,
+  verifySourceCostStackProof,
+} from './source-cost-artifact.js';
 import {
   SOURCE_COST_FROZEN_C_BANNER,
   sourceCostControlMode,
@@ -95,6 +99,7 @@ assert.ok(crossBackend || build.backend === undefined, 'direct frontend requires
 async function verifyBuild(
   checkout: string,
   record: Readonly<Record<string, unknown>>,
+  directory: string,
   linker: typeof Link.link = link,
   formatter: typeof Core.formatProgram = formatProgram,
   emitter: typeof Backends.compile = compile,
@@ -106,6 +111,14 @@ async function verifyBuild(
       formatProgram: formatter,
       compile: emitter,
     });
+    const { wasmStackBound } = await import(
+      pathToFileURL(join(checkout, 'dist/tools/wasm-stack-bound.js')).href
+    );
+    verifySourceCostStackProof(
+      record,
+      await readFile(join(directory, 'arena.wasm')),
+      wasmStackBound,
+    );
     return;
   }
   assert.equal(record.backend, undefined, 'unsupported frontend backend');
@@ -139,7 +152,7 @@ async function verifyBuild(
       `stale module ${module.path}`,
     );
 }
-await verifyBuild(root, build);
+await verifyBuild(root, build, artifact);
 let controlSnapshot: Awaited<ReturnType<typeof sourceCostArtifact>> | undefined;
 let controlBuild: typeof build | undefined;
 if (controlArtifact !== undefined) {
@@ -163,12 +176,13 @@ if (controlArtifact !== undefined) {
     await verifyBuild(
       controlCheckout,
       controlBuild,
+      controlArtifact,
       controlLink.link,
       controlCore.formatProgram,
       controlBackends.compile,
     );
     assert.deepEqual(committedTree(controlCheckout), controlIdentity);
-  } else await verifyBuild(root, controlBuild);
+  } else await verifyBuild(root, controlBuild, controlArtifact);
 }
 await mkdir(out, { recursive: true });
 const tokenizers = ['o200k_base', 'cl100k_base'].map(

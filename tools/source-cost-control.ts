@@ -274,6 +274,10 @@ function verifyCompiledBackends(candidate: SourceCostBuild, control: SourceCostB
       `unrecorded backend difference: ${field}`,
     );
   sourceCostFrontendOptions(direct);
+  assert.ok(
+    direct.transportStackProof && typeof direct.transportStackProof === 'object',
+    'missing transportStackProof',
+  );
   sourceCostComponents(direct);
   sourceCostComponents(native);
 }

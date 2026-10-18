@@ -8,7 +8,11 @@ import { test } from 'node:test';
 import { compile } from '../src/backends.js';
 import { formatProgram } from '../src/core.js';
 import { link } from '../src/link.js';
-import { sourceCostArtifact, verifyDirectSourceCostBuild } from '../tools/source-cost-artifact.js';
+import {
+  sourceCostArtifact,
+  verifyDirectSourceCostBuild,
+  verifySourceCostStackProof,
+} from '../tools/source-cost-artifact.js';
 import {
   SOURCE_COST_FROZEN_C_BANNER,
   type SourceCostBuild,
@@ -18,8 +22,14 @@ import {
   verifySourceCostControl,
   verifySourceCostFrozenC,
 } from '../tools/source-cost-control.js';
+import { wasmStackBound } from '../tools/wasm-stack-bound.js';
 
 const sha = (bytes: string | Uint8Array) => createHash('sha256').update(bytes).digest('hex');
+// One exported empty function and one mutable i32 stack global, initially 16; no imports/calls.
+const REDUCED_ARENA = new Uint8Array([
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 5, 3, 1, 0, 1, 6, 6, 1, 127, 1, 65,
+  16, 11, 7, 7, 1, 3, 114, 117, 110, 0, 0, 10, 4, 1, 2, 0, 11,
+]);
 const options = {
   wasmExports: ['exchange', 'state'],
   wasmSimd: true,
@@ -61,11 +71,12 @@ async function manifests() {
     frontendOptions: options,
     frontendSHA256: native.wasmSHA256,
     frontendBytes: native.wasmBytes,
-    arenaSHA256: sha(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])),
-    arenaBytes: 8,
-    totalWasmBytes: native.wasmBytes + 8,
+    arenaSHA256: sha(REDUCED_ARENA),
+    arenaBytes: REDUCED_ARENA.length,
+    totalWasmBytes: native.wasmBytes + REDUCED_ARENA.length,
     inputs: [...native.modules, ...native.nativeInputs],
     transportStackBytes: 65536,
+    transportStackProof: wasmStackBound(REDUCED_ARENA),
     transportClangFlags: ['--target=wasm32-wasi', '-O3', '-flto', '-DNDEBUG'],
     transportLinkerFlags: [
       '--no-entry',
@@ -168,6 +179,7 @@ test('compiled backends preserve source/runtime/toolchain controls while recordi
     'transportStackBytes',
     'transportClangFlags',
     'transportLinkerFlags',
+    'transportStackProof',
   ])
     assert.throws(
       () => verifySourceCostControl({ ...direct, [field]: undefined }, native, 'compiled-backends'),
@@ -233,6 +245,71 @@ test('component accounting and frontend options reject incomplete or ambiguous m
   );
 });
 
+test('transport proof guard binds the final binary, full recomputation and available stack', () => {
+  const arena = REDUCED_ARENA;
+  assert.ok(WebAssembly.validate(arena));
+  const proof = wasmStackBound(arena);
+  assert.equal(proof.maxLinearStackBytes, 0);
+  assert.equal(proof.maxCallDepth, 1);
+  assert.deepEqual(proof.functions, [
+    {
+      index: 0,
+      frameBytes: 0,
+      calls: [],
+      globalAccesses: [],
+      cumulativeFrameBytes: 0,
+      maxCallDepth: 1,
+    },
+  ]);
+  const record = {
+    arenaSHA256: sha(arena),
+    arenaBytes: arena.length,
+    transportStackBytes: 16,
+    transportStackProof: proof,
+  };
+  let calls = 0;
+  const analyze = (bytes: Uint8Array) => {
+    assert.deepEqual(bytes, arena);
+    calls++;
+    return wasmStackBound(bytes);
+  };
+  verifySourceCostStackProof(record, arena, analyze);
+  assert.equal(calls, 1);
+  for (const field of ['artifactSHA256', 'artifactBytes', 'maxCallDepth', 'functions'])
+    assert.throws(
+      () =>
+        verifySourceCostStackProof(
+          { ...record, transportStackProof: { ...proof, [field]: null } },
+          arena,
+          analyze,
+        ),
+      /transport stack proof differs/,
+    );
+  assert.throws(
+    () => verifySourceCostStackProof({ ...record, transportStackProof: undefined }, arena, analyze),
+    /transport stack proof differs/,
+  );
+  assert.throws(
+    () => verifySourceCostStackProof(record, new Uint8Array([...arena, 0]), analyze),
+    /arena hash differs/,
+  );
+  assert.throws(
+    () => verifySourceCostStackProof(record, arena, () => ({ ...proof, maxLinearStackBytes: 32 })),
+    /below its proven bound/,
+  );
+  assert.throws(
+    () => verifySourceCostStackProof(record, arena, () => ({ ...proof, functions: [] })),
+    /lacks function proofs/,
+  );
+  assert.throws(
+    () =>
+      verifySourceCostStackProof(record, arena, () => {
+        throw new Error('unsupported module');
+      }),
+    /unsupported module/,
+  );
+});
+
 test('direct provenance re-emits real Wasm and rejects changed inputs, closure, ABI and compiler output', async () => {
   const root = await mkdtemp(join(tmpdir(), 'a0-source-cost-'));
   try {
@@ -247,6 +324,7 @@ test('direct provenance re-emits real Wasm and rejects changed inputs, closure, 
       'tools/native/arena_runtime.h',
       'tools/native/arena_memory.c',
       'tools/source-direct-build.ts',
+      'tools/wasm-stack-bound.ts',
     ])
       files[path] = await readFile(path, 'utf8');
     for (const [path, text] of Object.entries(files)) {
