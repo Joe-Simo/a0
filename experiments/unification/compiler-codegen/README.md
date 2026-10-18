@@ -48,3 +48,7 @@ timing samples or performance conclusion.
 
 For a comparison that holds the compiler fixed while changing the A0 implementation, use the
 separate [source-algorithm control](source-algorithm.md).
+
+The rejected [pure ordinary readonly C-call comparison](readonly-call.md) retains the strict
+compiler-codegen preparation, original raw cells, all observed losses and exact experimental
+source history. The production default remains unchanged.

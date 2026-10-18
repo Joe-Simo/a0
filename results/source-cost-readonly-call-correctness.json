@@ -1,0 +1,227 @@
+{
+  "schema": 1,
+  "scope": "Retained independent correctness observations. Test durations are correctness-only and are not cost measurements. Authoring logs are identified separately from the focused controls repeated at the frozen measured candidate. Candidate suites and timing were not rerun during archival; the reduced historical counterexample was independently compiled and executed as recorded below.",
+  "codegen": {
+    "scope": "Reduced512-byte ordinary-call convention evidence only; nativeO0 lowering is not an execution, optimization-level-O3, whole-frontend, speed, memory or no-regression claim.",
+    "candidateCommit": "448508d7509c0b1f56166b8a883d7efdf24f4bb8",
+    "genuine68Commit": "1d937df6c981c8b80a9923eb9eefb81a540a24d4",
+    "sourceSHA256": "a9df5923aab74b22b48d4be217af6278e12a155aa99ad2dc607d755d765caab9",
+    "nativeCompiler": "Debian Clang19.1.7 x86_64 C11 O0",
+    "unchangedPublicAndReadonlyCalleeDefinitions": true,
+    "unchanged4096StorageThreshold": true,
+    "records": [
+      {
+        "subject": "old68",
+        "moduleC_SHA256": "0efd1329bf9f5b012d21a4a4d42bb37d07115e1f7c48558ea563b4b7d49303c7",
+        "llvmSHA256": "95b7cb1e45fae70c4272ba5981f388eaf6ed9fb5d4c4a986c806e378dfe49ed6",
+        "assemblySHA256": "9090149d4ef262af0232bba2dab0bcbdcf354d6bae4d52f8f9d675bd4c324560",
+        "probeByvalCalls": 2,
+        "probeRepMovsqCount": 2,
+        "probeCalls": [
+          "%12 = call zeroext i1 @a0_judge(ptr noundef byval(%struct.a0t_a128_u) align 8 %5, i32 noundef %11)",
+          "%16 = call i32 @a0_inspect(i32 noundef %14, i32 noundef %15, ptr noundef byval(%struct.a0t_a128_u) align 8 %5)"
+        ]
+      },
+      {
+        "subject": "new69",
+        "moduleC_SHA256": "d407142a87a235657ba9d8f2b4b95fbcd843c06f40c684ff8d3e733afc29951a",
+        "llvmSHA256": "f571f09c7939f81b307139dd2d53f71dc28cc596eb80f248efbb36d87f20dd74",
+        "assemblySHA256": "44e70ec342ecc0a7e0ea9574975f7b6c62765d3f2c94b97a67bb9c1ffcb9ee51",
+        "probeByvalCalls": 0,
+        "probeRepMovsqCount": 0,
+        "probeCalls": [
+          "%12 = call zeroext i1 @a0r_judge(ptr noundef %5, i32 noundef %11)",
+          "%16 = call i32 @a0v_inspect(i32 noundef %14, i32 noundef %15, ptr noundef %5)"
+        ]
+      }
+    ],
+    "hostMutationDiscovery": {
+      "scope": "Reduced host-mutation observation before the IO eligibility guard; no timing or default claim.",
+      "genuine68Commit": "04962213098a07bd25d7afa81c748e17e9f1ea6e",
+      "prototype69CompilerSourceSHA256": "f4e1acf990877a899ea6d1ca9eb71bf1b64626278be8c150a9af1a44a77d83b3",
+      "sourceSHA256": "74e297934fc8eacecea1b90ee45af5055bbcb3dcb0810bbbc7a4feb3761ffe8a",
+      "genuine68C_SHA256": "00ca926b348b8ee63f6a29bae88deaab4382d2ddf79cf595f94eae030e6c7738",
+      "prototype69C_SHA256": "5d7411f0d72f79fbbe3fd8e7e209142936b2c624ba2e7265b92a06dcbf9ff675",
+      "observations": {
+        "genuine68": 1,
+        "prototype69": 0
+      },
+      "toolchain": "Debian Clang19.1.7 native x86_64 C11 O0 ASan+UBSan",
+      "retainedFiles": [
+        "interop-source.a0",
+        "interop-genuine68.c",
+        "interop-borrow.c"
+      ]
+    },
+    "eligibility": "Only signatures whose params and result recursively contain no io can use existing readonly variants. Effectful calls retain original public value routes; affine capabilities prevent a pure signature from creating an IO callback."
+  },
+  "fixtureFiles": [
+    {
+      "path": "experiments/unification/compiler-codegen/readonly-call/host-mutation.a0",
+      "bytes": 188,
+      "sha256": "74e297934fc8eacecea1b90ee45af5055bbcb3dcb0810bbbc7a4feb3761ffe8a"
+    },
+    {
+      "path": "experiments/unification/compiler-codegen/readonly-call/host-mutation-control.c",
+      "bytes": 2819,
+      "sha256": "00ca926b348b8ee63f6a29bae88deaab4382d2ddf79cf595f94eae030e6c7738"
+    },
+    {
+      "path": "experiments/unification/compiler-codegen/readonly-call/host-mutation-unguarded.c",
+      "bytes": 2821,
+      "sha256": "5d7411f0d72f79fbbe3fd8e7e209142936b2c624ba2e7265b92a06dcbf9ff675"
+    }
+  ],
+  "logs": [
+    {
+      "name": "measured-candidate-focused",
+      "subject": "38e2c1ab219bd105ef388e92344011ef4ef52274",
+      "tests": 13,
+      "passed": 13,
+      "skipped": 0,
+      "bytes": 1446,
+      "sha256": "3530257a171e9099573254e6739aed5cea0399440e5e2c630bceddef3b2c37d5",
+      "text": "✔ ordinary calls use existing readonly variants and retain public value bodies and fallbacks (18.527283ms)\n✔ C ordinary readonly calls preserve aliases, local updates and public ABI (750.185071ms)\n✔ C++ ordinary readonly calls preserve aliases, local updates and public ABI (996.71222ms)\n✔ C buffered readonly calls preserve IO identity, order, strict frames and competing traps (3714.153967ms)\n✔ C host readonly calls preserve IO identity, order, strict frames and competing traps (3620.074366ms)\n✔ C++ buffered readonly calls preserve IO identity, order, strict frames and competing traps (4365.274538ms)\n✔ C++ host readonly calls preserve IO identity, order, strict frames and competing traps (4298.329059ms)\n✔ readonly calls handle aggregate arguments on both sides of the unchanged storage boundary (17685.908047ms)\n✔ C effectful calls preserve snapshots across host mutation of a borrowed public input (890.4559ms)\n✔ C++ effectful calls preserve snapshots across host mutation of a borrowed public input (1272.633142ms)\n✔ genuine68 fixture retains the previous public-call emission (2.316347ms)\n✔ readonly ordinary-call emission rejects genuine68 in-memory bodies and reuses current bodies (4.974752ms)\n✔ readonly ordinary-call emission rejects genuine68 reopened disk-cache bodies (6.877415ms)\nℹ tests 13\nℹ suites 0\nℹ pass 13\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 37784.858717\n"
+    },
+    {
+      "name": "original-final-source-existing-c",
+      "subject": "Final guarded source before original feature commit; retained authoring log, not a new bound-commit run.",
+      "tests": 34,
+      "passed": 33,
+      "skipped": 1,
+      "bytes": 3665,
+      "sha256": "e97e1582916a26ef082b9de469924ddeb9bdbb99b0f463c5daec2c7fa82d66f3",
+      "text": "✔ C host streams preserve words, tokens and input semantics: strict=false, optimize=false (446.535692ms)\n✔ C host streams preserve words, tokens and input semantics: strict=false, optimize=true (518.261809ms)\n✔ C host streams preserve words, tokens and input semantics: strict=true, optimize=false (454.822493ms)\n✔ C host streams preserve words, tokens and input semantics: strict=true, optimize=true (506.574282ms)\n✔ C aggregate iteration extras: owned/ref variants locally update 4096-byte array extras (9256.916381ms)\n✔ C aggregate iteration extras: owned/ref variants locally update nested-record extras (1669.938816ms)\n✔ C aggregate iteration extras: owned/ref variants locally update record extras (1169.649321ms)\n✔ C aggregate iteration extras: owned/ref variants locally update large array extras (12560.568983ms)\n✔ C borrowed iteration results preserve extras: direct extra (336.070799ms)\n✔ C borrowed iteration results preserve extras: moved extra (433.417478ms)\n✔ C borrowed iteration results preserve extras: selected extra (399.208129ms)\n✔ C borrowed iteration results preserve extras: borrowed record field (433.639972ms)\n✔ C iteration state keeps an identical extra snapshot across writes (467.340578ms)\n✔ C repeated extras keep local updates separate, including zero trips and state aliases (865.990507ms)\n✔ C aggregate iteration extras preserve strict traps: ref bounds after local extra update (772.259517ms)\n✔ C aggregate iteration extras preserve strict traps: owned divzero after state update (695.565883ms)\n✔ C public aggregate entries retain by-value ABI and preserve both caller arguments (664.590315ms)\n✔ C aggregate iteration extras preserve IO effects (1352.81488ms)\n✔ C aggregate iteration extras preserve IO effects and strict exhaustion (2068.283105ms)\n✔ C forced parallel map uses borrowed repeated extras and preserves state snapshots (3076.04802ms)\n✔ C callbacks borrow the boundary array while public callbacks keep the value ABI (72.76241ms)\n✔ aggregates: arrays and records are values; get/set index modulo length; at/put literal fields (29.732532ms)\n✔ io: linear tokens order effects; read/write across interpreter, optimizer, and backends (7.30718ms)\n✔ C emission: owned iteration bodies update the loop state in place; large arrays are native-only (7.602632ms)\n✔ fold state passed again as an extra: the loop copies it, so every trip reads the initial value (JS, C) (678.181432ms)\n✔ C emission: aggregates over 4 KiB are borrowed by pointer, returned through out, and held in a static arena (320.806439ms)\n✔ C emission: reading a field or element of an aggregate borrows it; only an in-place write that would clobber a live borrow copies (546.087101ms)\n﹣ C emission: the large-aggregate arena is per thread, so concurrent host calls do not race (4.896981ms) # clang with ThreadSanitizer unavailable\n✔ fold state passed again as an extra: the A0 backends copy it (arm64, x86_64, riscv64, arm32, avr, wasm) (938.375829ms)\n✔ parallel: reductions are recognized only when the state is combined once by an associative, commutative op (11.31425ms)\n✔ parallel: element-wise maps need set state index h(index) and a trip count within the array (1.131472ms)\n✔ parallel: the cost model keeps small folds serial and picks the GPU only in gpu mode (11.541835ms)\n✔ parallel: forced threads match the interpreter (all ops, variable counts, maps, nesting) (5373.568787ms)\n✔ parallel: GPU element functions exist only for element-wise shapes (7.051653ms)\nℹ tests 34\nℹ suites 0\nℹ pass 33\nℹ fail 0\nℹ cancelled 0\nℹ skipped 1\nℹ todo 0\nℹ duration_ms 36587.730948\n"
+    },
+    {
+      "name": "original-final-source-c-family-behavior",
+      "subject": "Final guarded source before original feature commit; retained authoring log, not a new bound-commit run.",
+      "backends": 5,
+      "casesPerBackend": 3083,
+      "bytes": 787,
+      "sha256": "7ebb71ca193eb496d4e11f901aea55ef48ef650b69bb2be5d0fb7866359f4fbb",
+      "text": "c-clang          passed    3083 cases    1069 ms  3083 total cases across 2 profile groups. Group 1 (2321 cases): native C via clang; undefi\nc-gcc            passed    3083 cases     884 ms  3083 total cases across 2 profile groups. Group 1 (2321 cases): native C via /usr/bin/gcc-\ncpp              passed    3083 cases     936 ms  3083 total cases across 2 profile groups. Group 1 (2321 cases): C-compatible output compil\nc-parallel       passed    3083 cases     913 ms  3083 total cases across 2 profile groups. Group 1 (2321 cases): native C via clang with au\nwasm-c           passed    3083 cases     494 ms  3083 total cases across 2 profile groups. Group 1 (2321 cases): Emitted C compiled by Clan\nbehavior: 5 passed, 0 failed, 0 blocked, 0 skipped; 32 skip entries in the ledger\n"
+    }
+  ],
+  "guard": "Final candidate eligibility recursively rejects io in every parameter and the result. Effectful ordinary calls retain their existing value routes; existing owned iteration behavior and the 4096-byte storage boundary are unchanged.",
+  "archivalCounterexampleReplay": [
+    {
+      "subject": "control",
+      "source": "experiments/unification/compiler-codegen/readonly-call/host-mutation-control.c",
+      "sourceSHA256": "00ca926b348b8ee63f6a29bae88deaab4382d2ddf79cf595f94eae030e6c7738",
+      "compile": [
+        "<native-clang>",
+        "-std=c11",
+        "-O0",
+        "-fsanitize=address,undefined",
+        "-fno-sanitize-recover=all",
+        "experiments/unification/compiler-codegen/readonly-call/host-mutation-control.c",
+        "-o",
+        ".a0-tmp/host-mutation-control"
+      ],
+      "compiler": "Debian clang version 19.1.7 (3+b1)",
+      "exitCode": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "subject": "unguarded",
+      "source": "experiments/unification/compiler-codegen/readonly-call/host-mutation-unguarded.c",
+      "sourceSHA256": "5d7411f0d72f79fbbe3fd8e7e209142936b2c624ba2e7265b92a06dcbf9ff675",
+      "compile": [
+        "<native-clang>",
+        "-std=c11",
+        "-O0",
+        "-fsanitize=address,undefined",
+        "-fno-sanitize-recover=all",
+        "experiments/unification/compiler-codegen/readonly-call/host-mutation-unguarded.c",
+        "-o",
+        ".a0-tmp/host-mutation-unguarded"
+      ],
+      "compiler": "Debian clang version 19.1.7 (3+b1)",
+      "exitCode": 0,
+      "stdout": "0\n",
+      "stderr": ""
+    }
+  ],
+  "exactGeneratedCChanges": [
+    {
+      "op": "replace",
+      "oldStart": 1,
+      "oldEnd": 1,
+      "newStart": 1,
+      "newEnd": 1,
+      "old": [
+        "/* Generated by A0 a0c-0.1.68. Exact u32/bool semantics. */"
+      ],
+      "new": [
+        "/* Generated by A0 a0c-0.1.69. Exact u32/bool semantics. */"
+      ]
+    },
+    {
+      "op": "replace",
+      "oldStart": 610,
+      "oldEnd": 610,
+      "newStart": 610,
+      "newEnd": 610,
+      "old": [
+        "  const bool n_valid = a0_av_span(p1, p2, p3);"
+      ],
+      "new": [
+        "  const bool n_valid = a0r_av_span(&p1, p2, p3);"
+      ]
+    },
+    {
+      "op": "replace",
+      "oldStart": 636,
+      "oldEnd": 636,
+      "newStart": 636,
+      "newEnd": 636,
+      "old": [
+        "  const bool n_valid = a0_av_span(p1, p2, p3);"
+      ],
+      "new": [
+        "  const bool n_valid = a0r_av_span(&p1, p2, p3);"
+      ]
+    },
+    {
+      "op": "replace",
+      "oldStart": 3842,
+      "oldEnd": 3855,
+      "newStart": 3842,
+      "newEnd": 3855,
+      "old": [
+        "  const bool n_q13 = a0_ap_is_arrow(p0, p1);",
+        "  const bool n_q12 = a0_ap_is_post(p0, p1);",
+        "  const bool n_q11 = a0_ap_is_pre(p0, p1);",
+        "  const bool n_q10 = a0_ap_is_ex(p0, p1);",
+        "  const bool n_q9 = a0_ap_is_text(p0, p1);",
+        "  const bool n_q8 = a0_ap_is_strict(p0, p1);",
+        "  const bool n_q7 = a0_ap_is_profile(p0, p1);",
+        "  const bool n_q6 = a0_ap_is_patch(p0, p1);",
+        "  const bool n_q5 = a0_ap_is_false(p0, p1);",
+        "  const bool n_q4 = a0_ap_is_true(p0, p1);",
+        "  const bool n_q3 = a0_ap_is_use(p0, p1);",
+        "  const bool n_q2 = a0_ap_is_end(p0, p1);",
+        "  const bool n_q1 = a0_ap_is_ret(p0, p1);",
+        "  const bool n_q0 = a0_ap_is_fn(p0, p1);"
+      ],
+      "new": [
+        "  const bool n_q13 = a0r_ap_is_arrow(&p0, p1);",
+        "  const bool n_q12 = a0r_ap_is_post(&p0, p1);",
+        "  const bool n_q11 = a0r_ap_is_pre(&p0, p1);",
+        "  const bool n_q10 = a0r_ap_is_ex(&p0, p1);",
+        "  const bool n_q9 = a0r_ap_is_text(&p0, p1);",
+        "  const bool n_q8 = a0r_ap_is_strict(&p0, p1);",
+        "  const bool n_q7 = a0r_ap_is_profile(&p0, p1);",
+        "  const bool n_q6 = a0r_ap_is_patch(&p0, p1);",
+        "  const bool n_q5 = a0r_ap_is_false(&p0, p1);",
+        "  const bool n_q4 = a0r_ap_is_true(&p0, p1);",
+        "  const bool n_q3 = a0r_ap_is_use(&p0, p1);",
+        "  const bool n_q2 = a0r_ap_is_end(&p0, p1);",
+        "  const bool n_q1 = a0r_ap_is_ret(&p0, p1);",
+        "  const bool n_q0 = a0r_ap_is_fn(&p0, p1);"
+      ]
+    }
+  ]
+}
