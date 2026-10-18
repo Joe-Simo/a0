@@ -9,15 +9,12 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { getEncoding } from 'js-tiktoken';
 import type * as Backends from '../src/backends.js';
-import { compile } from '../src/backends.js';
 import type * as Core from '../src/core.js';
-import { formatProgram } from '../src/core.js';
 import type * as Dense from '../src/dense.js';
 import type * as Link from '../src/link.js';
-import { link } from '../src/link.js';
 import { committedTree } from './measurement-checkout.js';
 import { writeReport } from './scrub-results.js';
-import { verifyNativeInputs } from './source-native-artifact.js';
+import { verifySourceCostControl } from './source-cost-control.js';
 import { loadSource, systemLoadTriple } from './system-load.js';
 
 const args = process.argv.slice(2);
@@ -51,6 +48,11 @@ for (const checkout of new Set([baseline, root, ...(controlCheckout ? [controlCh
 }
 assert.deepEqual(committedTree(root), identity);
 assert.deepEqual(committedTree(baseline), baselineIdentity);
+// Load every compiler dependency only after the fresh build; Node caches earlier static imports.
+const { compile } = await import('../src/backends.js');
+const { formatProgram } = await import('../src/core.js');
+const { link } = await import('../src/link.js');
+const { verifyNativeInputs } = await import('./source-native-artifact.js');
 const oldCore = (await import(
   pathToFileURL(join(baseline, 'dist/src/core.js')).href
 )) as typeof Core;
@@ -74,6 +76,7 @@ const units = JSON.parse(await readFile(join(experiment, 'inputs/index.json'), '
 const buildText = await readFile(join(artifact, 'build.json'), 'utf8');
 const build = JSON.parse(buildText);
 assert.equal(hash(await readFile(join(artifact, 'frontend.wasm'))), build.wasmSHA256);
+assert.equal((await readFile(join(artifact, 'frontend.wasm'))).length, build.wasmBytes);
 async function verifyBuild(
   checkout: string,
   record: typeof build,
@@ -84,6 +87,11 @@ async function verifyBuild(
   await verifyNativeInputs(checkout, record.nativeInputs);
   assert.equal(record.entry, 'compiler/source_frontend.a0');
   const linked = await linker(join(checkout, record.entry), (path) => readFile(path, 'utf8'));
+  assert.equal(
+    linked.program.functions.length,
+    record.functions,
+    'artifact function count differs',
+  );
   assert.equal(hash(formatter(linked.program)), record.sourceSHA256, 'artifact source differs');
   assert.equal(
     hash(emitter(linked.program, 'c', { cIo: 'host' }).text),
@@ -116,25 +124,12 @@ if (controlArtifact !== undefined) {
     hash(await readFile(join(controlArtifact, 'frontend.wasm'))),
     controlBuild.wasmSHA256,
   );
-  if (controlCheckout === undefined) {
-    for (const field of [
-      'sourceSHA256',
-      'cSHA256',
-      'driverSHA256',
-      'aggregateBytes',
-      'stackBytes',
-      'frontendABI',
-      'nativeInputs',
-      'modules',
-      'libcSHA256',
-      'builtinsSHA256',
-    ])
-      assert.deepEqual(
-        controlBuild[field],
-        build[field],
-        `control differs in ${field}; this comparison permits only Wasm build changes`,
-      );
-  } else {
+  assert.equal(
+    (await readFile(join(controlArtifact, 'frontend.wasm'))).length,
+    controlBuild.wasmBytes,
+  );
+  verifySourceCostControl(build, controlBuild, controlCheckout !== undefined);
+  if (controlCheckout !== undefined) {
     const controlCore = (await import(
       pathToFileURL(join(controlCheckout, 'dist/src/core.js')).href
     )) as typeof Core;
@@ -151,21 +146,6 @@ if (controlArtifact !== undefined) {
       controlCore.formatProgram,
       controlBackends.compile,
     );
-    for (const field of [
-      'sourceSHA256',
-      'modules',
-      'frontendABI',
-      'aggregateBytes',
-      'stackBytes',
-      'libcSHA256',
-      'builtinsSHA256',
-      'clangFlags',
-      'requiredWasmFeatures',
-      'optimization',
-      'symbols',
-      'symbolFlags',
-    ])
-      assert.deepEqual(controlBuild[field], build[field], `transport control differs in ${field}`);
     assert.deepEqual(committedTree(controlCheckout), controlIdentity);
   }
 }
@@ -365,7 +345,7 @@ await writeReport(join(out, 'results.json'), {
   startedAt,
   finishedAt: new Date().toISOString(),
   scope:
-    'Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and modular A0 frontend. Parser/checker plus the same optimized C text emitter. Native instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter and model inference excluded. Equal module and compiled-Wasm preloads in every fresh process; memory includes those preloads and the input. No official source cutover or no-regression conclusion is implied.',
+    'Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and modular A0 frontend. Parser/checker plus the same historical C text emitter. Native instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter and model inference excluded. Compiler modules are preloaded in every fresh process. Each native arm preloads its own recorded Wasm artifact; memory includes that artifact and the input. Wasm module compilation is excluded, instantiation is included. No official source cutover or no-regression conclusion is implied.',
   protocol:
     'Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every arm uses the historical baseline C text emitter, so frontend IR is compared through one fixed backend even when native artifact code generation changes. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution.',
   workerSha256: workerSHA256,

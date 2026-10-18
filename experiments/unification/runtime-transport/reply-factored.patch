@@ -1,0 +1,23 @@
+diff --git a/tools/native/arena_runtime.c b/tools/native/arena_runtime.c
+index f62705d..5955531 100644
+--- a/tools/native/arena_runtime.c
++++ b/tools/native/arena_runtime.c
+@@ -288,13 +288,12 @@ void a0_arena_destroy(a0_arena_session *s) {
+ 
+ uint32_t a0_runtime_read(a0_arena_session *s) {
+   assert(s != NULL);
+-  if (s->request_phase != 0) protocol_failure(s);
+-  if (s->response_position == s->response_count) {
+-    if (s->protocol_failed) {
++  /* Truncated requests and reads without a reply share one failure path. A
++   * failed session queues another error frame once its retained reply drains. */
++  if (s->request_phase != 0 || s->response_position == s->response_count) {
++    if (!s->protocol_failed) protocol_failure(s);
++    if (s->response_position == s->response_count)
+       response(s, A0_ARENA_PROTOCOL, NULL, 0);
+-    } else {
+-      protocol_failure(s);
+-    }
+   }
+   const uint32_t position = s->response_position++;
+   if (s->response_view != NULL && position >= 2)

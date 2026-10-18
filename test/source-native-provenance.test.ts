@@ -1,10 +1,32 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { verifySourceCostControl } from '../tools/source-cost-control.js';
 import { verifyNativeInputs } from '../tools/source-native-artifact.js';
+
+test('matched source cost controls reject compiler and transport confounders', async () => {
+  const build = JSON.parse(await readFile('seed/source-frontend/build.json', 'utf8'));
+  for (const transport of [false, true]) {
+    verifySourceCostControl(build, structuredClone(build), transport);
+    for (const field of ['clang', 'linker', 'sourceSHA256']) {
+      assert.throws(
+        () => verifySourceCostControl(build, { ...build, [field]: 'different' }, transport),
+        new RegExp(field),
+      );
+    }
+  }
+  assert.throws(
+    () => verifySourceCostControl(build, { ...build, nativeInputs: [] }, false),
+    /nativeInputs/,
+  );
+  assert.throws(
+    () => verifySourceCostControl(build, { ...build, clangFlags: [] }, true),
+    /clangFlags/,
+  );
+});
 
 test('native provenance rejects changed transport code and incomplete inventories', async () => {
   const root = await mkdtemp(join(tmpdir(), 'a0-native-inputs-'));

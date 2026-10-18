@@ -15,7 +15,7 @@
   "controlMode": "same-a0-source-separate-native-transport",
   "startedAt": "2026-10-18T08:09:16.765Z",
   "finishedAt": "2026-10-18T08:11:23.591Z",
-  "scope": "Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and modular A0 frontend. Parser/checker plus the same optimized C text emitter. Native instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter and model inference excluded. Equal module and compiled-Wasm preloads in every fresh process; memory includes those preloads and the input. No official source cutover or no-regression conclusion is implied.",
+  "scope": "Frozen flattened whole-program inputs and one historical C text emitter. Native instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter and model inference excluded. All arms preload the compiler modules. Each native arm preloads its own recorded Wasm artifact; memory includes those preloads and the input. Wasm module compilation is excluded; instantiation is included. No official cutover or no-regression conclusion is implied.",
   "protocol": "Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every arm uses the historical baseline C text emitter, so frontend IR is compared through one fixed backend even when native artifact code generation changes. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution.",
   "workerSha256": "5a0a3ed544b6f67766639089423726138aca1771cbf530b4da4ea25ba855af59",
   "preparedInputs": {
@@ -993,5 +993,9 @@
         }
       }
     }
-  ]
+  ],
+  "scopeCorrection": {
+    "reason": "Clarify artifact preloads in the separate-transport comparison; each native arm loads its own recorded artifact. Numerical measurements are unchanged.",
+    "previousScope": "Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and modular A0 frontend. Parser/checker plus the same optimized C text emitter. Native instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter and model inference excluded. Equal module and compiled-Wasm preloads in every fresh process; memory includes those preloads and the input. No official source cutover or no-regression conclusion is implied."
+  }
 }

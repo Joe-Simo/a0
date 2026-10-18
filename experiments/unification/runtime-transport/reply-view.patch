@@ -1,0 +1,68 @@
+diff --git a/tools/native/arena_runtime.c b/tools/native/arena_runtime.c
+index b465430..f62705d 100644
+--- a/tools/native/arena_runtime.c
++++ b/tools/native/arena_runtime.c
+@@ -33,6 +33,7 @@ struct a0_arena_session {
+   uint32_t response[RESPONSE_MAX];
+   uint32_t response_count;
+   uint32_t response_position;
++  const uint32_t *response_view;
+   bool protocol_failed;
+   bool finished;
+   uint32_t finish_code;
+@@ -58,6 +59,7 @@ static void response(a0_arena_session *s, uint32_t status,
+     memcpy(s->response + 2, payload, (size_t)count * sizeof(uint32_t));
+   s->response_position = 0;
+   s->response_count = count + 2;
++  s->response_view = NULL;
+ }
+ 
+ static void protocol_failure(a0_arena_session *s) {
+@@ -66,9 +68,19 @@ static void protocol_failure(a0_arena_session *s) {
+   s->request_phase = 0;
+   s->arguments_received = 0;
+   const uint32_t unread = s->response_count - s->response_position;
+-  if (unread != 0)
++  if (s->response_view != NULL) {
++    /* A pending LOAD prevents every write from reaching the allocation. Only
++     * this error path needs to materialize the retained reply before appending
++     * the protocol-error frame. Header words precede the borrowed payload. */
++    for (uint32_t i = 0; i < unread; i++) {
++      const uint32_t position = s->response_position + i;
++      s->response[i] = position < 2 ? s->response[position]
++                                   : s->response_view[position - 2];
++    }
++  } else if (unread != 0)
+     memmove(s->response, s->response + s->response_position,
+             (size_t)unread * sizeof(uint32_t));
++  s->response_view = NULL;
+   assert(unread + 2 <= RESPONSE_MAX);
+   s->response[unread] = A0_ARENA_PROTOCOL;
+   s->response[unread + 1] = 0;
+@@ -159,7 +171,13 @@ static void access_words(a0_arena_session *s, bool store) {
+              (size_t)count * sizeof(uint32_t));
+     response(s, A0_ARENA_OK, NULL, 0);
+   } else {
+-    response(s, A0_ARENA_OK, slot->words + offset, count);
++    response(s, A0_ARENA_OK, NULL, 0);
++    /* Allocation payloads cannot change until this response is drained:
++     * another request first becomes a sticky protocol failure. Reset/destroy
++     * discard the response together with the allocation. */
++    if (count != 0) s->response_view = slot->words + offset;
++    s->response[1] = count;
++    s->response_count += count;
+   }
+ }
+ 
+@@ -278,7 +296,10 @@ uint32_t a0_runtime_read(a0_arena_session *s) {
+       protocol_failure(s);
+     }
+   }
+-  return s->response[s->response_position++];
++  const uint32_t position = s->response_position++;
++  if (s->response_view != NULL && position >= 2)
++    return s->response_view[position - 2];
++  return s->response[position];
+ }
+ 
+ void a0_runtime_write(a0_arena_session *s, uint32_t word) {
