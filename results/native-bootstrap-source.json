@@ -1,0 +1,177 @@
+{
+  "schema": 1,
+  "status": "passed-targeted-controls",
+  "sourceCommit": "43e7dcd0e5371fc920b81cfa3b7e5fd6b77b0a3d",
+  "sourceTree": "7eb9503e7f30fd1758665e303414b95219693f9e",
+  "cleanAtVerification": true,
+  "scope": "Explicit native A0 source graph and formatter to checked IR for stage-1 setup; existing TS C backend retained. No public or seed default cutover.",
+  "checks": {
+    "build": "passed",
+    "lint": "passed",
+    "typecheck": "passed",
+    "seedFreshness": "passed",
+    "unit": {
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nativeControls": {
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "fullRepositoryGate": "not run for this isolated increment"
+  },
+  "authority": {
+    "sourceParsing": "shared A0 frontend",
+    "sourceChecking": "shared A0 checker and spec verifier",
+    "sourceFormatting": "shared A0 formatter",
+    "stage1Backend": "existing TypeScript C backend",
+    "optimizer": "existing backend optimizer; transformed IR may be retyped in TypeScript",
+    "hostSourceFallback": false,
+    "wholeSourceReparseInBridge": false,
+    "borrowedFrontendRemainsOpen": true,
+    "specOnlyDependenciesRetained": true,
+    "loopBodyPredicateAndTransitiveSpecHelpers": true,
+    "originalTypedFunctionIdentityRetained": true
+  },
+  "nativeArtifacts": {
+    "frontend": {
+      "bytes": 359944,
+      "sha256": "ed1de3810216510b88fe318d56dd519c44fd79ffbfce5fe776bea7305b96c147",
+      "diagnosticPorts": "arena-v1",
+      "compilerModuleInventoryMatches": true,
+      "bootstrapCompilerInputInventoryMatches": true,
+      "nativeTransportInventoryMatches": true
+    },
+    "formatter": {
+      "bytes": 67979,
+      "sha256": "06018437873a08eea5ded83955f9b0ee29816aebaf40830c8f4dd5e7ba37c46b",
+      "allRecordedInputsMatch": true
+    }
+  },
+  "fixedPoint": {
+    "sourceBytes": 402769,
+    "sourceSHA256": "eb97d0c9b795b06b11af1482280b6ddb6376e01e9536b93f32692cf6abeb7661",
+    "stage1CBytes": 2063936,
+    "stage1CSHA256": "58d12e4f44e00e5226b3dcd0aec9db0acfe28d31ac3442d6c1d80b2f8040937f",
+    "stages": [
+      {
+        "stage": 2,
+        "accepted": true,
+        "stdout": "",
+        "stderr": "",
+        "cBytes": 2460347,
+        "cSHA256": "0ed32c959f4bb23b06f1d50b570d08a7c05e7230a09ad7446e13a0e9e638716c",
+        "identicalToPrevious": null,
+        "nativeBuilt": true
+      },
+      {
+        "stage": 3,
+        "accepted": true,
+        "stdout": "",
+        "stderr": "",
+        "cBytes": 2460347,
+        "cSHA256": "0ed32c959f4bb23b06f1d50b570d08a7c05e7230a09ad7446e13a0e9e638716c",
+        "identicalToPrevious": true,
+        "nativeBuilt": true
+      },
+      {
+        "stage": 4,
+        "accepted": true,
+        "stdout": "",
+        "stderr": "",
+        "cBytes": 2460347,
+        "cSHA256": "0ed32c959f4bb23b06f1d50b570d08a7c05e7230a09ad7446e13a0e9e638716c",
+        "identicalToPrevious": true,
+        "nativeBuilt": true
+      }
+    ],
+    "resources": {
+      "arenaWords": 100000000,
+      "outputWords": 100000000,
+      "quantum": 97,
+      "resumes": 10000000,
+      "inputCapacity": 1,
+      "outputCapacity": 1,
+      "flags": 0,
+      "stackBytes": 1073741824
+    },
+    "cCompiler": {
+      "name": "clang",
+      "version": "Debian clang version 19.1.7 (3+b1)"
+    },
+    "flags": [
+      "-std=c11",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-Wno-unused-parameter",
+      "-fsanitize=undefined",
+      "-fno-sanitize-recover=all",
+      "-pthread"
+    ]
+  },
+  "verifiedSeedComparison": {
+    "seedCSHA256": "3ed1284a3ba79243079fd39c5792a8de671f31e76dccecbc4ffe6adc06cd2660",
+    "setupCBytes": 1940405,
+    "setupCSHA256": "22d0babd749fa57a65f49a2a37243202009a10642c3afd35469ee0ee93b92a95",
+    "frozenFlatSourceSHA256": "eb97d0c9b795b06b11af1482280b6ddb6376e01e9536b93f32692cf6abeb7661",
+    "emittedCBytes": 2460347,
+    "emittedCSHA256": "0ed32c959f4bb23b06f1d50b570d08a7c05e7230a09ad7446e13a0e9e638716c",
+    "identicalToNativeSetupStage2": true
+  },
+  "setupSizeComparison": {
+    "nativeIRSetupCBytes": 2063936,
+    "verifiedSeedSetupCBytes": 1940405,
+    "deltaBytes": 123531,
+    "interpretation": "The explicit native-IR stage-1 setup emits more C bytes. Both resulting compilers emit identical stage-2 C. This is not a default-adoption or size-improvement result."
+  },
+  "independentTargetControls": {
+    "cBuilds": [
+      "O0+UBSan",
+      "O2+UBSan"
+    ],
+    "oracle": "wrapping u32 fold: 7→13, UINT32_MAX→5",
+    "contractFailure": {
+      "status": 8,
+      "destinationBytesUnchanged": true
+    },
+    "originalInputBytesUnchanged": true
+  },
+  "initialFailure": {
+    "tests": 3,
+    "passed": 2,
+    "failed": 1,
+    "skipped": 0,
+    "reason": "Graph control omitted -> bool on its predicate helper; native A0201 correctly refused it. Fixture corrected; implementation and acceptance assertions unchanged.",
+    "log": "logs/initial-fixture-failure.log"
+  },
+  "review": {
+    "prereview": {
+      "findings": [],
+      "score": 0,
+      "verdict": "ok"
+    },
+    "independentStaticReview": "No blocker; loop predicate/body and transitive spec-only dependency control added on request."
+  },
+  "archive": {
+    "path": "results/native-bootstrap-source-artifacts.zip",
+    "bytes": 1593281,
+    "sha256": "b2178b1c93c97446180f30b8c66548740195fbfd0ac1c8bdd103ca1d890c1313",
+    "members": 30,
+    "digestPolicy": "Program source, C, runtime and Wasm bytes unchanged. Only JSON/log metadata paths normalized; members.json records raw and stored digests."
+  },
+  "limitations": [
+    "Public source defaults, historical bootstrap readers and checked-in C seed are unchanged.",
+    "Native frontend and formatter were supplied as source-bound compiled artifacts; this does not replace their release bootstrap chain.",
+    "The C-stage proof ran on Linux x86_64 with clang; this increment has no new Windows or macOS platform gate.",
+    "AArch64 executable/assembly fixed points, old Wasm source-mode and site wasmTool migration remain open.",
+    "Configured source, arena, output, stack and resume limits still apply; no unbounded capacity claim.",
+    "Stage-1 generated C is larger than the unchanged verified-seed setup for the same service; cost gates remain open.",
+    "No timing, RSS, memory, binary-size or AI-edit efficiency improvement is established by this integration."
+  ]
+}

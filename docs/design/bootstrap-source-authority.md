@@ -34,6 +34,15 @@ A0_BOOTSTRAP_FORMAT=PATH_TO_FORMATTER \
 node --test --test-concurrency=1 dist/test/bootstrap-source.controls.js
 ```
 
+The focused run and retained artifacts are recorded in
+`results/native-bootstrap-source.json` and
+`results/native-bootstrap-source-artifacts.zip`. The native setup and verified-seed
+setup emit identical C from the same frozen flat compiler source; native stages
+2–4 reproduce that C. The native stage-1 setup itself generates more C bytes than
+the unchanged verified-seed setup, so this record establishes the handoff and
+fixed point, not a cost improvement. The full repository and platform gates remain
+pending for this increment.
+
 The remaining dependency order is:
 
 1. Establish this native source-to-IR stage-1 handoff and C fixed point, retaining
