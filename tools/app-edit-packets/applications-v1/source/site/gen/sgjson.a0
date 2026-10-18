@@ -1,0 +1,1570 @@
+# Site generator, module 6: phase B, the JSON files streamed through a tokenizer into one data
+# table (u32x128x64). Each file is read a 128-word page (512 bytes) at a time; a byte loop whose
+# state is the table itself tokenizes it, and every completed token is an event handled at once
+# by the extractor of the file's role (a fold of count 0 or 1, so the table updates in place).
+# Tokenizer words: 0 mode (0 between tokens, 1 string, 2 number, 3 literal) 1 depth 2 escape
+# 3 string is a key 4 string hash 5 captured bytes 6 integer part 7 fraction digits (9 of them
+# after the event) 8 fraction digit count 9 in fraction 10 in exponent 11 literal's first byte
+# 12 a key is expected 13 role (1 exec 2 cost 3 edit 4 par 6 axes 7 hw 8 tokfx, 9 b48, 10 densetok, 11 verification, 12 cl, 13 wasm, 0 ignore) 14 cost file slot
+# 15 event (1 key 2 string 3 number 4 true 5 false 6 null 7 open 9 close) 16 event depth
+# 32 + d key hash at depth d, 48 + d array index, 64 + d container (1 object 2 array)
+# 80..87 the first 32 bytes of the last string. Data from 128 (the extractors below).
+use "sgread.a0"
+
+fn g u32x128x64 u32 -> u32
+r call rd64 p0 p1
+ret r
+end
+fn key u32x128x64 u32 -> u32
+i add p1 32
+r call rd64 p0 i
+ret r
+end
+# does the key at depth p1 equal word p3 of the store p2
+fn kis u32x128x64 u32 u32x128x512 u32 -> bool
+k call key p0 p1
+h call whash p2 p3
+r eq k h
+ret r
+end
+fn evis u32x128x64 u32 u32 -> bool
+t call g p0 15
+d call g p0 16
+a eq t p1
+b eq d p2
+r and a b
+ret r
+end
+fn hashis u32x128x64 u32x128x512 u32 -> bool
+h call g p0 4
+w call whash p1 p2
+r eq h w
+ret r
+end
+# the number of the event in units of 1/p1 (p1 a power of ten up to 10^9), truncated
+fn num u32x128x64 u32 -> u32
+ip call g p0 6
+fr call g p0 7
+a mul ip p1
+d div 1000000000 p1
+f div fr d
+r add a f
+ret r
+end
+# write the table word p2 := p3 when the fold count is 1
+fn cpcap u32x128x64 u32 u32 -> u32x128x64
+s add 80 p1
+v call rd64 p0 s
+d add p2 p1
+r fold wr64 1 p0 d v
+ret r
+end
+# copy the captured string to [p2, p2 + 8) and its length to p3 when p1
+fn savecap u32x128x64 bool u32 u32 -> u32x128x64
+c select p1 1 0
+c8 select p1 8 0
+n call g p0 5
+s1 fold cpcap c8 p0 p2
+s2 fold wr64 c s1 p3 n
+ret s2
+end
+fn lkmore u32 u32 u32x128x64 u32 u32 u32 -> bool
+lt0 lt p0 p4
+a add p3 p0
+h call rd64 p2 a
+ne0 ne h p5
+r and lt0 ne0
+ret r
+end
+fn lkstep u32 u32 u32x128x64 u32 u32 u32 -> u32
+r add p0 1
+ret r
+end
+# index of hash p3 among the p2 words from p1, else p2
+fn lookup u32x128x64 u32 u32 u32 -> u32
+r loop lkmore lkstep p2 0 p0 p1 p2 p3
+ret r
+end
+fn max u32 u32 -> u32
+a lt p0 p1
+r select a p1 p0
+ret r
+end
+fn addw u32x128x64 u32 u32 u32 -> u32x128x64
+v call rd64 p0 p2
+w add v p3
+r fold wr64 1 p0 p2 w
+ret r
+end
+
+# ---- exec: results/exec-benchmark-full.json, into the axes table (20 kernels, 64 languages)
+# 2700 kernels, 2701 languages, 2702 + g startup group counts; kernel k: name 2704 + 8k, length
+# 2864 + k, fields 2884 + 16k (0 has arm64, 1 arm64 2 handwritten C 3 Rust 4 JavaScript ns x 10^4,
+# 5 a0 build 6 rustc build ms x 10^3, 7 emitted 8 handwritten startup ms x 10^6, 9 emitted binary
+# bytes); language l: id hash 3204 + l, family 3268 + l (1 compiled-native 2 interpreted 3 other),
+# ran 3332 + l, label length 3396 + l, label 3460 + 8l; median ns x 10^4 + 1 of language l on kernel
+# k 3972 + 20l + k (0 where it did not run); startup group g entry e (e < 32): id hash 5252 + 32g + e,
+# id length 5316 + ..., id 5380 + 8(32g + e), value + 1 on kernel k 5892 + 20(32g + e) + k (ms x 10^6).
+# Per kernel, arm64VsBestFlags: hash of the best's name 7172 + k, speedup x 1000 7192 + k, best ns x 100
+# 7212 + k, verdict (1 win 2 tie 3 loss) 7232 + k; the file's win, tie, loss counts 7260 to 7262 and
+# the highest load at a sample start x 100 at 7263.
+fn hexec u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+kk call kis p0 1 p2 0
+kl call kis p0 1 p2 1
+nk call g p0 2700
+nl call g p0 2701
+ck sub nk 1
+cl sub nl 1
+iskey eq t 1
+isnum eq t 3
+isstr eq t 2
+d2 eq d 2
+d3 eq d 3
+d4 eq d 4
+d5 eq d 5
+# a new kernel or language
+x0 and iskey d2
+nkx and x0 kk
+nlx and x0 kl
+kb shl nk 3
+kn add kb 2704
+knl add nk 2864
+s1 call savecap p0 nkx kn knl
+nk1 add nk 1
+c1 select nkx 1 0
+s2 fold wr64 c1 s1 2700 nk1
+lh call g s2 4
+lslot add nl 3204
+c2 select nlx 1 0
+s3 fold wr64 c2 s2 lslot lh
+nl1 add nl 1
+s4 fold wr64 c2 s3 2701 nl1
+# kernels.K.LID.medianNsPerCall / status
+lid call key s4 3
+li call lookup s4 3204 nl lid
+found lt li nl
+m4 call kis s4 4 p2 5
+st4 call kis s4 4 p2 4
+y0 and kk d4
+y1 and y0 found
+ym0 and y1 isnum
+ym and ym0 m4
+lk mul li 20
+lk2 add lk ck
+mi add lk2 3972
+v4 call num s4 10000
+v4p add v4 1
+c3 select ym 1 0
+s5 fold wr64 c3 s4 mi v4p
+rf3 add li 3332
+s5b fold wr64 c3 s5 rf3 1
+s6 fold wr64 0 s5b 0 0
+# kernels.K.startup*.LID
+gi call kis s6 3 p2 17
+gc call kis s6 3 p2 18
+gs or gi gc
+g1 select gc 1 0
+z0 and kk d4
+z1 and z0 isnum
+zs and z1 gs
+cntw add g1 2702
+cnt call g s6 cntw
+tb0 shl g1 5
+tb add tb0 5252
+sh call key s6 4
+ei call lookup s6 tb cnt sh
+new eq ei cnt
+zn and zs new
+c5 select zn 1 0
+hs add tb ei
+s7 fold wr64 c5 s6 hs sh
+en add tb0 ei
+enl add en 5316
+en8 shl en 3
+ens add en8 5380
+s8 call savecap s7 zn ens enl
+cnt1 add cnt 1
+s9 fold wr64 c5 s8 cntw cnt1
+sv call num s9 1000000
+sv1 add sv 1
+e16 mul en 20
+e16k add e16 ck
+evi add e16k 5892
+c6 select zs 1 0
+s10 fold wr64 c6 s9 evi sv1
+# kernels.K.c.X.Y and kernels.K.js.handwritten.medianNsPerCall
+kc call kis s10 3 p2 6
+kj call kis s10 3 p2 11
+q0 and kk d5
+q1 and q0 isnum
+arm call kis s10 4 p2 7
+hw call kis s10 4 p2 8
+rs call kis s10 4 p2 9
+bm call kis s10 4 p2 12
+sm call kis s10 4 p2 15
+bb call kis s10 4 p2 16
+med call kis s10 5 p2 5
+a0n call kis s10 5 p2 13
+rsc call kis s10 5 p2 14
+emi call kis s10 5 p2 10
+hw5 call kis s10 5 p2 8
+qc and q1 kc
+qm and qc med
+kf0 shl ck 4
+kf add kf0 2884
+ns call num s10 10000
+ms3 call num s10 1000
+ms6 call num s10 1000000
+ints call num s10 1
+fa and qm arm
+ca select fa 1 0
+f0 add kf 0
+f1 add kf 1
+s11 fold wr64 ca s10 f0 1
+s12 fold wr64 ca s11 f1 ns
+fh and qm hw
+ch select fh 1 0
+f2 add kf 2
+s13 fold wr64 ch s12 f2 ns
+fr0 and qm rs
+cr select fr0 1 0
+f3 add kf 3
+s14 fold wr64 cr s13 f3 ns
+qj0 and q1 kj
+qj1 and qj0 hw
+qj and qj1 med
+cj select qj 1 0
+f4 add kf 4
+s15 fold wr64 cj s14 f4 ns
+qb and qc bm
+fb5 and qb a0n
+c7 select fb5 1 0
+f5 add kf 5
+s16 fold wr64 c7 s15 f5 ms3
+fb6 and qb rsc
+c8 select fb6 1 0
+f6 add kf 6
+s17 fold wr64 c8 s16 f6 ms3
+qs and qc sm
+fs7 and qs emi
+c9 select fs7 1 0
+f7 add kf 7
+s18 fold wr64 c9 s17 f7 ms6
+fs8 and qs hw5
+c10 select fs8 1 0
+f8 add kf 8
+s19 fold wr64 c10 s18 f8 ms6
+qbb and qc bb
+fb9 and qbb emi
+c11 select fb9 1 0
+f9 add kf 9
+s20 fold wr64 c11 s19 f9 ints
+# languages.LID.label / family / status
+w0 and kl d3
+w1 and w0 isstr
+lab call kis s20 3 p2 2
+fam call kis s20 3 p2 3
+sta call kis s20 3 p2 4
+ran call hashis s20 p2 42
+wl and w1 lab
+l8 shl cl 3
+ldst add l8 3460
+llen add cl 3396
+s21 call savecap s20 wl ldst llen
+cn call hashis s21 p2 44
+it call hashis s21 p2 45
+fv0 select it 2 3
+fv select cn 1 fv0
+wf and w1 fam
+c12 select wf 1 0
+fslot add cl 3268
+s22 fold wr64 c12 s21 fslot fv
+ws0 and w1 sta
+wsr and ws0 ran
+c13 select wsr 1 0
+rslot add cl 3332
+s23 fold wr64 c13 s22 rslot 1
+# kernels.K.arm64VsBestFlags.best / bestNsPerCall / speedup / verdict
+bf call kis s23 3 p2 451
+bsk call kis s23 4 p2 454
+bnk call kis s23 4 p2 452
+spk call kis s23 4 p2 453
+vdk call kis s23 4 p2 455
+b0 and kk d4
+b1 and b0 bf
+bs0 and b1 isstr
+bsc and bs0 bsk
+vsc and bs0 vdk
+bsel select bsc 1 0
+bh call g s23 4
+bhi add 7172 ck
+s24 fold wr64 bsel s23 bhi bh
+iw2 call hashis s24 p2 365
+it2 call hashis s24 p2 366
+vt0 select it2 2 3
+vv select iw2 1 vt0
+vsel select vsc 1 0
+vi2 add 7232 ck
+s25 fold wr64 vsel s24 vi2 vv
+bn0 and b1 isnum
+bnc and bn0 bnk
+spc and bn0 spk
+bnsel select bnc 1 0
+spsel select spc 1 0
+bni add 7212 ck
+spi add 7192 ck
+bnv call num s25 100
+spv call num s25 1000
+s26 fold wr64 bnsel s25 bni bnv
+s27 fold wr64 spsel s26 spi spv
+# arm64VsBestFlags.win / tie / loss, loadGate.highestLoadAtSampleStart
+rb call kis s27 1 p2 451
+lg2 call kis s27 1 p2 456
+kw call kis s27 2 p2 365
+kt2 call kis s27 2 p2 366
+kl2 call kis s27 2 p2 367
+hl call kis s27 2 p2 457
+nr0 and isnum d2
+nr1 and nr0 rb
+cw2 and nr1 kw
+ct2 and nr1 kt2
+cl2 and nr1 kl2
+nl0 and nr0 lg2
+chl and nl0 hl
+wsel select cw2 1 0
+tsel select ct2 1 0
+lsel select cl2 1 0
+hsel select chl 1 0
+vsm call num s27 1
+v100 call num s27 100
+s28 fold wr64 wsel s27 7260 vsm
+s29 fold wr64 tsel s28 7261 vsm
+s30 fold wr64 lsel s29 7262 vsm
+s31 fold wr64 hsel s30 7263 v100
+ret s31
+end
+
+# ---- cost: results/ai-edit-experiment.*.json, slot p (14): per representation r (the `m cost`
+# lines, hashes 8100 + r, count 8108) at 6800 + 6(8p + r): trials, model calls, primer tokens,
+# code tokens, write tokens, accepted; the trial being read at 7760: representation, structured,
+# calls, primer, code, write, accepted.
+fn celladd u32x128x64 u32 u32 -> u32x128x64
+a add 7760 p1
+a2 add a 1
+v call rd64 p0 a2
+f0 eq p1 0
+vv select f0 1 v
+d add p2 p1
+r fold addw 1 p0 d vv
+ret r
+end
+fn clr u32x128x64 u32 -> u32x128x64
+a add 7760 p1
+z0 eq p1 0
+v select z0 255 0
+r fold wr64 1 p0 a v
+ret r
+end
+fn hcost u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+tr call kis p0 1 p2 19
+d3 eq d 3
+d4 eq d 4
+op0 eq t 7
+op1 and op0 d3
+op and op1 tr
+co select op 7 0
+s1 fold clr co p0
+isstr eq t 2
+isnum eq t 3
+istrue eq t 4
+a0 and tr d3
+rep call kis s1 3 p2 20
+pro call kis s1 3 p2 21
+acc call kis s1 3 p2 22
+mc call kis s1 3 p2 23
+tbl call kis s1 3 p2 24
+h call g s1 4
+nr call g s1 8108
+ri call lookup s1 8100 nr h
+b0 and a0 isstr
+br and b0 rep
+c1 select br 1 0
+s2 fold wr64 c1 s1 7760 ri
+st call hashis s2 p2 43
+bp0 and b0 pro
+bp and bp0 st
+c2 select bp 1 0
+s3 fold wr64 c2 s2 7761 1
+n0 and a0 isnum
+nm and n0 mc
+ints call num s3 1
+c3 select nm 1 0
+s4 fold wr64 c3 s3 7762 ints
+ba0 and a0 istrue
+ba and ba0 acc
+c4 select ba 1 0
+s5 fold wr64 c4 s4 7766 1
+e0 and tr d4
+e1 and e0 isnum
+e2 call kis s5 3 p2 24
+e3 and e1 e2
+lp call kis s5 4 p2 25
+wp call kis s5 4 p2 26
+tc call kis s5 4 p2 27
+ou call kis s5 4 p2 28
+pp or lp wp
+x1 and e3 pp
+c5 select x1 1 0
+s6 fold addw c5 s5 7763 ints
+x2 and e3 tc
+c6 select x2 1 0
+s7 fold addw c6 s6 7764 ints
+x3 and e3 ou
+c7 select x3 1 0
+s8 fold addw c7 s7 7765 ints
+# the end of a trial: add it to its representation when structured
+cl0 eq t 9
+cl1 and cl0 d3
+cl and cl1 tr
+r0 call g s8 7760
+sr call g s8 7761
+okr lt r0 nr
+oks eq sr 1
+ok0 and okr oks
+ok and ok0 cl
+cc select ok 6 0
+slot call g s8 14
+sl8 shl slot 3
+slr add sl8 r0
+sl6 mul slr 6
+base add sl6 6800
+s9 fold celladd cc s8 base
+ret s9
+end
+
+# ---- edit: results/edit-loop(.quiet).json. 7768 rows 7769 load maximum (x 100) 7770 quiet run;
+# row i at 7771 + 11i: kind hash, median ms x 1000, kind length, kind (8 words)
+fn hedit u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+d4 eq d 4
+isnum eq t 3
+isstr eq t 2
+ld call kis p0 1 p2 29
+la call kis p0 3 p2 30
+l0 and ld la
+l1 and l0 d4
+l2 and l1 isnum
+v call num p0 100
+m call g p0 7769
+mx call max m v
+c1 select l2 1 0
+s1 fold wr64 c1 p0 7769 mx
+so call kis s1 1 p2 31
+ro call kis s1 2 p2 32
+r0 and so ro
+r1 and r0 d4
+ki call kis s1 4 p2 33
+me call kis s1 4 p2 34
+i call g s1 51
+i11 mul i 11
+rb add i11 7771
+kstr0 and r1 isstr
+kstr and kstr0 ki
+h call g s1 4
+c2 select kstr 1 0
+s2 fold wr64 c2 s1 rb h
+rb2 add rb 2
+rb3 add rb 3
+s3 call savecap s2 kstr rb3 rb2
+n call g s3 7768
+i1 add i 1
+nn call max n i1
+s4 fold wr64 c2 s3 7768 nn
+kn0 and r1 isnum
+kn and kn0 me
+ms call num s4 1000
+rb1 add rb 1
+c3 select kn 1 0
+s5 fold wr64 c3 s4 rb1 ms
+ret s5
+end
+
+# ---- par: results/parallel.json. 7948 cpus 7949 samples 7950 quiet 7951 load maximum (x 100)
+# 7952 kernels; kernel k at 7953 + 20k: name (8 words), length, trips, A0 ns x 10, then per
+# implementation j (the `m par` lines, hashes 8110 + j, count 8119) ratio x 10^5 + 1
+fn hpar u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+isnum eq t 3
+iskey eq t 1
+istrue eq t 4
+d1 eq d 1
+d2 eq d 2
+d3 eq d 3
+d4 eq d 4
+ints call num p0 1
+cp call kis p0 1 p2 35
+sa call kis p0 1 p2 36
+a0 and d1 isnum
+a1 and a0 cp
+c1 select a1 1 0
+s1 fold wr64 c1 p0 7948 ints
+a2 and a0 sa
+c2 select a2 1 0
+s2 fold wr64 c2 s1 7949 ints
+lo call kis s2 1 p2 29
+qu call kis s2 2 p2 37
+at call kis s2 2 p2 38
+b0 and lo d2
+b1 and b0 istrue
+b2 and b1 qu
+c3 select b2 1 0
+s3 fold wr64 c3 s2 7950 1
+b3 and lo d3
+b4 and b3 isnum
+b5 and b4 at
+v100 call num s3 100
+m call g s3 7951
+mx call max m v100
+c4 select b5 1 0
+s4 fold wr64 c4 s3 7951 mx
+kk call kis s4 1 p2 0
+nk call g s4 7952
+k0 and kk d2
+k1 and k0 iskey
+nb0 mul nk 20
+nb add nb0 7953
+nl add nb 8
+s5 call savecap s4 k1 nb nl
+nk1 add nk 1
+c5 select k1 1 0
+s6 fold wr64 c5 s5 7952 nk1
+ck sub nk 1
+kb0 mul ck 20
+kb add kb0 7953
+tp call kis s6 3 p2 39
+t0 and kk d3
+t1 and t0 isnum
+t2 and t1 tp
+c6 select t2 1 0
+kb9 add kb 9
+s7 fold wr64 c6 s6 kb9 ints
+mn call kis s7 3 p2 5
+au call kis s7 4 p2 40
+bl call kis s7 3 p2 41
+u0 and kk d4
+u1 and u0 isnum
+u2 and u1 mn
+u3 and u2 au
+v10 call num s7 10
+c7 select u3 1 0
+kb10 add kb 10
+s8 fold wr64 c7 s7 kb10 v10
+u4 and u1 bl
+lid call key s8 4
+np call g s8 8119
+j call lookup s8 8110 np lid
+jf lt j np
+u5 and u4 jf
+r5 call num s8 100000
+r51 add r5 1
+c8 select u5 1 0
+kb11 add kb 11
+kj add kb11 j
+s9 fold wr64 c8 s8 kj r51
+ret s9
+end
+
+# ---- axes: results/lang-axes.json, read into a table of its own. 128 languages; language s (< 64):
+# id hash 192 + s, label 256 + 8s, label length 768 + s, family 832 + s (as in exec), kernel
+# source tokens 896 + s, static check ms x 1000 + 1 at 1152 + s and check + run at 1216 + s (0 when
+# the language has none); 1355 tokens.a0.dense.vsBest.languagesRanked; 1344 the largest 1-minute load average x 100 of any round, 1345 cpus.
+fn haxes u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iskey eq t 1
+isnum eq t 3
+isstr eq t 2
+d1 eq d 1
+d2 eq d 2
+d3 eq d 3
+d5 eq d 5
+kt call kis p0 1 p2 227
+kv call kis p0 1 p2 228
+# a new language: an id key under tokens, or under validation when tokens did not have it
+x0 and iskey d2
+nl call g p0 128
+lid call key p0 2
+sl0 call lookup p0 192 nl lid
+isnew ge sl0 nl
+nv and kv isnew
+tn or kt nv
+x1 and x0 tn
+c1 select x1 1 0
+iw add nl 192
+s1 fold wr64 c1 p0 iw lid
+nl1 add nl 1
+s2 fold wr64 c1 s1 128 nl1
+n2 call g s2 128
+sl call lookup s2 192 n2 lid
+found lt sl n2
+v3 and found d3
+# tokens.ID.label, family, sumKernelTokens
+ls0 and v3 isstr
+ls1 and ls0 kt
+lb call kis s2 3 p2 2
+fa call kis s2 3 p2 3
+lbc and ls1 lb
+fac and ls1 fa
+l8 shl sl 3
+ld add l8 256
+ln add sl 768
+s3 call savecap s2 lbc ld ln
+cn call hashis s3 p2 44
+it call hashis s3 p2 45
+a0 call hashis s3 p2 47
+fv0 select it 2 3
+fv1 select cn 1 fv0
+fv select a0 0 fv1
+cf select fac 1 0
+fi add sl 832
+s4 fold wr64 cf s3 fi fv
+nm0 and v3 isnum
+nm1 and nm0 kt
+sk call kis s4 3 p2 229
+nsk and nm1 sk
+csk select nsk 1 0
+ski add sl 896
+v1 call num s4 1
+s5 fold wr64 csk s4 ski v1
+# validation.ID.checkMedianMs, checkRunMedianMs: milliseconds x 1000, plus one
+vm0 and v3 isnum
+vm1 and vm0 kv
+ck call kis s5 3 p2 230
+cr call kis s5 3 p2 231
+nck and vm1 ck
+ncr and vm1 cr
+cck select nck 1 0
+ccr select ncr 1 0
+v1000 call num s5 1000
+vp add v1000 1
+cki add sl 1152
+cri add sl 1216
+s6 fold wr64 cck s5 cki vp
+s7 fold wr64 ccr s6 cri vp
+# load.perRound[].loadavg[0] and cpus
+lk call kis s7 1 p2 29
+pk call kis s7 2 p2 233
+av call kis s7 4 p2 30
+ix call g s7 53
+i0 eq ix 0
+q0 and isnum d5
+q1 and q0 lk
+q2 and q1 pk
+q3 and q2 av
+q4 and q3 i0
+v100 call num s7 100
+m call g s7 1344
+mx call max m v100
+cq select q4 1 0
+s8 fold wr64 cq s7 1344 mx
+cp0 call kis s8 1 p2 35
+cp1 and isnum d1
+cp2 and cp1 cp0
+cpc select cp2 1 0
+cpv call num s8 1
+s9 fold wr64 cpc s8 1345 cpv
+# tokenKernels[]: one string a kernel, counted at 1346
+tkk call kis s9 1 p2 486
+tkd and isstr tkk
+tke and tkd d2
+tkn call g s9 1346
+tkn1 add tkn 1
+tkc select tke 1 0
+s10 fold wr64 tkc s9 1346 tkn1
+# tokens.a0.dense.vsBest.languagesRanked at 1355: how many languages the dense token rank is over
+lr0 and isnum d5
+lr1 and lr0 kt
+la call kis s10 2 p2 47
+ldn call kis s10 3 p2 380
+lvb call kis s10 4 p2 493
+llr call kis s10 5 p2 494
+lr2 and lr1 la
+lr3 and lr2 ldn
+lr4 and lr3 lvb
+lr5 and lr4 llr
+clr select lr5 1 0
+lrv call num s10 1
+s11 fold wr64 clr s10 1355 lrv
+ret s11
+end
+
+# ---- hw: results/hardware.json, into the axes table. 1400 modules synthesized, 1401 their cells in
+# all, 1402 the cells of the largest, 1403 functions, 1404 input cases, 1560 modules simulated,
+# 1600 + i mean cycles x 100 of simulated module i.
+fn hhw u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iskey eq t 1
+isnum eq t 3
+d1 eq d 1
+d3 eq d 3
+d4 eq d 4
+ks call kis p0 1 p2 295
+km call kis p0 2 p2 296
+x0 and iskey d3
+x1 and x0 ks
+x2 and x1 km
+c1 select x2 1 0
+n call g p0 1400
+n1 add n 1
+s1 fold wr64 c1 p0 1400 n1
+y0 and isnum d4
+y1 and y0 ks
+y2 and y1 km
+kc call kis s1 4 p2 297
+y and y2 kc
+cy select y 1 0
+v call num s1 1
+sum call g s1 1401
+sum2 add sum v
+s2 fold wr64 cy s1 1401 sum2
+mx call g s2 1402
+m2 call max mx v
+s3 fold wr64 cy s2 1402 m2
+kfn call kis s3 1 p2 298
+kin call kis s3 1 p2 299
+z0 and isnum d1
+zf and z0 kfn
+zi and z0 kin
+cf select zf 1 0
+ci select zi 1 0
+s4 fold wr64 cf s3 1403 v
+s5 fold wr64 ci s4 1404 v
+ksim call kis s5 1 p2 339
+kcy call kis s5 2 p2 340
+kmc call kis s5 4 p2 341
+q1 and iskey d3
+q2 and q1 ksim
+q3 and q2 kcy
+cq select q3 1 0
+nc call g s5 1560
+nc1 add nc 1
+s6 fold wr64 cq s5 1560 nc1
+r0 and isnum d4
+r1 and r0 ksim
+r2 and r1 kcy
+r3 and r2 kmc
+cr select r3 1 0
+nn call g s6 1560
+li sub nn 1
+wi add li 1600
+mv call num s6 100
+s7 fold wr64 cr s6 wi mv
+ret s7
+end
+
+# ---- tokfx: results/tokens.json, into the axes table: the o200k tokens of each fixture and view.
+# 1450 their number, name hash of the i-th at 1456 + i, its tokens at 1488 + i (up to 32).
+fn htok u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iskey eq t 1
+isnum eq t 3
+d2 eq d 2
+d4 eq d 4
+kf call kis p0 1 p2 300
+kv call kis p0 1 p2 301
+k1 or kf kv
+x0 and iskey d2
+x1 and x0 k1
+c1 select x1 1 0
+n call g p0 1450
+nh call key p0 2
+slot add n 1456
+s1 fold wr64 c1 p0 slot nh
+n1 add n 1
+s2 fold wr64 c1 s1 1450 n1
+kt call kis s2 3 p2 227
+ko call kis s2 4 p2 302
+y0 and isnum d4
+y1 and y0 k1
+y2 and y1 kt
+y and y2 ko
+cy select y 1 0
+n2 call g s2 1450
+last sub n2 1
+vslot add last 1488
+v call num s2 1
+s3 fold wr64 cy s2 vslot v
+ret s3
+end
+
+# ---- b48: results/ai-edit-b48-dense.json (set b, 49 languages, proto2), into the axes table.
+# 1899 subjects; subject s (< 60): id hash 1900 + s, field f of its pooled cell at 1960 + 60 f + s
+# (x 100; f: one, acc, n, S, primer, read, write, t1, t10, tinf); A0's rank (rank, ties, of) for metric
+# m at 1800 + 3m, the dense bodies subject's at 1820 + 3m, its wins, ties, losses at 1840 + 3m, and
+# A0's counted over the other languages' a0Versus at 1860 + 3m (m: one-shot, after repair, cost 1,
+# cost 10, cost inf).
+# the index of the key at depth p1 among the p4 consecutive words from p3 (9 when none)
+fn kwstep u32 u32 u32x128x512 u32 u32 -> u32
+w add p3 p1
+h call whash p2 w
+e eq h p4
+r select e p1 p0
+ret r
+end
+fn kwidx u32x128x64 u32 u32x128x512 u32 u32 -> u32
+k call key p0 p1
+r fold kwstep p4 99 p2 p3 k
+ret r
+end
+fn hb48 u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iskey eq t 1
+isnum eq t 3
+isstr eq t 2
+d3 eq d 3
+d4 eq d 4
+d5 eq d 5
+pr call kis p0 1 p2 349
+lk call kis p0 2 p2 1
+ak call kis p0 2 p2 362
+rk call kis p0 2 p2 363
+tk call kis p0 2 p2 364
+# a new subject under proto2.languages
+x0 and iskey d3
+x1 and x0 pr
+x2 and x1 lk
+c1 select x2 1 0
+n call g p0 1899
+id call key p0 3
+iw add n 1900
+s1 fold wr64 c1 p0 iw id
+n1 add n 1
+s2 fold wr64 c1 s1 1899 n1
+# the pooled cell: proto2.languages.ID.pooled.F
+f call kwidx s2 5 p2 351 10
+fo ne f 99
+pk call kis s2 4 p2 350
+y0 and isnum d5
+y1 and y0 pr
+y2 and y1 lk
+y3 and y2 pk
+y4 and y3 fo
+cy select y4 1 0
+nn call g s2 1899
+last sub nn 1
+fb mul f 60
+fb1 add fb 1960
+slot add fb1 last
+v100 call num s2 100
+s3 fold wr64 cy s2 slot v100
+# a0Versus: proto2.languages.ID.a0Versus.METRIC = win | tie | loss, counted
+avk call kis s3 4 p2 361
+m5 call kwidx s3 5 p2 372 5
+iwn call hashis s3 p2 365
+itn call hashis s3 p2 366
+iln call hashis s3 p2 367
+jt select itn 1 99
+jl select iln 2 jt
+j select iwn 0 jl
+z0 and isstr d5
+z1 and z0 pr
+z2 and z1 lk
+z3 and z2 avk
+mo ne m5 99
+jo ne j 99
+z4 and z3 mo
+z5 and z4 jo
+cz select z5 1 0
+m3 mul m5 3
+zi0 add m3 1860
+zi add zi0 j
+s4 fold addw cz s3 zi 1
+# proto2.a0Rank.METRIC.(rank | ties | of)
+ma call kwidx s4 3 p2 372 5
+kaa call kwidx s4 4 p2 368 3
+q0 and isnum d4
+q1 and q0 pr
+q2 and q1 ak
+mao ne ma 99
+kao ne kaa 99
+q3 and q2 mao
+q4 and q3 kao
+cq select q4 1 0
+m3a mul ma 3
+qi0 add m3a 1800
+qi add qi0 kaa
+vq call num s4 1
+s5 fold wr64 cq s4 qi vq
+# proto2.denseRank.SUBJECT.METRIC.(rank | ties | of) and denseTotals.SUBJECT.METRIC.(win | tie | loss)
+sk call kis s5 3 p2 371
+md call kwidx s5 4 p2 372 5
+kdd call kwidx s5 5 p2 368 3
+ktt call kwidx s5 5 p2 365 3
+mdo ne md 99
+u0 and isnum d5
+u1 and u0 pr
+u2 and u1 sk
+u3 and u2 mdo
+ur and u3 rk
+ut and u3 tk
+kdo ne kdd 99
+kto ne ktt 99
+ur2 and ur kdo
+ut2 and ut kto
+cur select ur2 1 0
+cut select ut2 1 0
+m3d mul md 3
+ri0 add m3d 1820
+ri add ri0 kdd
+ti0 add m3d 1840
+ti add ti0 ktt
+vd call num s5 1
+s6 fold wr64 cur s5 ri vd
+s7 fold wr64 cut s6 ti vd
+ret s7
+end
+
+# ---- densetok: results/dense-tokens.json, into the axes table: kernelTotals.canonical, denseExact and
+# dense at 2600, 2601, 2602.
+fn hdt u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+isnum eq t 3
+d2 eq d 2
+kk call kis p0 1 p2 377
+k call kwidx p0 2 p2 378 3
+ko ne k 99
+a0 and isnum d2
+a1 and a0 kk
+a2 and a1 ko
+c select a2 1 0
+ix add k 2600
+v call num p0 1
+r fold wr64 c p0 ix v
+ret r
+end
+
+# ---- verification: results/verification.json, into the axes table: inputCases at 1350; over
+# targets.ID.cases, the targets with all of those cases at 1351, with fewer but some at 1352 (their
+# cases at 1353) and with none at 1354.
+fn hver u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+isnum eq t 3
+d1 eq d 1
+d3 eq d 3
+ki call kis p0 1 p2 299
+z0 and isnum d1
+zi and z0 ki
+ci select zi 1 0
+v call num p0 1
+s1 fold wr64 ci p0 1350 v
+kt call kis s1 1 p2 484
+kc call kis s1 3 p2 485
+y0 and isnum d3
+y1 and y0 kt
+y and y1 kc
+full call g s1 1350
+isf eq v full
+isz eq v 0
+nz select isz false true
+nf select isf false true
+pa0 and nz nf
+cf0 and y isf
+cp0 and y pa0
+cz0 and y isz
+cf select cf0 1 0
+cp select cp0 1 0
+cz select cz0 1 0
+nfv call g s1 1351
+npv call g s1 1352
+nzv call g s1 1354
+nf1 add nfv 1
+np1 add npv 1
+nz1 add nzv 1
+s2 fold wr64 cf s1 1351 nf1
+s3 fold wr64 cp s2 1352 np1
+s4 fold wr64 cp s3 1353 v
+s5 fold wr64 cz s4 1354 nz1
+ret s5
+end
+
+# ---- cl: results/check-latency-*.json, into the axes table. 7290 the platform being read (0 darwin,
+# 1 linux, 2 win32), 7291 the comparison being read is A0's whole front end in a fresh process, 7292
+# its competitor (0 tsc, 1 tsgo, 2 tsc-rs, 9 other). Platform p at 7300 + 16p: 0 read, 1 load.max x 100,
+# 2 load.limit x 100, 3 a0.coldOpenProcess.median ms x 1000, 4..6 wholeProject.(tsc|tsgo|tsc-rs).median
+# ms x 1000, 7..9 the verdict of that comparison against each (1 win 2 tie 3 loss), 10 arch (1 arm64,
+# 2 other), 11 load.source is cpu-utilisation.
+fn hcl u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iss eq t 2
+isn eq t 3
+d1 eq d 1
+d2 eq d 2
+d3 eq d 3
+sd1 and iss d1
+sd2 and iss d2
+sd3 and iss d3
+nd2 and isn d2
+nd3 and isn d3
+kp call kis p0 1 p2 522
+h1 call hashis p0 p2 524
+h2 call hashis p0 p2 525
+pi0 select h1 1 0
+pi select h2 2 pi0
+xp and sd1 kp
+cp select xp 1 0
+s1 fold wr64 cp p0 7290 pi
+cur call g s1 7290
+b0 mul cur 16
+b add b0 7300
+s2 fold wr64 cp s1 b 1
+ka call kis s2 1 p2 526
+ha call hashis s2 p2 7
+av select ha 1 2
+xa and sd1 ka
+ca select xa 1 0
+ba add b 10
+s3 fold wr64 ca s2 ba av
+kl call kis s3 1 p2 29
+km call kis s3 2 p2 527
+kli call kis s3 2 p2 528
+ksr call kis s3 2 p2 529
+v100 call num s3 100
+y1 and nd2 kl
+ym and y1 km
+yl and y1 kli
+cm select ym 1 0
+cli select yl 1 0
+b1 add b 1
+b2 add b 2
+s4 fold wr64 cm s3 b1 v100
+s5 fold wr64 cli s4 b2 v100
+hc call hashis s5 p2 530
+z1 and sd2 kl
+z2 and z1 ksr
+z3 and z2 hc
+cz select z3 1 0
+b11 add b 11
+s6 fold wr64 cz s5 b11 1
+k1a call kis s6 1 p2 47
+k2c call kis s6 2 p2 531
+k3m call kis s6 3 p2 532
+m1 and nd3 k3m
+m2 and m1 k1a
+m3 and m2 k2c
+ca0 select m3 1 0
+vms call num s6 1000
+b3 add b 3
+s7 fold wr64 ca0 s6 b3 vms
+kw call kis s7 1 p2 533
+ix call kwidx s7 2 p2 534 3
+ko ne ix 99
+w1 and m1 kw
+w2 and w1 ko
+cw select w2 1 0
+bi0 add b 4
+bi add bi0 ix
+s8 fold wr64 cw s7 bi vms
+kc call kis s8 1 p2 537
+ks call kis s8 3 p2 538
+kq call kis s8 3 p2 539
+kv call kis s8 3 p2 557
+q0 and sd3 kc
+qs and q0 ks
+qq and q0 kq
+qv and q0 kv
+hs call hashis s8 p2 540
+fs select hs 1 0
+cqs select qs 1 0
+s9 fold wr64 cqs s8 7291 fs
+hq0 call hashis s9 p2 534
+hq1 call hashis s9 p2 535
+hq2 call hashis s9 p2 536
+e0 select hq2 2 9
+e1 select hq1 1 e0
+e2 select hq0 0 e1
+cqq select qq 1 0
+s10 fold wr64 cqq s9 7292 e2
+fsub call g s10 7291
+cmp call g s10 7292
+isf eq fsub 1
+okc lt cmp 3
+hw call hashis s10 p2 541
+ht call hashis s10 p2 542
+hl call hashis s10 p2 543
+vd0 select hl 3 0
+vd1 select ht 2 vd0
+vd select hw 1 vd1
+r0 and qv isf
+r1 and r0 okc
+cr select r1 1 0
+bv0 add b 7
+bv add bv0 cmp
+s11 fold wr64 cr s10 bv vd
+ret s11
+end
+
+# ---- wasm: results/wasm-benchmark.json, into the axes table at 7400: 0 rows, 1 A0's module bytes
+# summed over the rows, 2 clang's, 3 rows where A0's module is the larger, 4..6 rows with the verdict
+# win, tie, loss, 7 the smallest speedup x 1000 plus one (0 before the first), 8 geomeanSpeedup x 1000,
+# 9 loadGate.maxLoad x 100, 10 loadGate.highestLoadAtSampleStart x 100, 11 platform (1 win32-x64,
+# 2 linux-x64, 3 darwin-arm64, 0 other), 12 the A0 bytes of the row being read, 13 loadGate.loadSource
+# is cpu-utilisation.
+fn hwa u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iss eq t 2
+isn eq t 3
+d1 eq d 1
+d2 eq d 2
+d3 eq d 3
+d4 eq d 4
+kr call kis p0 1 p2 32
+kk call kis p0 3 p2 544
+kb call kis p0 3 p2 545
+ksp call kis p0 3 p2 547
+kv call kis p0 3 p2 557
+ka call kis p0 4 p2 47
+kc call kis p0 4 p2 546
+r3s0 and iss d3
+r3s and r3s0 kr
+r3n0 and isn d3
+r3n and r3n0 kr
+r4n0 and isn d4
+r4n1 and r4n0 kr
+r4n and r4n1 kb
+xk and r3s kk
+ck select xk 1 0
+s1 fold addw ck p0 7400 1
+v call num s1 1
+xa and r4n ka
+ca select xa 1 0
+s2 fold addw ca s1 7401 v
+s3 fold wr64 ca s2 7412 v
+xc and r4n kc
+cc select xc 1 0
+s4 fold addw cc s3 7402 v
+ab call g s4 7412
+big gt ab v
+xb and xc big
+cb select xb 1 0
+s5 fold addw cb s4 7403 1
+hw call hashis s5 p2 541
+ht call hashis s5 p2 542
+hl call hashis s5 p2 543
+xv and r3s kv
+yw and xv hw
+yt and xv ht
+yl and xv hl
+cw select yw 1 0
+ct select yt 1 0
+cl select yl 1 0
+s6 fold addw cw s5 7404 1
+s7 fold addw ct s6 7405 1
+s8 fold addw cl s7 7406 1
+v1k call num s8 1000
+v1 add v1k 1
+mn call g s8 7407
+mz eq mn 0
+mlt lt v1 mn
+mb or mz mlt
+xs0 and r3n ksp
+xs and xs0 mb
+cs select xs 1 0
+s9 fold wr64 cs s8 7407 v1
+kg call kis s9 1 p2 548
+n1 and isn d1
+xg and n1 kg
+cg select xg 1 0
+s10 fold wr64 cg s9 7408 v1k
+kl call kis s10 1 p2 558
+km call kis s10 2 p2 549
+kh call kis s10 2 p2 559
+ks call kis s10 2 p2 589
+v100 call num s10 100
+n2 and isn d2
+xl and n2 kl
+xm and xl km
+xh and xl kh
+cm select xm 1 0
+ch select xh 1 0
+s11 fold wr64 cm s10 7409 v100
+s12 fold wr64 ch s11 7410 v100
+hcpu call hashis s12 p2 530
+sl0 and iss d2
+sl1 and sl0 kl
+sl2 and sl1 ks
+sl and sl2 hcpu
+csl select sl 1 0
+s13 fold wr64 csl s12 7413 1
+kp call kis s13 1 p2 522
+p1h call hashis s13 p2 550
+p2h call hashis s13 p2 551
+p3h call hashis s13 p2 552
+pv0 select p3h 3 0
+pv1 select p2h 2 pv0
+pv select p1h 1 pv1
+sp0 and iss d1
+sp and sp0 kp
+cp select sp 1 0
+s14 fold wr64 cp s13 7411 pv
+ret s14
+end
+
+fn onev u32x128x64 u32 u32x128x512 -> u32x128x64
+role call g p0 13
+e eq role 1
+c eq role 2
+d eq role 3
+p eq role 4
+x eq role 6
+h eq role 7
+k eq role 8
+b eq role 9
+q eq role 10
+vv eq role 11
+lc eq role 12
+lw eq role 13
+ce select e 1 0
+cc select c 1 0
+cd select d 1 0
+cp select p 1 0
+cx select x 1 0
+ch select h 1 0
+ck select k 1 0
+cb select b 1 0
+cq select q 1 0
+cv select vv 1 0
+clc select lc 1 0
+clw select lw 1 0
+s1 fold hexec ce p0 p2
+s2 fold hcost cc s1 p2
+s3 fold hedit cd s2 p2
+s4 fold hpar cp s3 p2
+s5 fold haxes cx s4 p2
+s6 fold hhw ch s5 p2
+s7 fold htok ck s6 p2
+s8 fold hb48 cb s7 p2
+s9 fold hdt cq s8 p2
+s10 fold hver cv s9 p2
+s11 fold hcl clc s10 p2
+s12 fold hwa clw s11 p2
+ret s12
+end
+# event p2 at depth p3, handled (fold body)
+fn event u32x128x64 u32 u32 u32 u32x128x512 -> u32x128x64
+s1 fold wr64 1 p0 15 p2
+s2 fold wr64 1 s1 16 p3
+s3 fold onev 1 s2 p4
+ret s3
+end
+
+# ---- the tokenizer
+fn isdig u32 -> bool
+a ge p0 48
+b le p0 57
+r and a b
+ret r
+end
+fn islow u32 -> bool
+a ge p0 97
+b le p0 122
+r and a b
+ret r
+end
+# a string byte (fold body): hash it, keep the first 32 bytes
+fn sadd u32x128x64 u32 u32 -> u32x128x64
+h call g p0 4
+x xor h p2
+h2 mul x 16777619
+s1 fold wr64 1 p0 4 h2
+n call g s1 5
+small lt n 32
+c select small 1 0
+w0 shr n 2
+wa add w0 80
+w call g s1 wa
+b0 and n 3
+sh shl b0 3
+v shl p2 sh
+w2 or w v
+s2 fold wr64 c s1 wa w2
+n1 add n 1
+s3 fold wr64 c s2 5 n1
+ret s3
+end
+fn tstr u32x128x64 u32 u32 u32x128x512 -> u32x128x64
+esc call g p0 2
+e1 eq esc 1
+bs eq p2 92
+q eq p2 34
+ne select e1 false true
+isbs and ne bs
+isq and ne q
+nq select isq false true
+add or e1 nq
+ca select add 1 0
+s1 fold sadd ca p0 p2
+ev select isbs 1 0
+s2 fold wr64 1 s1 2 ev
+k call g s2 3
+d call g s2 1
+kd add d 32
+cq select isq 1 0
+h call g s2 4
+kq and isq true
+k1 eq k 1
+kk and isq k1
+ck select kk 1 0
+s3 fold wr64 ck s2 kd h
+typ select k1 1 2
+s4 fold event cq s3 typ d p3
+s5 fold wr64 cq s4 0 0
+ret s5
+end
+# the end of a number or literal (fold body)
+fn tend u32x128x64 u32 u32x128x512 -> u32x128x64
+m call g p0 0
+fd call g p0 8
+fr call g p0 7
+rest sub 9 fd
+t call tenp rest
+fr9 mul fr t
+s1 fold wr64 1 p0 7 fr9
+lit call g s1 11
+lt0 eq lit 116
+lf eq lit 102
+e1 select lf 5 6
+e2 select lt0 4 e1
+num eq m 2
+typ select num 3 e2
+d call g s1 1
+s2 fold event 1 s1 typ d p2
+s3 fold wr64 1 s2 0 0
+ret s3
+end
+fn tnum u32x128x64 u32 u32 -> u32x128x64
+dg call isdig p2
+inf call g p0 9
+inx call g p0 10
+fx eq inf 1
+xx eq inx 1
+dv sub p2 48
+ip call g p0 6
+fr call g p0 7
+fd call g p0 8
+nx select xx false true
+nf select fx false true
+di0 and dg nx
+di and di0 nf
+df0 and dg nx
+df1 and df0 fx
+fsm lt fd 9
+df and df1 fsm
+ip10 mul ip 10
+ipn add ip10 dv
+cdi select di 1 0
+s1 fold wr64 cdi p0 6 ipn
+fr10 mul fr 10
+frn add fr10 dv
+cdf select df 1 0
+s2 fold wr64 cdf s1 7 frn
+fd1 add fd 1
+s3 fold wr64 cdf s2 8 fd1
+dot eq p2 46
+cdot select dot 1 0
+s4 fold wr64 cdot s3 9 1
+e0 eq p2 101
+e1 eq p2 69
+ex or e0 e1
+cex select ex 1 0
+s5 fold wr64 cex s4 10 1
+ret s5
+end
+fn zcap u32x128x64 u32 -> u32x128x64
+a add 80 p1
+r fold wr64 1 p0 a 0
+ret r
+end
+# a byte between tokens (fold body)
+fn tsep u32x128x64 u32 u32 u32x128x512 -> u32x128x64
+b mov p2
+d call g p0 1
+d1 add d 1
+kd add d 64
+kind call g p0 kd
+ob eq b 123
+ab eq b 91
+cb0 eq b 125
+cb1 eq b 93
+cb or cb0 cb1
+op or ob ab
+cm eq b 44
+co eq b 58
+q eq b 34
+dg call isdig b
+mi eq b 45
+nm or dg mi
+lw call islow b
+# open
+co1 select op 1 0
+s1 fold wr64 co1 p0 1 d1
+kd1 add d1 64
+kv select ob 1 2
+s2 fold wr64 co1 s1 kd1 kv
+kh add d1 32
+s3 fold wr64 co1 s2 kh 0
+ix add d1 48
+s4 fold wr64 co1 s3 ix 0
+ek select ob 1 0
+s5 fold wr64 co1 s4 12 ek
+s6 fold event co1 s5 7 d1 p3
+# close
+cc1 select cb 1 0
+s7 fold event cc1 s6 9 d p3
+dm sub d 1
+s8 fold wr64 cc1 s7 1 dm
+# comma and colon
+isarr eq kind 2
+ca0 and cm isarr
+cac select ca0 1 0
+ixd add d 48
+iv call g s8 ixd
+iv1 add iv 1
+s9 fold wr64 cac s8 ixd iv1
+nar select isarr false true
+co0 and cm nar
+coc select co0 1 0
+s10 fold wr64 coc s9 12 1
+cco select co 1 0
+s11 fold wr64 cco s10 12 0
+# a string starts
+cq select q 1 0
+s12 fold wr64 cq s11 0 1
+s13 fold wr64 cq s12 4 2166136261
+s14 fold wr64 cq s13 5 0
+s15 fold wr64 cq s14 2 0
+isobj eq kind 1
+ek0 call g s15 12
+ek1 eq ek0 1
+isk0 and isobj ek1
+isk select isk0 1 0
+s16 fold wr64 cq s15 3 isk
+c8 select q 8 0
+s17 fold zcap c8 s16
+# a number or literal starts
+cn select nm 1 0
+s18 fold wr64 cn s17 0 2
+dv0 sub b 48
+dv select dg dv0 0
+s19 fold wr64 cn s18 6 dv
+s20 fold wr64 cn s19 7 0
+s21 fold wr64 cn s20 8 0
+s22 fold wr64 cn s21 9 0
+s23 fold wr64 cn s22 10 0
+cl select lw 1 0
+s24 fold wr64 cl s23 0 3
+s25 fold wr64 cl s24 11 b
+ret s25
+end
+fn tbyte u32x128x64 u32 u32x128 u32x128x512 -> u32x128x64
+w0 shr p1 2
+w get p2 w0
+b0 and p1 3
+sh shl b0 3
+v shr w sh
+b and v 255
+m call g p0 0
+ms eq m 1
+mn eq m 2
+ml eq m 3
+m0 eq m 0
+dg call isdig b
+dot eq b 46
+e0 eq b 101
+e1 eq b 69
+pl eq b 43
+mi eq b 45
+x0 or dg dot
+x1 or e0 e1
+x2 or pl mi
+x3 or x0 x1
+nch or x3 x2
+lw call islow b
+cont0 and mn nch
+cont1 and ml lw
+nend0 select nch false true
+nend and mn nend0
+lend0 select lw false true
+lend and ml lend0
+ended or nend lend
+sep or m0 ended
+cs select ms 1 0
+s1 fold tstr cs p0 b p3
+cn select cont0 1 0
+s2 fold tnum cn s1 b
+ce select ended 1 0
+s3 fold tend ce s2 p3
+cp select sep 1 0
+s4 fold tsep cp s3 b p3
+ret s4
+end
+# one page of p3 bytes (fold body over pages of a file with state (table, io))
+fn jpage (u32x128x64,io,u32) u32 u32x128x512 -> (u32x128x64,io,u32)
+pa at p0 0
+t at p0 1
+n at p0 2
+b shl p1 9
+rest sub n b
+big gt rest 512
+cnt select big 512 rest
+c3 add cnt 3
+nw shr c3 2
+r call rdpage t nw
+pg at r 0
+t2 at r 1
+pa2 fold tbyte cnt pa pg p2
+o rec pa2 t2 n
+ret o
+end
+# the next JSON file of the input, role p2, cost slot p3
+fn jfile u32x128x64 io u32 u32 u32x128x512 -> (u32x128x64,io)
+r0 read p1
+n at r0 0
+t at r0 1
+eq5 eq p2 5
+has gt n 0
+qv select has 1 0
+c5 select eq5 1 0
+s0 fold wr64 c5 p0 7770 qv
+q call g s0 7770
+eq3 eq p2 3
+q1 eq q 1
+skip and eq3 q1
+r1 select eq5 3 p2
+role select skip 0 r1
+s1 fold wr64 1 s0 13 role
+s2 fold wr64 1 s1 14 p3
+s3 fold wr64 1 s2 0 0
+s4 fold wr64 1 s3 1 0
+s5 fold wr64 1 s4 12 0
+n511 add n 511
+np shr n511 9
+st rec s5 t n
+r fold jpage np st p4
+pa at r 0
+t2 at r 1
+o rec pa t2
+ret o
+end

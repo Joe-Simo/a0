@@ -154,20 +154,31 @@ function words(bytes: Buffer): number[] {
   return out;
 }
 
-/** The generator's input for `template`: the template, then each file of its `f` lines. */
-export async function generatorInput(template: string): Promise<Buffer> {
-  const tpl = await readFile(template);
+/** Existing packed file protocol, also used by sealed application fixtures. */
+export async function generatorInputBytes(
+  template: Uint8Array,
+  read: (path: string) => Promise<Uint8Array | undefined>,
+): Promise<Buffer> {
+  const tpl = Buffer.from(template);
   const input = words(tpl);
   for (const line of tpl.toString('utf8').split('\n')) {
     if (!line.startsWith('f ')) continue;
     const path = line.slice(line.lastIndexOf(' ') + 1);
-    input.push(...(existsSync(path) ? words(await readFile(path)) : [0]));
+    const file = await read(path);
+    input.push(...(file === undefined ? [0] : words(Buffer.from(file))));
   }
   const buf = Buffer.alloc(input.length * 4);
   input.forEach((w, i) => {
     buf.writeUInt32LE(w >>> 0, i * 4);
   });
   return buf;
+}
+
+/** The generator's input for `template`: the template, then each file of its `f` lines. */
+export async function generatorInput(template: string): Promise<Buffer> {
+  return generatorInputBytes(await readFile(template), async (path) =>
+    existsSync(path) ? readFile(path) : undefined,
+  );
 }
 
 export interface GenerateOptions {

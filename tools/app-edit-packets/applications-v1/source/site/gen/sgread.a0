@@ -1,0 +1,183 @@
+# Site generator, module 5: phase A, the template and its text files into the store.
+# The template comes first; its `f ROLE... PATH` lines name the files that follow it in the
+# input, in order. Text files (roles tags, css, glsl, primer) are stored whole; they come
+# before the JSON files (sgjson.a0), which are streamed. The stylesheet is stored twice:
+# as read and theme-scoped (sgcss.a0).
+use "sgcss.a0"
+
+fn tplend u32x128x512 -> u32
+n call hd p0 0
+r add n 1024
+ret r
+end
+# end of the field starting at p1 (a space or a newline ends it)
+fn fdmore u32 u32 u32x128x512 u32 -> bool
+lt0 lt p0 p3
+b call sb p2 p0
+sp ne b 32
+nl ne b 10
+c and sp nl
+r and lt0 c
+ret r
+end
+fn fdstep u32 u32 u32x128x512 u32 -> u32
+r add p0 1
+ret r
+end
+fn fieldend u32x128x512 u32 -> u32
+e add p1 4096
+r loop fdmore fdstep 4096 p1 p0 e
+ret r
+end
+# the start of the line after the one at p1
+fn nextline u32x128x512 u32 -> u32
+e call tplend p0
+nl call sfind p0 p1 e 10
+r add nl 1
+ret r
+end
+# the positions of the template lines that start with byte p2 then a space
+fn lsmore (u32x128,u32,u32) u32 u32x128x512 u32 u32 -> bool
+pos at p0 2
+r lt pos p3
+ret r
+end
+fn lsstep (u32x128,u32,u32) u32 u32x128x512 u32 u32 -> (u32x128,u32,u32)
+l at p0 0
+n at p0 1
+pos at p0 2
+a call sbis p2 pos p4
+p1a add pos 1
+b call sbis p2 p1a 32
+is and a b
+l2 set l n pos
+n1 add n 1
+nn select is n1 n
+np call nextline p2 pos
+r rec l2 nn np
+ret r
+end
+fn lines u32x128x512 u32 -> (u32x128,u32)
+e call tplend p0
+n sub e 1024
+z call zpage
+s0 rec z 0 1024
+s loop lsmore lsstep n s0 p0 e p1
+l at s 0
+c at s 1
+r rec l c
+ret r
+end
+# hash of field 2 of the line at p1 (the role of an `f` line, the name of an `m` line)
+fn field2 u32x128x512 u32 -> u32
+a add p1 2
+e call fieldend p0 a
+n sub e a
+r call shash p0 a n
+ret r
+end
+fn istext u32x128x512 u32 -> bool
+a call whash p0 57
+b call whash p0 58
+c call whash p0 59
+d call whash p0 60
+x eq p1 a
+y eq p1 b
+z eq p1 c
+w eq p1 d
+o1 or x y
+o2 or z w
+r or o1 o2
+ret r
+end
+
+# the scoped stylesheet from page p4 (fold body); header 7 := the page after it
+fn scopecss u32x128x512 u32 u32 u32 u32 -> u32x128x512
+ob shl p4 9
+s1 fold cssscope 1 p0 p2 p3 ob
+n call hd s1 5
+n511 add n 511
+np shr n511 9
+nxt add p4 np
+s2 fold whd 1 s1 7 nxt
+ret s2
+end
+# one text file into the next free pages (fold body; state: store, io, role hash)
+fn patext (u32x128x512,io,u32) u32 -> (u32x128x512,io,u32)
+st at p0 0
+t at p0 1
+h at p0 2
+pg call hd st 7
+r call rdfile st t pg
+s1 at r 0
+t2 at r 1
+n at r 2
+np at r 3
+rc call hd s1 6
+r4 shl rc 2
+e0 add r4 8
+e1 add e0 1
+e2 add e0 2
+start shl pg 9
+s2 fold whd 1 s1 e0 h
+s3 fold whd 1 s2 e1 start
+s4 fold whd 1 s3 e2 n
+rc1 add rc 1
+s5 fold whd 1 s4 6 rc1
+pg2 add pg np
+s6 fold whd 1 s5 7 pg2
+cw call whash s6 58
+iscss eq h cw
+cc select iscss 1 0
+s7 fold scopecss cc s6 start n pg2
+o rec s7 t2 h
+ret o
+end
+# phase A step over the `f` lines: text files until the first JSON file (state: store, io,
+# number of text files read, stopped)
+fn pastep (u32x128x512,io,u32,bool) u32 u32x128 -> (u32x128x512,io,u32,bool)
+st at p0 0
+t at p0 1
+k at p0 2
+stop at p0 3
+pos get p2 p1
+h call field2 st pos
+tx call istext st h
+ns select stop false true
+go and ns tx
+c select go 1 0
+s0 rec st t h
+s1 fold patext c s0
+st2 at s1 0
+t2 at s1 1
+k1 add k 1
+kn select go k1 k
+nt select tx false true
+stop1 and ns nt
+stop2 or stop stop1
+o rec st2 t2 kn stop2
+ret o
+end
+# phase A: (store, io, number of `f` lines read)
+fn phasea io -> (u32x128x512,io,u32)
+z call z512
+r call rdfile z p0 2
+st at r 0
+t at r 1
+n at r 2
+np at r 3
+s1 fold whd 1 st 0 n
+nxt add np 2
+s2 fold whd 1 s1 7 nxt
+s3 call seedw s2 nxt
+ls call lines s3 102
+l at ls 0
+c at ls 1
+a0 rec s3 t 0 false
+a fold pastep c a0 l
+st2 at a 0
+t2 at a 1
+k at a 2
+o rec st2 t2 k
+ret o
+end

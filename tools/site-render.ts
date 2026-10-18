@@ -11,7 +11,7 @@
 import { readBytes, safeHref } from '../site/wire.js';
 import { type IoState, makeIo, run, type TypedFunc, type TypedProgram } from '../src/core.js';
 
-const TAGS: Record<number, string> = {
+export const TAGS: Readonly<Record<number, string>> = {
   1: 'h1',
   2: 'p',
   3: 'button',
@@ -43,7 +43,7 @@ const TAGS: Record<number, string> = {
   29: 'summary',
   30: 'caption',
 };
-const ATTRS: Record<number, string> = {
+export const ATTRS: Readonly<Record<number, string>> = {
   1: 'id',
   2: 'class',
   3: 'href',

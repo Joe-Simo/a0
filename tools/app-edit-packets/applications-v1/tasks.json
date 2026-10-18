@@ -1,0 +1,50 @@
+[
+  {
+    "id": "sentinel-single-boundary",
+    "application": "sentinel",
+    "oracle": "edge",
+    "summary": "Select a single nearest side with deterministic ties",
+    "instruction": "Correct edge_pt so an inside or boundary point chooses one nearest box side, with left, right, top, bottom tie priority. For example, box (0,0,100,100) and point (40,40) must yield (0,40), not the corner. Preserve outside componentwise clamping, signed Q16 coordinates, ordered degenerate boxes, explicit corner candidates, all public signatures and full Sentinel frame/anchor behavior. Internal helpers may be added.",
+    "a0Targets": ["edge_pt"],
+    "reference": "controls/s1.reference.a0",
+    "wrong": "controls/s1.wrong.a0",
+    "wrongWhy": "Chooses top before left or right on equal distances.",
+    "wrongWitness": "left-top: anchor page offset"
+  },
+  {
+    "id": "sentinel-tap-target",
+    "application": "sentinel",
+    "oracle": "tap",
+    "summary": "Prefer the actual tapped control over overlapping geometric candidates",
+    "instruction": "On a new tap, prefer the first kind-4 row whose four page-coordinate bounds exactly match the nondegenerate target rectangle in header words 14..17. Compare nondegeneracy as signed 32-bit page coordinates. A valid rectangle may start at zero or a negative coordinate. If that rectangle is absent, degenerate or unmatched, preserve the existing smallest-containing-area fallback and equal-area row order. Preserve sequence handling, hash-derived count, free-tentacle ranking, all public signatures and full frame behavior. Do not change the host. Internal helpers may be added.",
+    "a0Targets": ["tap_scan"],
+    "reference": "controls/s2.reference.a0",
+    "wrong": "controls/s2.wrong.a0",
+    "wrongWhy": "Matches only the origin and can choose the wrong overlapping control.",
+    "wrongWitness": "overlap-target: selected control ID"
+  },
+  {
+    "id": "sitegen-conditional-escapes",
+    "application": "sitegen",
+    "oracle": "g1",
+    "summary": "Respect escaped conditional separators and closing braces",
+    "instruction": "In the generator's existing non-nested {name|A|B} template conditions, only unescaped | separates branches and only unescaped } closes the condition. A backslash escapes exactly the next byte, consistent with xunit; even and odd runs must work. Preserve nonempty/empty variable truth, omitted B as empty, ordinary text/attribute and register expansion, every existing signature and full sitegen-to-page behavior. Internal helpers may be added.",
+    "a0Targets": ["xcond"],
+    "reference": "controls/g1.reference.a0",
+    "wrong": "controls/g1.wrong.a0",
+    "wrongWhy": "Recognizes escaped pipes but still closes at an escaped brace.",
+    "wrongWitness": "true-escaped-close: literal expanded"
+  },
+  {
+    "id": "sitegen-selector-commas",
+    "application": "sitegen",
+    "oracle": "g2",
+    "summary": "Keep nested and quoted selector commas intact while scoping themes",
+    "instruction": "When theme-scoping a selector list, split only on unescaped commas outside balanced parentheses and brackets and outside strings or block comments. Preserve exact selector bytes except the existing outer trim and theme prefix; preserve declaration bytes, non-theme CSS, light/dark behavior, every existing signature and the existing flat media/declaration subset. Keep full sitegen-to-page behavior and ordinary/split CSS transports. Internal helpers may be added.",
+    "a0Targets": ["segstep"],
+    "reference": "controls/g2.reference.a0",
+    "wrong": "controls/g2.wrong.a0",
+    "wrongWhy": "Tracks parentheses only, splitting quoted attribute/comment/escaped commas.",
+    "wrongWitness": "double-quoted-attribute/ordinary: complete scoped CSS"
+  }
+]

@@ -91,6 +91,25 @@ function armServices(surface: A0Surface, services?: A0ArmServices): A0ArmService
       ),
   };
 }
+/** One optional packet boundary; parsing/editing/scoring/retries remain the existing loop.
+ * Every callback is mandatory, so an application cannot fall back to the compiler WordIR oracle. */
+export interface ApplicationEvaluationPacket {
+  readonly tasks: readonly AppTask[];
+  readonly metadata: Readonly<Record<string, unknown>>;
+  initial(
+    task: AppTask,
+    surface: A0Surface,
+  ): {
+    readonly programs: Programs;
+    readonly historical: Programs;
+    readonly services?: A0ArmServices;
+  };
+  starter(task: AppTask, source: string, surface: A0Surface): TypedProgram;
+  evaluate(program: TypedProgram, task: AppTask): Promise<string[]>;
+  approveControl(task: AppTask, source: string, reply: string): void;
+  wrongWitness(task: AppTask, applied: Applied): boolean;
+}
+
 export const PROTOCOL: Record<Side, string> = { a0: 'structured', ts: 'diff' };
 
 /**
@@ -138,13 +157,16 @@ function a0Session(
   task: AppTask,
   surface: A0Surface = 'canonical',
   services?: A0ArmServices,
+  packet?: ApplicationEvaluationPacket,
 ): {
   session: EditSession;
   view: string;
   programHandle: string;
 } {
-  const language = armServices(surface, services);
-  const session = language.session(language.parse(source));
+  const supplied = packet ? packet.initial(task, surface).services : services;
+  const language = armServices(surface, supplied);
+  const initial = packet ? packet.starter(task, source, surface) : language.parse(source);
+  const session = language.session(initial);
   const dense = surface === 'dense';
   const views = task.a0Targets.map((f) => session.open(f, { scope: 'deps', dense }).text);
   // the sealed arm lists every signature of the program; A0_PROGRAM_VIEW=deps (the deps-view arm,
@@ -162,9 +184,10 @@ export function prompt(
   guide: string,
   surface: A0Surface = 'canonical',
   services?: A0ArmServices,
+  packet?: ApplicationEvaluationPacket,
 ): { system: string; user: string } {
   if (side === 'a0') {
-    const { view } = a0Session(programs.a0, task, surface, services);
+    const { view } = a0Session(programs.a0, task, surface, services, packet);
     return {
       system: `${guide.trimEnd()}\n\n${A0_PROTOCOL}`,
       user: `${task.instruction}\n\n${view}`,
@@ -402,9 +425,11 @@ export async function judge(
   reply: string,
   surface: A0Surface = 'canonical',
   services?: A0ArmServices,
+  packet?: ApplicationEvaluationPacket,
 ): Promise<Applied> {
+  if (packet && side !== 'a0') throw new Error('application packet supports A0 source arms only');
   if (side === 'a0') {
-    const { session } = a0Session(programs.a0, task, surface, services);
+    const { session } = a0Session(programs.a0, task, surface, services, packet);
     let next: TypedProgram;
     try {
       next = session.apply(surface === 'native' ? reply : extractBlock(reply));
@@ -412,7 +437,9 @@ export async function judge(
       const error = formatDiagnostic(e, false);
       return { error, failures: [error] };
     }
-    return { failures: runTests(a0FrontEnd(next), task.tests) };
+    return {
+      failures: packet ? await packet.evaluate(next, task) : runTests(a0FrontEnd(next), task.tests),
+    };
   }
   const d = applyDiff(programs.ts, reply);
   if (d.error !== undefined) return { error: d.error, failures: [d.error] };
@@ -489,13 +516,22 @@ export function controlReply(
   surface: A0Surface,
   services?: A0ArmServices,
   historicalSource = source,
+  packet?: ApplicationEvaluationPacket,
 ): string {
+  if (packet) packet.approveControl(task, historicalSource, reply);
+  else if (
+    surface === 'native' &&
+    (sha(historicalSource) !== START_SHA256.a0 ||
+      !APP_TASKS.includes(task) ||
+      (reply !== task.reference.a0 && reply !== task.wrong.a0))
+  )
+    throw new Error('native historical control import is outside the sealed task packet');
   if (surface === 'canonical') return reply;
   // Only sealed controls use the historical reader. Submitted replies never enter this route.
   const original = a0Session(historicalSource, task).session;
   const before = original.program;
   const after = original.apply(reply);
-  const language = armServices(surface, services);
+  const language = armServices(surface, packet ? packet.initial(task, surface).services : services);
   const changed = after.functions.filter((fn) => {
     const old = before.byName.get(fn.name);
     return old === undefined || language.revision(old) !== language.revision(fn);
@@ -503,7 +539,7 @@ export function controlReply(
   const removed = before.functions
     .filter((fn) => !after.byName.has(fn.name))
     .map((fn) => `-fn ${fn.name}`);
-  const { programHandle } = a0Session(source, task, surface, services);
+  const { programHandle } = a0Session(source, task, surface, services, packet);
   return `${programHandle}\n${removed.join('\n')}\n${language.formatControl(after, changed)}`;
 }
 
@@ -511,42 +547,55 @@ export async function selfCheck(
   surface: A0Surface = 'canonical',
   native?: { readonly services: A0ArmServices; readonly programs: Programs },
   only?: Side,
+  packet?: ApplicationEvaluationPacket,
 ): Promise<{ ok: boolean; rows: Record<string, unknown>[] }> {
-  const historical = await startPrograms();
-  checkStart(historical);
+  if (packet && only === 'ts') throw new Error('application packet supports A0 source arms only');
+  const historical = packet ? undefined : await startPrograms();
+  if (historical) checkStart(historical);
   const programs = native?.programs ?? historical;
-  const language = armServices(surface, native?.services);
+  const language = packet ? undefined : armServices(surface, native?.services);
   const rows: Record<string, unknown>[] = [];
-  let ok = APP_TASKS.length === 14 && new Set(APP_TASKS.map((t) => t.id)).size === 14;
-  const tsStart = only === 'a0' ? undefined : await tsFrontEnd(programs.ts);
+  const tasks = packet?.tasks ?? APP_TASKS;
+  let ok = tasks.length > 0 && new Set(tasks.map((t) => t.id)).size === tasks.length;
+  if (!packet) ok &&= APP_TASKS.length === 14;
+  const tsStart = packet || only === 'a0' ? undefined : await tsFrontEnd((programs as Programs).ts);
   if (typeof tsStart === 'string') throw new Error(`the TypeScript start program: ${tsStart}`);
   const start: Partial<Record<Side, FrontEnd>> = {
-    a0: a0FrontEnd(language.parse(programs.a0)),
+    ...(packet
+      ? {}
+      : { a0: a0FrontEnd((language as A0ArmServices).parse((programs as Programs).a0)) }),
     ...(tsStart === undefined ? {} : { ts: tsStart }),
   };
-  for (const task of APP_TASKS) {
-    for (const side of ['a0', 'ts'] as const) {
+  for (const task of tasks) {
+    const selected = packet?.initial(task, surface);
+    const current = selected?.programs ?? (programs as Programs);
+    const original = selected?.historical ?? (historical as Programs);
+    const supplied = selected?.services ?? native?.services;
+    for (const side of packet ? (['a0'] as const) : (['a0', 'ts'] as const)) {
       if (only !== undefined && side !== only) continue;
       const reference =
         side === 'a0'
           ? controlReply(
               task,
-              programs.a0,
+              current.a0,
               task.reference.a0,
               surface,
-              native?.services,
-              historical.a0,
+              supplied,
+              original.a0,
+              packet,
             )
           : task.reference.ts;
-      const ref = await judge(side, task, programs, reference, surface, native?.services);
+      const ref = await judge(side, task, current, reference, surface, supplied, packet);
       const frontend = start[side];
-      if (frontend === undefined) throw new Error('missing self-check frontend');
-      const startFails = runTests(frontend, task.tests);
+      if (!packet && frontend === undefined) throw new Error('missing self-check frontend');
+      const startFails = packet
+        ? await packet.evaluate(packet.starter(task, current.a0, surface), task)
+        : runTests(frontend as FrontEnd, task.tests);
       const wrongReply =
         side === 'a0'
-          ? controlReply(task, programs.a0, task.wrong.a0, surface, native?.services, historical.a0)
+          ? controlReply(task, current.a0, task.wrong.a0, surface, supplied, original.a0, packet)
           : task.wrong.ts;
-      const wrong = await judge(side, task, programs, wrongReply, surface, native?.services);
+      const wrong = await judge(side, task, current, wrongReply, surface, supplied, packet);
       const row = {
         task: task.id,
         side,
@@ -556,8 +605,27 @@ export async function selfCheck(
         wrongApplies: wrong.error === undefined,
         referenceFailures: ref.failures.slice(0, 3),
         wrongFirstFailure: wrong.failures[0] ?? null,
+        ...(packet
+          ? {
+              referenceReply: reference,
+              wrongReply,
+              referenceSHA256: sha(reference),
+              wrongSHA256: sha(wrongReply),
+              starterSHA256: sha(current.a0),
+              referenceFailures: [...ref.failures],
+              starterFailures: [...startFails],
+              wrongFailures: [...wrong.failures],
+              starterBehavioral: packet.wrongWitness(task, { failures: startFails }),
+              wrongBehavioral: packet.wrongWitness(task, wrong),
+            }
+          : {}),
       };
-      if (!(row.referencePasses && row.startFails && row.wrongFails && row.wrongApplies))
+      if (
+        !(row.referencePasses && row.startFails && row.wrongFails && row.wrongApplies) ||
+        (packet &&
+          (!packet.wrongWitness(task, wrong) ||
+            !packet.wrongWitness(task, { failures: startFails })))
+      )
         ok = false;
       rows.push(row);
     }
@@ -592,28 +660,52 @@ async function main(): Promise<void> {
       : surfaces[0] === '--surface=dense'
         ? 'dense'
         : 'canonical';
+  const packets = rawArgs.filter((arg) => arg.startsWith('--packet='));
+  if (packets.length > 1 || packets.some((arg) => arg !== '--packet=applications-v1'))
+    throw new Error('unknown application study packet');
+  const useApplications = packets.length === 1;
   const guides = rawArgs.filter((arg) => arg.startsWith('--guide='));
   if (guides.length > 1 || guides.some((arg) => arg === '--guide='))
     throw new Error('provide at most one nonempty --guide=PATH');
   const args = rawArgs.filter(
-    (arg) => !arg.startsWith('--surface=') && !arg.startsWith('--guide='),
+    (arg) =>
+      !arg.startsWith('--surface=') && !arg.startsWith('--guide=') && !arg.startsWith('--packet='),
   );
+  if (useApplications && sideArg(cmd === 'run' ? args[2] : args[1]) === 'ts')
+    throw new Error('application packet has no TypeScript comparison arm');
   const epoch =
-    cmd === 'dump' || cmd === 'run' || surface === 'native'
+    cmd === 'dump' || cmd === 'run' || surface === 'native' || useApplications
       ? committedTree(process.cwd())
       : undefined;
-  const historical = await startPrograms();
-  checkStart(historical);
+  const historical = useApplications ? undefined : await startPrograms();
+  if (historical) checkStart(historical);
+  let applications:
+    | Awaited<ReturnType<typeof import('./app-edit-application-packet.js').applicationEditPacket>>
+    | undefined;
+  if (useApplications) {
+    const directory = process.env.A0_SOURCE_PACKAGE;
+    const manifestSHA256 = process.env.A0_SOURCE_PACKAGE_SHA256;
+    if (!directory || !manifestSHA256)
+      throw new Error(
+        'application packet requires its fixed A0_SOURCE_PACKAGE and A0_SOURCE_PACKAGE_SHA256',
+      );
+    const { applicationEditPacket } = await import('./app-edit-application-packet.js');
+    applications = await applicationEditPacket({ directory, manifestSHA256 });
+  }
+  const packet = applications?.packet;
+  const tasks = packet?.tasks ?? APP_TASKS;
+  const sides = packet ? (['a0'] as const) : (['a0', 'ts'] as const);
+  const taskSeal = async () => (packet ? String(packet.metadata.caseManifestSHA256) : sealed());
   let native:
     | Awaited<ReturnType<typeof import('./app-edit-native.js').nativeAppEditArm>>
     | undefined;
-  if (surface === 'native') {
+  if (surface === 'native' && !packet) {
     const directory = process.env.A0_SOURCE_PACKAGE;
     const manifestSHA256 = process.env.A0_SOURCE_PACKAGE_SHA256;
     if (!directory || !manifestSHA256)
       throw new Error('native arm requires A0_SOURCE_PACKAGE and A0_SOURCE_PACKAGE_SHA256');
     const { nativeAppEditArm } = await import('./app-edit-native.js');
-    native = await nativeAppEditArm(historical, { directory, manifestSHA256 });
+    native = await nativeAppEditArm(historical as Programs, { directory, manifestSHA256 });
   }
   try {
     const guidePath =
@@ -625,7 +717,7 @@ async function main(): Promise<void> {
           : 'MODEL_GUIDE.min.txt');
     const guide = await readFile(guidePath, 'utf8');
     if (cmd === 'self-check') {
-      const r = await selfCheck(surface, native, sideArg(args[1]));
+      const r = await selfCheck(surface, native, sideArg(args[1]), packet);
       for (const row of r.rows)
         console.log(
           `${String(row.task).padEnd(22)} ${String(row.side).padEnd(3)} ref ${row.referencePasses ? 'pass' : 'FAIL'}  start ${row.startFails ? 'fails' : 'PASSES'}  wrong ${row.wrongFails ? 'fails' : 'PASSES'}${row.wrongApplies ? '' : ' (NOT APPLIED)'}${row.referencePasses ? '' : `  ${JSON.stringify(row.referenceFailures)}`}`,
@@ -642,7 +734,8 @@ async function main(): Promise<void> {
           tool: 'tools/app-edit-bench.ts self-check',
           a0SourceSurface: surface,
           modelCalls: 0,
-          taskSetSha256: await sealed(),
+          taskSetSha256: await taskSeal(),
+          applicationPacket: packet?.metadata ?? null,
           implementation: epoch ?? null,
           implementationAfter,
           native: native?.metadata ?? null,
@@ -657,23 +750,27 @@ async function main(): Promise<void> {
       const out = args[0] as string;
       const only = sideArg(args[1]);
       const implementation = epoch;
-      const taskSha = await sealed();
+      const taskSha = await taskSeal();
       const programs = native?.programs ?? historical;
-      const controls = native ? await selfCheck(surface, native, 'a0') : undefined;
+      const controls =
+        native || packet ? await selfCheck(surface, native, 'a0', packet) : undefined;
       if (controls && !controls.ok)
         throw new Error('native arm controls failed; no prompts prepared');
       const dump: Record<string, { system: string; user: string }> = {};
-      for (const task of APP_TASKS)
-        for (const side of ['a0', 'ts'] as const)
-          if (only === undefined || only === side)
+      for (const task of tasks)
+        for (const side of sides)
+          if (only === undefined || only === side) {
+            const selected = packet?.initial(task, surface);
             dump[`${task.id}/${side}/${PROTOCOL[side]}`] = prompt(
               side,
               task,
-              programs,
+              selected?.programs ?? (programs as Programs),
               guide,
               surface,
-              native?.services,
+              selected?.services ?? native?.services,
+              packet,
             );
+          }
       const implementationAfter = committedTree(process.cwd());
       if (JSON.stringify(implementationAfter) !== JSON.stringify(implementation))
         throw new Error('implementation changed during prompt preparation');
@@ -688,7 +785,8 @@ async function main(): Promise<void> {
         a0SourceSurface: surface,
         programViewScope: process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all',
         taskSetSha256: taskSha,
-        startSha256: START_SHA256,
+        startSha256: packet?.metadata.applications ?? START_SHA256,
+        applicationPacket: packet?.metadata ?? null,
         native: native?.metadata ?? null,
         harnessSelfCheck: controls ? { ok: controls.ok, rows: controls.rows } : null,
         guide: { path: guidePath, sha256: sha(guide) },
@@ -716,18 +814,21 @@ async function main(): Promise<void> {
         string | undefined,
       ];
       const only = sideArg(sideText);
-      const taskSha = await sealed();
+      const taskSha = await taskSeal();
       const programs = native?.programs ?? historical;
-      const check = await selfCheck(surface, native, only);
+      const check = await selfCheck(surface, native, only, packet);
       if (!check.ok) throw new Error('harness controls failed; no replies scored');
       const repliesText = await readFile(repliesPath, 'utf8');
       const replies = JSON.parse(repliesText) as Record<string, string[]>;
       const trials: Record<string, unknown>[] = [];
-      for (const task of APP_TASKS)
-        for (const side of ['a0', 'ts'] as const) {
+      for (const task of tasks)
+        for (const side of sides) {
           if (only !== undefined && only !== side) continue;
           const key = `${task.id}/${side}/${PROTOCOL[side]}`;
-          const p = prompt(side, task, programs, guide, surface, native?.services);
+          const selected = packet?.initial(task, surface);
+          const current = selected?.programs ?? (programs as Programs);
+          const services = selected?.services ?? native?.services;
+          const p = prompt(side, task, current, guide, surface, services, packet);
           const rs = replies[key] ?? [];
           const attempts: Record<string, unknown>[] = [];
           const conversation: { reply: string; repair?: string }[] = [];
@@ -738,7 +839,7 @@ async function main(): Promise<void> {
           let failures: string[] = rs.length === 0 ? ['no reply'] : [];
           for (const [n, reply] of rs.slice(0, 2).entries()) {
             output += tok(reply);
-            const r = await judge(side, task, programs, reply, surface, native?.services);
+            const r = await judge(side, task, current, reply, surface, services, packet);
             failures = r.failures;
             const ok = r.failures.length === 0;
             if (n === 0) acceptedOneShot = ok;
@@ -792,7 +893,7 @@ async function main(): Promise<void> {
         generatedAt: new Date().toISOString(),
         tool: 'tools/app-edit-bench.ts run',
         preRegistration:
-          surface === 'native'
+          packet || surface === 'native'
             ? null
             : surface === 'dense'
               ? 'docs/history/2026-10-17-unified-controls-preregistration.md'
@@ -806,7 +907,8 @@ async function main(): Promise<void> {
         model: model ?? null,
         side: only ?? 'both',
         taskSetSha256: taskSha,
-        startSha256: START_SHA256,
+        startSha256: packet?.metadata.applications ?? START_SHA256,
+        applicationPacket: packet?.metadata ?? null,
         native: native?.metadata ?? null,
         repliesSha256: sha(repliesText),
         tokenAccounting:
@@ -824,11 +926,12 @@ async function main(): Promise<void> {
       return;
     }
     console.error(
-      'usage: bun tools/app-edit-bench.ts self-check [OUT] [a0|ts] | dump OUT [a0|ts] | run REPLIES OUT [a0|ts] [model] [--surface=canonical|dense|native] [--guide=PATH]',
+      'usage: bun tools/app-edit-bench.ts self-check [OUT] [a0|ts] | dump OUT [a0|ts] | run REPLIES OUT [a0|ts] [model] [--surface=canonical|dense|native] [--guide=PATH] [--packet=applications-v1]',
     );
     process.exitCode = 2;
   } finally {
     native?.close();
+    await applications?.close();
   }
 }
 

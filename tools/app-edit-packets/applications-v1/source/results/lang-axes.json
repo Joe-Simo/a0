@@ -1,0 +1,5684 @@
+{
+  "generatedAt": "2026-10-01T06:49:16.993Z",
+  "tool": "tools/lang-axes.ts",
+  "platform": "darwin arm64",
+  "cpus": 8,
+  "node": "v24.14.0",
+  "meaning": "Deterministic axes over the exec-bench language set on the exec-bench kernel programs. tokens: o200k_base (js-tiktoken) tokens of each kernel source as written in the exec-bench tables (kernel) and of the whole runnable program file including its driver (program); A0 kernel and program are the same text. validation: per edit on a warm project directory, the edited file gets one appended comment line; checkMs is the static step (build, or the toolchain checker for a language with no build step; null when none exists), checkRunMs is the static step plus what running needs plus a one-iteration run whose checksum must equal the A0 result (A0 native: one `a0 bench FILE K 1` process that runs the front end and then evaluates the checked IR; a0node: the Node CLI check, `emit c` and clang). Medians per kernel over the rounds, then the median over kernels. Wall-clock under the recorded load; samples interleaved across all (language, kernel) pairs, order rotated per round. Startup is not re-measured here (results/exec-benchmark.json). Cold processes throughout: no language server or daemon is kept running (A0 included).",
+  "load": {
+    "perRound": [
+      {
+        "round": 1,
+        "loadavg": [
+          6.33349609375,
+          6.8994140625,
+          8.9013671875
+        ]
+      },
+      {
+        "round": 2,
+        "loadavg": [
+          5.41748046875,
+          6.37158203125,
+          8.4765625
+        ]
+      },
+      {
+        "round": 3,
+        "loadavg": [
+          7.74072265625,
+          6.73828125,
+          8.33544921875
+        ]
+      },
+      {
+        "round": 4,
+        "loadavg": [
+          6.55517578125,
+          6.38232421875,
+          8.013671875
+        ]
+      },
+      {
+        "round": 5,
+        "loadavg": [
+          9.7734375,
+          9.77392578125,
+          9.28466796875
+        ]
+      },
+      {
+        "round": 6,
+        "loadavg": [
+          6.6455078125,
+          8.865234375,
+          8.99267578125
+        ]
+      }
+    ],
+    "note": "os.loadavg() at the start of each round and after the last; a 1-minute value above the CPU count means the timings were taken on a loaded machine and are comparable only within this run."
+  },
+  "rounds": 5,
+  "loadGate": {
+    "maxLoad": 10,
+    "checks": 5,
+    "waits": 10,
+    "waitedSeconds": 30,
+    "highestLoadAtSampleStart": 9.77
+  },
+  "timedKernels": [
+    "affine",
+    "branchy",
+    "arrfill"
+  ],
+  "tokenKernels": [
+    "affine",
+    "rotl",
+    "clamp",
+    "mix",
+    "ident",
+    "noop",
+    "chain3",
+    "branchy",
+    "arrfill",
+    "loop64"
+  ],
+  "coverage": {
+    "languagesBesideA0": 48,
+    "tokens": 48,
+    "checkRun": 48,
+    "check": 33,
+    "notInstalled": [],
+    "failed": []
+  },
+  "tokens": {
+    "a0": {
+      "label": "A0",
+      "family": "a0",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 541,
+      "sumProgramTokens": 551,
+      "kernelTokensOverA0Geomean": 1,
+      "kernels": {
+        "affine": {
+          "kernel": 29,
+          "program": 30
+        },
+        "rotl": {
+          "kernel": 41,
+          "program": 42
+        },
+        "clamp": {
+          "kernel": 44,
+          "program": 45
+        },
+        "mix": {
+          "kernel": 65,
+          "program": 66
+        },
+        "ident": {
+          "kernel": 13,
+          "program": 14
+        },
+        "noop": {
+          "kernel": 13,
+          "program": 14
+        },
+        "chain3": {
+          "kernel": 80,
+          "program": 81
+        },
+        "branchy": {
+          "kernel": 81,
+          "program": 82
+        },
+        "arrfill": {
+          "kernel": 98,
+          "program": 99
+        },
+        "loop64": {
+          "kernel": 77,
+          "program": 78
+        }
+      },
+      "dense": {
+        "compact": {
+          "meaning": "dense text with the kept compact spellings (results/dense-six-rules.json); measured, not claimed: rules 5 and 6 need an AI edit-accuracy run first. The text reads back with parseDense(text, { compact: true }).",
+          "sumKernelTokens": 163,
+          "kernels": {
+            "affine": 7,
+            "rotl": 12,
+            "clamp": 10,
+            "mix": 31,
+            "ident": 2,
+            "noop": 2,
+            "chain3": 22,
+            "branchy": 30,
+            "arrfill": 21,
+            "loop64": 26
+          }
+        },
+        "meaning": "o200k tokens of the dense text of each kernel (src/dense.ts) after normalizeProgram: same behavior as the canonical kernel, nodes ordered and named for the dense form; canonical -> dense -> canonical is lossless, tools/dense-tokens.ts measures every feature.",
+        "sumKernelTokens": 193,
+        "sumProgramTokens": 203,
+        "kernelTokensOverCanonicalGeomean": 0.3213934371755617,
+        "kernels": {
+          "affine": {
+            "kernel": 7,
+            "program": 8
+          },
+          "rotl": {
+            "kernel": 13,
+            "program": 14
+          },
+          "clamp": {
+            "kernel": 17,
+            "program": 18
+          },
+          "mix": {
+            "kernel": 33,
+            "program": 34
+          },
+          "ident": {
+            "kernel": 3,
+            "program": 4
+          },
+          "noop": {
+            "kernel": 3,
+            "program": 4
+          },
+          "chain3": {
+            "kernel": 25,
+            "program": 26
+          },
+          "branchy": {
+            "kernel": 32,
+            "program": 33
+          },
+          "arrfill": {
+            "kernel": 31,
+            "program": 32
+          },
+          "loop64": {
+            "kernel": 29,
+            "program": 30
+          }
+        },
+        "vsBest": {
+          "languagesRanked": 49,
+          "canonicalRank": 38,
+          "denseRank": 1,
+          "bestSingleLanguageSum": 323,
+          "sumOfPerKernelBests": 300,
+          "denseOverBestSingleLanguage": 0.598,
+          "denseOverPerKernelBests": 0.643,
+          "perKernel": {
+            "affine": {
+              "canonical": 29,
+              "dense": 7,
+              "best": 15,
+              "bestLanguage": "ocaml",
+              "denseOverBest": 0.467,
+              "canonicalOverBest": 1.933
+            },
+            "rotl": {
+              "canonical": 41,
+              "dense": 13,
+              "best": 31,
+              "bestLanguage": "r",
+              "denseOverBest": 0.419,
+              "canonicalOverBest": 1.323
+            },
+            "clamp": {
+              "canonical": 44,
+              "dense": 17,
+              "best": 22,
+              "bestLanguage": "nim",
+              "denseOverBest": 0.773,
+              "canonicalOverBest": 2
+            },
+            "mix": {
+              "canonical": 65,
+              "dense": 33,
+              "best": 39,
+              "bestLanguage": "forth",
+              "denseOverBest": 0.846,
+              "canonicalOverBest": 1.667
+            },
+            "ident": {
+              "canonical": 13,
+              "dense": 3,
+              "best": 5,
+              "bestLanguage": "ocaml",
+              "denseOverBest": 0.6,
+              "canonicalOverBest": 2.6
+            },
+            "noop": {
+              "canonical": 13,
+              "dense": 3,
+              "best": 5,
+              "bestLanguage": "ocaml",
+              "denseOverBest": 0.6,
+              "canonicalOverBest": 2.6
+            },
+            "chain3": {
+              "canonical": 80,
+              "dense": 25,
+              "best": 45,
+              "bestLanguage": "forth",
+              "denseOverBest": 0.556,
+              "canonicalOverBest": 1.778
+            },
+            "branchy": {
+              "canonical": 81,
+              "dense": 32,
+              "best": 49,
+              "bestLanguage": "forth",
+              "denseOverBest": 0.653,
+              "canonicalOverBest": 1.653
+            },
+            "arrfill": {
+              "canonical": 98,
+              "dense": 31,
+              "best": 48,
+              "bestLanguage": "d",
+              "denseOverBest": 0.646,
+              "canonicalOverBest": 2.042
+            },
+            "loop64": {
+              "canonical": 77,
+              "dense": 29,
+              "best": 41,
+              "bestLanguage": "forth",
+              "denseOverBest": 0.707,
+              "canonicalOverBest": 1.878
+            }
+          }
+        }
+      }
+    },
+    "c": {
+      "label": "C",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 512,
+      "sumProgramTokens": 3260,
+      "kernelTokensOverA0Geomean": 1.0234761875966354,
+      "kernels": {
+        "affine": {
+          "kernel": 32,
+          "program": 320
+        },
+        "rotl": {
+          "kernel": 43,
+          "program": 318
+        },
+        "clamp": {
+          "kernel": 47,
+          "program": 335
+        },
+        "mix": {
+          "kernel": 71,
+          "program": 345
+        },
+        "ident": {
+          "kernel": 17,
+          "program": 278
+        },
+        "noop": {
+          "kernel": 18,
+          "program": 280
+        },
+        "chain3": {
+          "kernel": 76,
+          "program": 351
+        },
+        "branchy": {
+          "kernel": 69,
+          "program": 344
+        },
+        "arrfill": {
+          "kernel": 65,
+          "program": 340
+        },
+        "loop64": {
+          "kernel": 74,
+          "program": 349
+        }
+      }
+    },
+    "rust": {
+      "label": "Rust",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 558,
+      "sumProgramTokens": 2596,
+      "kernelTokensOverA0Geomean": 1.1098246773910907,
+      "kernels": {
+        "affine": {
+          "kernel": 39,
+          "program": 255
+        },
+        "rotl": {
+          "kernel": 49,
+          "program": 253
+        },
+        "clamp": {
+          "kernel": 52,
+          "program": 268
+        },
+        "mix": {
+          "kernel": 71,
+          "program": 274
+        },
+        "ident": {
+          "kernel": 17,
+          "program": 208
+        },
+        "noop": {
+          "kernel": 18,
+          "program": 210
+        },
+        "chain3": {
+          "kernel": 82,
+          "program": 286
+        },
+        "branchy": {
+          "kernel": 80,
+          "program": 284
+        },
+        "arrfill": {
+          "kernel": 75,
+          "program": 279
+        },
+        "loop64": {
+          "kernel": 75,
+          "program": 279
+        }
+      }
+    },
+    "js": {
+      "label": "JavaScript",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 454,
+      "sumProgramTokens": 2339,
+      "kernelTokensOverA0Geomean": 0.8297955670248275,
+      "kernels": {
+        "affine": {
+          "kernel": 27,
+          "program": 257
+        },
+        "rotl": {
+          "kernel": 37,
+          "program": 226
+        },
+        "clamp": {
+          "kernel": 31,
+          "program": 261
+        },
+        "mix": {
+          "kernel": 77,
+          "program": 265
+        },
+        "ident": {
+          "kernel": 10,
+          "program": 156
+        },
+        "noop": {
+          "kernel": 10,
+          "program": 156
+        },
+        "chain3": {
+          "kernel": 62,
+          "program": 251
+        },
+        "branchy": {
+          "kernel": 62,
+          "program": 251
+        },
+        "arrfill": {
+          "kernel": 65,
+          "program": 254
+        },
+        "loop64": {
+          "kernel": 73,
+          "program": 262
+        }
+      }
+    },
+    "typescript": {
+      "label": "TypeScript",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 507,
+      "sumProgramTokens": 3102,
+      "kernelTokensOverA0Geomean": 0.9466297263617207,
+      "kernels": {
+        "affine": {
+          "kernel": 33,
+          "program": 306
+        },
+        "rotl": {
+          "kernel": 41,
+          "program": 301
+        },
+        "clamp": {
+          "kernel": 37,
+          "program": 310
+        },
+        "mix": {
+          "kernel": 81,
+          "program": 340
+        },
+        "ident": {
+          "kernel": 12,
+          "program": 257
+        },
+        "noop": {
+          "kernel": 12,
+          "program": 257
+        },
+        "chain3": {
+          "kernel": 72,
+          "program": 332
+        },
+        "branchy": {
+          "kernel": 66,
+          "program": 326
+        },
+        "arrfill": {
+          "kernel": 76,
+          "program": 336
+        },
+        "loop64": {
+          "kernel": 77,
+          "program": 337
+        }
+      }
+    },
+    "cpp": {
+      "label": "C++",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 479,
+      "sumProgramTokens": 2944,
+      "kernelTokensOverA0Geomean": 0.9353811854584242,
+      "kernels": {
+        "affine": {
+          "kernel": 29,
+          "program": 287
+        },
+        "rotl": {
+          "kernel": 41,
+          "program": 288
+        },
+        "clamp": {
+          "kernel": 35,
+          "program": 293
+        },
+        "mix": {
+          "kernel": 69,
+          "program": 315
+        },
+        "ident": {
+          "kernel": 15,
+          "program": 249
+        },
+        "noop": {
+          "kernel": 15,
+          "program": 249
+        },
+        "chain3": {
+          "kernel": 67,
+          "program": 314
+        },
+        "branchy": {
+          "kernel": 67,
+          "program": 314
+        },
+        "arrfill": {
+          "kernel": 69,
+          "program": 316
+        },
+        "loop64": {
+          "kernel": 72,
+          "program": 319
+        }
+      }
+    },
+    "objc": {
+      "label": "Objective-C",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 515,
+      "sumProgramTokens": 3430,
+      "kernelTokensOverA0Geomean": 1.024603592367892,
+      "kernels": {
+        "affine": {
+          "kernel": 32,
+          "program": 336
+        },
+        "rotl": {
+          "kernel": 43,
+          "program": 335
+        },
+        "clamp": {
+          "kernel": 49,
+          "program": 353
+        },
+        "mix": {
+          "kernel": 71,
+          "program": 362
+        },
+        "ident": {
+          "kernel": 17,
+          "program": 295
+        },
+        "noop": {
+          "kernel": 17,
+          "program": 295
+        },
+        "chain3": {
+          "kernel": 77,
+          "program": 369
+        },
+        "branchy": {
+          "kernel": 69,
+          "program": 361
+        },
+        "arrfill": {
+          "kernel": 65,
+          "program": 357
+        },
+        "loop64": {
+          "kernel": 75,
+          "program": 367
+        }
+      }
+    },
+    "java": {
+      "label": "Java",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 427,
+      "sumProgramTokens": 3072,
+      "kernelTokensOverA0Geomean": 0.8084520259460211,
+      "kernels": {
+        "affine": {
+          "kernel": 21,
+          "program": 295
+        },
+        "rotl": {
+          "kernel": 35,
+          "program": 300
+        },
+        "clamp": {
+          "kernel": 49,
+          "program": 323
+        },
+        "mix": {
+          "kernel": 60,
+          "program": 324
+        },
+        "ident": {
+          "kernel": 11,
+          "program": 265
+        },
+        "noop": {
+          "kernel": 11,
+          "program": 265
+        },
+        "chain3": {
+          "kernel": 53,
+          "program": 318
+        },
+        "branchy": {
+          "kernel": 61,
+          "program": 326
+        },
+        "arrfill": {
+          "kernel": 61,
+          "program": 326
+        },
+        "loop64": {
+          "kernel": 65,
+          "program": 330
+        }
+      }
+    },
+    "kotlin": {
+      "label": "Kotlin",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 425,
+      "sumProgramTokens": 3104,
+      "kernelTokensOverA0Geomean": 0.7810050550667665,
+      "kernels": {
+        "affine": {
+          "kernel": 21,
+          "program": 299
+        },
+        "rotl": {
+          "kernel": 45,
+          "program": 313
+        },
+        "clamp": {
+          "kernel": 40,
+          "program": 317
+        },
+        "mix": {
+          "kernel": 60,
+          "program": 327
+        },
+        "ident": {
+          "kernel": 9,
+          "program": 267
+        },
+        "noop": {
+          "kernel": 9,
+          "program": 267
+        },
+        "chain3": {
+          "kernel": 51,
+          "program": 320
+        },
+        "branchy": {
+          "kernel": 63,
+          "program": 331
+        },
+        "arrfill": {
+          "kernel": 60,
+          "program": 328
+        },
+        "loop64": {
+          "kernel": 67,
+          "program": 335
+        }
+      }
+    },
+    "go": {
+      "label": "Go",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 389,
+      "sumProgramTokens": 2624,
+      "kernelTokensOverA0Geomean": 0.7406752968998576,
+      "kernels": {
+        "affine": {
+          "kernel": 19,
+          "program": 252
+        },
+        "rotl": {
+          "kernel": 36,
+          "program": 260
+        },
+        "clamp": {
+          "kernel": 23,
+          "program": 256
+        },
+        "mix": {
+          "kernel": 53,
+          "program": 276
+        },
+        "ident": {
+          "kernel": 12,
+          "program": 225
+        },
+        "noop": {
+          "kernel": 12,
+          "program": 225
+        },
+        "chain3": {
+          "kernel": 55,
+          "program": 279
+        },
+        "branchy": {
+          "kernel": 64,
+          "program": 288
+        },
+        "arrfill": {
+          "kernel": 56,
+          "program": 280
+        },
+        "loop64": {
+          "kernel": 59,
+          "program": 283
+        }
+      }
+    },
+    "swift": {
+      "label": "Swift",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 476,
+      "sumProgramTokens": 2861,
+      "kernelTokensOverA0Geomean": 0.9248357917642939,
+      "kernels": {
+        "affine": {
+          "kernel": 32,
+          "program": 281
+        },
+        "rotl": {
+          "kernel": 43,
+          "program": 282
+        },
+        "clamp": {
+          "kernel": 33,
+          "program": 282
+        },
+        "mix": {
+          "kernel": 66,
+          "program": 304
+        },
+        "ident": {
+          "kernel": 14,
+          "program": 241
+        },
+        "noop": {
+          "kernel": 14,
+          "program": 241
+        },
+        "chain3": {
+          "kernel": 68,
+          "program": 307
+        },
+        "branchy": {
+          "kernel": 63,
+          "program": 302
+        },
+        "arrfill": {
+          "kernel": 72,
+          "program": 311
+        },
+        "loop64": {
+          "kernel": 71,
+          "program": 310
+        }
+      }
+    },
+    "zig": {
+      "label": "Zig",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 499,
+      "sumProgramTokens": 3764,
+      "kernelTokensOverA0Geomean": 0.956883314327664,
+      "kernels": {
+        "affine": {
+          "kernel": 30,
+          "program": 367
+        },
+        "rotl": {
+          "kernel": 56,
+          "program": 383
+        },
+        "clamp": {
+          "kernel": 32,
+          "program": 369
+        },
+        "mix": {
+          "kernel": 63,
+          "program": 389
+        },
+        "ident": {
+          "kernel": 14,
+          "program": 329
+        },
+        "noop": {
+          "kernel": 14,
+          "program": 329
+        },
+        "chain3": {
+          "kernel": 67,
+          "program": 394
+        },
+        "branchy": {
+          "kernel": 69,
+          "program": 396
+        },
+        "arrfill": {
+          "kernel": 71,
+          "program": 398
+        },
+        "loop64": {
+          "kernel": 83,
+          "program": 410
+        }
+      }
+    },
+    "python": {
+      "label": "Python",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 417,
+      "sumProgramTokens": 2422,
+      "kernelTokensOverA0Geomean": 0.7233683189358702,
+      "kernels": {
+        "affine": {
+          "kernel": 22,
+          "program": 260
+        },
+        "rotl": {
+          "kernel": 36,
+          "program": 237
+        },
+        "clamp": {
+          "kernel": 28,
+          "program": 266
+        },
+        "mix": {
+          "kernel": 71,
+          "program": 271
+        },
+        "ident": {
+          "kernel": 7,
+          "program": 169
+        },
+        "noop": {
+          "kernel": 7,
+          "program": 169
+        },
+        "chain3": {
+          "kernel": 63,
+          "program": 264
+        },
+        "branchy": {
+          "kernel": 63,
+          "program": 264
+        },
+        "arrfill": {
+          "kernel": 60,
+          "program": 261
+        },
+        "loop64": {
+          "kernel": 60,
+          "program": 261
+        }
+      }
+    },
+    "ruby": {
+      "label": "Ruby",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 386,
+      "sumProgramTokens": 2261,
+      "kernelTokensOverA0Geomean": 0.6992469857693963,
+      "kernels": {
+        "affine": {
+          "kernel": 20,
+          "program": 245
+        },
+        "rotl": {
+          "kernel": 34,
+          "program": 222
+        },
+        "clamp": {
+          "kernel": 29,
+          "program": 254
+        },
+        "mix": {
+          "kernel": 59,
+          "program": 246
+        },
+        "ident": {
+          "kernel": 8,
+          "program": 157
+        },
+        "noop": {
+          "kernel": 8,
+          "program": 157
+        },
+        "chain3": {
+          "kernel": 57,
+          "program": 245
+        },
+        "branchy": {
+          "kernel": 58,
+          "program": 246
+        },
+        "arrfill": {
+          "kernel": 55,
+          "program": 243
+        },
+        "loop64": {
+          "kernel": 58,
+          "program": 246
+        }
+      }
+    },
+    "php": {
+      "label": "PHP",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 549,
+      "sumProgramTokens": 3664,
+      "kernelTokensOverA0Geomean": 1.0332147030057053,
+      "kernels": {
+        "affine": {
+          "kernel": 37,
+          "program": 399
+        },
+        "rotl": {
+          "kernel": 44,
+          "program": 356
+        },
+        "clamp": {
+          "kernel": 45,
+          "program": 407
+        },
+        "mix": {
+          "kernel": 79,
+          "program": 390
+        },
+        "ident": {
+          "kernel": 13,
+          "program": 273
+        },
+        "noop": {
+          "kernel": 13,
+          "program": 273
+        },
+        "chain3": {
+          "kernel": 81,
+          "program": 393
+        },
+        "branchy": {
+          "kernel": 79,
+          "program": 391
+        },
+        "arrfill": {
+          "kernel": 83,
+          "program": 395
+        },
+        "loop64": {
+          "kernel": 75,
+          "program": 387
+        }
+      }
+    },
+    "lua": {
+      "label": "Lua",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 408,
+      "sumProgramTokens": 2353,
+      "kernelTokensOverA0Geomean": 0.731672186708382,
+      "kernels": {
+        "affine": {
+          "kernel": 20,
+          "program": 260
+        },
+        "rotl": {
+          "kernel": 34,
+          "program": 229
+        },
+        "clamp": {
+          "kernel": 36,
+          "program": 276
+        },
+        "mix": {
+          "kernel": 60,
+          "program": 254
+        },
+        "ident": {
+          "kernel": 8,
+          "program": 156
+        },
+        "noop": {
+          "kernel": 8,
+          "program": 156
+        },
+        "chain3": {
+          "kernel": 57,
+          "program": 252
+        },
+        "branchy": {
+          "kernel": 71,
+          "program": 266
+        },
+        "arrfill": {
+          "kernel": 58,
+          "program": 253
+        },
+        "loop64": {
+          "kernel": 56,
+          "program": 251
+        }
+      }
+    },
+    "perl": {
+      "label": "Perl",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 570,
+      "sumProgramTokens": 2725,
+      "kernelTokensOverA0Geomean": 1.09328809617058,
+      "kernels": {
+        "affine": {
+          "kernel": 41,
+          "program": 308
+        },
+        "rotl": {
+          "kernel": 45,
+          "program": 261
+        },
+        "clamp": {
+          "kernel": 46,
+          "program": 313
+        },
+        "mix": {
+          "kernel": 87,
+          "program": 302
+        },
+        "ident": {
+          "kernel": 15,
+          "program": 178
+        },
+        "noop": {
+          "kernel": 15,
+          "program": 178
+        },
+        "chain3": {
+          "kernel": 86,
+          "program": 302
+        },
+        "branchy": {
+          "kernel": 82,
+          "program": 298
+        },
+        "arrfill": {
+          "kernel": 77,
+          "program": 293
+        },
+        "loop64": {
+          "kernel": 76,
+          "program": 292
+        }
+      }
+    },
+    "tcl": {
+      "label": "Tcl",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 528,
+      "sumProgramTokens": 3145,
+      "kernelTokensOverA0Geomean": 0.9304396372266095,
+      "kernels": {
+        "affine": {
+          "kernel": 26,
+          "program": 352
+        },
+        "rotl": {
+          "kernel": 40,
+          "program": 302
+        },
+        "clamp": {
+          "kernel": 39,
+          "program": 365
+        },
+        "mix": {
+          "kernel": 78,
+          "program": 339
+        },
+        "ident": {
+          "kernel": 10,
+          "program": 207
+        },
+        "noop": {
+          "kernel": 10,
+          "program": 207
+        },
+        "chain3": {
+          "kernel": 75,
+          "program": 337
+        },
+        "branchy": {
+          "kernel": 79,
+          "program": 341
+        },
+        "arrfill": {
+          "kernel": 90,
+          "program": 352
+        },
+        "loop64": {
+          "kernel": 81,
+          "program": 343
+        }
+      }
+    },
+    "fortran": {
+      "label": "Fortran",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 849,
+      "sumProgramTokens": 5794,
+      "kernelTokensOverA0Geomean": 1.7022109340940204,
+      "kernels": {
+        "affine": {
+          "kernel": 55,
+          "program": 612
+        },
+        "rotl": {
+          "kernel": 79,
+          "program": 574
+        },
+        "clamp": {
+          "kernel": 48,
+          "program": 605
+        },
+        "mix": {
+          "kernel": 111,
+          "program": 605
+        },
+        "ident": {
+          "kernel": 34,
+          "program": 465
+        },
+        "noop": {
+          "kernel": 34,
+          "program": 465
+        },
+        "chain3": {
+          "kernel": 141,
+          "program": 636
+        },
+        "branchy": {
+          "kernel": 130,
+          "program": 625
+        },
+        "arrfill": {
+          "kernel": 100,
+          "program": 595
+        },
+        "loop64": {
+          "kernel": 117,
+          "program": 612
+        }
+      }
+    },
+    "csharp": {
+      "label": "C#",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 384,
+      "sumProgramTokens": 3081,
+      "kernelTokensOverA0Geomean": 0.7088733815728997,
+      "kernels": {
+        "affine": {
+          "kernel": 20,
+          "program": 302
+        },
+        "rotl": {
+          "kernel": 37,
+          "program": 307
+        },
+        "clamp": {
+          "kernel": 23,
+          "program": 304
+        },
+        "mix": {
+          "kernel": 57,
+          "program": 326
+        },
+        "ident": {
+          "kernel": 9,
+          "program": 266
+        },
+        "noop": {
+          "kernel": 10,
+          "program": 268
+        },
+        "chain3": {
+          "kernel": 48,
+          "program": 318
+        },
+        "branchy": {
+          "kernel": 55,
+          "program": 325
+        },
+        "arrfill": {
+          "kernel": 63,
+          "program": 333
+        },
+        "loop64": {
+          "kernel": 62,
+          "program": 332
+        }
+      }
+    },
+    "fsharp": {
+      "label": "F#",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 451,
+      "sumProgramTokens": 3143,
+      "kernelTokensOverA0Geomean": 0.8263632993724647,
+      "kernels": {
+        "affine": {
+          "kernel": 26,
+          "program": 304
+        },
+        "rotl": {
+          "kernel": 46,
+          "program": 315
+        },
+        "clamp": {
+          "kernel": 28,
+          "program": 306
+        },
+        "mix": {
+          "kernel": 67,
+          "program": 335
+        },
+        "ident": {
+          "kernel": 10,
+          "program": 270
+        },
+        "noop": {
+          "kernel": 10,
+          "program": 270
+        },
+        "chain3": {
+          "kernel": 56,
+          "program": 326
+        },
+        "branchy": {
+          "kernel": 66,
+          "program": 336
+        },
+        "arrfill": {
+          "kernel": 68,
+          "program": 337
+        },
+        "loop64": {
+          "kernel": 74,
+          "program": 344
+        }
+      }
+    },
+    "vb": {
+      "label": "Visual Basic",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 582,
+      "sumProgramTokens": 3829,
+      "kernelTokensOverA0Geomean": 1.1568209898852246,
+      "kernels": {
+        "affine": {
+          "kernel": 34,
+          "program": 374
+        },
+        "rotl": {
+          "kernel": 51,
+          "program": 376
+        },
+        "clamp": {
+          "kernel": 53,
+          "program": 392
+        },
+        "mix": {
+          "kernel": 81,
+          "program": 405
+        },
+        "ident": {
+          "kernel": 19,
+          "program": 328
+        },
+        "noop": {
+          "kernel": 20,
+          "program": 330
+        },
+        "chain3": {
+          "kernel": 83,
+          "program": 408
+        },
+        "branchy": {
+          "kernel": 78,
+          "program": 403
+        },
+        "arrfill": {
+          "kernel": 74,
+          "program": 399
+        },
+        "loop64": {
+          "kernel": 89,
+          "program": 414
+        }
+      }
+    },
+    "dart": {
+      "label": "Dart",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 446,
+      "sumProgramTokens": 2621,
+      "kernelTokensOverA0Geomean": 0.7897529154184997,
+      "kernels": {
+        "affine": {
+          "kernel": 25,
+          "program": 256
+        },
+        "rotl": {
+          "kernel": 38,
+          "program": 256
+        },
+        "clamp": {
+          "kernel": 33,
+          "program": 264
+        },
+        "mix": {
+          "kernel": 68,
+          "program": 285
+        },
+        "ident": {
+          "kernel": 8,
+          "program": 211
+        },
+        "noop": {
+          "kernel": 8,
+          "program": 211
+        },
+        "chain3": {
+          "kernel": 65,
+          "program": 283
+        },
+        "branchy": {
+          "kernel": 67,
+          "program": 285
+        },
+        "arrfill": {
+          "kernel": 62,
+          "program": 280
+        },
+        "loop64": {
+          "kernel": 72,
+          "program": 290
+        }
+      }
+    },
+    "scala": {
+      "label": "Scala",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 449,
+      "sumProgramTokens": 2998,
+      "kernelTokensOverA0Geomean": 0.8094522452739903,
+      "kernels": {
+        "affine": {
+          "kernel": 21,
+          "program": 286
+        },
+        "rotl": {
+          "kernel": 35,
+          "program": 290
+        },
+        "clamp": {
+          "kernel": 59,
+          "program": 323
+        },
+        "mix": {
+          "kernel": 58,
+          "program": 312
+        },
+        "ident": {
+          "kernel": 9,
+          "program": 254
+        },
+        "noop": {
+          "kernel": 9,
+          "program": 254
+        },
+        "chain3": {
+          "kernel": 50,
+          "program": 306
+        },
+        "branchy": {
+          "kernel": 69,
+          "program": 324
+        },
+        "arrfill": {
+          "kernel": 68,
+          "program": 323
+        },
+        "loop64": {
+          "kernel": 71,
+          "program": 326
+        }
+      }
+    },
+    "clojure": {
+      "label": "Clojure",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 560,
+      "sumProgramTokens": 3237,
+      "kernelTokensOverA0Geomean": 1.0217913071586548,
+      "kernels": {
+        "affine": {
+          "kernel": 31,
+          "program": 309
+        },
+        "rotl": {
+          "kernel": 55,
+          "program": 323
+        },
+        "clamp": {
+          "kernel": 38,
+          "program": 316
+        },
+        "mix": {
+          "kernel": 88,
+          "program": 355
+        },
+        "ident": {
+          "kernel": 12,
+          "program": 269
+        },
+        "noop": {
+          "kernel": 12,
+          "program": 269
+        },
+        "chain3": {
+          "kernel": 81,
+          "program": 349
+        },
+        "branchy": {
+          "kernel": 77,
+          "program": 345
+        },
+        "arrfill": {
+          "kernel": 74,
+          "program": 342
+        },
+        "loop64": {
+          "kernel": 92,
+          "program": 360
+        }
+      }
+    },
+    "groovy": {
+      "label": "Groovy",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 409,
+      "sumProgramTokens": 2944,
+      "kernelTokensOverA0Geomean": 0.768971777285142,
+      "kernels": {
+        "affine": {
+          "kernel": 20,
+          "program": 283
+        },
+        "rotl": {
+          "kernel": 35,
+          "program": 289
+        },
+        "clamp": {
+          "kernel": 48,
+          "program": 311
+        },
+        "mix": {
+          "kernel": 56,
+          "program": 309
+        },
+        "ident": {
+          "kernel": 10,
+          "program": 253
+        },
+        "noop": {
+          "kernel": 10,
+          "program": 253
+        },
+        "chain3": {
+          "kernel": 50,
+          "program": 304
+        },
+        "branchy": {
+          "kernel": 60,
+          "program": 314
+        },
+        "arrfill": {
+          "kernel": 61,
+          "program": 315
+        },
+        "loop64": {
+          "kernel": 59,
+          "program": 313
+        }
+      }
+    },
+    "elixir": {
+      "label": "Elixir",
+      "family": "vm",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 453,
+      "sumProgramTokens": 3115,
+      "kernelTokensOverA0Geomean": 0.7968205227990932,
+      "kernels": {
+        "affine": {
+          "kernel": 21,
+          "program": 301
+        },
+        "rotl": {
+          "kernel": 39,
+          "program": 305
+        },
+        "clamp": {
+          "kernel": 43,
+          "program": 324
+        },
+        "mix": {
+          "kernel": 72,
+          "program": 338
+        },
+        "ident": {
+          "kernel": 8,
+          "program": 259
+        },
+        "noop": {
+          "kernel": 8,
+          "program": 259
+        },
+        "chain3": {
+          "kernel": 59,
+          "program": 325
+        },
+        "branchy": {
+          "kernel": 77,
+          "program": 344
+        },
+        "arrfill": {
+          "kernel": 57,
+          "program": 324
+        },
+        "loop64": {
+          "kernel": 69,
+          "program": 336
+        }
+      }
+    },
+    "erlang": {
+      "label": "Erlang",
+      "family": "vm",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 419,
+      "sumProgramTokens": 3054,
+      "kernelTokensOverA0Geomean": 0.7088660871734863,
+      "kernels": {
+        "affine": {
+          "kernel": 20,
+          "program": 300
+        },
+        "rotl": {
+          "kernel": 35,
+          "program": 299
+        },
+        "clamp": {
+          "kernel": 37,
+          "program": 317
+        },
+        "mix": {
+          "kernel": 65,
+          "program": 328
+        },
+        "ident": {
+          "kernel": 6,
+          "program": 252
+        },
+        "noop": {
+          "kernel": 6,
+          "program": 252
+        },
+        "chain3": {
+          "kernel": 52,
+          "program": 316
+        },
+        "branchy": {
+          "kernel": 69,
+          "program": 333
+        },
+        "arrfill": {
+          "kernel": 60,
+          "program": 324
+        },
+        "loop64": {
+          "kernel": 69,
+          "program": 333
+        }
+      }
+    },
+    "haskell": {
+      "label": "Haskell",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 487,
+      "sumProgramTokens": 3809,
+      "kernelTokensOverA0Geomean": 0.895993905151348,
+      "kernels": {
+        "affine": {
+          "kernel": 26,
+          "program": 375
+        },
+        "rotl": {
+          "kernel": 55,
+          "program": 387
+        },
+        "clamp": {
+          "kernel": 28,
+          "program": 377
+        },
+        "mix": {
+          "kernel": 72,
+          "program": 403
+        },
+        "ident": {
+          "kernel": 12,
+          "program": 327
+        },
+        "noop": {
+          "kernel": 12,
+          "program": 327
+        },
+        "chain3": {
+          "kernel": 61,
+          "program": 394
+        },
+        "branchy": {
+          "kernel": 59,
+          "program": 392
+        },
+        "arrfill": {
+          "kernel": 64,
+          "program": 397
+        },
+        "loop64": {
+          "kernel": 98,
+          "program": 430
+        }
+      }
+    },
+    "ocaml": {
+      "label": "OCaml",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 364,
+      "sumProgramTokens": 2768,
+      "kernelTokensOverA0Geomean": 0.6000386580568967,
+      "kernels": {
+        "affine": {
+          "kernel": 15,
+          "program": 272
+        },
+        "rotl": {
+          "kernel": 32,
+          "program": 273
+        },
+        "clamp": {
+          "kernel": 26,
+          "program": 283
+        },
+        "mix": {
+          "kernel": 61,
+          "program": 300
+        },
+        "ident": {
+          "kernel": 5,
+          "program": 228
+        },
+        "noop": {
+          "kernel": 5,
+          "program": 228
+        },
+        "chain3": {
+          "kernel": 47,
+          "program": 288
+        },
+        "branchy": {
+          "kernel": 55,
+          "program": 296
+        },
+        "arrfill": {
+          "kernel": 54,
+          "program": 295
+        },
+        "loop64": {
+          "kernel": 64,
+          "program": 305
+        }
+      }
+    },
+    "julia": {
+      "label": "Julia",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 416,
+      "sumProgramTokens": 2410,
+      "kernelTokensOverA0Geomean": 0.736901776535348,
+      "kernels": {
+        "affine": {
+          "kernel": 23,
+          "program": 236
+        },
+        "rotl": {
+          "kernel": 35,
+          "program": 234
+        },
+        "clamp": {
+          "kernel": 27,
+          "program": 240
+        },
+        "mix": {
+          "kernel": 64,
+          "program": 263
+        },
+        "ident": {
+          "kernel": 8,
+          "program": 193
+        },
+        "noop": {
+          "kernel": 8,
+          "program": 193
+        },
+        "chain3": {
+          "kernel": 50,
+          "program": 250
+        },
+        "branchy": {
+          "kernel": 60,
+          "program": 260
+        },
+        "arrfill": {
+          "kernel": 69,
+          "program": 269
+        },
+        "loop64": {
+          "kernel": 72,
+          "program": 272
+        }
+      }
+    },
+    "r": {
+      "label": "R",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 391,
+      "sumProgramTokens": 4920,
+      "kernelTokensOverA0Geomean": 0.6749712206933081,
+      "kernels": {
+        "affine": {
+          "kernel": 22,
+          "program": 522
+        },
+        "rotl": {
+          "kernel": 31,
+          "program": 484
+        },
+        "clamp": {
+          "kernel": 33,
+          "program": 532
+        },
+        "mix": {
+          "kernel": 63,
+          "program": 515
+        },
+        "ident": {
+          "kernel": 6,
+          "program": 412
+        },
+        "noop": {
+          "kernel": 6,
+          "program": 412
+        },
+        "chain3": {
+          "kernel": 51,
+          "program": 505
+        },
+        "branchy": {
+          "kernel": 63,
+          "program": 516
+        },
+        "arrfill": {
+          "kernel": 59,
+          "program": 512
+        },
+        "loop64": {
+          "kernel": 57,
+          "program": 510
+        }
+      }
+    },
+    "nim": {
+      "label": "Nim",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 424,
+      "sumProgramTokens": 2745,
+      "kernelTokensOverA0Geomean": 0.7753736207263776,
+      "kernels": {
+        "affine": {
+          "kernel": 19,
+          "program": 262
+        },
+        "rotl": {
+          "kernel": 42,
+          "program": 274
+        },
+        "clamp": {
+          "kernel": 22,
+          "program": 264
+        },
+        "mix": {
+          "kernel": 63,
+          "program": 294
+        },
+        "ident": {
+          "kernel": 11,
+          "program": 232
+        },
+        "noop": {
+          "kernel": 11,
+          "program": 232
+        },
+        "chain3": {
+          "kernel": 56,
+          "program": 289
+        },
+        "branchy": {
+          "kernel": 68,
+          "program": 301
+        },
+        "arrfill": {
+          "kernel": 61,
+          "program": 293
+        },
+        "loop64": {
+          "kernel": 71,
+          "program": 304
+        }
+      }
+    },
+    "crystal": {
+      "label": "Crystal",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 492,
+      "sumProgramTokens": 2357,
+      "kernelTokensOverA0Geomean": 0.9667556148036006,
+      "kernels": {
+        "affine": {
+          "kernel": 31,
+          "program": 231
+        },
+        "rotl": {
+          "kernel": 44,
+          "program": 231
+        },
+        "clamp": {
+          "kernel": 42,
+          "program": 242
+        },
+        "mix": {
+          "kernel": 66,
+          "program": 252
+        },
+        "ident": {
+          "kernel": 15,
+          "program": 187
+        },
+        "noop": {
+          "kernel": 15,
+          "program": 187
+        },
+        "chain3": {
+          "kernel": 72,
+          "program": 259
+        },
+        "branchy": {
+          "kernel": 64,
+          "program": 251
+        },
+        "arrfill": {
+          "kernel": 72,
+          "program": 259
+        },
+        "loop64": {
+          "kernel": 71,
+          "program": 258
+        }
+      }
+    },
+    "d": {
+      "label": "D",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 363,
+      "sumProgramTokens": 2508,
+      "kernelTokensOverA0Geomean": 0.685277913257726,
+      "kernels": {
+        "affine": {
+          "kernel": 20,
+          "program": 244
+        },
+        "rotl": {
+          "kernel": 34,
+          "program": 249
+        },
+        "clamp": {
+          "kernel": 22,
+          "program": 246
+        },
+        "mix": {
+          "kernel": 56,
+          "program": 270
+        },
+        "ident": {
+          "kernel": 10,
+          "program": 214
+        },
+        "noop": {
+          "kernel": 10,
+          "program": 214
+        },
+        "chain3": {
+          "kernel": 50,
+          "program": 265
+        },
+        "branchy": {
+          "kernel": 56,
+          "program": 271
+        },
+        "arrfill": {
+          "kernel": 48,
+          "program": 263
+        },
+        "loop64": {
+          "kernel": 57,
+          "program": 272
+        }
+      }
+    },
+    "pascal": {
+      "label": "Pascal",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 548,
+      "sumProgramTokens": 3223,
+      "kernelTokensOverA0Geomean": 1.0804495829165013,
+      "kernels": {
+        "affine": {
+          "kernel": 27,
+          "program": 307
+        },
+        "rotl": {
+          "kernel": 44,
+          "program": 312
+        },
+        "clamp": {
+          "kernel": 52,
+          "program": 332
+        },
+        "mix": {
+          "kernel": 74,
+          "program": 341
+        },
+        "ident": {
+          "kernel": 19,
+          "program": 273
+        },
+        "noop": {
+          "kernel": 19,
+          "program": 273
+        },
+        "chain3": {
+          "kernel": 78,
+          "program": 346
+        },
+        "branchy": {
+          "kernel": 80,
+          "program": 348
+        },
+        "arrfill": {
+          "kernel": 68,
+          "program": 336
+        },
+        "loop64": {
+          "kernel": 87,
+          "program": 355
+        }
+      }
+    },
+    "racket": {
+      "label": "Racket",
+      "family": "vm",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 492,
+      "sumProgramTokens": 3369,
+      "kernelTokensOverA0Geomean": 0.8390407868411733,
+      "kernels": {
+        "affine": {
+          "kernel": 22,
+          "program": 323
+        },
+        "rotl": {
+          "kernel": 52,
+          "program": 340
+        },
+        "clamp": {
+          "kernel": 31,
+          "program": 332
+        },
+        "mix": {
+          "kernel": 85,
+          "program": 372
+        },
+        "ident": {
+          "kernel": 8,
+          "program": 282
+        },
+        "noop": {
+          "kernel": 8,
+          "program": 282
+        },
+        "chain3": {
+          "kernel": 61,
+          "program": 349
+        },
+        "branchy": {
+          "kernel": 69,
+          "program": 357
+        },
+        "arrfill": {
+          "kernel": 68,
+          "program": 356
+        },
+        "loop64": {
+          "kernel": 88,
+          "program": 376
+        }
+      }
+    },
+    "commonlisp": {
+      "label": "Common Lisp",
+      "family": "jit",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 616,
+      "sumProgramTokens": 3853,
+      "kernelTokensOverA0Geomean": 1.1671683623032465,
+      "kernels": {
+        "affine": {
+          "kernel": 35,
+          "program": 372
+        },
+        "rotl": {
+          "kernel": 55,
+          "program": 379
+        },
+        "clamp": {
+          "kernel": 30,
+          "program": 367
+        },
+        "mix": {
+          "kernel": 84,
+          "program": 407
+        },
+        "ident": {
+          "kernel": 19,
+          "program": 329
+        },
+        "noop": {
+          "kernel": 19,
+          "program": 329
+        },
+        "chain3": {
+          "kernel": 98,
+          "program": 422
+        },
+        "branchy": {
+          "kernel": 80,
+          "program": 404
+        },
+        "arrfill": {
+          "kernel": 97,
+          "program": 421
+        },
+        "loop64": {
+          "kernel": 99,
+          "program": 423
+        }
+      }
+    },
+    "cobol": {
+      "label": "COBOL",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 637,
+      "sumProgramTokens": 8918,
+      "kernelTokensOverA0Geomean": 1.0676754649998466,
+      "kernels": {
+        "affine": {
+          "kernel": 25,
+          "program": 935
+        },
+        "rotl": {
+          "kernel": 69,
+          "program": 897
+        },
+        "clamp": {
+          "kernel": 45,
+          "program": 955
+        },
+        "mix": {
+          "kernel": 96,
+          "program": 923
+        },
+        "ident": {
+          "kernel": 9,
+          "program": 754
+        },
+        "noop": {
+          "kernel": 10,
+          "program": 756
+        },
+        "chain3": {
+          "kernel": 87,
+          "program": 916
+        },
+        "branchy": {
+          "kernel": 82,
+          "program": 911
+        },
+        "arrfill": {
+          "kernel": 95,
+          "program": 924
+        },
+        "loop64": {
+          "kernel": 119,
+          "program": 947
+        }
+      }
+    },
+    "prolog": {
+      "label": "Prolog",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 518,
+      "sumProgramTokens": 3163,
+      "kernelTokensOverA0Geomean": 0.8010312756058845,
+      "kernels": {
+        "affine": {
+          "kernel": 26,
+          "program": 307
+        },
+        "rotl": {
+          "kernel": 39,
+          "program": 304
+        },
+        "clamp": {
+          "kernel": 37,
+          "program": 318
+        },
+        "mix": {
+          "kernel": 64,
+          "program": 328
+        },
+        "ident": {
+          "kernel": 5,
+          "program": 252
+        },
+        "noop": {
+          "kernel": 5,
+          "program": 252
+        },
+        "chain3": {
+          "kernel": 79,
+          "program": 344
+        },
+        "branchy": {
+          "kernel": 73,
+          "program": 338
+        },
+        "arrfill": {
+          "kernel": 81,
+          "program": 346
+        },
+        "loop64": {
+          "kernel": 109,
+          "program": 374
+        }
+      }
+    },
+    "guile": {
+      "label": "Scheme (Guile)",
+      "family": "vm",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 455,
+      "sumProgramTokens": 3202,
+      "kernelTokensOverA0Geomean": 0.7890616506637856,
+      "kernels": {
+        "affine": {
+          "kernel": 21,
+          "program": 309
+        },
+        "rotl": {
+          "kernel": 41,
+          "program": 316
+        },
+        "clamp": {
+          "kernel": 31,
+          "program": 319
+        },
+        "mix": {
+          "kernel": 68,
+          "program": 342
+        },
+        "ident": {
+          "kernel": 8,
+          "program": 269
+        },
+        "noop": {
+          "kernel": 8,
+          "program": 269
+        },
+        "chain3": {
+          "kernel": 58,
+          "program": 333
+        },
+        "branchy": {
+          "kernel": 65,
+          "program": 340
+        },
+        "arrfill": {
+          "kernel": 76,
+          "program": 351
+        },
+        "loop64": {
+          "kernel": 79,
+          "program": 354
+        }
+      }
+    },
+    "chicken": {
+      "label": "Scheme (CHICKEN)",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 501,
+      "sumProgramTokens": 3378,
+      "kernelTokensOverA0Geomean": 0.8493909397128618,
+      "kernels": {
+        "affine": {
+          "kernel": 22,
+          "program": 323
+        },
+        "rotl": {
+          "kernel": 52,
+          "program": 340
+        },
+        "clamp": {
+          "kernel": 31,
+          "program": 332
+        },
+        "mix": {
+          "kernel": 85,
+          "program": 372
+        },
+        "ident": {
+          "kernel": 8,
+          "program": 282
+        },
+        "noop": {
+          "kernel": 8,
+          "program": 282
+        },
+        "chain3": {
+          "kernel": 61,
+          "program": 349
+        },
+        "branchy": {
+          "kernel": 68,
+          "program": 356
+        },
+        "arrfill": {
+          "kernel": 78,
+          "program": 366
+        },
+        "loop64": {
+          "kernel": 88,
+          "program": 376
+        }
+      }
+    },
+    "smalltalk": {
+      "label": "Smalltalk",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 605,
+      "sumProgramTokens": 3430,
+      "kernelTokensOverA0Geomean": 1.075822175496765,
+      "kernels": {
+        "affine": {
+          "kernel": 30,
+          "program": 385
+        },
+        "rotl": {
+          "kernel": 56,
+          "program": 339
+        },
+        "clamp": {
+          "kernel": 51,
+          "program": 406
+        },
+        "mix": {
+          "kernel": 90,
+          "program": 372
+        },
+        "ident": {
+          "kernel": 11,
+          "program": 220
+        },
+        "noop": {
+          "kernel": 11,
+          "program": 220
+        },
+        "chain3": {
+          "kernel": 86,
+          "program": 369
+        },
+        "branchy": {
+          "kernel": 95,
+          "program": 378
+        },
+        "arrfill": {
+          "kernel": 87,
+          "program": 370
+        },
+        "loop64": {
+          "kernel": 88,
+          "program": 371
+        }
+      }
+    },
+    "forth": {
+      "label": "Forth",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 323,
+      "sumProgramTokens": 1358,
+      "kernelTokensOverA0Geomean": 0.6127027298936267,
+      "kernels": {
+        "affine": {
+          "kernel": 18,
+          "program": 122
+        },
+        "rotl": {
+          "kernel": 32,
+          "program": 136
+        },
+        "clamp": {
+          "kernel": 31,
+          "program": 135
+        },
+        "mix": {
+          "kernel": 39,
+          "program": 142
+        },
+        "ident": {
+          "kernel": 8,
+          "program": 110
+        },
+        "noop": {
+          "kernel": 8,
+          "program": 110
+        },
+        "chain3": {
+          "kernel": 45,
+          "program": 149
+        },
+        "branchy": {
+          "kernel": 49,
+          "program": 153
+        },
+        "arrfill": {
+          "kernel": 52,
+          "program": 156
+        },
+        "loop64": {
+          "kernel": 41,
+          "program": 145
+        }
+      }
+    },
+    "haxe": {
+      "label": "Haxe",
+      "family": "interpreted",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 419,
+      "sumProgramTokens": 3334,
+      "kernelTokensOverA0Geomean": 0.8229259977688367,
+      "kernels": {
+        "affine": {
+          "kernel": 23,
+          "program": 328
+        },
+        "rotl": {
+          "kernel": 37,
+          "program": 329
+        },
+        "clamp": {
+          "kernel": 41,
+          "program": 346
+        },
+        "mix": {
+          "kernel": 58,
+          "program": 349
+        },
+        "ident": {
+          "kernel": 13,
+          "program": 290
+        },
+        "noop": {
+          "kernel": 13,
+          "program": 290
+        },
+        "chain3": {
+          "kernel": 59,
+          "program": 351
+        },
+        "branchy": {
+          "kernel": 58,
+          "program": 350
+        },
+        "arrfill": {
+          "kernel": 60,
+          "program": 352
+        },
+        "loop64": {
+          "kernel": 57,
+          "program": 349
+        }
+      }
+    },
+    "v": {
+      "label": "V",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 436,
+      "sumProgramTokens": 2261,
+      "kernelTokensOverA0Geomean": 0.8390446480319289,
+      "kernels": {
+        "affine": {
+          "kernel": 24,
+          "program": 221
+        },
+        "rotl": {
+          "kernel": 38,
+          "program": 221
+        },
+        "clamp": {
+          "kernel": 43,
+          "program": 240
+        },
+        "mix": {
+          "kernel": 59,
+          "program": 241
+        },
+        "ident": {
+          "kernel": 12,
+          "program": 179
+        },
+        "noop": {
+          "kernel": 12,
+          "program": 179
+        },
+        "chain3": {
+          "kernel": 57,
+          "program": 240
+        },
+        "branchy": {
+          "kernel": 67,
+          "program": 250
+        },
+        "arrfill": {
+          "kernel": 57,
+          "program": 240
+        },
+        "loop64": {
+          "kernel": 67,
+          "program": 250
+        }
+      }
+    },
+    "odin": {
+      "label": "Odin",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 421,
+      "sumProgramTokens": 2806,
+      "kernelTokensOverA0Geomean": 0.8318340176217307,
+      "kernels": {
+        "affine": {
+          "kernel": 24,
+          "program": 272
+        },
+        "rotl": {
+          "kernel": 39,
+          "program": 278
+        },
+        "clamp": {
+          "kernel": 27,
+          "program": 275
+        },
+        "mix": {
+          "kernel": 57,
+          "program": 295
+        },
+        "ident": {
+          "kernel": 15,
+          "program": 243
+        },
+        "noop": {
+          "kernel": 15,
+          "program": 243
+        },
+        "chain3": {
+          "kernel": 64,
+          "program": 303
+        },
+        "branchy": {
+          "kernel": 58,
+          "program": 297
+        },
+        "arrfill": {
+          "kernel": 57,
+          "program": 296
+        },
+        "loop64": {
+          "kernel": 65,
+          "program": 304
+        }
+      }
+    },
+    "vala": {
+      "label": "Vala",
+      "family": "compiled-native",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 430,
+      "sumProgramTokens": 2535,
+      "kernelTokensOverA0Geomean": 0.8272376279113578,
+      "kernels": {
+        "affine": {
+          "kernel": 24,
+          "program": 246
+        },
+        "rotl": {
+          "kernel": 37,
+          "program": 248
+        },
+        "clamp": {
+          "kernel": 38,
+          "program": 260
+        },
+        "mix": {
+          "kernel": 62,
+          "program": 272
+        },
+        "ident": {
+          "kernel": 12,
+          "program": 210
+        },
+        "noop": {
+          "kernel": 12,
+          "program": 210
+        },
+        "chain3": {
+          "kernel": 57,
+          "program": 268
+        },
+        "branchy": {
+          "kernel": 61,
+          "program": 272
+        },
+        "arrfill": {
+          "kernel": 61,
+          "program": 272
+        },
+        "loop64": {
+          "kernel": 66,
+          "program": 277
+        }
+      }
+    },
+    "gleam": {
+      "label": "Gleam",
+      "family": "vm",
+      "kernelsCovered": 10,
+      "sumKernelTokens": 673,
+      "sumProgramTokens": 6978,
+      "kernelTokensOverA0Geomean": 1.1072668900099494,
+      "kernels": {
+        "affine": {
+          "kernel": 28,
+          "program": 675
+        },
+        "rotl": {
+          "kernel": 44,
+          "program": 675
+        },
+        "clamp": {
+          "kernel": 48,
+          "program": 695
+        },
+        "mix": {
+          "kernel": 77,
+          "program": 707
+        },
+        "ident": {
+          "kernel": 12,
+          "program": 625
+        },
+        "noop": {
+          "kernel": 12,
+          "program": 625
+        },
+        "chain3": {
+          "kernel": 70,
+          "program": 701
+        },
+        "branchy": {
+          "kernel": 80,
+          "program": 711
+        },
+        "arrfill": {
+          "kernel": 191,
+          "program": 822
+        },
+        "loop64": {
+          "kernel": 111,
+          "program": 742
+        }
+      }
+    }
+  },
+  "validation": {
+    "a0": {
+      "label": "A0",
+      "family": "a0",
+      "toolchain": "native a0 (dist/native/a0: the self-hosted front end compiled by A0's C backend, with the host driver tools/native/a0.c evaluating the checked IR); no Node and no C compiler at run time",
+      "checkKind": "a0 check (native self-hosted lexer, parser and checker; cold process, no Node)",
+      "status": "measured",
+      "checkMedianMs": 2.8334580000373535,
+      "checkRunMedianMs": 2.4899999999906868,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 4.4346670000231825,
+          "checkRunMedianMs": 2.4899999999906868,
+          "checkMs": [
+            3.7397499999933643,
+            4.4346670000231825,
+            4.627833999984432,
+            3.445750000013504,
+            5.4792080000042915
+          ],
+          "checkRunMs": [
+            2.293375000008382,
+            2.4899999999906868,
+            2.5555830000084825,
+            1.949750000028871,
+            3.6166250000242144
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 2.4064159999834374,
+          "checkRunMedianMs": 2.4860410000546835,
+          "checkMs": [
+            2.02920799999265,
+            2.5932499999762513,
+            2.4064159999834374,
+            2.124167000001762,
+            3.1346250000642613
+          ],
+          "checkRunMs": [
+            2.0305419999931473,
+            2.4905840000137687,
+            2.4860410000546835,
+            1.9172920000273734,
+            3.1444159999955446
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 2.8334580000373535,
+          "checkRunMedianMs": 2.8737919999985024,
+          "checkMs": [
+            1.9075000000011642,
+            2.8334580000373535,
+            3.6019589999923483,
+            1.9043749999837019,
+            3.399959000060335
+          ],
+          "checkRunMs": [
+            2.0077500000043074,
+            2.8737919999985024,
+            3.0917500000214204,
+            1.9442500000004657,
+            3.409417000017129
+          ]
+        }
+      }
+    },
+    "a0node": {
+      "label": "A0 (Node CLI)",
+      "family": "a0",
+      "toolchain": "a0 CLI (dist/src/cli.js) on node v24.14.0; clang for the native run",
+      "checkKind": "a0 check (TypeScript parse and type-check, cold Node CLI process; the previous A0 path)",
+      "status": "measured",
+      "checkMedianMs": 125.22758399997838,
+      "checkRunMedianMs": 446.1585840000189,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 197.26316599996062,
+          "checkRunMedianMs": 519.7282499999856,
+          "checkMs": [
+            160.5138750000042,
+            197.26316599996062,
+            204.6482079999987,
+            178.82441699999617,
+            243.7284160000272
+          ],
+          "checkRunMs": [
+            400.8594999999914,
+            564.8713329999591,
+            519.7282499999856,
+            421.1912499999744,
+            641.1041250000708
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 124.70662499999162,
+          "checkRunMedianMs": 408.8464999999851,
+          "checkMs": [
+            108.78783400000248,
+            124.70662499999162,
+            135.9776670000283,
+            109.82687499996973,
+            183.424083000049
+          ],
+          "checkRunMs": [
+            352.70812500000466,
+            408.8464999999851,
+            433.71429199998965,
+            348.71516699995846,
+            587.4800830000313
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 125.22758399997838,
+          "checkRunMedianMs": 446.1585840000189,
+          "checkMs": [
+            113.5599169999914,
+            125.22758399997838,
+            136.74033299996518,
+            112.76912499999162,
+            219.58487499994226
+          ],
+          "checkRunMs": [
+            363.51437499999884,
+            446.1585840000189,
+            460.7668330000015,
+            371.7210419999901,
+            723.5983749999432
+          ]
+        }
+      }
+    },
+    "c": {
+      "label": "C",
+      "family": "compiled-native",
+      "toolchain": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "checkKind": "build (clang -O2, as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 62.22112500004005,
+      "checkRunMedianMs": 154.72450000001118,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 62.332208000007086,
+          "checkRunMedianMs": 154.72450000001118,
+          "checkMs": [
+            54.67545800001244,
+            62.332208000007086,
+            62.67133300000569,
+            55.01699999999255,
+            116.31354100001045
+          ],
+          "checkRunMs": [
+            136.66820800000278,
+            171.2668330000015,
+            154.72450000001118,
+            147.96783300000243,
+            224.7450409999583
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 60.81816699996125,
+          "checkRunMedianMs": 144.0964590000076,
+          "checkMs": [
+            60.3627919999999,
+            91.95108299999265,
+            60.81816699996125,
+            59.45295800000895,
+            106.6677909999853
+          ],
+          "checkRunMs": [
+            144.0964590000076,
+            186.2950000000128,
+            132.86016699997708,
+            143.95075000001816,
+            205.06695799995214
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 62.22112500004005,
+          "checkRunMedianMs": 177.12362500000745,
+          "checkMs": [
+            59.45962500000314,
+            88.20362499999464,
+            62.22112500004005,
+            59.23937500000466,
+            114.99300000001676
+          ],
+          "checkRunMs": [
+            143.38904199999524,
+            180.83995799999684,
+            177.12362500000745,
+            153.92404200002784,
+            193.57741700008046
+          ]
+        }
+      }
+    },
+    "rust": {
+      "label": "Rust",
+      "family": "compiled-native",
+      "toolchain": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+      "checkKind": "build (rustc opt-level=3 target-cpu=native, as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 153.80587500002002,
+      "checkRunMedianMs": 266.0131249999977,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 704.6185420000111,
+          "checkRunMedianMs": 812.7347080000036,
+          "checkMs": [
+            664.4010839999974,
+            704.6185420000111,
+            707.2034580000327,
+            678.9655420000199,
+            757.813375000027
+          ],
+          "checkRunMs": [
+            758.1752500000002,
+            812.7347080000036,
+            834.6315000000177,
+            773.0685420000227,
+            863.6103329999605
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 138.00899999996182,
+          "checkRunMedianMs": 256.2452919999778,
+          "checkMs": [
+            108.3516660000023,
+            166.9534579999745,
+            138.00899999996182,
+            110.57808299997123,
+            169.88912499998696
+          ],
+          "checkRunMs": [
+            201.5080830000079,
+            256.2452919999778,
+            393.73462499998277,
+            192.43654099997366,
+            279.3348750000587
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 153.80587500002002,
+          "checkRunMedianMs": 266.0131249999977,
+          "checkMs": [
+            138.54491699999198,
+            173.42808300000615,
+            153.80587500002002,
+            114.21612500003539,
+            172.69683300005272
+          ],
+          "checkRunMs": [
+            233.82687499999884,
+            266.0131249999977,
+            270.88779100001557,
+            201.97383299999638,
+            267.8661250000587
+          ]
+        }
+      }
+    },
+    "js": {
+      "label": "JavaScript",
+      "family": "jit",
+      "toolchain": "node v24.14.0",
+      "checkKind": "node --check (syntax only)",
+      "status": "measured",
+      "checkMedianMs": 30.290291999990586,
+      "checkRunMedianMs": 65.2633340000175,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 30.290291999990586,
+          "checkRunMedianMs": 65.2633340000175,
+          "checkMs": [
+            25.460416000001715,
+            40.640792000020156,
+            30.290291999990586,
+            24.98429200000828,
+            33.26974999997765
+          ],
+          "checkRunMs": [
+            51.95283300000301,
+            81.50729200002388,
+            65.2633340000175,
+            50.70445800002199,
+            70.75470799999312
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 31.492207999981474,
+          "checkRunMedianMs": 67.02987500000745,
+          "checkMs": [
+            23.38970899999549,
+            36.818625000014435,
+            31.492207999981474,
+            22.63808300002711,
+            33.30129199998919
+          ],
+          "checkRunMs": [
+            49.55133400000341,
+            77.0149580000143,
+            67.02987500000745,
+            48.84737500001211,
+            70.31062500004191
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 26.17354200000409,
+          "checkRunMedianMs": 55.73545899998862,
+          "checkMs": [
+            23.721458999993047,
+            34.158958000014536,
+            26.17354200000409,
+            25.024791999952868,
+            33.144375000032596
+          ],
+          "checkRunMs": [
+            49.473749999990105,
+            72.8933750000142,
+            55.73545899998862,
+            52.19466699997429,
+            70.20716600003652
+          ]
+        }
+      }
+    },
+    "typescript": {
+      "label": "TypeScript",
+      "family": "jit",
+      "toolchain": "Version 5.9.3 / node v24.14.0",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 198.46470800001407,
+      "checkRunMedianMs": 227.0467499999795,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 198.46470800001407,
+          "checkRunMedianMs": 227.0467499999795,
+          "checkMs": [
+            166.52345800001058,
+            298.2859999999928,
+            198.46470800001407,
+            171.39445800002431,
+            265.43008299998473
+          ],
+          "checkRunMs": [
+            189.7092910000065,
+            339.9856659999932,
+            227.0467499999795,
+            195.20108300005086,
+            303.98662500001956
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 197.09375,
+          "checkRunMedianMs": 226.7239169999957,
+          "checkMs": [
+            154.83150000000023,
+            301.99212499998976,
+            197.09375,
+            155.04895900003612,
+            274.57916700001806
+          ],
+          "checkRunMs": [
+            178.11841700000514,
+            345.23258399998304,
+            226.7239169999957,
+            178.00141700002132,
+            316.56608400004916
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 206.67600000003586,
+          "checkRunMedianMs": 237.4717079999973,
+          "checkMs": [
+            152.9282499999972,
+            309.38179200000013,
+            206.67600000003586,
+            155.79054199997336,
+            274.8359580000397
+          ],
+          "checkRunMs": [
+            175.9622079999972,
+            366.12320900001214,
+            237.4717079999973,
+            178.54429200000595,
+            316.15708299994003
+          ]
+        }
+      }
+    },
+    "cpp": {
+      "label": "C++",
+      "family": "compiled-native",
+      "toolchain": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 297.50533299997915,
+      "checkRunMedianMs": 419.3445420000353,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 401.4251670000376,
+          "checkRunMedianMs": 511.67566700000316,
+          "checkMs": [
+            334.2737080000079,
+            574.4637909999874,
+            401.4251670000376,
+            381.41304200002924,
+            516.9267919999547
+          ],
+          "checkRunMs": [
+            430.5404580000031,
+            673.6384160000016,
+            511.67566700000316,
+            469.0729590000119,
+            646.5768339999486
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 297.50533299997915,
+          "checkRunMedianMs": 415.0734170000069,
+          "checkMs": [
+            246.32970899999782,
+            464.83337500001653,
+            297.50533299997915,
+            264.8567080000066,
+            402.7426670000423
+          ],
+          "checkRunMs": [
+            330.03358400000434,
+            557.948000000004,
+            415.0734170000069,
+            350.08720800001174,
+            510.1231250000419
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 292.36691700003576,
+          "checkRunMedianMs": 419.3445420000353,
+          "checkMs": [
+            249.59024999999383,
+            406.4215419999964,
+            292.36691700003576,
+            261.0233330000192,
+            431.7281250000233
+          ],
+          "checkRunMs": [
+            303.75020799999766,
+            448.08808399998816,
+            419.3445420000353,
+            345.21875,
+            579.3210830000462
+          ]
+        }
+      }
+    },
+    "objc": {
+      "label": "Objective-C",
+      "family": "compiled-native",
+      "toolchain": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 331.7618750000838,
+      "checkRunMedianMs": 481.875875000027,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 401.1640419999603,
+          "checkRunMedianMs": 531.4780830000527,
+          "checkMs": [
+            291.5564169999998,
+            447.6811250000028,
+            302.31400000001304,
+            520.7577089999686,
+            401.1640419999603
+          ],
+          "checkRunMs": [
+            386.7347920000029,
+            538.4321659999841,
+            441.7960000000312,
+            617.2504999999655,
+            531.4780830000527
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 327.80320800002664,
+          "checkRunMedianMs": 414.1726669999771,
+          "checkMs": [
+            227.83354200000758,
+            377.4173329999903,
+            257.5641659999965,
+            381.1536249999772,
+            327.80320800002664
+          ],
+          "checkRunMs": [
+            280.44170799999847,
+            467.5467499999795,
+            388.32058299996424,
+            471.20649999997113,
+            414.1726669999771
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 331.7618750000838,
+          "checkRunMedianMs": 481.875875000027,
+          "checkMs": [
+            222.7178750000021,
+            411.01504200001364,
+            257.25279200001387,
+            443.97804099996574,
+            331.7618750000838
+          ],
+          "checkRunMs": [
+            268.0024589999957,
+            499.79570800001966,
+            411.1938749999972,
+            532.7287499999511,
+            481.875875000027
+          ]
+        }
+      }
+    },
+    "java": {
+      "label": "Java",
+      "family": "jit",
+      "toolchain": "javac 27 / openjdk version \"27\" 2026-09-15",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 335.6428339999984,
+      "checkRunMedianMs": 390.2245839999523,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 492.4541249999893,
+          "checkRunMedianMs": 541.1370420000021,
+          "checkMs": [
+            492.4541249999893,
+            451.8880000000063,
+            527.6533329999656,
+            506.1319169999915,
+            261.761208999902
+          ],
+          "checkRunMs": [
+            541.1370420000021,
+            523.2864589999954,
+            585.783415999962,
+            598.5719169999938,
+            308.1356669999659
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 294.4605830000364,
+          "checkRunMedianMs": 345.7866670000367,
+          "checkMs": [
+            228.19099999999162,
+            522.2420829999901,
+            294.4605830000364,
+            517.5620840000338,
+            278.2900420000078
+          ],
+          "checkRunMs": [
+            266.172166999997,
+            594.5934159999888,
+            345.7866670000367,
+            594.5607500000042,
+            328.2569170000497
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 335.6428339999984,
+          "checkRunMedianMs": 390.2245839999523,
+          "checkMs": [
+            224.3439580000122,
+            497.13179200000013,
+            335.6428339999984,
+            499.3751249999623,
+            276.5430410000263
+          ],
+          "checkRunMs": [
+            262.30616700000246,
+            572.0172920000041,
+            390.2245839999523,
+            578.556540999969,
+            324.6488750000717
+          ]
+        }
+      }
+    },
+    "kotlin": {
+      "label": "Kotlin",
+      "family": "jit",
+      "toolchain": "info: kotlinc-jvm 2.4.20 (JRE 27)",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 3149.476834000001,
+      "checkRunMedianMs": 3212.991875000007,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 3175.2214169999934,
+          "checkRunMedianMs": 3223.138417000009,
+          "checkMs": [
+            2557.2283749999915,
+            4266.91412500001,
+            3175.2214169999934,
+            4203.73000000004,
+            2749.446041999967
+          ],
+          "checkRunMs": [
+            2595.0967089999904,
+            4331.103499999997,
+            3223.138417000009,
+            4252.416958000045,
+            2789.040874999948
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 2638.658083999995,
+          "checkRunMedianMs": 2678.7479590000003,
+          "checkMs": [
+            2638.658083999995,
+            3878.8342499999853,
+            3291.184917000006,
+            2612.372417000006,
+            2612.311250000028
+          ],
+          "checkRunMs": [
+            2678.7479590000003,
+            3922.1145839999954,
+            3338.131584000017,
+            2647.469625000027,
+            2646.3513749999693
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 3149.476834000001,
+          "checkRunMedianMs": 3212.991875000007,
+          "checkMs": [
+            2273.4013330000016,
+            3149.476834000001,
+            3193.2514579999843,
+            3447.8235410000198,
+            2623.5218329998897
+          ],
+          "checkRunMs": [
+            2304.7032499999914,
+            3212.991875000007,
+            3237.4489579999936,
+            3501.312708000012,
+            2656.7280829999363
+          ]
+        }
+      }
+    },
+    "go": {
+      "label": "Go",
+      "family": "compiled-native",
+      "toolchain": "go version go1.27.1 darwin/arm64",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 130.13320800004294,
+      "checkRunMedianMs": 289.0896669999929,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 429.63591699989047,
+          "checkRunMedianMs": 584.6197089999914,
+          "checkMs": [
+            383.04520800001046,
+            571.8244169999962,
+            420.6292920000269,
+            473.3149170000106,
+            429.63591699989047
+          ],
+          "checkRunMs": [
+            527.8339160000032,
+            707.2955000000075,
+            558.342667000019,
+            607.4938749999856,
+            584.6197089999914
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 128.57445799995912,
+          "checkRunMedianMs": 278.8873329999624,
+          "checkMs": [
+            122.50441700000374,
+            238.46637500001816,
+            128.57445799995912,
+            186.4981249999837,
+            116.30283399997279
+          ],
+          "checkRunMs": [
+            277.1420000000071,
+            364.88508300000103,
+            278.8873329999624,
+            294.38879100000486,
+            259.3359590000473
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 130.13320800004294,
+          "checkRunMedianMs": 289.0896669999929,
+          "checkMs": [
+            119.46612500000629,
+            214.47141599998577,
+            130.13320800004294,
+            180.86050000000978,
+            119.92133400007151
+          ],
+          "checkRunMs": [
+            268.874708000003,
+            367.5114159999939,
+            237.2642080000369,
+            316.3724579999689,
+            289.0896669999929
+          ]
+        }
+      }
+    },
+    "swift": {
+      "label": "Swift",
+      "family": "compiled-native",
+      "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 468.4583749999292,
+      "checkRunMedianMs": 583.0087080000085,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 468.4583749999292,
+          "checkRunMedianMs": 583.0087080000085,
+          "checkMs": [
+            414.21500000001106,
+            787.144958000019,
+            468.275958000042,
+            599.5467499999795,
+            468.4583749999292
+          ],
+          "checkRunMs": [
+            461.9980409999989,
+            883.0960830000113,
+            583.0087080000085,
+            652.3615410000202,
+            553.9181249999674
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 428.42170900001656,
+          "checkRunMedianMs": 501.22341700003017,
+          "checkMs": [
+            373.5248330000031,
+            737.5072910000163,
+            428.42170900001656,
+            537.654916999978,
+            364.4195409999229
+          ],
+          "checkRunMs": [
+            457.4490829999995,
+            828.6585000000196,
+            501.22341700003017,
+            616.817791999958,
+            454.1259999999311
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 477.9314579999773,
+          "checkRunMedianMs": 602.2056250000023,
+          "checkMs": [
+            397.01804199999606,
+            745.7365839999984,
+            477.9314579999773,
+            566.8202499999898,
+            434.38395899999887
+          ],
+          "checkRunMs": [
+            475.3840829999972,
+            834.7968339999788,
+            602.2056250000023,
+            660.4290829999954,
+            520.7547500000801
+          ]
+        }
+      }
+    },
+    "zig": {
+      "label": "Zig",
+      "family": "compiled-native",
+      "toolchain": "0.16.0",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 6009.478249999986,
+      "checkRunMedianMs": 6088.722749999957,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 6562.274374999979,
+          "checkRunMedianMs": 6688.118292000028,
+          "checkMs": [
+            5161.428083999999,
+            9779.72870800001,
+            6562.274374999979,
+            11489.77441699995,
+            5144.917290999903
+          ],
+          "checkRunMs": [
+            5290.256874999992,
+            9907.317375000013,
+            6688.118292000028,
+            11597.834541999968,
+            5261.711082999944
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 6009.478249999986,
+          "checkRunMedianMs": 6088.722749999957,
+          "checkMs": [
+            5798.215875000009,
+            9696.05687500001,
+            6009.478249999986,
+            8535.359875000024,
+            5009.607874999987
+          ],
+          "checkRunMs": [
+            5926.689792000005,
+            9821.210584000015,
+            6088.722749999957,
+            8645.334957999992,
+            5126.362250000006
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 5185.29820900003,
+          "checkRunMedianMs": 5291.6805420000455,
+          "checkMs": [
+            5357.11050000001,
+            9306.866999999998,
+            5185.29820900003,
+            4936.559208000021,
+            5098.011250000098
+          ],
+          "checkRunMs": [
+            5440.630292000016,
+            9430.125417000003,
+            5291.6805420000455,
+            5052.703207999992,
+            5217.067542000092
+          ]
+        }
+      }
+    },
+    "python": {
+      "label": "Python",
+      "family": "interpreted",
+      "toolchain": "Python 3.14.7",
+      "checkKind": "toolchain checker (no build step)",
+      "status": "measured",
+      "checkMedianMs": 38.01962499995716,
+      "checkRunMedianMs": 59.48420799995074,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 51.26929199998267,
+          "checkRunMedianMs": 75.18179199995939,
+          "checkMs": [
+            42.977416000008816,
+            70.24975000001723,
+            50.29395800002385,
+            54.82458300003782,
+            51.26929199998267
+          ],
+          "checkRunMs": [
+            64.69445800001267,
+            100.00395900002331,
+            69.79891599999974,
+            75.22041599999648,
+            75.18179199995939
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 38.01962499995716,
+          "checkRunMedianMs": 59.48420799995074,
+          "checkMs": [
+            37.83370799999102,
+            53.04266700000153,
+            34.7612079999526,
+            38.01962499995716,
+            38.711125000030734
+          ],
+          "checkRunMs": [
+            58.74575000000186,
+            83.89470800000709,
+            54.052832999965176,
+            59.48420799995074,
+            60.5683330000611
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 36.29162499998347,
+          "checkRunMedianMs": 56.97716699997545,
+          "checkMs": [
+            36.29162499998347,
+            59.696999999985565,
+            33.192875000007916,
+            36.07483300002059,
+            40.29829199996311
+          ],
+          "checkRunMs": [
+            56.97716699997545,
+            97.0616250000021,
+            51.849875000014435,
+            55.50591599999461,
+            61.37487499997951
+          ]
+        }
+      }
+    },
+    "ruby": {
+      "label": "Ruby",
+      "family": "interpreted",
+      "toolchain": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]",
+      "checkKind": "toolchain checker (no build step)",
+      "status": "measured",
+      "checkMedianMs": 55.585499999986496,
+      "checkRunMedianMs": 108.3532079999859,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 56.05999999999767,
+          "checkRunMedianMs": 110.17691700000432,
+          "checkMs": [
+            56.05999999999767,
+            85.54141700000037,
+            50.5671250000014,
+            52.27254199999152,
+            68.80162499996368
+          ],
+          "checkRunMs": [
+            110.17691700000432,
+            176.66224999999395,
+            97.22941700002411,
+            101.50266699999338,
+            127.0472089999821
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 53.519083999999566,
+          "checkRunMedianMs": 107.24579200000153,
+          "checkMs": [
+            53.519083999999566,
+            92.7965419999964,
+            46.865625000034925,
+            49.29083300003549,
+            57.37054100004025
+          ],
+          "checkRunMs": [
+            107.24579200000153,
+            171.2646250000107,
+            93.59116599999834,
+            97.0207909999881,
+            114.86045799998101
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 55.585499999986496,
+          "checkRunMedianMs": 108.3532079999859,
+          "checkMs": [
+            55.585499999986496,
+            80.27324999999837,
+            48.18545799999265,
+            50.06404099997599,
+            56.93087500007823
+          ],
+          "checkRunMs": [
+            108.3532079999859,
+            164.76379199998337,
+            95.44429099996341,
+            98.88941599999089,
+            118.1687910000328
+          ]
+        }
+      }
+    },
+    "php": {
+      "label": "PHP",
+      "family": "interpreted",
+      "toolchain": "PHP 8.5.11 (cli) (built: Sep 22 2026 13:32:06) (NTS)",
+      "checkKind": "toolchain checker (no build step)",
+      "status": "measured",
+      "checkMedianMs": 56.95512500000768,
+      "checkRunMedianMs": 113.79920800001128,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 127.03241700000945,
+          "checkRunMedianMs": 184.51220900000772,
+          "checkMs": [
+            127.03241700000945,
+            159.08887499998673,
+            117.06845899997279,
+            115.79829200002132,
+            134.984375
+          ],
+          "checkRunMs": [
+            184.51220900000772,
+            252.80716599998414,
+            167.92216699995333,
+            167.30808400001843,
+            195.94637499994133
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 55.32741599998553,
+          "checkRunMedianMs": 110.69312499999069,
+          "checkMs": [
+            55.32741599998553,
+            78.9004169999971,
+            49.67037499998696,
+            51.06141700001899,
+            57.3626669999212
+          ],
+          "checkRunMs": [
+            110.69312499999069,
+            154.87174999999115,
+            99.30779099999927,
+            101.7458340000012,
+            119.15874999994412
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 56.95512500000768,
+          "checkRunMedianMs": 113.79920800001128,
+          "checkMs": [
+            56.95512500000768,
+            91.13079199998174,
+            50.32712500001071,
+            51.36070899997139,
+            61.701249999925494
+          ],
+          "checkRunMs": [
+            113.79920800001128,
+            169.13537499998347,
+            100.06158300000243,
+            101.65079200000037,
+            120.89958399999887
+          ]
+        }
+      }
+    },
+    "lua": {
+      "label": "Lua",
+      "family": "interpreted",
+      "toolchain": "Lua 5.5.1  Copyright (C) 1994-2026 Lua.org, PUC-Rio",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 2.8221659999981057,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 4.607208000030369,
+          "checkMs": [],
+          "checkRunMs": [
+            4.900332999997772,
+            6.85770799999591,
+            3.7985000000335276,
+            3.673000000009779,
+            4.607208000030369
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 2.8221659999981057,
+          "checkMs": [],
+          "checkRunMs": [
+            2.8221659999981057,
+            3.9875409999804106,
+            2.006082999985665,
+            2.274332999950275,
+            3.085084000020288
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 2.32508300000336,
+          "checkMs": [],
+          "checkRunMs": [
+            2.359375,
+            3.4230420000094455,
+            2.0281250000116415,
+            2.0455829999991693,
+            2.32508300000336
+          ]
+        }
+      }
+    },
+    "perl": {
+      "label": "Perl",
+      "family": "interpreted",
+      "toolchain": "This is perl 5, version 34, subversion 1 (v5.34.1) built for darwin-thread-multi-2level",
+      "checkKind": "toolchain checker (no build step)",
+      "status": "measured",
+      "checkMedianMs": 6.0665840000147,
+      "checkRunMedianMs": 12.663334000040777,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 6.435834000003524,
+          "checkRunMedianMs": 12.826916999998502,
+          "checkMs": [
+            6.435834000003524,
+            10.503749999974389,
+            5.618833999964409,
+            5.616500000003725,
+            8.883541999966837
+          ],
+          "checkRunMs": [
+            12.826916999998502,
+            20.25845899997512,
+            10.70983399997931,
+            10.800500000012107,
+            15.227333000046201
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 5.894999999902211,
+          "checkRunMedianMs": 11.82529099995736,
+          "checkMs": [
+            6.224667000002228,
+            10.045209000003524,
+            5.201584000024013,
+            5.319917000015266,
+            5.894999999902211
+          ],
+          "checkRunMs": [
+            12.35099999999511,
+            20.38474999999744,
+            10.214834000042174,
+            10.446458999998868,
+            11.82529099995736
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 6.0665840000147,
+          "checkRunMedianMs": 12.663334000040777,
+          "checkMs": [
+            6.850500000000466,
+            9.239292000012938,
+            4.941792000026908,
+            5.203000000037719,
+            6.0665840000147
+          ],
+          "checkRunMs": [
+            12.755249999987427,
+            19.277541999996174,
+            9.901917000010144,
+            10.536625000007916,
+            12.663334000040777
+          ]
+        }
+      }
+    },
+    "tcl": {
+      "label": "Tcl",
+      "family": "interpreted",
+      "toolchain": "tclsh 9.0.4",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 11.275542000075802,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 21.42758300001151,
+          "checkMs": [],
+          "checkRunMs": [
+            21.42758300001151,
+            31.527750000008382,
+            19.557583999994677,
+            19.512749999994412,
+            21.687666999991052
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 11.238833000010345,
+          "checkMs": [],
+          "checkRunMs": [
+            11.238833000010345,
+            20.965583999990486,
+            10.04054100002395,
+            10.208207999996375,
+            11.346000000019558
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 11.275542000075802,
+          "checkMs": [],
+          "checkRunMs": [
+            11.50266699999338,
+            18.930209000012837,
+            10.45554200001061,
+            9.877833999984432,
+            11.275542000075802
+          ]
+        }
+      }
+    },
+    "fortran": {
+      "label": "Fortran",
+      "family": "compiled-native",
+      "toolchain": "GNU Fortran (Homebrew GCC 16.2.0) 16.2.0",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 111.28370799997356,
+      "checkRunMedianMs": 208.12395799998194,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 256.0551249999844,
+          "checkRunMedianMs": 344.4905409999774,
+          "checkMs": [
+            256.0551249999844,
+            281.24324999999953,
+            223.87504099996295,
+            212.39991600002395,
+            283.6197919999249
+          ],
+          "checkRunMs": [
+            355.21274999997695,
+            344.4905409999774,
+            336.0636250000098,
+            300.36337500001537,
+            352.9219579999335
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 111.14958299999125,
+          "checkRunMedianMs": 208.12395799998194,
+          "checkMs": [
+            110.92437500000233,
+            183.32379199998104,
+            109.09854200005066,
+            111.14958299999125,
+            128.3639999999432
+          ],
+          "checkRunMs": [
+            197.03637499999604,
+            279.23024999999325,
+            222.05500000005122,
+            208.12395799998194,
+            197.16049999999814
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 111.28370799997356,
+          "checkRunMedianMs": 201.86254200001713,
+          "checkMs": [
+            107.9204589999863,
+            180.76312499999767,
+            111.28370799997356,
+            110.85470800002804,
+            116.9947079999838
+          ],
+          "checkRunMs": [
+            200.2913750000007,
+            262.61766700001317,
+            237.96020799997495,
+            197.59775000001537,
+            201.86254200001713
+          ]
+        }
+      }
+    },
+    "csharp": {
+      "label": "C#",
+      "family": "jit",
+      "toolchain": "dotnet 10.0.401",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 683.4017500000191,
+      "checkRunMedianMs": 717.3622090000135,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 1204.1010829999577,
+          "checkRunMedianMs": 1232.4576670000097,
+          "checkMs": [
+            1342.4436249999853,
+            1582.077917000017,
+            1099.7772499999846,
+            531.3662079999922,
+            1204.1010829999577
+          ],
+          "checkRunMs": [
+            1370.0198329999985,
+            1619.4852920000267,
+            1123.6523750000051,
+            555.5459160000319,
+            1232.4576670000097
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 594.5023750000109,
+          "checkRunMedianMs": 623.7754170000262,
+          "checkMs": [
+            594.5023750000109,
+            883.3924169999955,
+            534.4134169999743,
+            522.795999999973,
+            611.0816249999916
+          ],
+          "checkRunMs": [
+            623.7754170000262,
+            922.1544170000125,
+            558.6914999999572,
+            548.4500830000034,
+            640.9607079999987
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 683.4017500000191,
+          "checkRunMedianMs": 717.3622090000135,
+          "checkMs": [
+            683.4017500000191,
+            902.6593330000178,
+            512.0672909999848,
+            522.6215000000084,
+            837.5175420000451
+          ],
+          "checkRunMs": [
+            717.3622090000135,
+            945.486957999994,
+            536.9668749999837,
+            547.7179170000018,
+            869.5754169999855
+          ]
+        }
+      }
+    },
+    "fsharp": {
+      "label": "F#",
+      "family": "jit",
+      "toolchain": "dotnet 10.0.401",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 1275.1090409999888,
+      "checkRunMedianMs": 1319.6447499999776,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 1687.5378330000094,
+          "checkRunMedianMs": 1730.75,
+          "checkMs": [
+            1687.5378330000094,
+            2521.8822080000245,
+            1521.3067089999677,
+            1515.07820800005,
+            2912.688334000064
+          ],
+          "checkRunMs": [
+            1730.75,
+            2592.3396250000224,
+            1560.7909999999683,
+            1551.9365000000107,
+            2973.2446250000503
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 1275.1090409999888,
+          "checkRunMedianMs": 1319.6447499999776,
+          "checkMs": [
+            1275.1090409999888,
+            1651.8092499999912,
+            1048.7637080000131,
+            1046.4457500000135,
+            2888.2095410000766
+          ],
+          "checkRunMs": [
+            1319.6447499999776,
+            1708.3091249999998,
+            1084.7437500000233,
+            1083.3504589999793,
+            2959.7450410000747
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 1222.6441249999916,
+          "checkRunMedianMs": 1263.0999160000065,
+          "checkMs": [
+            1222.6441249999916,
+            1747.5250839999935,
+            1152.8860419999692,
+            1084.519666999986,
+            1957.9192909999983
+          ],
+          "checkRunMs": [
+            1263.0999160000065,
+            1804.2614999999932,
+            1189.8041669999948,
+            1121.7939170000027,
+            2020.6005410000216
+          ]
+        }
+      }
+    },
+    "vb": {
+      "label": "Visual Basic",
+      "family": "jit",
+      "toolchain": "dotnet 10.0.401",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 598.4207500000193,
+      "checkRunMedianMs": 627.7662919999857,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 590.1445829999866,
+          "checkRunMedianMs": 627.7662919999857,
+          "checkMs": [
+            590.1445829999866,
+            843.1997499999707,
+            549.1497499999823,
+            534.8168329999899,
+            1340.7947919999715
+          ],
+          "checkRunMs": [
+            627.7662919999857,
+            881.1843750000116,
+            577.3902499999967,
+            560.8258749999804,
+            1383.3763749999925
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 598.4207500000193,
+          "checkRunMedianMs": 625.5566250000265,
+          "checkMs": [
+            598.4207500000193,
+            853.3727080000099,
+            551.1564580000122,
+            536.5327080000425,
+            1002.9282909999602
+          ],
+          "checkRunMs": [
+            625.5566250000265,
+            896.3162080000038,
+            576.050791000016,
+            561.195250000048,
+            1053.5394999999553
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 647.7344169999997,
+          "checkRunMedianMs": 679.6581249999872,
+          "checkMs": [
+            647.7344169999997,
+            810.1643330000225,
+            560.4485410000198,
+            525.3366249999963,
+            1065.15716599999
+          ],
+          "checkRunMs": [
+            679.6581249999872,
+            852.0825830000103,
+            585.0507499999949,
+            549.3890419999952,
+            1104.2241249999497
+          ]
+        }
+      }
+    },
+    "dart": {
+      "label": "Dart",
+      "family": "compiled-native",
+      "toolchain": "Dart SDK version: 3.13.4 (stable) (Tue Sep 15 01:01:15 2026 -0700) on \"macos_arm64\"",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 621.0426670000015,
+      "checkRunMedianMs": 819.4891250000219,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 735.6495829999913,
+          "checkRunMedianMs": 929.7451669999864,
+          "checkMs": [
+            735.6495829999913,
+            985.5574590000324,
+            674.919292000006,
+            679.2745829999913,
+            1061.4147919999668
+          ],
+          "checkRunMs": [
+            929.7451669999864,
+            1163.5432920000167,
+            859.5811669999966,
+            877.0585829999764,
+            1227.7609170000069
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 621.0426670000015,
+          "checkRunMedianMs": 819.4891250000219,
+          "checkMs": [
+            621.0426670000015,
+            836.1989159999648,
+            590.9590839999728,
+            608.6831660000025,
+            888.3238330000313
+          ],
+          "checkRunMs": [
+            819.4891250000219,
+            1016.1082910000114,
+            770.0797499999753,
+            813.5679579999996,
+            1071.6842500000494
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 612.2562089999556,
+          "checkRunMedianMs": 814.2041249999893,
+          "checkMs": [
+            589.9154170000111,
+            836.4636250000331,
+            596.9937500000233,
+            612.2562089999556,
+            866.9082919999491
+          ],
+          "checkRunMs": [
+            786.8571670000092,
+            1026.2978749999893,
+            770.1718330000294,
+            814.2041249999893,
+            1041.3060419999529
+          ]
+        }
+      }
+    },
+    "scala": {
+      "label": "Scala",
+      "family": "jit",
+      "toolchain": "Scala version (default): 3.9.0",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 3396.6930839999986,
+      "checkRunMedianMs": 3485.7047089999833,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 3776.4817080000066,
+          "checkRunMedianMs": 3874.1035830000183,
+          "checkMs": [
+            3347.9579580000136,
+            5147.182292000041,
+            3776.4817080000066,
+            3731.1260839999886,
+            4387.431582999998
+          ],
+          "checkRunMs": [
+            3423.9100830000243,
+            5278.1726250000065,
+            3874.1035830000183,
+            3810.301084000035,
+            4488.323917000089
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 3000.29137500003,
+          "checkRunMedianMs": 3075.9781250000233,
+          "checkMs": [
+            2719.0915830000013,
+            4887.0141669999575,
+            3000.29137500003,
+            2768.3596249999828,
+            3738.8273749999935
+          ],
+          "checkRunMs": [
+            2810.674167000019,
+            5004.331917000003,
+            3075.9781250000233,
+            2843.462916999997,
+            3862.0514579999726
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 3396.6930839999986,
+          "checkRunMedianMs": 3485.7047089999833,
+          "checkMs": [
+            3396.6930839999986,
+            4623.910208999994,
+            2965.7446669999626,
+            3172.9360420000157,
+            4284.871042000013
+          ],
+          "checkRunMs": [
+            3485.7047089999833,
+            4724.710291999974,
+            3078.962292000011,
+            3251.199708,
+            4376.884167000069
+          ]
+        }
+      }
+    },
+    "clojure": {
+      "label": "Clojure",
+      "family": "jit",
+      "toolchain": "Clojure CLI version 1.12.6.1673",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 485.4916670001112,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 486.19404100000975,
+          "checkMs": [],
+          "checkRunMs": [
+            486.19404100000975,
+            536.8495000000112,
+            615.9570839999942,
+            404.6455000000424,
+            474.65991699998267
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 475.1543750000419,
+          "checkMs": [],
+          "checkRunMs": [
+            466.6534169999941,
+            524.9562499999884,
+            617.4840830000467,
+            394.05045799998334,
+            475.1543750000419
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 485.4916670001112,
+          "checkMs": [],
+          "checkRunMs": [
+            453.54233399999794,
+            557.6436660000472,
+            683.4462089999579,
+            407.52633299998706,
+            485.4916670001112
+          ]
+        }
+      }
+    },
+    "groovy": {
+      "label": "Groovy",
+      "family": "jit",
+      "toolchain": "Groovy Version: 6.0.0 JVM: 27 Vendor: Homebrew OS: Mac OS X",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 1116.94079100003,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 1245.7550839999458,
+          "checkMs": [],
+          "checkRunMs": [
+            1138.453332999983,
+            1275.1129580000415,
+            1559.4772499999963,
+            1117.4309999999823,
+            1245.7550839999458
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 1098.9938749999274,
+          "checkMs": [],
+          "checkRunMs": [
+            1080.862958999991,
+            1150.0146669999813,
+            1394.4051249999902,
+            924.3645000000251,
+            1098.9938749999274
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 1116.94079100003,
+          "checkMs": [],
+          "checkRunMs": [
+            1062.965333,
+            1195.2169579999754,
+            1272.0110419999692,
+            940.935541999992,
+            1116.94079100003
+          ]
+        }
+      }
+    },
+    "elixir": {
+      "label": "Elixir",
+      "family": "vm",
+      "toolchain": "Elixir 1.20.4 (compiled with Erlang/OTP 29)",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 325.6313749999972,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 363.9444170000497,
+          "checkMs": [],
+          "checkRunMs": [
+            363.5906670000113,
+            363.9444170000497,
+            453.8982079999987,
+            355.75029200001154,
+            425.65320800000336
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 322.9344170000113,
+          "checkMs": [],
+          "checkRunMs": [
+            322.9344170000113,
+            315.8800829999964,
+            344.45537499996135,
+            267.6552500000107,
+            398.2807909999974
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 325.6313749999972,
+          "checkMs": [],
+          "checkRunMs": [
+            321.15587499999674,
+            325.6313749999972,
+            459.870166000037,
+            260.49708399997326,
+            418.4998749999795
+          ]
+        }
+      }
+    },
+    "erlang": {
+      "label": "Erlang",
+      "family": "vm",
+      "toolchain": "Erlang (SMP,ASYNC_THREADS) (BEAM) emulator version 17.1",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 214.75812499999302,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 213.49720799998613,
+          "checkMs": [],
+          "checkRunMs": [
+            209.94774999999208,
+            213.49720799998613,
+            270.24170800001593,
+            195.48620799998753,
+            278.6287079999456
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 214.75812499999302,
+          "checkMs": [],
+          "checkRunMs": [
+            200.04320899999584,
+            214.75812499999302,
+            269.8347500000382,
+            176.24258299998473,
+            266.0164169999771
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 234.14166599998134,
+          "checkMs": [],
+          "checkRunMs": [
+            234.14166599998134,
+            222.5580829999526,
+            321.2596669999766,
+            171.04800000000978,
+            275.73191700002644
+          ]
+        }
+      }
+    },
+    "haskell": {
+      "label": "Haskell",
+      "family": "compiled-native",
+      "toolchain": "The Glorious Glasgow Haskell Compilation System, version 9.14.1",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 475.8499999999767,
+      "checkRunMedianMs": 741.304124999966,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 924.2023340000014,
+          "checkRunMedianMs": 1140.2740840000042,
+          "checkMs": [
+            924.2023340000014,
+            951.7323329999927,
+            1083.3447499999893,
+            874.0751670000027,
+            912.575708999997
+          ],
+          "checkRunMs": [
+            1140.2740840000042,
+            1151.530792000005,
+            1323.1697920000297,
+            1089.9012499999953,
+            1107.2483340000035
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 466.09270799998194,
+          "checkRunMedianMs": 642.9224580000155,
+          "checkMs": [
+            575.3032090000052,
+            466.09270799998194,
+            584.3162499999744,
+            427.96875,
+            372.5883750000503
+          ],
+          "checkRunMs": [
+            791.1404170000169,
+            634.8735829999787,
+            815.1202499999781,
+            642.9224580000155,
+            602.1114580000285
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 475.8499999999767,
+          "checkRunMedianMs": 741.304124999966,
+          "checkMs": [
+            643.4704590000038,
+            475.8499999999767,
+            509.02458299999125,
+            449.1133339999942,
+            416.79737499996554
+          ],
+          "checkRunMs": [
+            860.0156669999997,
+            676.5364580000169,
+            741.304124999966,
+            665.3168750000186,
+            759.8557499999879
+          ]
+        }
+      }
+    },
+    "ocaml": {
+      "label": "OCaml",
+      "family": "compiled-native",
+      "toolchain": "5.5.1",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 187.6790419999743,
+      "checkRunMedianMs": 318.93512499995995,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 239.4184580000001,
+          "checkRunMedianMs": 359.2884169999743,
+          "checkMs": [
+            309.5169159999932,
+            251.41387499996927,
+            239.4184580000001,
+            235.8291249999893,
+            233.53887499996927
+          ],
+          "checkRunMs": [
+            421.94766599999275,
+            359.2884169999743,
+            378.78029100003187,
+            351.1773750000284,
+            307.01345800003037
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 181.09487500000978,
+          "checkRunMedianMs": 305.0302500000107,
+          "checkMs": [
+            263.57133299999987,
+            191.46795800002292,
+            176.86329199996544,
+            181.09487500000978,
+            177.09774999995716
+          ],
+          "checkRunMs": [
+            389.07741700002225,
+            305.0302500000107,
+            316.3134999999893,
+            293.2408750000177,
+            281.6265419999836
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 187.6790419999743,
+          "checkRunMedianMs": 318.93512499995995,
+          "checkMs": [
+            269.3391249999986,
+            197.77433299995027,
+            187.6790419999743,
+            179.49695800000336,
+            176.06729199993424
+          ],
+          "checkRunMs": [
+            360.26195800001733,
+            321.9720419999794,
+            318.93512499995995,
+            274.18325000000186,
+            281.41024999995716
+          ]
+        }
+      }
+    },
+    "julia": {
+      "label": "Julia",
+      "family": "jit",
+      "toolchain": "julia version 1.12.7",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 155.21341699996265,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 744.8918330000015,
+          "checkMs": [],
+          "checkRunMs": [
+            826.0597909999778,
+            749.4120409999741,
+            744.8918330000015,
+            737.928208999976,
+            707.1730419999221
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 155.21341699996265,
+          "checkMs": [],
+          "checkRunMs": [
+            190.85104199999478,
+            155.21341699996265,
+            158.97362499998417,
+            134.0942090000026,
+            137.22695900010876
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 152.42229100002442,
+          "checkMs": [],
+          "checkRunMs": [
+            219.94858399999794,
+            152.42229100002442,
+            168.835167000012,
+            141.09712499997113,
+            138.46495899988804
+          ]
+        }
+      }
+    },
+    "r": {
+      "label": "R",
+      "family": "interpreted",
+      "toolchain": "Rscript (R) version 4.6.1 (2026-06-24)",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 116.22508300002664,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 149.7374590000254,
+          "checkMs": [],
+          "checkRunMs": [
+            198.28237499998068,
+            141.130084000004,
+            169.7408750000177,
+            149.7374590000254,
+            140.01216699997894
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 110.16895800002385,
+          "checkMs": [],
+          "checkRunMs": [
+            178.63616699998965,
+            110.16895800002385,
+            136.20054200000595,
+            109.30433300003642,
+            109.99308399995789
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 116.22508300002664,
+          "checkMs": [],
+          "checkRunMs": [
+            182.181459000014,
+            115.1980840000324,
+            153.27624999999534,
+            114.8550839999807,
+            116.22508300002664
+          ]
+        }
+      }
+    },
+    "nim": {
+      "label": "Nim",
+      "family": "compiled-native",
+      "toolchain": "Nim Compiler Version 2.2.12 [MacOSX: arm64]",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 690.2908329999773,
+      "checkRunMedianMs": 799.9109170000302,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 737.6169169999775,
+          "checkRunMedianMs": 837.5837080000201,
+          "checkMs": [
+            1104.0798329999961,
+            719.032957999967,
+            879.0394999999553,
+            737.6169169999775,
+            701.3555000000633
+          ],
+          "checkRunMs": [
+            1189.315082999994,
+            806.0468329999712,
+            993.3610419999459,
+            837.5837080000201,
+            786.5095839999849
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 690.2908329999773,
+          "checkRunMedianMs": 773.5122909999918,
+          "checkMs": [
+            1051.9665840000089,
+            690.2908329999773,
+            815.5571249999921,
+            668.9130839999998,
+            669.3575830000918
+          ],
+          "checkRunMs": [
+            1133.8144590000156,
+            773.5122909999918,
+            940.1893750000163,
+            756.841791999992,
+            726.7833749999991
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 688.1944169999915,
+          "checkRunMedianMs": 799.9109170000302,
+          "checkMs": [
+            1128.4015420000069,
+            679.0942080000532,
+            823.7445829999633,
+            688.1944169999915,
+            686.0879999999888
+          ],
+          "checkRunMs": [
+            1238.8939170000085,
+            764.5440410000156,
+            899.5693329999922,
+            799.9109170000302,
+            780.2292919999454
+          ]
+        }
+      }
+    },
+    "crystal": {
+      "label": "Crystal",
+      "family": "compiled-native",
+      "toolchain": "Crystal 1.21.1 (2026-09-26)",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 618.0452500000247,
+      "checkRunMedianMs": 735.5625,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 818.1165410000249,
+          "checkRunMedianMs": 920.7688750000088,
+          "checkMs": [
+            1123.0705000000016,
+            791.5572909999755,
+            920.1861250000075,
+            818.1165410000249,
+            623.9009999999544
+          ],
+          "checkRunMs": [
+            1217.4082909999997,
+            895.4130829999922,
+            1052.407666999963,
+            920.7688750000088,
+            734.8078749999404
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 618.0452500000247,
+          "checkRunMedianMs": 735.5625,
+          "checkMs": [
+            796.5019589999865,
+            502.69304100004956,
+            727.737833000021,
+            618.0452500000247,
+            497.14379200001713
+          ],
+          "checkRunMs": [
+            895.453749999986,
+            602.6953330000397,
+            907.0146659999737,
+            735.5625,
+            600.9065420000115
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 540.8486249999842,
+          "checkRunMedianMs": 649.0048749999842,
+          "checkMs": [
+            1009.3126660000125,
+            540.1540839999798,
+            857.9470830000355,
+            525.9554169999901,
+            540.8486249999842
+          ],
+          "checkRunMs": [
+            1101.565791000001,
+            645.834458999976,
+            980.7209170000278,
+            623.6637920000358,
+            649.0048749999842
+          ]
+        }
+      }
+    },
+    "d": {
+      "label": "D",
+      "family": "compiled-native",
+      "toolchain": "LDC - the LLVM D compiler (1.43.0):",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 791.7473330000066,
+      "checkRunMedianMs": 894.7600000000093,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 791.7473330000066,
+          "checkRunMedianMs": 894.7600000000093,
+          "checkMs": [
+            1258.534209000005,
+            791.7473330000066,
+            974.404499999946,
+            781.1391250000452,
+            760.3241670000134
+          ],
+          "checkRunMs": [
+            1356.0452919999952,
+            894.7600000000093,
+            1102.3598749999655,
+            871.9130000000005,
+            833.0566669999389
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 650.5648339999607,
+          "checkRunMedianMs": 762.8625829999801,
+          "checkMs": [
+            1109.4706249999872,
+            647.2957499999902,
+            842.65054100001,
+            637.1416660000104,
+            650.5648339999607
+          ],
+          "checkRunMs": [
+            1208.4000409999862,
+            762.8625829999801,
+            988.9401659999858,
+            739.9109160000226,
+            761.8176250000251
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 908.5991659999709,
+          "checkRunMedianMs": 1040.6412079999573,
+          "checkMs": [
+            1208.1644579999847,
+            654.6323329999577,
+            908.5991659999709,
+            648.1532080000034,
+            939.784290999989
+          ],
+          "checkRunMs": [
+            1307.508375000005,
+            767.8014170000097,
+            1040.6412079999573,
+            756.196540999983,
+            1049.9617909999797
+          ]
+        }
+      }
+    },
+    "pascal": {
+      "label": "Pascal",
+      "family": "compiled-native",
+      "toolchain": "3.2.2",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 222.92912500002421,
+      "checkRunMedianMs": 357.390625,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 265.15870799997356,
+          "checkRunMedianMs": 374.72045799996704,
+          "checkMs": [
+            290.9349590000056,
+            265.15870799997356,
+            239.22916599997552,
+            303.6560410000384,
+            257.88000000000466
+          ],
+          "checkRunMs": [
+            398.65004200002295,
+            379.79133300000103,
+            374.72045799996704,
+            365.7559580000234,
+            349.3632080000825
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 221.28670799999963,
+          "checkRunMedianMs": 337.0906670000404,
+          "checkMs": [
+            250.74887500001932,
+            204.26358299999265,
+            221.28670799999963,
+            204.71112500003073,
+            225.782375000068
+          ],
+          "checkRunMs": [
+            361.2640830000164,
+            290.01458299998194,
+            343.67183299997123,
+            299.7092920000432,
+            337.0906670000404
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 222.92912500002421,
+          "checkRunMedianMs": 357.390625,
+          "checkMs": [
+            251.63883300000452,
+            190.39641699998174,
+            222.1695840000175,
+            222.92912500002421,
+            240.91908300004434
+          ],
+          "checkRunMs": [
+            357.390625,
+            285.0777919999673,
+            375.36537499999395,
+            328.4128330000094,
+            367.4005410000682
+          ]
+        }
+      }
+    },
+    "racket": {
+      "label": "Racket",
+      "family": "vm",
+      "toolchain": "Welcome to Racket v9.3 [cs].",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 92.30229199997848,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 121.21345899999142,
+          "checkMs": [],
+          "checkRunMs": [
+            140.14154200002667,
+            101.16049999999814,
+            121.21345899999142,
+            106.06899999995949,
+            123.67633300006855
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 89.85249999997905,
+          "checkMs": [],
+          "checkRunMs": [
+            111.15908300000592,
+            69.70341699995333,
+            89.85249999997905,
+            78.35437499999534,
+            97.24729099997785
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 92.30229199997848,
+          "checkMs": [],
+          "checkRunMs": [
+            118.43791599999531,
+            73.649207999988,
+            92.30229199997848,
+            74.14108299999498,
+            101.83791700005531
+          ]
+        }
+      }
+    },
+    "commonlisp": {
+      "label": "Common Lisp",
+      "family": "jit",
+      "toolchain": "SBCL 2.6.9",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 23.981583999993745,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 28.825291999964975,
+          "checkMs": [],
+          "checkRunMs": [
+            33.10845800000243,
+            24.665042000007816,
+            28.825291999964975,
+            27.54158300004201,
+            31.80191699997522
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 22.274749999982305,
+          "checkMs": [],
+          "checkRunMs": [
+            24.539083000010578,
+            15.88170899997931,
+            22.274749999982305,
+            16.67516699997941,
+            23.23424999997951
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 23.981583999993745,
+          "checkMs": [],
+          "checkRunMs": [
+            26.87737499998184,
+            16.568874999997206,
+            23.981583999993745,
+            16.443499999993946,
+            25.675500000012107
+          ]
+        }
+      }
+    },
+    "cobol": {
+      "label": "COBOL",
+      "family": "compiled-native",
+      "toolchain": "cobc (GnuCOBOL) 3.2.0",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 143.3566250000149,
+      "checkRunMedianMs": 263.2078750000219,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 143.3566250000149,
+          "checkRunMedianMs": 263.2078750000219,
+          "checkMs": [
+            206.90895800001454,
+            117.08058399998117,
+            143.3566250000149,
+            116.75224999996135,
+            351.39520899998024
+          ],
+          "checkRunMs": [
+            316.06683300001896,
+            237.03854199999478,
+            263.2078750000219,
+            195.71912500000326,
+            477.2715839999728
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 130.1839579999796,
+          "checkRunMedianMs": 257.43041699996684,
+          "checkMs": [
+            183.16562499999418,
+            113.64587499998743,
+            130.1839579999796,
+            114.37162499997066,
+            183.07108299992979
+          ],
+          "checkRunMs": [
+            311.0594170000113,
+            219.4063750000205,
+            257.43041699996684,
+            225.7447079999838,
+            304.19845799996983
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 161.88079199998174,
+          "checkRunMedianMs": 290.6089580000262,
+          "checkMs": [
+            177.4042920000211,
+            109.27504199999385,
+            129.1682500000461,
+            179.65795800002525,
+            161.88079199998174
+          ],
+          "checkRunMs": [
+            326.25225000001956,
+            218.37341699999524,
+            282.13429100002395,
+            290.6089580000262,
+            295.26070799992885
+          ]
+        }
+      }
+    },
+    "prolog": {
+      "label": "Prolog",
+      "family": "interpreted",
+      "toolchain": "SWI-Prolog version 10.0.2 for arm64-darwin",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 17.963541999983136,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 29.06666700000642,
+          "checkMs": [],
+          "checkRunMs": [
+            34.69429200000013,
+            25.831375000008848,
+            26.79662500001723,
+            29.06666700000642,
+            32.931417000014335
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 17.552750000031665,
+          "checkMs": [],
+          "checkRunMs": [
+            24.75166600002558,
+            16.216916000004858,
+            17.552750000031665,
+            16.28020799998194,
+            23.58358400000725
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 17.963541999983136,
+          "checkMs": [],
+          "checkRunMs": [
+            24.766417000006186,
+            16.73295799997868,
+            17.963541999983136,
+            15.871125000005122,
+            25.0798749999376
+          ]
+        }
+      }
+    },
+    "guile": {
+      "label": "Scheme (Guile)",
+      "family": "vm",
+      "toolchain": "guile (GNU Guile) 3.0.11",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 29.629833000013605,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 42.45233299996471,
+          "checkMs": [],
+          "checkRunMs": [
+            50.85266600002069,
+            42.45233299996471,
+            42.18508299998939,
+            39.10649999999441,
+            52.91841700009536
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 29.236832999973558,
+          "checkMs": [],
+          "checkRunMs": [
+            34.97912500001257,
+            21.839374999981374,
+            29.236832999973558,
+            23.659333999967203,
+            31.959917000029236
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 29.629833000013605,
+          "checkMs": [],
+          "checkRunMs": [
+            33.890500000008615,
+            21.088999999978114,
+            29.629833000013605,
+            26.492625000013504,
+            31.42745900002774
+          ]
+        }
+      }
+    },
+    "chicken": {
+      "label": "Scheme (CHICKEN)",
+      "family": "compiled-native",
+      "toolchain": "Version 6.0.0 (rev 2e30c07e)",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 248.90562500001397,
+      "checkRunMedianMs": 364.79141599999275,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 254.44966700003715,
+          "checkRunMedianMs": 373.18433299998287,
+          "checkMs": [
+            523.3898750000226,
+            220.66695899999468,
+            254.44966700003715,
+            218.1506250000093,
+            327.34854200005066
+          ],
+          "checkRunMs": [
+            623.7820000000065,
+            275.5043749999604,
+            373.18433299998287,
+            314.5422499999986,
+            557.7939170000609
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 248.90562500001397,
+          "checkRunMedianMs": 364.79141599999275,
+          "checkMs": [
+            341.7439160000067,
+            206.49749999999767,
+            248.90562500001397,
+            202.95066700002644,
+            265.5392909999937
+          ],
+          "checkRunMs": [
+            441.13000000000466,
+            292.9502499999944,
+            377.65654200001154,
+            313.3997500000405,
+            364.79141599999275
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 247.5951669999631,
+          "checkRunMedianMs": 333.153166999924,
+          "checkMs": [
+            344.5472080000036,
+            234.8075410000165,
+            247.5951669999631,
+            208.88374999997905,
+            268.3812499999767
+          ],
+          "checkRunMs": [
+            445.50050000002375,
+            327.7204159999965,
+            366.1361249999609,
+            309.3990839999751,
+            333.153166999924
+          ]
+        }
+      }
+    },
+    "smalltalk": {
+      "label": "Smalltalk",
+      "family": "interpreted",
+      "toolchain": "GNU Smalltalk version 3.2.5",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 9.755707999982405,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 19.08420899999328,
+          "checkMs": [],
+          "checkRunMs": [
+            22.56670799999847,
+            17.233666999964043,
+            18.46987500000978,
+            20.37462499999674,
+            19.08420899999328
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 9.755707999982405,
+          "checkMs": [],
+          "checkRunMs": [
+            12.181209000002127,
+            7.98537499998929,
+            9.755707999982405,
+            8.841625000000931,
+            9.832082999986596
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 9.50141700002132,
+          "checkMs": [],
+          "checkRunMs": [
+            11.913999999989755,
+            7.633749999979045,
+            8.755375000007916,
+            9.50141700002132,
+            10.261834000004455
+          ]
+        }
+      }
+    },
+    "forth": {
+      "label": "Forth",
+      "family": "interpreted",
+      "toolchain": "gforth 0.7.3",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 3.8542920000036247,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 4.970084000029601,
+          "checkMs": [],
+          "checkRunMs": [
+            5.991624999995111,
+            4.540500000002794,
+            4.970084000029601,
+            4.936166999978013,
+            5.2177499999525025
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 3.6108339999918826,
+          "checkMs": [],
+          "checkRunMs": [
+            5.255624999990687,
+            3.3369999999995343,
+            3.6108339999918826,
+            3.3205000000307336,
+            4.137833999935538
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 3.8542920000036247,
+          "checkMs": [],
+          "checkRunMs": [
+            4.699874999991152,
+            3.2894580000429414,
+            3.8542920000036247,
+            3.726833999971859,
+            4.038457999937236
+          ]
+        }
+      }
+    },
+    "haxe": {
+      "label": "Haxe",
+      "family": "interpreted",
+      "toolchain": "4.3.7",
+      "checkKind": "none: the toolchain has no static check; validated only by running",
+      "status": "measured",
+      "checkMedianMs": null,
+      "checkRunMedianMs": 96.87779200001387,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 145.3153750000056,
+          "checkMs": [],
+          "checkRunMs": [
+            193.1276249999937,
+            129.41404200001853,
+            145.3153750000056,
+            129.20120799995493,
+            160.454207999981
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 94.1622910000151,
+          "checkMs": [],
+          "checkRunMs": [
+            131.90970800002106,
+            82.00995799998054,
+            94.1622910000151,
+            73.63804200000595,
+            106.75962500006426
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": null,
+          "checkRunMedianMs": 96.87779200001387,
+          "checkMs": [],
+          "checkRunMs": [
+            132.27033299999312,
+            87.67491599998903,
+            96.87779200001387,
+            75.71583300002385,
+            109.10795799992047
+          ]
+        }
+      }
+    },
+    "v": {
+      "label": "V",
+      "family": "compiled-native",
+      "toolchain": "V 0.5.2",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 671.0428340000217,
+      "checkRunMedianMs": 769.9497080000001,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 709.6251660000416,
+          "checkRunMedianMs": 823.2853750000359,
+          "checkMs": [
+            860.7771249999932,
+            552.4788749999716,
+            709.6251660000416,
+            544.618124999979,
+            744.0413329999428
+          ],
+          "checkRunMs": [
+            961.8591660000093,
+            630.8655840000138,
+            823.2853750000359,
+            632.9977090000175,
+            846.8031659999397
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 671.0428340000217,
+          "checkRunMedianMs": 760.4403750000056,
+          "checkMs": [
+            788.4387920000008,
+            519.1424589999951,
+            671.0428340000217,
+            504.7444999999716,
+            722.0259170000209
+          ],
+          "checkRunMs": [
+            873.921250000014,
+            618.0737920000101,
+            760.4403750000056,
+            594.5618339999928,
+            856.3387080000248
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 653.9342499999912,
+          "checkRunMedianMs": 769.9497080000001,
+          "checkMs": [
+            864.9858330000134,
+            509.1789999999455,
+            653.9342499999912,
+            499.31199999997625,
+            677.1828749999404
+          ],
+          "checkRunMs": [
+            954.8113330000197,
+            602.3314169999794,
+            769.9497080000001,
+            596.5669159999816,
+            780.4652080000378
+          ]
+        }
+      }
+    },
+    "odin": {
+      "label": "Odin",
+      "family": "compiled-native",
+      "toolchain": "/opt/homebrew/bin/odin version dev-2026-09:a2fb372b7",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 1829.0537079999922,
+      "checkRunMedianMs": 1948.403416999965,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 1829.0537079999922,
+          "checkRunMedianMs": 1948.403416999965,
+          "checkMs": [
+            2364.811625000002,
+            1465.0035829999833,
+            2095.192290999985,
+            1467.7439170000143,
+            1829.0537079999922
+          ],
+          "checkRunMs": [
+            2484.1570409999986,
+            1589.5131249999977,
+            2215.704625000013,
+            1580.5452919999952,
+            1948.403416999965
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 1631.545582999941,
+          "checkRunMedianMs": 1748.4942080000183,
+          "checkMs": [
+            2015.9605420000153,
+            1404.9147499999963,
+            2009.7339589999756,
+            1222.8415420000092,
+            1631.545582999941
+          ],
+          "checkRunMs": [
+            2131.922125000012,
+            1518.15862500004,
+            2120.1810839999816,
+            1332.0996670000022,
+            1748.4942080000183
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 2018.1284999999916,
+          "checkRunMedianMs": 2178.62933299999,
+          "checkMs": [
+            2148.943082999991,
+            2018.1284999999916,
+            2063.332832999993,
+            1179.508415999997,
+            1846.8037089999998
+          ],
+          "checkRunMs": [
+            2247.881166999985,
+            2189.477291999967,
+            2178.62933299999,
+            1301.5945410000277,
+            1958.6888339999132
+          ]
+        }
+      }
+    },
+    "vala": {
+      "label": "Vala",
+      "family": "compiled-native",
+      "toolchain": "Vala 0.56.19",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 153.78270799998427,
+      "checkRunMedianMs": 274.81541699997615,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 191.55870799999684,
+          "checkRunMedianMs": 295.4503329999279,
+          "checkMs": [
+            237.22570800001267,
+            191.55870799999684,
+            183.08366699999897,
+            163.99179199995706,
+            211.75624999997672
+          ],
+          "checkRunMs": [
+            338.4176659999939,
+            271.38870800001314,
+            314.25037500000326,
+            223.60704199998872,
+            295.4503329999279
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 153.78270799998427,
+          "checkRunMedianMs": 257.8240830000723,
+          "checkMs": [
+            208.09600000001956,
+            147.11316700000316,
+            153.78270799998427,
+            127.20095799997216,
+            172.88854099996388
+          ],
+          "checkRunMs": [
+            310.40016700001433,
+            238.81054199999198,
+            273.14333300001454,
+            227.95545800001128,
+            257.8240830000723
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 152.91462499997579,
+          "checkRunMedianMs": 274.81541699997615,
+          "checkMs": [
+            189.9971249999944,
+            145.60979199997382,
+            152.91462499997579,
+            126.4096669999999,
+            202.77537500008475
+          ],
+          "checkRunMs": [
+            309.0285000000149,
+            244.62141700001666,
+            274.81541699997615,
+            220.39400000002934,
+            305.53350000001956
+          ]
+        }
+      }
+    },
+    "gleam": {
+      "label": "Gleam",
+      "family": "vm",
+      "toolchain": "gleam 1.18.1",
+      "checkKind": "build (as exec-bench)",
+      "status": "measured",
+      "checkMedianMs": 265.32574999995995,
+      "checkRunMedianMs": 400.5534589999588,
+      "kernels": {
+        "affine": {
+          "checkMedianMs": 289.98241599998437,
+          "checkRunMedianMs": 448.89508300001035,
+          "checkMs": [
+            326.5994579999824,
+            280.86504199996125,
+            289.98241599998437,
+            260.5906660000328,
+            332.52545800001826
+          ],
+          "checkRunMs": [
+            479.8963329999824,
+            405.52133399999,
+            448.89508300001035,
+            366.5297910000081,
+            500.2314999999944
+          ]
+        },
+        "branchy": {
+          "checkMedianMs": 265.32574999995995,
+          "checkRunMedianMs": 400.5534589999588,
+          "checkMs": [
+            357.3874170000199,
+            236.95545799995307,
+            265.32574999995995,
+            210.3492500000284,
+            328.38675000006333
+          ],
+          "checkRunMs": [
+            531.8685000000114,
+            362.44412499998,
+            400.5534589999588,
+            306.83479100000113,
+            484.39200000010896
+          ]
+        },
+        "arrfill": {
+          "checkMedianMs": 261.21145899995463,
+          "checkRunMedianMs": 394.1954999999725,
+          "checkMs": [
+            329.7325420000125,
+            238.97949999995762,
+            261.21145899995463,
+            186.31341699999757,
+            325.6080830000574
+          ],
+          "checkRunMs": [
+            555.3509170000034,
+            357.94854099996155,
+            394.1954999999725,
+            284.57566699996823,
+            499.8338750000112
+          ]
+        }
+      }
+    }
+  },
+  "tokensGeneratedAt": "2026-10-09T16:58:13.446Z"
+}

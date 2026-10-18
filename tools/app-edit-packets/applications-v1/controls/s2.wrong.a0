@@ -1,0 +1,58 @@
+fn s2_match u32 u32 u32x672 u32x32 -> u32
+kind call r_kind p2 p1
+ctl eq kind 4
+x0 call rg p2 p1 1
+y0 call rg p2 p1 2
+x1 call rg p2 p1 3
+y1 call rg p2 p1 4
+tx0 get p3 14
+ty0 get p3 15
+tx1 get p3 16
+ty1 get p3 17
+vx call fx_lt tx0 tx1
+vy call fx_lt ty0 ty1
+valid and vx vy
+a eq x0 tx0
+b eq y0 ty0
+c eq x1 tx1
+d eq y1 ty1
+ab and a b
+cd and c d
+same mov ab
+vc and valid ctl
+hit and vc same
+free eq p0 4294967295
+use and hit free
+r select use p1 p0
+ret r
+end
+
+fn tap_scan u32x1024 u32x32 u32x672 -> (u32,u32)
+seq get p1 11
+old call bg p0 22
+changed ne seq old
+tx get p1 12
+ty get p1 13
+sx get p1 5
+sy get p1 6
+pgx call vp2pg tx sx
+pgy call vp2pg ty sy
+nrows get p1 21
+n select changed nrows 0
+init rec 4294967295 4294967295
+best fold tap_row_step n init p2 pgx pgy
+fallback at best 1
+exact fold s2_match n 4294967295 p2 p1
+found ne exact 4294967295
+row select found exact fallback
+clk call bg p0 13
+h call fx_hash clk seq
+u shr h 20
+cnt0 rem u 3
+cnt add cnt0 1
+nf ne row 4294967295
+act and changed nf
+cn select act cnt 0
+r rec row cn
+ret r
+end
