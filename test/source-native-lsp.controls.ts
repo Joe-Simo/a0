@@ -276,6 +276,8 @@ test('native LSP diagnostics and per-file formatting share current buffers and p
         broken.split('\n').findIndex((line) => line.includes('x add A true')),
       );
       assert.ok(!JSON.stringify(error).includes(root));
+      const brokenEdits = await session.format(main);
+      assert.equal(brokenEdits?.[0]?.newText ?? broken, formatSource(parseSource(broken)));
       const outsideSource = 'fn outside\nret 1\nend\n';
       const outsideDiagnostic = await session.open(outside, outsideSource);
       assert.equal(outsideDiagnostic.diagnostics[0]?.code, 'limit');
