@@ -186,7 +186,16 @@ export async function sourceCostArtifact(directory: string) {
       backend: build.backend ?? 'clang-wasm',
       components,
       componentCount: components.length,
-      totalWasmBytes: bytes.reduce((sum, component) => sum + component.length, 0),
+      totalWasmBytes: components.reduce(
+        (sum, component) => sum + (component.file.endsWith('.wasm') ? component.bytes : 0),
+        0,
+      ),
+      ...(build.backend === 'generated-js'
+        ? {
+            totalJavaScriptBytes: build.frontendBytes,
+            totalArtifactBytes: bytes.reduce((sum, component) => sum + component.length, 0),
+          }
+        : {}),
       artifactSha256: hash(Buffer.concat(bytes)),
     },
   };
@@ -313,4 +322,56 @@ export async function verifyDirectSourceCostBuild(
   assert.ok(WebAssembly.validate(frontend), 're-emitted frontend is invalid Wasm');
   assert.equal(hash(frontend), record.frontendSHA256, 'artifact direct Wasm differs');
   assert.equal(frontend.length, record.frontendBytes, 'artifact direct Wasm size differs');
+}
+
+/** Fresh cold JS proof and exact generic-arena rebuild, outside all worker timing phases. */
+export async function verifyJsSourceCostBuild(
+  checkout: string,
+  directory: string,
+  record: SourceCostBuild,
+  toolchain: { readonly sysroot: string; readonly builtins: string },
+) {
+  const { prepareJsSource } = await import('./source-js-load.js');
+  const before = process.cwd();
+  try {
+    process.chdir(checkout);
+    const prepared = await prepareJsSource(directory);
+    assert.deepEqual(prepared.build, record, 'cold JS build record differs');
+  } finally {
+    process.chdir(before);
+  }
+  const scratch = join(checkout, '.a0-tmp');
+  await mkdir(scratch, { recursive: true });
+  const out = await mkdtemp(join(scratch, 'source-cost-js-arena-rebuild-'));
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(checkout, 'dist/tools/source-direct-build.js'),
+        `--out=${out}`,
+        `--sysroot=${toolchain.sysroot}`,
+        `--builtins=${toolchain.builtins}`,
+      ],
+      { cwd: checkout, encoding: 'utf8', timeout: 300000, maxBuffer: 8 * 1024 * 1024 },
+    );
+    assert.equal(
+      result.status,
+      0,
+      `JS arena rebuild failed: ${result.error ?? ''}\n${result.stderr}`,
+    );
+    const actual = await sourceCostArtifact(out);
+    assert.deepEqual(
+      actual.build,
+      record.arenaOrigin,
+      'fresh JS arena origin/build record differs',
+    );
+    assert.equal(
+      hash(await readFile(join(out, 'arena.wasm'))),
+      record.arenaSHA256,
+      'fresh JS arena differs',
+    );
+    return { arenaSHA256: record.arenaSHA256, origin: actual.preload };
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
 }

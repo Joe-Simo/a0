@@ -88,7 +88,8 @@ Whether this target improves any measured workload remains unknown. `memoryBytes
 retained Wasm buffers only; it excludes JS heap, generated code, JIT, GC and shared ESM module
 retention. A later approved comparison must include process/engine memory and cold module
 preparation, preserve every loss, and record the distinct JS and Wasm artifacts. The existing
-formal source-cost harness does not accept this target; no timing protocol is expanded here.
+strict source-cost preparation for this target is documented in
+[cost-preparation.md](cost-preparation.md). No formal JS target timing result is recorded here.
 
 ## Recorded correctness proof
 

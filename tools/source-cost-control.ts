@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { isAbsolute, normalize } from 'node:path';
 import type { CompileOptions } from '../src/backends.js';
+import { JS_SOURCE_FUNCTION_TYPES } from '../src/source-js.js';
 
 export type SourceCostBuild = Readonly<Record<string, unknown>>;
 export interface SourceCostComponent {
-  readonly file: 'frontend.wasm' | 'arena.wasm';
+  readonly file: 'frontend.wasm' | 'arena.wasm' | 'frontend.mjs';
   readonly sha256: string;
   readonly bytes: number;
 }
@@ -336,7 +337,7 @@ function verifyStrictNative(
   );
 }
 
-/** Complete artifact accounting; a direct frontend also requires its generic arena module. */
+/** Complete component accounting; JS text remains distinct from its generic arena Wasm. */
 export function sourceCostComponents(build: SourceCostBuild): readonly SourceCostComponent[] {
   const component = (
     file: SourceCostComponent['file'],
@@ -350,6 +351,19 @@ export function sourceCostComponents(build: SourceCostBuild): readonly SourceCos
     );
     return { file, sha256: digest, bytes: size };
   };
+  if (build.backend === 'generated-js') {
+    const components = [
+      component('frontend.mjs', build.frontendSHA256, build.frontendBytes),
+      component('arena.wasm', build.arenaSHA256, build.arenaBytes),
+    ];
+    assert.equal(
+      build.totalArtifactBytes,
+      components.reduce((sum, item) => sum + item.bytes, 0),
+      'JS total artifact size differs',
+    );
+    assert.equal(build.totalWasmBytes, build.arenaBytes, 'JS total Wasm size differs');
+    return components;
+  }
   if (build.backend === 'direct-wasm') {
     const components = [
       component('frontend.wasm', build.frontendSHA256, build.frontendBytes),
@@ -463,7 +477,73 @@ export function sourceCostFrontendOptions(
   return value as CompileOptions & { readonly wasmExports: readonly string[] };
 }
 
+/** JS uses exactly the same source/API/compiler; its execution representation differs explicitly. */
+function verifyJsCompiledBackend(candidate: SourceCostBuild, control: SourceCostBuild): void {
+  assert.ok(
+    (candidate.backend === 'generated-js') !== (control.backend === 'generated-js'),
+    'JS compiled-backends requires one JS and one C frontend',
+  );
+  const js = candidate.backend === 'generated-js' ? candidate : control;
+  const native = candidate.backend === 'generated-js' ? control : candidate;
+  verifyStrictNative(native, native);
+  assert.equal(js.frontendCallABI, 'js-typed-values-v1');
+  assert.deepEqual(js.frontendOptions, { jsIo: 'host', optimize: true });
+  assert.deepEqual(sourceCostCFrontendOptions(native), { cIo: 'host', optimize: true });
+  assert.equal(
+    native.diagnosticPorts,
+    'disabled',
+    'JS comparison requires explicit disabled diagnostic ports',
+  );
+  for (const field of ['entry', 'sourceSHA256', 'frontendABI', 'compilerVersion'])
+    assert.deepEqual(js[field], native[field], `JS control differs in ${field}`);
+  assert.equal(js.functionCount, native.functions, 'JS control differs in function count');
+  assert.deepEqual(
+    sourceCostModules(js),
+    sourceCostModules(native),
+    'JS control differs in A0 closure',
+  );
+  assert.deepEqual(
+    sourceCostFunctionSignatures(js),
+    sourceCostFunctionSignatures(native),
+    'JS control differs in consumed structural API',
+  );
+  assert.deepEqual(
+    sourceCostFunctionSignatures(js).map((fn) => fn.name),
+    Object.keys(JS_SOURCE_FUNCTION_TYPES).sort(),
+    'JS consumed API inventory differs',
+  );
+  const inventory = js.compilerInputInventory as Record<string, unknown> | undefined;
+  assert.ok(inventory && typeof inventory === 'object', 'missing JS common compiler inventory');
+  for (const [left, right] of [
+    ['inputs', 'compilerInputs'],
+    ['configuration', 'compilerConfiguration'],
+    ['build', 'compilerBuild'],
+  ] as const)
+    assert.deepEqual(
+      inventory[left],
+      native[right],
+      `JS control differs in common compiler ${left}`,
+    );
+  const checkout = inventory.checkout as Record<string, unknown> | undefined;
+  assert.ok(checkout && checkout.dirty === false, 'JS compiler checkout not clean');
+  for (const field of ['commit', 'tree'])
+    assert.ok(
+      typeof checkout[field] === 'string' && /^[0-9a-f]{40}$/.test(checkout[field] as string),
+      `missing JS compiler ${field}`,
+    );
+  const origin = js.arenaOrigin as SourceCostBuild | undefined;
+  assert.ok(origin && origin.backend === 'direct-wasm', 'JS generic arena origin missing');
+  verifyCompiledBackends(origin, native);
+  for (const field of ['arenaSHA256', 'arenaBytes', 'transportStackProof'])
+    assert.deepEqual(js[field], origin[field], `JS arena origin differs in ${field}`);
+  sourceCostComponents(js);
+}
+
 function verifyCompiledBackends(candidate: SourceCostBuild, control: SourceCostBuild): void {
+  if (candidate.backend === 'generated-js' || control.backend === 'generated-js') {
+    verifyJsCompiledBackend(candidate, control);
+    return;
+  }
   assert.ok(
     (candidate.backend === 'direct-wasm') !== (control.backend === 'direct-wasm'),
     'compiled-backends control requires one direct and one C frontend',
