@@ -175,6 +175,36 @@ activate original files for formatting and recheck their dependency graph throug
 Ordinary one-shot linking retains no project session. These APIs support the later tool migration;
 the public edit, MCP and LSP routes have not switched.
 
+The existing `EditSession` can now receive the native parser, checker, formatter, revisions and
+repair origins as one service set. Node, function, program, numbered and specification edits use
+the same session and mutation kernels; response publication rolls back session state if formatting
+or an output guard refuses the response. The implementation and its cross-backend controls are in
+[native edit sessions](../native-edit-sessions.md) and
+`results/native-edit-session-controls.json`. This remains an internal integration path.
+
+The source-service package contains the frontend and its A0 formatting and diagnostic companions.
+Its runtime loader verifies a caller-pinned manifest and every component, without a checkout or
+build toolchain. The standalone and browser-target controls in
+`results/native-source-package.json` establish that packaging boundary; they do not establish a
+browser deployment, lower total package cost or a faster frontend. The explicit
+[native bootstrap bridge](bootstrap-source-authority.md) hands authentic checked IR to the existing
+C backend and retains the measured stage-one source-size increase in
+`results/native-bootstrap-source.json`.
+
+Production routing still determines whether the historical readers can be retired:
+
+| Consumer | Current default | Native integration still required before removal |
+| --- | --- | --- |
+| CLI and source migration command | Historical readers and migration target | Route loading, edits and conversion through the verified package |
+| MCP | Historical service set | Adopt the complete native service set after the combined gate |
+| LSP | Historical frontend | Adopt its supplied native frontend and preserve document diagnostics |
+| C bootstrap | Checked-in bootstrap seed | Adopt the checked-IR bridge and verify release self-hosting |
+| Website build and Wasm bootstrap | Historical bootstrap setup | Migrate build-time loading and backend setup; the website has no live source parser |
+
+The native paths must pass capability, migration, target and total-cost checks before becoming
+defaults. The recorded frontend latency and memory losses remain blockers. Internal stage APIs,
+MCP tool layouts and compilation targets do not create additional source syntaxes.
+
 The source-bound executable fixture under `seed/source-frontend/` lets integration tests run with
 ordinary Node, without a local WASI build toolchain. Its freshness check covers the full A0 closure,
 generated C, native transport and builder inputs. Tests execute that artifact, including actual
