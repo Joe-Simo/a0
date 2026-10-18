@@ -364,6 +364,78 @@ const rejection = (session: EditSession, reply: string): A0Error => {
   throw new Error(`accepted: ${reply}`);
 };
 
+test('diagnostic probes preserve a prior rejected reply for fix all', () => {
+  const session = new EditSession(parseAndValidate(SRC));
+  session.open('twice');
+  assert.equal(rejection(session, 'y mod x 5').id, 'A0102');
+  const original = session.program;
+  assert.equal(session.diagnose('y add x 3'), undefined);
+  assert.equal(session.program, original);
+  session.apply('fix all');
+  assert.equal(call(session, 'twice', 3), 4);
+});
+
+test('publication failure rolls back edits, views, handles, counters, and prior repairs', () => {
+  const session = new EditSession(parseAndValidate(SRC), { maxOpenHandles: 2 });
+  session.open('twice');
+  assert.equal(rejection(session, 'y mod x 5').id, 'A0102');
+  const original = session.program;
+  const view = session.view('e0');
+  const refused = new Error('output refused');
+  assert.throws(
+    () =>
+      session.applyAndPublish('y add x 3', (current) => {
+        assert.equal(call(current, 'twice', 3), 12);
+        current.close('e0');
+        current.openProgram();
+        throw refused;
+      }),
+    (error) => error === refused,
+  );
+  assert.equal(session.program, original);
+  assert.equal(session.view('e0'), view);
+  assert.equal(session.openHandles, 1);
+  assert.equal(session.openProgram().handle, 'g0');
+  session.close('g0');
+  for (const open of [
+    () =>
+      session.openAndPublish('sq', {}, () => {
+        throw refused;
+      }),
+    () =>
+      session.openProgramAndPublish({}, () => {
+        throw refused;
+      }),
+  ]) {
+    assert.throws(open, (error) => error === refused);
+    assert.equal(session.openHandles, 1);
+  }
+  assert.equal(session.open('sq').handle, 'e1');
+  session.close('e1');
+  assert.equal(session.openProgram().handle, 'g1');
+  session.apply('e0\nfix all');
+  assert.equal(call(session, 'twice', 3), 4);
+});
+
+test('publication transactions retain ordinary semantic rejection repair state', () => {
+  const session = new EditSession(parseAndValidate(SRC));
+  session.open('twice');
+  let published = false;
+  assert.throws(() =>
+    session.applyAndPublish('y mod x 5', () => {
+      published = true;
+    }),
+  );
+  assert.equal(published, false);
+  session.apply('fix all');
+  assert.equal(call(session, 'twice', 3), 4);
+  assert.equal(
+    session.applyAndPublish('y add x 3', () => 'published'),
+    'published',
+  );
+  assert.equal(call(session, 'twice', 3), 12);
+});
+
 test('a second line for an id that reads the first is a sequence: exact fix with a fresh id', () => {
   const session = new EditSession(parseAndValidate(SRC));
   session.open('twice');

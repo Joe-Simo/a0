@@ -1032,6 +1032,16 @@ interface OpenHandle {
   readonly hideSpecs?: boolean;
 }
 
+interface SessionSnapshot {
+  readonly program: TypedProgram;
+  readonly handles: ReadonlyMap<string, OpenHandle>;
+  readonly nextFn: number;
+  readonly nextProgram: number;
+  readonly rejected: string | undefined;
+  readonly ruleCardShown: boolean;
+  readonly denseNames: Map<string, Map<string, string>>;
+}
+
 export interface ProgramViewOptions {
   /**
    * 'all' (default): one signature line per function. 'deps': only the signatures of
@@ -1334,9 +1344,9 @@ export class EditSession {
       throw diag('A0520', [this.#maxOpen]);
     }
     const handle = `g${this.#nextProgram}`;
-    this.#nextProgram += 1;
     const rev = programRevision(this.#program);
     const dense = options.dense === true;
+    const text = `${handle}\n${this.#programText(target, dense)}`;
     this.#handles.set(handle, {
       functionName: '*',
       revision: rev,
@@ -1344,11 +1354,12 @@ export class EditSession {
       ...(target === undefined ? {} : { target }),
       ...(dense ? { dense } : {}),
     });
+    this.#nextProgram += 1;
     return {
       handle,
       functionName: '*',
       revision: rev,
-      text: `${handle}\n${this.#programText(target, dense)}`,
+      text,
     };
   }
 
@@ -1367,12 +1378,12 @@ export class EditSession {
       throw diag('A0520', [this.#maxOpen]);
     }
     const handle = `e${this.#nextFn}`;
-    this.#nextFn += 1;
     const rev = revision(fn);
     const numbered = options.numbered === true;
     const dense = options.dense === true;
     const compact = dense && options.compact === true;
     const hideSpecs = options.specs === 'hide' && !numbered && fn.spec !== undefined;
+    const body = this.#functionText(fn, options.scope, numbered, dense, hideSpecs, compact);
     this.#handles.set(handle, {
       functionName,
       revision: rev,
@@ -1382,7 +1393,7 @@ export class EditSession {
       ...(compact ? { compact } : {}),
       ...(options.specs === 'hide' && !numbered ? { hideSpecs: true } : {}),
     });
-    const body = this.#functionText(fn, options.scope, numbered, dense, hideSpecs, compact);
+    this.#nextFn += 1;
     return { handle, functionName, revision: rev, text: `${handle}\n${body}` };
   }
 
@@ -1432,17 +1443,43 @@ export class EditSession {
    * removed is closed. The revision check still rejects any edit written against text
    * that is no longer current.
    */
-  #rebind(): void {
-    const progRev = programRevision(this.#program);
+  #rebind(program: TypedProgram): void {
+    const progRev = programRevision(program);
+    const handles = new Map<string, OpenHandle>();
     for (const [handle, bound] of this.#handles) {
       if (bound.functionName === '*') {
-        this.#handles.set(handle, { ...bound, revision: progRev });
+        handles.set(handle, { ...bound, revision: progRev });
         continue;
       }
-      const fn = this.#program.byName.get(bound.functionName);
-      if (fn === undefined) this.#handles.delete(handle);
-      else this.#handles.set(handle, { ...bound, revision: revision(fn) });
+      const fn = program.byName.get(bound.functionName);
+      if (fn !== undefined) handles.set(handle, { ...bound, revision: revision(fn) });
     }
+    this.#program = program;
+    this.#handles.clear();
+    for (const [handle, bound] of handles) this.#handles.set(handle, bound);
+  }
+
+  #snapshot(): SessionSnapshot {
+    return {
+      program: this.#program,
+      handles: new Map(this.#handles),
+      nextFn: this.#nextFn,
+      nextProgram: this.#nextProgram,
+      rejected: this.#rejected,
+      ruleCardShown: this.#ruleCardShown,
+      denseNames: this.#denseNames,
+    };
+  }
+
+  #restore(saved: SessionSnapshot): void {
+    this.#program = saved.program;
+    this.#handles.clear();
+    for (const [handle, bound] of saved.handles) this.#handles.set(handle, bound);
+    this.#nextFn = saved.nextFn;
+    this.#nextProgram = saved.nextProgram;
+    this.#rejected = saved.rejected;
+    this.#ruleCardShown = saved.ruleCardShown;
+    this.#denseNames = saved.denseNames;
   }
 
   /**
@@ -1450,8 +1487,7 @@ export class EditSession {
    * undefined when the reply would be accepted.
    */
   #attempt(text: string): A0Error | undefined {
-    const savedProgram = this.#program;
-    const savedHandles = new Map(this.#handles);
+    const saved = this.#snapshot();
     try {
       this.apply(text);
       return undefined;
@@ -1459,10 +1495,44 @@ export class EditSession {
       if (e instanceof A0Error) return e;
       throw e;
     } finally {
-      this.#program = savedProgram;
-      this.#handles.clear();
-      for (const [h, b] of savedHandles) this.#handles.set(h, b);
+      this.#restore(saved);
     }
+  }
+
+  #publish<Value, Output>(operation: () => Value, publish: (value: Value) => Output): Output {
+    const saved = this.#snapshot();
+    // The operation owns language rejection state. Only a publication failure restores it.
+    const value = operation();
+    try {
+      return publish(value);
+    } catch (error) {
+      this.#restore(saved);
+      throw error;
+    }
+  }
+
+  /** Apply and publish synchronously as one transaction, including fallible output serialization. */
+  applyAndPublish<Output>(text: string, publish: (session: EditSession) => Output): Output {
+    return this.#publish(
+      () => this.apply(text),
+      () => publish(this),
+    );
+  }
+
+  /** Opening a view must not consume an invisible handle when its publication is refused. */
+  openAndPublish<Output>(
+    functionName: string,
+    options: ViewOptions,
+    publish: (view: View) => Output,
+  ): Output {
+    return this.#publish(() => this.open(functionName, options), publish);
+  }
+
+  openProgramAndPublish<Output>(
+    options: ProgramViewOptions,
+    publish: (view: View) => Output,
+  ): Output {
+    return this.#publish(() => this.openProgram(options), publish);
   }
 
   /**
@@ -1647,8 +1717,7 @@ export class EditSession {
         );
       const { edits, rest } = splitLineEdits(rawBody, (t) => isSpecEdit(t, false));
       const blocks = lineEditBlocks(this.#program, edits, undefined);
-      this.#program = editProgram(this.#program, [...closeBlocks(rest), ...blocks].join('\n'));
-      this.#rebind();
+      this.#rebind(editProgram(this.#program, [...closeBlocks(rest), ...blocks].join('\n')));
       return this.#program;
     }
     const fn = this.#program.byName.get(bound.functionName);
@@ -1729,8 +1798,7 @@ export class EditSession {
         replaceNodes(program, program.byName.get(fn.name) ?? target, nodes),
       );
     }
-    this.#program = program;
-    this.#rebind();
+    this.#rebind(program);
     return this.#program;
   }
 }
