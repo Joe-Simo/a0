@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "baseCommit": "87f5e33",
+  "testedCodeCommit": "4aecb7577fbbe24c0a36c42015de5285260b024c",
+  "testedCodeTree": "23ca4e755b7eab7f7f1c8239902f0783c29adb52",
+  "status": "Private formatting-only structured IR activation implemented. Public migration/default source cutover and the final combined C/direct/JS artifact proof remain separate work.",
+  "sourceFiles": [
+    {
+      "path": "src/source-native.ts",
+      "sha256": "8e638c349dd98bc34327e2cd839ca13608a0666dce0dc1419ef3f120b269a89b"
+    },
+    {
+      "path": "test/source-native-format.test.ts",
+      "sha256": "010a9047d125f1f825854427bbf0cbe8d4ac1595e12b893b89d386da303a0e41"
+    },
+    {
+      "path": "test/source-native-format.controls.ts",
+      "sha256": "f6d1c50d09589136c3b2156681480075801ed59be4f71a4901103158d76039f5"
+    },
+    {
+      "path": "test/source-native-program-format.controls.ts",
+      "sha256": "87cce7ce8017881e49f8ed53850d02ae0e0cda771fbfc713dd99aeb072b8176e"
+    },
+    {
+      "path": "test/fixtures/arena-format/program-activation.ts",
+      "sha256": "33b2167b5aa52528a8b263e43dbef1707f8f6086031fcc1d9f375ecd763e32eb"
+    },
+    {
+      "path": "docs/design/arena-format.md",
+      "sha256": "18182ecd147b18a312d0d574f7a2713901d6f36a816eb5c3f8f346973f714cda"
+    }
+  ],
+  "api": {
+    "entry": "activateProgramForFormat(Program,budget?)",
+    "output": "Existing opaque NativeUnitFormatInput, or explicit unavailable/native status. Never a Program, parsed-unit or checked-acceptance result.",
+    "implementation": "The same encodeNativeProgram and generic native IR builder used by checkProgram upload source-pool strings, native symbols/types, M/PS and optional A128 metadata.",
+    "snapshots": "Copy active builder M128 and the actual M59 specification directory, then register their private copies/current authoring descriptor in the same private formatInput helper as retained-unit activation.",
+    "unchecked": "Native source_ir_init leaves M96=0. A guard refuses unexpected checked state; no checker-ready fact is manufactured.",
+    "prohibitedPaths": [
+      "No frontend_ir_finish call",
+      "No frontend_state/frontend_specs access for activation snapshots",
+      "No source parse",
+      "No per-file semantic failure control flow",
+      "No host source printer/hash/validator fallback"
+    ],
+    "compilerA0Changed": false,
+    "ABIChanged": false,
+    "publicCLIOrMigrationChanged": false
+  },
+  "ownership": {
+    "preflight": "Open/budget and optional formatter/arena ports are checked before native mutation. Missing capability is unavailable without encoding.",
+    "generation": "Initialization invalidates previous current results/inputs. Opaque identity is authentic only for that engine generation; copies/foreign inputs do not acquire ownership.",
+    "representation": "Lossless string and word/shape transport errors propagate explicitly. Refusal before initialization preserves the current input; failure after reset invalidates it and issues no partial input.",
+    "resource": "Native allocation failure returns its status without an input. A later valid activation can recover.",
+    "metadata": "Current M/PS/A128 and authoring availability are copied privately; public Program mutations cannot change them. Unit activation clears previous structured A128 context through ordinary generic initialization.",
+    "acceptance": "Semantic revision refuses unchecked input. checkUnits rejects the opaque object; checkProgram cannot use it as a Program. Printed files must reenter ordinary native parsing and complete graph checking."
+  },
+  "artifacts": [
+    {
+      "capability": "frontend",
+      "bytes": 358579,
+      "sha256": "e14da183e6301c667a24ec351101c6e014d706f11967f29f7e326b8e4678e076",
+      "manifestSha256": "99e7e443b09247aa202b0e45713590b01f0cf8520b611a842cdd5b1a4a6a4de6",
+      "normalizedSourceSha256": "0166c16c5b04432f53766f275ed10975693df7a3504f3217cb3fdceaa446fcb0",
+      "manifestCompilerCheckout": {
+        "commit": "87f5e33a889736cc6610f3c393af6053b89cd43d",
+        "tree": "823eb2363df39b79ae3abb287955273867f3b097",
+        "dirty": true
+      }
+    },
+    {
+      "capability": "format",
+      "bytes": 67851,
+      "sha256": "5ab1ac6b1a141f3b283bb0395f02d0c795102e02b49be7e45747c0f801200a30",
+      "manifestSha256": "179e22173cc4c96e8516dd82f9c42f4133790d61de2826c796881c4c8c857b78",
+      "normalizedSourceSha256": "5188341cf66ba2800ba52fa49353f0407960699b73f422bd18b19a8939a6e90a"
+    }
+  ],
+  "completedChecks": [
+    {
+      "command": "bun run build",
+      "exitCode": 0
+    },
+    {
+      "command": "source-native-build --diagnostic-ports=arena-v1; source-format-build",
+      "exitCode": 0,
+      "scope": "Fresh actual C-derived frontend and existing A0 formatter/revision companion from the code working tree; manifests retain their truthful base dirty-checkout identity and sources are bound above."
+    },
+    {
+      "command": "node --test dist/test/source-native-program-format.controls.js",
+      "exitCode": 0,
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "assertions": [
+        "Rich unresolved imported unit: strict declaration, profile/import/function/node/spec/return/end comments, Unicode matching text, intermediate and explicitly empty function tails and separate Program tail",
+        "Exact independent source bytes and content/function revisions, bounded mapping spans, mismatching Unicode authoring text with whole-region mapping23 and unchanged semantic operands",
+        "Host mutation of original nested/outer Program data leaves active bytes/maps/revisions detached",
+        "Rich Program -> authentic retained-unit activation clears old A128; empty/import-only Programs print correctly",
+        "Formatted diamond graph is parsed, linked and checked by actual native frontend; independent reference linked program, C/JS/Wasm emissions and checked semantic revision agree",
+        "Invalid budgets and early surrogate refusal preserve current input; invalid operand/op/cyclic type/u32 extent after initialization stale it without partial identity; huge IR allocation budget refusal and retry recover",
+        "A representable semantically invalid Program formats without checked acceptance; semantic revision refuses7; copied/foreign inputs and opaque checkUnits/checkProgram use reject",
+        "Current builder PS source/header/symbol identity and unchecked M96 are inspected; transport hooks throw if activation reads old published M/PS, parses, or finishes checking",
+        "Missing formatter performs zero IR initializations and leaves checked M/PS unchanged"
+      ]
+    },
+    {
+      "command": "node --test dist/test/source-native-format.test.js dist/test/source-native-program.test.js dist/test/source-native.test.js dist/test/source-native-graph.test.js dist/test/source-native-ir-diagnostic-boundaries.test.js",
+      "exitCode": 0,
+      "tests": 22,
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "bun run lint",
+      "exitCode": 0,
+      "existingWarnings": 18,
+      "existingInfos": 164
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0
+    },
+    {
+      "command": "a0-dev prereview --base=87f5e33 --json",
+      "exitCode": 0,
+      "score": 0,
+      "findings": [],
+      "classification": "Deterministic review aid; not runtime proof"
+    },
+    {
+      "command": "a0-dev scope --base=87f5e33 --json",
+      "exitCode": 0,
+      "decision": "All gate steps selected conservatively because source-native.ts is unmapped; no waiver."
+    },
+    {
+      "command": "git diff --cached --check",
+      "exitCode": 0
+    }
+  ],
+  "durableThreeBackendControls": {
+    "suite": "test/source-native-format.controls.ts",
+    "addedTests": 6,
+    "matrix": "Two shared tests for each actual C/direct/JS frontend.",
+    "status": "Compiled/typechecked; C behavior executed through C-first harness. Combined explicit C/direct/JS component suite is delegated to the final integrated artifact build."
+  },
+  "independentReadOnlyReview": {
+    "finalFindings": [],
+    "runtime": "Peer independently reran C harness4/4 and separately exercised rich A128 -> retained unit reset plus empty/import-only Programs; all passed.",
+    "limit": "Review and targeted controls do not replace the combined component proof or full gate."
+  },
+  "logs": [
+    {
+      "path": "<repo>/.a0-tmp/program-format-build.log",
+      "sha256": "5aafe095f318850006c85d11866ad2679cd9b530f533c78440f619f6ce89d411"
+    },
+    {
+      "path": "<repo>/.a0-tmp/program-format-native-build.log",
+      "sha256": "0efc751da713cba60b3783862831da12e46cb8a1999aa775071d8786303895f5"
+    },
+    {
+      "path": "<repo>/.a0-tmp/program-format-companion-build.log",
+      "sha256": "f2c519dcd1de55317e0ba5a2c655e84a455ed226019fcea183e5443d2b73aa83"
+    },
+    {
+      "path": "<repo>/.a0-tmp/program-format-controls.log",
+      "sha256": "9f405ee912522f420b26ac5378aa66f56befbf3fc09ca5df4d019e91363a6341"
+    },
+    {
+      "path": "<repo>/.a0-tmp/program-format-host.log",
+      "sha256": "f9e37d3f0a2447ffa6dca22ee1ba8b16eb2f5d6b48bb678fcf7726ef643b875d"
+    },
+    {
+      "path": "<repo>/.a0-tmp/program-format-lint.log",
+      "sha256": "28171206afa32aaecb5c4fef1eaefa3f5f472d1eaf53c003bc60bb0eb47f5879"
+    },
+    {
+      "path": "<repo>/.a0-tmp/program-format-typecheck.log",
+      "sha256": "38ac890c60e7f38d59ddfb410325cdfb5fca83c9411765c5481754e01c021630"
+    },
+    {
+      "path": "<repo>/.a0-tmp/program-format-prereview.json",
+      "sha256": "9e5a8282c19e6004567a2f9f578e27697a6b414f0287ea68eea3d478e8369349"
+    },
+    {
+      "path": "<repo>/.a0-tmp/program-format-scope.json",
+      "sha256": "a9e197c21d5f3cb5bfeeb357d74de44726ac093ad4603b23f4b415aae419a4b2"
+    }
+  ],
+  "remaining": [
+    "Integrated C/direct/JS component controls on rebuilt final artifacts",
+    "Migrate historical project conversion to this API and native staged whole-graph verification in a separate change",
+    "Repository applicable full gate before publication"
+  ],
+  "claims": {
+    "timingOrPerformanceImprovement": false,
+    "fullGatePass": false,
+    "publicCutoverCompleted": false,
+    "deployment": false
+  }
+}
