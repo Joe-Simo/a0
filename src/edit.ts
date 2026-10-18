@@ -531,7 +531,9 @@ export interface ProgramEditLanguage {
 
 function legacyProgramEditFailure(error: unknown): ProgramEditFailure | undefined {
   return error instanceof A0Error
-    ? error.id === undefined ? {} : { diagnosticID: error.id }
+    ? error.id === undefined
+      ? {}
+      : { diagnosticID: error.id }
     : undefined;
 }
 
@@ -1113,7 +1115,9 @@ export function editProgramWithLanguage(
         if (`fn ${name} ${m[2]}`.split(/\s+/).join(' ') !== signature)
           throw diag('A0516', [line, signature, name], {
             applicability: 'exact',
-            edits: [{ op: 'lines', rule: 'signature', text: normalizeLine(line), to: `-fn ${name}` }],
+            edits: [
+              { op: 'lines', rule: 'signature', text: normalizeLine(line), to: `-fn ${name}` },
+            ],
           });
       }
       removals.add(name);

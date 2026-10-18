@@ -1,8 +1,12 @@
 /** Staged whole-function edits through the shared A0 language services; no session/default switch. */
 import type { Func, TypedProgram } from './core.js';
 import { A0Error, isDiagId } from './diagnostics.js';
-import { editProgramWithLanguage, type ProgramEditFailure, type ProgramEditLanguage } from './edit.js';
-import type { nativeSource, NativeSourceResult } from './source-native.js';
+import {
+  editProgramWithLanguage,
+  type ProgramEditFailure,
+  type ProgramEditLanguage,
+} from './edit.js';
+import type { NativeSourceResult, nativeSource } from './source-native.js';
 import { NativeSourceError } from './source-native-link.js';
 
 type Frontend = ReturnType<typeof nativeSource>;
@@ -14,8 +18,7 @@ function failed(result: Extract<NativeSourceResult, { readonly ok: false }>): ne
 }
 
 function failure(error: unknown): ProgramEditFailure | undefined {
-  if (error instanceof A0Error)
-    return error.id === undefined ? {} : { diagnosticID: error.id };
+  if (error instanceof A0Error) return error.id === undefined ? {} : { diagnosticID: error.id };
   if (
     !(error instanceof NativeSourceError) ||
     (error.status !== 6 && error.status !== 8) ||
@@ -25,7 +28,8 @@ function failure(error: unknown): ProgramEditFailure | undefined {
     !Number.isInteger(error.diagnostic) ||
     error.diagnostic <= 0 ||
     error.diagnostic > 0xffff_ffff
-  ) return undefined;
+  )
+    return undefined;
   const id = `A${String(error.diagnostic).padStart(4, '0')}`;
   // These are actual native source-failure facts and catalog metadata, not a host recheck
   // or a diagnostic invented to drive the ordering policy. Keep the error itself untouched.
