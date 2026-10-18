@@ -94,11 +94,11 @@ The published compiler foundation passed the full macOS gate and Windows C boots
 the production website serves that verified commit. The exact source, artifacts, merge notes and
 deployment checks are recorded in `results/unified-core-68-platform-publication.json` and
 `results/c-arena-stage-windows-674-verification.json`. The newer native authoring integration is
-still staged: its initial combined run passes the LSP/project/migration controls but exposes
-callee-diagnostic rendering failures in whole-function editing
-(`results/native-authoring-combined-initial.json`). The shared A0 fix passes the frozen follow-up
-controls (`results/native-ir-reference-diagnostics.json`); the combined rerun is pending.
-This does not complete the public syntax cutover.
+still staged. Its initial callee-diagnostic failures remain recorded in
+`results/native-authoring-combined-initial.json`; the shared A0 fix and fresh combined controls
+pass in `results/native-authoring-combined.json`, with executable bytes and provenance preserved
+in the accompanying archive. Full platform verification is pending for this increment.
+This does not complete the public syntax cutover or clear the measured frontend-cost blockers.
 
 The flat candidate builds from `compiler/source_frontend.a0` and shared compiler modules,
 with a portable host that decodes checked IR without a second parser or validator. The committed

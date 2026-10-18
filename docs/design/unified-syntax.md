@@ -286,8 +286,11 @@ in `results/native-authoring-combined-initial.json`. Full signature fragments, p
 native migration and the injected LSP path have been exercised. That initial attempt also retains
 the failed whole-function editing controls: source-less callee diagnostics return a renderer
 transport refusal instead of the required catalog error. The shared A0 renderer fix passes its
-frozen follow-up controls in `results/native-ir-reference-diagnostics.json`; the combined rerun is
-pending. Public CLI/MCP routes still use the historical readers and editing paths.
+frozen follow-up controls in `results/native-ir-reference-diagnostics.json`. The fresh combined
+rerun passes all targeted groups in `results/native-authoring-combined.json`; its archive retains
+the executable bytes, provenance, logs and initial failed renderer. This includes the shared
+CLI/encrypted-storage graph-loading seams. Full platform verification for that increment is still
+required. Public CLI/MCP defaults continue using the historical readers and editing paths.
 
 The formal generated-JS frontend cohort is retained in
 `results/source-frontend-js-cost-quiet.json`. Its measured frontend, pipeline, child-wall and
