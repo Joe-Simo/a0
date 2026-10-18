@@ -1,5 +1,13 @@
 # A0 status
 
+2026-10-18 combined native tooling verification: a clean, freshly built source cohort passes
+all 92 targeted controls with no skips, covering native edit sessions across the C-derived,
+direct Wasm and generated-JS frontends, MCP transactions, runtime packages and C bootstrapping.
+The source, component hashes, commands and logs are retained in
+`results/native-tooling-combined.json`. This does not replace the full repository/platform gate,
+clear the recorded frontend performance losses or complete the public syntax cutover.
+Full native Wasm self-hosting remains an independently recorded failure.
+
 2026-10-18 shared lazy-error source control: the isolated A0 algorithm has lower frontend and
 pipeline medians than its unchanged native C control on all six frozen inputs, while CPU, RSS
 and fresh-child wall losses remain. It is not adopted as a default, and all historical Canonical
