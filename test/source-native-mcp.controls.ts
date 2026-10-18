@@ -175,6 +175,52 @@ test('native MCP graph diagnostics keep physical owners, encoding and source pol
   });
 });
 
+test('native MCP retries a refused load, shares concurrent handles and publishes both edits', async () => {
+  await fixture(async (root) => {
+    await writeFile(join(root, 'm.a0'), 'fn bad\nx absent A\nret x\nend\n');
+    const frontend = packaged.instantiate();
+    const client = await protocol(join(root, 'm.a0'), frontend);
+    try {
+      const failed = await Promise.all(
+        ['f', 'g'].map((name) => call(client, 'a0_open', { function: name })),
+      );
+      assert.ok(
+        failed.every((result) => result.error),
+        JSON.stringify(failed),
+      );
+      assert.ok(failed.every((result) => JSON.parse(result.text).id === 'A0102'));
+      await writeFile(join(root, 'm.a0'), 'fn f\nret A\nend\nfn g\nret A\nend\n');
+      const views = await Promise.all(
+        ['f', 'g'].map((name) => call(client, 'a0_open', { function: name })),
+      );
+      assert.ok(
+        views.every((view) => !view.error),
+        JSON.stringify(views),
+      );
+      const handles = views.map((view) => view.text.split('\n')[0]);
+      assert.equal(new Set(handles).size, 2);
+      const edits = await Promise.all([
+        call(client, 'a0_apply', { edit: `${handles[0]}\nret 7` }),
+        call(client, 'a0_apply', { edit: `${handles[1]}\nret 9` }),
+      ]);
+      assert.ok(
+        edits.every((edit) => !edit.error),
+        JSON.stringify(edits),
+      );
+      assert.equal((await call(client, 'a0_run', { function: 'f', args: [2] })).text, '7');
+      assert.equal((await call(client, 'a0_run', { function: 'g', args: [2] })).text, '9');
+      assert.equal((await call(client, 'a0_save')).error, false);
+      const saved = await readFile(join(root, 'm.a0'), 'utf8');
+      assert.match(saved, /ret 7/);
+      assert.match(saved, /ret 9/);
+      assert.ok(frontend.parse(saved).ok);
+    } finally {
+      await client.close();
+      frontend.close();
+    }
+  });
+});
+
 test('native MCP failed source serialization preserves a dirty edit for a later save', async () => {
   await fixture(async (root) => {
     const host = packaged.instantiate();

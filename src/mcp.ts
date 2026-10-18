@@ -178,7 +178,7 @@ export async function createServer(
   const legacy = options.language === undefined;
   const confined = (path: string, mustExist: boolean) =>
     confineSource(root, path, mustExist, (source) => language.acceptsPath(source));
-  const opened = new Map<string, Opened>();
+  const opened = new Map<string, Promise<Opened>>();
   const tool =
     <A>(fn: (args: A) => Promise<string>) =>
     async (args: A): Promise<CallToolResult> => {
@@ -201,17 +201,25 @@ export async function createServer(
     const path = await fileOf(file);
     const existing = opened.get(path);
     if (existing !== undefined) return existing;
-    const linked = await language.load(path, async (p) => {
-      const source = await confined(p, true);
-      return legacy ? readFile(source, 'utf8') : readUtf8Source(source);
-    });
-    const entry: Opened = {
-      session: language.createSession(linked.program),
-      sources: linked.sources.map((s) => s.path),
-      dirty: false,
-    };
-    opened.set(path, entry);
-    return entry;
+    const pending = (async (): Promise<Opened> => {
+      const linked = await language.load(path, async (p) => {
+        const source = await confined(p, true);
+        return legacy ? readFile(source, 'utf8') : readUtf8Source(source);
+      });
+      return {
+        session: language.createSession(linked.program),
+        sources: linked.sources.map((s) => s.path),
+        dirty: false,
+      };
+    })();
+    // Concurrent opens share one graph load and one handle namespace for this source.
+    opened.set(path, pending);
+    try {
+      return await pending;
+    } catch (error) {
+      if (opened.get(path) === pending) opened.delete(path);
+      throw error;
+    }
   };
 
   const program = async (file: string | undefined): Promise<TypedProgram> =>

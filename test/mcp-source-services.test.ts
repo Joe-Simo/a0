@@ -160,6 +160,79 @@ test('MCP supplied services keep program fallback printing and compact tool layo
   });
 });
 
+test('MCP concurrent requests share one source session and retain both edits', async () => {
+  await directory(async (root) => {
+    const supplied = services();
+    const client = await protocol(join(root, 'm.a0'), supplied.language);
+    try {
+      const views = await Promise.all(
+        ['f', 'sq'].map((name, index) =>
+          call(client, 'a0_open', { file: index === 0 ? 'm.a0' : './m.a0', function: name }),
+        ),
+      );
+      assert.ok(views.every((view) => !view.error));
+      const handles = views.map((view) => view.text.split('\n')[0]);
+      assert.equal(new Set(handles).size, 2);
+      assert.deepEqual([supplied.counts.loads, supplied.counts.sessions], [1, 1]);
+      const edits = await Promise.all([
+        call(client, 'a0_apply', { edit: `${handles[0]}\nb add p0 1` }),
+        call(client, 'a0_apply', { edit: `${handles[1]}\na mul p0 2` }),
+      ]);
+      assert.ok(
+        edits.every((edit) => !edit.error),
+        JSON.stringify(edits),
+      );
+      assert.equal((await call(client, 'a0_run', { function: 'f', args: [3] })).text, '4');
+      assert.equal((await call(client, 'a0_run', { function: 'sq', args: [3] })).text, '6');
+      assert.equal((await call(client, 'a0_save')).error, false);
+      const saved = await readFile(join(root, 'm.a0'), 'utf8');
+      assert.match(saved, /b add p0 1/);
+      assert.match(saved, /a mul p0 2/);
+    } finally {
+      await client.close();
+    }
+  });
+});
+
+test('MCP shares failed loads, evicts them and creates one session on parallel retry', async () => {
+  await directory(async (root) => {
+    const supplied = services();
+    let refuse = true;
+    let attempts = 0;
+    const client = await protocol(join(root, 'm.a0'), {
+      ...supplied.language,
+      async load(entry, read, options) {
+        attempts++;
+        await read(entry);
+        if (refuse) throw new Error('graph service unavailable');
+        return supplied.language.load(entry, read, options);
+      },
+    });
+    try {
+      const open = () =>
+        Promise.all(['f', 'sq'].map((name) => call(client, 'a0_open', { function: name })));
+      const failed = await open();
+      assert.ok(failed.every((result) => result.error));
+      assert.ok(failed.every((result) => JSON.parse(result.text).id === 'A0809'));
+      assert.equal(attempts, 1);
+      assert.equal(supplied.counts.sessions, 0);
+      refuse = false;
+      const retried = await open();
+      assert.ok(
+        retried.every((result) => !result.error),
+        JSON.stringify(retried),
+      );
+      assert.equal(new Set(retried.map((result) => result.text.split('\n')[0])).size, 2);
+      assert.equal(attempts, 2);
+      assert.deepEqual([supplied.counts.loads, supplied.counts.sessions], [1, 1]);
+      assert.equal(JSON.parse((await call(client, 'a0_save')).text).id, 'A0806');
+      assert.equal(await readFile(join(root, 'm.a0'), 'utf8'), SOURCE);
+    } finally {
+      await client.close();
+    }
+  });
+});
+
 test('MCP supplied graph reads refuse malformed UTF-8 and source-policy failures without fallback', async () => {
   await directory(async (root) => {
     await writeFile(join(root, 'bad.a0'), Uint8Array.from([0x23, 0x20, 0xff, 0x0a]));
