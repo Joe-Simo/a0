@@ -27,7 +27,8 @@ export interface MigrationManifest {
 
 const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex');
 const portable = (path: string): string => path.split(sep).join('/');
-interface MigrationCodec {
+/** Internal migration boundary; historical readers are selected explicitly before conversion. */
+export interface MigrationCodec {
   readonly extension: '.a0' | '.a0d';
   print(program: Program, known: Arities): string;
   parse(text: string, known: Arities): Program;
@@ -53,7 +54,7 @@ export function migrateSourceProject(
   root = dirname(resolve(entry)),
   legacyDense = false,
 ): Promise<MigrationManifest> {
-  return migrate(entry, destination, root, legacyDense, sourceCodec);
+  return migrateWithCodec(entry, destination, root, legacyDense, sourceCodec);
 }
 
 /**
@@ -68,10 +69,11 @@ export async function migrateProject(
   root = dirname(resolve(entry)),
   legacyDense = false,
 ): Promise<MigrationManifest> {
-  return migrate(entry, destination, root, legacyDense, denseCodec);
+  return migrateWithCodec(entry, destination, root, legacyDense, denseCodec);
 }
 
-async function migrate(
+/** Shared guarded staging, source snapshots and equivalence checks; codecs do not publish files. */
+export async function migrateWithCodec(
   entry: string,
   destination: string,
   root: string,
