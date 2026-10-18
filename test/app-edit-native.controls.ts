@@ -98,6 +98,20 @@ end
 fn echo io -> io
 ret A
 end
+fn single _ -> (_)
+ex 5 -> (5,)
+s (A,)
+ret s
+end
+fn bytes -> _x3
+s "abc"
+ret s
+end
+fn nested (_x2,bool) -> _
+x at A 0
+y get x 1
+ret y
+end
 fn add _ _ -> _
 x sub A B
 ret x
@@ -115,6 +129,13 @@ end
     const explicit = program.byName.get('explicit');
     assert.ok(explicit);
     assert.equal(run(explicit, [9, 2]), 7);
+    const single = program.byName.get('single');
+    const bytes = program.byName.get('bytes');
+    const nested = program.byName.get('nested');
+    assert.ok(single && bytes && nested);
+    assert.deepEqual(run(single, [5]), [5]);
+    assert.deepEqual(run(bytes, []), [97, 98, 99]);
+    assert.equal(run(nested, [[[7, 11], true]]), 11);
     for (const aggregate of ['[1;2]', '(1)', '[1,]', '[1*02]'])
       assert.throws(() => arm.services.parse(`fn invalid\nx ${aggregate}\nret 0\nend\n`));
   } finally {
