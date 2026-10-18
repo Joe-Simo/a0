@@ -19,7 +19,10 @@ UTF8/UTF16 conversion, quoting and detached location collector. Contract checker
 a read-only synthetic function context from the binder's actual node, operand, type and callee
 facts before calling the same checker-message renderer. No checker is run again for rendering.
 The producer now records the actual invalid parameter before wrapping A0105, including its
-operand index and source span.
+operand index and source span. For source-less structured IR, the existing synthetic zero-line
+sentinel and operand cache select the same cached-number renderer already used for short
+parameters. This does not require source text, a host classification flag or a second message
+implementation.
 
 Runtime values are formatted through the existing A0 literal formatter. The expected literal's
 checked shape identifies array versus record; a new literal tree combines that shape with the
@@ -36,7 +39,8 @@ presence, including input omission for pre/post A0719 failures. Unsupported opti
 facts return a renderer refusal without partial JSON. Transport failures retain their original
 status.
 
-The native spec scanner now records repetition subreasons before returning A0714, scans decimal
+The native spec scanner now records repetition subreasons before returning A0714, keeps a
+separator failure from being cleared by a subsequent unchecked append, and scans decimal
 repeat counts and lowercase literal words using the same prefix boundary as the reference
 scanner, and retains post-repeat closing-delimiter priority. These changes affect rejected
 spellings and diagnostic facts; they do not introduce a new accepted syntax.

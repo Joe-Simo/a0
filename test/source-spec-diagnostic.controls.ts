@@ -1,7 +1,9 @@
 /** Explicit compiled-target controls; required artifacts never skip and no timing is sampled. */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { formatProgram, type Program, validate } from '../src/core.js';
 import { A0Error } from '../src/diagnostics.js';
@@ -85,6 +87,7 @@ const sources: Readonly<Record<string, string>> = {
   invalidHugeParameter: fn('pre eq p999999999999999 p0\n'),
   wrongOperandType: fn('pre eq p0 true\n'),
   wrongResultType: fn('pre add p0 1\n'),
+  postParameterLimit: fn('post eq r 0\n', Array<string>(64).fill('u32').join(' ')),
   unknownCallee: fn('post missing p0\n'),
   arity: fn('ex 1 2 -> 3\n'),
   noArguments: fn('ex 1 -> 0\n', '', 'u32', '0'),
@@ -136,6 +139,7 @@ function rendered(result: NativeSourceResult, label: string): A0Error {
   return result.diagnostic.rendered.error;
 }
 const evidence: { name: string; sourceSHA256: string; jsonSHA256: string; id: string }[] = [];
+const passedGroups: string[] = [];
 test('complete spec JSON equals independent source oracle on C, direct and JS targets', () => {
   for (const [name, source] of Object.entries(sources)) {
     const expected = reference(source);
@@ -161,11 +165,12 @@ test('complete spec JSON equals independent source oracle on C, direct and JS ta
       id: expected.id as string,
     });
   }
+  passedGroups.push('source-JSON');
 });
 
 test('successful specs, resource failures, options and retained packets preserve transport rules', () => {
   const success = fn('ex 1 -> 1\npre lt p0 3\npost eq r p0\n');
-  const freshFuel = `${inc}fn f u32 -> u32\nex 1 -> 5001\nex 2 -> 5002\nx fold inc 5000 p0\nret x\nend\n`;
+  const freshFuel = `${inc}fn f u32 -> u32\nex 1 -> 3001\nex 2 -> 3002\nx fold inc 3000 p0\nret x\nend\n`;
   assert.doesNotThrow(() => validate(parseSource(freshFuel)));
   const saved = engines.map(([, engine]) => engine.parse(sources.unequal as string));
   for (const [, engine] of engines) {
@@ -185,6 +190,7 @@ test('successful specs, resource failures, options and retained packets preserve
       rendered(result, 'detached').toJSON(),
       reference(sources.unequal as string).toJSON(),
     );
+  passedGroups.push('success-resource-detachment');
 });
 
 test('legacy wrapper, options and shared ordinary diagnostics remain compatible', async () => {
@@ -233,41 +239,82 @@ test('legacy wrapper, options and shared ordinary diagnostics remain compatible'
   } finally {
     engine.close();
   }
+  passedGroups.push('legacy-options');
 });
 
 test('source-less IR diagnostics retain synthetic locations and original checker priority', () => {
-  const program = parseSource(sources.invalidFirstParameter as string);
-  const expected = reference('', program);
-  for (const [name, engine] of engines) {
-    const result = engine.checkProgram(program);
-    assert.deepEqual(rendered(result, name).toJSON(), expected.toJSON());
+  for (const fixture of [
+    'invalidFirstParameter',
+    'invalidLastParameter',
+    'wrongResultType',
+    'postParameterLimit',
+    'argumentShape',
+    'unequal',
+    'preFalse',
+    'bodyFuel',
+  ]) {
+    const program = parseSource(sources[fixture] as string);
+    const expected = reference('', program);
+    for (const [name, engine] of engines) {
+      const result = engine.checkProgram(program);
+      assert.deepEqual(rendered(result, `${name}/${fixture}`).toJSON(), expected.toJSON());
+    }
   }
+  passedGroups.push('IR');
 });
 
-test('graph errors preserve public line ownership and Unicode source maps', async () => {
-  const units = new Map([
-    ['/r/lib.a0', '# π 😀\nfn helper u32 -> u32\nret p0\nend\n'],
-    ['/r/main.a0', `use "lib.a0"\n${sources.preFalse}`],
-  ]);
-  let expected: A0Error | undefined;
+test('graph errors preserve structured owners, line policy and Unicode source maps', async () => {
+  for (const fixture of ['preFalse', 'wrongResultType', 'argumentShape', 'reference', 'word']) {
+    const units = new Map([
+      ['/r/lib.a0', '# π 😀\nfn spec -> u32\nret 0\nend\nfn helper u32 -> u32\nret p0\nend\n'],
+      ['/r/main.a0', `use "lib.a0"\n${sources[fixture]}`],
+    ]);
+    let expected: A0Error | undefined;
+    try {
+      await linkSource('/r/main.a0', async (path) => units.get(path) as string);
+    } catch (error) {
+      assert.ok(error instanceof A0Error);
+      expected = error;
+    }
+    assert.ok(expected);
+    for (const [name, engine] of engines) {
+      await assert.rejects(
+        linkNativeSource('/r/main.a0', async (path) => units.get(path) as string, engine),
+        (error: unknown) => {
+          assert.ok(error instanceof NativeSourceError);
+          assert.ok(error.a0Error, `${name}/${fixture}`);
+          assert.deepEqual(error.a0Error.toJSON(), expected.toJSON(), `${name}/${fixture}`);
+          return true;
+        },
+      );
+    }
+  }
+  passedGroups.push('graph');
+});
+
+test('verified companion provenance rejects missing inputs, altered roots and compiler records', async () => {
+  const scratch = await mkdtemp(join(tmpdir(), 'a0-spec-diagnostic-'));
   try {
-    await linkSource('/r/main.a0', async (path) => units.get(path) as string);
-  } catch (error) {
-    assert.ok(error instanceof A0Error);
-    expected = error;
-  }
-  assert.ok(expected);
-  for (const [name, engine] of engines) {
-    await assert.rejects(
-      linkNativeSource('/r/main.a0', async (path) => units.get(path) as string, engine),
-      (error: unknown) => {
-        assert.ok(error instanceof NativeSourceError);
-        assert.ok(error.a0Error, name);
-        assert.deepEqual(error.a0Error.toJSON(), expected.toJSON(), name);
-        return true;
-      },
+    await copyFile(
+      join(rendererPath as string, 'diagnostic.wasm'),
+      join(scratch, 'diagnostic.wasm'),
     );
+    for (const change of [
+      { inputs: diagnostic.build.inputs.slice(1) },
+      { sourceSHA256: '0'.repeat(64) },
+      { roots: { arena_diagnostic_options: diagnostic.build.roots.arena_diagnostic_options } },
+      { options: { ...diagnostic.build.options, wasmSimd: false } },
+    ]) {
+      await writeFile(
+        join(scratch, 'build.json'),
+        JSON.stringify({ ...diagnostic.build, ...change }),
+      );
+      await assert.rejects(prepareSourceDiagnostic(scratch));
+    }
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
   }
+  passedGroups.push('provenance');
 });
 
 test.after(async () => {
@@ -281,5 +328,8 @@ test.after(async () => {
       rendererWasmSHA256: diagnostic.build.wasmSHA256,
       targets: factories.map(([name]) => name),
       cases: evidence,
+      sourceCaseCount: Object.keys(sources).length,
+      passedGroups,
+      complete: passedGroups.length === 6 && evidence.length === Object.keys(sources).length,
     });
 });

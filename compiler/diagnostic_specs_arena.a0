@@ -2246,19 +2246,22 @@ q79 get p3 98
 c_24 set c_23 88 q79
 q80 get p3 3
 c_25 set c_24 109 q80
-c_26 set c_25 110 0
-q81 get p3 99
-c_27 set c_26 111 q81
-q82 get p3 100
-c_28 set c_27 112 q82
-q83 get p3 101
-c_29 set c_28 113 q83
-q84 get p3 102
-c_30 set c_29 114 q84
-q85 get p3 96
-c_31 set c_30 127 q85
-q86 rec w c_31
-ret q86
+q81 get p3 92
+q82 eq q81 315
+q83 select q82 4294967295 0
+c_26 set c_25 110 q83
+q84 get p3 99
+c_27 set c_26 111 q84
+q85 get p3 100
+c_28 set c_27 112 q85
+q86 get p3 101
+c_29 set c_28 113 q86
+q87 get p3 102
+c_30 set c_29 114 q87
+q88 get p3 96
+c_31 set c_30 127 q88
+q89 rec w c_31
+ret q89
 end
 fn ds_wrapped ((u32,(u32,u32,u32),io),u32x128) u32 u32x128 u32x128 u32x128 u32 -> ((u32,(u32,u32,u32),io),u32x128)
 d at p0 1
@@ -2751,29 +2754,6 @@ q set q23 93 q27
 q28 rec w_1 q
 ret q28
 end
-fn ds_word_pred u32 u32 -> bool
-q0 ge p0 48
-q1 le p0 57
-digit and q0 q1
-q2 ge p0 97
-q3 le p0 122
-lower and q2 q3
-q4 eq p1 3
-q5 eq p0 95
-q6 or lower q5
-q7 and q4 q6
-q8 or digit q7
-ret q8
-end
-fn ds_error_word_more ((u32,(u32,u32,u32),io),u32) u32 u32x128 u32x128 -> bool
-q0 at p0 0
-q1 at q0 0
-q2 eq q1 0
-q3 at p0 1
-q4 eq q3 0
-q5 and q2 q4
-ret q5
-end
 fn ds_copy_char (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
 z call arena_zero
 z_1 set z 0 p2
@@ -2837,44 +2817,38 @@ q37 select q36 1 0
 q38 call ds_copy_char a_1 q37 high
 ret q38
 end
-fn ds_error_word_step ((u32,(u32,u32,u32),io),u32) u32 u32x128 u32x128 -> ((u32,(u32,u32,u32),io),u32)
-w at p0 0
-q0 at w 2
-q1 get p2 6
-q2 get p3 2
-q3 add q2 p1
-raw call arena_load q0 q1 q3 1
-q4 at raw 1
-q5 get q4 0
-q6 get p3 1
-take call ds_word_pred q5 q6
-q7 at w 0
-q8 at w 1
-q9 at raw 2
-q10 rec q7 q8 q9
-q11 at raw 0
-a call ds_fail q10 q11
-q12 eq p1 0
-q13 ge q5 128
-unicode and q12 q13
-q14 eq p1 0
-q15 or take q14
-q16 xor unicode true
-q17 and q15 q16
-q18 select q17 1 0
-a_1 call ds_copy_char a q18 q5
-q19 select unicode 1 0
-a_2 fold ds_error_unicode q19 a_1 p2 p3 q5
-q20 select take 0 1
-q21 rec a_2 q20
-ret q21
+fn ds_error_ascii (u32,(u32,u32,u32),io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),io)
+q0 get p3 6
+q1 get p2 2
+q2 get p2 3
+q3 call ad_copy p0 q0 q1 q2
+ret q3
 end
 fn ds_error_word (u32,(u32,u32,u32),io) u32x128 u32x128 -> (u32,(u32,u32,u32),io)
 q0 get p1 3
-q1 rec p0 0
-r loop ds_error_word_more ds_error_word_step q0 q1 p2 p1
-q2 at r 0
-ret q2
+valid gt q0 0
+q1 select valid 0 7
+w call ds_fail p0 q1
+q2 at w 2
+q3 get p2 6
+q4 get p1 2
+q5 select valid 1 0
+raw call arena_load q2 q3 q4 q5
+q6 at raw 1
+q7 get q6 0
+q8 at w 0
+q9 at w 1
+q10 at raw 2
+q11 rec q8 q9 q10
+q12 at raw 0
+a call ds_fail q11 q12
+q13 lt q7 128
+q14 select q13 1 0
+a_1 fold ds_error_ascii q14 a p1 p2
+q15 ge q7 128
+q16 select q15 1 0
+q17 fold ds_error_unicode q16 a_1 p2 p1 q7
+ret q17
 end
 fn ds_not_u32_part (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
 q0 call ds_not_u32 p0

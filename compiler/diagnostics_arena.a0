@@ -18365,6 +18365,67 @@ digits at decimal 1
 out fold ad_parameter_short_read count pending digits
 ret out
 end
+fn ad_parameter_ir_context io u32x128 u32x128 -> (u32,bool,io)
+q0 get p1 2
+q1 eq q0 0
+q2 get p1 33
+q3 eq q2 10
+q4 and q1 q3
+q5 get p2 0
+q6 eq q5 1
+q7 and q4 q6
+q8 get p2 2
+q9 eq q8 0
+q10 and q7 q9
+q11 get p2 3
+q12 eq q11 0
+q13 and q10 q12
+q14 get p2 4
+q15 and q14 4
+q16 eq q15 0
+shape and q13 q16
+q17 get p1 32
+q18 get p1 33
+q19 get p1 34
+q20 rec q17 q18 q19
+q21 select shape 10 0
+row call av_load p0 q20 0 q21
+p at row 1
+q22 get p 0
+q23 eq q22 0
+q24 get p 1
+q25 eq q24 0
+q26 and q23 q25
+q27 get p 2
+q28 eq q27 0
+q29 and q26 q28
+q30 get p 3
+q31 eq q30 0
+q32 and q29 q31
+q33 get p 4
+q34 eq q33 0
+q35 and q32 q34
+q36 get p 5
+q37 eq q36 0
+q38 and q35 q37
+q39 get p 6
+q40 eq q39 0
+q41 and q38 q40
+q42 get p 7
+q43 eq q42 4294967295
+q44 and q41 q43
+q45 get p 8
+q46 eq q45 0
+q47 and q44 q46
+q48 get p 9
+q49 eq q48 0
+zero and q47 q49
+q50 at row 0
+q51 and shape zero
+q52 at row 2
+q53 rec q50 q51 q52
+ret q53
+end
 fn ad_parameter_args (u32,u32x128,io) u32 u32x128 -> (u32,u32x128,io)
 q0 at p0 2
 q1 get p2 41
@@ -18457,7 +18518,12 @@ q59 and q55 q58
 q60 get op 3
 q61 get p2 4
 q62 eq q60 q61
-valid and q59 q62
+source_valid and q59 q62
+ir_input at prefix 2
+ir_context call ad_parameter_ir_context ir_input p2 op
+ir_cached at ir_context 1
+valid or source_valid ir_cached
+cached_number or shortvalid ir_cached
 q63 at p0 0
 q64 ne q63 0
 q65 at p0 0
@@ -18470,9 +18536,13 @@ q71 at node 0
 q72 at operand 0
 q73 ne q72 0
 q74 at operand 0
-q75 at prefix 0
+prefix_status at prefix 0
+ir_status at ir_context 0
+prefix_failed ne prefix_status 0
+read_status select prefix_failed prefix_status ir_status
+q75 mov read_status
 q76 ne q75 0
-q77 at prefix 0
+q77 mov read_status
 q78 select valid 0 7
 q79 select q76 q77 q78
 q80 select q73 q74 q79
@@ -18480,15 +18550,15 @@ q81 select q70 q71 q80
 q82 select q67 q68 q81
 status select q64 q65 q82
 q83 eq status 0
-notshort xor shortvalid true
+notshort xor cached_number true
 longgo and q83 notshort
 q84 select longgo 1 0
 q85 rec 0 0
 q86 rec 0 0 0
-q87 at prefix 2
+q87 at ir_context 2
 q88 rec status q85 q86 q87
 legacy fold ad_parameter_number q84 q88 p2 op
-shortgo and q83 shortvalid
+shortgo and q83 cached_number
 shortcount select shortgo 1 0
 number fold ad_parameter_short_number shortcount legacy p2 op
 q89 at number 0
@@ -21186,8 +21256,6 @@ known at prepared 4
 functions at prepared 5
 kind at prepared 6
 io_ready at prepared 7
-a rec status arguments_ready
-msg rec status message_ready
 json_empty rec 0 0 0
 json_work rec status json_empty io_ready
 j_15 call ad_json_context json_work p1 arguments message_ready fix_ready kind
@@ -21257,7 +21325,7 @@ q286 call ad_hasfix q285
 q287 ne kind 0
 q288 or q286 q287
 j_16 call ad_nullable q283 q284 q288
-q289 at a 1
+q289 mov arguments
 j_17 call ad_edits j_16 p1 q289 kind
 renderstatus at j_17 0
 renderbytes at j_17 1
