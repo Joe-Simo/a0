@@ -116,7 +116,9 @@ specifications; `parse(source)` performs the whole-program check. The distinctio
 stage, not a source dialect. `tools/source-unit-audit.ts --artifact=DIR` compares both existing
 and flat-formatted source units and verifies that invalid whole programs can parse before the
 validation stage rejects them. Native dependency composition and diagnostic integration are
-still pending.
+still pending. The source-unit and full-frontend audit records for this stage are
+`results/unified-source-unit-audit.json`, `results/unified-source-unit-frontend-audit.json` and
+`results/unified-source-unit-build.json`.
 
 Build the internal candidate with an installed Clang/WASI toolchain (no downloads are performed):
 
