@@ -16,3 +16,20 @@ test('benchmark template separates unified status from archived syntax scores', 
   assert.match(text, /same ids and node order, takes \$tk_dx\$/);
   assert.match(text, /results\/dense-tokens.json/);
 });
+
+test('checked-in deployment carries the benchmark clarification', async () => {
+  for (const path of [
+    'deploy/benchmarks/index.html',
+    'deploy/benchmarks.txt',
+    'deploy/llms-full.txt',
+  ]) {
+    const text = await readFile(path, 'utf8');
+    assert.match(text, /A0 unified-language status/);
+    assert.match(text, /Archived source-token measurements/);
+    assert.match(text, /Archived model-edit cost studies/);
+    assert.match(text, /541 tokens/);
+    assert.match(text, /takes 193/);
+    assert.match(text, /takes 277/);
+    assert.doesNotMatch(text, /with A0 in two forms/);
+  }
+});

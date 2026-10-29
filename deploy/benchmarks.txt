@@ -2,7 +2,10 @@ Benchmarks
 Execution time, token counts, edit acceptance and verification coverage.
 Reproduce a result Where A0 loses
 
- Syntax research · 16 October 2026
+ A0 unified-language status
+The target is one A0 source syntax. The unified candidate is not yet the released default: native frontend cost, complete tooling migration and validation gates remain open.
+No release-qualified unified A0 token or edit-cost score is available on this page. The historical prototype study and archived Canonical/Dense comparisons below are separate measurements; their numbers must not be combined or relabelled as a current unified result.
+Archived syntax research · 16 October 2026
 A matched study of independent Codex agents compared Canonical, Dense and a unified-syntax prototype on the same maintenance tasks. This is research; the prototype is not the shipped language.
 Corrected-guide replication: 12 tasks per syntax, one repair allowed; tokens use o200k_baseSyntax — First attempt — After repair — Visible tokens per accepted edit
 Canonical — 12 / 12 — 12 / 12 — 1855.00
@@ -527,14 +530,15 @@ arrfill4k — 625 / 1500 — 2.40x A0 faster — 358 / 519
 
 Load time (compile plus instantiate) is a separate result: A0 is slower than clang on some test programs, noisy between runs; every one is in the loss ledger. results/wasm-benchmark.json, results/loss-ledger.json.
 
-Tokens
-Token counts for equivalent programs and edits.
-Writing the 10 token test programs, A0 (canonical) takes 541 tokens: place 38 of 49 (1 = fewest), fewer than 11 of the other 48 languages, equal to 0 and more than 37. A0 (dense) takes 193: place 1, fewer than 48, equal to 0, more than 0; its lossless form, with the same ids and node order, takes 277: place 1. The dense totals are over the same 10 programs (results/dense-tokens.json); the speed tests below time more programs (19), but only 10 of them are counted for tokens.
-A token is the unit a model reads and writes, so fewer tokens means less to read, write and pay for. Counts use the o200k tokenizer on the source of the same test programs. Dense is the same A0 program in a shorter surface form that converts losslessly to the canonical form; both are plotted.
-Source tokens of the 10 token test programs, per language
+Archived source-token measurements · 9 October 2026
+Historical Canonical and Dense representations, not the unified candidate.
+The two A0 entries below preserve the original experiment. Canonical and Dense were measured separately; neither row is a current unified-language score. Raw data and methods are retained in results/dense-tokens.json and results/lang-axes.json.
+In the archived experiment, writing the 10 token test programs, A0 (canonical) takes 541 tokens: place 38 of 49 (1 = fewest), fewer than 11 of the other 48 languages, equal to 0 and more than 37. A0 (dense) takes 193: place 1, fewer than 48, equal to 0, more than 0; its lossless form, with the same ids and node order, takes 277: place 1. The dense totals are over the same 10 programs (results/dense-tokens.json); the speed tests below time more programs (19), but only 10 of them are counted for tokens.
+A token is the unit a model reads and writes, so fewer tokens means less to read, write and pay for. Counts use the o200k tokenizer on the source of the same test programs. The archived Dense experiment measured a separate syntax. Its lossless form preserves ids and node order; its normalized form can change them. Both historical forms are plotted, and neither is the unified candidate.
+Archived source tokens of the 10 token test programs, per language
 Sum over the test programs of the o200k tokens of each program as written in that language, shorter bar = fewer tokens. Bar length is proportional to the count.
 measured: 49 of 49 languages
-A0 (canonical and dense) compiled JIT or VM interpreted
+Historical A0 (canonical and dense) compiled JIT or VM interpreted
 A0 (dense)
 193 tok
 
@@ -773,17 +777,18 @@ TS unified diff
 
 Bars are linear within each group. The fixtures are the edit of affine in results/tokens.json; a model's real replies (Cost section) include the instructions it must be given first.
 
-Cost
-Prompt, source and reply tokens per edit.
+Archived model-edit cost studies
+Historical prompts, source views and replies; not current unified A0 costs.
+These studies used the Canonical and Dense authoring workflows and guides recorded in their source data. They remain here for reproducibility, including losses and withdrawn conclusions. A current unified-candidate result requires a new matched measurement; the old rows cannot supply it.
 At 4000 functions an A0 edit costs 706 tokens against 143854 for TypeScript, which is 203.8x fewer than TypeScript shown the whole numbered file (A0's scoped view against a whole-file workflow, not both with scoped views). At 1 function A0 costs 2.42x TypeScript's tokens and 2.29x Rust's, measured with an earlier guide whose primer was longer than today's; the newer one-function runs in results/ai-edit-b48-dense.json do not show this loss. Sonnet, cache-adjusted.
 Cost here counts the supplied text for an edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view contains relevant functions rather than the whole file. These results compare that scoped workflow with a whole-file workflow; primer overhead matters most on small files.
 That is an advantage of the workflow, not of the language. When TypeScript, Rust, Python, Go, Java, C and Ruby are given an equal view (a parse-derived function and its callees, numbered line edits), pooled over the four program sizes (96 trials per cell) A0 canonical costs 318 tokens for one cold task and 176 in an unbounded session, against 386 and 138 for TypeScript and 375 and 115 for Ruby, so it is cheaper cold and dearer once the primer is cached; A0 dense costs 273 and 99. results/ai-edit-scoped.json.
-Edit cost across 49 languages, with A0 in two forms
+Archived edit cost across 49 languages: separate historical A0 forms
 Over a session of 10 edits, A0 (canonical) costs 184 tokens per task: place 12 of 49 (1 = fewest), cheaper than 36 of the other 48 languages, equal to 1, dearer than 11. A0 (dense, lean view with callee bodies) costs 117: place 1, cheaper than 48, equal to 0, dearer than 0.
 Dense is the same program in a shorter surface form; it converts losslessly to the canonical form. A0 (dense) is shown with the lean view: only the function to edit, with its direct callees as dense text. Both A0 subjects are measured on the same twelve tasks of set b (one function to edit) as the other languages, one fresh Haiku and one fresh Sonnet subject per task, one shot and one repair. Losses first: the dense primer is larger (145 tokens against 118 for canonical), so in a session of 1 task the two cost 274 and 311; each cell is 24 tasks, one task is 4.2 points of acceptance, and differences of about one task are within noise. This chart is set b only.
 Tokens per task, session of 10 tasks (primer paid on the first call at 1.25x and on later calls at 0.05x; view and replies at 1x, as recorded in results/ai-edit-b48-dense.json); shorter bar = fewer tokens. Bar length is proportional.
 measured: 49 of 49 languages
-A0 (canonical and dense) compiled JIT or VM interpreted
+Historical A0 (canonical and dense) compiled JIT or VM interpreted
 A0 (dense)
 117 tok
 
