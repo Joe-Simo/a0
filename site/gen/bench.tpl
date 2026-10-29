@@ -160,11 +160,11 @@ c nav
 >
 <a
 +href #tokens
-"Tokens
+"Archived tokens
 >
 <a
 +href #cost
-"Cost
+"Archived costs
 >
 <a
 +href #validation
@@ -190,7 +190,10 @@ c nav
 {sec_syntax_research
 <section
 +id syntax-research
-=h2 Syntax research · 16 October 2026
+=h2 A0 unified-language status
+=p The target is one A0 source syntax. The unified candidate is not yet the released default: native frontend cost, complete tooling migration and validation gates remain open.
+=p No release-qualified unified A0 token or edit-cost score is available on this page. The historical prototype study and archived Canonical/Dense comparisons below are separate measurements; their numbers must not be combined or relabelled as a current unified result.
+=h2 Archived syntax research · 16 October 2026
 =p A matched study of independent Codex agents compared Canonical, Dense and a unified-syntax prototype on the same maintenance tasks. This is research; the prototype is not the shipped language.
 .div tblwrap
 +tabindex 0
@@ -1061,16 +1064,19 @@ c putfix %a
 {sec_tok
 <section
 +id tokens
-=h2 Tokens
+=h2 Archived source-token measurements · 9 October 2026
 .p q
-"Token counts for equivalent programs and edits.
+"Historical Canonical and Dense representations, not the unified candidate.
+>
+<p
+"The two A0 entries below preserve the original experiment. Canonical and Dense were measured separately; neither row is a current unified-language score. Raw data and methods are retained in results/dense-tokens.json and results/lang-axes.json.
 >
 .p take
-"Writing the $tk_nk$ token test programs, A0 (canonical) takes $tk_cv$ tokens: place $tk_cr$ of $n_langs1$ (1 = fewest), fewer than $tk_cw$ of the other $n_langs$ languages, equal to $tk_ct$ and more than $tk_cl$. A0 (dense) takes $tk_dv$: place $tk_dr$, fewer than $tk_dw$, equal to $tk_dt$, more than $tk_dl$; its lossless form, with the same ids and node order, takes $tk_dx$: place $tk_xr$. The dense totals are over the same $tk_nk$ programs (results/dense-tokens.json); the speed tests below time more programs ($bk_n$), but only $tk_nk$ of them are counted for tokens.
+"In the archived experiment, writing the $tk_nk$ token test programs, A0 (canonical) takes $tk_cv$ tokens: place $tk_cr$ of $n_langs1$ (1 = fewest), fewer than $tk_cw$ of the other $n_langs$ languages, equal to $tk_ct$ and more than $tk_cl$. A0 (dense) takes $tk_dv$: place $tk_dr$, fewer than $tk_dw$, equal to $tk_dt$, more than $tk_dl$; its lossless form, with the same ids and node order, takes $tk_dx$: place $tk_xr$. The dense totals are over the same $tk_nk$ programs (results/dense-tokens.json); the speed tests below time more programs ($bk_n$), but only $tk_nk$ of them are counted for tokens.
 >
 <p
 # claim-ok: a definition of why a token count matters, not a measured comparison; the counts are in results/lang-axes.json
-"A token is the unit a model reads and writes, so fewer tokens means less to read, write and pay for. Counts use the o200k tokenizer on the source of the same test programs. Dense is the same A0 program in a shorter surface form that converts losslessly to the canonical form; both are plotted.
+"A token is the unit a model reads and writes, so fewer tokens means less to read, write and pay for. Counts use the o200k tokenizer on the source of the same test programs. The archived Dense experiment measured a separate syntax. Its lossless form preserves ids and node order; its normalized form can change them. Both historical forms are plotted, and neither is the unified candidate.
 >
 }
 {chart_tk
@@ -1079,7 +1085,7 @@ c putfix %a
 +aria-labelledby chart-6
 .p ct
 +id chart-6
-"Source tokens of the $tk_nk$ token test programs, per language
+"Archived source tokens of the $tk_nk$ token test programs, per language
 >
 .p sub
 # claim-ok: axis and reading note for the chart, not a measured claim; the values come from the results files this section names
@@ -1090,7 +1096,7 @@ c putfix %a
 >
 .div legend
 .span la0
-"A0 (canonical and dense)
+"Historical A0 (canonical and dense)
 >
 .span lnat
 "compiled
@@ -1334,9 +1340,12 @@ c putnum %h
 {sec_cost
 <section
 +id cost
-=h2 Cost
+=h2 Archived model-edit cost studies
 .p q
-"Prompt, source and reply tokens per edit.
+"Historical prompts, source views and replies; not current unified A0 costs.
+>
+<p
+"These studies used the Canonical and Dense authoring workflows and guides recorded in their source data. They remain here for reproducibility, including losses and withdrawn conclusions. A current unified-candidate result requires a new matched measurement; the old rows cannot supply it.
 >
 .p take
 "At 4000 functions an A0 edit costs $cmax_a0$ tokens against $cmax_ts$ for TypeScript, which is $cmax_ratio$x fewer than TypeScript shown the whole numbered file (A0's scoped view against a whole-file workflow, not both with scoped views). At 1 function A0 costs $cmin_100$x TypeScript's tokens and $cmin_rs100$x Rust's, measured with an earlier guide whose primer was longer than today's; the newer one-function runs in results/ai-edit-b48-dense.json do not show this loss. Sonnet, cache-adjusted.
@@ -1354,7 +1363,7 @@ c putnum %h
 +aria-labelledby chart-9
 .p ct
 +id chart-9
-"Edit cost across $n_langs1$ languages, with A0 in two forms
+"Archived edit cost across $n_langs1$ languages: separate historical A0 forms
 >
 .p take
 "Over a session of 10 edits, A0 (canonical) costs $ec_c_t10$ tokens per task: place $ec_cr10$ of $n_langs1$ (1 = fewest), cheaper than $ec_cw10$ of the other $n_langs$ languages, equal to $ec_ct10$, dearer than $ec_cl10$. A0 (dense, lean view with callee bodies) costs $ec_d_t10$: place $ec_dr10$, cheaper than $ec_dw10$, equal to $ec_dt10$, dearer than $ec_dl10$.
@@ -1370,7 +1379,7 @@ c putnum %h
 >
 .div legend
 .span la0
-"A0 (canonical and dense)
+"Historical A0 (canonical and dense)
 >
 .span lnat
 "compiled
