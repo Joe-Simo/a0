@@ -193,11 +193,7 @@ c nav
 +aria-label Chart
 <button
 +type button
-"Edit cost
->
-<button
-+type button
-"Tokens
+"Language status
 >
 <button
 +type button
@@ -216,110 +212,18 @@ c nav
 {sec_edit
 .div pane chart on
 .h3 ct
-"One AI edit, start to accepted
+"A0 — one source syntax
 >
 .p sub
-"Tokens per task · Haiku and Sonnet pooled · $ec_c_n$ tasks a language · lower is better
+"Validated token and AI edit-cost measurements are pending.
 >
-.div bars
-[etrows et_top
-.div brow{et_me| me}
-.span lbl
-"$et_label$
->
-.div track $et_cls$
-.div fill
-w 12
-w 1
-w $et_pct$
->
->
-.span val
-"$et_val$
->
->
-]
->
-.p alt
-"A0 dense, lean view (not shipped):\s
-.span mono
-"$et_dv$
->
->
-.p verdict
-"{et_win|+ Fewest tokens of $etrows$ languages: A0 $et_a0$|A0: $et_a0$, place $et_rank$ of $etrows$}
->
-<ul
-+class losses
-<li
-"− Session of 10 edits: place $ec_cr10$ of $n_langs1$
->
+<p
+"The single-syntax candidate is not yet the released default. Earlier comparisons are archived separately, not shown as current A0 scores.
 >
 .p src
-"Source:\s
 <a
-+href https://github.com/Joe-Simo/a0/blob/main/results/ai-edit-b48-dense.json
-"results/ai-edit-b48-dense.json
->
-"\s·\s
-<a
-+href /benchmarks#cost
-"method →
->
->
->
-}
-{sec_hero2
-.div pane chart
-.h3 ct
-"The same $tk_nk$ programs, written by hand
->
-.p sub
-"o200k tokens · sum over the programs · lower is better
->
-.div bars
-[tkrows tk_top
-.div brow{tk_me| me}
-.span lbl
-"$tk_label$
->
-.div track $tk_cls$
-.div fill
-w 12
-w 1
-w $tk_pct$
->
->
-.span val
-"$tk_val$
->
->
-]
->
-.p verdict
-"{tk_dwin|+ A0 dense: $tk_dv$ against Forth $tk_forth$|A0 dense: $tk_dv$, place $tk_dr$}
->
-<ul
-+class losses
-<li
-"− A0 canonical: $tk_cv$, place $tk_cr$ of $n_langs1$
->
->
-.p src
-"Source:\s
-<a
-+href https://github.com/Joe-Simo/a0/blob/main/results/lang-axes.json
-"results/lang-axes.json
->
-"\s·\s
-<a
-+href https://github.com/Joe-Simo/a0/blob/main/results/dense-tokens.json
-"results/dense-tokens.json
->
-"\s·\s
-<a
-+href /benchmarks#tokens
-"method →
++href /benchmarks#syntax-research
+"Language status and historical data archive →
 >
 >
 >
@@ -656,24 +560,6 @@ w $wt_pct$
 >
 .td mono small
 "exec-benchmark-full.json
->
->
-<tr
-=td Sessions of 10 AI edits
-.td mono
-"place $ec_cr10$ of $n_langs1$
->
-.td mono small
-"ai-edit-b48-dense.json
->
->
-<tr
-=td Canonical source size
-.td mono
-"$tk_cv$ tokens, place $tk_cr$ of $n_langs1$
->
-.td mono small
-"lang-axes.json
 >
 >
 <tr

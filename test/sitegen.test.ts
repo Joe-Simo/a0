@@ -48,17 +48,10 @@ test('the benchmarks page explains every benchmark in plain words', {
     /Two baselines, because they answer different questions\. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver\. Inlined: each language/,
     /Native speed: one Apple M3, 2026-09-30 and 2026-10-01\. WebAssembly: one Windows x64 PC/,
     /First of the languages that ran each program on \d+ of \d+ test programs \(a language is timed only on the programs it has source for, so fewer languages ran the later programs\); on every one, A0 takes at most \d+\.\d\dx as long as the fastest language/,
-    /Writing the \d+ token test programs, A0 \(canonical\)/,
-    /The dense totals are over the same \d+ programs/,
     /Up to \d+\.\d\dx behind the best of C, Rust and Zig \(\w+\), and up to \d+\.\d\dx behind each language's own inlined driver/,
     /\d+ paths \(.*\) ran all \d+ generated cases; the native assembly targets ran the \d+ cases that need no io \(\d+ targets\); SystemVerilog is simulated separately on \d+ cases and is unverified in this run/,
-    /fewer than TypeScript shown the whole numbered file \(A0's scoped view against a whole-file workflow, not both with scoped views\)/,
     /of the other \d+ languages are more than 5% faster than A0/,
     /A0 takes \d+\.\d\d ms from launch to first result: place \d+ of \d+ languages \(1 = fastest\)/,
-    /A0 \(canonical\) takes \d+ tokens: place \d+ of \d+ \(1 = fewest\), fewer than \d+ of the other \d+ languages, equal to \d+ and more than \d+\. A0 \(dense\) takes \d+: place \d+, fewer than \d+, equal to \d+, more than \d+; its lossless form, with the same ids and node order, takes \d+: place \d+/,
-    /Over a session of 10 edits, A0 \(canonical\) costs \d+ tokens per task: place \d+ of \d+ \(1 = fewest\), cheaper than \d+ of the other \d+ languages, equal to \d+, dearer than \d+\. A0 \(dense, lean view with callee bodies\) costs \d+: place \d+, cheaper than \d+, equal to \d+, dearer than \d+/,
-    /the dense primer is larger \(\d+ tokens against \d+ for canonical\)/,
-    /At 4000 functions an A0 edit costs \d+ tokens against \d+ for TypeScript, which is \d+\.\dx fewer than TypeScript/,
     /A0 \(native\) checks in \d+\.\d\d ms: place \d+ of \d+ \(1 = fastest\)\..*A0 \(Node CLI\), the previous path, took \d+\.\d\d ms/,
     /A0 --parallel is the fastest implementation on \d+ of \d+ test programs/,
   ];
@@ -74,25 +67,19 @@ test('the benchmarks page explains every benchmark in plain words', {
     assert.ok(text.includes(needle), `missing: ${needle}`);
   for (const gone of ['A0 rank', 'A0 vs fastest other', 'fastest other\n'])
     assert.ok(!text.includes(gone), `unexplained label is back: ${gone}`);
-  // One disclosure per many-language chart (speed, startup, tokens, edit cost, check), closed
-  // by default, and the fold hides no language: every row is still in the document.
+  // Only execution/startup/check charts remain; historical syntax/cost charts are separate.
   const disclosures = html.match(
-    /<details class="more"><summary>Show all \d+ (languages|rows \(\d+ languages, A0 in two forms\))<\/summary>/g,
+    /<details class="more"><summary>Show all \d+ languages<\/summary>/g,
   );
-  assert.equal(disclosures?.length, 5);
-  // A0 is plotted in both forms, never only the dense one: each token and edit-cost chart has the
-  // canonical and the dense subject as separate highlighted rows, and dense is defined in one line.
-  for (const label of ['A0 (canonical)', 'A0 (dense)'])
-    assert.ok(
-      (
-        html.match(
-          new RegExp(`lrow me"><span class="lbl">${label.replace(/[()]/g, '\\$&')}<`, 'g'),
-        ) ?? []
-      ).length >= 4,
-      `${label} is a highlighted subject in the token and edit-cost charts`,
-    );
+  assert.equal(disclosures?.length, 3);
+  assert.ok(text.includes('A0 — one source syntax'));
+  assert.ok(text.includes('Validated token and AI edit-cost measurements are pending.'));
+  assert.ok(text.includes('Historical data archive'));
   assert.ok(
-    text.includes('Dense is the same program in a shorter surface form; it converts losslessly'),
+    !/A0 \(canonical\)|A0 \(dense\)|A0 in two forms|Visible tokens per accepted edit/.test(text),
+  );
+  assert.ok(
+    html.includes('github.com/Joe-Simo/a0/tree/92c907e3d3c7e34abaa8fdb3e6d2ab55f56c706f/results'),
   );
   const speed =
     /<details class="more"><summary>Show all (\d+) languages<\/summary>(.*?)<\/details>/s.exec(
@@ -129,32 +116,15 @@ test('the home page is short: a pitch with measured charts, what A0 is, the loss
   assert.match(text, /slower on \d+ of \d+ programs, worst \d+\.\d+x/);
   // the one-function cost came from a run with an earlier, longer guide; not listed as a loss
   assert.ok(!text.includes('one-function file'), 'no one-function loss on the home page');
-  // the edit cost leads with the shipped A0: primer + read + write of the pooled proto2 cell of
-  // results/ai-edit-b48-dense.json; the dense lean view is a secondary, labelled line
-  const b48 = JSON.parse(await readFile('results/ai-edit-b48-dense.json', 'utf8'));
-  const cell = b48.proto2.languages.a0.pooled;
-  const shipped = Math.round(cell.primer + cell.read + cell.write);
+  assert.ok(text.includes('A0 — one source syntax'));
+  assert.ok(text.includes('Validated token and AI edit-cost measurements are pending.'));
   assert.ok(
-    html.includes(
-      `<span class="lbl">A0</span><div class="track a0 win"><div class="fill grown" style="width:`,
-    ),
-    'the shipped A0 row leads the edit-cost chart and wins',
+    !/A0 \(canonical\)|A0 \(dense\)|A0 dense|Canonical source size|Fewest tokens/.test(text),
   );
-  assert.ok(text.includes(`Fewest tokens of 49 languages: A0 ${shipped}`), `A0 costs ${shipped}`);
-  assert.match(text, /A0 dense, lean view \(not shipped\): \d+\.\d/);
-  // the token figure is read from results/lang-axes.json and results/dense-tokens.json, never typed
-  const axes = JSON.parse(await readFile('results/lang-axes.json', 'utf8'));
-  const dense = JSON.parse(await readFile('results/dense-tokens.json', 'utf8'));
-  const tok = (id: string): number => axes.tokens[id].sumKernelTokens;
-  assert.ok(text.includes(`A0 dense: ${dense.kernelTotals.dense} against Forth ${tok('forth')}`));
-  assert.ok(!/\b163\b/.test(text), 'no compact-form figure');
-  // green (class win) only on an A0 bar that is below every other language
+  assert.ok(html.includes('/benchmarks#syntax-research'));
+  // Other execution charts still mark only A0 as a winner.
   for (const m of html.matchAll(/<span class="lbl">([^<]*)<\/span><div class="track ([^"]*)">/g))
     if ((m[2] ?? '').includes('win')) assert.match(m[1] ?? '', /^A0/, `${m[1]} is not A0`);
-  assert.ok(
-    html.includes(`<span class="lbl">A0 (canonical)</span><div class="track a0"><div`),
-    'the canonical token count loses, so its bar is not green',
-  );
   // both install commands carry the COPY protocol
   assert.ok(
     html.includes(

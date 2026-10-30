@@ -34,7 +34,7 @@ const f2 = (x: number): string => x.toFixed(2);
 const ns = (x: number): string => (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2));
 const ms = (x: number): string => (x >= 100 ? x.toFixed(0) : x.toFixed(1));
 
-test('bench.tpl: syntax research rows account for every visible prompt, reply and repair', async () => {
+test('bench.tpl: historical syntax rows remain in raw data and are absent from the main page', async () => {
   const report = await results('unification-codex-v2-replication.json');
   const tpl = await template();
   for (const [arm, label] of [
@@ -56,16 +56,14 @@ test('bench.tpl: syntax research rows account for every visible prompt, reply an
       0,
     );
     assert.ok(rows.length > 0 && accepted > 0);
-    assert.ok(
-      tpl.includes(
-        `<tr\n=td ${label}\n=td ${first} / ${rows.length}\n=td ${accepted} / ${rows.length}\n=td ${f2(tokens / accepted)}\n>`,
-      ),
-      `${arm} table drifted from the complete trial accounting`,
-    );
+    assert.ok(first <= accepted && accepted <= rows.length);
+    assert.ok(Number.isFinite(tokens) && tokens > 0);
+    assert.ok(!tpl.includes(`=td ${label}\n`), `${arm} historical row must not be a current score`);
   }
   assert.equal(report.decision.productionEligible, false);
-  assert.ok(tpl.includes('prototype is not the shipped language'));
-  assert.ok(tpl.includes('comparative conclusions are withdrawn'));
+  assert.ok(tpl.includes('Validated token and AI edit-cost measurements are pending.'));
+  assert.ok(tpl.includes('Historical data archive'));
+  assert.ok(tpl.includes('92c907e3d3c7e34abaa8fdb3e6d2ab55f56c706f/results'));
 });
 
 test('bench.tpl: the WebAssembly tables are the rows of results/wasm-benchmark.json', async () => {
@@ -220,7 +218,7 @@ test('bench.tpl: the check-latency table and sentences are the medians of result
   assert.equal(mac.size.ts.lines, 637);
 });
 
-test('bench.tpl: the front-end edit table and sentences are the cells of results/app-edit-keys.json', async () => {
+test('bench.tpl: historical front-end edit data are retained without presenting a current cost table', async () => {
   const tpl = await template();
   const a = await results('app-edit-keys.json');
   const rows: Cell[][] = [];
@@ -248,7 +246,7 @@ test('bench.tpl: the front-end edit table and sentences are the cells of results
     rows,
     'results/app-edit-keys.json',
   );
-  assert.ok(tpl.includes(expected), 'front-end edit table drifted from the results file');
+  assert.ok(!tpl.includes(expected), 'historical front-end edit table must stay off the main page');
   const s = a.cells['sonnet/a0-keys'];
   const t = a.cells['sonnet/ts'];
   const h = a.cells['haiku/a0-keys'];
@@ -259,7 +257,7 @@ test('bench.tpl: the front-end edit table and sentences are the cells of results
   assert.equal(ht.acceptedAfterRepair.k, 13);
   assert.equal((t.cost / s.cost).toFixed(1), '4.9');
   assert.ok(
-    tpl.includes(
+    !tpl.includes(
       `${s.tokensPerAcceptedEdit.session10.toFixed(0)} tokens per accepted edit against ${t.tokensPerAcceptedEdit.session10.toFixed(0)}`,
     ),
   );
