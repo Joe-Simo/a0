@@ -185,6 +185,71 @@ c nav
 =h2 Source token counts
 # claim-ok: all 29 rows of results/source-tokens.json, checked against the fixed KERNELS corpus by test/source-tokens.test.ts
 =p Complete source fragments for the same 29 fixed benchmark programs, including helpers and literal data. Lower means fewer source tokens in this corpus.
+.div chart token-chart
+.h3 ct
+"Source tokens · o200k_base
+>
+# claim-ok: all totals and bar widths derive from results/source-tokens.json; common linear scale 0–10000
+.div bars token-bars
++role group
++aria-label Source tokens, lower is better, linear scale from zero to ten thousand
+.div brow me
+.span lbl
+"A0
+>
+.div track
++aria-hidden true
+.div fill grown token-a0
+>
+>
+.span val
+"9,028
+>
+>
+.div brow
+.span lbl
+"C
+>
+.div track
++aria-hidden true
+.div fill grown token-c
+>
+>
+.span val
+"6,402
+>
+>
+.div brow
+.span lbl
+"JavaScript
+>
+.div track
++aria-hidden true
+.div fill grown token-js
+>
+>
+.span val
+"6,400
+>
+>
+.div brow
+.span lbl
+"Rust
+>
+.div track
++aria-hidden true
+.div fill grown token-rust
+>
+>
+.span val
+"6,565
+>
+>
+>
+.p token-axis
+"0 → 10,000 tokens · lower is better
+>
+>
 .div tblwrap
 +tabindex 0
 +role group
@@ -407,7 +472,7 @@ c nav
 >
 <tr
 =td Evidence
-=td Native timings come from one machine, and the compiler versions of the other languages are not recorded in the results file. Historical model-edit studies are linked from the language-status section.
+=td Native timings come from one machine, and the compiler versions of the other languages are not recorded in the results file.
 =td STATUS.md, Known limits
 >
 <tr

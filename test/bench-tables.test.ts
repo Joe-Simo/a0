@@ -284,3 +284,24 @@ test('bench.tpl: single A0 source-token totals match the complete measured corpu
   );
   assert.ok(tpl.includes('this is not an AI editing-cost or accuracy result'));
 });
+
+test('source-token charts use measured counts and the same zero-based linear scale', async () => {
+  const report = await results('source-tokens.json');
+  const css = await readFile('site/gen/style.css', 'utf8');
+  for (const file of ['site/gen/page.tpl', 'site/gen/bench.tpl']) {
+    const source = await readFile(file, 'utf8');
+    assert.equal((source.match(/\.div bars token-bars/g) ?? []).length, 1);
+    assert.ok(source.includes('0 → 10,000 tokens · lower is better'));
+    for (const [language, key] of [
+      ['A0', 'a0'],
+      ['C', 'c'],
+      ['JavaScript', 'js'],
+      ['Rust', 'rust'],
+    ] as const) {
+      const count = report.totals[language].o200k_base;
+      assert.ok(source.includes(`.div fill grown token-${key}`));
+      assert.ok(source.includes(`"${count.toLocaleString('en-US')}\n`));
+      assert.ok(css.includes(`.token-bars .token-${key}{width:${(count / 100).toFixed(2)}%}`));
+    }
+  }
+});

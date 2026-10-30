@@ -75,6 +75,7 @@ test('the benchmarks page explains every benchmark in plain words', {
   assert.ok(text.includes('Source token'));
   assert.ok(!text.includes('measurements are pending'));
   assert.ok(!text.includes('Historical data archive'));
+  assert.ok(!text.includes('language-status section'));
   assert.ok(
     !/A0 \(canonical\)|A0 \(dense\)|A0 in two forms|Visible tokens per accepted edit/.test(text),
   );

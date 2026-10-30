@@ -217,8 +217,66 @@ c nav
 .p sub
 "29 fixed benchmark programs · o200k_base
 >
-# claim-ok: totals in results/source-tokens.json
-=p A0: 9,028 · C: 6,402 · JavaScript: 6,400 · Rust: 6,565
+# claim-ok: all totals and bar widths derive from results/source-tokens.json; common linear scale 0–10000
+.div bars token-bars
++role group
++aria-label Source tokens, lower is better, linear scale from zero to ten thousand
+.div brow me
+.span lbl
+"A0
+>
+.div track
++aria-hidden true
+.div fill grown token-a0
+>
+>
+.span val
+"9,028
+>
+>
+.div brow
+.span lbl
+"C
+>
+.div track
++aria-hidden true
+.div fill grown token-c
+>
+>
+.span val
+"6,402
+>
+>
+.div brow
+.span lbl
+"JavaScript
+>
+.div track
++aria-hidden true
+.div fill grown token-js
+>
+>
+.span val
+"6,400
+>
+>
+.div brow
+.span lbl
+"Rust
+>
+.div track
++aria-hidden true
+.div fill grown token-rust
+>
+>
+.span val
+"6,565
+>
+>
+>
+.p token-axis
+"0 → 10,000 tokens · lower is better
+>
 .p src
 <a
 +href /benchmarks#tokens
