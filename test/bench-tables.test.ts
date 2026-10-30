@@ -61,9 +61,9 @@ test('bench.tpl: historical syntax rows remain in raw data and are absent from t
     assert.ok(!tpl.includes(`=td ${label}\n`), `${arm} historical row must not be a current score`);
   }
   assert.equal(report.decision.productionEligible, false);
-  assert.ok(tpl.includes('Validated token and AI edit-cost measurements are pending.'));
-  assert.ok(tpl.includes('Historical data archive'));
-  assert.ok(tpl.includes('92c907e3d3c7e34abaa8fdb3e6d2ab55f56c706f/results'));
+  assert.ok(!tpl.includes('Validated token and AI edit-cost measurements are pending.'));
+  assert.ok(!tpl.includes('A0 — one source syntax'));
+  assert.ok(!tpl.includes('Historical data archive'));
 });
 
 test('bench.tpl: the WebAssembly tables are the rows of results/wasm-benchmark.json', async () => {
@@ -261,4 +261,26 @@ test('bench.tpl: historical front-end edit data are retained without presenting 
       `${s.tokensPerAcceptedEdit.session10.toFixed(0)} tokens per accepted edit against ${t.tokensPerAcceptedEdit.session10.toFixed(0)}`,
     ),
   );
+});
+
+test('bench.tpl: single A0 source-token totals match the complete measured corpus', async () => {
+  const report = await results('source-tokens.json');
+  const tpl = await template();
+  const rows: Cell[][] = ['A0', 'C', 'JavaScript', 'Rust'].map((language) => [
+    language,
+    String(report.totals[language].o200k_base),
+    String(report.totals[language].cl100k_base),
+  ]);
+  assert.equal(report.rows.length, 29);
+  assert.ok(
+    tpl.includes(
+      table(
+        'Source-only totals; all 29 execution-benchmark programs, measured 30 October 2026',
+        ['Language', 'o200k_base tokens', 'cl100k_base tokens'],
+        rows,
+        'results/source-tokens.json',
+      ),
+    ),
+  );
+  assert.ok(tpl.includes('this is not an AI editing-cost or accuracy result'));
 });

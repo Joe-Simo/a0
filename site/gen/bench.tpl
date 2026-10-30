@@ -107,7 +107,7 @@ c nav
 {sec_bhead
 .div center bench
 =h1 Benchmarks
-=p Execution benchmarks, verification coverage and single-syntax measurement status.
+=p Execution benchmarks, source token counts and verification coverage.
 <p
 .a pill
 +href https://github.com/Joe-Simo/a0/tree/main/scripts/bench-repro
@@ -131,8 +131,8 @@ c nav
 "Contents
 >
 <a
-+href #syntax-research
-"Language status
++href #tokens
+"Source tokens
 >
 <a
 +href #method
@@ -179,27 +179,75 @@ c nav
 +id benchmarks
 +class main
 }
-{sec_syntax_research
+{sec_source_tokens
 <section
-+id syntax-research
-=h2 A0 — one source syntax
-<p
-<span
 +id tokens
+=h2 Source token counts
+# claim-ok: all 29 rows of results/source-tokens.json, checked against the fixed KERNELS corpus by test/source-tokens.test.ts
+=p Complete source fragments for the same 29 fixed benchmark programs, including helpers and literal data. Lower means fewer source tokens in this corpus.
+.div tblwrap
++tabindex 0
++role group
++aria-label Table, scrolls sideways
+.table ops rank fit
+=caption Source-only totals; all 29 execution-benchmark programs, measured 30 October 2026
+<tr
+=th Language
+=th o200k_base tokens
+=th cl100k_base tokens
 >
-<span
-+id cost
+<tr
+# claim-ok: row of results/source-tokens.json, checked by test/bench-tables.test.ts
+=td A0
+.td mono
+"9028
 >
-"Validated token and AI edit-cost measurements are pending.
+.td mono
+"9053
 >
-=p The single-syntax candidate is not yet the released default. We will publish one A0 result after migration, native-cost, AI-accuracy and platform validation.
-<p
-"Earlier token and edit-cost comparisons are kept separately for reproducibility. They are not measurements of the current single-syntax candidate.
 >
+<tr
+# claim-ok: row of results/source-tokens.json, checked by test/bench-tables.test.ts
+=td C
+.td mono
+"6402
+>
+.td mono
+"6400
+>
+>
+<tr
+# claim-ok: row of results/source-tokens.json, checked by test/bench-tables.test.ts
+=td JavaScript
+.td mono
+"6400
+>
+.td mono
+"6399
+>
+>
+<tr
+# claim-ok: row of results/source-tokens.json, checked by test/bench-tables.test.ts
+=td Rust
+.td mono
+"6565
+>
+.td mono
+"6509
+>
+>
+>
+>
+=p Local js-tiktoken measurements of the exact source text in the dataset. A0 uses the implemented source formatter; all 29 programs round-trip to the same IR and pass native-parser and JavaScript boundary controls. These are public tokenizer encodings, not a claim about any particular model's tokenizer. Prompts, tools, reasoning, retries and repairs are excluded: this is not an AI editing-cost or accuracy result.
 <p
 <a
-+href https://github.com/Joe-Simo/a0/tree/92c907e3d3c7e34abaa8fdb3e6d2ab55f56c706f/results
-"Historical data archive
++href https://github.com/Joe-Simo/a0/blob/main/results/source-tokens.json
+"Exact sources, counts and validation
+>
+" ·\s
+<a
++href https://github.com/Joe-Simo/a0/blob/main/tools/source-token-bench.ts
+"Reproduce the count
 >
 >
 >
@@ -264,7 +312,7 @@ c nav
 >
 # claim-ok: the headline row values are the cells of results/app-edit-keys.json (Sonnet 14 of 14, 1485.2 against 7277.3 tokens, Haiku 10 and 13) and results/check-latency-*.json (A0 edit medians 5.2, 1.7 and 22.7 ms; tsc medians 531, 872 and 3918 ms), checked by test/bench-tables.test.ts
 .p cap
-"Sources: results/exec-benchmark-full.json, results/lang-axes.json and results/check-latency-*.json. Token and model-edit studies are in the separate historical archive.
+"Sources: results/exec-benchmark-full.json, results/lang-axes.json and results/check-latency-*.json. Source token counts are in results/source-tokens.json.
 >
 }
 {sec_method

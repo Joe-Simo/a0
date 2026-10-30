@@ -193,7 +193,7 @@ c nav
 +aria-label Chart
 <button
 +type button
-"Language status
+"Source tokens
 >
 <button
 +type button
@@ -212,18 +212,17 @@ c nav
 {sec_edit
 .div pane chart on
 .h3 ct
-"A0 — one source syntax
+"Source tokens
 >
 .p sub
-"Validated token and AI edit-cost measurements are pending.
+"29 fixed benchmark programs · o200k_base
 >
-<p
-"The single-syntax candidate is not yet the released default. Earlier comparisons are archived separately, not shown as current A0 scores.
->
+# claim-ok: totals in results/source-tokens.json
+=p A0: 9,028 · C: 6,402 · JavaScript: 6,400 · Rust: 6,565
 .p src
 <a
-+href /benchmarks#syntax-research
-"Language status and historical data archive →
++href /benchmarks#tokens
+"Exact source counts and method →
 >
 >
 >

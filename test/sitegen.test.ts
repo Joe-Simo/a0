@@ -72,15 +72,13 @@ test('the benchmarks page explains every benchmark in plain words', {
     /<details class="more"><summary>Show all \d+ languages<\/summary>/g,
   );
   assert.equal(disclosures?.length, 3);
-  assert.ok(text.includes('A0 — one source syntax'));
-  assert.ok(text.includes('Validated token and AI edit-cost measurements are pending.'));
-  assert.ok(text.includes('Historical data archive'));
+  assert.ok(text.includes('Source token'));
+  assert.ok(!text.includes('measurements are pending'));
+  assert.ok(!text.includes('Historical data archive'));
   assert.ok(
     !/A0 \(canonical\)|A0 \(dense\)|A0 in two forms|Visible tokens per accepted edit/.test(text),
   );
-  assert.ok(
-    html.includes('github.com/Joe-Simo/a0/tree/92c907e3d3c7e34abaa8fdb3e6d2ab55f56c706f/results'),
-  );
+  assert.ok(html.includes('github.com/Joe-Simo/a0/blob/main/results/source-tokens.json'));
   const speed =
     /<details class="more"><summary>Show all (\d+) languages<\/summary>(.*?)<\/details>/s.exec(
       html,
@@ -116,12 +114,12 @@ test('the home page is short: a pitch with measured charts, what A0 is, the loss
   assert.match(text, /slower on \d+ of \d+ programs, worst \d+\.\d+x/);
   // the one-function cost came from a run with an earlier, longer guide; not listed as a loss
   assert.ok(!text.includes('one-function file'), 'no one-function loss on the home page');
-  assert.ok(text.includes('A0 — one source syntax'));
-  assert.ok(text.includes('Validated token and AI edit-cost measurements are pending.'));
+  assert.ok(text.includes('Source token'));
+  assert.ok(!text.includes('measurements are pending'));
   assert.ok(
     !/A0 \(canonical\)|A0 \(dense\)|A0 dense|Canonical source size|Fewest tokens/.test(text),
   );
-  assert.ok(html.includes('/benchmarks#syntax-research'));
+  assert.ok(html.includes('/benchmarks#tokens'));
   // Other execution charts still mark only A0 as a winner.
   for (const m of html.matchAll(/<span class="lbl">([^<]*)<\/span><div class="track ([^"]*)">/g))
     if ((m[2] ?? '').includes('win')) assert.match(m[1] ?? '', /^A0/, `${m[1]} is not A0`);

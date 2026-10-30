@@ -170,14 +170,19 @@ Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM and AVR from A0's own code g
 # Benchmarks
 
 Benchmarks
-Execution benchmarks, verification coverage and single-syntax measurement status.
+Execution benchmarks, source token counts and verification coverage.
 Reproduce a result Where A0 loses
 
- A0 — one source syntax
- Validated token and AI edit-cost measurements are pending.
-The single-syntax candidate is not yet the released default. We will publish one A0 result after migration, native-cost, AI-accuracy and platform validation.
-Earlier token and edit-cost comparisons are kept separately for reproducibility. They are not measurements of the current single-syntax candidate.
-Historical data archive
+ Source token counts
+Complete source fragments for the same 29 fixed benchmark programs, including helpers and literal data. Lower means fewer source tokens in this corpus.
+Source-only totals; all 29 execution-benchmark programs, measured 30 October 2026Language — o200k_base tokens — cl100k_base tokens
+A0 — 9028 — 9053
+C — 6402 — 6400
+JavaScript — 6400 — 6399
+Rust — 6565 — 6509
+
+Local js-tiktoken measurements of the exact source text in the dataset. A0 uses the implemented source formatter; all 29 programs round-trip to the same IR and pass native-parser and JavaScript boundary controls. These are public tokenizer encodings, not a claim about any particular model's tokenizer. Prompts, tools, reasoning, retries and repairs are excluded: this is not an AI editing-cost or accuracy result.
+Exact sources, counts and validation · Reproduce the count
 
 Summary; each linked section contains the method and source dataQuestion — A0's result — Where it loses
 Is native code fast? — 1.16x the time of hand-written C, geometric mean over 19 test programs on an Apple M3 — Slower than the best of C, Rust and Zig on 8 of 19 test programs, worst 4.31x on mat4
@@ -185,7 +190,7 @@ How does it compare with other languages? — 3 of 48 other languages are within
 Does it start quickly? — 2.50 ms from launch to first result, place 9 of 48 languages — Every language placed above it starts faster
 Is an edit checked quickly? — 2 to 23 ms per edit in a warm session, against 531 to 3918 ms for a whole-project tsc check — Checking from scratch in a fresh process is slower than tsc-rs and tsgo on macOS, and level with tsc-rs on Linux
 
-Sources: results/exec-benchmark-full.json, results/lang-axes.json and results/check-latency-*.json. Token and model-edit studies are in the separate historical archive.
+Sources: results/exec-benchmark-full.json, results/lang-axes.json and results/check-latency-*.json. Source token counts are in results/source-tokens.json.
 Method
 Machines, tool versions, sampling and load limits.
 How the numbers were taken; each machine's own file in results/ records its detailsItem — What we did
@@ -1138,11 +1143,11 @@ macOS & Linux Windows
 
 View install script Then follow the quick start
 
-Language status Speed Check latency WebAssembly
-A0 — one source syntax
-Validated token and AI edit-cost measurements are pending.
-The single-syntax candidate is not yet the released default. Earlier comparisons are archived separately, not shown as current A0 scores.
-Language status and historical data archive →
+Source tokens Speed Check latency WebAssembly
+Source tokens
+29 fixed benchmark programs · o200k_base
+A0: 9,028 · C: 6,402 · JavaScript: 6,400 · Rust: 6,565
+Exact source counts and method →
 
 Small programs, compiled
 Time per call as a multiple of A0's · geometric mean · log scale · shorter is faster
