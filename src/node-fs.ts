@@ -21,6 +21,13 @@ export function readFile(path: string, encoding: 'utf8'): Promise<string> {
   });
 }
 
+/** Source bytes for host adapters that require fatal UTF-8 decoding. */
+export function readBytes(path: string): Promise<Buffer> {
+  return new Promise((ok, fail) => {
+    fs.readFile(path, (e, bytes) => (e === null ? ok(bytes) : fail(e)));
+  });
+}
+
 /** Write a file (fs.promises.writeFile). */
 export function writeFile(
   path: string,

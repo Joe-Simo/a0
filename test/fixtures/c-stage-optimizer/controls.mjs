@@ -105,7 +105,7 @@ const scalarMain = (cases) =>
   `int main(void) {\n${cases.map(({ functionName, args, expected }) => `assert((uint32_t)a0_${functionName}(${args.map((v) => `${Number(v) >>> 0}u`).join(',')})==${Number(expected) >>> 0}u);`).join('\n')}\n}`;
 try {
   for (const item of specs.filter((item) => !item.heavy))
-    await compile(`spec/${item.name}`, item.source, item.status);
+    await compile(`spec/${item.name}`, item.nativeSource ?? item.source, item.status);
   for (const item of CONTROLS) {
     const module = await compile(`alias/${item.name}`, item.source),
       inputs = item.inputs ?? INPUTS;

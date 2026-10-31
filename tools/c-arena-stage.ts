@@ -8,9 +8,12 @@ import { writeFileSync } from 'node:fs';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { compile } from '../src/backends.js';
 import { link } from '../src/link.js';
+import type { nativeSource } from '../src/source-native.js';
 import { findClang, runTool, type ToolInfo, type ToolResult } from '../src/toolchain.js';
 import { buildStage, closure, emitChunked, runStageChunk } from './bootstrap.js';
+import { loadNativeBootstrapProgram } from './bootstrap-source.js';
 import { reportJson, writeReport } from './scrub-results.js';
 import { readBootstrapSeed } from './seed.js';
 
@@ -32,6 +35,14 @@ export interface BootstrappedCStage {
   readonly sourcePath: string;
   readonly seedSHA256: string;
   readonly chunks: number;
+}
+export interface NativeBootstrappedCStage {
+  readonly bootstrap: 'native-checked-ir';
+  readonly exe: string;
+  readonly source: string;
+  readonly sourcePath: string;
+  readonly cSHA256: string;
+  readonly chunks: 1;
 }
 const sha = (text: string | Uint8Array): string => createHash('sha256').update(text).digest('hex');
 const shimFiles = ['c_arena_stage.c', 'arena_runtime.c', 'arena_runtime.h'];
@@ -178,7 +189,35 @@ export async function bootstrapCStage(
   return { exe, source, sourcePath, seedSHA256: sha(seed.c), chunks: emitted.chunks };
 }
 
-export async function reproduceCStage(dir: string, prepared?: BootstrappedCStage): Promise<void> {
+/** Explicit alternative stage-1 setup: the A0 frontend and formatter supply
+ * checked compiler IR and frozen flat source. The existing TS C backend emits
+ * only that IR; subsequent stages use the existing native A0 service. This does
+ * not replace the independently verified seed or the default bootstrap route. */
+export async function bootstrapNativeCStage(
+  dir: string,
+  frontend: ReturnType<typeof nativeSource>,
+  compiler = findCStageCompiler(),
+): Promise<NativeBootstrappedCStage> {
+  const { program, source } = await loadNativeBootstrapProgram(
+    'compiler/c_stage_arena.a0',
+    [C_STAGE_ENTRY],
+    (path) => readFile(path, 'utf8'),
+    frontend,
+    { root: process.cwd() },
+  );
+  const c = compile(program, 'c', { cIo: 'host' }).text;
+  await mkdir(dir, { recursive: true });
+  const sourcePath = join(dir, 'compiler-source.a0');
+  await writeFile(sourcePath, source);
+  await writeFile(join(dir, 'module.c'), c);
+  const exe = buildCStage(compiler, dir);
+  return { bootstrap: 'native-checked-ir', exe, source, sourcePath, cSHA256: sha(c), chunks: 1 };
+}
+
+export async function reproduceCStage(
+  dir: string,
+  prepared?: BootstrappedCStage | NativeBootstrappedCStage,
+): Promise<void> {
   const compiler = findCStageCompiler();
   const shim = await Promise.all(
     shimFiles.map(async (file) => ({
@@ -240,12 +279,17 @@ export async function reproduceCStage(dir: string, prepared?: BootstrappedCStage
     status: failure === undefined ? 'passed' : 'failed',
     failure,
     entry: C_STAGE_ENTRY,
-    bootstrap: 'verified native A0 seed; TS only links and plans this fixed implementation',
+    bootstrap:
+      'bootstrap' in initial
+        ? 'A0 source frontend and formatter; existing TS C backend emits checked stage-1 IR'
+        : 'verified native A0 seed; TS only links and plans this fixed implementation',
     stageExecution: 'C + pthreads; raw original source, A0 service, same generic shim, verbatim C',
     compiler,
     sourceBytes: Buffer.byteLength(initial.source),
     sourceSHA256: sha(initial.source),
-    seedSHA256: initial.seedSHA256,
+    ...('seedSHA256' in initial
+      ? { seedSHA256: initial.seedSHA256 }
+      : { stage1CSHA256: initial.cSHA256 }),
     bootstrapChunks: initial.chunks,
     shim,
     resources: C_STAGE_RESOURCES,

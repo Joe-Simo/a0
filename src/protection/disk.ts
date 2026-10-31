@@ -15,6 +15,7 @@ import {
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { A0Error } from '../core.js';
 import { sourceUses } from '../link.js';
+import type { SourceDependencyReader } from '../source-graph.js';
 import { assertNoPlaintextWriters, PLAINTEXT_WRITERS } from '../plaintext-write.js';
 import { digest, opaqueId, ProtectionError, utf8 } from './crypto.js';
 import { assertDeadLocalProcess, processLockRecord } from './process-lock.js';
@@ -328,7 +329,7 @@ export interface Inventory {
 export async function inventory(
   root: string,
   include: readonly string[] = [],
-  readUses: typeof sourceUses = sourceUses,
+  readUses: typeof sourceUses | SourceDependencyReader = sourceUses,
 ): Promise<Inventory> {
   root = resolve(root);
   const items: { path: string; role: Role; hash: string }[] = [];
@@ -387,9 +388,21 @@ export async function inventory(
     const file = join(root, item.path);
     let uses: readonly string[];
     try {
-      uses = readUses(await readFile(file, 'utf8'), item.path);
+      if (typeof readUses === 'function') {
+        uses = readUses(await readFile(file, 'utf8'), item.path);
+      } else {
+        if (!readUses.acceptsPath(item.path))
+          throw new ProtectionError('SOURCE_FORMAT_MIGRATION_REQUIRED');
+        const bytes = await readFile(file);
+        try {
+          uses = readUses.uses(bytes, item.path);
+        } finally {
+          bytes.fill(0);
+        }
+      }
     } catch (e) {
-      if (!(e instanceof A0Error)) throw e;
+      if (typeof readUses === 'function' ? !(e instanceof A0Error) : !readUses.isSourceError(e))
+        throw e;
       incompleteGraphs.push(item.path);
       continue;
     }
@@ -444,7 +457,7 @@ export async function resumeMigration(
   project: SealedProject,
   root: string,
   checkpoint: (step: string) => Promise<void> = async () => {},
-  readUses: typeof sourceUses = sourceUses,
+  readUses: typeof sourceUses | SourceDependencyReader = sourceUses,
 ): Promise<void> {
   root = resolve(root);
   const migration = project.migration;

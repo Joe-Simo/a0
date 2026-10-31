@@ -14,11 +14,19 @@ import { dirname, join } from 'node:path';
 import { COMPILER_VERSION } from '../src/backends.js';
 import { link } from '../src/link.js';
 import { requirePackagingPolicy } from '../src/protection-policy.js';
+import type { SourceGraphLoader } from '../src/source-graph.js';
+import type { nativeSource } from '../src/source-native.js';
 import { findClang, runTool, type ToolInfo } from '../src/toolchain.js';
 import { BUILD_DIR } from './bootstrap.js';
 import { LIVE_PROGRAMS, type LiveProgramSpec } from './live-programs.js';
 import { readBootstrapSeed } from './seed.js';
-import { a0WasmFromTables, buildWasmTool, typescriptWasm } from './selfhost-wasm.js';
+import {
+  a0WasmFromTables,
+  buildWasmTool,
+  buildWasmToolFromIR,
+  prepareNativeWasmTool,
+  typescriptWasm,
+} from './selfhost-wasm.js';
 import {
   codeDigest,
   HOST,
@@ -48,6 +56,8 @@ export interface Keys {
   /** The code of this build: the import closure of tools/site-build.ts. */
   readonly code: string;
   readonly note: Note;
+  /** Optional graph authority; checking still precedes every cache lookup. */
+  readonly load?: SourceGraphLoader;
 }
 
 /** The largest page program a visitor downloads: each page's wasm must stay under this many bytes. */
@@ -89,7 +99,9 @@ export async function buildProgram(
   // The io buffers are widened because a page writes its stylesheet and every string as words;
   // the input holds an event, a text field and the page state.
   // site/app.ts (IN_CAP, OUT_CAP) must use the same capacities.
-  const linked = await link(join('site', entry), (p) => readFile(p, 'utf8'), { root: '.' });
+  const linked = await (keys.load ?? link)(join('site', entry), (p) => readFile(p, 'utf8'), {
+    root: '.',
+  });
   const layout = { ioInputCapacity: 1024, ioOutputCapacity: 131072 };
   const key = keyOf(
     'program',
@@ -147,7 +159,9 @@ async function buildLive(
   keys: Keys,
   outDir = out,
 ): Promise<string> {
-  const linked = await link(join('site', spec.entry), (p) => readFile(p, 'utf8'), { root: '.' });
+  const linked = await (keys.load ?? link)(join('site', spec.entry), (p) => readFile(p, 'utf8'), {
+    root: '.',
+  });
   const layout = {
     ioInputCapacity: spec.inputWords,
     ioOutputCapacity: spec.outputWords,
@@ -188,7 +202,26 @@ export async function wasmTool(
   clang: ToolInfo,
   cache: SiteCache,
   note: Note,
+  native?: NativeSiteWasmTool,
 ): Promise<{ exe: string; digest: string }> {
+  if (native !== undefined) {
+    if (!/^[0-9a-f]{64}$/.test(native.manifestSHA256))
+      throw new Error('native site compiler package identity required');
+    const source = await prepareNativeWasmTool(native.frontend);
+    const key = keyOf(
+      'native-wasmtool',
+      COMPILER_VERSION,
+      codeDigest(['tools/selfhost-wasm.ts']),
+      HOST,
+      clang.version ?? '',
+      native.manifestSHA256,
+      source.source,
+    );
+    const buildDir = native.buildDir ?? join(BUILD_DIR, 'native-source');
+    return cachedWasmTool(cache, note, key, join(buildDir, 'a0w', 'a0w'), () =>
+      buildWasmToolFromIR(clang, source, buildDir),
+    );
+  }
   const boot = await link('compiler/boot.a0', (p) => readFile(p, 'utf8'));
   const seed = await readBootstrapSeed();
   const key = keyOf(
@@ -202,6 +235,23 @@ export async function wasmTool(
     sha256(seed.c),
   );
   const exe = join(BUILD_DIR, 'a0w', 'a0w');
+  return cachedWasmTool(cache, note, key, exe, () => buildWasmTool(clang, seed));
+}
+
+/** Explicit internal route. The caller owns the verified package and its frontend. */
+export interface NativeSiteWasmTool {
+  readonly frontend: ReturnType<typeof nativeSource>;
+  readonly manifestSHA256: string;
+  readonly buildDir?: string;
+}
+
+async function cachedWasmTool(
+  cache: SiteCache,
+  note: Note,
+  key: string,
+  exe: string,
+  build: () => Promise<{ exe: string }>,
+): Promise<{ exe: string; digest: string }> {
   const hit = cache.dir === undefined ? undefined : await readEntry(cache, 'wasmtool', key);
   if (cache.dir !== undefined) note(hit !== undefined);
   const bytes = hit?.get('a0w');
@@ -209,7 +259,7 @@ export async function wasmTool(
     await writeTool(bytes, exe);
     return { exe, digest: sha256(bytes) };
   }
-  const built = await buildWasmTool(clang, seed);
+  const built = await build();
   const exeBytes = await readFile(toolFile(built.exe));
   await writeEntry(cache, 'wasmtool', key, { a0w: exeBytes });
   return { exe: built.exe, digest: sha256(exeBytes) };

@@ -4,6 +4,7 @@ import { type CompileOptions, compile, type Target } from '../backends.js';
 import { type ArtifactCache, compileCached } from '../cache.js';
 import type { Profile } from '../core.js';
 import { link } from '../link.js';
+import type { SourceGraphLoader } from '../source-graph.js';
 import type { LspFrontend } from '../lsp-frontend.js';
 import { protectionPolicy, requireProtectedTarget } from '../protection-policy.js';
 import { wasmModuleBytes } from '../wasm.js';
@@ -22,7 +23,7 @@ export async function linkSealed(
   project: SealedProject,
   entry: string,
   profile?: Profile,
-  frontend?: Pick<LspFrontend, 'link'>,
+  frontend?: Pick<LspFrontend, 'link'> | SourceGraphLoader,
 ): ReturnType<typeof link> {
   if (project.status.phase !== 'on') throw new ProtectionError('MIGRATION_IN_PROGRESS');
   safePath(entry);
@@ -46,7 +47,9 @@ export async function linkSealed(
   const linked =
     frontend === undefined
       ? await link(resolve(root, entry), read, options)
-      : await frontend.link(resolve(root, entry), read, options);
+      : typeof frontend === 'function'
+        ? await frontend(resolve(root, entry), read, options)
+        : await frontend.link(resolve(root, entry), read, options);
   assertSession(project);
   if (sourceVersion() !== revision) throw new ProtectionError('CONCURRENT_CHANGE');
   return linked;
@@ -62,13 +65,19 @@ export async function compileSealed(
     readonly compilerOptions?: CompileOptions;
     readonly profile?: Profile;
     readonly frontend?: Pick<LspFrontend, 'link'>;
+    readonly graphLoader?: SourceGraphLoader;
   } = {},
 ): Promise<Uint8Array> {
   const protect =
     options.protect === true ||
     (options.projectRoot !== undefined && protectionPolicy(options.projectRoot, true).protect);
   if (protect) requireProtectedTarget(target);
-  const linked = await linkSealed(project, entry, options.profile, options.frontend);
+  const linked = await linkSealed(
+    project,
+    entry,
+    options.profile,
+    options.frontend ?? options.graphLoader,
+  );
   const sourceHash = await digest(utf8.encode(linked.text));
   assertSession(project);
   const cache = new SealedCache(project);

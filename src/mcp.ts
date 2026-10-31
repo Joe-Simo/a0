@@ -16,6 +16,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { compile, TARGETS } from './backends.js';
+import { readUtf8Source } from './cli-source.js';
 import {
   A0Error,
   checkArgument,
@@ -24,16 +25,18 @@ import {
   formatType,
   LIMITS,
   run,
+  type TypedFunc,
   type TypedProgram,
   type Value,
 } from './core.js';
 import { formatDense } from './dense.js';
 import { diag } from './diagnostics.js';
 import { EditSession, revision, typedTargetView } from './edit.js';
-import { DENSE_EXTENSION, isDensePath, link } from './link.js';
-import { writeManagedFile } from './plaintext-write.js';
-import { protectionPolicy, requireProtectedTarget } from './protection-policy.js';
 import type { McpFrontend } from './source-edit.js';
+import { writeManagedFile } from './plaintext-write.js';
+import { DENSE_EXTENSION, isDensePath, link } from './link.js';
+import { protectionPolicy, requireProtectedTarget } from './protection-policy.js';
+import { type SourceGraphLoader, sourceDiagnostic } from './source-graph.js';
 import { A0_VERSION } from './version.js';
 
 /** Largest text any tool returns, in characters. */
@@ -42,8 +45,10 @@ export const MAX_OUTPUT = 1 << 20;
 export const MAX_FUEL = LIMITS.defaultFuel;
 
 interface Opened {
+  readonly path: string;
   readonly session: EditSession;
   readonly sources: readonly string[];
+  pending: Promise<void>;
   /** True once an edit has been applied and not yet saved. */
   dirty: boolean;
 }
@@ -56,20 +61,28 @@ const within = (root: string, path: string): boolean => {
   return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
 };
 
-const denied = (path: string): A0Error => diag('A0801', [path]);
+const denied = (root: string, path: string): A0Error => {
+  const shown = relative(root, resolve(root, path));
+  return diag('A0801', [isAbsolute(shown) ? '<outside>' : shown]);
+};
 
 /** Resolve `path` inside `root`; the real path (symlinks followed) must stay inside too. */
-export async function confine(root: string, path: string, mustExist: boolean): Promise<string> {
+async function confineSource(
+  root: string,
+  path: string,
+  mustExist: boolean,
+  acceptsPath: (path: string) => boolean,
+): Promise<string> {
   const abs = resolve(root, path);
   protectionPolicy(abs);
-  if (!within(root, abs) || !isA0Path(abs))
-    throw within(root, abs) ? diag('A0802', [path]) : denied(path);
+  if (!within(root, abs) || !acceptsPath(abs))
+    throw within(root, abs) ? diag('A0802', [path]) : denied(root, path);
   try {
     const real = await realpath(abs);
     protectionPolicy(real);
-    if (!within(root, real)) throw denied(path);
+    if (!within(root, real)) throw denied(root, path);
     // The name alone is not enough: `x.a0 -> .env` would expose (and a save overwrite) it.
-    if (!isA0Path(real)) throw diag('A0802', [path]);
+    if (!acceptsPath(real)) throw diag('A0802', [path]);
     return real;
   } catch (e) {
     if (e instanceof A0Error) throw e;
@@ -81,13 +94,18 @@ export async function confine(root: string, path: string, mustExist: boolean): P
         () => false,
       )
     )
-      throw denied(path);
+      throw denied(root, path);
     const parent = await realpath(dirname(abs)).catch(() => {
-      throw denied(path);
+      throw denied(root, path);
     });
-    if (!within(root, parent)) throw denied(path);
+    if (!within(root, parent)) throw denied(root, path);
     return resolve(parent, relative(dirname(abs), abs));
   }
+}
+
+/** Historical callers retain their source policy; injected services use the same confinement. */
+export function confine(root: string, path: string, mustExist: boolean): Promise<string> {
+  return confineSource(root, path, mustExist, isA0Path);
 }
 
 /**
@@ -108,6 +126,12 @@ const text = (root: string, body: string): CallToolResult => {
   return { content: [{ type: 'text', text: body }] };
 };
 
+/** A mutating tool must validate its response before publishing session state. */
+function boundedOutput(body: string): string {
+  if (body.length > MAX_OUTPUT) throw diag('A0804', [MAX_OUTPUT]);
+  return body;
+}
+
 const jsonValue: z.ZodType<Value> = z.lazy(() =>
   z.union([z.number().int().nonnegative(), z.boolean(), z.array(jsonValue)]),
 );
@@ -120,30 +144,77 @@ const jsonValue: z.ZodType<Value> = z.lazy(() =>
  */
 export type McpSurface = 'full' | 'compact';
 
+/** One internally supplied language service set; no per-operation legacy fallback. */
+export interface McpLanguageServices {
+  readonly load: SourceGraphLoader;
+  acceptsPath(path: string): boolean;
+  createSession(program: TypedProgram): EditSession;
+  formatProgram(program: TypedProgram): string;
+  formatSource(program: TypedProgram, path: string): string;
+  revision(fn: TypedFunc): string;
+}
+
+const LEGACY_LANGUAGE: McpLanguageServices = {
+  load: link,
+  acceptsPath: isA0Path,
+  createSession: (program) => new EditSession(program),
+  formatProgram,
+  formatSource: (program, path) =>
+    isDensePath(path) ? formatDense(program, { comments: true }) : formatSource(program),
+  revision,
+};
+
 /** Build the server for `launch` (a file or directory). The caller connects a transport. */
 export async function createServer(
   launch: string,
-  options: { readonly surface?: McpSurface; readonly frontend?: McpFrontend } = {},
+  options: {
+    readonly surface?: McpSurface;
+    /** Borrow complete services; their frontend and teardown remain owned by the caller. */
+    readonly language?: McpLanguageServices;
+    readonly frontend?: McpFrontend;
+  } = {},
 ): Promise<McpServer> {
   const launched = await realpath(resolve(launch));
   protectionPolicy(launched);
   const isDir = (await stat(launched)).isDirectory();
   const root = isDir ? launched : dirname(launched);
   const defaultFile = isDir ? undefined : launched;
-  const opened = new Map<string, Opened>();
+  if (options.language !== undefined && options.frontend !== undefined)
+    throw new Error('supply one frontend service binding');
+  const host = options.frontend;
+  const language =
+    options.language ??
+    (host === undefined
+      ? LEGACY_LANGUAGE
+      : {
+          load: host.link,
+          acceptsPath: (path: string) => path.endsWith('.a0'),
+          createSession: (program: TypedProgram) =>
+            new EditSession(program, { syntax: host.syntax }),
+          formatProgram: host.print,
+          formatSource: (program: TypedProgram) => host.print(program),
+          revision,
+        });
+  const legacy = options.language === undefined && host === undefined;
+  const confined = (path: string, mustExist: boolean) =>
+    confineSource(root, path, mustExist, (source) => language.acceptsPath(source));
+  const opened = new Map<string, Promise<Opened>>();
   const tool =
     <A>(fn: (args: A) => Promise<string>) =>
     async (args: A): Promise<CallToolResult> => {
       try {
         return text(root, await fn(args));
       } catch (e) {
-        return failure(root, e);
+        const diagnostic = legacy ? undefined : await sourceDiagnostic(e);
+        return failure(root, diagnostic?.error ?? e);
       }
     };
 
   const fileOf = async (file: string | undefined): Promise<string> => {
-    if (file !== undefined) return confine(root, file, true);
+    if (file !== undefined) return confined(file, true);
     if (defaultFile === undefined) throw diag('A0805');
+    protectionPolicy(defaultFile);
+    if (!legacy && !language.acceptsPath(defaultFile)) throw diag('A0802', [defaultFile]);
     return defaultFile;
   };
 
@@ -151,75 +222,106 @@ export async function createServer(
     const path = await fileOf(file);
     const existing = opened.get(path);
     if (existing !== undefined) return existing;
-    const read = async (p: string) => readFile(await confine(root, p, true), 'utf8');
-    const linked =
-      options.frontend === undefined
-        ? await link(path, read)
-        : await options.frontend.link(path, read, { root });
-    const entry: Opened = {
-      session: new EditSession(
-        linked.program,
-        options.frontend === undefined ? {} : { syntax: options.frontend.syntax },
-      ),
-      sources: linked.sources.map((s) => s.path),
-      dirty: false,
-    };
-    opened.set(path, entry);
-    return entry;
-  };
-
-  const useDenseView = (dense: boolean | undefined): boolean => {
-    if (options.frontend !== undefined && dense !== undefined) throw diag('A0522');
-    return options.frontend === undefined && (dense ?? true);
-  };
-  const sourceText = (entry: Opened, path: string): string => {
-    if (options.frontend !== undefined) {
-      if (!path.endsWith('.a0')) throw diag('A0802', [path]);
-      return options.frontend.print(entry.session.program);
+    const pending = (async (): Promise<Opened> => {
+      const linked = await language.load(
+        path,
+        async (p) => {
+          const source = await confined(p, true);
+          return legacy ? readFile(source, 'utf8') : readUtf8Source(source);
+        },
+        {
+          root,
+          canonicalPath: (path) => (path === root ? Promise.resolve(root) : confined(path, true)),
+        },
+      );
+      return {
+        path,
+        session: language.createSession(linked.program),
+        sources: linked.sources.map((s) => s.path),
+        pending: Promise.resolve(),
+        dirty: false,
+      };
+    })();
+    // Concurrent opens share one graph load and one handle namespace for this source.
+    opened.set(path, pending);
+    try {
+      return await pending;
+    } catch (error) {
+      if (opened.get(path) === pending) opened.delete(path);
+      throw error;
     }
-    return isDensePath(path)
-      ? formatDense(entry.session.program, { comments: true })
-      : formatSource(entry.session.program);
   };
 
-  const program = async (file: string | undefined): Promise<TypedProgram> =>
-    (await sessionFor(file)).session.program;
+  const inOrder = <Output>(entry: Opened, operation: () => Output | Promise<Output>) => {
+    const result = entry.pending.then(() => {
+      protectionPolicy(entry.path);
+      return operation();
+    });
+    // A refusal reaches its caller while leaving the next request able to proceed.
+    entry.pending = result.then(
+      () => {},
+      () => {},
+    );
+    return result;
+  };
+
+  const program = async (file: string | undefined): Promise<TypedProgram> => {
+    const entry = await sessionFor(file);
+    return inOrder(entry, () => entry.session.program);
+  };
+
+  const apply = (entry: Opened, edit: string, render: (session: EditSession) => string) =>
+    inOrder(entry, () => {
+      const output = entry.session.applyAndPublish(edit, (session) =>
+        boundedOutput(render(session)),
+      );
+      entry.dirty = true;
+      return output;
+    });
 
   const fileField = z
     .string()
     .optional()
     .describe(
-      options.frontend === undefined
+      legacy
         ? '.a0 or .a0d (dense) file relative to the server root (default: the launched file)'
-        : '.a0 source file relative to the server root (default: the launched file)',
+        : '.a0 file relative to the server root (default: the launched file)',
     );
   const denseField = z
     .boolean()
     .optional()
     .describe(
-      options.frontend !== undefined
-        ? 'Legacy-only option; omit it in a source-bound session.'
-        : 'dense view (the default): the function (or signatures) in the dense syntax; replies under this handle are dense too. Pass false for the canonical view and canonical replies (the opt-out, see skills/a0/references/primer.txt)',
+      'dense view (the default): the function (or signatures) in the dense syntax; replies under this handle are dense too. Pass false for the canonical view and canonical replies (the opt-out, see skills/a0/references/primer.txt)',
     );
 
   const server = new McpServer({ name: 'a0', version: A0_VERSION });
 
   if (options.surface === 'compact') {
-    const file = z.string().optional().describe('.a0 or .a0d file (default: the launched file)');
+    const file = legacy
+      ? z.string().optional().describe('.a0 or .a0d file (default: the launched file)')
+      : fileField;
     server.registerTool(
       'a0_open',
       {
-        description: 'Show one function (dense, callee bodies); reply to a0_apply with edit lines.',
+        description: legacy
+          ? 'Show one function (dense, callee bodies); reply to a0_apply with edit lines.'
+          : 'Show one function and callee bodies; reply to a0_apply with edit lines.',
         inputSchema: { file, function: z.string() },
       },
       tool(async ({ file: f, function: name }) => {
-        const { session } = await sessionFor(f);
-        const shown = session.open(name, {
-          scope: 'bodies',
-          ...(options.frontend === undefined ? { dense: true } : {}),
-        }).text;
-        const body = shown.slice(shown.indexOf('\n') + 1);
-        return options.frontend === undefined ? typedTargetView(body, session.program, name) : body;
+        const entry = await sessionFor(f);
+        return inOrder(entry, () =>
+          entry.session.openAndPublish(
+            name,
+            { scope: 'bodies', ...(legacy ? { dense: true } : {}) },
+            ({ text }) => {
+              const body = text.slice(text.indexOf('\n') + 1);
+              return boundedOutput(
+                legacy ? typedTargetView(body, entry.session.program, name) : body,
+              );
+            },
+          ),
+        );
       }),
     );
     server.registerTool(
@@ -230,13 +332,12 @@ export async function createServer(
       },
       tool(async ({ file: f, edit }) => {
         const entry = await sessionFor(f);
-        entry.session.apply(edit);
-        entry.dirty = true;
-        const implied = entry.session.impliedHandle;
-        return implied !== undefined
-          ? entry.session.view(implied)
-          : (options.frontend?.print(entry.session.program) ??
-              formatProgram(entry.session.program));
+        return apply(entry, edit, (session) => {
+          const implied = session.impliedHandle;
+          return implied !== undefined
+            ? session.view(implied)
+            : language.formatProgram(session.program);
+        });
       }),
     );
     server.registerTool(
@@ -247,12 +348,18 @@ export async function createServer(
       },
       tool(async ({ file: f }) => {
         const entry = await sessionFor(f);
-        if (!entry.dirty) throw diag('A0806');
-        const out = await fileOf(f);
-        if (entry.sources.length > 1) throw diag('A0807');
-        await writeManagedFile(entry.sources, out, sourceText(entry, out));
-        entry.dirty = false;
-        return relative(root, out);
+        return inOrder(entry, async () => {
+          if (!entry.dirty) throw diag('A0806');
+          const out = await fileOf(f);
+          if (entry.sources.length > 1) throw diag('A0807');
+          await writeManagedFile(
+            entry.sources,
+            out,
+            language.formatSource(entry.session.program, out),
+          );
+          entry.dirty = false;
+          return relative(root, out);
+        });
       }),
     );
     return server;
@@ -267,27 +374,38 @@ export async function createServer(
         file: fileField,
         function: z.string(),
         scope: z.enum(['deps', 'full', 'bodies']).optional(),
-        dense: denseField,
+        ...(legacy || host !== undefined ? { dense: denseField } : {}),
         specs: z.enum(['show', 'hide']).optional().describe('hide: omit ex/pre/post lines'),
         lean: z
           .boolean()
           .optional()
           .describe(
-            'dense only: return the function view without its handle line; a reply with no handle line edits the one open function',
+            legacy
+              ? 'dense only: return the function view without its handle line; a reply with no handle line edits the one open function'
+              : 'return the function view without its handle line; a reply with no handle line edits the one open function',
           ),
       },
     },
     tool(async ({ file, function: name, scope, dense, specs, lean }) => {
-      const { session } = await sessionFor(file);
-      const useDense = useDenseView(dense);
-      const text = session.open(name, {
-        ...(scope === 'full'
-          ? {}
-          : { scope: scope === 'bodies' ? ('bodies' as const) : ('deps' as const) }),
-        ...(useDense ? { dense: true } : {}),
-        ...(specs === undefined ? {} : { specs }),
-      }).text;
-      return useDense && lean === true ? text.slice(text.indexOf('\n') + 1) : text;
+      const entry = await sessionFor(file);
+      if (host !== undefined && dense !== undefined) throw diag('A0522');
+      const useDense = legacy && (dense ?? true);
+      return inOrder(entry, () =>
+        entry.session.openAndPublish(
+          name,
+          {
+            ...(scope === 'full'
+              ? {}
+              : { scope: scope === 'bodies' ? ('bodies' as const) : ('deps' as const) }),
+            ...(useDense ? { dense: true } : {}),
+            ...(specs === undefined ? {} : { specs }),
+          },
+          ({ text }) =>
+            boundedOutput(
+              (useDense || !legacy) && lean === true ? text.slice(text.indexOf('\n') + 1) : text,
+            ),
+        ),
+      );
     }),
   );
 
@@ -296,15 +414,25 @@ export async function createServer(
     {
       description:
         'Open a program handle: every function signature, or with target only those around it. The handle accepts whole fn ... end blocks that add or replace functions.',
-      inputSchema: { file: fileField, target: z.string().optional(), dense: denseField },
+      inputSchema: {
+        file: fileField,
+        target: z.string().optional(),
+        ...(legacy || host !== undefined ? { dense: denseField } : {}),
+      },
     },
     tool(async ({ file, target, dense }) => {
-      const { session } = await sessionFor(file);
-      const useDense = useDenseView(dense);
-      return session.openProgram({
-        ...(target === undefined ? {} : { scope: 'deps' as const, target }),
-        ...(useDense ? { dense: true } : {}),
-      }).text;
+      const entry = await sessionFor(file);
+      if (host !== undefined && dense !== undefined) throw diag('A0522');
+      const useDense = legacy && (dense ?? true);
+      return inOrder(entry, () =>
+        entry.session.openProgramAndPublish(
+          {
+            ...(target === undefined ? {} : { scope: 'deps' as const, target }),
+            ...(useDense ? { dense: true } : {}),
+          },
+          ({ text }) => boundedOutput(text),
+        ),
+      );
     }),
   );
 
@@ -317,22 +445,23 @@ export async function createServer(
     },
     tool(async ({ file, edit }) => {
       const entry = await sessionFor(file);
-      entry.session.apply(edit);
-      entry.dirty = true;
       const handle = edit
         .split(/\r?\n/)
         .map((l) => l.trim())
         .find((l) => l.length > 0);
-      try {
-        return entry.session.view(handle ?? '');
-      } catch {
-        // a reply without a handle line edited the one open handle: show that view, not the program
-        const implied = entry.session.impliedHandle;
-        if (implied !== undefined) return entry.session.view(implied);
-        return (
-          options.frontend?.print(entry.session.program) ?? formatProgram(entry.session.program)
-        );
-      }
+      return apply(entry, edit, (session) => {
+        try {
+          return session.view(handle ?? '');
+        } catch (error) {
+          if (!(error instanceof A0Error) || (error.id !== 'A0611' && error.id !== 'A0613'))
+            throw error;
+          // An implied or removed handle selects the current view; formatting failures propagate.
+          const implied = session.impliedHandle;
+          return implied !== undefined
+            ? session.view(implied)
+            : language.formatProgram(session.program);
+        }
+      });
     }),
   );
 
@@ -346,7 +475,7 @@ export async function createServer(
       (await program(file)).functions
         .map(
           (fn) =>
-            `${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}`,
+            `${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${language.revision(fn).slice(0, 12)}`,
         )
         .join('\n'),
     ),
@@ -398,12 +527,18 @@ export async function createServer(
     },
     tool(async ({ file, path }) => {
       const entry = await sessionFor(file);
-      if (!entry.dirty) throw diag('A0806');
-      const out = path === undefined ? await fileOf(file) : await confine(root, path, false);
-      if (path === undefined && entry.sources.length > 1) throw diag('A0807');
-      await writeManagedFile(entry.sources, out, sourceText(entry, out));
-      entry.dirty = false;
-      return relative(root, out);
+      return inOrder(entry, async () => {
+        if (!entry.dirty) throw diag('A0806');
+        const out = path === undefined ? await fileOf(file) : await confined(path, false);
+        if (path === undefined && entry.sources.length > 1) throw diag('A0807');
+        await writeManagedFile(
+          entry.sources,
+          out,
+          language.formatSource(entry.session.program, out),
+        );
+        entry.dirty = false;
+        return relative(root, out);
+      });
     }),
   );
 
@@ -413,7 +548,7 @@ export async function createServer(
 /** `a0 mcp <file-or-dir>`: serve over stdio until the client disconnects. */
 export async function serveStdio(
   launch: string,
-  options: { readonly frontend?: McpFrontend } = {},
+  options: Parameters<typeof createServer>[1] = {},
 ): Promise<void> {
   // A0_MCP_SURFACE=compact: the experimental three-tool surface (see McpSurface); off by default.
   const server = await createServer(launch, {

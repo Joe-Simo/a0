@@ -28,7 +28,8 @@ export interface MigrationManifest {
 
 const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex');
 const portable = (path: string): string => path.split(sep).join('/');
-interface MigrationCodec {
+/** Internal migration boundary; historical readers are selected explicitly before conversion. */
+export interface MigrationCodec {
   readonly extension: '.a0' | '.a0d';
   print(program: Program, known: Arities): string;
   parse(text: string, known: Arities): Program;
@@ -54,18 +55,12 @@ export function migrateSourceProject(
   root = dirname(resolve(entry)),
   legacyDense = false,
 ): Promise<MigrationManifest> {
-  const source = resolve(entry),
-    target = resolve(destination),
-    boundary = resolve(root);
-  return withPlaintextWrites([boundary, source, dirname(target)], () =>
-    migrate(source, target, boundary, legacyDense, sourceCodec),
-  );
+  return migrateWithCodec(entry, destination, root, legacyDense, sourceCodec);
 }
 
 /**
  * Convert an entry and its complete dependency closure to a new directory. The original project
- * files are never rewritten; managed coordination directories may be created. Output is staged,
- * linked and compared before an atomic directory rename.
+ * is never modified. Output is staged, linked and compared before an atomic directory rename.
  * An interrupted staging directory is disposable; no partially converted source tree is published.
  * `root` explicitly defines the source boundary, including for imports and symlinks.
  */
@@ -75,15 +70,26 @@ export async function migrateProject(
   root = dirname(resolve(entry)),
   legacyDense = false,
 ): Promise<MigrationManifest> {
+  return migrateWithCodec(entry, destination, root, legacyDense, denseCodec);
+}
+
+export function migrateWithCodec(
+  entry: string,
+  destination: string,
+  root: string,
+  legacyDense: boolean,
+  codec: MigrationCodec,
+): Promise<MigrationManifest> {
   const source = resolve(entry),
     target = resolve(destination),
     boundary = resolve(root);
   return withPlaintextWrites([boundary, source, dirname(target)], () =>
-    migrate(source, target, boundary, legacyDense, denseCodec),
+    migrateStaged(source, target, boundary, legacyDense, codec),
   );
 }
 
-async function migrate(
+/** Shared guarded staging, source snapshots and equivalence checks; codecs do not publish files. */
+async function migrateStaged(
   entry: string,
   destination: string,
   root: string,

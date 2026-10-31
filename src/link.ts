@@ -9,6 +9,7 @@ import {
   type ProjectLinkOptions,
   type ReadSource,
 } from './linker.js';
+import type { SourceDependencyReader } from './source-graph.js';
 
 export {
   type Linked,
@@ -42,6 +43,14 @@ function denseUses(text: string): string[] {
 export function sourceUses(text: string, path: string): readonly string[] {
   return isDensePath(path) ? denseUses(text) : (parse(text).uses ?? []);
 }
+
+/** Historical storage inventory remains the default until native adoption gates pass. */
+export const sourceDependencies: SourceDependencyReader = {
+  acceptsPath: (path) => /\.a0d?$/.test(path),
+  uses: (bytes, path) =>
+    sourceUses(new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes), path),
+  isSourceError: (error) => error instanceof A0Error,
+};
 
 export interface LinkOptions extends ProjectLinkOptions {
   /** Read every file as dense text (a file ending in `.a0d` is always dense). */
