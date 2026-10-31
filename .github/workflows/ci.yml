@@ -41,11 +41,7 @@ jobs:
         run: bun run dotnet
       - name: Life application acceptance
         run: bun run app
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always()
-        with:
-          name: results
-          path: results/
+      # Keep validation in job logs; avoid persistent artifact-storage charges.
   # Style and strict audit of Formula/a0.rb through a local tap (this repository is the tap).
   formula:
     runs-on: macos-15
