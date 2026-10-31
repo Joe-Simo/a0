@@ -1,0 +1,550 @@
+raw # Canonical content and transitive semantic revisions; no source-only hash substitute.
+raw use "format_arena.a0"
+raw fn arev_string (u32,(u32,u32,u32),u32x128,io) (u32,u32,u32) -> (u32,(u32,u32,u32),u32x128,io)
+raw d at p0 2
+raw q0 at p0 0
+raw q1 at p0 1
+raw q2 at p0 3
+raw q3 rec q0 q1 q2
+raw q4 call ad_string q3 p1
+raw q5 call af_k q4 d
+raw ret q5
+raw end
+raw fn arev_copy (u32,(u32,u32,u32),u32x128,io) u32 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw d at p0 2
+raw q0 at p0 0
+raw q1 at p0 1
+raw q2 at p0 3
+raw q3 rec q0 q1 q2
+raw q4 call ad_copy q3 p1 p2 p3
+raw q5 call af_k q4 d
+raw ret q5
+raw end
+raw fn arev_content (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+raw d at p0 2
+raw q0 at p0 3
+raw r call af_revision_text_context q0 p2 p3 p4 p5 p6 d
+raw q1 at r 0
+raw q2 at r 1
+raw q3 at r 2
+raw q4 rec q1 q2 d q3
+raw ret q4
+raw end
+raw fn arev_hash (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw d at p0 2
+raw view at p0 1
+raw q0 at p0 3
+raw q1 at view 0
+raw q2 at view 1
+raw r call arena_sha256_hex q0 q1 q2
+raw q3 at r 0
+raw q4 at r 1
+raw q5 at r 2
+raw q6 rec q3 q4 d q5
+raw ret q6
+raw end
+raw fn arev_content_hash (u32,(u32,u32,u32),u32x128,io) u32x128 u32x128 u32 u32 bool -> (u32,(u32,u32,u32),u32x128,io)
+raw q0 at p0 0
+raw q1 eq q0 0
+raw q2 select q1 1 0
+raw a fold arev_content q2 p0 p1 p2 p3 p4 p5
+raw q3 at a 0
+raw q4 eq q3 0
+raw q5 select q4 1 0
+raw q6 fold arev_hash q5 a
+raw ret q6
+raw end
+raw fn arev_read_do ((u32,(u32,u32,u32),u32x128,io),u32) u32 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32)
+raw k at p0 0
+raw d at k 2
+raw out at k 1
+raw q0 at k 3
+raw a call arena_load q0 p2 p3 1
+raw q1 at a 0
+raw q2 at a 2
+raw q3 rec q1 out d q2
+raw q4 at a 1
+raw q5 get q4 0
+raw q6 rec q3 q5
+raw ret q6
+raw end
+raw fn arev_read (u32,(u32,u32,u32),u32x128,io) u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32)
+raw q0 at p0 0
+raw q1 eq q0 0
+raw q2 select q1 1 0
+raw q3 rec p0 0
+raw q4 fold arev_read_do q2 q3 p1 p2
+raw ret q4
+raw end
+raw fn arev_cmp_more ((u32,(u32,u32,u32),u32x128,io),u32) u32 u32 u32 u32 u32 -> bool
+raw q0 at p0 0
+raw q1 at q0 0
+raw q2 eq q1 0
+raw q3 at p0 1
+raw q4 eq q3 0
+raw q5 and q2 q4
+raw ret q5
+raw end
+raw fn arev_cmp_step ((u32,(u32,u32,u32),u32x128,io),u32) u32 u32 u32 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32)
+raw q0 at p0 0
+raw q1 add p3 p1
+raw a call arev_read q0 p2 q1
+raw left at a 1
+raw q2 at a 0
+raw q3 add p5 p1
+raw b call arev_read q2 p4 q3
+raw right at b 1
+raw q4 at b 0
+raw q5 eq left right
+raw q6 lt left right
+raw q7 select q6 1 2
+raw q8 select q5 0 q7
+raw q9 rec q4 q8
+raw ret q9
+raw end
+raw fn arev_compare (u32,(u32,u32,u32),u32x128,io) u32x128 u32 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32)
+raw q0 get p1 62
+raw q1 get p1 63
+raw q2 get p1 64
+raw q3 rec q0 q1 q2
+raw a call af_row p0 q3 p2 5
+raw lr at a 1
+raw q4 at a 0
+raw q5 get p1 62
+raw q6 get p1 63
+raw q7 get p1 64
+raw q8 rec q5 q6 q7
+raw b call af_row q4 q8 p3 5
+raw rr at b 1
+raw q9 get lr 1
+raw q10 get lr 2
+raw q11 sub 4294967295 q10
+raw q12 le q9 q11
+raw q13 get rr 1
+raw q14 get rr 2
+raw q15 sub 4294967295 q14
+raw q16 le q13 q15
+raw spans and q12 q16
+raw q17 at b 0
+raw q18 select spans 0 7
+raw c call af_fail q17 q18
+raw q19 get lr 2
+raw q20 get rr 2
+raw q21 lt q19 q20
+raw q22 get lr 2
+raw q23 get rr 2
+raw count select q21 q22 q23
+raw q24 rec c 0
+raw q25 get lr 0
+raw q26 get lr 1
+raw q27 get rr 0
+raw q28 get rr 1
+raw d loop arev_cmp_more arev_cmp_step count q24 q25 q26 q27 q28
+raw order at d 1
+raw q29 get lr 2
+raw q30 get rr 2
+raw q31 eq q29 q30
+raw q32 get lr 2
+raw q33 get rr 2
+raw q34 lt q32 q33
+raw q35 select q34 1 2
+raw length select q31 0 q35
+raw q36 at d 0
+raw q37 eq order 0
+raw q38 select q37 length order
+raw q39 rec q36 q38
+raw ret q39
+raw end
+raw fn arev_dep_more ((u32,(u32,u32,u32),u32x128,io),u32,u32,bool) u32 u32x128 u32 -> bool
+raw q0 at p0 0
+raw q1 at q0 0
+raw q2 eq q1 0
+raw q3 at p0 1
+raw q4 at p0 2
+raw q5 lt q3 q4
+raw q6 and q2 q5
+raw q7 at p0 3
+raw q8 xor q7 true
+raw q9 and q6 q8
+raw ret q9
+raw end
+raw fn arev_dep_step ((u32,(u32,u32,u32),u32x128,io),u32,u32,bool) u32 u32x128 u32 -> ((u32,(u32,u32,u32),u32x128,io),u32,u32,bool)
+raw q0 at p0 1
+raw q1 at p0 2
+raw q2 at p0 1
+raw q3 sub q1 q2
+raw q4 div q3 2
+raw mid add q0 q4
+raw k at p0 0
+raw q5 at k 2
+raw q6 get q5 19
+raw q7 get q5 20
+raw q8 get q5 21
+raw q9 rec q6 q7 q8
+raw a call af_row k q9 mid 1
+raw q10 at a 0
+raw q11 get p2 41
+raw q12 get p2 42
+raw q13 get p2 43
+raw q14 rec q11 q12 q13
+raw q15 at a 1
+raw q16 get q15 0
+raw b call af_row q10 q14 q16 14
+raw q17 at b 0
+raw q18 at b 1
+raw q19 get q18 0
+raw compared call arev_compare q17 p2 q19 p3
+raw order at compared 1
+raw q20 at compared 0
+raw q21 eq order 1
+raw q22 add mid 1
+raw q23 at p0 1
+raw q24 select q21 q22 q23
+raw q25 eq order 1
+raw q26 at p0 2
+raw q27 select q25 q26 mid
+raw q28 eq order 0
+raw q29 rec q20 q24 q27 q28
+raw ret q29
+raw end
+raw fn arev_dep_append (u32,(u32,u32,u32),u32x128,io) u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw d at p0 2
+raw out at p0 1
+raw q0 call arena_zero
+raw page set q0 0 p2
+raw q1 at p0 3
+raw q2 get d 19
+raw q3 get d 20
+raw q4 get d 21
+raw q5 rec q2 q3 q4
+raw a call av_append q1 q5 1 page
+raw q6 at a 0
+raw q7 at a 1
+raw q8 at q7 0
+raw m1_a set d 19 q8
+raw q9 at q7 1
+raw m1_b set m1_a 20 q9
+raw q10 at q7 2
+raw q11 set m1_b 21 q10
+raw q12 at a 2
+raw q13 rec q6 out q11 q12
+raw ret q13
+raw end
+raw fn arev_dep_shift_more (u32,(u32,u32,u32),u32x128,io) u32 u32 -> bool
+raw q0 at p0 0
+raw q1 eq q0 0
+raw ret q1
+raw end
+raw fn arev_dep_shift (u32,(u32,u32,u32),u32x128,io) u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw q0 sub p2 1
+raw from sub q0 p1
+raw q1 at p0 2
+raw q2 get q1 19
+raw q3 get q1 20
+raw q4 get q1 21
+raw q5 rec q2 q3 q4
+raw a call af_row p0 q5 from 1
+raw next at a 0
+raw d at next 2
+raw out at next 1
+raw q6 at next 3
+raw q7 get d 19
+raw q8 get d 20
+raw q9 get d 21
+raw q10 rec q7 q8 q9
+raw q11 add from 1
+raw q12 at a 1
+raw stored call av_store q6 q10 q11 1 q12
+raw q13 at stored 0
+raw q14 at stored 1
+raw q15 rec q13 out d q14
+raw ret q15
+raw end
+raw fn arev_dep_write (u32,(u32,u32,u32),u32x128,io) u32 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw d at p0 2
+raw out at p0 1
+raw q0 call arena_zero
+raw page set q0 0 p3
+raw q1 at p0 3
+raw q2 get d 19
+raw q3 get d 20
+raw q4 get d 21
+raw q5 rec q2 q3 q4
+raw r call av_store q1 q5 p2 1 page
+raw q6 at r 0
+raw q7 at r 1
+raw q8 rec q6 out d q7
+raw ret q8
+raw end
+raw fn arev_dep_insert (u32,(u32,u32,u32),u32x128,io) u32 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw q0 at p0 2
+raw length get q0 20
+raw q1 at p0 0
+raw q2 eq q1 0
+raw q3 select q2 1 0
+raw a fold arev_dep_append q3 p0 p3
+raw q4 sub length p2
+raw b loop arev_dep_shift_more arev_dep_shift q4 a length
+raw q5 at b 0
+raw q6 eq q5 0
+raw q7 select q6 1 0
+raw q8 fold arev_dep_write q7 b p2 p3
+raw ret q8
+raw end
+raw fn arev_dep_add (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw d at p0 2
+raw q0 get d 22
+raw valid lt p3 q0
+raw q1 select valid 0 6
+raw a call af_fail p0 q1
+raw q2 get p2 41
+raw q3 get p2 42
+raw q4 get p2 43
+raw q5 rec q2 q3 q4
+raw b call af_row a q5 p3 14
+raw q6 at b 1
+raw symbol get q6 0
+raw next at b 0
+raw q7 at next 2
+raw length get q7 20
+raw q8 rec next 0 length false
+raw c loop arev_dep_more arev_dep_step 33 q8 p2 symbol
+raw q9 at c 3
+raw q10 xor q9 true
+raw q11 select q10 1 0
+raw q12 at c 0
+raw q13 at c 1
+raw q14 fold arev_dep_insert q11 q12 q13 p3
+raw ret q14
+raw end
+raw fn arev_calls_more (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> bool
+raw q0 at p0 0
+raw q1 eq q0 0
+raw ret q1
+raw end
+raw fn arev_calls (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw q0 get p2 100
+raw q1 get p2 101
+raw q2 get p2 102
+raw q3 rec q0 q1 q2
+raw q4 add p3 p1
+raw r call af_row p0 q3 q4 2
+raw row at r 1
+raw q5 get row 0
+raw q6 ne q5 4294967295
+raw q7 select q6 1 0
+raw q8 at r 0
+raw q9 get row 0
+raw a fold arev_dep_add q7 q8 p2 q9
+raw q10 get row 1
+raw q11 ne q10 4294967295
+raw q12 select q11 1 0
+raw q13 get row 1
+raw q14 fold arev_dep_add q12 a p2 q13
+raw ret q14
+raw end
+raw fn arev_dependency_more (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> bool
+raw q0 at p0 0
+raw q1 eq q0 0
+raw ret q1
+raw end
+raw fn arev_dependency (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+raw q0 at p0 2
+raw q1 get q0 19
+raw q2 get q0 20
+raw q3 get q0 21
+raw q4 rec q1 q2 q3
+raw r call af_row p0 q4 p1 1
+raw q5 at r 1
+raw id get q5 0
+raw q6 at r 0
+raw q7 get p2 41
+raw q8 get p2 42
+raw q9 get p2 43
+raw q10 rec q7 q8 q9
+raw name call af_row q6 q10 id 14
+raw q11 at name 0
+raw a call af_byte q11 124
+raw q12 at name 1
+raw q13 get q12 0
+raw b call af_symbol a p2 q13
+raw c call af_byte b 61
+raw d at c 2
+raw q14 get d 16
+raw q15 mul id 64
+raw q16 call arev_copy c q14 q15 64
+raw ret q16
+raw end
+raw fn arev_semantic_prefix (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw page call arena_zero
+raw page_1 set page 0 112
+raw page_2 set page_1 1 114
+raw page_3 set page_2 2 111
+raw page_4 set page_3 3 102
+raw page_5 set page_4 4 105
+raw page_6 set page_5 5 108
+raw page_7 set page_6 6 101
+raw page_8 set page_7 7 32
+raw page_9 set page_8 8 115
+raw page_10 set page_9 9 116
+raw page_11 set page_10 10 114
+raw page_12 set page_11 11 105
+raw page_13 set page_12 12 99
+raw page_14 set page_13 13 116
+raw page_15 set page_14 14 124
+raw d at p0 2
+raw q0 at p0 0
+raw q1 at p0 1
+raw q2 at p0 3
+raw q3 rec q0 q1 q2
+raw s call ad_append q3 15 page_15
+raw q4 call af_k s d
+raw ret q4
+raw end
+raw fn arev_memo_store (u32,(u32,u32,u32),u32x128,io) u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw view at p0 1
+raw r call af_row p0 view 0 64
+raw next at r 0
+raw d at next 2
+raw out at next 1
+raw q0 at next 3
+raw q1 get d 16
+raw q2 get d 17
+raw q3 get d 18
+raw q4 rec q1 q2 q3
+raw q5 at r 1
+raw stored call av_append q0 q4 64 q5
+raw q6 at stored 0
+raw q7 at stored 1
+raw q8 at q7 0
+raw m1_a set d 16 q8
+raw q9 at q7 1
+raw m1_b set m1_a 17 q9
+raw q10 at q7 2
+raw q11 set m1_b 18 q10
+raw q12 at stored 2
+raw q13 rec q6 out q11 q12
+raw ret q13
+raw end
+raw fn arev_sem_function (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+raw q0 at p0 2
+raw q1 rec 0 0 0
+raw m0_a set q0 19 0
+raw m0_b set m0_a 20 0
+raw q2 set m0_b 21 0
+raw d set q2 22 p1
+raw q3 at p0 0
+raw q4 at p0 1
+raw q5 at p0 3
+raw q6 rec q3 q4 d q5
+raw own call arev_content_hash q6 p2 p3 0 p1 true
+raw ownhash at own 1
+raw q7 at own 0
+raw q8 rec 0 0 0
+raw q9 at own 2
+raw q10 at own 3
+raw q11 get p2 8
+raw q12 eq q11 1
+raw q13 select q12 1 0
+raw q14 rec q7 q8 q9 q10
+raw prefixed fold arev_semantic_prefix q13 q14
+raw text call arev_string prefixed ownhash
+raw q15 get p2 41
+raw q16 get p2 42
+raw q17 get p2 43
+raw q18 rec q15 q16 q17
+raw r call af_row text q18 p1 14
+raw row at r 1
+raw q19 get row 5
+raw q20 at r 0
+raw q21 get row 4
+raw a loop arev_calls_more arev_calls q19 q20 p2 q21
+raw q22 at a 2
+raw q23 get q22 20
+raw b loop arev_dependency_more arev_dependency q23 a p2
+raw q24 at b 0
+raw q25 eq q24 0
+raw q26 select q25 1 0
+raw c fold arev_hash q26 b
+raw q27 at c 0
+raw q28 eq q27 0
+raw q29 select q28 1 0
+raw q30 fold arev_memo_store q29 c
+raw ret q30
+raw end
+raw fn arev_sem_more (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> bool
+raw q0 at p0 0
+raw q1 eq q0 0
+raw ret q1
+raw end
+raw fn arev_semantics (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw q0 get p2 45
+raw nodes div q0 14
+raw q1 get p2 0
+raw q2 eq q1 0
+raw q3 get p2 96
+raw q4 eq q3 1
+raw q5 and q2 q4
+raw q6 le nodes 2147483647
+raw q7 and q5 q6
+raw q8 get p2 101
+raw q9 mul nodes 2
+raw q10 eq q8 q9
+raw checked and q7 q10
+raw q11 select checked 0 7
+raw a call af_fail p0 q11
+raw q12 lt p4 67108863
+raw q13 select q12 0 3
+raw b call af_fail a q13
+raw q14 add p4 1
+raw q15 loop arev_sem_more arev_sem_function q14 b p2 p3
+raw ret q15
+raw end
+raw fn arev_content_entry (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),u32x128,io)
+raw q0 call arev_content_hash p0 p2 p3 p4 p5 false
+raw ret q0
+raw end
+raw fn arena_revision_context io u32x128 u32x128 u32 u32 u32x128 -> (u32,(u32,u32,u32),io)
+raw z call arena_zero
+raw context fold af_authoring_copy 19 z p5 32
+raw required get p5 51
+raw q0 set context 51 required
+raw q1 set q0 1 1093685846
+raw d set q1 2 1
+raw q2 rec 0 0 0
+raw q3 rec 0 q2 d p0
+raw q4 le p3 2
+raw q5 select q4 0 6
+raw a call af_fail q3 q5
+raw q6 eq p3 1
+raw q7 select q6 1 0
+raw b_ir call af_schema a p1 p2 q7 p4
+raw b call af_authoring_schema b_ir p1 p2
+raw q8 lt p3 2
+raw q9 select q8 1 0
+raw c fold arev_content_entry q9 b p1 p2 p3 p4
+raw q10 eq p3 2
+raw q11 select q10 1 0
+raw out fold arev_semantics q11 c p1 p2 p4
+raw q12 at out 0
+raw q13 at out 0
+raw q14 eq q13 0
+raw q15 at out 1
+raw q16 rec 0 0 0
+raw q17 select q14 q15 q16
+raw q18 at out 3
+raw q19 rec q12 q17 q18
+raw ret q19
+raw end
+raw fn arena_revision io u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),io)
+raw d call arena_zero
+raw r call arena_revision_context p0 p1 p2 p3 p4 d
+raw ret r
+raw end
+raw fn arena_revision_authoring io u32x128 u32x128 u32x128 u32 u32 -> (u32,(u32,u32,u32),io)
+raw z call arena_zero
+raw context fold af_authoring_copy 19 z p3 0
+raw d set context 51 1
+raw r call arena_revision_context p0 p1 p2 p4 p5 d
+raw ret r
+raw end
