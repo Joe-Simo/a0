@@ -21373,8 +21373,8 @@ renderio at j_17 2
 rendered rec renderstatus renderbytes arguments known functions kind renderio
 ret rendered
 end
-fn ad_render_regular io u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
-rendered call ad_render_json p0 p1 p2
+fn ad_collect (u32,(u32,u32,u32),u32x128,bool,bool,u32,io) u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+rendered mov p0
 renderstatus at rendered 0
 renderbytes at rendered 1
 arguments at rendered 2
@@ -21980,6 +21980,11 @@ q755 select q752 q753 q754
 q756 at typeutf 3
 q757 rec status_2 q755 facts_115 q756
 ret q757
+end
+fn ad_render_regular io u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+rendered call ad_render_json p0 p1 p2
+out call ad_collect rendered p1
+ret out
 end
 # Native scalar specification diagnostics; generated fragment retained with validation evidence.
 fn sd_head714 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
