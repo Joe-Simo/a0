@@ -392,7 +392,7 @@ export async function inventory(
         uses = readUses(await readFile(file, 'utf8'), item.path);
       } else {
         if (!readUses.acceptsPath(item.path))
-          throw new ProtectionError('SOURCE_FORMAT_MIGRATION_REQUIRED');
+          throw new ProtectionError('UNSUPPORTED_SOURCE_DEPENDENCY');
         const bytes = await readFile(file);
         try {
           uses = readUses.uses(bytes, item.path);

@@ -5,7 +5,11 @@ import { dirname, resolve } from 'node:path';
 import { A0Error, checkArgument, LIMITS, run, type Value } from '../core.js';
 import { POLICY_FILE, protectionPolicy } from '../protection-policy.js';
 import type { McpFrontend } from '../source-edit.js';
-import type { SourceGraphLoader, SourceGraphServices } from '../source-graph.js';
+import {
+  sourceDiagnostic,
+  type SourceGraphLoader,
+  type SourceGraphServices,
+} from '../source-graph.js';
 import { isTarget } from '../targets.js';
 import { compileSealed, linkSealed } from './build.js';
 import {
@@ -261,14 +265,15 @@ export async function serveUnlocked(
         }
         throw new ProtectionError('UNKNOWN_OPERATION');
       } catch (e) {
+        const diagnostic = e instanceof ProtectionError ? undefined : await sourceDiagnostic(e);
         // No source excerpts, host paths, key material or underlying library errors in managed logs/protocol errors.
         output({
           ok: false,
           code:
             e instanceof ProtectionError
               ? e.code
-              : e instanceof A0Error
-                ? e.id
+              : diagnostic !== undefined
+                ? diagnostic.error.id
                 : 'OPERATION_FAILED',
         });
       }
