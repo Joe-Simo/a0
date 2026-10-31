@@ -10,6 +10,9 @@ export const JS_ARENA_INPUTS = [
 export const JS_PREPARATION_INPUTS = [
   'tools/source-js-build.ts',
   'tools/source-js-load.ts',
+  'tools/source-js-artifact.ts',
+  'tools/source-cost-control.ts',
+  'tools/source-compiler-inputs.ts',
   'tools/source-js-inputs.ts',
   'tools/source-js-prepare.ts',
   'tools/source-js-emit.ts',
@@ -17,11 +20,13 @@ export const JS_PREPARATION_INPUTS = [
   'tools/measurement-checkout.ts',
   'tools/scrub-results.ts',
 ];
-export function jsCompilerSources(): string[] {
-  return execFileSync('git', ['ls-files', 'src/*.ts'], { encoding: 'utf8' }).trim().split('\n');
+export function jsCompilerSources(checkout = process.cwd()): string[] {
+  return execFileSync('git', ['ls-files', 'src/*.ts'], { cwd: checkout, encoding: 'utf8' })
+    .trim()
+    .split('\n');
 }
-export function jsCompilerOutputPaths(): string[] {
-  return [...jsCompilerSources(), ...JS_PREPARATION_INPUTS]
+export function jsCompilerOutputPaths(checkout = process.cwd()): string[] {
+  return [...jsCompilerSources(checkout), ...JS_PREPARATION_INPUTS]
     .map((path) => `dist/${path.slice(0, -3)}.js`)
     .sort();
 }

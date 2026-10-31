@@ -177,6 +177,14 @@ fn sb_typedarg(s:(u32x128,u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,u32x128
  let b=s#2
  let r=av_load(s#3,sb_vec(b,41),(b[85]+i)*5,5)
  let o=r#1
+ let b=set(b,91,o[1])
+ let b=set(b,109,i)
+ let b=set(b,12,o[2])
+ let b=set(b,13,o[3])
+ let b=set(b,99,i)
+ let b=set(b,100,4294967295)
+ let b=set(b,101,4294967295)
+ let b=set(b,102,0)
  let a=sb_runtime((s#0,s#1,b,r#2),r#0)
  let valid=(o[0]!=1)|((o[1]<b[84])&((o[4]&4)==0))
  let a=sb_wrap(a,valid?0:105)

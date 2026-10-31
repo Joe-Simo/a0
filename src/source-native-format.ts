@@ -1,5 +1,9 @@
 /** Optional formatting/revision capability implemented only by the shared A0 emitters. */
 import { sourceComponent, sourceComponentVector } from './source-component.js';
+import type {
+  NativeSourceMetadataIssue,
+  NativeTextMetadataIssue,
+} from './source-native-authoring.js';
 import type { NativeDiagnosticPorts } from './source-native-render.js';
 import { decodeSourceUtf8 } from './source-utf8.js';
 
@@ -8,7 +12,8 @@ export interface NativeFormatOptions {
   readonly load: () => WebAssembly.Module;
 }
 export interface NativeFormatRequest {
-  readonly scope?: 'function' | 'program' | 'source';
+  /** Signature emits one complete declared header, without a body or source comments. */
+  readonly scope?: 'function' | 'program' | 'source' | 'signature';
   readonly functionIndex?: number;
   readonly skipSpecs?: boolean;
   readonly mapping?: boolean;
@@ -19,6 +24,14 @@ export interface NativeRevisionRequest {
 }
 export type NativeCapabilityRefusal =
   | { readonly ok: false; readonly reason: 'unavailable' | 'no-arena' }
+  | {
+      readonly ok: false;
+      readonly reason: 'authoring-metadata';
+      readonly detail:
+        | NativeSourceMetadataIssue
+        | NativeTextMetadataIssue
+        | 'unsupported-authoring-version';
+    }
   | {
       readonly ok: false;
       readonly reason: 'incomplete-ir';
@@ -51,7 +64,7 @@ export type NativeRevisionResult =
 const PAGE = 128;
 const FORMAT_WORDS = 1 + 3 + PAGE + 1;
 const REVISION_WORDS = 1 + 3 + 1;
-const FORMATS = ['function', 'program', 'source'] as const;
+const FORMATS = ['function', 'program', 'source', 'signature'] as const;
 const REVISIONS = ['function', 'program', 'semantic'] as const;
 
 function functionIndex(value: number | undefined): number {
@@ -65,6 +78,16 @@ export function nativeSourceFormatter(ports: NativeDiagnosticPorts, options: Nat
   const component = sourceComponent(ports, options.load, {
     arena_format_described: { params: [1, PAGE, PAGE, 1, 1, 1, 1], result: FORMAT_WORDS },
     arena_revision: { params: [1, PAGE, PAGE, 1, 1], result: REVISION_WORDS },
+    arena_format_authoring: {
+      params: [1, PAGE, PAGE, PAGE, 1, 1, 1, 1],
+      result: FORMAT_WORDS,
+      optional: true,
+    },
+    arena_revision_authoring: {
+      params: [1, PAGE, PAGE, PAGE, 1, 1],
+      result: REVISION_WORDS,
+      optional: true,
+    },
   });
   const token = (): number | NativeCapabilityRefusal => {
     if (!ports.a0_runtime_read || !ports.a0_runtime_write || !ports.frontend_arena_token)
@@ -93,6 +116,7 @@ export function nativeSourceFormatter(ports: NativeDiagnosticPorts, options: Nat
       parsed: Uint32Array,
       specs: Uint32Array,
       request: NativeFormatRequest = {},
+      authoring?: Uint32Array,
     ): NativeFormatResult {
       const mode = FORMATS.indexOf(request.scope ?? 'source');
       if (mode < 0) throw new Error('invalid native formatter scope');
@@ -105,10 +129,15 @@ export function nativeSourceFormatter(ports: NativeDiagnosticPorts, options: Nat
       const id = functionIndex(request.functionIndex);
       const io = token();
       if (typeof io !== 'number') return io;
-      const result = component.invoke('arena_format_described', [
+      const context = authoring;
+      const name = context ? 'arena_format_authoring' : 'arena_format_described';
+      if (context && !component.has(name))
+        return { ok: false, reason: 'authoring-metadata', detail: 'unsupported-authoring-version' };
+      const result = component.invoke(name, [
         io,
         parsed,
         specs,
+        ...(context ? [context] : []),
         mode,
         id,
         request.skipSpecs ? 1 : 0,
@@ -147,13 +176,25 @@ export function nativeSourceFormatter(ports: NativeDiagnosticPorts, options: Nat
       parsed: Uint32Array,
       specs: Uint32Array,
       request: NativeRevisionRequest = {},
+      authoring?: Uint32Array,
     ): NativeRevisionResult {
       const mode = REVISIONS.indexOf(request.kind ?? 'program');
       if (mode < 0) throw new Error('invalid native revision kind');
       const id = functionIndex(request.functionIndex);
       const io = token();
       if (typeof io !== 'number') return io;
-      const result = component.invoke('arena_revision', [io, parsed, specs, mode, id]);
+      const context = authoring;
+      const name = context ? 'arena_revision_authoring' : 'arena_revision';
+      if (context && !component.has(name))
+        return { ok: false, reason: 'authoring-metadata', detail: 'unsupported-authoring-version' };
+      const result = component.invoke(name, [
+        io,
+        parsed,
+        specs,
+        ...(context ? [context] : []),
+        mode,
+        id,
+      ]);
       const bytes = output(result, io);
       const status = result[0] as number;
       if (status !== 0) return { ok: false, status };

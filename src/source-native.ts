@@ -1,12 +1,15 @@
 /** Portable host for the candidate A0 frontend. Parsing, typing and specs execute in A0. */
 import type { Comments, Profile, Program, TypedProgram } from './core.js';
 import type { SourceUnitComments } from './source-metadata.js';
+import type { NativeAuthoringAvailability } from './source-native-authoring.js';
 import {
   composeNativeUnits,
   type NativeIrBuilder,
+  type NativeUnitFormatSnapshot,
   type NativeUnitOrigin,
   type NativeUnitSnapshot,
   PARSED_VECTOR_WIDTHS,
+  restoreNativeUnitForFormat,
   SPEC_VECTOR_WIDTHS,
 } from './source-native-compose.js';
 import {
@@ -25,6 +28,10 @@ import {
   type NativeLiveDiagnostic,
   nativeDiagnosticRenderer,
 } from './source-native-render.js';
+import {
+  decodeNativeUnitOrigins,
+  type NativeUnitSourceOrigins,
+} from './source-native-unit-origins.js';
 import { losslessSourceString } from './source-utf8.js';
 import { readWasmWord, readWasmWords, writeWasmWord, writeWasmWords } from './wasm-words.js';
 
@@ -68,6 +75,16 @@ export type NativeGraphResult = NativeSourceResult & {
   readonly origins: readonly NativeUnitOrigin[];
 };
 
+declare const FORMAT_INPUT: unique symbol;
+/** An opaque formatting input; it grants no source acceptance or checked-program capability. */
+export interface NativeUnitFormatInput {
+  readonly [FORMAT_INPUT]: true;
+}
+export type NativeUnitFormatActivation =
+  | { readonly ok: true; readonly input: NativeUnitFormatInput }
+  | { readonly ok: false; readonly reason: 'unavailable' }
+  | { readonly ok: false; readonly status: number };
+
 class NativeIrFailure extends Error {
   constructor(readonly status: number) {
     super(`native IR construction failed: ${status}`);
@@ -105,6 +122,8 @@ export function nativeSource(
   readonly memoryBytes: number;
   parse(source: string, budget?: number): NativeSourceResult;
   parseUnit(source: string, budget?: number): NativeUnitResult;
+  /** Detached source ownership from this engine's authentic retained unit, without arena mutation. */
+  unitSourceOrigins(unit: NativeUnitResult): NativeUnitSourceOrigins;
   /** Experimental compiler IR check through the same A0 checker; locations are synthetic. */
   checkProgram(program: Program, budget?: number): NativeSourceResult;
   /** Units must already be resolved, ordered and assigned a coherent profile by the graph loader. */
@@ -113,14 +132,18 @@ export function nativeSource(
     profile: Profile,
     budget?: number,
   ): NativeGraphResult;
+  /** Upload structured IR for formatting only; no source or semantic acceptance is granted. */
+  activateProgramForFormat(program: Program, budget?: number): NativeUnitFormatActivation;
+  /** Explicitly reset the live arena to an authentic retained unit, only for formatting. */
+  activateUnitForFormat(unit: NativeUnitResult, budget?: number): NativeUnitFormatActivation;
   /** Formatting uses only this engine's current live result; output is detached. */
   format(
-    result: NativeSourceResult | NativeUnitResult,
+    result: NativeSourceResult | NativeUnitResult | NativeUnitFormatInput,
     request?: NativeFormatRequest,
   ): NativeFormatResult;
   /** Content/semantic hashes retain the established private revision serialization. */
   revision(
-    result: NativeSourceResult | NativeUnitResult,
+    result: NativeSourceResult | NativeUnitResult | NativeUnitFormatInput,
     request?: NativeRevisionRequest,
   ): NativeRevisionResult;
   close(): void;
@@ -145,21 +168,45 @@ export function nativeSourceApi(
     diagnostics === undefined ? undefined : nativeDiagnosticRenderer(api, diagnostics);
   const formatter = formatting === undefined ? undefined : nativeSourceFormatter(api, formatting);
   let generation = 0;
+  let authoring: NativeAuthoringAvailability = {};
+  let authoringDescriptor: Uint32Array | undefined;
   let formatStates = new WeakMap<
     object,
-    { generation: number; sourceStatus: number; parsed: Uint32Array; specs: Uint32Array }
+    {
+      generation: number;
+      sourceStatus: number;
+      parsed: Uint32Array;
+      specs: Uint32Array;
+      authoring: NativeAuthoringAvailability;
+      descriptor: Uint32Array | undefined;
+    }
   >();
   const remember = <T extends NativeState>(result: T): T => {
     if (formatter)
       formatStates.set(result, {
         generation,
         sourceStatus: result.status,
+        authoring: { ...authoring },
+        descriptor: authoringDescriptor?.slice(),
         parsed: Uint32Array.from(result.state),
         specs: Uint32Array.from(result.specState),
       });
     return result;
   };
   let snapshots = new WeakMap<NativeUnitResult, NativeUnitSnapshot>();
+  let unitFormatStates = new WeakMap<NativeUnitResult, NativeUnitFormatSnapshot>();
+  const formatInput = (parsed: Uint32Array, specs: Uint32Array): NativeUnitFormatInput => {
+    const input = Object.freeze({}) as NativeUnitFormatInput;
+    formatStates.set(input, {
+      generation,
+      sourceStatus: 0,
+      parsed: parsed.slice(),
+      specs: specs.slice(),
+      authoring: { ...authoring },
+      descriptor: authoringDescriptor?.slice(),
+    });
+    return input;
+  };
   const assertOpen = (): void => {
     if (closed) throw new Error('source frontend is closed');
   };
@@ -228,6 +275,8 @@ export function nativeSourceApi(
     checkBudget(budget);
     const result = withSource(source, (pointer, length) => {
       generation++;
+      authoring = {};
+      authoringDescriptor = undefined;
       return unit
         ? api.frontend_parse_unit(pointer, length, budget)
         : api.frontend_parse(pointer, length, budget);
@@ -264,11 +313,21 @@ export function nativeSourceApi(
       checked(
         withSource(source, (pointer, length) => {
           generation++;
+          authoring = {};
+          authoringDescriptor = undefined;
           return api.frontend_ir_init(pointer, length, budget, strict ? 1 : 0);
         }).value,
       );
     },
     upload,
+    ...(formatter === undefined
+      ? {}
+      : {
+          authoring(value: NativeAuthoringAvailability, descriptor?: Uint32Array) {
+            authoring = { ...value };
+            authoringDescriptor = descriptor?.slice();
+          },
+        }),
     symbol(name) {
       const bytes = new TextEncoder().encode(name),
         // Empty identities still need a valid zero-length span for native classification.
@@ -348,8 +407,44 @@ export function nativeSourceApi(
         typeRows: Uint32Array.from(tables.get(68) as Uint32Array),
         typeFields: Uint32Array.from(tables.get(71) as Uint32Array),
         comments: commentSnapshot(program),
+        ...(formatter === undefined
+          ? {}
+          : {
+              metadata: {
+                profileLine: state.state[24] as number,
+                tailFirst: state.state[25] as number,
+                tailCount: state.state[26] as number,
+              },
+            }),
       });
-      return remember(parsed);
+      remember(parsed);
+      const retained = formatStates.get(parsed);
+      if (retained)
+        unitFormatStates.set(parsed, {
+          parsed: retained.parsed,
+          specs: retained.specs,
+          tables: new Map(
+            OFFSETS.filter((slot) => slot >= 97).map((slot) => [
+              slot,
+              Uint32Array.from(tables.get(slot) as Uint32Array),
+            ]),
+          ),
+          // Contract-token word storage is not part of the published spec AST vectors.
+          specTables: new Map([
+            [
+              59,
+              Uint32Array.from(view(retained.specs[59] as number, retained.specs[60] as number)),
+            ],
+          ]),
+        });
+      return parsed;
+    },
+    unitSourceOrigins(unit) {
+      if (closed) throw new Error('source frontend is closed');
+      const snapshot = snapshots.get(unit);
+      if (!unit.ok || snapshot === undefined)
+        throw new Error('expected a parsed unit owned by this frontend');
+      return decodeNativeUnitOrigins(snapshot);
     },
     checkProgram(program, budget = 16_000_000) {
       checkBudget(budget);
@@ -398,6 +493,39 @@ export function nativeSourceApi(
         });
       }
     },
+    activateProgramForFormat(program, budget = 16_000_000) {
+      checkBudget(budget);
+      if (!formatter || !api.a0_runtime_read || !api.a0_runtime_write || !api.frontend_arena_token)
+        return { ok: false, reason: 'unavailable' };
+      try {
+        const builder = irBuilder(budget);
+        encodeNativeProgram(program, builder);
+        // The active generic builder, not frontend_state/specs, owns these unchecked pages.
+        const parsed = Uint32Array.from({ length: 128 }, (_, index) => builder.get(index));
+        if (parsed[96] !== 0) throw new Error('native formatting IR unexpectedly checked');
+        const specs = view(parsed[59] as number, 128);
+        return { ok: true, input: formatInput(parsed, specs) };
+      } catch (error) {
+        if (!(error instanceof NativeIrFailure)) throw error;
+        return { ok: false, status: error.status };
+      }
+    },
+    activateUnitForFormat(unit, budget = 16_000_000) {
+      checkBudget(budget);
+      const snapshot = snapshots.get(unit);
+      if (snapshot === undefined) throw new Error('expected a parsed unit owned by this frontend');
+      if (!formatter || !api.a0_runtime_read || !api.a0_runtime_write || !api.frontend_arena_token)
+        return { ok: false, reason: 'unavailable' };
+      const retained = unitFormatStates.get(unit);
+      if (retained === undefined) throw new Error('missing retained source-unit formatting state');
+      try {
+        const restored = restoreNativeUnitForFormat(snapshot, retained, irBuilder(budget));
+        return { ok: true, input: formatInput(restored.parsed, restored.specs) };
+      } catch (error) {
+        if (!(error instanceof NativeIrFailure)) throw error;
+        return { ok: false, status: error.status };
+      }
+    },
     format(result, request) {
       assertOpen();
       if (!formatter) return { ok: false, reason: 'unavailable' };
@@ -406,7 +534,12 @@ export function nativeSourceApi(
         throw new Error('expected a current result owned by this frontend');
       if (state.parsed[93] === 0)
         return { ok: false, reason: 'incomplete-ir', sourceStatus: state.sourceStatus };
-      return formatter.format(state.parsed, state.specs, request);
+      const detail =
+        state.authoring.text ??
+        ((request?.scope ?? 'source') === 'source' ? state.authoring.source : undefined);
+      if (state.sourceStatus === 0 && detail !== undefined)
+        return { ok: false, reason: 'authoring-metadata', detail };
+      return formatter.format(state.parsed, state.specs, request, state.descriptor);
     },
     revision(result, request) {
       assertOpen();
@@ -416,12 +549,15 @@ export function nativeSourceApi(
         throw new Error('expected a current result owned by this frontend');
       if (state.parsed[93] === 0)
         return { ok: false, reason: 'incomplete-ir', sourceStatus: state.sourceStatus };
-      return formatter.revision(state.parsed, state.specs, request);
+      if (state.sourceStatus === 0 && state.authoring.text !== undefined)
+        return { ok: false, reason: 'authoring-metadata', detail: state.authoring.text };
+      return formatter.revision(state.parsed, state.specs, request, state.descriptor);
     },
     close() {
       if (!closed) api.frontend_close();
       closed = true;
       snapshots = new WeakMap();
+      unitFormatStates = new WeakMap();
       formatStates = new WeakMap();
     },
   };

@@ -824,20 +824,21 @@ test('chunks: literal pools follow printed expression-frame depth, including cal
   }
 });
 
-// Includes the shared grammar/verifier modules and the raw-source C service and stage entry.
+// Includes the shared grammar/verifier modules, native spec diagnostics, and the raw-source C service and stage entry.
+// Keep the exact readable inventory guard; results/native-authoring-chunk-inventory.json records its census.
 test('chunks: a program cut at 16 KB reads to the text of the whole program', (t) => {
   const n = chunkInvariance(t, '16 KB', READER_CAPS);
-  assert.equal(n, 177, `${n} programs`);
+  assert.equal(n, 178, `${n} programs`);
 });
 
 test('chunks: a program cut at 4 KB reads to the same text', (t) => {
   const n = chunkInvariance(t, '4 KB', { ...READER_CAPS, bytes: 4096 });
-  assert.equal(n, 177, `${n} programs`);
+  assert.equal(n, 178, `${n} programs`);
 });
 
 test('chunks: a program cut after every function reads to the same text', (t) => {
   const n = chunkInvariance(t, 'one function per chunk', { ...READER_CAPS, bytes: 1 });
-  assert.equal(n, 177, `${n} programs`);
+  assert.equal(n, 178, `${n} programs`);
 });
 
 test('chunks: generated call programs cut at random budgets read to the text of the whole program', (t) => {

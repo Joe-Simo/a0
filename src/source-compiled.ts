@@ -84,6 +84,7 @@ export function compiledSource(
     active = false;
   let state: Uint32Array = new Uint32Array(STATE_WORDS),
     irState: Uint32Array = new Uint32Array(IR_WORDS);
+  let verificationPointer = 0;
   const reply = (expected: number): number => {
     const code = arena.a0_runtime_read(session) >>> 0;
     const count = arena.a0_runtime_read(session) >>> 0;
@@ -191,6 +192,12 @@ export function compiledSource(
     a0_runtime_read: arena.a0_runtime_read,
     a0_runtime_write: arena.a0_runtime_write,
     frontend_arena_token: () => session,
+    frontend_verification() {
+      verificationPointer ||= arena.malloc(6 * PAGE_WORDS * 4) >>> 0;
+      if (!verificationPointer) return 0;
+      writeWasmWords(arena.memory.buffer, verificationPointer, state.subarray(0, 6 * PAGE_WORDS));
+      return verificationPointer;
+    },
     frontend_ir_init(p, n, budget, strict) {
       if (start(budget)) return status;
       const handle = upload(p, n, true);
@@ -240,6 +247,8 @@ export function compiledSource(
     frontend_close() {
       reset();
       arena.free(pages);
+      if (verificationPointer) arena.free(verificationPointer);
+      verificationPointer = 0;
     },
   };
   return nativeSourceApi(

@@ -10,6 +10,12 @@ import type {
   TypedProgram,
 } from './core.js';
 import {
+  NATIVE_AUTHORING_MAGIC,
+  NATIVE_AUTHORING_WORDS,
+  type NativeTextMetadataIssue,
+  nativeCommentEncoder,
+} from './source-native-authoring.js';
+import {
   installNativeVectors,
   type NativeIrBuilder,
   PARSED_VECTOR_WIDTHS,
@@ -73,9 +79,17 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     spans.set(value, extent);
     return extent;
   };
-  for (const path of program.uses ?? []) {
+  const metadata = builder.authoring === undefined ? undefined : nativeCommentEncoder(span);
+  if (metadata) {
+    tables.set(32, metadata.lines);
+    tables.set(38, metadata.comments);
+    metadata.line(); // A location-free line for IR fields without authoring ownership.
+  } else append(table(32), [0, 0, 0, 0, 0, 0, 0, NONE, 0, 0]);
+  const profileLine =
+    metadata && program.profile === 'strict' ? metadata.line(program.profileComments) : NONE;
+  for (const [index, path] of (program.uses ?? []).entries()) {
     const [start, count] = span(path);
-    append(table(53), [start, count, 0]);
+    append(table(53), [start, count, metadata?.line(program.useComments?.[index]) ?? 0]);
   }
   const rememberOperand = (value: Operand): void => {
     if (value.kind === 'node') span(value.id);
@@ -89,10 +103,78 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     ])
       for (const argument of entry.args) rememberOperand(argument);
   }
+  let textIssue: NativeTextMetadataIssue | undefined;
+  const textFlags = metadata === undefined ? undefined : new Map<Node, number>();
+  const textSpans = metadata === undefined ? undefined : new Map<Node, readonly [number, number]>();
+  const line = (entry: Node): number => {
+    if (entry.op === 'arr' && entry.text !== undefined && metadata !== undefined) {
+      let text: string | undefined;
+      try {
+        text = losslessSourceString(entry.text, 'native authoring text');
+      } catch {
+        textIssue ??= 'unrepresentable-text';
+      }
+      if (text !== undefined) {
+        const bytes = new TextEncoder().encode(text);
+        const matching =
+          entry.args.length === bytes.length &&
+          entry.args.every(
+            (argument, index) => argument.kind === 'u32' && argument.value === bytes[index],
+          );
+        if (matching) textFlags?.set(entry, 2);
+        else textSpans?.set(entry, span(text));
+      }
+    }
+    return metadata?.line(entry.comments) ?? 0;
+  };
+  const authoring =
+    metadata === undefined
+      ? undefined
+      : program.functions.map((fn) => {
+          const header = metadata.line(fn.comments);
+          const examples = (fn.spec?.examples ?? []).map((example) =>
+            metadata.line(example.comments),
+          );
+          const pre = fn.spec?.pre === undefined ? 0 : line(fn.spec.pre);
+          const post = fn.spec?.post === undefined ? 0 : line(fn.spec.post);
+          const nodes = fn.nodes.map(line);
+          const ret = metadata.line(fn.retComments),
+            end = metadata.line(fn.endComments);
+          return { header, examples, pre, post, nodes, ret, end };
+        });
+  const [tailFirst, tailCount] = metadata?.tail(
+    program.functions.length
+      ? (program.functions.at(-1)?.afterComments ?? [])
+      : (program.tailComments ?? []),
+  ) ?? [0, 0];
+  const extendedAuthoring =
+    metadata !== undefined &&
+    ((textSpans?.size ?? 0) > 0 ||
+      program.functions.some(
+        (fn, index) =>
+          fn.afterComments !== undefined &&
+          (index + 1 !== program.functions.length || fn.afterComments.length === 0),
+      ) ||
+      (program.functions.length > 0 && (program.tailComments?.length ?? 0) > 0));
+  const functionTails =
+    !extendedAuthoring || metadata === undefined
+      ? undefined
+      : program.functions.flatMap((fn, index) => {
+          const [first, count] =
+            index + 1 === program.functions.length
+              ? [tailFirst, tailCount]
+              : metadata.tail(fn.afterComments ?? []);
+          return [fn.afterComments === undefined ? 0 : 1, first, count];
+        });
+  const programTail =
+    !extendedAuthoring || metadata === undefined
+      ? undefined
+      : !program.functions.length
+        ? [tailFirst, tailCount]
+        : metadata.tail(program.tailComments ?? []);
+  const textRows = extendedAuthoring ? { body: [] as number[], spec: [] as number[] } : undefined;
   const source = strings.join('');
   builder.initialize(source, program.profile === 'strict');
-  // One synthetic IR location suffices: metadata is restored separately after checking.
-  append(table(32), [0, 0, 0, 0, 0, 0, 0, NONE, 0, 0]);
   const symbols = new Map<string, number>();
   const symbol = (name: string): number => {
     transportString(name);
@@ -162,7 +244,11 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     else fail('unknown operand kind');
     return id;
   };
-  const node = (value: Node, spec = false): number => {
+  const node = (value: Node, lineId: number, spec = false): number => {
+    if (textRows) {
+      const text = textSpans?.get(value);
+      append(spec ? textRows.spec : textRows.body, text === undefined ? [0, 0, 0] : [1, ...text]);
+    }
     const first = table(spec ? 50 : 47, spec).length / 5;
     for (const argument of value.args) operand(argument, spec);
     const op = irOp(value.op);
@@ -175,12 +261,12 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
         value.args.length,
         value.callee === undefined ? NONE : symbol(value.callee),
         value.pred === undefined ? NONE : symbol(value.pred),
+        lineId,
         0,
         0,
         0,
         0,
-        0,
-        0,
+        textFlags?.get(value) ?? 0,
         0,
         0,
       ]) / 14
@@ -226,23 +312,37 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
     for (const parameter of fn.params) append(table(50), [type(parameter)]);
     const result = type(fn.result);
     const first = table(44).length / 14;
-    for (const entry of fn.nodes) node(entry);
+    const locations = authoring?.[index];
+    for (const [nodeIndex, entry] of fn.nodes.entries())
+      node(entry, locations?.nodes[nodeIndex] ?? 0);
     const returned = operand(fn.ret);
     const rawStart = table(56).length / 6;
     const exampleStart = table(41, true).length / 8;
-    const contract = (entry: Node | undefined, kind: number): number => {
+    const contract = (entry: Node | undefined, kind: number, lineId: number): number => {
       if (entry === undefined) return NONE;
-      const raw = append(table(56), [kind, index, 0, 0, 0, 0]) / 6;
-      return append(table(44, true), [kind, index, 0, node(entry, true), raw, 0, 0]) / 7;
+      const raw = append(table(56), [kind, index, lineId, 0, 0, lineId]) / 6;
+      return (
+        append(table(44, true), [kind, index, lineId, node(entry, lineId, true), raw, 0, 0]) / 7
+      );
     };
-    for (const example of fn.spec?.examples ?? []) {
-      const raw = append(table(56), [1, index, 0, 0, 0, 0]) / 6;
+    for (const [exampleIndex, example] of (fn.spec?.examples ?? []).entries()) {
+      const lineId = locations?.examples[exampleIndex] ?? 0;
+      const raw = append(table(56), [1, index, lineId, 0, 0, lineId]) / 6;
       const args = example.args.map(literal);
       const start = append(table(38, true), args);
-      append(table(41, true), [index, raw, start, args.length, literal(example.result), 0, 0, 0]);
+      append(table(41, true), [
+        index,
+        raw,
+        start,
+        args.length,
+        literal(example.result),
+        lineId,
+        0,
+        0,
+      ]);
     }
-    const pre = contract(fn.spec?.pre, 2),
-      post = contract(fn.spec?.post, 3);
+    const pre = contract(fn.spec?.pre, 2, locations?.pre ?? 0),
+      post = contract(fn.spec?.post, 3, locations?.post ?? 0);
     if (fn.spec !== undefined)
       append(table(62, true), [index, exampleStart, fn.spec.examples.length, pre, post]);
     append(table(41), [
@@ -253,16 +353,54 @@ export function encodeNativeProgram(program: Program, builder: NativeIrBuilder):
       first,
       fn.nodes.length,
       returned,
-      0,
-      0,
-      0,
+      locations?.header ?? 0,
+      locations?.ret ?? 0,
+      locations?.end ?? 0,
       rawStart,
       table(56).length / 6 - rawStart,
       0,
       0,
     ]);
   }
-  installNativeVectors(builder, tables, specs);
+  installNativeVectors(
+    builder,
+    tables,
+    specs,
+    metadata ? { profileLine, tailFirst, tailCount } : undefined,
+  );
+  let descriptor: Uint32Array | undefined;
+  if (metadata && functionTails && programTail && textRows) {
+    const { body: bodyTexts, spec: specTexts } = textRows;
+    descriptor = new Uint32Array(NATIVE_AUTHORING_WORDS);
+    descriptor.set([
+      NATIVE_AUTHORING_MAGIC,
+      1,
+      builder.get(6),
+      builder.get(7),
+      program.functions.length,
+      bodyTexts.length / 3,
+      specTexts.length / 3,
+      builder.upload(Uint32Array.from(functionTails)),
+      functionTails.length,
+      functionTails.length,
+      program.tailComments === undefined ? 0 : 1,
+      ...programTail,
+      builder.upload(Uint32Array.from(bodyTexts)),
+      bodyTexts.length,
+      bodyTexts.length,
+      builder.upload(Uint32Array.from(specTexts)),
+      specTexts.length,
+      specTexts.length,
+    ]);
+  }
+  if (metadata)
+    builder.authoring?.(
+      {
+        ...(metadata.issue === undefined ? {} : { source: metadata.issue }),
+        ...(textIssue === undefined ? {} : { text: textIssue }),
+      },
+      descriptor,
+    );
   return source;
 }
 

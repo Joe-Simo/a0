@@ -14,7 +14,7 @@ const report = {
 };
 try {
   for (const fixture of specs.filter((f) => !f.heavy)) {
-    const r = compileSource(fixture.source);
+    const r = compileSource(fixture.nativeSource ?? fixture.source);
     assert.equal(r.code, fixture.status, fixture.name);
     if (!r.code) assert.equal(WebAssembly.validate(r.bytes), true, fixture.name);
     report.rows.push({

@@ -11,6 +11,7 @@ import { JS_SOURCE_FUNCTION_TYPES } from '../src/source-js.js';
 import { COMPILER_VERSION } from '../src/targets.js';
 import { committedTree } from './measurement-checkout.js';
 import { writeReport } from './scrub-results.js';
+import { sourceCompilerInputs, sourceFunctionSignatures } from './source-compiler-inputs.js';
 import { jsCompilerOutputPaths, jsSourceInputPaths } from './source-js-inputs.js';
 
 assert.equal(process.argv.length, 3);
@@ -24,6 +25,11 @@ const frontendOptions = { jsIo: 'host' as const, optimize: true };
 const frontend = compile(linked.program, 'js', frontendOptions).text;
 const emission = {
   compilerVersion: COMPILER_VERSION,
+  compilerInputInventory: await sourceCompilerInputs(process.cwd()),
+  frontendFunctions: sourceFunctionSignatures(
+    linked.program,
+    Object.keys(JS_SOURCE_FUNCTION_TYPES),
+  ),
   compilerCheckout: identity,
   compilerBuild: {
     node: process.version,

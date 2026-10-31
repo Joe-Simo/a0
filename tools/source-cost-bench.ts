@@ -1,6 +1,6 @@
 /**
  * Matched historical-input controls for the modular A0 frontend; no shipping-CLI or AI claim.
- * --cross-backend explicitly compares C/direct builds and requires --control-artifact=DIR and
+ * --cross-backend explicitly compares C with direct-Wasm/generated-JS and requires --control-artifact=DIR and
  * --control-checkout=DIR. --prepare-only verifies provenance and frozen inputs without timing.
  * --compiler-codegen compares two freshly recorded C emitters with identical runtime/build options.
  * --source-algorithm compares different A0 closures with an identical compiler/host/runtime/toolchain.
@@ -26,6 +26,7 @@ import {
   sourceCostArtifact,
   verifyCSourceCostBuild,
   verifyDirectSourceCostBuild,
+  verifyJsSourceCostBuild,
   verifySourceCostStackProof,
 } from './source-cost-artifact.js';
 import {
@@ -36,6 +37,7 @@ import {
   verifySourceCostControl,
   verifySourceCostFrozenC,
 } from './source-cost-control.js';
+import { sourceCostHistoricalOutputs, sourceCostWorkerInputs } from './source-cost-worker-proof.js';
 import { loadSource, systemLoadTriple } from './system-load.js';
 
 const args = process.argv.slice(2);
@@ -120,6 +122,18 @@ const units = JSON.parse(await readFile(inputIndexPath, 'utf8')) as {
 }[];
 const candidateArtifact = await sourceCostArtifact(artifact);
 const build = candidateArtifact.build;
+const controlSnapshot =
+  controlArtifact === undefined ? undefined : await sourceCostArtifact(controlArtifact);
+let controlBuild = controlSnapshot?.build;
+const strictJsComparison =
+  build.backend === 'generated-js' || controlBuild?.backend === 'generated-js';
+if (strictJsComparison) {
+  assert.ok(
+    crossBackend && build.backend === 'generated-js',
+    'JS target requires --cross-backend with candidate JS and C control',
+  );
+  assert.ok(nativeToolchain, 'JS target comparison requires --sysroot and --builtins');
+}
 assert.ok(crossBackend || build.backend === undefined, 'direct frontend requires --cross-backend');
 async function verifyBuild(
   checkout: string,
@@ -130,6 +144,19 @@ async function verifyBuild(
   emitter: typeof Backends.compile = compile,
   version: string = COMPILER_VERSION,
 ): Promise<void> {
+  if (record.backend === 'generated-js') {
+    assert.ok(
+      crossBackend && nativeToolchain,
+      'JS target requires explicit cross-backend toolchain',
+    );
+    nativeRebuilds[checkout === root ? 'candidate' : 'control'] = await verifyJsSourceCostBuild(
+      checkout,
+      directory,
+      record,
+      nativeToolchain,
+    );
+    return;
+  }
   if (record.backend === 'direct-wasm') {
     assert.ok(crossBackend, 'direct frontend requires --cross-backend');
     await verifyDirectSourceCostBuild(checkout, record, {
@@ -156,9 +183,9 @@ async function verifyBuild(
       compile: emitter,
       version,
     },
-    strictNative,
+    strictNative || strictJsComparison,
   );
-  if (strictNative) {
+  if (strictNative || strictJsComparison) {
     assert.ok(nativeToolchain);
     nativeRebuilds[checkout === root ? 'candidate' : 'control'] = await rebuildCSourceCostBuild(
       checkout,
@@ -168,10 +195,8 @@ async function verifyBuild(
   }
 }
 await verifyBuild(root, build, artifact);
-let controlSnapshot: Awaited<ReturnType<typeof sourceCostArtifact>> | undefined;
-let controlBuild: typeof build | undefined;
 if (controlArtifact !== undefined) {
-  controlSnapshot = await sourceCostArtifact(controlArtifact);
+  assert.ok(controlSnapshot);
   controlBuild = controlSnapshot.build;
   verifySourceCostControl(
     build,
@@ -266,6 +291,35 @@ for (const unit of units) {
   preparedInputs.set(unit.input, hash(prepared));
   await writeFile(join(out, unit.input), prepared);
 }
+let workerProofPath: string | undefined, workerProofSHA256: string | undefined;
+let workerProof:
+  | {
+      schema: number;
+      checkout: typeof identity;
+      sdkOutputs: Awaited<ReturnType<typeof sourceCostWorkerInputs>>;
+      subjects: { candidate: typeof candidateArtifact; control: typeof controlSnapshot };
+      historical: {
+        checkout: typeof baselineIdentity;
+        outputs: Awaited<ReturnType<typeof sourceCostHistoricalOutputs>>;
+      };
+    }
+  | undefined;
+if (strictJsComparison) {
+  assert.ok(controlSnapshot);
+  workerProof = {
+    schema: 1,
+    checkout: identity,
+    sdkOutputs: await sourceCostWorkerInputs(root, build.compilerOutputs),
+    subjects: { candidate: candidateArtifact, control: controlSnapshot },
+    historical: {
+      checkout: baselineIdentity,
+      outputs: await sourceCostHistoricalOutputs(baseline),
+    },
+  };
+  workerProofPath = join(out, 'worker-proof.json');
+  await writeReport(workerProofPath, workerProof);
+  workerProofSHA256 = hash(await readFile(workerProofPath));
+}
 async function verifyUnchanged(): Promise<void> {
   assert.deepEqual(committedTree(root), identity, 'candidate changed during measurement');
   assert.deepEqual(
@@ -291,6 +345,19 @@ async function verifyUnchanged(): Promise<void> {
       'control artifact or build record changed',
     );
   assert.equal(hash(await readFile(workerPath)), workerSHA256, 'worker changed');
+  if (workerProof && workerProofPath) {
+    assert.equal(hash(await readFile(workerProofPath)), workerProofSHA256, 'worker proof changed');
+    assert.deepEqual(
+      await sourceCostHistoricalOutputs(baseline),
+      workerProof.historical.outputs,
+      'historical SDK outputs changed',
+    );
+    assert.deepEqual(
+      await sourceCostWorkerInputs(root, build.compilerOutputs),
+      workerProof.sdkOutputs,
+      'worker SDK outputs changed',
+    );
+  }
   assert.equal(
     hash(await readFile(inputIndexPath)),
     inputIndexSHA256,
@@ -313,6 +380,9 @@ if (args.includes('--prepare-only')) {
     baseline: baselineIdentity,
     control: controlIdentity,
     controlMode,
+    ...(strictJsComparison
+      ? { strictJsComparison, workerProofSHA256, workerProof, nativeRebuilds }
+      : {}),
     compilerInputDifferences,
     sourceAlgorithmDifferences,
     ...(strictNative
@@ -356,6 +426,7 @@ for (let round = -1; round < 7; round++) {
           arm === 'flat-a0-control' ? (controlArtifact as string) : artifact,
           baseline,
           arm === 'flat-a0-control' ? (controlCheckout ?? root) : root,
+          ...(workerProofPath ? [workerProofPath, workerProofSHA256 as string] : []),
         ],
         {
           encoding: 'utf8',
@@ -396,6 +467,15 @@ await verifyUnchanged();
 const median = (values: number[]): number =>
   values.sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
 const fields = [
+  'modulePreparationMs',
+  'postCheckMs',
+  'beforePreparationRssBytes',
+  'beforePreparationHeapUsedBytes',
+  'beforePreparationExternalBytes',
+  'frontendHeapTotalBytes',
+  'frontendArrayBufferBytes',
+  'heapTotalBytes',
+  'arrayBufferBytes',
   'frontendMs',
   'emitCMs',
   'pipelineMs',
@@ -436,6 +516,9 @@ await writeReport(join(out, 'results.json'), {
   baseline: baselineIdentity,
   control: controlIdentity,
   controlMode,
+  ...(strictJsComparison
+    ? { strictJsComparison, workerProofSHA256, workerProof, nativeRebuilds }
+    : {}),
   compilerInputDifferences,
   sourceAlgorithmDifferences,
   ...(strictNative
@@ -448,14 +531,16 @@ await writeReport(join(out, 'results.json'), {
   startedAt,
   finishedAt: new Date().toISOString(),
   scope:
-    'Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and compiled A0 frontend. Parser/checker plus one historical C text emitter. Frontend instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter, model inference and generated-target execution excluded. Every fresh process preloads the common candidate SDK and its selected artifact; candidate artifact also preloaded for historical and TS controls. Per-sample preload records identify every Wasm component, hash and size. Artifact validation and Wasm module compilation are outside frontend/pipeline phases; fresh-child wall time includes process startup and preparation. No official source cutover or no-regression conclusion is implied.',
+    'Frozen flattened whole-program inputs, old Canonical/Dense controls, current flat TS control and compiled A0 frontend. Parser/checker plus one historical C text emitter. Frontend instantiation/upload/typed-IR decoding included. Graph I/O, shipping CLI startup, formatter, model inference and generated-target execution excluded. Every fresh process preloads the common candidate SDK and its selected artifact; candidate artifact also preloaded for historical and TS controls. Per-sample preload records identify every component, hash and size, separating JavaScript text from Wasm bytes. Artifact validation and module compilation are outside frontend/pipeline phases; fresh-child wall time includes process startup, preparation and final proof checks. No official source cutover or no-regression conclusion is implied.',
   protocol:
     'Reuse the archived frontend experiment input corpus and rotated fresh-process protocol; one discarded warmup round and seven measured rounds. Every arm uses the historical baseline C text emitter, so frontend IR is compared through one fixed backend even when frontend artifact code generation changes. Every emitted C hash must match the baseline control. That control must match the frozen reference after the explicitly recorded compiler-version banner substitution. ' +
-    (sourceAlgorithm
-      ? 'Source-algorithm mode requires two freshly recorded C-derived artifacts with identical compiler/host inputs, compiler version, consumed structural API signatures, ABI, runtime, libraries, toolchain, headers, effective compiler command, frontend emission options and complete compile/link flags. Only A0 source closure, normalized source hash and function count may differ and all differences are recorded. Both artifacts reproduce their own exact C and complete Wasm/build record through their existing fresh builders. Legacy manifests are ineligible.'
-      : compilerCodegen
-        ? 'Compiler-codegen mode requires two freshly recorded C-derived artifacts: identical A0 source closure/count, ABI, runtime, libraries, Clang/LLD and compiler build versions, frontend emission options and complete normalized compile/link flags. Both artifacts reproduce exact C through their own fresh compilers; complete compiler inventories and all differing inputs are recorded. Legacy manifests are ineligible.'
-        : 'Compiled-backend mode requires the same A0 source closure/count, generic arena runtime hashes, libc/builtins and Clang/LLD versions; backend code generation, feature requirements and stack settings are separately recorded in the complete build manifests and are not claimed matched.'),
+    (strictJsComparison
+      ? 'JS compiled-backend mode requires a cold parent re-emission with exact compiler outputs/configuration and SDK/source inventory, the same raw and normalized A0 closure/count and eight structural API signatures, identical common compiler implementation/configuration, explicit host-word IO and optimization, same arena/libc/builtins/toolchain, exact generic-arena rebuild and strict C native rebuild. A hashed immutable parent proof binds every worker to the actual component and SDK bytes; compiler rebuilding never occurs per worker. JavaScript text bytes are distinct from arena Wasm bytes. Module preparation includes artifact/SDK validation plus fresh ESM import and Wasm module compilation outside frontendMs, and remains inside child wall. First-call JS lazy JIT is included in frontendMs. No same-process warm cohort or total engine-memory equivalence is claimed.'
+      : sourceAlgorithm
+        ? 'Source-algorithm mode requires two freshly recorded C-derived artifacts with identical compiler/host inputs, compiler version, consumed structural API signatures, ABI, runtime, libraries, toolchain, headers, effective compiler command, frontend emission options and complete compile/link flags. Only A0 source closure, normalized source hash and function count may differ and all differences are recorded. Both artifacts reproduce their own exact C and complete Wasm/build record through their existing fresh builders. Legacy manifests are ineligible.'
+        : compilerCodegen
+          ? 'Compiler-codegen mode requires two freshly recorded C-derived artifacts: identical A0 source closure/count, ABI, runtime, libraries, Clang/LLD and compiler build versions, frontend emission options and complete normalized compile/link flags. Both artifacts reproduce exact C through their own fresh compilers; complete compiler inventories and all differing inputs are recorded. Legacy manifests are ineligible.'
+          : 'Compiled-backend mode requires the same A0 source closure/count, generic arena runtime hashes, libc/builtins and Clang/LLD versions; backend code generation, feature requirements and stack settings are separately recorded in the complete build manifests and are not claimed matched.'),
   workerSha256: workerSHA256,
   historicalEmitterBanner,
   frozenEmitterBanner,
@@ -464,14 +549,22 @@ await writeReport(join(out, 'results.json'), {
   artifact: {
     sha256: candidateArtifact.preload.artifactSha256,
     sourceSha256: build.sourceSHA256,
-    bytes: candidateArtifact.preload.totalWasmBytes,
+    bytes: strictJsComparison
+      ? candidateArtifact.preload.totalArtifactBytes
+      : candidateArtifact.preload.totalWasmBytes,
     ...candidateArtifact.preload,
   },
   controlArtifact: controlBuild,
   controlPreload: controlSnapshot?.preload,
   nativeBuild: build,
   memoryMethod:
-    'Live frontend RSS/heap/external memory captured before emission. Initial peak/live RSS exposes any inherited launch or preload floor; maxRSS alone cannot establish small-cell frontend parity.',
+    'Live frontend RSS/heap/external/arrayBuffer memory captured before emission. Module preparation and pre-preparation memory are separately recorded; process/SDK import startup remains in child wall. Initial peak/live RSS exposes any inherited launch or preload floor; maxRSS alone cannot establish small-cell frontend parity. JS engine code/JIT/GC cannot be isolated by these process counters. wasmLinearMemoryBytes includes only retained Wasm buffers (arena-only for JS), not JS heap/code/JIT/GC; no cross-engine total-memory equivalence is implied.',
+  runtime: {
+    node: process.version,
+    v8: process.versions.v8,
+    arch: process.arch,
+    platform: process.platform,
+  },
   node: process.version,
   cpu: cpus()[0]?.model,
   availableParallelism: availableParallelism(),

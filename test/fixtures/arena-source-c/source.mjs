@@ -31,7 +31,7 @@ function checkSpec(item, r) {
 try {
   const specResults = new Map();
   for (const item of specs.filter((f) => !f.heavy)) {
-    const r = compileSource(item.source);
+    const r = compileSource(item.nativeSource ?? item.source);
     checkSpec(item, r);
     specResults.set(item.name, r);
     report.rows.push({ name: item.name, code: r.code, status: 'passed' });
@@ -45,7 +45,7 @@ try {
   target(q1, scalarMain([{ functionName: 'f', args: [7], expected: 7 }]));
   for (const name of ['earlier-value-before-later-body', 'whole-parse-before-earlier-value']) {
     const item = specs.find((f) => f.name === name),
-      slow = compileSource(item.source, { quantum: 1 }),
+      slow = compileSource(item.nativeSource ?? item.source, { quantum: 1 }),
       fast = specResults.get(name);
     checkSpec(item, slow);
     assert.deepEqual(slow.bytes, fast.bytes);

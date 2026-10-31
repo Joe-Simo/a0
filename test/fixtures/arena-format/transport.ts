@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnWithInput } from '../../../src/toolchain.js';
-import type { SourceCase } from './cases.js';
+import { nativeFormatInput, type SourceCase } from './cases.js';
 
 export interface ComponentResult {
   readonly operation: number;
@@ -19,7 +19,7 @@ export interface NativeResult {
 
 /** Binary transport only; source grammar, verification, text and hashes execute in A0. */
 export function runNative(exe: string, row: SourceCase): NativeResult {
-  const source = Buffer.from(row.source);
+  const source = Buffer.from(nativeFormatInput(row.source));
   const packet = Buffer.alloc((6 + source.length + row.requests.length * 7) * 4);
   const header = [
     0x41464d54,

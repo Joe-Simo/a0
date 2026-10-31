@@ -6,12 +6,15 @@ import {
   type NativeDiagnosticResult,
   nativeDiagnostic,
 } from './source-native-diagnostic.js';
+import { readWasmWords } from './wasm-words.js';
 
 export interface NativeDiagnosticOptions {
   /** Synchronous and lazy: called only when a failed live arena can be rendered. */
   readonly load: () => WebAssembly.Module;
   /** Existing A0 renderer options: 0 disables new fixes; 1 enables them. */
   readonly options?: number;
+  /** Verified companion capability; forwards all six native pages without interpreting them. */
+  readonly verification?: true;
 }
 export interface NativeDiagnosticPorts {
   readonly memory: WebAssembly.Memory;
@@ -20,6 +23,7 @@ export interface NativeDiagnosticPorts {
   frontend_arena_token?(): number;
   frontend_view(handle: number): number;
   frontend_view_length(handle: number): number;
+  frontend_verification?(): number;
 }
 export type NativeLiveDiagnostic =
   | { readonly packet: NativeDiagnosticPacket; readonly rendered: NativeDiagnosticResult }
@@ -43,6 +47,14 @@ export function nativeDiagnosticRenderer(
     throw new Error('invalid native diagnostic options');
   const component = sourceComponent(ports, options.load, {
     arena_diagnostic_options: { params: [1, PAGE_WORDS, 1], result: RESULT_WORDS },
+    ...(options.verification
+      ? {
+          arena_verified_diagnostic_options: {
+            params: [1, ...Array<number>(6).fill(PAGE_WORDS), 1],
+            result: RESULT_WORDS,
+          },
+        }
+      : {}),
   });
   return {
     get memoryBytes(): number {
@@ -54,11 +66,27 @@ export function nativeDiagnosticRenderer(
       const token = ports.frontend_arena_token() >>> 0;
       if (!token) return { rendered: { ok: false, reason: 'no-arena' } };
       if (parsed.length !== PAGE_WORDS) throw new Error('invalid native diagnostic state');
-      const result = component.invoke('arena_diagnostic_options', [
-        token,
-        Uint32Array.from(parsed),
-        bits,
-      ]);
+      let result: Uint32Array;
+      if (options.verification && ports.frontend_verification) {
+        const pointer = ports.frontend_verification();
+        if (!pointer) return { rendered: { ok: false, reason: 'incomplete-ir' } };
+        const words = Uint32Array.from(readWasmWords(ports.memory.buffer, pointer, 6 * PAGE_WORDS));
+        if (parsed.some((value, index) => value !== words[PAGE_WORDS + index]))
+          throw new Error('native diagnostic verification snapshot differs');
+        result = component.invoke('arena_verified_diagnostic_options', [
+          token,
+          ...Array.from({ length: 6 }, (_, index) =>
+            words.subarray(index * PAGE_WORDS, (index + 1) * PAGE_WORDS),
+          ),
+          bits,
+        ]);
+      } else {
+        result = component.invoke('arena_diagnostic_options', [
+          token,
+          Uint32Array.from(parsed),
+          bits,
+        ]);
+      }
       if (result[RESULT_WORDS - 1] !== token)
         throw new Error('native diagnostic renderer changed arena token');
       const status = result[0] as number,

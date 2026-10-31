@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { after, test } from 'node:test';
 import { pathToFileURL } from 'node:url';
-import { type A0Error, formatProgram } from '../src/core.js';
+import { type A0Error, formatProgram, parse } from '../src/core.js';
 import { link } from '../src/link.js';
 import { findClang, runTool } from '../src/toolchain.js';
 import { emitChunked, runStageChunk } from '../tools/bootstrap.js';
@@ -100,7 +100,13 @@ test('native A0 JavaScript source service retains ordered specs, refusals, conti
 }, async () => {
   const { exe } = await prepare();
   for (const item of cases) {
-    const got = compileSource(exe, item.source, { quantum: 7 });
+    if (item.nativeSource !== undefined)
+      assert.equal(
+        formatProgram(parse(item.nativeSource)),
+        formatProgram(parse(item.source)),
+        `${item.name}: handwritten native source preserves the historical IR`,
+      );
+    const got = compileSource(exe, item.nativeSource ?? item.source, { quantum: 7 });
     assert.equal(got.code, item.status, item.name);
     assert.equal(got.m[1], item.id ?? 0, item.name);
     if (item.status) assert.equal(got.text, '');
