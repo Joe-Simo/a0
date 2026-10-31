@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { A0Error, checkArgument, LIMITS, run, type Value } from '../core.js';
 import { POLICY_FILE, protectionPolicy } from '../protection-policy.js';
 import type { McpFrontend } from '../source-edit.js';
+import type { SourceGraphLoader, SourceGraphServices } from '../source-graph.js';
 import { isTarget } from '../targets.js';
 import { compileSealed, linkSealed } from './build.js';
 import {
@@ -133,7 +134,7 @@ export async function serveUnlocked(
   root: string,
   consumer: Consumer,
   approval?: object,
-  frontend?: McpFrontend,
+  frontend?: McpFrontend | SourceGraphLoader,
 ): Promise<void> {
   const access = project.sourceAccess(consumer, approval);
   output({
@@ -244,7 +245,11 @@ export async function serveUnlocked(
             throw new ProtectionError('PLAINTEXT_ARTIFACT_CONFIRMATION_REQUIRED');
           const bytes = await compileSealed(project, request.path, request.target, {
             projectRoot: root,
-            ...(frontend === undefined ? {} : { frontend }),
+            ...(frontend === undefined
+              ? {}
+              : typeof frontend === 'function'
+                ? { graphLoader: frontend }
+                : { frontend }),
             ...(request.profile === undefined ? {} : { profile: request.profile }),
           });
           output({ ok: true, artifact: Buffer.from(bytes).toString('base64') });
@@ -297,8 +302,10 @@ async function* sessionLines(input: AsyncIterable<Buffer>): AsyncGenerator<strin
 export async function protectionCli(
   command: 'seal' | 'protect',
   args: readonly string[],
-  frontend?: McpFrontend,
+  binding?: McpFrontend | SourceGraphServices,
 ): Promise<void> {
+  const frontend = binding !== undefined && 'syntax' in binding ? binding : undefined;
+  const services = binding !== undefined && !('syntax' in binding) ? binding : undefined;
   const [action, ...rest] = args;
   if (action === undefined || action === 'help' || args.includes('--help')) {
     output({
@@ -350,15 +357,19 @@ export async function protectionCli(
     .filter((a) => a.startsWith('--include='))
     .map((a) => a.slice('--include='.length));
   const readUses =
-    frontend === undefined
+    services?.dependencies ??
+    (frontend === undefined
       ? undefined
       : (source: string, path: string) => {
           if (!path.endsWith('.a0')) throw new ProtectionError('SOURCE_FORMAT_MIGRATION_REQUIRED');
           return frontend.syntax.parse(source).uses ?? [];
-        };
+        });
   const planOn = async () => {
     const plan = await inventory(root, include, readUses);
-    if (frontend !== undefined && plan.incompleteGraphs.length !== 0)
+    if (
+      (frontend !== undefined || services?.dependencies !== undefined) &&
+      plan.incompleteGraphs.length !== 0
+    )
       throw new ProtectionError('SOURCE_GRAPH_INCOMPLETE');
     const key = flag(rest, 'key');
     if (key && plan.items.some((i) => resolve(root, i.path) === resolve(key)))
@@ -494,7 +505,7 @@ export async function protectionCli(
         }
         approval = await project.approveDisclosure(request, async () => true);
       }
-      await serveUnlocked(project, root, consumer, approval, frontend);
+      await serveUnlocked(project, root, consumer, approval, frontend ?? services?.load);
       return;
     }
     if (action === 'off') {
