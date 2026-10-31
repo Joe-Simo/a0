@@ -6,9 +6,9 @@ import { A0Error, checkArgument, LIMITS, run, type Value } from '../core.js';
 import { POLICY_FILE, protectionPolicy } from '../protection-policy.js';
 import type { McpFrontend } from '../source-edit.js';
 import {
-  sourceDiagnostic,
   type SourceGraphLoader,
   type SourceGraphServices,
+  sourceDiagnostic,
 } from '../source-graph.js';
 import { isTarget } from '../targets.js';
 import { compileSealed, linkSealed } from './build.js';

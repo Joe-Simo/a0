@@ -15,8 +15,8 @@ import {
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { A0Error } from '../core.js';
 import { sourceUses } from '../link.js';
-import type { SourceDependencyReader } from '../source-graph.js';
 import { assertNoPlaintextWriters, PLAINTEXT_WRITERS } from '../plaintext-write.js';
+import type { SourceDependencyReader } from '../source-graph.js';
 import { digest, opaqueId, ProtectionError, utf8 } from './crypto.js';
 import { assertDeadLocalProcess, processLockRecord } from './process-lock.js';
 import {

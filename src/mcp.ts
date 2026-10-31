@@ -32,10 +32,10 @@ import {
 import { formatDense } from './dense.js';
 import { diag } from './diagnostics.js';
 import { EditSession, revision, typedTargetView } from './edit.js';
-import type { McpFrontend } from './source-edit.js';
-import { writeManagedFile } from './plaintext-write.js';
 import { DENSE_EXTENSION, isDensePath, link } from './link.js';
+import { writeManagedFile } from './plaintext-write.js';
 import { protectionPolicy, requireProtectedTarget } from './protection-policy.js';
+import type { McpFrontend } from './source-edit.js';
 import { type SourceGraphLoader, sourceDiagnostic } from './source-graph.js';
 import { A0_VERSION } from './version.js';
 

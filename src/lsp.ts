@@ -23,8 +23,8 @@ import {
   createConnection,
   type Diagnostic,
   DiagnosticSeverity,
-  InsertTextFormat,
   type DocumentSymbol,
+  InsertTextFormat,
   type Location,
   LSPErrorCodes,
   type Position,
@@ -46,11 +46,11 @@ import {
   parse,
   stripComment,
 } from './core.js';
-import { legacyLspFrontend, sourceLspFrontend, type LspFrontend } from './lsp-frontend.js';
 import { formatDense } from './dense.js';
 import type { SpecFault } from './diagnostics.js';
 import { applyEdit } from './fix.js';
 import { isDensePath, link, parseFile } from './link.js';
+import { type LspFrontend, legacyLspFrontend, sourceLspFrontend } from './lsp-frontend.js';
 import { confine } from './mcp.js';
 import { protectionPolicy } from './protection-policy.js';
 import type { nativeSource } from './source-native.js';
