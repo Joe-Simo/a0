@@ -257,8 +257,13 @@ test('legacy wrapper, options and shared ordinary diagnostics remain compatible'
   try {
     const result = engine.parse(sources.unequal as string);
     assert.ok(!result.ok && result.diagnostic && 'packet' in result.diagnostic);
-    assert.equal(result.diagnostic.packet.status, 7);
-    assert.equal(result.diagnostic.packet.json.length, 0);
+    // The published frontend already supports scalar spec diagnostics through the
+    // legacy entry point. Preserve that behavior when adding verified companions.
+    assert.equal(result.diagnostic.packet.status, 0);
+    assert.deepEqual(
+      rendered(result, 'legacy scalar spec').toJSON(),
+      reference(sources.unequal as string).toJSON(),
+    );
     assert.deepEqual(
       rendered(engine.parse(ordinary), 'legacy ordinary').toJSON(),
       reference(ordinary).toJSON(),
