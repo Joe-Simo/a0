@@ -19,6 +19,7 @@ import { link, parseFile } from '../src/link.js';
 import { formatSource, parseSource } from '../src/source.js';
 import { nativeSource } from '../src/source-native.js';
 import { linkNativeSource } from '../src/source-native-link.js';
+import { losslessSourceString } from '../src/source-utf8.js';
 import { isReject, listSources } from './dense-loader.js';
 import { writeReport } from './scrub-results.js';
 import { nativeSourceArtifact } from './source-native-artifact.js';
@@ -114,6 +115,7 @@ export async function auditSourceCoverage(root = process.cwd()) {
   };
   const graphs: string[] = [],
     rejects: { path: string; id: string }[] = [];
+  const transportRejects: { path: string; line: number; reason: string }[] = [];
   let syntaxRejects = 0,
     candidateLiterals = 0,
     legacyLiterals = 0;
@@ -176,6 +178,18 @@ export async function auditSourceCoverage(root = process.cwd()) {
       graphs.push(label);
     }
     for (const row of await literals(root)) {
+      try {
+        losslessSourceString(row.source);
+      } catch (error) {
+        assert.match(String(error), /unpaired UTF-16 surrogate/);
+        assert.throws(() => engine.parse(row.source), /unpaired UTF-16 surrogate/);
+        transportRejects.push({
+          path: row.path,
+          line: row.line,
+          reason: 'unpaired UTF-16 surrogate',
+        });
+        continue;
+      }
       for (const grammar of ['legacy', 'candidate'] as const) {
         let expected: Program;
         try {
@@ -196,10 +210,11 @@ export async function auditSourceCoverage(root = process.cwd()) {
     }
     return {
       scope:
-        'All accepted repository graphs plus accepted static top-level test literals; dynamic templates and external projects remain outside this audit.',
+        'All accepted repository graphs plus accepted static top-level test literals; malformed UTF-16 fixtures are checked for transport refusal; dynamic templates and external projects remain outside this audit.',
       graphs,
       rejects,
       syntaxRejects,
+      transportRejects,
       legacyLiterals,
       candidateLiterals,
       operations: ALL_OPS.filter((op) => ops.has(op)),

@@ -14,5 +14,9 @@ test('candidate source covers repository graphs and real static feature programs
   assert.ok(result.rejects.length >= 19);
   for (const count of Object.values(result.features)) assert.ok(count > 0);
   assert.equal(result.mismatches, 0);
+  assert.ok(
+    result.transportRejects.some((row) => row.path === 'test/source-native-edit.controls.ts'),
+  );
+  for (const row of result.transportRejects) assert.equal(row.reason, 'unpaired UTF-16 surrogate');
   t.diagnostic(JSON.stringify(result));
 });
