@@ -1,5 +1,5 @@
 /**
- * @file Tree-sitter grammar for A0 (DESIGN.md section 4, "Grammar").
+ * @file Tree-sitter grammar for candidate A0 with retained legacy source compatibility.
  * @license Apache-2.0
  */
 
@@ -12,7 +12,7 @@ const OPS_BY_ARITY = {
   2: [
     'add', 'sub', 'mul', 'and', 'or', 'xor', 'shl', 'shr',
     'eq', 'ne', 'lt', 'le', 'gt', 'ge',
-    'get', 'at', 'write', 'div', 'rem', 'udiv', 'urem', 'puts',
+    'get', 'at', 'write', 'div', 'rem', 'udiv', 'urem', 'puts', '<<', '>>',
   ],
   3: ['select', 'set', 'put'],
 };
@@ -23,6 +23,8 @@ module.exports = grammar({
   extras: ($) => [/[ \t\r]/, $.comment],
 
   word: ($) => $.identifier,
+
+  conflicts: ($) => [[$.array_literal, $.aggregate_expression], [$.record_literal, $.aggregate_expression], [$._literal, $._operand]],
 
   rules: {
     // A profile directive may occur once, before imports/functions (comments are extras).
@@ -50,14 +52,12 @@ module.exports = grammar({
     // use = "use" quoted_relative_path NEWLINE
     use_declaration: ($) => seq('use', field('path', $.string)),
 
-    // function = "fn" name type* "->" type NEWLINE specline* instruction* "ret" operand NEWLINE "end"
+    // Functions have an inferred header or an explicit type signature.
     function_definition: ($) =>
       seq(
         'fn',
         field('name', $.identifier),
-        field('parameters', optional($.parameter_types)),
-        '->',
-        field('result', $._type),
+        optional(seq(field('parameters', optional($.parameter_types)), '->', field('result', $._type))),
         repeat1($._newline),
         repeat(seq($._spec_line, repeat1($._newline))),
         repeat(seq($.instruction, repeat1($._newline))),
@@ -83,7 +83,7 @@ module.exports = grammar({
     // literal = u32 | "true" | "false" | "[" literal* "]" | "(" literal* ")"; the parser also takes
     // `;` or `,` between elements, which is how the canonical text writes them.
     _literal: ($) => choice($.integer, $.boolean, $.array_literal, $.record_literal),
-    array_literal: ($) => seq('[', repeat(choice($._literal, ';', ',')), ']'),
+    array_literal: ($) => seq('[', choice(seq($._literal, '*', $.integer), repeat(choice($._literal, ';', ','))), ']'),
     record_literal: ($) => seq('(', repeat(choice($._literal, ';', ',')), ')'),
 
     // "ret" operand, or the sugar "ret OP ARGS" for a fresh node followed by ret of it.
@@ -116,18 +116,19 @@ module.exports = grammar({
 
     // arr / rec take one or more operands
     aggregate_expression: ($) =>
-      seq(
-        field('operator', alias(choice('arr', 'rec'), $.operator)),
-        repeat1(field('argument', $._operand)),
+      choice(
+        seq(field('operator', alias(choice('arr', 'rec'), $.operator)), repeat1(field('argument', $._operand))),
+        seq('[', choice(seq(field('argument', $._operand), '*', field('count', $.integer)), repeat1(choice(field('argument', $._operand), ',', ';'))), ']'),
+        seq('(', repeat1(choice(field('argument', $._operand), ',', ';')), ')'),
       ),
 
     // id "call" function_name operand*
     call_expression: ($) =>
       seq('call', field('function', $.identifier), repeat(field('argument', $._operand))),
 
-    // id function_name operand*   (direct call: function_name is not an op)
+    // id function_name operand*; return identifiers remain operands, not zero-argument calls.
     direct_call_expression: ($) =>
-      seq(field('function', $.identifier), repeat1(field('argument', $._operand))),
+      prec(-1, seq(field('function', $.identifier), repeat(field('argument', $._operand)))),
 
     // id "fold" function_name count init operand*
     fold_expression: ($) =>
@@ -151,22 +152,22 @@ module.exports = grammar({
       ),
 
     // id "text" "..."  (sugar for arr of UTF-8 bytes)
-    text_expression: ($) => seq('text', field('value', $.string)),
+    text_expression: ($) => seq(optional('text'), field('value', $.string)),
 
-    // operand = earlier_id | parameter | u32_literal | "true" | "false"
+    // Operands include candidate A-Z and legacy/high-index pN parameters.
     _operand: ($) => choice($.identifier, $.parameter, $.integer, $.boolean),
 
     // type = "u32" | "bool" | "io" | type "x" length | "(" type ("," type)* ")"
     _type: ($) => choice($.primitive_type, $.array_type, $.tuple_type),
-    primitive_type: (_) => token(prec(2, /u32|bool|io/)),
+    primitive_type: (_) => token(prec(2, /_|u32|bool|io/)),
     array_type: ($) =>
       choice(
-        token(prec(2, /(u32|bool|io)(x[0-9]+)+/)),
+        token(prec(2, /(_|u32|bool|io)(x[0-9]+)+/)),
         seq(field('element', $.tuple_type), token.immediate(/(x[0-9]+)+/)),
       ),
     tuple_type: ($) => seq('(', $._type, repeat(seq(token.immediate(','), $._type)), token.immediate(')')),
 
-    parameter: (_) => token(prec(1, /p(0|[1-9][0-9]*)/)),
+    parameter: (_) => choice(token(prec(1, /p(0|[1-9][0-9]*)/)), token(prec(1, /[A-Z]/))),
     integer: (_) => /0|[1-9][0-9]*/,
     boolean: (_) => choice('true', 'false'),
     identifier: (_) => /[a-z][a-z0-9_]*/,

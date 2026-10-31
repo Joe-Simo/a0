@@ -1,0 +1,11 @@
+# Linux x86-64 arithmetic reduction dispatch
+
+The native arithmetic-reduction lowering now uses SSE4.1 `pmulld` when CPUID leaf 1 reports ECX bit 19. A per-object byte cache avoids repeated CPUID; first-call races write the same immutable capability. The helper preserves allocated registers, and dispatch occurs outside the vector loop. SSE2 remains the fallback. Darwin output is unchanged. Array fills, strict profiles, effectful bodies and non-reduction loops retain their existing lowering.
+
+On the unchanged dot1k execution benchmark, 15 interleaved samples measured medians of 515.2177 ns before and 228.2738 ns after, versus 85.7634 ns for the same out-of-line driver compiled with Clang 19 `-O3 -march=native`. The forced SSE2 path measured 503.1662 ns. These are this Linux host's measurements, not a universal performance claim; dot1k remains slower than Clang. Raw samples, checksums, load and tool versions are in [the measurement report](../../results/x86-sse41-reduction.json).
+
+The same report records native executable-section growth from 785 to 958 bytes. ELF file size remains 16376 bytes; measured peak RSS remains 8748 KiB. Fresh-process medians were 1.68405 ms before and 1.828026 ms after. The process measurements include launch/teardown noise; no startup or memory improvement is claimed. The cache adds one writable byte per emitted module using dispatch, and the cold path executes CPUID.
+
+The [emission audit](../../results/x86-sse41-emission-audit.json) checks all stock kernels against 192526cd: only Linux dot1k changes after compiler-version normalization; C, JavaScript and Darwin outputs remain identical. Hist256, sieve4k and prefix1k controls have identical native code. Regression tests execute wrapping arithmetic, tail lengths, live inputs, concurrent first calls, and a forced SSE2 path with traps replacing unselected SSE4.1 instructions. The measured assembly was generated before the version bump and verified identical to the final assembly except its version banner.
+
+The local available aggregate gate is required before this checkpoint is considered validated. Mac, Windows, Apple GPU and other unavailable platform checks remain outstanding; no publication or full-platform release claim is authorized by these measurements.

@@ -85,6 +85,7 @@ const CONFIGURATION = [
 ];
 const HELPERS = [
   'tools/source-native-build.ts',
+  'tools/source-local-arena.ts',
   'tools/source-compiler-inputs.ts',
   'tools/scrub-results.ts',
 ];

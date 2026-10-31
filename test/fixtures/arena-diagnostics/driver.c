@@ -11,7 +11,7 @@ static void load(uint32_t handle, uint32_t start, uint32_t count, uint32_t *page
 /* Host responsibilities are source upload, word transport and session checks. */
 int main(int argc, char **argv) {
   if (argc == 4) return structured_main(argc, argv);
-  if (argc != 5) die("source output budget options");
+  if (argc != 5 && argc != 6) die("source output budget options [verify]");
   FILE *file = fopen(argv[1], "rb");
   if (!file) die("open source");
   if (fseek(file, 0, SEEK_END) != 0) die("seek source");
@@ -50,7 +50,23 @@ int main(int argc, char **argv) {
   a0_io io, before;
   memset(&io, 0xa5, sizeof io);
   memcpy(&before, &io, sizeof io);
-  DIAG_RESULT result = a0_arena_parse_diagnostic_options(&io, handle, length, (uint32_t)strtoul(argv[4], NULL, 10));
+  DIAG_RESULT result;
+  if (argc == 6) {
+    if (strcmp(argv[5], "verify")) die("unknown verification mode");
+    PARSED parsed = a0_arena_parse(&io, handle, length);
+    VERIFIED checked = a0_arena_verify_begin(&io, parsed.f1);
+    uint32_t rounds = 0;
+    while (!checked.f0.e[0] && checked.f0.e[1] != 11) {
+      checked = a0_arena_verify_resume(checked, 97);
+      if (++rounds > 100000) die("verification watchdog");
+    }
+    uint32_t count;
+    allocation *copy = snapshot(&count);
+    result = a0_arena_diagnostic_options(&io, checked.f1, (uint32_t)strtoul(argv[4], NULL, 10));
+    unchanged(copy, count);
+  } else {
+    result = a0_arena_parse_diagnostic_options(&io, handle, length, (uint32_t)strtoul(argv[4], NULL, 10));
+  }
   if (result.f3 != &io || memcmp(&io, &before, sizeof io) != 0)
     die("IO identity/content changed");
   if (result.f0 != 0 && (result.f1.f0 || result.f1.f1 || result.f1.f2))

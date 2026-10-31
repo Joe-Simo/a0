@@ -116,6 +116,7 @@ import {
   FRAME_BASE,
   FRAME_BYTES,
   type NativeTrapKind,
+  nativeTrapSymbol,
   type TrapModule,
   trapIndex,
 } from './native-trap.js';
@@ -2880,7 +2881,7 @@ class FunctionEmitter {
 
   /** Push this function's frame on the shadow stack (x9-x12 only: the arguments are live). */
   #enter(): void {
-    this.#adr('x9', '_a0_ts');
+    this.#adr('x9', nativeTrapSymbol('darwin', 'ts'));
     this.#emit('ldr x10, [x9]', 'add x11, x9, x10');
     this.#adr('x12', this.#tag('nm'));
     this.#emit(
@@ -2892,13 +2893,13 @@ class FunctionEmitter {
 
   /** Pop it (x9, x10 only: the result registers are live). */
   #leave(): void {
-    this.#adr('x9', '_a0_ts');
+    this.#adr('x9', nativeTrapSymbol('darwin', 'ts'));
     this.#emit('ldr x10, [x9]', `sub x10, x10, #${FRAME_BYTES}`, 'str x10, [x9]');
   }
 
   /** x10 = the address of the current frame's trip word (the frame's `{name, node, trip}` at -16). */
   #topFrame(): void {
-    this.#adr('x10', '_a0_ts');
+    this.#adr('x10', nativeTrapSymbol('darwin', 'ts'));
     this.#emit('ldr x11, [x10]', 'add x10, x10, x11');
   }
 
@@ -4715,7 +4716,7 @@ class FunctionEmitter {
         this.out.push(
           `${this.#tag(kind === 'bounds' ? 'tb' : 'td')}:`,
           `\tmovz w16, #${trapIndex(kind)}`,
-          '\tb _a0_trap',
+          `\tb ${nativeTrapSymbol('darwin', 'trap')}`,
         );
     const text = (tag: string, value: string): void => {
       this.out.push(`${this.#tag(tag)}:`, `\t.asciz ${JSON.stringify(value)}`);

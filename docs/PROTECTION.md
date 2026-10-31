@@ -161,7 +161,10 @@ To disable storage encryption, `seal off --plan --key=OWNER_FILE` reports a new 
 restored atomically in their destination directories; only then is OFF committed and the encrypted store atomically moved into `.a0-seal-archive`. The mere presence of an active store blocks ordinary source access, even if its unauthenticated phase was tampered with. Crash
 recovery is `seal resume --key=OWNER_FILE`. A stale commit lock requires owner authentication,
 the lock-file digest via `--approve-lock`, and proof that its recorded process is no longer
-alive. Ambiguous locks fail closed. Old encrypted backups are not deleted by disabling sealing.
+alive in the same Linux boot and PID namespace. Active PIDs, legacy/foreign/unknown scopes,
+incomplete projects without authenticated owner metadata, and competing recovery attempts
+fail closed. PID reuse may conservatively block recovery. Other hosts and recovery of a
+crashed recovery operation remain unsupported; there is no automatic lock breaking. Old encrypted backups are not deleted by disabling sealing.
 
 ## Release adapters and universal scope
 
@@ -214,3 +217,98 @@ The filesystem adapter currently restores file bytes into private files/director
 OS ACLs, ownership, timestamps and permissions are not a transparent filesystem round trip.
 Symlink, hard-link, Windows directory durability, trusted checkpoint and owner-identity
 replacement adapters remain pending. These limits do not change A0 program semantics.
+
+## Managed-writer coordination status
+
+The cache writer registers source and destination-ancestor leases before rechecking the
+seal fence, including for a cache outside the source project. After creating the cache
+directory it also registers that directory before writing payloads. Compilation retains
+these leases across its pending cache writes and drains those writes on failure. This is
+per batch, not a separate guard for every emitted function. CLI file outputs and both
+MCP save modes register their source dependencies and destination projects; staged
+source migration registers the source and destination parent until it finishes.
+Sealing refuses active leases before copying or deleting source. Existing migration
+destinations are not modified by a refused operation.
+
+This covers the recorded late-cache-write interleaving and the tested standard file
+persistence paths. It does not control arbitrary external editors, shell redirection,
+or all external-toolchain temporary-file lifecycles. LSP clients perform their own
+writes and need an explicit managed protocol. Stale leases fail closed. New leases record
+only a process identity scoped to the current boot and PID namespace; they contain no source
+or key material. The project owner can explicitly recover one dead-process lease with
+`a0 seal recover-writer PROJECT --key=IDENTITY --lease=RELATIVE_PATH --approve-lock=SHA256`
+and the usual passphrase input. The digest must name the exact lease bytes. The operation
+requires the authenticated project owner, a same-boot/same-namespace absent process,
+an unchanged regular single-link lease, and plain directories within that project.
+It never uses age as evidence or recovers a live writer. Recovery only removes the lease;
+inspect interrupted output and resume sealing separately.
+
+Legacy PID-only leases, foreign/unknown process scopes, projects without an authenticated
+head, and custom-cache leases outside the authenticated project remain manual-review
+blockers. No automatic lock breaking is provided. Integrations that omit source-project
+ownership remain pending.
+A dead recovery mutex can be explicitly recovered with
+`a0 seal recover-mutex PROJECT --key=IDENTITY --approve-lock=SHA256` and the usual passphrase
+input. It uses the commit lock as an interlock and the same scoped process-death and exact-file
+checks. A live recovery, an existing commit lock, an unknown owner, or changed/hard-linked
+lock remains blocked. If both locks are stale, or publication was interrupted with a second
+hard link still present, manual review remains necessary; no recursive lock breaking occurs.
+The command does not recover or delete plaintext output.
+
+An external cache destination is guarded independently from its source. A destination lease
+can only be recovered through an authenticated project that contains it. Source-project
+ownership does not authorize deleting an arbitrary external lease. Unowned external cache
+locations and legacy metadata remain manual-review cases.
+
+The implementation and its overhead targets remain experimental. See
+[the requirements and acceptance gates](UNIFIED-REQUIREMENTS.md).
+
+
+Commit-lock recovery assumes cooperating A0 processes and an uncompromised local filesystem.
+Its process metadata is coordination evidence, not a cryptographic assertion against a
+malicious filesystem owner. Root/namespace changes and copied stores may make recovery
+unverifiable. It neither authorizes arbitrary external writers nor proves secure erasure.
+The CLI checks project-owner authority, beyond recipient decryption access, before maintenance.
+
+## Candidate source integration boundary
+
+The internal candidate-bound CLI now passes one frontend into sealing inventory and unlocked
+check/run/build operations. Inventory still discovers managed sources and explicit includes,
+including dependencies under otherwise excluded directories. Candidate syntax errors that
+prevent a complete inventory are refused before a sealing plan is issued. Legacy defaults are
+unchanged. No request can replace the frontend selected by the host at session launch.
+
+Sealed compilation uses the same encrypted object cache as before; it does not materialize a
+plaintext tree or use the ordinary disk cache. Linking compares source-object identities before
+and after asynchronous reads and rejects a same-session source change. Unrelated encrypted
+cache writes do not change that source snapshot. Existing store authentication and commit CAS
+still govern concurrent durable updates; this does not add a trusted anti-rollback service.
+
+[Candidate integration evidence](../results/source-sealed-hooks.json) covers synthetic identities,
+exact outputs on the retained migration projects, error redaction, explicit artifact permission,
+protected hook refusal and interrupted authorized restoration. The internal authoring reference
+is [here](design/candidate-authoring.md); its examples are executable checks, not new AI accuracy
+evidence. Public guide initialization remains gated.
+
+This does not convert the syntax of an existing encrypted project in place. The supported staged
+flow converts a legacy project into a new candidate tree before sealing. Restoring an already
+sealed project remains a separate owner-approved plaintext exposure operation. Neither path
+changes the limitations on memory, old copies, unmanaged writers, platform durability or artifact
+reverse engineering documented above.
+
+
+## Pending-operation cancellation
+
+Sealed reads recheck the lock after their final asynchronous integrity check. Source writes
+recheck the active source phase and scoped disclosure approval when a queued operation starts and before commit dispatch;
+revocation or expiry before those boundaries refuses the change. Sealed builds recheck lock
+and migration state after source hashing and before returning an artifact. These checks do
+not recall bytes already returned or a storage commit already dispatched. Byte-buffer clearing
+is best effort and is not a guarantee about JavaScript strings or process memory.
+
+Filesystem entry points bind relative project roots and destinations before asynchronous work,
+so a caller's later working-directory change cannot redirect migration, inventory, restoration
+or lease recovery. This does not claim safety against a malicious filesystem owner changing
+symlinks or files outside the cooperating-writer protocol.
+
+See `results/security-session-review.json` for the scoped local review and reproduced defects.

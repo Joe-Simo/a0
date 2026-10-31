@@ -1,0 +1,87 @@
+raw # Failure-only typed aggregate formatting. Work is bounded to 131073 stack steps.
+raw # Runtime aggregate blocks contain count then (kind,payload) pairs; IO is never formatted.
+extern arena_zero() -> u32x128
+extern arena_load(io,u32,u32,u32) -> (u32,u32x128,io)
+extern av_load(io,(u32,u32,u32),u32,u32) -> (u32,u32x128,io)
+extern av_append(io,(u32,u32,u32),u32,u32x128) -> (u32,(u32,u32,u32),io)
+extern ad_byte((u32,(u32,u32,u32),io),u32) -> (u32,(u32,u32,u32),io)
+extern sd_scalar((u32,(u32,u32,u32),io),u32,u32) -> (u32,(u32,u32,u32),io)
+fn dv_pushgo(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,type:u32,kind:u32,value:u32,action:u32) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ let z=set(set(set(set(arena_zero(),0,type),1,kind),2,value),3,action)
+ let a=av_append(s#3,s#2,4,z)
+ return (s#0!=0?s#0:a#0,s#1,a#1,a#2)
+end
+fn dv_push(s:(u32,(u32,u32,u32),(u32,u32,u32),io),type:u32,kind:u32,value:u32,action:u32) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ return fold(dv_pushgo,s#0==0?1:0,s,type,kind,value,action)
+end
+
+fn dv_byte(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,ch:u32) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ let a=ad_byte((s#0,s#1,s#3),ch)
+ return (a#0,a#1,s#2,a#2)
+end
+fn dv_scalar(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,kind:u32,value:u32) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ let a=sd_scalar((s#0,s#1,s#3),kind,value)
+ return (a#0,a#1,s#2,a#2)
+end
+fn dv_aggregate(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,frame:u32x128,type:u32x128) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ let h=arena_load(s#3,frame[2],0,1)
+ let valid=(h#0==0)&(get(h#1,0)==type[2])&(type[2]<=2147483647)&(frame[2]!=0)
+ let a=(valid?0:7,s#1,s#2,h#2)
+ let a=fold(dv_byte,valid?1:0,a,type[0]==3?91:40)
+ return dv_push(a,frame[0],frame[2],0,1)
+end
+fn dv_value(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,frame:u32x128,type:u32x128) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ let scalar=type[0]<=1
+ let aggregate=(type[0]==3)|(type[0]==4)
+ let valid=(scalar&(frame[1]==type[0])&((type[0]!=1)|(frame[2]<=1)))|(aggregate&(frame[1]>=3)&(frame[1]!=4294967295))
+ let a=(valid?0:7,s#1,s#2,s#3)
+ let a=fold(dv_scalar,valid&scalar?1:0,a,frame[1],frame[2])
+ return fold(dv_aggregate,valid&aggregate?1:0,a,frame,type)
+end
+fn dv_child(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,frame:u32x128,type:u32x128,p:u32x128) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ let a=fold(dv_byte,frame[2]!=0?1:0,s,59)
+ let r=arena_load(a#3,frame[1],1+frame[2]*2,2)
+ let t=av_load(r#2,(p[71],p[72],p[73]),type[0]==4?type[1]+frame[2]:0,type[0]==4?1:0)
+ let valid=(r#0==0)&(t#0==0)
+ let a=(a#0!=0?a#0:(valid?0:7),a#1,a#2,t#2)
+ let a=dv_push(a,frame[0],frame[1],frame[2]+1,1)
+ return dv_push(a,type[0]==4?get(t#1,0):type[1],get(r#1,0),get(r#1,1),0)
+end
+fn dv_close(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,type:u32x128) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ let a=fold(dv_byte,(type[0]==4)&(type[2]==1)?1:0,s,59)
+ return dv_byte(a,0,type[0]==3?93:41)
+end
+fn dv_continue(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,frame:u32x128,type:u32x128,p:u32x128) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ let fields=(type[0]!=4)|((type[1]<=p[72])&(type[2]<=p[72]-type[1]))
+ let valid=((type[0]==3)|(type[0]==4))&(frame[2]<=type[2])&(type[2]<=2147483647)&fields
+ let a=(valid?0:7,s#1,s#2,s#3)
+ let child=valid&(frame[2]<type[2])
+ let a=fold(dv_child,child?1:0,a,frame,type,p)
+ return fold(dv_close,valid&!child?1:0,a,type)
+end
+fn dv_step(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,p:u32x128) -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+ let r=av_load(s#3,s#2,s#2#1-4,4)
+ let frame=r#1
+ let valid=(r#0==0)&(frame[0]<p[69]/5)&(frame[3]<=1)
+ let t=av_load(r#2,(p[68],p[69],p[70]),valid?frame[0]*5:0,valid?5:0)
+ let a=(valid&(t#0==0)?0:7,s#1,(s#2#0,s#2#1-4,s#2#2),t#2)
+ let a=fold(dv_value,(a#0==0)&(frame[3]==0)?1:0,a,frame,t#1)
+ return fold(dv_continue,(a#0==0)&(frame[3]==1)?1:0,a,frame,t#1,p)
+end
+fn dv_more(s:(u32,(u32,u32,u32),(u32,u32,u32),io),i:u32,p:u32x128) -> bool
+ return (s#0==0)&(s#2#1!=0)
+end
+fn dv_walk(s:(u32,(u32,u32,u32),io),i:u32,p:u32x128,type:u32,kind:u32,value:u32) -> (u32,(u32,u32,u32),io)
+ let a=dv_push((s#0,s#1,(0,0,0),s#2),type,kind,value,0)
+ let a=loop(dv_more,dv_step,131073,a,p)
+ return (a#0!=0?a#0:(a#2#1==0?0:7),a#1,a#3)
+end
+
+fn dv_simple(s:(u32,(u32,u32,u32),io),i:u32,type:u32,kind:u32,value:u32) -> (u32,(u32,u32,u32),io)
+ let valid=(kind==type)&((type!=1)|(value<=1))
+ return sd_scalar((s#0!=0?s#0:(valid?0:7),s#1,s#2),kind,value)
+end
+fn sd_value(s:(u32,(u32,u32,u32),io),p:u32x128,type:u32,kind:u32,value:u32) -> (u32,(u32,u32,u32),io)
+ let a=fold(dv_simple,type<=1?1:0,s,type,kind,value)
+ return fold(dv_walk,(a#0==0)&(type>1)?1:0,a,p,type,kind,value)
+end

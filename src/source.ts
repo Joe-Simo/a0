@@ -31,6 +31,57 @@ export interface ParsedSource {
   readonly locate: (fn: string, node?: string) => number | undefined;
 }
 
+export function parseSourceOperand(text: string, line?: number, lineText?: string): Operand {
+  const code = text.charCodeAt(0);
+  return text.length === 1 && code >= 65 && code <= 90
+    ? { kind: 'param', index: code - 65 }
+    : parseOperand(text, line, lineText);
+}
+
+function sourceNode(
+  text: string,
+  line: number | undefined,
+  words: readonly string[] | undefined,
+  operand: typeof parseOperand,
+): Node {
+  const quoted = text.includes('"') ? /^(\S+)\s+"((?:[^"\\]|\\.)*)"\s*$/.exec(text) : null;
+  if (quoted !== null) return textNode(quoted[1] as string, quoted[2] as string, line);
+  const parts = words ?? text.trim().split(/\s+/);
+  const id = parts[0] ?? '';
+  const word = parts[1] ?? '';
+  if (word.startsWith('[') || word.startsWith('(')) {
+    if (!isValidIdentifier(id)) throw diag('A0005', [id], line === undefined ? {} : { line });
+    const cursor = { text: parts.slice(1).join(' '), pos: 0 };
+    const fail = (message: string): never => {
+      throw new A0Error(message, line, { code: 'parse' });
+    };
+    const value = aggregate(cursor, {
+      maxElements: LIMITS.maxAggregateBits,
+      fail,
+      atom: () => {
+        const token = /^[^\s,[\]()*;]+/.exec(cursor.text.slice(cursor.pos))?.[0];
+        if (token === undefined) return fail('an aggregate element must be an operand');
+        cursor.pos += token.length;
+        return operand(token, line, text);
+      },
+    });
+    if (cursor.pos !== cursor.text.length) fail('unexpected text after aggregate literal');
+    return { id, op: value.kind, args: value.items };
+  }
+  return parseNodeOf(
+    text,
+    line,
+    text.includes('"') ? undefined : parts,
+    operand,
+    SOURCE_OP_ALIASES,
+  );
+}
+
+/** The same instruction reader used by source files and session edits. */
+export function parseSourceNode(text: string, line?: number): Node {
+  return sourceNode(text, line, undefined, parseSourceOperand);
+}
+
 export function parseSource(source: string): Program {
   return parseSourceUnit(source).program;
 }
@@ -40,47 +91,12 @@ export function parseSourceUnit(source: string): ParsedSource {
   let inferred = false;
   let used = 0;
   const operand = (text: string, line?: number, lineText?: string): Operand => {
-    const code = text.charCodeAt(0);
-    const value: Operand =
-      text.length === 1 && code >= 65 && code <= 90
-        ? { kind: 'param', index: code - 65 }
-        : parseOperand(text, line, lineText);
+    const value = parseSourceOperand(text, line, lineText);
     if (inferred && value.kind === 'param') used = Math.max(used, value.index + 1);
     return value;
   };
-  const node = (text: string, line?: number, words?: readonly string[]): Node => {
-    const quoted = text.includes('"') ? /^(\S+)\s+"((?:[^"\\]|\\.)*)"\s*$/.exec(text) : null;
-    if (quoted !== null) return textNode(quoted[1] as string, quoted[2] as string, line);
-    const parts = words ?? text.trim().split(/\s+/);
-    const id = parts[0] ?? '';
-    const word = parts[1] ?? '';
-    if (word.startsWith('[') || word.startsWith('(')) {
-      if (!isValidIdentifier(id)) throw diag('A0005', [id], line === undefined ? {} : { line });
-      const cursor = { text: parts.slice(1).join(' '), pos: 0 };
-      const fail = (message: string): never => {
-        throw new A0Error(message, line, { code: 'parse' });
-      };
-      const value = aggregate(cursor, {
-        maxElements: LIMITS.maxAggregateBits,
-        fail,
-        atom: () => {
-          const token = /^[^\s,[\]()*;]+/.exec(cursor.text.slice(cursor.pos))?.[0];
-          if (token === undefined) return fail('an aggregate element must be an operand');
-          cursor.pos += token.length;
-          return operand(token, line, text);
-        },
-      });
-      if (cursor.pos !== cursor.text.length) fail('unexpected text after aggregate literal');
-      return { id, op: value.kind, args: value.items };
-    }
-    return parseNodeOf(
-      text,
-      line,
-      text.includes('"') ? undefined : parts,
-      operand,
-      SOURCE_OP_ALIASES,
-    );
-  };
+  const node = (text: string, line?: number, words?: readonly string[]): Node =>
+    sourceNode(text, line, words, operand);
   const program = parseProgram(source, {
     header(words, line, text) {
       used = 0;
@@ -178,7 +194,7 @@ function printNode(node: Node): string {
   ].join(' ');
 }
 
-function literal(value: Lit): string {
+export function literal(value: Lit): string {
   return value.kind === 'u32' || value.kind === 'bool'
     ? String(value.value)
     : formatAggregate(value.kind, value.items, literal);

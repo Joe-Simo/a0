@@ -277,7 +277,7 @@ interface Tables {
 }
 
 function intern(tb: Tables, t: Type): number {
-  const key = typeof t === 'string' ? t : JSON.stringify(t);
+  const key = formatType(t);
   const known = tb.typeIndex.get(key);
   if (known !== undefined) return known;
   let triple: [number, number, number];
@@ -723,7 +723,7 @@ export interface OptimizedProgram {
   readonly runs: number;
 }
 
-const OPTIMIZED = new WeakMap<TypedProgram, OptimizedProgram>();
+const OPTIMIZED = new WeakMap<TypedProgram, Map<string, OptimizedProgram>>();
 
 /**
  * The optimizer written in A0, function by function in program order: each run gets the
@@ -746,10 +746,14 @@ export function a0OptimizeProgram(
   // metadata, so strict programs remain explicitly unsupported before any cache lookup.
   assertTargetSupports('a0w optimizer', program);
   const plain = reference === undefined && fallback === undefined && !image;
-  const known = plain ? OPTIMIZED.get(program) : undefined;
+  const known = plain ? OPTIMIZED.get(program)?.get(exe) : undefined;
   if (known !== undefined) return known;
   const done = optimizeProgram(exe, program, reference, fallback, image);
-  if (plain) OPTIMIZED.set(program, done);
+  if (plain) {
+    const byExecutable = OPTIMIZED.get(program) ?? new Map<string, OptimizedProgram>();
+    byExecutable.set(exe, done);
+    OPTIMIZED.set(program, byExecutable);
+  }
   return done;
 }
 

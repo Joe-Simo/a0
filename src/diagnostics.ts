@@ -1405,6 +1405,18 @@ export const DIAGNOSTICS = {
     example: { kind: 'edit', base: SQ, fn: 'sq', bad: 'fix all', good: 'a mul p0 3' },
   },
 
+  A0522: {
+    cls: 'edit',
+    message: 'legacy view options are unavailable in a source-bound session',
+    fix: 'omit the dense and compact view options; use the grammar bound to the session',
+    why: [
+      'A source-bound session uses one grammar for loading, views, edits and saves.',
+      'Legacy view switches cannot change that grammar after the session is created.',
+    ],
+    unrunnable:
+      'requires a source-bound editor or MCP session; covered by test/source-edit.test.ts and test/source-mcp.test.ts',
+  },
+
   // --- Patches, revisions, handles (A06nn) ----------------------------------------------
   A0601: {
     cls: 'patch',

@@ -6,6 +6,10 @@
 
 static a0_arena_session *session;
 static struct a0_io *token;
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+static a0_arena_local *local_arena;
+#define A0_LOCAL_ARENA(t) ((t) == token ? local_arena : NULL)
+#endif
 #define A0_IO_READ(t, out) ((void)(t), *(out) = a0_runtime_read(session), true)
 #define A0_IO_WRITE(t, v) ((void)(t), a0_runtime_write(session, (v)))
 struct a0_io { uint32_t unused; };
@@ -32,6 +36,10 @@ static uint32_t reply(uint32_t expected) {
 }
 
 static uint32_t start_session(uint32_t budget) {
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+    a0_arena_local_close(local_arena);
+    local_arena = NULL;
+#endif
     if (session) a0_arena_destroy(session);
     memset(&state, 0, sizeof state);
     memset(&ir_state, 0, sizeof ir_state);
@@ -45,6 +53,10 @@ static uint32_t start_session(uint32_t budget) {
     if (status) return last_status = status;
     (void)a0_runtime_read(session);
     (void)a0_runtime_read(session);
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+    local_arena = a0_arena_local_open(session);
+    if (!local_arena) return last_status = 4;
+#endif
     return last_status = 0;
 }
 
@@ -159,6 +171,10 @@ uint32_t frontend_view_length(uint32_t handle) {
 }
 
 void frontend_close(void) {
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+    a0_arena_local_close(local_arena);
+    local_arena = NULL;
+#endif
     if (session) a0_arena_destroy(session);
     session = NULL;
     token = NULL;

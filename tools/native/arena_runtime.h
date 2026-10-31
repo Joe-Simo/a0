@@ -100,6 +100,26 @@ uint32_t a0_arena_allocation_count(const a0_arena_session *session);
 uint32_t a0_arena_output_count(const a0_arena_session *session);
 const uint32_t *a0_arena_output(const a0_arena_session *session);
 
+/* Disabled-by-default compiler-private capability. No pointer into storage escapes.
+ * Calls require a live capability and an idle, drained v1 session. A reset or
+ * destroy invalidates outstanding capabilities; close releases the capability.
+ * A capability is single-invocation/single-thread, like its session. Distinct
+ * sessions remain independent. No call is valid after capability close.
+ */
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+typedef struct a0_arena_local a0_arena_local;
+a0_arena_local *a0_arena_local_open(a0_arena_session *session);
+void a0_arena_local_close(a0_arena_local *local);
+uint32_t a0_arena_local_alloc(a0_arena_local *local, uint32_t count,
+                              uint32_t *handle);
+uint32_t a0_arena_local_load(a0_arena_local *local, uint32_t handle,
+                             uint32_t offset, uint32_t count,
+                             uint32_t words[A0_ARENA_BULK_MAX]);
+uint32_t a0_arena_local_store(a0_arena_local *local, uint32_t handle,
+                              uint32_t offset, uint32_t count,
+                              const uint32_t words[A0_ARENA_BULK_MAX]);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

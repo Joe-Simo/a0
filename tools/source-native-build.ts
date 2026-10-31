@@ -14,6 +14,7 @@ import {
   sourceCompilerInputs,
   sourceFunctionSignatures,
 } from './source-compiler-inputs.js';
+import { compileLocalArena } from './source-local-arena.js';
 
 const options = new Map(
   process.argv.slice(2).map((arg) => {
@@ -32,6 +33,7 @@ for (const name of options.keys())
       'symbols',
       'opt-level',
       'diagnostic-ports',
+      'local-arena',
     ].includes(name),
     `unknown argument ${name}`,
   );
@@ -52,6 +54,9 @@ assert.ok(
   ['disabled', 'arena-v1'].includes(diagnosticPorts),
   'diagnostic-ports must be disabled or arena-v1',
 );
+const localArena = options.get('local-arena') ?? 'disabled';
+assert.ok(['disabled', 'checked-experimental'].includes(localArena), 'invalid local-arena mode');
+const localFlags = localArena === 'checked-experimental' ? ['-DA0_ARENA_LOCAL_EXPERIMENT'] : [];
 const diagnosticFlags = diagnosticPorts === 'arena-v1' ? ['-DA0_FRONTEND_DIAGNOSTIC_PORTS'] : [];
 const out = resolve(options.get('out') as string);
 const sysroot = resolve(options.get('sysroot') as string);
@@ -75,7 +80,10 @@ const frontendFunctions = sourceFunctionSignatures(linked.program, [
   'source_ir_type',
 ]);
 const source = formatProgram(linked.program);
-const c = compile(linked.program, 'c', frontendOptions).text;
+const c =
+  localArena === 'checked-experimental'
+    ? compileLocalArena(linked.program, await readFile('compiler/arena_shared.a0', 'utf8'))
+    : compile(linked.program, 'c', frontendOptions).text;
 const normal = /^(a0t_[A-Za-z0-9_]+) a0_arena_verify_begin\(/m.exec(c);
 const large = /^void a0_arena_verify_begin\((a0t_[A-Za-z0-9_]+) \*out/m.exec(c);
 assert.ok(normal || large, 'unsupported C ABI');
@@ -113,6 +121,7 @@ const compileFlags = [
   '-flto',
   '-DNDEBUG',
   ...diagnosticFlags,
+  ...localFlags,
   '-v',
   '-H',
   '-c',
@@ -181,6 +190,16 @@ const portableFlags = (flags: readonly string[]) =>
 const wasm = await readFile(join(out, 'frontend.wasm'));
 assert.deepEqual(WebAssembly.Module.imports(new WebAssembly.Module(wasm)), []);
 await writeReport(join(out, 'build.json'), {
+  ...(localArena === 'checked-experimental'
+    ? {
+        experimentalLocalArena: {
+          contract: 'owned-checked-v1',
+          operations: ['alloc', 'load', 'store'],
+          capability: 'private-wrapper-token',
+          defaultEnabled: false,
+        },
+      }
+    : {}),
   scope:
     'Candidate A0 source frontend built from shared compiler modules. Public TypeScript C backend bootstraps this artifact. No official source cutover or performance claim.',
   entry: 'compiler/source_frontend.a0',
@@ -217,6 +236,7 @@ await writeReport(join(out, 'build.json'), {
     '-flto',
     '-DNDEBUG',
     ...diagnosticFlags,
+    ...localFlags,
   ],
   compileFlags: portableFlags(compileFlags),
   linkerFlags: portableFlags(linkerFlags),

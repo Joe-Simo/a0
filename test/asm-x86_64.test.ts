@@ -698,13 +698,23 @@ function readElf(buf: Buffer): {
 }
 
 /** Assemble `source` with clang for x86-64 ELF, every branch rel32 (`-mrelax-all`). */
-function clangElf(clang: string, source: string): ReturnType<typeof readElf> {
+function clangElf(clang: string, source: string, keepLocals = false): ReturnType<typeof readElf> {
   const dir = mkdtempSync(join(tmpdir(), 'a0-x86enc-'));
   try {
     writeFileSync(join(dir, 'in.s'), source);
     const r = runTool(
       clang,
-      ['--target=x86_64-linux-gnu', '-c', '-x', 'assembler', '-mrelax-all', '-o', 'out.o', 'in.s'],
+      [
+        '--target=x86_64-linux-gnu',
+        '-c',
+        '-x',
+        'assembler',
+        '-mrelax-all',
+        ...(keepLocals ? ['-Wa,-L'] : []),
+        '-o',
+        'out.o',
+        'in.s',
+      ],
       { cwd: dir },
     );
     assert.ok(r.ok, `clang refused the text: ${r.stderr.slice(0, 2000)}`);
@@ -774,7 +784,16 @@ test("x86_64enc.ts: every Linux text of the repository is clang's module, byte f
   for (const [label, text] of await repositoryTexts()) {
     if (!label.includes('(linux')) continue;
     const mine = assembleX86_64Text(text);
-    const elf = clangElf(clang, text);
+    // Clang normally strips .L symbols. Keep them for the named-label oracle, while
+    // also checking that ordinary production assembly has the identical text and BSS.
+    const ordinary = clangElf(clang, text);
+    const elf = clangElf(clang, text, true);
+    for (const name of ['.text', '.bss']) {
+      const kept = elf.sections.find((s) => s.name === name);
+      const stripped = ordinary.sections.find((s) => s.name === name);
+      assert.deepEqual(kept?.bytes, stripped?.bytes, `${label}: ${name} local-label mode bytes`);
+      assert.equal(kept?.size, stripped?.size, `${label}: ${name} local-label mode size`);
+    }
     const textSec = elf.sections.findIndex((s) => s.name === '.text');
     const bssSec = elf.sections.findIndex((s) => s.name === '.bss');
     const sec = elf.sections[textSec] as ElfSection;

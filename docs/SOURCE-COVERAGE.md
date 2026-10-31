@@ -1,0 +1,90 @@
+# Candidate language coverage
+
+Run `node dist/tools/source-coverage.js` after `bun run build`. The report is written
+through the normal result scrubber to `results/source-language-coverage.json`.
+The same audit is a regression test; mismatched parsing, metadata, checked IR,
+revision, diagnostic ID or C/JavaScript output fails the run.
+
+The audit does not add a grammar, switch a default, translate failures through a
+fallback, or alter the compiler. Legacy inputs are converted with the candidate
+formatter; already-candidate inputs are read as written. Both use the same native
+candidate frontend. Source encryption and recovery behavior is unchanged.
+
+## What is checked
+
+| Inputs | Checks |
+| --- | --- |
+| Every accepted source/dependency graph listed by the repository corpus tool | Imports, comments, complete checked IR and C/JavaScript output equal the reference |
+| Accepted static program literals in top-level test files | Original metadata, checked IR, per-function revisions and C/JavaScript output equal the reference |
+| Parseable repository reject cases converted to candidate spelling | Rejection and first diagnostic ID equal the reference |
+| Observed capability inventory | All current operations; scalar `u32`, `bool`, `io`, arrays and records; imports, text, both profiles, examples, preconditions and postconditions |
+
+The ordinary source corpus alone omits checked operations, strict-profile units
+and executable specifications. The additional real test programs close those
+specific coverage holes. The report separates source graphs, legacy literals and
+raw candidate literals; overlapping programs are not a unique-program total.
+Feature counters count observations, including repeated dependency occurrences.
+
+The recorded run covers 184 dependency graphs, 485 legacy test literals converted
+to candidate spelling and 546 raw candidate literals, with zero mismatches. All
+36 operations and the five type forms occur. The 19 parseable repository rejects
+retain their diagnostic IDs; another 19 syntax rejects cannot be converted by this
+method. See [the exact inventory](../results/source-language-coverage.json).
+
+No unsupported language construct or semantic mismatch was confirmed in this
+audited set. That is a bounded result, not proof that every possible program works.
+
+## Remaining acceptance work
+
+- Dynamically generated/interpolated test programs and nested fixture directories
+  are not extracted by this audit. Expand them through explicit generators and
+  independent oracles rather than treating static literals as exhaustive.
+- Syntax rejects that cannot be parsed by the legacy reader cannot be converted
+  by its formatter. Their candidate-spelling diagnostic locations, suggestions and
+  fixes need dedicated negative fixtures beyond the diagnostic tests already present.
+- External projects, all capacity boundaries and their combinations remain outside
+  this corpus. Existing resource-limit tests are separate evidence.
+- C/JavaScript output identity does not replace real target execution. Required
+  platform checks, native frontend cost and independent AI accuracy/cost acceptance
+  remain outstanding. Public defaults must not change on the strength of this audit.
+
+The historical native frontend cost ratios and rejected optimization experiments
+remain as recorded in [UNIFIED-STATUS.md](UNIFIED-STATUS.md). This work makes no new
+runtime, compilation-speed, memory or universal-superiority claim.
+
+## Bounded generated diagnostic audit
+
+The follow-up audit uses a recorded xorshift seed and 584 bounded cases combining
+generated scalar programs with parameter/node limits, identifier lengths, aggregate
+widths, trip counts, source-byte limits and specification counts. Its raw generator,
+cases and minimized failures are preserved with the local validation archive.
+
+It reproduced an A0001 diagnostic defect: rejection was correct, but oversized pure
+boolean arrays reported the u32 limit instead of their dimension-specific limit.
+The parser now retains the computed limit only on that failure path; the renderer
+uses it without reparsing. Regressions cover scalar, nested-array, record-width and
+I/O cases, including exact JSON and source locations. See
+[the results](../results/source-generated-diagnostics.json).
+
+The corrected audit has 580 exact matches and four explicit existing renderer
+refusals for specification diagnostics A0714/A0715. Those refusals remain a concrete
+gap, not passes. This finite audit does not establish universal language coverage or
+remove the native-cost, independent AI or full-platform acceptance gates.
+
+## Specification diagnostic follow-up
+
+The follow-up to the generated audit resolves its four A0714/A0715 renderer
+refusals: the maximum example count and completed primitive example-result
+mismatches. All 584 bounded cases now match the reference diagnostic JSON.
+The verifier retains failure context; the native renderer uses original example
+spans and declared types, including dependency locations and Unicode prefixes.
+It does not call the reference parser as a fallback.
+
+The completed A0715 aggregate-mismatch follow-up adds arrays, records, nested values,
+single-field records and page-boundary values, using retained native evaluator data.
+Malformed kinds, booleans, shapes, handles and field ranges fail closed; the iterative
+walk has a fixed work bound. Runtime traps and other specification failures remain
+explicit unsupported cases. The focused controls check these refusals and detached
+failure snapshots. See `results/source-spec-aggregate-diagnostics.json`. See [the scoped evidence](../results/source-spec-diagnostics.json).
+The warm parse-unit timing guard is mixed and does not establish a speedup or
+satisfy the full native frontend cost gate. Public defaults remain unchanged.

@@ -35,6 +35,7 @@ import {
   type Type,
   type TypedFunc,
   type TypedProgram,
+  typeEquals,
   withoutProfile,
 } from './core.js';
 import { DIAGNOSTICS, diag } from './diagnostics.js';
@@ -80,16 +81,17 @@ function jsIndex(
   arr: Operand | undefined,
   idx: Operand | undefined,
   checked = false,
+  operand: (o: Operand) => string = jsOperand,
 ): string {
   const n = arrayLength(fn, arr);
   if (checked) {
     // Strict: an index at or past the length traps (before any write) instead of wrapping.
     if (idx?.kind === 'u32') return idx.value < n ? String(idx.value) : 'a0_strap(0)';
-    const i = jsOperand(idx as Operand);
+    const i = operand(idx as Operand);
     return `(${i} < ${n} ? ${i} : a0_strap(0))`;
   }
   if (idx?.kind === 'u32') return String(idx.value % n);
-  const i = jsOperand(idx as Operand);
+  const i = operand(idx as Operand);
   return (n & (n - 1)) === 0 ? `(${i} & ${n - 1})` : `${i} % ${n}`;
 }
 
@@ -670,8 +672,9 @@ function jsExpr(
   index = -1,
   ownedP0 = false,
   ownedNodes: ReadonlySet<string> = NO_NODES,
+  operand: (o: Operand) => string = jsOperand,
 ): string {
-  const [a, b, c] = node.args.map(jsOperand);
+  const [a, b, c] = node.args.map(operand);
   const site = siteOf(fn, node);
   switch (node.op) {
     case 'mov':
@@ -740,7 +743,7 @@ function jsExpr(
     case 'get': {
       const t = operandTypeOf(fn, node.args[0] as Operand);
       const elem = !isPrimitive(t) && t.kind === 'arr' ? t.elem : 'u32';
-      const read = `${a}[${jsIndex(fn, node.args[0], node.args[1], site === 'bounds')}]`;
+      const read = `${a}[${jsIndex(fn, node.args[0], node.args[1], site === 'bounds', operand)}]`;
       return elem === 'bool' ? `${read} === 1` : read;
     }
     case 'set': {
@@ -749,7 +752,7 @@ function jsExpr(
       const et = operandTypeOf(fn, node.args[0] as Operand);
       const boolElem = !isPrimitive(et) && et.kind === 'arr' && et.elem === 'bool';
       const value = boolElem ? `(${c} ? 1 : 0)` : c;
-      const idx = jsIndex(fn, node.args[0], node.args[1], site === 'bounds');
+      const idx = jsIndex(fn, node.args[0], node.args[1], site === 'bounds', operand);
       return inPlace ? `(${a}[${idx}] = ${value}, ${a})` : `a0_with(${a}, ${idx}, ${value})`;
     }
     case 'at':
@@ -778,6 +781,222 @@ function jsExpr(
   }
 }
 
+/** Keep a small, pure scalar-record fold state in locals. Virtual rec/put nodes
+ * retain snapshots of their fields, so reads of earlier states and parallel updates
+ * keep value semantics. Aggregate extras remain read-only values. Strict frames,
+ * calls, nested iterations and effects use the ordinary lowering. */
+function jsScalarRecordFold(fn: TypedFunc, node: Node): string | undefined {
+  if (node.op !== 'fold' || fn.profile === 'strict') return undefined;
+  const callee = fn.calls.get(node.callee ?? '');
+  const state = callee?.params[0];
+  if (
+    callee === undefined ||
+    callee.profile === 'strict' ||
+    state === undefined ||
+    isPrimitive(state) ||
+    state.kind !== 'rec' ||
+    state.fields.length > 8 ||
+    !state.fields.every((t) => t === 'u32' || t === 'bool') ||
+    !typeEquals(state, callee.result) ||
+    callee.nodes.length > 64
+  )
+    return undefined;
+  const prefix = `$${node.id}`;
+  const field = (i: number): string => `${prefix}_state${i}`;
+  const records = new Map<string, readonly string[]>([
+    ['p0', state.fields.map((_, i) => field(i))],
+  ]);
+  const types = new Map<string, Type>();
+  for (const [i, t] of callee.params.entries()) types.set(`${prefix}_p${i}`, t);
+  for (const n of callee.nodes) types.set(`${prefix}_v_${n.id}`, callee.types.get(n.id) as Type);
+  const rename = (o: Operand): Operand =>
+    o.kind === 'param'
+      ? { kind: 'node', id: `${prefix}_p${o.index}` }
+      : o.kind === 'node'
+        ? { kind: 'node', id: `${prefix}_v_${o.id}` }
+        : o;
+  const value = (o: Operand): string => jsOperand(rename(o));
+  const key = (o: Operand): string =>
+    o.kind === 'param' ? `p${o.index}` : o.kind === 'node' ? o.id : '';
+  const view = { ...callee, types };
+  const body: string[] = [];
+  for (const n of callee.nodes) {
+    const t = callee.types.get(n.id);
+    if (t === undefined || t === 'io') return undefined;
+    const base = n.args[0];
+    const fields = base === undefined ? undefined : records.get(key(base));
+    const index = n.args[1];
+    if (n.op === 'at' && fields !== undefined && index?.kind === 'u32') {
+      const v = fields[index.value];
+      if (v === undefined) return undefined;
+      body.push(`      const n_${prefix}_v_${n.id} = ${v};`);
+    } else if (!isPrimitive(t)) {
+      if (!typeEquals(t, state)) return undefined;
+      if (n.op === 'rec') records.set(n.id, n.args.map(value));
+      else if (n.op === 'put' && fields !== undefined && index?.kind === 'u32') {
+        const v = n.args[2];
+        if (v === undefined || index.value >= fields.length) return undefined;
+        const next = [...fields];
+        next[index.value] = value(v);
+        records.set(n.id, next);
+      } else return undefined;
+    } else {
+      // The whole pure body is bounded above; virtual record snapshots keep
+      // field reads and updates scalar without a separate arithmetic limit.
+      if (
+        ['call', 'fold', 'loop', 'read', 'write', 'puts'].includes(n.op) ||
+        n.args.some((o) => records.has(key(o)))
+      )
+        return undefined;
+      body.push(
+        `      const n_${prefix}_v_${n.id} = ${jsExpr({ ...n, id: `${prefix}_v_${n.id}`, args: n.args.map(rename) }, view)};`,
+      );
+    }
+  }
+  const result = records.get(key(callee.ret));
+  if (result === undefined) return undefined;
+  const init = node.args[1];
+  const count = node.args[0];
+  if (init === undefined || count === undefined) return undefined;
+  const lines = [`  let n_${node.id};`, '  {', `    const ${prefix}_init = ${jsOperand(init)};`];
+  for (const [i] of state.fields.entries())
+    lines.push(`    let ${field(i)} = ${prefix}_init[${i}];`);
+  for (const [i, extra] of node.args.slice(2).entries())
+    lines.push(`    const n_${prefix}_p${i + 2} = ${jsOperand(extra)};`);
+  lines.push(
+    `    for (let n_${prefix}_p1 = 0; n_${prefix}_p1 < ${jsOperand(count)}; n_${prefix}_p1++) {`,
+    ...body,
+  );
+  for (const [i, v] of result.entries()) lines.push(`      const ${prefix}_next${i} = ${v};`);
+  for (const [i] of result.entries()) lines.push(`      ${field(i)} = ${prefix}_next${i};`);
+  lines.push(
+    '    }',
+    `    n_${node.id} = [${state.fields.map((_, i) => field(i)).join(', ')}];`,
+    '  }',
+  );
+  return lines.join('\n');
+}
+
+/** Inline small pure flat-array loops with runtime bounds. Constant-bound loops
+ * keep their compact helper calls. Keep the same initializer copy and the
+ * ordinary body's per-update ownership proof; only helper call boundaries disappear. */
+function jsInlineArrayLoop(fn: TypedFunc, node: Node, init: string): string | undefined {
+  if (node.op !== 'loop' || fn.profile === 'strict' || node.args[0]?.kind === 'u32')
+    return undefined;
+  const body = fn.calls.get(node.callee ?? '');
+  const pred = fn.calls.get(node.pred ?? '');
+  const state = body?.params[0];
+  if (body === undefined || pred === undefined || state === undefined || !jsFlatArray(state))
+    return undefined;
+  const scalar = new Set([
+    'mov',
+    'add',
+    'sub',
+    'mul',
+    'div',
+    'rem',
+    'and',
+    'or',
+    'xor',
+    'shl',
+    'shr',
+    'eq',
+    'ne',
+    'lt',
+    'le',
+    'gt',
+    'ge',
+    'select',
+    'get',
+  ]);
+  for (const callee of [pred, body]) {
+    if (
+      callee.profile === 'strict' ||
+      callee.nodes.length > 16 ||
+      callee.params.some((t) => !isPrimitive(t) && !jsFlatArray(t)) ||
+      callee.params.includes('io')
+    )
+      return undefined;
+    for (const n of callee.nodes) {
+      const t = callee.types.get(n.id);
+      if (t === undefined || t === 'io') return undefined;
+      if (!isPrimitive(t)) {
+        if (callee !== body || n.op !== 'set' || !typeEquals(t, state)) return undefined;
+      } else if (!scalar.has(n.op)) return undefined;
+    }
+  }
+  const prefix = `$${node.id}`;
+  const loopIndex = `${prefix}_i`;
+  const params = [
+    `n_${node.id}`,
+    loopIndex,
+    ...node.args.slice(2).map((_, i) => `${prefix}_p${i + 2}`),
+  ];
+  const lines = [`  let n_${node.id} = ${init};`, '  {'];
+  for (const [i, extra] of node.args.slice(2).entries())
+    lines.push(`    const ${params[i + 2]} = ${jsOperand(extra)};`);
+  lines.push(
+    `    for (let ${loopIndex} = 0; ${loopIndex} < ${jsOperand(node.args[0] as Operand)}; ${loopIndex}++) {`,
+  );
+  const shared = new Map<string, string>();
+  const values = new Map<string, string>();
+  for (const [kind, callee] of [
+    ['pred', pred],
+    ['body', body],
+  ] as const) {
+    const names = new Map<string, string>();
+    const keys = new Map<string, string>();
+    const operand = (o: Operand): string =>
+      o.kind === 'param'
+        ? (params[o.index] as string)
+        : o.kind === 'node'
+          ? (names.get(o.id) as string)
+          : jsOperand(o);
+    const key = (o: Operand): string =>
+      o.kind === 'param'
+        ? `p${o.index}`
+        : o.kind === 'node'
+          ? (keys.get(o.id) as string)
+          : `${o.kind}:${jsOperand(o)}`;
+    for (const [i, n] of callee.nodes.entries()) {
+      // A write ends sharing across the predicate/body boundary. Reads after it
+      // retain the original ownership analysis and value-snapshot semantics.
+      if (n.op === 'set') shared.clear();
+      const signature = JSON.stringify([
+        n.op,
+        formatType(callee.types.get(n.id) as Type),
+        n.args.map(key),
+      ]);
+      let token = values.get(signature);
+      if (token === undefined) {
+        token = `v${values.size}`;
+        values.set(signature, token);
+      }
+      const prior = n.op === 'set' ? undefined : shared.get(token);
+      const name = prior ?? `n_${prefix}_${kind}_${n.id}`;
+      if (prior === undefined) {
+        lines.push(
+          `      const ${name} = ${jsExpr(n, callee, i, kind === 'body', NO_NODES, operand)};`,
+        );
+        if (n.op !== 'set') shared.set(token, name);
+      }
+      names.set(n.id, name);
+      keys.set(n.id, token);
+    }
+    const ret = callee.ret;
+    const fresh =
+      (ret.kind === 'param' && ret.index === 0) ||
+      (ret.kind === 'node' && callee.nodes.find((n) => n.id === ret.id)?.op === 'set');
+    lines.push(
+      kind === 'pred'
+        ? `      if (!${operand(ret)}) break;`
+        : `      n_${node.id} = ${fresh ? operand(ret) : `${operand(ret)}.slice()`};`,
+    );
+  }
+  lines.push('    }', '  }');
+  return lines.join('\n');
+}
+
 /** Emit one JS function body; `owned` marks the p0-owned iteration-body variant. */
 function jsBody(fn: TypedFunc, owned: boolean, deep = false): string[] {
   const plan = jsOwnership(fn, deep ? 'deep' : owned ? 'owned' : 'value');
@@ -793,6 +1012,8 @@ function jsBody(fn: TypedFunc, owned: boolean, deep = false): string[] {
       );
     if (n.op !== 'fold' && n.op !== 'loop')
       return `  const n_${n.id} = ${jsExpr(n, fn, index, owned, plan.projections)};`;
+    const scalarRecord = jsScalarRecordFold(fn, n);
+    if (scalarRecord !== undefined) return scalarRecord;
     const [count, init, ...extra] = n.args.map(jsOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
     const guard = n.op === 'loop' ? ` if (!a0i_${n.pred ?? ''}(${call})) break;` : '';
@@ -811,6 +1032,8 @@ function jsBody(fn: TypedFunc, owned: boolean, deep = false): string[] {
           : stateAggregate(n.args[1] as Operand) && !initOwned
             ? `${init}.slice()`
             : init;
+    const inlineLoop = jsInlineArrayLoop(fn, n, initExpr as string);
+    if (inlineLoop !== undefined) return inlineLoop;
     const bodyName =
       deepIteration !== undefined
         ? `a0d_${n.callee ?? ''}`
@@ -854,7 +1077,8 @@ const emitJsFunction: Emitter = (fn) => {
         ? `  if (typeof p${i} !== 'boolean') a0_bad('p${i}', 'bool');`
         : `  p${i} = a0_check(p${i}, ${jsShape(t)}, 'p${i}');`,
   );
-  const lines = [`function a0i_${fn.name}(${params}) {`, ...jsBody(fn, false), '}'];
+  const ordinary = jsBody(fn, false);
+  const lines = [`function a0i_${fn.name}(${params}) {`, ...ordinary, '}'];
   const p0 = fn.params[0];
   if (p0 !== undefined && !isPrimitive(p0) && fn.params[1] === 'u32') {
     // Every loop using a capable deep body selects a0d_, cloning unproved initializers.
@@ -872,7 +1096,7 @@ const emitJsFunction: Emitter = (fn) => {
   lines.push(
     `export function ${fn.name}(${params}) {`,
     ...guards,
-    ...(scalar ? jsBody(fn, false) : [`  return a0i_${fn.name}(${params});`]),
+    ...(scalar ? ordinary : [`  return a0i_${fn.name}(${params});`]),
     '}',
   );
   return lines.join('\n');
@@ -2547,6 +2771,32 @@ const EMITTERS: Readonly<Record<Target, Emitter>> = {
   arm32: emitArm32Function,
 };
 
+/** Remove unreachable private declarations after module assembly. Function bodies
+ * remain cacheable independently of their callers. All public exports and runtime
+ * code are roots; generated calls use static names. The emitter owns this top-level
+ * function format, and string literals escape newlines. Unknown text is retained. */
+function jsLivePrivate(text: string): string {
+  const declaration = /^function (a0[ido]_[A-Za-z0-9_]+)\([^\n]*\) \{\n[\s\S]*?^\}\n?/gm;
+  const definitions = new Map<string, string>();
+  for (const match of text.matchAll(declaration)) {
+    const name = match[1] as string;
+    if (definitions.has(name)) return text;
+    definitions.set(name, match[0]);
+  }
+  if (definitions.size === 0) return text;
+  const references = (body: string): string[] => body.match(/\ba0[ido]_[A-Za-z0-9_]+\b/g) ?? [];
+  const pending = references(text.replace(declaration, ''));
+  const live = new Set<string>();
+  while (pending.length > 0) {
+    const name = pending.pop() as string;
+    const body = definitions.get(name);
+    if (body === undefined || live.has(name)) continue;
+    live.add(name);
+    pending.push(...references(body));
+  }
+  return text.replace(declaration, (body, name: string) => (live.has(name) ? body : ''));
+}
+
 /** True when any function of the program carries an io token anywhere in its types. */
 export function usesIo(program: TypedProgram): boolean {
   return program.functions.some(
@@ -2599,7 +2849,9 @@ export function assemble(
     case 'arm32':
       return assembleArm32(bodies, COMPILER_VERSION);
     case 'js':
-      return `${JS_PRELUDE}${options.jsIo === 'host' ? JS_HOST_IO : JS_BUFFERED_IO}\n${jsExtras(program, options.jsIo === 'host')}${bodies.join('\n\n')}\n`;
+      return jsLivePrivate(
+        `${JS_PRELUDE}${options.jsIo === 'host' ? JS_HOST_IO : JS_BUFFERED_IO}\n${jsExtras(program, options.jsIo === 'host')}${bodies.join('\n\n')}\n`,
+      );
     case 'c': {
       const decls = types.map(cTypeDecl).filter((d) => d.length > 0);
       if (io)

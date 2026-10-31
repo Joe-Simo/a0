@@ -7,6 +7,7 @@ import { formatProgram, formatSource, type Program } from './core.js';
 import { type Arities, formatDense, parseDense } from './dense.js';
 import { programRevision } from './edit.js';
 import { link, physicalPath } from './link.js';
+import { withPlaintextWrites } from './plaintext-write.js';
 import { protectionPolicy } from './protection-policy.js';
 import { parseSource, formatSource as printSource } from './source.js';
 import { linkSource } from './source-link.js';
@@ -53,12 +54,18 @@ export function migrateSourceProject(
   root = dirname(resolve(entry)),
   legacyDense = false,
 ): Promise<MigrationManifest> {
-  return migrate(entry, destination, root, legacyDense, sourceCodec);
+  const source = resolve(entry),
+    target = resolve(destination),
+    boundary = resolve(root);
+  return withPlaintextWrites([boundary, source, dirname(target)], () =>
+    migrate(source, target, boundary, legacyDense, sourceCodec),
+  );
 }
 
 /**
  * Convert an entry and its complete dependency closure to a new directory. The original project
- * is never modified. Output is staged, linked and compared before an atomic directory rename.
+ * files are never rewritten; managed coordination directories may be created. Output is staged,
+ * linked and compared before an atomic directory rename.
  * An interrupted staging directory is disposable; no partially converted source tree is published.
  * `root` explicitly defines the source boundary, including for imports and symlinks.
  */
@@ -68,7 +75,12 @@ export async function migrateProject(
   root = dirname(resolve(entry)),
   legacyDense = false,
 ): Promise<MigrationManifest> {
-  return migrate(entry, destination, root, legacyDense, denseCodec);
+  const source = resolve(entry),
+    target = resolve(destination),
+    boundary = resolve(root);
+  return withPlaintextWrites([boundary, source, dirname(target)], () =>
+    migrate(source, target, boundary, legacyDense, denseCodec),
+  );
 }
 
 async function migrate(

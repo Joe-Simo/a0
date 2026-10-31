@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -11,6 +11,9 @@ import {
   StreamMessageReader,
   StreamMessageWriter,
 } from 'vscode-jsonrpc/node';
+import { compile } from '../src/backends.js';
+import { programRevision } from '../src/edit.js';
+import { linkSource } from '../src/source-link.js';
 
 const CLI = join(import.meta.dirname, '..', 'src', 'cli.js');
 const LIB = 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n';
@@ -40,8 +43,12 @@ interface Session {
   next(uri: string): Promise<Published>;
 }
 
-async function start(root: string): Promise<Session> {
-  const proc = spawn(process.execPath, [CLI, 'lsp', root, '--stdio']);
+async function start(root: string, candidate = false, snippets = false): Promise<Session> {
+  const script = `import {serveLsp} from ${JSON.stringify(new URL('../src/lsp.js', import.meta.url).href)};import {sourceLspFrontend} from ${JSON.stringify(new URL('../src/lsp-frontend.js', import.meta.url).href)};await serveLsp(${JSON.stringify(root)},sourceLspFrontend);`;
+  const proc = spawn(
+    process.execPath,
+    candidate ? ['--input-type=module', '-e', script] : [CLI, 'lsp', root, '--stdio'],
+  );
   const conn = createMessageConnection(
     new StreamMessageReader(proc.stdout),
     new StreamMessageWriter(proc.stdin),
@@ -59,7 +66,9 @@ async function start(root: string): Promise<Session> {
   await conn.sendRequest('initialize', {
     processId: process.pid,
     rootUri: pathToFileURL(root).href,
-    capabilities: {},
+    capabilities: snippets
+      ? { textDocument: { completion: { completionItem: { snippetSupport: true } } } }
+      : {},
   });
   await conn.sendNotification('initialized', {});
   return {
@@ -103,6 +112,42 @@ const open = async (s: Session, uri: string, text: string): Promise<Published> =
   });
   return pending;
 };
+
+test('source LSP example quick fixes remain executable in the selected grammar', () =>
+  withRoot(async (_base, root) => {
+    const s = await start(root, true);
+    try {
+      const uri = pathToFileURL(join(root, 'repair.a0')).href;
+      const text = 'fn f _x2 -> _x2\nex [1 2] -> [2 1] # retain this comment\nret A\nend\n';
+      await writeFile(join(root, 'repair.a0'), text);
+      const [diagnostic] = (await open(s, uri, text)).diagnostics;
+      assert.equal(diagnostic?.data?.id, 'A0715');
+      const actions = await s.conn.sendRequest<
+        { title: string; edit: { changes: Record<string, { newText: string }[]> } }[]
+      >('textDocument/codeAction', {
+        textDocument: { uri },
+        range: diagnostic?.range,
+        context: { diagnostics: [diagnostic] },
+      });
+      assert.equal(actions.length, 1);
+      const replacement = actions[0]?.edit.changes[uri]?.[0]?.newText;
+      assert.equal(replacement, 'ex [1 2] -> [1 2] # retain this comment');
+      assert.equal(actions[0]?.title, 'Change the expected result to [1 2]');
+      assert.deepEqual(
+        (
+          await change(
+            s,
+            uri,
+            2,
+            text.replace(text.split('\n')[1] as string, replacement as string),
+          )
+        ).diagnostics,
+        [],
+      );
+    } finally {
+      await stop(s);
+    }
+  }));
 
 test('lsp: diagnostics, hover, definition, symbols, completion, formatting over stdio', () =>
   withRoot(async (base, root) => {
@@ -166,6 +211,7 @@ test('lsp: diagnostics, hover, definition, symbols, completion, formatting over 
       });
       const labels = items.map((i) => i.label);
       for (const l of ['add', 'fold', 'udiv', 'sq', 'f']) assert.ok(labels.includes(l), l);
+      assert.equal(labels.includes('<<'), false, 'legacy CLI completion is unchanged');
 
       const messy =
         '# lib first\nuse "lib.a0"\n# square it\nfn f   u32 -> u32   # comment\n  b sq p0 # via lib\nret b\nend\n# tail';
@@ -404,6 +450,135 @@ test('lsp: spec lines shift positions, hover, completion, and a wrong example ha
         options: { tabSize: 2, insertSpaces: true },
       })) as unknown[];
       assert.deepEqual(fmt, []);
+    } finally {
+      await stop(s);
+    }
+  }));
+
+test('candidate LSP shares diagnostics, imports, formatting and unsaved dependency checks', () =>
+  withRoot(async (base, root) => {
+    const library = 'fn sq\na mul A A\nret a\nend\n';
+    const source = 'use "lib.a0"\n\n# preserve\nfn f _ -> _\n  b sq A\n  c shl b 1\nret c\nend\n';
+    const mainPath = join(root, 'main.a0');
+    await writeFile(join(root, 'lib.a0'), library);
+    await writeFile(mainPath, source);
+    const s = await start(root, true);
+    const main = pathToFileURL(mainPath).href,
+      lib = pathToFileURL(join(root, 'lib.a0')).href;
+    const doc = { textDocument: { uri: main } };
+    try {
+      assert.deepEqual((await open(s, main, source)).diagnostics, []);
+      const edits = await s.conn.sendRequest<{ newText: string }[]>('textDocument/formatting', {
+        ...doc,
+        options: { tabSize: 2, insertSpaces: true },
+      });
+      const formatted = edits[0]?.newText;
+      assert.ok(formatted);
+      assert.match(formatted, /# preserve/);
+      assert.match(formatted, /c << b 1/);
+      const read = (text: string) => (path: string) =>
+        path === mainPath ? Promise.resolve(text) : readFile(path, 'utf8');
+      const before = await linkSource(mainPath, read(source), { root });
+      const after = await linkSource(mainPath, read(formatted), { root });
+      assert.equal(programRevision(after.program), programRevision(before.program));
+      for (const target of ['c', 'js'] as const)
+        assert.equal(compile(after.program, target).text, compile(before.program, target).text);
+      const next = s.next(main);
+      await s.conn.sendNotification('textDocument/didChange', {
+        textDocument: { uri: main, version: 2 },
+        contentChanges: [{ text: formatted }],
+      });
+      assert.deepEqual((await next).diagnostics, []);
+      assert.deepEqual(
+        await s.conn.sendRequest('textDocument/formatting', {
+          ...doc,
+          options: { tabSize: 2, insertSpaces: true },
+        }),
+        [],
+      );
+      const items = await s.conn.sendRequest<
+        { label: string; insertText?: string; insertTextFormat?: number }[]
+      >('textDocument/completion', {
+        ...doc,
+        position: { line: 4, character: 4 },
+      });
+      assert.ok(items.some((x) => x.label === '<<'));
+      assert.equal(items.find((x) => x.label === '[]')?.insertText, '[0]');
+      assert.equal(items.find((x) => x.label === '[]')?.insertTextFormat, 1);
+      const lines = formatted.split('\n'),
+        shift = lines.findIndex((x) => x.includes('<<'));
+      const shiftLine = lines[shift];
+      assert.ok(shiftLine);
+      const hover = await s.conn.sendRequest<{ contents: { value: string } }>(
+        'textDocument/hover',
+        { ...doc, position: { line: shift, character: shiftLine.indexOf('<<') } },
+      );
+      assert.match(hover.contents.value, /<</);
+      assert.doesNotMatch(hover.contents.value, /alias of/);
+      assert.equal(
+        items.some((x) => ['shl', 'shr', 'arr', 'rec'].includes(x.label)),
+        false,
+      );
+      const call = lines.findIndex((x) => x.includes('sq A'));
+      const callLine = lines[call];
+      assert.ok(callLine);
+      const definition = await s.conn.sendRequest<{ uri: string }>('textDocument/definition', {
+        ...doc,
+        position: { line: call, character: callLine.indexOf('sq') },
+      });
+      assert.equal(definition.uri, lib);
+      const brokenMain = s.next(main);
+      await open(s, lib, library.replace('mul A A', 'mul A true'));
+      assert.ok((await brokenMain).diagnostics.length > 0, 'unsaved dependency is checked');
+      const fixedMain = s.next(main),
+        fixedLib = s.next(lib);
+      await s.conn.sendNotification('textDocument/didChange', {
+        textDocument: { uri: lib, version: 2 },
+        contentChanges: [{ text: library }],
+      });
+      assert.deepEqual((await fixedLib).diagnostics, []);
+      assert.deepEqual((await fixedMain).diagnostics, []);
+      const wrong = (await change(s, main, 3, 'fn f\nex 1 -> 3\nret A\nend\n')).diagnostics[0];
+      assert.equal(wrong?.data?.id, 'A0715');
+      const actions = await s.conn.sendRequest<
+        { edit: { changes: Record<string, { newText: string }[]> } }[]
+      >('textDocument/codeAction', {
+        ...doc,
+        range: wrong?.range,
+        context: { diagnostics: [wrong] },
+      });
+      assert.equal(actions[0]?.edit.changes[main]?.[0]?.newText, 'ex 1 -> 1');
+      assert.deepEqual((await change(s, main, 4, 'fn f\nex 1 -> 1\nret A\nend\n')).diagnostics, []);
+      const outside = pathToFileURL(join(base, 'outside.a0')).href;
+      assert.equal((await open(s, outside, library)).diagnostics[0]?.code, 'limit');
+    } finally {
+      await stop(s);
+    }
+  }));
+
+test('candidate LSP completion snippets use one executable spelling for shifts and aggregates', () =>
+  withRoot(async (_base, root) => {
+    const s = await start(root, true, true);
+    try {
+      const uri = pathToFileURL(join(root, 'main.a0')).href;
+      await open(s, uri, 'fn f\nx << A 1\nret x\nend\n');
+      const items = await s.conn.sendRequest<
+        { label: string; insertText?: string; insertTextFormat?: number; detail?: string }[]
+      >('textDocument/completion', { textDocument: { uri }, position: { line: 1, character: 2 } });
+      for (const label of ['<<', '>>', '[]', '()']) {
+        const item = items.find((x) => x.label === label);
+        assert.ok(item?.insertText);
+        assert.equal(item.insertTextFormat, 2);
+        const expression = item.insertText.replace(/\$\{\d+:([^}]+)\}/g, '$1');
+        const type = label === '[]' ? ' -> _x1' : label === '()' ? ' -> (_)' : '';
+        const { validate } = await import('../src/core.js');
+        const { parseSource } = await import('../src/source.js');
+        validate(parseSource(`fn f${type}\nx ${expression}\nret x\nend\n`));
+      }
+      assert.equal(
+        items.some((x) => ['shl', 'shr', 'arr', 'rec', 'udiv', 'urem'].includes(x.label)),
+        false,
+      );
     } finally {
       await stop(s);
     }

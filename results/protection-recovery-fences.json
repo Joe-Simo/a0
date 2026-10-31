@@ -1,0 +1,39 @@
+{
+  "baseline": "2a863ca929d9052f38541124f90bbee33666e0bd",
+  "scope": "Owner-authorized dead recovery-mutex removal under the existing commit interlock; source and destination cache batch fencing.",
+  "reproduced": {
+    "sealedExternalDestinationAcceptedPlaintextOnBaseline": true
+  },
+  "focused": {
+    "protectionTests": 46,
+    "artifactCacheTests": 2,
+    "fail": 0,
+    "skipped": 0
+  },
+  "cases": [
+    "actual recovery child killed while holding the recovery mutex",
+    "live owner refused",
+    "exact digest required",
+    "concurrent maintenance and ordinary commit refused by interlock",
+    "interrupted double-lock state remains blocked",
+    "live writer leases preserved",
+    "external sealed cache destination refuses payload",
+    "actual cache writer killed before payload; destination leases remain independently recoverable",
+    "relative cache paths fixed across caller chdir",
+    "CLI recipient refused; project owner accepted"
+  ],
+  "limits": [
+    "both stale locks require manual review",
+    "unknown/legacy/foreign scope remains blocked",
+    "partial or multiply-linked lock remains blocked",
+    "external lease needs authenticated containing project; source authority cannot escape its root",
+    "trusted cooperating local filesystem boundary",
+    "full-platform and independent security review pending"
+  ],
+  "nativeFrontend": {
+    "implemented": false,
+    "design": "docs/design/native-frontend-ownership.md",
+    "performanceClaim": false
+  },
+  "aggregate": "Pending exact-tree available gate; not a full-platform pass."
+}

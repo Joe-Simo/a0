@@ -4,7 +4,7 @@
 ["call" "fold" "loop" "text"] @keyword.operator
 "->" @punctuation.delimiter
 ["(" ")" "[" "]"] @punctuation.bracket
-["," ";"] @punctuation.delimiter
+["," ";" "*"] @punctuation.delimiter
 
 ; Operations
 (operator) @operator

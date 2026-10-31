@@ -3,6 +3,33 @@ import test from 'node:test';
 import { nativeSource } from '../src/source-native.js';
 import { nativeSourceArtifact } from '../tools/source-native-artifact.js';
 
+test('native type-limit failures retain the rejected dimension limit through header initialization', async () => {
+  const engine = nativeSource(await nativeSourceArtifact());
+  try {
+    for (const [type, limit] of [
+      ['boolx2097153', 2097152],
+      ['(bool,bool)x1048577', 1048576],
+      ['(bool,bool,bool)x699051', 699050],
+      ['boolx2x1048577', 1048576],
+      ['_x65537', 65536],
+      ['(io,bool)x65537', 65536],
+    ] as const) {
+      for (const signature of [`${type} -> _`, `-> ${type}`]) {
+        const result = engine.parseUnit(`fn f ${signature}\nret 0\nend\n`);
+        assert.equal(result.ok, false, signature);
+        assert.equal(result.state[1], 1, signature);
+        assert.equal(result.state[5], 4, signature);
+        assert.equal(result.state[95], limit, signature);
+      }
+    }
+    const accepted = engine.parse('fn f\nret A\nend\n');
+    assert.ok(accepted.ok);
+    assert.equal(accepted.typed.functions[0]?.params.length, 1);
+  } finally {
+    engine.close();
+  }
+});
+
 test('native source-unit limits retain text, function and pure-value boundaries', async () => {
   const engine = nativeSource(await nativeSourceArtifact());
   // An explicit caller budget separates language boundaries from allocation refusal.

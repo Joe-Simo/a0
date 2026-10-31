@@ -566,23 +566,23 @@ b set p0 p1 a
 ret b
 end
 # wasm32 emission of the tables of a source chunk (the output of the A0 front end, nodes in
-# 128-page tables): the orchestration of `wxorch` with the default options; the result is
+# 128-page tables): the orchestration of `wxorch` with the requested options; the result is
 # (io, code): 0, or 4 (a table is full), 5, 7 (bodies wanted)
-fn wsorch (io,u32) u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 -> (io,u32)
+fn wsorch (io,u32) u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 u32 u32 -> (io,u32)
 io at p0 0
 z call z132
 n132 fold wxcvn 128 z p5
 nn call wcnn p4 p14
 ntl0 fold wcnf p14 0 p4
 ntl1 fold wcnt p12 ntl0 p2
-r call wxorch io p2 p3 p4 n132 p6 p7 p8 p9 p10 p11 p12 ntl1 p13 p14 p15 nn p16 1 1
+r call wxorch io p2 p3 p4 n132 p6 p7 p8 p9 p10 p11 p12 ntl1 p13 p14 p15 nn p16 p17 p18
 ret r
 end
 # mode 1 of the wasm tool: a source chunk through the A0 front end, then `wsorch`. Functions
 # [cfrom, nfns) are checked (from the first checked function p7: the functions before it are
 # stubs, whose rows become opaque rows with the node counts p8), functions [from, nfns) are
 # emitted; the ones between are callee bodies the emitter asked for.
-fn wsunit io u32x512x64 u32 u32x128x8 u32 u32x128x16 u32 u32 u32x128x16 -> (io,u32)
+fn wsunit io u32x512x64 u32 u32x128x8 u32 u32x128x16 u32 u32 u32x128x16 u32 u32 -> (io,u32)
 a call lexsrc p1 p2
 b at a 0
 c at a 1
@@ -669,7 +669,7 @@ bn select bm 1 0
 afix0 fold wsstub p7 ao p8
 afix fold wsnorm ad afix0 a9
 st0 rec p0 0
-bo fold wsorch bn st0 a6 a7 afix ap as a8 u bj p5 a9 ba p4 ad p6 ar
+bo fold wsorch bn st0 a6 a7 afix ap as a8 u bj p5 a9 ba p4 ad p6 ar p9 p10
 bio at bo 0
 bec at bo 1
 bok eq bl 0
@@ -701,7 +701,17 @@ t8 at rc 1
 rn call warn16 t8 cfrom
 cnt at rn 0
 t9 at rn 1
-u call wsunit t9 src n fst from dt base cfrom cnt
+rs call rdword t9
+so at rs 0
+t10 at rs 1
+ru call rdword t10
+uo at ru 0
+t11 at ru 1
+sj eq so 2
+simd select sj 0 so
+uz eq uo 0
+unroll select uz 1 uo
+u call wsunit t11 src n fst from dt base cfrom cnt simd unroll
 ret u
 end
 fn wam3 (io,u32) u32 -> (io,u32)

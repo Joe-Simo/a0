@@ -1,0 +1,295 @@
+{
+  "baseline": "f426252b116ad5ce82d331f26f14bb5af4c6a790",
+  "seed": 1369948382,
+  "cases": 584,
+  "generatorSHA256": "4ee86110780fab44c8a6d0c071c529854ac3429b5a12b7064ddeaccba99a93aa",
+  "baselineCounts": {
+    "exact": 578,
+    "diagnostic-detail": 2,
+    "renderer-unavailable": 4
+  },
+  "fixedCounts": {
+    "exact": 580,
+    "renderer-unavailable": 4
+  },
+  "scope": [
+    "128 bounded xorshift-generated scalar programs with 3 negative mutations each",
+    "Parameter/node-count combinations, identifier bounds, aggregate width/dimensions, static-trip bounds, source-byte bounds and spec counts",
+    "Full native diagnostic JSON against the reference, not only IDs"
+  ],
+  "defect": "A0001 array-length diagnostics hardcoded 65536 even when the actual pure-element limit was wider",
+  "fix": "Retain computed dimension limit in parser failure context; renderer emits that bound",
+  "proof": [
+    {
+      "source": "fn f boolx2097153 -> _\nret 0\nend\n",
+      "expected": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type 'boolx2097153': array length exceeds 2097152",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "before": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type 'boolx2097153': array length exceeds 65536",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "after": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type 'boolx2097153': array length exceeds 2097152",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      }
+    },
+    {
+      "source": "fn f (bool,bool)x1048577 -> _\nret 0\nend\n",
+      "expected": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type '(bool,bool)x1048577': array length exceeds 1048576",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "before": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type '(bool,bool)x1048577': array length exceeds 65536",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "after": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type '(bool,bool)x1048577': array length exceeds 1048576",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      }
+    },
+    {
+      "source": "fn f boolx2x1048577 -> _\nret 0\nend\n",
+      "expected": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type 'boolx2x1048577': array length exceeds 1048576",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "before": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type 'boolx2x1048577': array length exceeds 65536",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "after": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type 'boolx2x1048577': array length exceeds 1048576",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      }
+    },
+    {
+      "source": "fn f _x65537 -> _\nret 0\nend\n",
+      "expected": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type '_x65537': array length exceeds 65536",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "before": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type '_x65537': array length exceeds 65536",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "after": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type '_x65537': array length exceeds 65536",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      }
+    },
+    {
+      "source": "fn f (io,bool)x65537 -> _\nret 0\nend\n",
+      "expected": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type '(io,bool)x65537': array length exceeds 65536",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "before": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type '(io,bool)x65537': array length exceeds 65536",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      },
+      "after": {
+        "code": "parse",
+        "id": "A0001",
+        "message": "line 1: type '(io,bool)x65537': array length exceeds 65536",
+        "line": 1,
+        "expected": null,
+        "actual": null,
+        "fix": "types are u32, bool, io, arrays u32x4 (left to right: u32x4x2 is two u32x4), records (u32,bool)",
+        "applicability": "maybe",
+        "edits": []
+      }
+    }
+  ],
+  "knownRefusals": [
+    {
+      "name": "spec-failure-1",
+      "id": "A0715",
+      "reason": "unsupported"
+    },
+    {
+      "name": "spec-failure-3",
+      "id": "A0715",
+      "reason": "unsupported"
+    },
+    {
+      "name": "examples-4",
+      "id": "A0714",
+      "reason": "unsupported"
+    },
+    {
+      "name": "spec-failure-4",
+      "id": "A0714",
+      "reason": "unsupported"
+    }
+  ],
+  "artifacts": {
+    "defaultFrontendBefore": 358233,
+    "defaultFrontendAfter": 358376,
+    "rendererBefore": 218010,
+    "rendererAfter": 218023
+  },
+  "successControl": {
+    "scope": "Same-process warm parse-unit diagnostic-change guard, 3 warmup and 10 interleaved measured pairs per input; not a cold/full frontend benchmark",
+    "maxLoad": 0.38,
+    "rows": [
+      {
+        "path": "examples/life.a0",
+        "beforeMedian": 2.823031,
+        "afterMedian": 2.7427,
+        "ratio": 0.971544414496334
+      },
+      {
+        "path": "site/lib/frame.a0",
+        "beforeMedian": 1.164534,
+        "afterMedian": 1.200228,
+        "ratio": 1.030650886964228
+      },
+      {
+        "path": "site/page.a0",
+        "beforeMedian": 61.850036,
+        "afterMedian": 62.433299,
+        "ratio": 1.0094302774536783
+      },
+      {
+        "path": "site/docs.a0",
+        "beforeMedian": 24.646269,
+        "afterMedian": 25.184949,
+        "ratio": 1.0218564521875502
+      },
+      {
+        "path": "compiler/boot.a0",
+        "beforeMedian": 9.133195,
+        "afterMedian": 9.350852,
+        "ratio": 1.02383141934449
+      },
+      {
+        "path": "compiler/parse_arena.a0",
+        "beforeMedian": 0.037356,
+        "afterMedian": 0.036965,
+        "ratio": 0.9895331405932112
+      }
+    ]
+  },
+  "validation": {
+    "focusedTests": 18,
+    "fail": 0,
+    "skip": 0,
+    "availableBehaviorTargets": 13,
+    "behaviorFailed": 0,
+    "behaviorBlocked": 0,
+    "seed": "stage 2 equals stage 3; stage 3 reproduces itself",
+    "aggregate": "pending exact-tree available gate"
+  },
+  "remaining": [
+    "Native spec diagnostic rendering A0714/A0715 remains unsupported",
+    "Finite audit is not universal coverage",
+    "Historical native latency, independent AI accuracy and full-platform gates remain outstanding"
+  ],
+  "evidence": "Raw cases, generator, minimized failures and logs are preserved in the local recovery validation archive.",
+  "prereview": {
+    "automatedScore": 4.9,
+    "classification": "Reviewed heuristic false positives: pre-existing language bounds and unchanged tp_array formula; no suppression or gate weakening",
+    "rawEvidence": "prereview.log and prereview-review.txt in validation archive"
+  }
+}

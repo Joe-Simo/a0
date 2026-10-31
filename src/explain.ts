@@ -17,7 +17,15 @@ import {
   isDiagId,
   type Spec,
 } from './diagnostics.js';
-import { applyPatch, EditSession, parsePatch, revision } from './edit.js';
+import { applyPatch, EditSession, type EditSyntax, parsePatch, revision } from './edit.js';
+
+export interface ExplainFrontend {
+  parse: typeof parseAndValidate;
+  syntax: EditSyntax;
+  example(ex: Example): Example;
+  command: string;
+  describe?(text: string): string;
+}
 
 const text = (v: string | (() => string)): string => (typeof v === 'function' ? v() : v);
 const spec = (id: DiagId): Spec => DIAGNOSTICS[id];
@@ -37,12 +45,16 @@ const indent = (s: string): string =>
     .join('\n');
 
 /** The explanation of one code: what it means, a failing example, the fixed example, the fixes. */
-export function explain(id: string): string | undefined {
+export function explain(id: string, frontend?: ExplainFrontend): string | undefined {
   const key = id.toUpperCase();
   if (!isDiagId(key)) return undefined;
   const s = spec(key);
-  const out = [`${key} ${s.cls}: ${s.message}`, ...s.why];
-  const ex: Example | undefined = s.example;
+  const out = [
+    `${key} ${s.cls}: ${s.message}`,
+    ...s.why.map((line) => frontend?.describe?.(line) ?? line),
+  ];
+  const ex: Example | undefined =
+    s.example === undefined ? undefined : (frontend?.example(s.example) ?? s.example);
   if (ex === undefined) out.push(`(no runnable example: ${s.unrunnable ?? 'none'})`);
   else {
     const shown = ex.shown;
@@ -61,7 +73,7 @@ export function explain(id: string): string | undefined {
   const exact = EXACT_FIXES.filter((f) => f.id === key);
   if (exact.length > 0)
     out.push(
-      `exact fixes (\`fix all\`, \`a0 check --fix\`): ${exact.map((f) => f.what).join('; ')}`,
+      `exact fixes (\`fix all\`, \`${frontend?.command ?? 'a0'} check --fix\`): ${exact.map((f) => f.what).join('; ')}`,
     );
   return `${out.join('\n')}\n`;
 }
@@ -77,9 +89,9 @@ function raised(thunk: () => unknown): A0Error | undefined {
   }
 }
 
-function session(ex: Example): EditSession {
-  const base = parseAndValidate(ex.base ?? '');
-  const s = new EditSession(base);
+function session(ex: Example, frontend?: ExplainFrontend): EditSession {
+  const base = (frontend?.parse ?? parseAndValidate)(ex.base ?? '');
+  const s = new EditSession(base, frontend === undefined ? {} : { syntax: frontend.syntax });
   for (const f of ex.open ?? [ex.fn ?? '']) s.open(f, { scope: 'deps' });
   s.openProgram();
   return s;
@@ -88,8 +100,8 @@ function session(ex: Example): EditSession {
 const value = (a: ExampleArg): Value =>
   a === 'io' ? makeIo() : Array.isArray(a) ? a.map(value) : (a as Value);
 
-function runExample(ex: Example, source: string, good: boolean): void {
-  const typed = parseAndValidate(source);
+function runExample(ex: Example, source: string, good: boolean, frontend?: ExplainFrontend): void {
+  const typed = (frontend?.parse ?? parseAndValidate)(source);
   const fn = typed.byName.get(ex.fn ?? '');
   if (fn === undefined) throw new Error(`example runs unknown function '${ex.fn ?? ''}'`);
   const args: Value[] = ((good ? ex.goodArgs : undefined) ?? ex.args ?? []).map(value);
@@ -97,9 +109,10 @@ function runExample(ex: Example, source: string, good: boolean): void {
 }
 
 /** Problems with the examples of one row (empty when the row's examples hold). */
-export function verifyExample(id: DiagId): string[] {
+export function verifyExample(id: DiagId, frontend?: ExplainFrontend): string[] {
   const s = spec(id);
-  const ex: Example | undefined = s.example;
+  const ex: Example | undefined =
+    s.example === undefined ? undefined : (frontend?.example(s.example) ?? s.example);
   if (ex === undefined)
     return s.unrunnable === undefined ? [`${id}: no example and no reason`] : [];
   const problems: string[] = [];
@@ -109,27 +122,31 @@ export function verifyExample(id: DiagId): string[] {
   let goodError: A0Error | undefined;
   switch (ex.kind) {
     case 'source':
-      badError = raised(() => parseAndValidate(bad));
-      goodError = raised(() => parseAndValidate(good));
+      badError = raised(() => (frontend?.parse ?? parseAndValidate)(bad));
+      goodError = raised(() => (frontend?.parse ?? parseAndValidate)(good));
       break;
     case 'edit':
-      badError = raised(() => session(ex).apply(bad));
-      goodError = raised(() => session(ex).apply(good));
+      badError = raised(() => session(ex, frontend).apply(bad));
+      goodError = raised(() => session(ex, frontend).apply(good));
       break;
     case 'patch': {
-      const base = parseAndValidate(ex.base ?? '');
+      const base = (frontend?.parse ?? parseAndValidate)(ex.base ?? '');
       const fn = base.byName.get(ex.fn ?? '');
       if (fn === undefined) return [`${id}: patch example names unknown function '${ex.fn ?? ''}'`];
       const apply = (patch: string): void => {
-        applyPatch(base, parsePatch(patch.replaceAll('REV', revision(fn))));
+        applyPatch(
+          base,
+          parsePatch(patch.replaceAll('REV', revision(fn)), frontend?.syntax),
+          frontend?.syntax,
+        );
       };
       badError = raised(() => apply(bad));
       goodError = raised(() => apply(good));
       break;
     }
     case 'run':
-      badError = raised(() => runExample(ex, bad, false));
-      goodError = raised(() => runExample(ex, good, true));
+      badError = raised(() => runExample(ex, bad, false, frontend));
+      goodError = raised(() => runExample(ex, good, true, frontend));
       break;
   }
   if (badError === undefined) problems.push(`${id}: the failing example is accepted`);
@@ -145,6 +162,6 @@ export function verifyExample(id: DiagId): string[] {
 }
 
 /** Every row's problems; empty when all examples hold. */
-export function verifyExamples(): string[] {
-  return diagnosticIds().flatMap(verifyExample);
+export function verifyExamples(frontend?: ExplainFrontend): string[] {
+  return diagnosticIds().flatMap((id) => verifyExample(id, frontend));
 }

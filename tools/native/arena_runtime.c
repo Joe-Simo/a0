@@ -36,7 +36,18 @@ struct a0_arena_session {
   bool protocol_failed;
   bool finished;
   uint32_t finish_code;
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+  a0_arena_local *local;
+#endif
 };
+
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+struct a0_arena_local { a0_arena_session *owner; };
+static void invalidate_local(a0_arena_session *s) {
+  if (s->local) s->local->owner = NULL;
+  s->local = NULL;
+}
+#endif
 
 static void release_allocations(a0_arena_session *s) {
   for (uint32_t i = 0; i < s->allocation_count; i++)
@@ -245,6 +256,9 @@ a0_arena_session *a0_arena_create(uint32_t max_words,
 
 void a0_arena_reset(a0_arena_session *s) {
   assert(s != NULL);
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+  invalidate_local(s);
+#endif
   release_allocations(s);
   free(s->output);
   s->output = NULL;
@@ -265,6 +279,9 @@ void a0_arena_reset(a0_arena_session *s) {
 
 void a0_arena_destroy(a0_arena_session *s) {
   if (s == NULL) return;
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+  invalidate_local(s);
+#endif
   release_allocations(s);
   free(s->output);
   free(s);
@@ -344,3 +361,87 @@ const uint32_t *a0_arena_output(const a0_arena_session *s) {
   assert(s != NULL);
   return s->output;
 }
+
+#ifdef A0_ARENA_LOCAL_EXPERIMENT
+/* These operations mirror complete v1 requests but never construct word frames.
+ * The capability cannot turn a pending/failed wire session into a usable one.
+ * Returned pages are caller-owned copies, including deterministic zero tails.
+ */
+static uint32_t local_ready(a0_arena_local *local) {
+  if (!local || !local->owner) return A0_ARENA_PROTOCOL;
+  a0_arena_session *s = local->owner;
+  if (s->local != local || s->protocol_failed || s->request_phase != 0 ||
+      s->response_position != s->response_count) return A0_ARENA_PROTOCOL;
+  return s->finished ? A0_ARENA_FINISHED : A0_ARENA_OK;
+}
+a0_arena_local *a0_arena_local_open(a0_arena_session *s) {
+  if (!s || s->local || s->finished || s->protocol_failed || s->request_phase ||
+      s->response_position != s->response_count) return NULL;
+  a0_arena_local *local = calloc(1, sizeof *local);
+  if (!local) return NULL;
+  local->owner = s;
+  s->local = local;
+  return local;
+}
+void a0_arena_local_close(a0_arena_local *local) {
+  if (!local) return;
+  if (local->owner && local->owner->local == local) local->owner->local = NULL;
+  local->owner = NULL;
+  free(local);
+}
+uint32_t a0_arena_local_alloc(a0_arena_local *local, uint32_t count,
+                              uint32_t *handle) {
+  *handle = 0;
+  uint32_t status = local_ready(local);
+  if (status) return status;
+  a0_arena_session *s = local->owner;
+  if (!count) return A0_ARENA_RANGE;
+  if (count > s->max_words - s->allocated_words ||
+#if SIZE_MAX <= UINT32_MAX
+      (uint64_t)count > SIZE_MAX / sizeof(uint32_t) ||
+#endif
+      s->allocation_count == UINT32_MAX || !reserve_allocation_slot(s))
+    return A0_ARENA_ALLOCATION;
+  uint32_t *words = calloc((size_t)count, sizeof(uint32_t));
+  if (!words) return A0_ARENA_ALLOCATION;
+  allocation *slot = s->allocations + s->allocation_count;
+  slot->words = words;
+  slot->length = count;
+  s->allocated_words += count;
+  *handle = ++s->allocation_count;
+  return A0_ARENA_OK;
+}
+static uint32_t local_access(a0_arena_local *local, uint32_t handle,
+                             uint32_t offset, uint32_t count) {
+  uint32_t status = local_ready(local);
+  if (status) return status;
+  if (count > A0_ARENA_BULK_MAX) return A0_ARENA_RANGE;
+  a0_arena_session *s = local->owner;
+  if (!handle || handle > s->allocation_count) return A0_ARENA_HANDLE;
+  allocation *slot = s->allocations + handle - 1;
+  if (offset > slot->length || count > slot->length - offset)
+    return A0_ARENA_RANGE;
+  return A0_ARENA_OK;
+}
+uint32_t a0_arena_local_load(a0_arena_local *local, uint32_t handle,
+                             uint32_t offset, uint32_t count,
+                             uint32_t words[A0_ARENA_BULK_MAX]) {
+  memset(words, 0, A0_ARENA_BULK_MAX * sizeof(uint32_t));
+  uint32_t status = local_access(local, handle, offset, count);
+  if (!status && count)
+    memcpy(words, local->owner->allocations[handle - 1].words + offset,
+           (size_t)count * sizeof(uint32_t));
+  return status;
+}
+uint32_t a0_arena_local_store(a0_arena_local *local, uint32_t handle,
+                              uint32_t offset, uint32_t count,
+                              const uint32_t words[A0_ARENA_BULK_MAX]) {
+  /* arena_store itself rejects this shape before touching its IO token. */
+  if (count > A0_ARENA_BULK_MAX) return A0_ARENA_RANGE;
+  uint32_t status = local_access(local, handle, offset, count);
+  if (!status && count)
+    memcpy(local->owner->allocations[handle - 1].words + offset, words,
+           (size_t)count * sizeof(uint32_t));
+  return status;
+}
+#endif

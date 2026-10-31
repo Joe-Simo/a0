@@ -4,9 +4,9 @@
  *   a0 lsp [root]
  *
  * Diagnostics come from the linker and checker (src/link.ts, src/core.ts) on open and change,
- * with the A0 diagnostic code and its fix; hover shows function signatures and op docs;
+ * through the selected frontend, with the A0 diagnostic code and its fix; hover shows function signatures and op docs;
  * go-to-definition follows `use` files; document symbols, completion of ops and in-scope
- * functions, and formatting through the canonical printer. Every file read, `use` targets
+ * functions, and formatting through the same frontend. The public CLI retains the compatibility frontend. Every file read, `use` targets
  * included, is confined to the root exactly as in the MCP server (src/mcp.ts); documents
  * outside it get a single `limit` diagnostic and no other service.
  */
@@ -24,6 +24,7 @@ import {
   type Diagnostic,
   DiagnosticSeverity,
   type DocumentSymbol,
+  InsertTextFormat,
   type Location,
   type Position,
   type Range,
@@ -33,20 +34,10 @@ import {
   type TextEdit,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import {
-  A0Error,
-  ALL_OPS,
-  type FixEdit,
-  formatSource,
-  OP_ALIASES,
-  type Op,
-  parse,
-  stripComment,
-} from './core.js';
-import { formatDense } from './dense.js';
+import { A0Error, ALL_OPS, type FixEdit, OP_ALIASES, type Op, stripComment } from './core.js';
 import type { SpecFault } from './diagnostics.js';
 import { applyEdit } from './fix.js';
-import { isDensePath, link, parseFile } from './link.js';
+import { type LspFrontend, legacyLspFrontend } from './lsp-frontend.js';
 import { confine } from './mcp.js';
 import { protectionPolicy } from './protection-policy.js';
 import { type SpecWord, specWordOf } from './spec.js';
@@ -207,7 +198,9 @@ function withExpected(raw: string, expected: string): string | undefined {
   const code = stripComment(raw);
   const arrow = code.lastIndexOf('->');
   if (arrow < 0) return undefined;
-  return `${code.slice(0, arrow)}-> ${expected}${raw.slice(code.length)}`;
+  const comment = raw.slice(code.length);
+  const spacing = comment === '' ? '' : (/\s*$/.exec(code)?.[0] ?? '');
+  return `${code.slice(0, arrow)}-> ${expected}${spacing}${comment}`;
 }
 
 /** A literal as `formatLit` prints it: what an `ex` line can hold after the arrow. */
@@ -217,13 +210,18 @@ function wordAt(text: string, pos: Position): string | undefined {
   const l = text.split(/\r?\n/)[pos.line] ?? '';
   let a = pos.character;
   let b = pos.character;
-  while (a > 0 && /[A-Za-z0-9_]/.test(l[a - 1] ?? '')) a -= 1;
-  while (b < l.length && /[A-Za-z0-9_]/.test(l[b] ?? '')) b += 1;
+  while (a > 0 && /[A-Za-z0-9_<>]/.test(l[a - 1] ?? '')) a -= 1;
+  while (b < l.length && /[A-Za-z0-9_<>]/.test(l[b] ?? '')) b += 1;
   return a < b ? l.slice(a, b) : undefined;
 }
 
 /** Wire the A0 language services onto `connection` for files inside `launch`. */
-export async function startServer(connection: Connection, launch: string): Promise<void> {
+export async function startServer(
+  connection: Connection,
+  launch: string,
+  frontend: LspFrontend = legacyLspFrontend,
+): Promise<void> {
+  const aliases = { ...OP_ALIASES, ...frontend.aliases };
   const launched = await realpath(resolve(launch));
   protectionPolicy(launched);
   const root = (await stat(launched)).isDirectory() ? launched : dirname(launched);
@@ -297,7 +295,7 @@ export async function startServer(connection: Connection, launch: string): Promi
         },
       ];
     try {
-      await link(path, read, { root });
+      await frontend.link(path, read, { root });
       return [];
     } catch (e) {
       const err = e instanceof A0Error ? e : new A0Error('internal error', undefined);
@@ -341,18 +339,23 @@ export async function startServer(connection: Connection, launch: string): Promi
     await connection.sendDiagnostics({ uri: doc.uri, diagnostics: await diagnose(doc) });
   };
 
-  connection.onInitialize(() => ({
-    capabilities: {
-      textDocumentSync: TextDocumentSyncKind.Full,
-      hoverProvider: true,
-      definitionProvider: true,
-      documentSymbolProvider: true,
-      completionProvider: {},
-      documentFormattingProvider: true,
-      codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
-    },
-    serverInfo: { name: 'a0', version: A0_VERSION },
-  }));
+  let snippets = false;
+  connection.onInitialize((params) => {
+    snippets =
+      params.capabilities.textDocument?.completion?.completionItem?.snippetSupport === true;
+    return {
+      capabilities: {
+        textDocumentSync: TextDocumentSyncKind.Full,
+        hoverProvider: true,
+        definitionProvider: true,
+        documentSymbolProvider: true,
+        completionProvider: {},
+        documentFormattingProvider: true,
+        codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
+      },
+      serverInfo: { name: 'a0', version: A0_VERSION },
+    };
+  });
 
   documents.onDidOpen(async ({ document }) => {
     const path = await pathOf(document.uri);
@@ -386,13 +389,25 @@ export async function startServer(connection: Connection, launch: string): Promi
       word === specWord &&
       (lines[position.line] ?? '').trimStart().startsWith(word)
     )
-      return { contents: { kind: 'markdown', value: SPEC_DOCS[specWord] } };
+      return {
+        contents: {
+          kind: 'markdown',
+          value: frontend.documentation?.(SPEC_DOCS[specWord]) ?? SPEC_DOCS[specWord],
+        },
+      };
     const def = (await inScope(doc.uri)).find((d) => d.name === word);
     if (def !== undefined) return { contents: { kind: 'markdown', value: `\`${def.signature}\`` } };
-    const op = (ALL_OPS as readonly string[]).includes(word) ? (word as Op) : OP_ALIASES[word];
+    const op = (ALL_OPS as readonly string[]).includes(word) ? (word as Op) : aliases[word];
     if (op === undefined) return null;
+    const preferred = frontend.operationCompletions?.[op];
+    if (preferred) return { contents: { kind: 'markdown', value: preferred.detail } };
     const alias = op === word ? '' : `\`${word}\` is an alias of \`${op}\`\n\n`;
-    return { contents: { kind: 'markdown', value: `${alias}${OP_DOCS[op]}` } };
+    return {
+      contents: {
+        kind: 'markdown',
+        value: `${alias}${frontend.documentation?.(OP_DOCS[op]) ?? OP_DOCS[op]}`,
+      },
+    };
   });
 
   connection.onDefinition(async ({ textDocument, position }): Promise<Location | null> => {
@@ -428,16 +443,27 @@ export async function startServer(connection: Connection, launch: string): Promi
     const specs: CompletionItem[] = specSlot(lines, position.line).map((word) => ({
       label: word,
       kind: CompletionItemKind.Keyword,
-      detail: SPEC_DOCS[word],
+      detail: frontend.documentation?.(SPEC_DOCS[word]) ?? SPEC_DOCS[word],
     }));
-    const ops: CompletionItem[] = [...ALL_OPS, ...Object.keys(OP_ALIASES)].map((name) => ({
-      label: name,
-      kind: CompletionItemKind.Operator,
-      detail:
-        OP_DOCS[
-          (ALL_OPS as readonly string[]).includes(name) ? (name as Op) : (OP_ALIASES[name] as Op)
-        ],
-    }));
+    const names = frontend.operationCompletions ? ALL_OPS : [...ALL_OPS, ...Object.keys(aliases)];
+    const ops: CompletionItem[] = names.map((name) => {
+      const op = (ALL_OPS as readonly string[]).includes(name)
+        ? (name as Op)
+        : (aliases[name] as Op);
+      const preferred = frontend.operationCompletions?.[op];
+      const detail = preferred?.detail ?? OP_DOCS[op];
+      return {
+        label: preferred?.label ?? name,
+        kind: CompletionItemKind.Operator,
+        detail: frontend.documentation?.(detail) ?? detail,
+        ...(preferred
+          ? {
+              insertText: snippets ? preferred.snippet : preferred.insertText,
+              insertTextFormat: snippets ? InsertTextFormat.Snippet : InsertTextFormat.PlainText,
+            }
+          : {}),
+      };
+    });
     const fns: CompletionItem[] = (await inScope(textDocument.uri)).map((d) => ({
       label: d.name,
       kind: CompletionItemKind.Function,
@@ -453,12 +479,7 @@ export async function startServer(connection: Connection, launch: string): Promi
     const text = doc.getText();
     let formatted: string;
     try {
-      if (isDensePath(path)) {
-        // Dense text is formatted through the dense printer, with the parameter counts of
-        // the files it uses (a call's arity comes from its callee).
-        const { program, known } = await parseFile(path, read);
-        formatted = formatDense(program, { known, comments: true });
-      } else formatted = formatSource(parse(text));
+      formatted = await frontend.format(path, text, read);
     } catch {
       return null;
     }
@@ -487,17 +508,21 @@ export async function startServer(connection: Connection, launch: string): Promi
       // exact (one line, the text after the arrow); it is not the preferred fix, since the
       // function may be the thing that is wrong.
       const fault = data?.spec;
-      if (data?.id === 'A0715' && fault?.actual !== undefined && LITERAL.test(fault.actual)) {
+      const actual =
+        fault?.actual === undefined
+          ? undefined
+          : frontend.exampleResult === undefined
+            ? fault.actual
+            : frontend.exampleResult(fault.actual);
+      if (data?.id === 'A0715' && actual !== undefined && LITERAL.test(actual)) {
         const lines = text.split(/\r?\n/);
         const at = d.range.start.line;
         const raw = lines[at] ?? '';
         const rewritten =
-          specWordOf(stripComment(raw).trim()) === 'ex'
-            ? withExpected(raw, fault.actual)
-            : undefined;
+          specWordOf(stripComment(raw).trim()) === 'ex' ? withExpected(raw, actual) : undefined;
         if (rewritten !== undefined && rewritten !== raw)
           actions.push({
-            title: `Change the expected result to ${fault.actual}`,
+            title: `Change the expected result to ${actual}`,
             kind: CodeActionKind.QuickFix,
             diagnostics: [d],
             isPreferred: false,
@@ -536,6 +561,9 @@ export async function startServer(connection: Connection, launch: string): Promi
 }
 
 /** `a0 lsp [root]`: serve over stdio until the client exits. */
-export async function serveLsp(launch: string): Promise<void> {
-  await startServer(createConnection(process.stdin, process.stdout), launch);
+export async function serveLsp(
+  launch: string,
+  frontend: LspFrontend = legacyLspFrontend,
+): Promise<void> {
+  await startServer(createConnection(process.stdin, process.stdout), launch, frontend);
 }

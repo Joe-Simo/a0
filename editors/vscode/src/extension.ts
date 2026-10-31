@@ -9,10 +9,30 @@ import {
 let client: LanguageClient | undefined;
 
 function createClient(): LanguageClient {
-  const command = workspace.getConfiguration('a0').get<string>('server.path', 'a0');
+  const config = workspace.getConfiguration('a0');
+  const command = config.get<string>('server.path', 'a0');
+  const args = config.get<string[]>('server.args', []);
+  if (typeof command !== 'string' || command.length === 0 || command.includes('\0'))
+    throw new Error('a0.server.path must be a non-empty executable path without NUL bytes');
+  if (!Array.isArray(args) || args.some((arg) => typeof arg !== 'string' || arg.includes('\0')))
+    throw new Error('a0.server.args must be an array of arguments without NUL bytes');
+  const folders = workspace.workspaceFolders ?? [];
+  if (args.length > 0 && (folders.length !== 1 || folders[0]?.uri.scheme !== 'file'))
+    throw new Error('Configured server arguments require one local workspace folder');
+  const options = args.length > 0 ? { cwd: folders[0]!.uri.fsPath } : {};
   const serverOptions: ServerOptions = {
-    run: { command, args: ['lsp'], transport: TransportKind.stdio },
-    debug: { command, args: ['lsp'], transport: TransportKind.stdio },
+    run: {
+      command,
+      args: [...args, 'lsp'],
+      ...(args.length > 0 ? { options } : {}),
+      transport: TransportKind.stdio,
+    },
+    debug: {
+      command,
+      args: [...args, 'lsp'],
+      ...(args.length > 0 ? { options } : {}),
+      transport: TransportKind.stdio,
+    },
   };
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ language: 'a0' }],
@@ -23,13 +43,14 @@ function createClient(): LanguageClient {
 }
 
 async function start(): Promise<void> {
-  client = createClient();
+  if (!workspace.isTrusted) return;
   try {
+    client = createClient();
     await client.start();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     void window.showErrorMessage(
-      `A0: could not start \`a0 lsp\` (${message}). Set "a0.server.path" to the a0 executable.`,
+      `A0: could not start \`a0 lsp\` (${message}). Set "a0.server.path" and optional "a0.server.args" for the selected compiler.`,
     );
   }
 }
@@ -42,12 +63,18 @@ async function stop(): Promise<void> {
 
 export async function activate(context: ExtensionContext): Promise<void> {
   context.subscriptions.push(
+    workspace.onDidGrantWorkspaceTrust(async () => {
+      await start();
+    }),
     commands.registerCommand('a0.restartServer', async () => {
       await stop();
       await start();
     }),
     workspace.onDidChangeConfiguration(async (event) => {
-      if (event.affectsConfiguration('a0.server.path')) {
+      if (
+        event.affectsConfiguration('a0.server.path') ||
+        event.affectsConfiguration('a0.server.args')
+      ) {
         await stop();
         await start();
       }

@@ -224,6 +224,7 @@ export function cDriver(
 ): string {
   // A strict C module reports a trap through A0_TRAP_EMIT / A0_TRAP_EXIT: the driver takes both
   // over, so one process runs every case and a trap is a `trap: <line>` result like any other.
+  // Capture the hook argument: trap-free strict modules omit the private runtime buffer.
   const strict = program.profile === 'strict' && !forkTraps;
   const forked = program.profile === 'strict' && forkTraps;
   const dispatch = program.functions.map((fn, i) => {
@@ -245,7 +246,7 @@ export function cDriver(
       : '';
     const need = scalars.length + (io ? 1 : 0);
     const guard = strict
-      ? 'if (setjmp(a0_jmp) != 0) { printf("trap: %s\\n", a0_trapbuf); break; } '
+      ? 'if (setjmp(A0_driver_jmp) != 0) { printf("trap: %s\\n", A0_driver_trap_line); break; } '
       : '';
     const call = `${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print}${flush} printf("\\n");`;
     if (forked)
@@ -253,7 +254,7 @@ export function cDriver(
     return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } ${setup}${guard}${call} break; }`;
   });
   const hooks = strict
-    ? '#include <setjmp.h>\nstatic jmp_buf a0_jmp;\n#define A0_TRAP_EMIT(line) ((void)(line))\n#define A0_TRAP_EXIT() longjmp(a0_jmp, 1)\n'
+    ? '#include <setjmp.h>\nstatic jmp_buf A0_driver_jmp;\nstatic const char *A0_driver_trap_line = "";\n#define A0_TRAP_EMIT(line) ((void)(A0_driver_trap_line = (line)))\n#define A0_TRAP_EXIT() longjmp(A0_driver_jmp, 1)\n'
     : forked
       ? `#include <sys/wait.h>
 #include <unistd.h>

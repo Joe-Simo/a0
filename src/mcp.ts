@@ -9,7 +9,7 @@
  * reference interpreter is bounded by fuel and every tool result by MAX_OUTPUT.
  */
 
-import { lstat, readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { lstat, readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -31,7 +31,9 @@ import { formatDense } from './dense.js';
 import { diag } from './diagnostics.js';
 import { EditSession, revision, typedTargetView } from './edit.js';
 import { DENSE_EXTENSION, isDensePath, link } from './link.js';
+import { writeManagedFile } from './plaintext-write.js';
 import { protectionPolicy, requireProtectedTarget } from './protection-policy.js';
+import type { McpFrontend } from './source-edit.js';
 import { A0_VERSION } from './version.js';
 
 /** Largest text any tool returns, in characters. */
@@ -121,7 +123,7 @@ export type McpSurface = 'full' | 'compact';
 /** Build the server for `launch` (a file or directory). The caller connects a transport. */
 export async function createServer(
   launch: string,
-  options: { readonly surface?: McpSurface } = {},
+  options: { readonly surface?: McpSurface; readonly frontend?: McpFrontend } = {},
 ): Promise<McpServer> {
   const launched = await realpath(resolve(launch));
   protectionPolicy(launched);
@@ -149,14 +151,35 @@ export async function createServer(
     const path = await fileOf(file);
     const existing = opened.get(path);
     if (existing !== undefined) return existing;
-    const linked = await link(path, async (p) => readFile(await confine(root, p, true), 'utf8'));
+    const read = async (p: string) => readFile(await confine(root, p, true), 'utf8');
+    const linked =
+      options.frontend === undefined
+        ? await link(path, read)
+        : await options.frontend.link(path, read, { root });
     const entry: Opened = {
-      session: new EditSession(linked.program),
+      session: new EditSession(
+        linked.program,
+        options.frontend === undefined ? {} : { syntax: options.frontend.syntax },
+      ),
       sources: linked.sources.map((s) => s.path),
       dirty: false,
     };
     opened.set(path, entry);
     return entry;
+  };
+
+  const useDenseView = (dense: boolean | undefined): boolean => {
+    if (options.frontend !== undefined && dense !== undefined) throw diag('A0522');
+    return options.frontend === undefined && (dense ?? true);
+  };
+  const sourceText = (entry: Opened, path: string): string => {
+    if (options.frontend !== undefined) {
+      if (!path.endsWith('.a0')) throw diag('A0802', [path]);
+      return options.frontend.print(entry.session.program);
+    }
+    return isDensePath(path)
+      ? formatDense(entry.session.program, { comments: true })
+      : formatSource(entry.session.program);
   };
 
   const program = async (file: string | undefined): Promise<TypedProgram> =>
@@ -165,12 +188,18 @@ export async function createServer(
   const fileField = z
     .string()
     .optional()
-    .describe('.a0 or .a0d (dense) file relative to the server root (default: the launched file)');
+    .describe(
+      options.frontend === undefined
+        ? '.a0 or .a0d (dense) file relative to the server root (default: the launched file)'
+        : '.a0 source file relative to the server root (default: the launched file)',
+    );
   const denseField = z
     .boolean()
     .optional()
     .describe(
-      'dense view (the default): the function (or signatures) in the dense syntax; replies under this handle are dense too. Pass false for the canonical view and canonical replies (the opt-out, see skills/a0/references/primer.txt)',
+      options.frontend !== undefined
+        ? 'Legacy-only option; omit it in a source-bound session.'
+        : 'dense view (the default): the function (or signatures) in the dense syntax; replies under this handle are dense too. Pass false for the canonical view and canonical replies (the opt-out, see skills/a0/references/primer.txt)',
     );
 
   const server = new McpServer({ name: 'a0', version: A0_VERSION });
@@ -185,8 +214,12 @@ export async function createServer(
       },
       tool(async ({ file: f, function: name }) => {
         const { session } = await sessionFor(f);
-        const shown = session.open(name, { scope: 'bodies', dense: true }).text;
-        return typedTargetView(shown.slice(shown.indexOf('\n') + 1), session.program, name);
+        const shown = session.open(name, {
+          scope: 'bodies',
+          ...(options.frontend === undefined ? { dense: true } : {}),
+        }).text;
+        const body = shown.slice(shown.indexOf('\n') + 1);
+        return options.frontend === undefined ? typedTargetView(body, session.program, name) : body;
       }),
     );
     server.registerTool(
@@ -202,7 +235,8 @@ export async function createServer(
         const implied = entry.session.impliedHandle;
         return implied !== undefined
           ? entry.session.view(implied)
-          : formatProgram(entry.session.program);
+          : (options.frontend?.print(entry.session.program) ??
+              formatProgram(entry.session.program));
       }),
     );
     server.registerTool(
@@ -216,13 +250,7 @@ export async function createServer(
         if (!entry.dirty) throw diag('A0806');
         const out = await fileOf(f);
         if (entry.sources.length > 1) throw diag('A0807');
-        await writeFile(
-          out,
-          isDensePath(out)
-            ? formatDense(entry.session.program, { comments: true })
-            : formatSource(entry.session.program),
-          'utf8',
-        );
+        await writeManagedFile(entry.sources, out, sourceText(entry, out));
         entry.dirty = false;
         return relative(root, out);
       }),
@@ -251,7 +279,7 @@ export async function createServer(
     },
     tool(async ({ file, function: name, scope, dense, specs, lean }) => {
       const { session } = await sessionFor(file);
-      const useDense = dense ?? true;
+      const useDense = useDenseView(dense);
       const text = session.open(name, {
         ...(scope === 'full'
           ? {}
@@ -272,7 +300,7 @@ export async function createServer(
     },
     tool(async ({ file, target, dense }) => {
       const { session } = await sessionFor(file);
-      const useDense = dense ?? true;
+      const useDense = useDenseView(dense);
       return session.openProgram({
         ...(target === undefined ? {} : { scope: 'deps' as const, target }),
         ...(useDense ? { dense: true } : {}),
@@ -301,7 +329,9 @@ export async function createServer(
         // a reply without a handle line edited the one open handle: show that view, not the program
         const implied = entry.session.impliedHandle;
         if (implied !== undefined) return entry.session.view(implied);
-        return formatProgram(entry.session.program);
+        return (
+          options.frontend?.print(entry.session.program) ?? formatProgram(entry.session.program)
+        );
       }
     }),
   );
@@ -371,13 +401,7 @@ export async function createServer(
       if (!entry.dirty) throw diag('A0806');
       const out = path === undefined ? await fileOf(file) : await confine(root, path, false);
       if (path === undefined && entry.sources.length > 1) throw diag('A0807');
-      await writeFile(
-        out,
-        isDensePath(out)
-          ? formatDense(entry.session.program, { comments: true })
-          : formatSource(entry.session.program),
-        'utf8',
-      );
+      await writeManagedFile(entry.sources, out, sourceText(entry, out));
       entry.dirty = false;
       return relative(root, out);
     }),
@@ -387,11 +411,14 @@ export async function createServer(
 }
 
 /** `a0 mcp <file-or-dir>`: serve over stdio until the client disconnects. */
-export async function serveStdio(launch: string): Promise<void> {
+export async function serveStdio(
+  launch: string,
+  options: { readonly frontend?: McpFrontend } = {},
+): Promise<void> {
   // A0_MCP_SURFACE=compact: the experimental three-tool surface (see McpSurface); off by default.
-  const server = await createServer(
-    launch,
-    process.env.A0_MCP_SURFACE === 'compact' ? { surface: 'compact' } : {},
-  );
+  const server = await createServer(launch, {
+    ...options,
+    ...(process.env.A0_MCP_SURFACE === 'compact' ? { surface: 'compact' as const } : {}),
+  });
   await server.connect(new StdioServerTransport());
 }

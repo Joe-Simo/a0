@@ -1,0 +1,119 @@
+{
+  "scope": "Owner-only explicit commit-lock recovery; not plaintext-writer lease recovery or external-writer enforcement.",
+  "baseline": "083369370346b3c904f287a23e86e0c5e4352baa",
+  "reproduced": {
+    "unscopedAbsentPidRemoved": true
+  },
+  "focused": {
+    "passed": 40,
+    "failed": 0,
+    "skipped": 0
+  },
+  "cost": {
+    "scope": "Paired same-process synthetic encrypted write cost; 12 writes, identity creation excluded, no real credentials. RSS is process-wide and not isolated.",
+    "maxLoad": 0.81,
+    "rows": [
+      {
+        "payloadBytes": 128,
+        "writesPerSample": 12,
+        "beforeMs": {
+          "n": 7,
+          "median": 11.224702,
+          "min": 9.749278,
+          "max": 14.674018,
+          "samples": [
+            11.224702,
+            10.217381,
+            12.470222,
+            13.238884,
+            10.785644,
+            9.749278,
+            14.674018
+          ]
+        },
+        "afterMs": {
+          "n": 7,
+          "median": 12.05968,
+          "min": 10.32963,
+          "max": 13.007297,
+          "samples": [
+            10.32963,
+            13.007297,
+            11.320275,
+            12.372125,
+            12.247091,
+            10.980235,
+            12.05968
+          ]
+        },
+        "comparison": {
+          "gap": 0.074388,
+          "band": 0.25,
+          "ratio": 0.930763,
+          "verdict": "tie"
+        },
+        "storedBytesBefore": [
+          10942
+        ],
+        "storedBytesAfter": [
+          10942
+        ]
+      },
+      {
+        "payloadBytes": 4096,
+        "writesPerSample": 12,
+        "beforeMs": {
+          "n": 7,
+          "median": 11.900536,
+          "min": 10.545174,
+          "max": 13.391503,
+          "samples": [
+            12.353076,
+            11.900536,
+            10.545174,
+            11.102188,
+            13.391503,
+            11.056028,
+            12.176761
+          ]
+        },
+        "afterMs": {
+          "n": 7,
+          "median": 11.114988,
+          "min": 10.622579,
+          "max": 13.649221,
+          "samples": [
+            13.649221,
+            11.746366,
+            10.981877,
+            10.897903,
+            11.114988,
+            10.622579,
+            12.473976
+          ]
+        },
+        "comparison": {
+          "gap": -0.066009,
+          "band": 0.25,
+          "ratio": 1.070675,
+          "verdict": "tie"
+        },
+        "storedBytesBefore": [
+          16233
+        ],
+        "storedBytesAfter": [
+          16233
+        ]
+      }
+    ],
+    "coldStart": "unmeasured",
+    "memory": "Process-wide RSS retained in raw evidence; no isolated memory claim."
+  },
+  "limitations": [
+    "Same Linux boot/PID namespace recovery only.",
+    "Live, reused, legacy, foreign and unknown owners stay blocked.",
+    "Incomplete project and crashed recovery mutex require a separately reviewed recovery design.",
+    "Host filesystem and coordination metadata must be trusted.",
+    "External editors/toolchain writers, stale plaintext leases, full platforms and independent security review remain pending."
+  ]
+}

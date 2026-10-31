@@ -902,7 +902,21 @@ fn sima(fw: u32x128x458, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x45
   let f2 = pc(b0, 4, 1, f3#0, f3#1)
   let rge = pc(sab, 4, 1, f2#0, f2#1)
   # select (18)
-  let t3 = pc(sbc, bk, bv, 0, 0)
+  # On equality, either compared operand is the common value. Only a literal
+  # equality arm is substituted here; other algebra remains the ordinary path.
+  let cmp = kop(fw, cl, av)
+  let (xk, xv) = karg(fw, cl, oa, av, 0)
+  let (yk, yv) = karg(fw, cl, oa, av, 1)
+  let isk = (ak == 1) & ((cmp == 12) | (cmp == 13))
+  let lk = cmp == 12 ? bk : ck
+  let lv = cmp == 12 ? bv : cv
+  let ok = cmp == 12 ? ck : bk
+  let ov = cmp == 12 ? cv : bv
+  let lit = (lk == 3) | (lk == 4)
+  let xy = (xk == lk) & (xv == lv) & (yk == ok) & (yv == ov)
+  let yx = (yk == lk) & (yv == lv) & (xk == ok) & (xv == ov)
+  let tid = pc(isk & lit & (xy | yx), ok, ov, 0, 0)
+  let t3 = pc(sbc, bk, bv, tid#0, tid#1)
   let t2 = pc(af, ck, cv, t3#0, t3#1)
   let rsel = pc(at, bk, bv, t2#0, t2#1)
   # fold loop (20 21)

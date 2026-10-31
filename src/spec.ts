@@ -456,13 +456,17 @@ export interface SpecEdit {
 }
 
 /** The spec of `fn` after the edits, in order (A0714 for a malformed line, A0720 for a missing one). */
-export function applySpecEdits(fn: Func, edits: readonly SpecEdit[]): Spec | undefined {
+export function applySpecEdits(
+  fn: Func,
+  edits: readonly SpecEdit[],
+  reader?: { readonly node: typeof parseNode; readonly compact: boolean },
+): Spec | undefined {
   const examples = [...(fn.spec?.examples ?? [])];
   let pre = fn.spec?.pre;
   let post = fn.spec?.post;
   for (const e of edits) {
     if (e.word === 'ex') {
-      const ex = parseExample(e.rest, fn.name, e.line);
+      const ex = parseExample(e.rest, fn.name, e.line, undefined, reader?.compact);
       const text = formatExample(ex);
       const at = examples.findIndex((x) => formatExample(x) === text);
       if (e.sign === '+') {
@@ -473,10 +477,13 @@ export function applySpecEdits(fn: Func, edits: readonly SpecEdit[]): Spec | und
     }
     const current = e.word === 'pre' ? pre : post;
     let next: Node | undefined;
-    if (e.sign === '+') next = parseExpression(e.word, e.rest, fn.name, e.line);
+    if (e.sign === '+')
+      next = parseExpression(e.word, e.rest, fn.name, e.line, undefined, reader?.node);
     else {
       const shown =
-        e.rest === '' ? undefined : formatNode(parseExpression(e.word, e.rest, fn.name, e.line));
+        e.rest === ''
+          ? undefined
+          : formatNode(parseExpression(e.word, e.rest, fn.name, e.line, undefined, reader?.node));
       if (current === undefined || (shown !== undefined && shown !== formatNode(current)))
         throw diag('A0720', [fn.name, shown ?? e.word]);
     }

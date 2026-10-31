@@ -5,9 +5,10 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { compile } from '../src/backends.js';
-import { type Func, formatSource, isPrimitive, LIMITS, type Type } from '../src/core.js';
+import { type Func, formatSource, isPrimitive, LIMITS, type Type, validate } from '../src/core.js';
 import { A0Error, diag } from '../src/diagnostics.js';
 import { link } from '../src/link.js';
+import { parseSource } from '../src/source.js';
 import { type DirectFunction, directSource } from '../src/source-direct.js';
 import { linkSource } from '../src/source-link.js';
 import { nativeSource } from '../src/source-native.js';
@@ -147,7 +148,7 @@ for (const [backend, factory] of factories) {
     }
   });
 
-  test(`${backend}: explicit refusals preserve resource/spec facts and renderer options`, () => {
+  test(`${backend}: resource refusals and supported spec diagnostics preserve facts and options`, () => {
     let loads = 0;
     const engine = factory({
       load: () => {
@@ -170,9 +171,20 @@ for (const [backend, factory] of factories) {
       assert.ok(!spec.ok && !expected.ok);
       assert.deepEqual(spec.state, expected.state);
       assert.deepEqual(spec.specState, expected.specState);
+      assert.ok(spec.diagnostic?.rendered.ok);
+      let reference: A0Error | undefined;
+      try {
+        validate(parseSource(source));
+      } catch (error) {
+        assert.ok(error instanceof A0Error);
+        reference = error;
+      }
+      assert.ok(reference);
+      assert.deepEqual(spec.diagnostic.rendered.error.toJSON(), reference.toJSON());
+      const aggregate = engine.parse('fn f u32x2 -> u32x2\nex [1,2] -> [2,1]\nret A\nend\n');
       assert.ok(
-        spec.diagnostic && !spec.diagnostic.rendered.ok,
-        'spec catalog remains unsupported explicitly',
+        !aggregate.ok && aggregate.diagnostic?.rendered.ok,
+        'aggregate specification failures retain native rendering',
       );
       assert.ok(engine.parse(simple).ok, 'render refusal must not prevent next session');
     } finally {

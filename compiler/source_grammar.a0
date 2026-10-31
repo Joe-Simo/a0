@@ -1093,6 +1093,37 @@ q10 fold ap_wordgo q5 q7 q9
 ret q10
 end
 
+# On A0001 reason 4 only, field 95 records the rejected dimension's limit.
+# This preserves the element width/io context without reparsing during rendering.
+# Successful parsing keeps field 95's existing inference-flag meaning.
+fn ap_type_array_limit (u32x128,io) u32 u32 -> (u32x128,io)
+p at p0 0
+io at p0 1
+a get p 68
+b get p 69
+c get p 70
+types rec a b c
+offset mul p2 5
+loaded call av_load io types offset 5
+row at loaded 1
+width get row 4
+possible div 2097152 width
+wide gt possible 65536
+purelimit select wide possible 65536
+hasio get row 3
+linear ne hasio 0
+limit select linear 65536 purelimit
+updated set p 95 limit
+outio at loaded 2
+status at loaded 0
+failed ne status 0
+original get p 0
+code select failed status original
+out set updated 0 code
+result rec out outio
+ret result
+end
+
 fn ap_type_go (u32x128,u32,io) u32 u32 u32 -> (u32x128,u32,io)
 p at p0 0
 q0 at p0 2
@@ -1174,7 +1205,16 @@ q60 at r 4
 f set e 94 q60
 q61 at r 2
 q62 at r 5
-q63 rec f q61 q62
+reason at r 3
+arraylimit eq reason 4
+failed eq q39 6
+capture and failed arraylimit
+count select capture 1 0
+context rec f q62
+recorded fold ap_type_array_limit count context q61
+final at recorded 0
+finalio at recorded 1
+q63 rec final q61 finalio
 ret q63
 end
 
@@ -1386,7 +1426,11 @@ q57 at rt 1
 q58 at sym 1
 pending call ab_begin q0_1 q58 q40 n q57 p2
 inferflag select bare 1 0
-inferpending set pending 95 inferflag
+headerstatus get pending 0
+headerok eq headerstatus 0
+captured get pending 95
+inference select headerok inferflag captured
+inferpending set pending 95 inference
 inferready set inferpending 96 0
 q1_1 set inferready 10 1
 qd set q1_1 22 0

@@ -56,6 +56,14 @@ export function trapModuleOf(program: {
   };
 }
 
+/** Runtime-only labels cannot overlap the public a0_<source-name> ABI. */
+export function nativeTrapSymbol(
+  platform: 'darwin' | 'linux',
+  name: 'cpy' | 'dec' | 'trap' | 'ts' | 'tb',
+): string {
+  return `${platform === 'darwin' ? 'L' : '.L'}a0r_${name}`;
+}
+
 /** The texts the reporter copies, as `[label suffix, text]`; `io` adds the `input` kind. */
 function texts(io: boolean): readonly (readonly [string, string])[] {
   const input: (readonly [string, string])[] = io
@@ -83,19 +91,21 @@ function texts(io: boolean): readonly (readonly [string, string])[] {
 const asciz = (s: string): string => `\t.asciz ${JSON.stringify(s)}`;
 
 /**
- * AArch64 (Darwin): `_a0_trap` takes the kind in w16. The state `_a0_ts` is the depth in bytes
+ * AArch64 (Darwin): `La0r_trap` takes the kind in w16. The state `La0r_ts` is the depth in bytes
  * at offset 0 and the frames from offset 16. Zero-fill data comes last; strings sit after the code.
  */
 export function arm64TrapRuntime(mod: TrapModule): string {
+  const R = (name: Parameters<typeof nativeTrapSymbol>[1]): string =>
+    nativeTrapSymbol('darwin', name);
   const S = (k: string): string => `La0r_${k}`;
   const lines: string[] = [
-    '_a0_cpy:',
+    `${R('cpy')}:`,
     '1:\tldrb w11, [x10], #1',
     '\tcbz w11, 2f',
     '\tstrb w11, [x9], #1',
     '\tb 1b',
     '2:\tret',
-    '_a0_dec:',
+    `${R('dec')}:`,
     '\tmov w11, w10',
     '\tmov w12, #10',
     '\tmov w13, #1',
@@ -115,31 +125,31 @@ export function arm64TrapRuntime(mod: TrapModule): string {
     '\tcbnz w11, 3b',
     '\tmov x9, x14',
     '\tret',
-    '_a0_trap:',
+    `${R('trap')}:`,
     '\tmov w20, w16',
-    '\tadrp x9, _a0_tb@PAGE',
-    '\tadd x9, x9, _a0_tb@PAGEOFF',
+    `\tadrp x9, ${R('tb')}@PAGE`,
+    `\tadd x9, x9, ${R('tb')}@PAGEOFF`,
     '\tmov x23, x9',
     `\tadr x10, ${S('head')}`,
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     '\tcbnz w20, 1f',
     `\tadr x10, ${S('k0')}`,
     `\tadr x24, ${S('f0')}`,
     '\tb 2f',
     `1:\tadr x10, ${S('k1')}`,
     `\tadr x24, ${S('f1')}`,
-    '2:\tbl _a0_cpy',
+    `2:\tbl ${R('cpy')}`,
     `\tadr x10, ${S('fn')}`,
-    '\tbl _a0_cpy',
-    '\tadrp x21, _a0_ts@PAGE',
-    '\tadd x21, x21, _a0_ts@PAGEOFF',
+    `\tbl ${R('cpy')}`,
+    `\tadrp x21, ${R('ts')}@PAGE`,
+    `\tadd x21, x21, ${R('ts')}@PAGEOFF`,
     '\tldr x22, [x21]',
     `\tadd x25, x21, #${FRAME_BASE}`,
     '\tadd x26, x25, x22',
     `\tldur x10, [x26, #-${FRAME_BYTES}]`,
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     `\tadr x10, ${S('at')}`,
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     '\tmov x27, x26',
     '3:\tcmp x27, x25',
     '\tb.ls 5f',
@@ -147,20 +157,20 @@ export function arm64TrapRuntime(mod: TrapModule): string {
     '\tldr x11, [x27, #8]',
     '\tcbz x11, 3b',
     '\tldr x10, [x27]',
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     '\tmov w11, #46',
     '\tstrb w11, [x9], #1',
     '\tldr x10, [x27, #8]',
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     `\tadr x10, ${S('trip')}`,
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     '\tldr w10, [x27, #16]',
-    '\tbl _a0_dec',
+    `\tbl ${R('dec')}`,
     '\tb 6f',
     `5:\tadr x10, ${S('none')}`,
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     `6:\tadr x10, ${S('chain')}`,
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     '\tmov x27, x25',
     '7:\tcmp x27, x26',
     '\tb.hs 9f',
@@ -169,13 +179,13 @@ export function arm64TrapRuntime(mod: TrapModule): string {
     '\tmov w11, #62',
     '\tstrb w11, [x9], #1',
     '8:\tldr x10, [x27]',
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     `\tadd x27, x27, #${FRAME_BYTES}`,
     '\tb 7b',
     `9:\tadr x10, ${S('fix')}`,
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     '\tmov x10, x24',
-    '\tbl _a0_cpy',
+    `\tbl ${R('cpy')}`,
     '\tmov w11, #10',
     '\tstrb w11, [x9], #1',
     '\tmov x0, #2',
@@ -188,22 +198,23 @@ export function arm64TrapRuntime(mod: TrapModule): string {
     '\tsvc #0x80',
     ...texts(false).flatMap(([k, t]) => [`${S(k)}:`, asciz(t)]),
     '\t.p2align 2',
-    `\t.zerofill __DATA,__bss,_a0_ts,${mod.stackBytes},4`,
-    `\t.zerofill __DATA,__bss,_a0_tb,${mod.bufferBytes},4`,
+    `\t.zerofill __DATA,__bss,${R('ts')},${mod.stackBytes},4`,
+    `\t.zerofill __DATA,__bss,${R('tb')},${mod.bufferBytes},4`,
   ];
   return lines.join('\n');
 }
 
 /**
- * x86-64: `a0_trap` takes the kind in eax (`_a0_trap` on macOS). The state and the frames are
+ * x86-64: `a0r_trap` takes the kind in eax (an assembler-local label on either platform). The state and the frames are
  * laid out as on arm64; the system call numbers are the platform's.
  */
 export function x86TrapRuntime(mod: TrapModule, platform: 'darwin' | 'linux'): string {
-  const u = platform === 'darwin' ? '_' : '';
+  const R = (name: Parameters<typeof nativeTrapSymbol>[1]): string =>
+    nativeTrapSymbol(platform, name);
   const L = platform === 'darwin' ? 'L' : '.L';
   const S = (k: string): string => `${L}a0r_${k}`;
   const lines: string[] = [
-    `${u}a0_cpy:`,
+    `${R('cpy')}:`,
     '1:\tmovb (%rsi), %al',
     '\ttestb %al, %al',
     '\tje 2f',
@@ -212,7 +223,7 @@ export function x86TrapRuntime(mod: TrapModule, platform: 'darwin' | 'linux'): s
     '\tincq %rsi',
     '\tjmp 1b',
     '2:\tret',
-    `${u}a0_dec:`,
+    `${R('dec')}:`,
     '\tmovl %eax, %r11d',
     '\tmovl $10, %esi',
     '\tmovl $1, %ecx',
@@ -237,12 +248,12 @@ export function x86TrapRuntime(mod: TrapModule, platform: 'darwin' | 'linux'): s
     '\tjne 3b',
     '\tmovq %rcx, %rdi',
     '\tret',
-    `${u}a0_trap:`,
+    `${R('trap')}:`,
     '\tmovl %eax, %r12d',
-    `\tleaq ${u}a0_tb(%rip), %rdi`,
+    `\tleaq ${R('tb')}(%rip), %rdi`,
     '\tmovq %rdi, %r13',
     `\tleaq ${S('head')}(%rip), %rsi`,
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     ...(mod.input
       ? ['\tcmpl $1, %r12d', '\tje 1f', '\tja 3f']
       : ['\ttestl %r12d, %r12d', '\tjne 1f']),
@@ -254,17 +265,17 @@ export function x86TrapRuntime(mod: TrapModule, platform: 'darwin' | 'linux'): s
     ...(mod.input
       ? ['\tjmp 2f', `3:\tleaq ${S('k2')}(%rip), %rsi`, `\tleaq ${S('f2')}(%rip), %rbp`]
       : []),
-    `2:\tcall ${u}a0_cpy`,
+    `2:\tcall ${R('cpy')}`,
     `\tleaq ${S('fn')}(%rip), %rsi`,
-    `\tcall ${u}a0_cpy`,
-    `\tleaq ${u}a0_ts(%rip), %r14`,
+    `\tcall ${R('cpy')}`,
+    `\tleaq ${R('ts')}(%rip), %r14`,
     '\tmovq (%r14), %r15',
     `\tleaq ${FRAME_BASE}(%r14), %rbx`,
     '\taddq %rbx, %r15',
     `\tmovq -${FRAME_BYTES}(%r15), %rsi`,
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     `\tleaq ${S('at')}(%rip), %rsi`,
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     '\tmovq %r15, %r14',
     '3:\tcmpq %rbx, %r14',
     '\tjbe 5f',
@@ -272,20 +283,20 @@ export function x86TrapRuntime(mod: TrapModule, platform: 'darwin' | 'linux'): s
     '\tcmpq $0, 8(%r14)',
     '\tje 3b',
     '\tmovq (%r14), %rsi',
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     '\tmovb $46, (%rdi)',
     '\tincq %rdi',
     '\tmovq 8(%r14), %rsi',
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     `\tleaq ${S('trip')}(%rip), %rsi`,
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     '\tmovl 16(%r14), %eax',
-    `\tcall ${u}a0_dec`,
+    `\tcall ${R('dec')}`,
     '\tjmp 6f',
     `5:\tleaq ${S('none')}(%rip), %rsi`,
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     `6:\tleaq ${S('chain')}(%rip), %rsi`,
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     '\tmovq %rbx, %r14',
     '7:\tcmpq %r15, %r14',
     '\tjae 9f',
@@ -294,13 +305,13 @@ export function x86TrapRuntime(mod: TrapModule, platform: 'darwin' | 'linux'): s
     '\tmovb $62, (%rdi)',
     '\tincq %rdi',
     '8:\tmovq (%r14), %rsi',
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     `\taddq $${FRAME_BYTES}, %r14`,
     '\tjmp 7b',
     `9:\tleaq ${S('fix')}(%rip), %rsi`,
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     '\tmovq %rbp, %rsi',
-    `\tcall ${u}a0_cpy`,
+    `\tcall ${R('cpy')}`,
     '\tmovb $10, (%rdi)',
     '\tincq %rdi',
     '\tmovq %rdi, %rdx',
@@ -317,16 +328,16 @@ export function x86TrapRuntime(mod: TrapModule, platform: 'darwin' | 'linux'): s
   if (platform === 'darwin')
     lines.push(
       '\t.p2align 2',
-      `\t.zerofill __DATA,__bss,_a0_ts,${mod.stackBytes},4`,
-      `\t.zerofill __DATA,__bss,_a0_tb,${mod.bufferBytes},4`,
+      `\t.zerofill __DATA,__bss,${R('ts')},${mod.stackBytes},4`,
+      `\t.zerofill __DATA,__bss,${R('tb')},${mod.bufferBytes},4`,
     );
   else
     lines.push(
       '\t.bss',
       '\t.balign 16',
-      'a0_ts:',
+      `${R('ts')}:`,
       `\t.zero ${mod.stackBytes}`,
-      'a0_tb:',
+      `${R('tb')}:`,
       `\t.zero ${mod.bufferBytes}`,
       '\t.text',
     );

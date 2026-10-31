@@ -23,7 +23,7 @@
  * the word, as the C runtime does.
  *
  * Code shape (the AArch64 backend's second version, on x86-64):
- * - Small callees (at most INLINE_MAX_NODES nodes, nested to INLINE_MAX_DEPTH) are inlined
+ * - Small callees (nested to INLINE_MAX_DEPTH) are inlined
  *   at `call`, `fold`, and `loop` sites when what they expand to (their own inlined callees
  *   counted) fits a budget: INLINE_MAX_CALL at a plain `call`, INLINE_MAX_LOOP_BODY for a
  *   fold or loop body; larger callees are called out of line.
@@ -93,6 +93,7 @@ import {
   FRAME_BASE,
   FRAME_BYTES,
   type NativeTrapKind,
+  nativeTrapSymbol,
   type TrapModule,
   trapIndex,
   x86TrapRuntime,
@@ -132,14 +133,14 @@ const isScalar = (t: Type): t is 'u32' | 'bool' => t === 'u32' || t === 'bool';
 
 const align = (n: number, a: number): number => Math.ceil(n / a) * a;
 
-const INLINE_MAX_NODES = 48;
 const INLINE_MAX_DEPTH = 6;
 /**
  * Budgets for the nodes an inlined callee expands to, counting its own inlined callees (a
  * nest of small callees inlined into each other grows multiplicatively, so the per-callee
- * limit alone duplicated whole call trees at every site). A fold or loop body runs once per
- * trip from one site, so it gets the larger budget; a plain `call` site only inlines what is
- * about as cheap as the call sequence it replaces.
+ * limit alone duplicated whole call trees at every site). This expanded budget includes
+ * the callee's own nodes, so a separate smaller per-callee cap is unnecessary. A fold or loop
+ * body gets the larger budget; a plain `call` site only inlines what is about as cheap as
+ * the call sequence it replaces.
  */
 const INLINE_MAX_LOOP_BODY = 96;
 const INLINE_MAX_CALL = 8;
@@ -340,6 +341,312 @@ const SSE_OP: Partial<Record<Op, string>> = {
   shl: 'pslld',
   shr: 'psrld',
 };
+
+/** A modulo-u32 sum of pure lane-wise arithmetic over index and scalar extras.
+ * The state may appear only in the final add; shift distances must be uniform.
+ * The existing SSE2 register budget bounds the vectorized computation. */
+function sseReduction(body: TypedFunc, count: number): FillRun | undefined {
+  if (body.profile === 'strict' || body.result !== 'u32' || count < 4) return undefined;
+  const returned = body.ret;
+  const ret = returned.kind === 'node' ? body.nodes.find((n) => n.id === returned.id) : undefined;
+  if (ret?.op !== 'add' || ret !== body.nodes.at(-1)) return undefined;
+  const state = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 0;
+  const value = state(ret.args[0]) ? ret.args[1] : state(ret.args[1]) ? ret.args[0] : undefined;
+  const scalar = (o: Operand): boolean =>
+    o.kind === 'u32' ||
+    o.kind === 'node' ||
+    (o.kind === 'param' && o.index >= 1 && body.params[o.index] === 'u32');
+  const uniform = (o: Operand): boolean =>
+    o.kind === 'u32' || (o.kind === 'param' && o.index >= 2 && body.params[o.index] === 'u32');
+  if (value === undefined || !scalar(value)) return undefined;
+  const nodes = body.nodes.filter((n) => n !== ret);
+  for (const n of nodes) {
+    if ((SSE_OP[n.op] === undefined && n.op !== 'mul') || body.types.get(n.id) !== 'u32')
+      return undefined;
+    if (!n.args.every(scalar)) return undefined;
+    if ((n.op === 'shl' || n.op === 'shr') && !uniform(n.args[1] as Operand)) return undefined;
+  }
+  return { body, nodes, value, count };
+}
+
+interface PredicateCount {
+  readonly array: number;
+  readonly length: number;
+  readonly value: number;
+  readonly equal: boolean;
+  readonly lower?: number;
+  readonly positive: boolean;
+}
+
+/** Count a literal array predicate, optionally restricted to an index suffix. */
+function predicateCount(body: TypedFunc): PredicateCount | undefined {
+  if (body.profile === 'strict' || body.result !== 'u32' || body.nodes.length > 8) return undefined;
+  const def = (o: Operand | undefined): Node | undefined =>
+    o?.kind === 'node' ? body.nodes.find((n) => n.id === o.id) : undefined;
+  const ret = def(body.ret);
+  const state = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 0;
+  if (ret?.op !== 'add') return undefined;
+  const unit = def(state(ret.args[0]) ? ret.args[1] : state(ret.args[1]) ? ret.args[0] : undefined);
+  if (unit?.op !== 'select') return undefined;
+  const yes = unit.args[1],
+    no = unit.args[2];
+  if (
+    yes?.kind !== 'u32' ||
+    no?.kind !== 'u32' ||
+    !((yes.value === 1 && no.value === 0) || (yes.value === 0 && no.value === 1))
+  )
+    return undefined;
+  const root = def(unit.args[0]);
+  if (root === undefined) return undefined;
+  const parts = root.op === 'and' ? root.args.map(def) : [root];
+  if (parts.some((n) => n === undefined)) return undefined;
+  const used = new Set([ret.id, unit.id, root.id]);
+  let array: number | undefined,
+    length = 0,
+    value = 0,
+    equal = true,
+    lower: number | undefined;
+  for (const part of parts) {
+    if (part === undefined) return undefined;
+    used.add(part.id);
+    const [a, b] = part.args;
+    if (part.op === 'eq' || part.op === 'ne') {
+      const literal = a?.kind === 'u32' ? a : b?.kind === 'u32' ? b : undefined;
+      const read = def(literal === a ? b : a);
+      const source = read?.args[0],
+        index = read?.args[1];
+      if (
+        literal === undefined ||
+        read?.op !== 'get' ||
+        source?.kind !== 'param' ||
+        source.index < 2 ||
+        index?.kind !== 'param' ||
+        index.index !== 1 ||
+        array !== undefined
+      )
+        return undefined;
+      const type = body.params[source.index];
+      if (
+        type === undefined ||
+        isPrimitive(type) ||
+        type.kind !== 'arr' ||
+        type.elem !== 'u32' ||
+        type.length < 4 ||
+        (type.length & (type.length - 1)) !== 0
+      )
+        return undefined;
+      array = source.index;
+      length = type.length;
+      value = literal.value;
+      equal = part.op === 'eq';
+      used.add(read.id);
+    } else if (part.op === 'ge' && a?.kind === 'param' && a.index === 1 && b?.kind === 'u32') {
+      if (lower !== undefined) return undefined;
+      lower = b.value;
+    } else if (part.op === 'le' && b?.kind === 'param' && b.index === 1 && a?.kind === 'u32') {
+      if (lower !== undefined) return undefined;
+      lower = a.value;
+    } else return undefined;
+  }
+  if (array === undefined || body.nodes.some((n) => !used.has(n.id))) return undefined;
+  return {
+    array,
+    length,
+    value,
+    equal,
+    positive: yes.value === 1,
+    ...(lower === undefined ? {} : { lower }),
+  };
+}
+
+interface HistogramRun extends FillRun {
+  readonly increment: number;
+  readonly length: number;
+}
+
+/** Pure bucket indices with one ordered wrapping increment per trip. */
+function histogramReduction(body: TypedFunc, count: number): HistogramRun | undefined {
+  const state = body.params[0];
+  if (
+    body.profile === 'strict' ||
+    count < 16 ||
+    count % 4 !== 0 ||
+    state === undefined ||
+    isPrimitive(state) ||
+    state.kind !== 'arr' ||
+    state.elem !== 'u32' ||
+    state.length < 1 ||
+    (state.length & (state.length - 1)) !== 0
+  )
+    return undefined;
+  const definition = (o: Operand | undefined): Node | undefined =>
+    o?.kind === 'node' ? body.nodes.find((n) => n.id === o.id) : undefined;
+  const store = definition(body.ret);
+  if (store?.op !== 'set' || store.args[0]?.kind !== 'param' || store.args[0].index !== 0)
+    return undefined;
+  const index = store.args[1];
+  const value = store.args[2];
+  const add = definition(value);
+  if (index === undefined || add?.op !== 'add') return undefined;
+  const [a, b] = add.args;
+  const delta = a?.kind === 'u32' ? a : b?.kind === 'u32' ? b : undefined;
+  const input = delta === a ? b : a;
+  const read = definition(input);
+  const equal = (a: Operand | undefined, b: Operand): boolean =>
+    a !== undefined &&
+    a.kind === b.kind &&
+    (a.kind === 'node'
+      ? a.id === (b as typeof a).id
+      : a.kind === 'param'
+        ? a.index === (b as typeof a).index
+        : a.kind === 'u32' && a.value === (b as typeof a).value);
+  if (
+    delta === undefined ||
+    read?.op !== 'get' ||
+    read.args[0]?.kind !== 'param' ||
+    read.args[0].index !== 0 ||
+    !equal(read.args[1], index)
+  )
+    return undefined;
+  const removed = new Set([store.id, add.id, read.id]);
+  const scalar = (o: Operand): boolean =>
+    o.kind === 'u32' ||
+    (o.kind === 'node' && !removed.has(o.id)) ||
+    (o.kind === 'param' && o.index >= 1 && body.params[o.index] === 'u32');
+  if (!scalar(index)) return undefined;
+  const nodes = body.nodes.filter((n) => !removed.has(n.id));
+  for (const n of nodes) {
+    if (
+      (SSE_OP[n.op] === undefined && n.op !== 'mul') ||
+      body.types.get(n.id) !== 'u32' ||
+      !n.args.every(scalar)
+    )
+      return undefined;
+    const shift = n.args[1];
+    if (
+      (n.op === 'shl' || n.op === 'shr') &&
+      !(shift?.kind === 'u32' || (shift?.kind === 'param' && shift.index >= 2))
+    )
+      return undefined;
+  }
+  return { body, nodes, value: index, count, increment: delta.value, length: state.length };
+}
+
+type Extremum = 'min' | 'max';
+interface ExtremaRun extends FillRun {
+  readonly extrema: readonly Extremum[];
+}
+
+/** Independent unsigned extrema of one pure lane expression, held in a two-word record. */
+function extremaReduction(body: TypedFunc, count: number): ExtremaRun | undefined {
+  const state = body.params[0];
+  const resultType = body.result;
+  if (
+    isPrimitive(resultType) ||
+    resultType.kind !== 'rec' ||
+    resultType.fields.length !== 2 ||
+    !resultType.fields.every((t) => t === 'u32') ||
+    body.profile === 'strict' ||
+    count < 4 ||
+    count % 4 !== 0 ||
+    state === undefined ||
+    isPrimitive(state) ||
+    state.kind !== 'rec' ||
+    state.fields.length !== 2 ||
+    !state.fields.every((t) => t === 'u32')
+  )
+    return undefined;
+  const key = (o: Operand): string =>
+    o.kind === 'param' ? `p${o.index}` : o.kind === 'node' ? o.id : '';
+  const fields = new Map<string, number>();
+  const records = new Map<string, readonly Operand[]>();
+  const removed = new Set<string>();
+  const defs = new Map(body.nodes.map((n) => [n.id, n]));
+  for (const n of body.nodes) {
+    if (
+      n.op === 'at' &&
+      n.args[0]?.kind === 'param' &&
+      n.args[0].index === 0 &&
+      n.args[1]?.kind === 'u32'
+    ) {
+      fields.set(n.id, n.args[1].value);
+      removed.add(n.id);
+    } else if (n.op === 'rec') {
+      records.set(n.id, n.args);
+      removed.add(n.id);
+    } else if (n.op === 'put' && n.args[1]?.kind === 'u32' && n.args[2] !== undefined) {
+      const previous = n.args[0];
+      let values: readonly Operand[] | undefined;
+      if (previous?.kind === 'param' && previous.index === 0) {
+        const reads = [0, 1].map((i) => [...fields].find(([, f]) => f === i)?.[0]);
+        if (reads.every((id) => id !== undefined))
+          values = reads.map((id) => ({ kind: 'node', id: id as string }));
+      } else if (previous !== undefined) values = records.get(key(previous));
+      if (values === undefined || n.args[1].value > 1) return undefined;
+      const next = [...values];
+      next[n.args[1].value] = n.args[2];
+      records.set(n.id, next);
+      removed.add(n.id);
+    }
+  }
+  const result = records.get(key(body.ret));
+  if (result?.length !== 2) return undefined;
+  let value: Operand | undefined;
+  const extrema: Extremum[] = [];
+  for (const [i, output] of result.entries()) {
+    const selected = output.kind === 'node' ? defs.get(output.id) : undefined;
+    if (selected?.op !== 'select') return undefined;
+    const [condition, yes, no] = selected.args;
+    const field = (o: Operand | undefined): boolean => o?.kind === 'node' && fields.get(o.id) === i;
+    const candidate = field(yes) ? no : field(no) ? yes : undefined;
+    if (candidate === undefined) return undefined;
+    const comparison = condition?.kind === 'node' ? defs.get(condition.id) : undefined;
+    if (comparison === undefined || !['lt', 'le', 'gt', 'ge'].includes(comparison.op))
+      return undefined;
+    const [left, right] = comparison.args;
+    const same = (o: Operand | undefined): boolean =>
+      o !== undefined &&
+      key(o) === key(candidate) &&
+      (o.kind !== 'u32' || candidate.kind !== 'u32' || o.value === candidate.value);
+    const candidateLeft = same(left) && field(right);
+    const candidateRight = same(right) && field(left);
+    if (!candidateLeft && !candidateRight) return undefined;
+    const less = comparison.op === 'lt' || comparison.op === 'le';
+    const chooseOnLess = candidateLeft ? less : !less;
+    extrema.push(chooseOnLess !== field(yes) ? 'min' : 'max');
+    if (
+      value !== undefined &&
+      (key(value) !== key(candidate) ||
+        (value.kind === 'u32' && candidate.kind === 'u32' && value.value !== candidate.value))
+    )
+      return undefined;
+    value = candidate;
+    removed.add(selected.id);
+    removed.add(comparison.id);
+  }
+  if (value === undefined) return undefined;
+  const scalar = (o: Operand): boolean =>
+    o.kind === 'u32' ||
+    (o.kind === 'node' && !removed.has(o.id)) ||
+    (o.kind === 'param' && o.index >= 1 && body.params[o.index] === 'u32');
+  const nodes = body.nodes.filter((n) => !removed.has(n.id));
+  if (!scalar(value)) return undefined;
+  for (const n of nodes) {
+    if (
+      (SSE_OP[n.op] === undefined && n.op !== 'mul') ||
+      body.types.get(n.id) !== 'u32' ||
+      !n.args.every(scalar)
+    )
+      return undefined;
+    const shift = n.args[1];
+    if (
+      (n.op === 'shl' || n.op === 'shr') &&
+      !(shift?.kind === 'u32' || (shift?.kind === 'param' && shift.index >= 2))
+    )
+      return undefined;
+  }
+  return { body, nodes, value, count, extrema };
+}
 
 /** A uniform operand of a fill run as a map key: `u:<literal>` or `p:<parameter index>`. */
 function formatUniform(o: Operand): string {
@@ -740,7 +1047,6 @@ function argLayout(params: readonly Type[], sret: boolean): { places: ArgPlace[]
 /** Whether `callee` is inlined at a `site` `depth` inlinings deep (see INLINE_MAX_CALL). */
 function inlinableAt(callee: TypedFunc, depth: number, site: Site): boolean {
   return (
-    callee.nodes.length <= INLINE_MAX_NODES &&
     depth < INLINE_MAX_DEPTH &&
     !mayTrapFn(callee) &&
     expandedNodes(callee, depth + 1) <= (site === 'call' ? INLINE_MAX_CALL : INLINE_MAX_LOOP_BODY)
@@ -777,7 +1083,100 @@ type Val =
   | { readonly kind: 'lit'; readonly value: number; readonly type: 'u32' | 'bool' }
   | { readonly kind: 'key'; readonly key: string; readonly type: Type };
 
+const LOOP_REUSE_OPS = new Set<Op>([
+  'mov',
+  'add',
+  'sub',
+  'mul',
+  'and',
+  'or',
+  'xor',
+  'shl',
+  'shr',
+  'eq',
+  'ne',
+  'lt',
+  'le',
+  'gt',
+  'ge',
+  'select',
+  'at',
+  'get',
+]);
+
+const PREDICATE_REUSE = new WeakMap<TypedFunc, WeakMap<TypedFunc, ReadonlyMap<string, string>>>();
+
+/** Match materialized predicate values to the body's immutable prefix. */
+function predicateReuse(pred: TypedFunc, body: TypedFunc): ReadonlyMap<string, string> {
+  let bodies = PREDICATE_REUSE.get(pred);
+  const cached = bodies?.get(body);
+  if (cached !== undefined) return cached;
+  if (bodies === undefined) {
+    bodies = new WeakMap();
+    PREDICATE_REUSE.set(pred, bodies);
+  }
+  const reuse = new Map<string, string>();
+  bodies.set(body, reuse);
+  if (
+    pred.profile === 'strict' ||
+    body.profile === 'strict' ||
+    pred.params.length !== body.params.length ||
+    pred.params.some((t, i) => formatType(t) !== formatType(body.params[i] as Type)) ||
+    pred.nodes.some((n) => !LOOP_REUSE_OPS.has(n.op))
+  )
+    return reuse;
+  const intern = new Map<string, number>();
+  const available = new Map<number, string>();
+  const key = (fn: TypedFunc, n: Node, ids: Map<string, number>): number | undefined => {
+    const args = n.args.map((o) =>
+      o.kind === 'node'
+        ? ids.get(o.id)
+        : o.kind === 'param'
+          ? `p${o.index}`
+          : `${o.kind}:${o.value}`,
+    );
+    if (args.some((a) => a === undefined)) return undefined;
+    const text = JSON.stringify([n.op, formatType(fn.types.get(n.id) as Type), args]);
+    let id = intern.get(text);
+    if (id === undefined) {
+      id = intern.size;
+      intern.set(text, id);
+    }
+    return id;
+  };
+  const plan = planFor(pred),
+    predIds = new Map<string, number>();
+  for (const n of pred.nodes) {
+    const id = key(pred, n, predIds);
+    if (id === undefined) continue;
+    predIds.set(n.id, id);
+    if (
+      isScalar(pred.types.get(n.id) as Type) &&
+      !plan.branches.has(n.id) &&
+      !plan.skip.has(n.id) &&
+      !plan.fused.has(n.id)
+    )
+      available.set(id, n.id);
+  }
+  const bodyIds = new Map<string, number>();
+  for (const n of body.nodes) {
+    // No reuse survives a write, call, nested iteration or other unmodelled operation.
+    if (!LOOP_REUSE_OPS.has(n.op)) break;
+    const id = key(body, n, bodyIds);
+    if (id === undefined) continue;
+    bodyIds.set(n.id, id);
+    const found = available.get(id);
+    if (found !== undefined && isScalar(body.types.get(n.id) as Type)) reuse.set(n.id, found);
+  }
+  return reuse;
+}
+
 /** One function body being emitted, either the top level or an inlined callee. */
+interface IterationFact {
+  readonly counter: Val;
+  readonly limit: Val;
+}
+
 interface Env {
   readonly fn: TypedFunc;
   readonly prefix: string;
@@ -786,9 +1185,12 @@ interface Env {
   readonly depth: number;
   /** An inlined fold or loop body: what its host keeps in registers across trips. */
   readonly loop?: LoopHost;
+  readonly iteration?: IterationFact;
 }
 
 interface LoopHost {
+  readonly iteration?: IterationFact;
+  readonly reuse?: ReadonlyMap<string, Val>;
   /**
    * The carried read (see `CarriedRead`): the read (or, guarded, its select) is the scalar key
    * `key`, and after the store `set` the stored value is written to `key`.
@@ -817,6 +1219,8 @@ class FunctionEmitter {
   #dry = true;
   #pos = 0;
   #labels = 0;
+  /** Values carried across a back edge are not evicted for a short-lived loop temporary. */
+  readonly #loopLive = new Set<string>();
   readonly #defs = new Map<string, { pos: number; type: Type }>();
   readonly #last = new Map<string, number>();
   #loops: { start: number; used: Set<string> }[] = [];
@@ -833,6 +1237,7 @@ class FunctionEmitter {
   #saved: string[] = [];
   /** Exclusive upper bounds of scalar keys known at compile time (index range facts). */
   readonly #bounds = new Map<string, number>();
+  readonly #positive = new Set<string>();
   /** Register-sharing hints: an inlined loop body's scalar result -> the loop state key. */
   readonly #shares = new Map<string, string>();
   /** Whether the body needs ecx (variable shift or rotate) or edx (division) as scratch. */
@@ -874,7 +1279,7 @@ class FunctionEmitter {
 
   /** The address of the shadow-stack state in `reg` (RIP-relative). */
   #state(reg: string): void {
-    this.#emit(`leaq ${this.platform === 'darwin' ? '_a0_ts' : 'a0_ts'}(%rip), ${reg}`);
+    this.#emit(`leaq ${nativeTrapSymbol(this.platform, 'ts')}(%rip), ${reg}`);
   }
 
   /** Push this function's frame on the shadow stack (uses rax, r10, r11 only). */
@@ -1046,6 +1451,8 @@ class FunctionEmitter {
           if (carry?.read === o.id) return { kind: 'key', key: carry.key, type: carry.type };
           const step = steps.get(o.id);
           if (step !== undefined) return { kind: 'key', key: step, type: 'u32' };
+          const reuse = env.loop.reuse?.get(o.id);
+          if (reuse !== undefined) return reuse;
         }
         return {
           kind: 'key',
@@ -1279,6 +1686,8 @@ class FunctionEmitter {
     args: readonly Val[],
     tag: string,
     done: string,
+    reused?: ReadonlyMap<string, Val>,
+    iteration?: IterationFact,
   ): boolean {
     const plan = planFor(fn);
     if (fn.ret.kind !== 'node' || !plan.branches.has(fn.ret.id)) return false;
@@ -1288,6 +1697,10 @@ class FunctionEmitter {
       params: args,
       ownedP0: false,
       depth: env.depth + 1,
+      ...(iteration === undefined ? {} : { iteration }),
+      ...(reused === undefined
+        ? {}
+        : { loop: { steps: new Map<string, string>(), reuse: reused } }),
     };
     for (const [i, n] of fn.nodes.entries()) {
       if (plan.branches.has(n.id)) this.#pos += 1;
@@ -1382,6 +1795,7 @@ class FunctionEmitter {
       ownedP0,
       depth: env.depth + 1,
       ...(loop === undefined ? {} : { loop }),
+      ...(loop?.iteration === undefined ? {} : { iteration: loop.iteration }),
     };
     if (this.#dry && carry !== undefined) {
       // The stored value takes the carried register when nothing reads the carried value after
@@ -1537,6 +1951,12 @@ class FunctionEmitter {
       return;
     }
     const { carry, steps } = env.loop;
+    const reuse = env.loop.reuse?.get(n.id);
+    if (reuse !== undefined) {
+      // Consumers extend the original value's lifetime; an alias itself is not a read.
+      this.#pos += 1;
+      return;
+    }
     // A carried read or an induction variable is the host's register (`#resolve`), and what only
     // the carried read read is dead.
     if (n.id === carry?.read || carry?.dead.has(n.id) === true || steps.has(n.id)) {
@@ -1691,6 +2111,24 @@ class FunctionEmitter {
         return;
       }
       case 'sub': {
+        const same = (x: Val | undefined, y: Val): boolean =>
+          x?.kind === y.kind &&
+          (x.kind === 'lit' ? x.value === (y as typeof x).value : x.key === (y as typeof x).key);
+        if (
+          env.iteration !== undefined &&
+          same(a, env.iteration.limit) &&
+          same(b, env.iteration.counter)
+        ) {
+          bound(this.#bound(a as Val));
+          this.#positive.add(key);
+        } else if (
+          a?.kind === 'key' &&
+          this.#positive.has(a.key) &&
+          b?.kind === 'lit' &&
+          b.value === 1
+        ) {
+          bound(Math.max(1, this.#bound(a) - 1));
+        }
         const ra = a?.kind === 'lit' ? imm(a.value) : this.#read(a as Val, '%r10d');
         const rb = srcB();
         scalar((d) => {
@@ -1766,6 +2204,24 @@ class FunctionEmitter {
           this.#emit(`testl ${rc}, ${rc}`);
           return 'ne';
         };
+        if (
+          isScalar(t) &&
+          b?.kind === 'lit' &&
+          c?.kind === 'lit' &&
+          ((b.value === 1 && c.value === 0) || (b.value === 0 && c.value === 1))
+        ) {
+          scalar((d) => {
+            if (shape === undefined) {
+              // A0 boolean values are represented by canonical 0/1 words.
+              this.#into(d, a as Val);
+              if (b.value === 0) this.#emit(`xorl $1, ${d}`);
+            } else {
+              const cc = flags();
+              this.#emit(`set${b.value === 1 ? cc : NOT_CC[cc]} %al`, `movzbl %al, ${d}`);
+            }
+          });
+          return;
+        }
         if (isScalar(t)) {
           // cmov takes a register or memory source; literals are materialized before the
           // flags are set (a later movl leaves the flags alone).
@@ -1945,6 +2401,28 @@ class FunctionEmitter {
         const cval: Val = { kind: 'key', key: counter, type: 'u32' };
         this.#use(init);
         for (const e of extras) this.#use(e);
+        const extrema =
+          n.op === 'fold' && env.fn.profile !== 'strict' && count.kind === 'lit'
+            ? extremaReduction(callee, count.value)
+            : undefined;
+        if (extrema !== undefined && this.#sseRegisters(extrema, true, 10) !== undefined) {
+          this.#def(key, t);
+          this.#sseFill(extrema, key, extras, init, extrema.extrema);
+          this.#pos += 1;
+          this.#use(state);
+          return;
+        }
+        const sum =
+          n.op === 'fold' && env.fn.profile !== 'strict' && count.kind === 'lit'
+            ? sseReduction(callee, count.value)
+            : undefined;
+        if (sum !== undefined && this.#sseRegisters(sum, true) !== undefined) {
+          this.#def(key, t);
+          this.#sseFill(sum, key, extras, init);
+          this.#pos += 1;
+          this.#use(state);
+          return;
+        }
         const run =
           n.op === 'fold' &&
           count.kind === 'lit' &&
@@ -1954,6 +2432,25 @@ class FunctionEmitter {
             : undefined;
         // The initial value is dead when every element is written before any trip reads it.
         const deadInit = overwritesState(env.fn, n);
+        const histogram =
+          n.op === 'fold' && env.fn.profile !== 'strict' && count.kind === 'lit'
+            ? histogramReduction(callee, count.value)
+            : undefined;
+        if (histogram !== undefined && this.#sseRegisters(histogram, true) !== undefined) {
+          if (
+            init.kind === 'key' &&
+            mutableHere(env.fn, n.args[1] as Operand, index, 1, env.ownedP0)
+          )
+            this.#defAlias(key, init.key, t);
+          else {
+            this.#def(key, t);
+            this.#place(init, '%rsp', this.#slot(key));
+          }
+          this.#sseFill(histogram, key, extras, undefined, undefined, histogram);
+          this.#pos += 1;
+          this.#use(state);
+          return;
+        }
         if (run !== undefined && this.#sseRegisters(run) !== undefined) {
           if (
             init.kind === 'key' &&
@@ -1984,12 +2481,27 @@ class FunctionEmitter {
         if (this.#inlinable(callee, env, 'loop')) {
           const carry = this.#carry(env, n, callee, key, t, extras);
           const steps = this.#steps(env, n, callee, extras, carry);
-          host = { ...(carry === undefined ? {} : { carry }), steps: steps.keys };
+          host = {
+            ...(carry === undefined ? {} : { carry }),
+            steps: steps.keys,
+            ...(env.fn.profile === 'strict' ? {} : { iteration: { counter: cval, limit: count } }),
+          };
           stepping = steps.by;
         }
         this.#def(counter, 'u32');
         if (count.kind === 'lit') this.#bounds.set(counter, count.value);
+        else if (env.fn.profile !== 'strict' && this.#bound(count) < 2 ** 32)
+          this.#bounds.set(counter, this.#bound(count));
         this.#set(counter, (d) => this.#emit(`xorl ${d}, ${d}`));
+        const counted =
+          n.op === 'fold' &&
+          env.fn.profile !== 'strict' &&
+          (count.kind !== 'lit' || count.value >= 16)
+            ? predicateCount(callee)
+            : undefined;
+        const source = counted === undefined ? undefined : extras[counted.array - 2];
+        const prefixed = counted !== undefined && source?.kind === 'key';
+        if (prefixed) this.#countPrefix(counted, source, state, counter, count);
         this.#loops.push({ start: this.#pos, used: new Set() });
         const top = this.#label();
         const done = this.#label();
@@ -2001,7 +2513,12 @@ class FunctionEmitter {
         // (one taken branch per trip).
         this.#use(count);
         this.#use(cval);
-        if (count.kind === 'lit') {
+        if (prefixed) {
+          this.#emit(
+            `cmpl ${count.kind === 'lit' ? imm(count.value) : this.#operand(count, '')}, ${this.#read(cval, '%r10d')}`,
+            `jae ${done}`,
+          );
+        } else if (count.kind === 'lit') {
           if (count.value === 0) this.#emit(`jmp ${done}`);
         } else {
           const lim = this.#operand(count, '');
@@ -2011,13 +2528,50 @@ class FunctionEmitter {
         this.#emit(`${top}:`);
         if (marked) this.#markTrip(this.#read(cval, '%eax'));
         const args: Val[] = [state, cval, ...extras];
-        if (
+        const common =
+          pred !== undefined && host !== undefined && env.fn.profile !== 'strict'
+            ? predicateReuse(pred, callee)
+            : undefined;
+        const carriedId = host?.carry === undefined ? undefined : common?.get(host.carry.read);
+        const predicateValues =
+          carriedId === undefined || host?.carry === undefined
+            ? undefined
+            : new Map<string, Val>([
+                [carriedId, { kind: 'key', key: host.carry.key, type: host.carry.type }],
+              ]);
+        const branched =
           pred !== undefined &&
-          !(
-            this.#inlinable(pred, env, 'loop') &&
-            this.#branchPredicate(env, pred, args, `${n.id}.p`, done)
-          )
-        ) {
+          this.#inlinable(pred, env, 'loop') &&
+          this.#branchPredicate(
+            env,
+            pred,
+            args,
+            `${n.id}.p`,
+            done,
+            predicateValues,
+            host?.iteration,
+          );
+        if (branched && pred !== undefined && host !== undefined && env.fn.profile !== 'strict') {
+          const reused = new Map<string, Val>();
+          for (const [bodyId, predId] of common ?? []) {
+            if (
+              host.carry?.read === bodyId ||
+              host.carry?.dead.has(bodyId) ||
+              host.steps.has(bodyId)
+            )
+              continue;
+            reused.set(
+              bodyId,
+              predicateValues?.get(predId) ?? {
+                kind: 'key',
+                key: `${env.prefix}${n.id}.p.n_${predId}`,
+                type: pred.types.get(predId) as Type,
+              },
+            );
+          }
+          if (reused.size > 0) host = { ...host, reuse: reused };
+        }
+        if (pred !== undefined && !branched) {
           const pkey = `${env.prefix}c_${n.id}`;
           if (this.#inlinable(pred, env, 'loop'))
             this.#inline(env, pred, args, false, pkey, 'bool', `${n.id}.p`, 'bind');
@@ -2062,6 +2616,7 @@ class FunctionEmitter {
         if (region !== undefined && this.#dry) {
           for (const k of region.used) {
             const def = this.#defs.get(k);
+            if (def !== undefined && def.pos <= region.start) this.#loopLive.add(k);
             if (def !== undefined && def.pos < region.start)
               this.#last.set(k, Math.max(this.#last.get(k) ?? 0, this.#pos));
           }
@@ -2180,7 +2735,89 @@ class FunctionEmitter {
     this.#storeRecord(key, t);
   }
 
-  // --- SSE2 fill runs -----------------------------------------------------------------------
+  // --- SSE2 reductions and fill runs --------------------------------------------------------
+
+  /** SSE2 prefix of a predicate count; ordinary scalar lowering handles the remainder. */
+  #countPrefix(
+    run: PredicateCount,
+    source: Extract<Val, { kind: 'key' }>,
+    state: Val,
+    counter: string,
+    count: Val,
+  ): void {
+    this.#use(source);
+    this.#use(state);
+    this.#use(count);
+    const limit = count.kind === 'lit' ? imm(count.value) : this.#operand(count, '%r10d');
+    const done = this.#label(),
+      top = this.#label();
+    // Amortize vector setup; short folds use the ordinary scalar path.
+    this.#emit(`movl ${limit}, %r11d`, 'cmpl $16, %r11d', `jb ${done}`, 'andl $-4, %r11d');
+    this.#set(counter, (d) => this.#mov('%r11d', d));
+    this.#emit('shrl $2, %r11d');
+    this.#emit(
+      `movd ${this.#read(state, '%r10d')}, %xmm9`,
+      'pxor %xmm0, %xmm0',
+      'movabsq $4294967296, %rax',
+      'movq %rax, %xmm1',
+      'movabsq $12884901890, %rax',
+      'movq %rax, %xmm2',
+      'punpcklqdq %xmm2, %xmm1',
+      'movl $4, %eax',
+      'movd %eax, %xmm2',
+      'pshufd $0, %xmm2, %xmm2',
+      `movl ${imm(run.value)}, %eax`,
+      'movd %eax, %xmm3',
+      'pshufd $0, %xmm3, %xmm3',
+      'pcmpeqd %xmm6, %xmm6',
+    );
+    if (run.lower !== undefined && run.lower !== 0)
+      this.#emit(
+        'movl $-2147483648, %eax',
+        'movd %eax, %xmm7',
+        'pshufd $0, %xmm7, %xmm7',
+        `movl ${imm(((run.lower - 1) ^ 0x80000000) >>> 0)}, %eax`,
+        'movd %eax, %xmm8',
+        'pshufd $0, %xmm8, %xmm8',
+      );
+    this.#emit(
+      'xorl %eax, %eax',
+      `${top}:`,
+      'movl %eax, %r10d',
+      `andl ${imm(run.length - 1)}, %r10d`,
+      `movdqu ${this.#slot(source.key)}(%rsp,%r10,4), %xmm4`,
+      'pcmpeqd %xmm3, %xmm4',
+    );
+    if (!run.equal) this.#emit('pxor %xmm6, %xmm4');
+    if (run.lower !== undefined && run.lower !== 0)
+      this.#emit(
+        'movdqa %xmm1, %xmm5',
+        'pxor %xmm7, %xmm5',
+        'pcmpgtd %xmm8, %xmm5',
+        'pand %xmm5, %xmm4',
+      );
+    if (!run.positive) this.#emit('pxor %xmm6, %xmm4');
+    this.#emit(
+      'psrld $31, %xmm4',
+      'paddd %xmm4, %xmm0',
+      'addl $4, %eax',
+      'paddd %xmm2, %xmm1',
+      'decl %r11d',
+      `jne ${top}`,
+      'pshufd $78, %xmm0, %xmm4',
+      'paddd %xmm4, %xmm0',
+      'pshufd $177, %xmm0, %xmm4',
+      'paddd %xmm4, %xmm0',
+      'paddd %xmm9, %xmm0',
+      'movd %xmm0, %eax',
+    );
+    if (state.kind !== 'key') refuse('predicate count state must be scalar key');
+    this.#set(state.key, (d) => this.#mov('%eax', d));
+    this.#emit(`${done}:`);
+    this.#use(source);
+    this.#use(state);
+    this.#use(count);
+  }
 
   /**
    * xmm registers for a fill run (optimize.ts `fillRun`): one per uniform operand (literal or
@@ -2189,14 +2826,21 @@ class FunctionEmitter {
    */
   #sseRegisters(
     run: FillRun,
+    induction = false,
+    last = SSE_LAST,
   ):
-    | { uniform: Map<string, string>; counts: Map<number, string>; nodes: Map<string, string> }
+    | {
+        uniform: Map<string, string>;
+        counts: Map<number, string>;
+        nodes: Map<string, string>;
+        steps: Map<string, { register: string; coefficient: Operand }>;
+      }
     | undefined {
     const uniform = new Map<string, string>();
     const counts = new Map<number, string>();
     const nodes = new Map<string, string>();
     let next = SSE_FIRST;
-    const take = (): string | undefined => (next <= SSE_LAST ? `%xmm${next++}` : undefined);
+    const take = (): string | undefined => (next <= last ? `%xmm${next++}` : undefined);
     const need = (o: Operand): boolean => {
       if (o.kind === 'node' || (o.kind === 'param' && o.index === 1)) return true;
       const k = formatUniform(o);
@@ -2222,17 +2866,42 @@ class FunctionEmitter {
       nodes.set(m.id, r);
     }
     if (!need(run.value)) return undefined;
-    return { uniform, counts, nodes };
+    const steps = new Map<string, { register: string; coefficient: Operand }>();
+    if (induction && run.count >= 8) {
+      for (const m of run.nodes) {
+        if (m.op !== 'mul') continue;
+        const [a, b] = m.args as [Operand, Operand];
+        const index = (o: Operand): boolean => o.kind === 'param' && o.index === 1;
+        const coefficient = index(a) ? b : index(b) ? a : undefined;
+        if (coefficient === undefined || coefficient.kind === 'node' || index(coefficient))
+          continue;
+        const register = take();
+        if (register !== undefined) steps.set(m.id, { register, coefficient });
+      }
+    }
+    return { uniform, counts, nodes, steps };
   }
 
   /**
    * Elements 0..count-1 of the array `key` from a fill run, four lanes per trip in xmm
-   * registers (SSE2 only: 32-bit multiplies are two pmuludq on the even and odd lanes). A
+   * registers. Linux vector reductions dispatch to SSE4.1 when available; the SSE2
+   * fallback uses two pmuludq on the even and odd lanes for 32-bit multiplies. A
    * remainder of count mod 4 elements is one more group stored lane by lane (the extra lanes
-   * are pure and total, so computing them is unobservable). Uses rax, r10, r11, xmm1-xmm15.
+   * are pure and total, so computing them is unobservable). Uses rax, r10, r11, xmm0-xmm15.
    */
-  #sseFill(run: FillRun, key: string, extras: readonly Val[]): void {
-    const regs = this.#sseRegisters(run);
+  #sseFill(
+    run: FillRun,
+    key: string,
+    extras: readonly Val[],
+    initial?: Val,
+    extrema?: readonly Extremum[],
+    histogram?: HistogramRun,
+  ): void {
+    const regs = this.#sseRegisters(
+      run,
+      initial !== undefined || histogram !== undefined,
+      extrema === undefined ? SSE_LAST : 10,
+    );
     if (regs === undefined) refuse('internal: fill run registers');
     const reg = (o: Operand): string => {
       if (o.kind === 'node') return regs.nodes.get(o.id) as string;
@@ -2266,24 +2935,40 @@ class FunctionEmitter {
         'andl $31, %eax',
         `movd %eax, ${r}`,
       );
-    const lanes = (): void => {
+    const multiply = (ra: string, rb: string, d: string, sse41 = false): void => {
+      if (sse41) {
+        this.#emit(`movdqa ${ra}, ${d}`, `pmulld ${rb}, ${d}`);
+        return;
+      }
+      this.#emit(
+        `movdqa ${ra}, ${d}`,
+        `pmuludq ${rb}, ${d}`,
+        `pshufd $245, ${ra}, %xmm14`,
+        `pshufd $245, ${rb}, %xmm15`,
+        'pmuludq %xmm15, %xmm14',
+        `pshufd $232, ${d}, ${d}`,
+        'pshufd $232, %xmm14, %xmm14',
+        `punpckldq %xmm14, ${d}`,
+      );
+    };
+    for (const [id, step] of regs.steps) {
+      multiply('%xmm1', reg(step.coefficient), regs.nodes.get(id) as string);
+      this.#emit(`movdqa ${reg(step.coefficient)}, ${step.register}`, `pslld $2, ${step.register}`);
+    }
+    const advance = (): void => {
+      this.#emit('paddd %xmm2, %xmm1');
+      for (const [id, step] of regs.steps)
+        this.#emit(`paddd ${step.register}, ${regs.nodes.get(id)}`);
+    };
+    const lanes = (sse41 = false): void => {
       for (const m of run.nodes) {
+        if (regs.steps.has(m.id)) continue;
         const d = regs.nodes.get(m.id) as string;
         const [a, b] = m.args as [Operand, Operand];
         const ra = reg(a);
         if (m.op === 'mul') {
           // Even lanes: pmuludq of lanes 0 and 2; odd lanes: the same after a 32-bit shift.
-          const rb = reg(b);
-          this.#emit(
-            `movdqa ${ra}, ${d}`,
-            `pmuludq ${rb}, ${d}`,
-            `pshufd $245, ${ra}, %xmm14`,
-            `pshufd $245, ${rb}, %xmm15`,
-            'pmuludq %xmm15, %xmm14',
-            `pshufd $232, ${d}, ${d}`,
-            'pshufd $232, %xmm14, %xmm14',
-            `punpckldq %xmm14, ${d}`,
-          );
+          multiply(ra, reg(b), d, sse41);
           continue;
         }
         const insn = SSE_OP[m.op] as string;
@@ -2297,30 +2982,125 @@ class FunctionEmitter {
     };
     const out = reg(run.value);
     const groups = Math.floor(run.count / 4);
-    this.#emit(`leaq ${this.#m('%rsp', this.#slot(key))}, %r10`);
-    if (groups === 1) {
-      lanes();
-      this.#emit(`movups ${out}, (%r10)`);
-    } else {
-      const top = this.#label();
-      this.#emit(`movl ${imm(groups)}, %r11d`, `${top}:`);
-      lanes();
+    const reduction = initial !== undefined || histogram !== undefined;
+    const accumulators = ['%xmm0', '%xmm12'];
+    const extremum = (acc: string, value: string, kind: Extremum, sse41: boolean): void => {
+      if (sse41) {
+        this.#emit(`${kind === 'min' ? 'pminud' : 'pmaxud'} ${value}, ${acc}`);
+        return;
+      }
+      // Signed compares after sign-bit bias implement an unsigned lane comparison.
       this.#emit(
-        `movups ${out}, (%r10)`,
-        'addq $16, %r10',
-        'paddd %xmm2, %xmm1',
-        'subl $1, %r11d',
-        `jne ${top}`,
+        `movdqa ${acc}, %xmm14`,
+        'pxor %xmm13, %xmm14',
+        `movdqa ${value}, %xmm15`,
+        'pxor %xmm13, %xmm15',
+        'pcmpgtd %xmm15, %xmm14',
+        `movdqa ${acc}, %xmm15`,
+        `pxor ${value}, %xmm15`,
+        'pand %xmm14, %xmm15',
       );
-    }
-    const rest = run.count % 4;
-    if (rest === 0) return;
-    if (groups === 1) this.#emit('addq $16, %r10', 'paddd %xmm2, %xmm1');
-    lanes();
-    for (let k = 0; k < rest; k += 1) {
-      this.#emit(`movd ${out}, %eax`, `movl %eax, ${4 * k}(%r10)`);
-      if (k + 1 < rest) this.#emit(`psrldq $4, ${out}`);
-    }
+      if (kind === 'max') this.#emit(`movdqa ${value}, ${acc}`);
+      this.#emit(`pxor %xmm15, ${acc}`);
+    };
+    const loop = (sse41: boolean): void => {
+      if (extrema !== undefined) {
+        if (initial?.kind !== 'key') refuse('extrema initializer must be a record');
+        this.#emit('movl $-2147483648, %eax', 'movd %eax, %xmm13', 'pshufd $0, %xmm13, %xmm13');
+        for (const [i, acc] of accumulators.entries())
+          this.#emit(
+            `movl ${this.#m('%rsp', this.#slot(initial.key) + 4 * i)}, %eax`,
+            `movd %eax, ${acc}`,
+            `pshufd $0, ${acc}, ${acc}`,
+          );
+      } else if (reduction && histogram === undefined) this.#emit('pxor %xmm0, %xmm0');
+      else this.#emit(`leaq ${this.#m('%rsp', this.#slot(key))}, %r10`);
+      const consume = (): void => {
+        if (histogram !== undefined) {
+          this.#emit(`movdqa ${out}, %xmm0`);
+          for (let lane = 0; lane < 4; lane += 1) {
+            this.#emit(
+              'movd %xmm0, %eax',
+              `andl $${histogram.length - 1}, %eax`,
+              `addl ${imm(histogram.increment)}, (%r10,%rax,4)`,
+            );
+            if (lane !== 3) this.#emit('psrldq $4, %xmm0');
+          }
+        } else if (extrema !== undefined)
+          for (const [i, kind] of extrema.entries())
+            extremum(accumulators[i] as string, out, kind, sse41);
+        else this.#emit(reduction ? `paddd ${out}, %xmm0` : `movups ${out}, (%r10)`);
+      };
+      if (groups === 1) {
+        lanes(sse41);
+        consume();
+      } else {
+        const top = this.#label();
+        this.#emit(`movl ${imm(groups)}, %r11d`, `${top}:`);
+        lanes(sse41);
+        consume();
+        if (!reduction) this.#emit('addq $16, %r10');
+        advance();
+        this.#emit('subl $1, %r11d', `jne ${top}`);
+      }
+      const rest = run.count % 4;
+      if (rest !== 0) {
+        if (groups === 1) {
+          if (!reduction) this.#emit('addq $16, %r10');
+          advance();
+        }
+        lanes(sse41);
+        if (reduction) {
+          // Computing unused pure lanes is safe; zero them before reducing.
+          this.#emit(
+            `movdqa ${out}, %xmm15`,
+            `pslldq $${4 * (4 - rest)}, %xmm15`,
+            `psrldq $${4 * (4 - rest)}, %xmm15`,
+            'paddd %xmm15, %xmm0',
+          );
+        } else
+          for (let k = 0; k < rest; k += 1) {
+            this.#emit(`movd ${out}, %eax`, `movl %eax, ${4 * k}(%r10)`);
+            if (k + 1 < rest) this.#emit(`psrldq $4, ${out}`);
+          }
+      }
+      if (extrema !== undefined) {
+        for (const [i, kind] of extrema.entries()) {
+          const acc = accumulators[i] as string;
+          this.#emit(`pshufd $78, ${acc}, %xmm11`);
+          extremum(acc, '%xmm11', kind, sse41);
+          this.#emit(`pshufd $177, ${acc}, %xmm11`);
+          extremum(acc, '%xmm11', kind, sse41);
+          this.#emit(`movd ${acc}, %eax`, `movl %eax, ${this.#m('%rsp', this.#slot(key) + 4 * i)}`);
+        }
+      } else if (initial !== undefined) {
+        this.#emit(
+          'pshufd $78, %xmm0, %xmm14',
+          'paddd %xmm14, %xmm0',
+          'pshufd $177, %xmm0, %xmm14',
+          'paddd %xmm14, %xmm0',
+          'movd %xmm0, %eax',
+        );
+        if (initial.kind !== 'lit' || initial.value !== 0)
+          this.#emit(
+            `addl ${initial.kind === 'lit' ? imm(initial.value) : this.#operand(initial, '%r10d')}, %eax`,
+          );
+        this.#set(key, (d) => this.#mov('%eax', d));
+      }
+    };
+    const dispatch =
+      this.platform === 'linux' &&
+      reduction &&
+      (extrema !== undefined || run.nodes.some((n) => n.op === 'mul' && !regs.steps.has(n.id)));
+    if (dispatch) {
+      const fast = this.#label(),
+        done = this.#label();
+      this.#emit('call .La0sse41', 'cmpl $2, %eax', `je ${fast}`);
+      loop(false);
+      this.#emit(`jmp ${done}`, `${fast}:`);
+      loop(true);
+      this.#emit(`${done}:`);
+    } else loop(false);
   }
 
   // --- register allocation ---------------------------------------------------------------
@@ -2342,13 +3122,19 @@ class FunctionEmitter {
       .filter(([k, d]) => isScalar(d.type) && !this.#alias.has(k))
       .sort((x, y) => x[1].pos - y[1].pos);
     const busy = new Map<string, number>();
+    const occupants = new Map<string, string>();
+    const pinned = new Set([...this.#shares.keys(), ...this.#shares.values(), ...this.#loopLive]);
     for (const [key, d] of keys) {
       if (key === retKey) {
         this.#regs.set(key, '%eax');
         continue;
       }
       const last = this.#last.get(key) ?? d.pos;
-      for (const [r, l] of busy) if (l <= d.pos) busy.delete(r);
+      for (const [r, l] of busy)
+        if (l <= d.pos) {
+          busy.delete(r);
+          occupants.delete(r);
+        }
       // A loop body's result shares the state's register (see #inline): the state is not
       // read between the result's definition and the store that ends the trip.
       const target = this.#shares.get(key);
@@ -2365,8 +3151,22 @@ class FunctionEmitter {
         if (r !== undefined && leafHomes.includes(r) && !busy.has(r)) reg = r;
       }
       if (reg === undefined) reg = pool.find((r) => !busy.has(r));
-      if (reg === undefined) continue;
+      if (reg === undefined) {
+        // Homes are assigned before emission: evicting an interval spills it for its whole
+        // lifetime. Keep coalesced groups and back-edge values intact.
+        let farthest = last;
+        for (const [r, end] of busy) {
+          const occupant = occupants.get(r);
+          if (end > farthest && occupant !== undefined && !pinned.has(occupant)) {
+            farthest = end;
+            reg = r;
+          }
+        }
+        if (reg === undefined) continue;
+        this.#regs.delete(occupants.get(reg) as string);
+      }
       busy.set(reg, last);
+      occupants.set(reg, key);
       this.#regs.set(key, reg);
     }
     const used = new Set([...this.#regs.values()].filter((r) => CALLEE_SAVED.includes(r)));
@@ -2392,7 +3192,7 @@ class FunctionEmitter {
 
   /** After the function: its cold trap stubs, its name, and the ids of the folds it marks. */
   #coldPaths(framed: boolean): void {
-    const trap = this.platform === 'darwin' ? '_a0_trap' : 'a0_trap';
+    const trap = nativeTrapSymbol(this.platform, 'trap');
     for (const kind of ['bounds', 'divzero'] as const)
       if (this.#stubs.has(kind))
         this.out.push(
@@ -2637,7 +3437,7 @@ function ioRuntime(
   const pos = nin + 4;
   const out = pos + 4;
   const nout = out + 4 * outCap;
-  const trap = platform === 'darwin' ? '_a0_trap' : 'a0_trap';
+  const trap = nativeTrapSymbol(platform, 'trap');
   const lines: string[] = [];
   for (const h of ['read', 'sread'] as const) {
     if (!used.has(h)) continue;
@@ -2693,6 +3493,38 @@ function ioRuntime(
   return lines.join('\n');
 }
 
+/** Lazy per-object capability cache. Aligned byte loads/stores are atomic on
+ * x86; racing initializers publish the same immutable CPU capability. Preserve
+ * every allocated GPR except eax, which is scratch at the dispatch site. */
+function sse41Runtime(bodies: readonly string[], platform: X86Platform): string {
+  if (platform !== 'linux' || !bodies.some((s) => s.includes('call .La0sse41'))) return '';
+  return [
+    '\t.p2align 4',
+    '.La0sse41:',
+    '\tmovzbl .La0sse41_cap(%rip), %eax',
+    '\ttestl %eax, %eax',
+    '\tjne 1f',
+    '\tpushq %rbx',
+    '\tpushq %rcx',
+    '\tpushq %rdx',
+    '\tmovl $1, %eax',
+    '\tcpuid',
+    '\ttestl $524288, %ecx',
+    '\tsetne %al',
+    '\tmovzbl %al, %eax',
+    '\taddl $1, %eax',
+    '\tmovb %al, .La0sse41_cap(%rip)',
+    '\tpopq %rdx',
+    '\tpopq %rcx',
+    '\tpopq %rbx',
+    '1:\tret',
+    '\t.data',
+    '.La0sse41_cap:',
+    '\t.byte 0',
+    '\t.text',
+  ].join('\n');
+}
+
 /** Emit one function as x86-64 assembly (a `.globl a0_<name>` block, `_a0_` on macOS). */
 export function emitX86_64Function(
   fn: TypedFunc,
@@ -2715,7 +3547,11 @@ export function assembleX86_64(
   const tail =
     platform === 'darwin' ? '.subsections_via_symbols' : '\t.section .note.GNU-stack,"",@progbits';
   const runtime = trap === undefined ? '' : `${x86TrapRuntime(trap, platform)}\n\n`;
-  const helpers = [copyRuntime(bodies, platform), ioRuntime(bodies, platform, io)]
+  const helpers = [
+    copyRuntime(bodies, platform),
+    ioRuntime(bodies, platform, io),
+    sse41Runtime(bodies, platform),
+  ]
     .filter((t) => t !== '')
     .map((t) => `${t}\n\n`)
     .join('');

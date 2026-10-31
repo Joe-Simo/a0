@@ -1,0 +1,128 @@
+{
+  "baseline": "7b5e0f9a7460dec627b3b648b54e0484728aebf9",
+  "scope": "Focused local review of lease/mutex/cache fencing, migration and sealed-session boundaries; no hosted scanner or cryptographic certification.",
+  "reviewed": [
+    "src/plaintext-write.ts",
+    "src/cache.ts",
+    "src/protection/process-lock.ts",
+    "src/protection/disk.ts",
+    "src/protection/vault.ts",
+    "src/protection/build.ts",
+    "src/protection/cli.ts",
+    "src/protection/store.ts",
+    "src/protection/crypto.ts (boundary and binding review only)",
+    "src/migrate.ts",
+    "src/source-init.ts",
+    "src/source-edit.ts",
+    "src/source-cli.ts"
+  ],
+  "threatModel": [
+    "Offline/corrupted storage and delayed or revoked in-process capabilities",
+    "Concurrent cooperating managed writers and explicit session cancellation",
+    "No defense claim against compromised host, malicious filesystem owner or authorized malicious key holder"
+  ],
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "medium",
+      "function": "SealedProject.read",
+      "confirmed": "Lock during final integrity digest returned plaintext from a locked session",
+      "fix": "Recheck lock after digest; rejected buffer cleared"
+    },
+    {
+      "id": "R2",
+      "severity": "medium",
+      "function": "SourceAccess.write",
+      "confirmed": "Revoked approval committed a write queued behind another operation; a queued source write could also commit after unsealing started",
+      "fix": "Recheck scoped authorization at queue execution and before persistence/commit dispatch and require phase on"
+    },
+    {
+      "id": "R3",
+      "severity": "medium",
+      "function": "compileSealed",
+      "confirmed": "Uncached build returned a valid artifact after lock during source hashing",
+      "fix": "Recheck locked/phase state after hashing and before returning artifact"
+    },
+    {
+      "id": "R4",
+      "severity": "medium",
+      "function": "migration, inventory, restoration and DiskVaultStore root binding",
+      "confirmed": "Working-directory changes redirected migration/restoration, inventory reads and low-level lease recovery to a different root",
+      "fix": "Resolve entry paths/root synchronously and retain absolute vault root"
+    }
+  ],
+  "limitations": [
+    "Storage commit already dispatched cannot be recalled by revocation",
+    "Bytes already returned and JavaScript strings cannot be retroactively erased",
+    "Both stale mutexes, unknown/foreign/legacy ownership and unbound external leases remain manual-review cases",
+    "No new defect confirmed in the reviewed recovery interlock under its cooperating-filesystem assumptions",
+    "Formal security-scan skill references and preflight were unavailable; no hosted scan was launched",
+    "Full-platform and independent security assurance remain pending"
+  ],
+  "roadmap": {
+    "document": "docs/UNIFIED-STATUS.md",
+    "historicalNativeCost": {
+      "scope": "Current baseline native frontend versus frozen historical Canonical parser, same-host matched run; not a global benchmark claim.",
+      "evidenceArchiveSHA256": "f43bb47bdbd56d6efbddee02ac619c333be518e01f80659ca67004a7771ff70a",
+      "evidencePath": "evidence/formal/results.json",
+      "maxLoad": 1.69,
+      "rows": [
+        {
+          "input": "examples/life.a0",
+          "historicalCanonicalFrontendMs": 4.887296000000006,
+          "currentNativeFrontendMs": 18.371083999999996,
+          "ratio": 3.7589464603739926
+        },
+        {
+          "input": "site/lib/frame.a0",
+          "historicalCanonicalFrontendMs": 5.544892000000004,
+          "currentNativeFrontendMs": 26.03901900000001,
+          "ratio": 4.696037181607863
+        },
+        {
+          "input": "site/page.a0",
+          "historicalCanonicalFrontendMs": 37.37887599999999,
+          "currentNativeFrontendMs": 198.95759700000002,
+          "ratio": 5.3227281901146535
+        },
+        {
+          "input": "site/docs.a0",
+          "historicalCanonicalFrontendMs": 21.864081,
+          "currentNativeFrontendMs": 100.131138,
+          "ratio": 4.5797094330193895
+        },
+        {
+          "input": "compiler/boot.a0",
+          "historicalCanonicalFrontendMs": 196.55054600000003,
+          "currentNativeFrontendMs": 1285.584957,
+          "ratio": 6.540734600655853
+        },
+        {
+          "input": "compiler/parse_arena.a0",
+          "historicalCanonicalFrontendMs": 34.20488499999999,
+          "currentNativeFrontendMs": 170.258367,
+          "ratio": 4.977603842258205
+        }
+      ]
+    },
+    "readonlyExperiment": {
+      "commit": "77548a7f",
+      "decision": "rejected",
+      "geometricMeanRatio": 0.9903919184562063,
+      "requiredRatio": 0.95
+    },
+    "priorCacheControl": {
+      "scope": "Historical synthetic 100-entry batch, not rerun in this review",
+      "beforeMs": 47.50400599999999,
+      "afterMs": 61.933345
+    },
+    "historicalLossLedgerCount": 616
+  },
+  "validation": {
+    "adversarialPass": 11,
+    "focusedPass": 77,
+    "fail": 0,
+    "skipped": 0,
+    "aggregate": "Pending exact-tree available gate; no full-platform pass claimed"
+  }
+}

@@ -10,7 +10,7 @@
 
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   assemble,
   type CompileOptions,
@@ -20,6 +20,8 @@ import {
   type Target,
 } from './backends.js';
 import type { TypedFunc, TypedProgram } from './core.js';
+import { withPlaintextWrite, withPlaintextWrites } from './plaintext-write.js';
+import { protectionPolicy } from './protection-policy.js';
 
 export const DEFAULT_CACHE_DIR = '.a0-cache';
 
@@ -32,8 +34,12 @@ export class DiskCache {
   hits = 0;
   misses = 0;
 
-  constructor(dir = process.env.A0_CACHE_DIR ?? DEFAULT_CACHE_DIR) {
-    this.dir = dir;
+  constructor(
+    dir = process.env.A0_CACHE_DIR ?? DEFAULT_CACHE_DIR,
+    readonly sourcePath = process.cwd(),
+  ) {
+    this.dir = resolve(dir);
+    this.sourcePath = resolve(sourcePath);
   }
 
   #path(key: string): string {
@@ -51,10 +57,9 @@ export class DiskCache {
     }
   }
 
-  async put(key: string, data: Buffer | string): Promise<void> {
+  async #put(key: string, data: Buffer | string): Promise<void> {
     const parent = join(this.dir, key.slice(0, 2));
     await mkdir(parent, { recursive: true });
-    // Atomic rename requires both files to be on the same filesystem.
     const tmp = join(parent, `.a0-cache-${process.pid}-${randomUUID()}`);
     try {
       await writeFile(tmp, data, { flag: 'wx' });
@@ -62,6 +67,38 @@ export class DiskCache {
     } finally {
       await rm(tmp, { force: true });
     }
+  }
+
+  async put(key: string, data: Buffer | string): Promise<void> {
+    await this.withWrites((put) => put(key, data));
+  }
+
+  /** One lease covers every asynchronous write of an emitted module. */
+  async withWrites<T>(action: (put: CacheWriter) => Promise<T>): Promise<T> {
+    protectionPolicy(this.sourcePath);
+    protectionPolicy(this.dir);
+    return withPlaintextWrites([this.sourcePath, this.dir], async () => {
+      // The outer leases guard the source and existing destination ancestor. Register
+      // the created directory itself before payload writes so sealing that root sees it.
+      await mkdir(this.dir, { recursive: true });
+      return withPlaintextWrite(this.dir, async () => {
+        let open = true;
+        const pending: Promise<void>[] = [];
+        try {
+          return await action((key, data) => {
+            if (!open) return Promise.reject(new Error('cache write batch is closed'));
+            const write = this.#put(key, data);
+            pending.push(write);
+            return write;
+          });
+        } finally {
+          open = false;
+          // Promise.all can reject while sibling writes are still in flight. Keep the lease
+          // until every started write settles, including cleanup of its temporary file.
+          await Promise.allSettled(pending);
+        }
+      });
+    });
   }
 }
 
@@ -75,11 +112,14 @@ export interface CachedCompile {
   readonly hits: number;
   readonly misses: number;
 }
+export type CacheWriter = (key: string, data: Buffer | string) => Promise<void>;
+
 export interface ArtifactCache {
   readonly hits: number;
   readonly misses: number;
   get(key: string): Promise<Buffer | undefined>;
   put(key: string, data: Buffer | string): Promise<void>;
+  withWrites?<T>(action: (put: CacheWriter) => Promise<T>): Promise<T>;
 }
 
 /**
@@ -98,15 +138,21 @@ export async function compileCached(
   // (measured ~90 % of a 14-function compile when awaited in series), not by bytes.
   const keys = prepared.functions.map((fn) => emissionKey(target, fn, options));
   const hits = await Promise.all(keys.map((key) => cache.get(key)));
-  const bodies = await Promise.all(
-    prepared.functions.map(async (fn, i) => {
-      const hit = hits[i];
-      if (hit !== undefined) return hit.toString('utf8');
-      const body = emitFunction(target, fn, options);
-      await cache.put(keys[i] as string, body);
-      return body;
-    }),
-  );
+  const emitBodies = (put: CacheWriter) =>
+    Promise.all(
+      prepared.functions.map(async (fn, i) => {
+        const hit = hits[i];
+        if (hit !== undefined) return hit.toString('utf8');
+        const body = emitFunction(target, fn, options);
+        await put(keys[i] as string, body);
+        return body;
+      }),
+    );
+  const bodies =
+    cache.withWrites !== undefined && hits.some((hit) => hit === undefined)
+      ? await cache.withWrites(emitBodies)
+      : await emitBodies(cache.put.bind(cache));
+
   return {
     text: assemble(target, bodies, prepared, options),
     hits: cache.hits - before.hits,

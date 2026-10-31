@@ -57,6 +57,15 @@
           ],
           "default": "off",
           "description": "Trace the communication between VS Code and the a0 language server."
+        },
+        "a0.server.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "machine-overridable",
+          "description": "Arguments before lsp. For an initialized candidate project use [\".a0/cli.mjs\"] with server.path \"node\"."
         }
       }
     },
@@ -85,5 +94,11 @@
   },
   "trustedDependencies": [
     "esbuild"
-  ]
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "A0 starts a configured compiler process; trust the workspace first."
+    }
+  }
 }

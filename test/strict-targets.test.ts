@@ -1318,22 +1318,22 @@ end
   );
   for (const target of ['arm64', 'x86_64'] as const) {
     const text = compile(p, target, { x86Platform: 'darwin' }).text;
-    const trap = target === 'arm64' ? 'b _a0_trap' : 'jmp _a0_trap';
+    const trap = target === 'arm64' ? 'b La0r_trap' : 'jmp La0r_trap';
     // One bounds stub and one divzero stub for the four trapping sites.
     assert.equal(text.split(trap).length - 1, 2, `${target} stubs`);
-    assert.ok(text.includes('_a0_trap:') && text.includes('_a0_ts'), target);
+    assert.ok(text.includes('La0r_trap:') && text.includes('La0r_ts'), target);
     const safe = compile(
       parseAndValidate(`${STRICT}fn s u32 -> u32\na add p0 1\nret a\nend\n`),
       target,
       { x86Platform: 'darwin' },
     ).text;
-    assert.ok(!safe.includes('_a0_trap'), `${target}: nothing can trap`);
+    assert.ok(!safe.includes('La0r_trap'), `${target}: nothing can trap`);
     const canonical = compile(
       parseAndValidate('fn s u32 -> u32\na div p0 p0\nret a\nend\n'),
       target,
       { x86Platform: 'darwin' },
     ).text;
-    assert.ok(!canonical.includes('_a0_trap'), `${target}: canonical has no runtime`);
+    assert.ok(!canonical.includes('La0r_trap'), `${target}: canonical has no runtime`);
   }
 });
 

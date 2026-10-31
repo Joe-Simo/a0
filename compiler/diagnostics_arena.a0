@@ -9073,12 +9073,7 @@ z_18 set z_17 17 101
 z_19 set z_18 18 100
 z_20 set z_19 19 115
 z_21 set z_20 20 32
-z_22 set z_21 21 54
-z_23 set z_22 22 53
-z_24 set z_23 23 53
-z_25 set z_24 24 51
-z_26 set z_25 25 54
-s call ad_append p0 26 z_26
+s call ad_append p0 21 z_21
 ret s
 end
 fn ad_lit_typeio (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
@@ -19767,7 +19762,14 @@ ret q0
 end
 fn ad_type_array (u32,(u32,u32,u32),io) u32 u32x128 (u32,u32,u32) -> (u32,(u32,u32,u32),io)
 q0 call ad_lit_typearray p0
-ret q0
+recorded get p2 95
+lower ge recorded 65536
+upper le recorded 2097152
+valid and lower upper
+# Older diagnostic snapshots do not carry the dimension-specific limit.
+limit select valid recorded 65536
+out call ad_number q0 limit
+ret out
 end
 fn ad_type_io (u32,(u32,u32,u32),io) u32 u32x128 (u32,u32,u32) -> (u32,(u32,u32,u32),io)
 q0 call ad_lit_typeio p0
@@ -21196,7 +21198,7 @@ renderio at j_17 2
 rendered rec renderstatus renderbytes arguments known functions kind renderio
 ret rendered
 end
-fn ad_render io u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+fn ad_render_regular io u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
 rendered call ad_render_json p0 p1 p2
 renderstatus at rendered 0
 renderbytes at rendered 1
@@ -21804,6 +21806,1429 @@ q756 at typeutf 3
 q757 rec status_2 q755 facts_115 q756
 ret q757
 end
+# Native scalar specification diagnostics; generated fragment retained with validation evidence.
+fn sd_head714 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 123
+z1 set z0 1 34
+z2 set z1 2 99
+z3 set z2 3 111
+z4 set z3 4 100
+z5 set z4 5 101
+z6 set z5 6 34
+z7 set z6 7 58
+z8 set z7 8 34
+z9 set z8 9 115
+z10 set z9 10 116
+z11 set z10 11 114
+z12 set z11 12 117
+z13 set z12 13 99
+z14 set z13 14 116
+z15 set z14 15 117
+z16 set z15 16 114
+z17 set z16 17 101
+z18 set z17 18 34
+z19 set z18 19 44
+z20 set z19 20 34
+z21 set z20 21 105
+z22 set z21 22 100
+z23 set z22 23 34
+z24 set z23 24 58
+z25 set z24 25 34
+z26 set z25 26 65
+z27 set z26 27 48
+z28 set z27 28 55
+z29 set z28 29 49
+z30 set z29 30 52
+z31 set z30 31 34
+z32 set z31 32 44
+z33 set z32 33 34
+z34 set z33 34 109
+z35 set z34 35 101
+z36 set z35 36 115
+z37 set z36 37 115
+z38 set z37 38 97
+z39 set z38 39 103
+z40 set z39 40 101
+z41 set z40 41 34
+z42 set z41 42 58
+r call ad_append p0 43 z42
+ret r
+end
+fn sd_head715 (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 123
+z1 set z0 1 34
+z2 set z1 2 99
+z3 set z2 3 111
+z4 set z3 4 100
+z5 set z4 5 101
+z6 set z5 6 34
+z7 set z6 7 58
+z8 set z7 8 34
+z9 set z8 9 115
+z10 set z9 10 116
+z11 set z10 11 114
+z12 set z11 12 117
+z13 set z12 13 99
+z14 set z13 14 116
+z15 set z14 15 117
+z16 set z15 16 114
+z17 set z16 17 101
+z18 set z17 18 34
+z19 set z18 19 44
+z20 set z19 20 34
+z21 set z20 21 105
+z22 set z21 22 100
+z23 set z22 23 34
+z24 set z23 24 58
+z25 set z24 25 34
+z26 set z25 26 65
+z27 set z26 27 48
+z28 set z27 28 55
+z29 set z28 29 49
+z30 set z29 30 53
+z31 set z30 31 34
+z32 set z31 32 44
+z33 set z32 33 34
+z34 set z33 34 109
+z35 set z34 35 101
+z36 set z35 36 115
+z37 set z36 37 115
+z38 set z37 38 97
+z39 set z38 39 103
+z40 set z39 40 101
+z41 set z40 41 34
+z42 set z41 42 58
+r call ad_append p0 43 z42
+ret r
+end
+fn sd_line (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 108
+z1 set z0 1 105
+z2 set z1 2 110
+z3 set z2 3 101
+z4 set z3 4 32
+r call ad_append p0 5 z4
+ret r
+end
+fn sd_colon (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 58
+z1 set z0 1 32
+r call ad_append p0 2 z1
+ret r
+end
+fn sd_specof (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 115
+z1 set z0 1 112
+z2 set z1 2 101
+z3 set z2 3 99
+z4 set z3 4 32
+z5 set z4 5 111
+z6 set z5 6 102
+z7 set z6 7 32
+r call ad_append p0 8 z7
+ret r
+end
+fn sd_many (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 58
+z1 set z0 1 32
+z2 set z1 2 97
+z3 set z2 3 116
+z4 set z3 4 32
+z5 set z4 5 109
+z6 set z5 6 111
+z7 set z6 7 115
+z8 set z7 8 116
+z9 set z8 9 32
+z10 set z9 10 51
+z11 set z10 11 32
+z12 set z11 12 101
+z13 set z12 13 120
+z14 set z13 14 32
+z15 set z14 15 108
+z16 set z15 16 105
+z17 set z16 17 110
+z18 set z17 18 101
+z19 set z18 19 115
+r call ad_append p0 20 z19
+ret r
+end
+fn sd_jline (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 108
+z3 set z2 3 105
+z4 set z3 4 110
+z5 set z4 5 101
+z6 set z5 6 34
+z7 set z6 7 58
+r call ad_append p0 8 z7
+ret r
+end
+fn sd_jnull (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 101
+z3 set z2 3 120
+z4 set z3 4 112
+z5 set z4 5 101
+z6 set z5 6 99
+z7 set z6 7 116
+z8 set z7 8 101
+z9 set z8 9 100
+z10 set z9 10 34
+z11 set z10 11 58
+z12 set z11 12 110
+z13 set z12 13 117
+z14 set z13 14 108
+z15 set z14 15 108
+z16 set z15 16 44
+z17 set z16 17 34
+z18 set z17 18 97
+z19 set z18 19 99
+z20 set z19 20 116
+z21 set z20 21 117
+z22 set z21 22 97
+z23 set z22 23 108
+z24 set z23 24 34
+z25 set z24 25 58
+z26 set z25 26 110
+z27 set z26 27 117
+z28 set z27 28 108
+z29 set z28 29 108
+z30 set z29 30 44
+z31 set z30 31 34
+z32 set z31 32 102
+z33 set z32 33 105
+z34 set z33 34 120
+z35 set z34 35 34
+z36 set z35 36 58
+r call ad_append p0 37 z36
+ret r
+end
+fn sd_manyfix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 107
+z1 set z0 1 101
+z2 set z1 2 101
+z3 set z2 3 112
+z4 set z3 4 32
+z5 set z4 5 116
+z6 set z5 6 104
+z7 set z6 7 101
+z8 set z7 8 32
+z9 set z8 9 101
+z10 set z9 10 120
+z11 set z10 11 97
+z12 set z11 12 109
+z13 set z12 13 112
+z14 set z13 14 108
+z15 set z14 15 101
+z16 set z15 16 115
+z17 set z16 17 32
+z18 set z17 18 116
+z19 set z18 19 104
+z20 set z19 20 97
+z21 set z20 21 116
+z22 set z21 22 32
+z23 set z22 23 112
+z24 set z23 24 105
+z25 set z24 25 110
+z26 set z25 26 32
+z27 set z26 27 116
+z28 set z27 28 104
+z29 set z28 29 101
+z30 set z29 30 32
+z31 set z30 31 98
+z32 set z31 32 101
+z33 set z32 33 104
+z34 set z33 34 97
+z35 set z34 35 118
+z36 set z35 36 105
+z37 set z36 37 111
+z38 set z37 38 114
+z39 set z38 39 32
+z40 set z39 40 100
+z41 set z40 41 111
+z42 set z41 42 119
+z43 set z42 43 110
+z44 set z43 44 32
+z45 set z44 45 97
+z46 set z45 46 110
+z47 set z46 47 100
+z48 set z47 48 32
+z49 set z48 49 114
+z50 set z49 50 101
+z51 set z50 51 109
+z52 set z51 52 111
+z53 set z52 53 118
+z54 set z53 54 101
+z55 set z54 55 32
+z56 set z55 56 116
+z57 set z56 57 104
+z58 set z57 58 101
+z59 set z58 59 32
+z60 set z59 60 111
+z61 set z60 61 116
+z62 set z61 62 104
+z63 set z62 63 101
+z64 set z63 64 114
+z65 set z64 65 115
+r call ad_append p0 66 z65
+ret r
+end
+fn sd_jtail (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 97
+z3 set z2 3 112
+z4 set z3 4 112
+z5 set z4 5 108
+z6 set z5 6 105
+z7 set z6 7 99
+z8 set z7 8 97
+z9 set z8 9 98
+z10 set z9 10 105
+z11 set z10 11 108
+z12 set z11 12 105
+z13 set z12 13 116
+z14 set z13 14 121
+z15 set z14 15 34
+z16 set z15 16 58
+z17 set z16 17 34
+z18 set z17 18 109
+z19 set z18 19 97
+z20 set z19 20 121
+z21 set z20 21 98
+z22 set z21 22 101
+z23 set z22 23 34
+z24 set z23 24 44
+z25 set z24 25 34
+z26 set z25 26 101
+z27 set z26 27 100
+z28 set z27 28 105
+z29 set z28 29 116
+z30 set z29 30 115
+z31 set z30 31 34
+z32 set z31 32 58
+z33 set z32 33 91
+z34 set z33 34 93
+z35 set z34 35 44
+z36 set z35 36 34
+z37 set z36 37 115
+z38 set z37 38 112
+z39 set z38 39 101
+z40 set z39 40 99
+z41 set z40 41 34
+z42 set z41 42 58
+z43 set z42 43 123
+z44 set z43 44 34
+z45 set z44 45 102
+z46 set z45 46 117
+z47 set z46 47 110
+z48 set z47 48 99
+z49 set z48 49 116
+z50 set z49 50 105
+z51 set z50 51 111
+z52 set z51 52 110
+z53 set z52 53 34
+z54 set z53 54 58
+r call ad_append p0 55 z54
+ret r
+end
+fn sd_exnull (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 101
+z3 set z2 3 120
+z4 set z3 4 34
+z5 set z4 5 58
+z6 set z5 6 110
+z7 set z6 7 117
+z8 set z7 8 108
+z9 set z8 9 108
+z10 set z9 10 125
+z11 set z10 11 125
+r call ad_append p0 12 z11
+ret r
+end
+fn sd_ex (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 58
+z1 set z0 1 32
+z2 set z1 2 101
+z3 set z2 3 120
+z4 set z3 4 32
+r call ad_append p0 5 z4
+ret r
+end
+fn sd_failed (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 32
+z1 set z0 1 102
+z2 set z1 2 97
+z3 set z2 3 105
+z4 set z3 4 108
+z5 set z4 5 101
+z6 set z5 6 100
+z7 set z6 7 58
+z8 set z7 8 32
+z9 set z8 9 105
+z10 set z9 10 110
+z11 set z10 11 112
+z12 set z11 12 117
+z13 set z12 13 116
+z14 set z13 14 32
+r call ad_append p0 15 z14
+ret r
+end
+fn sd_expected (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 32
+z2 set z1 2 101
+z3 set z2 3 120
+z4 set z3 4 112
+z5 set z4 5 101
+z6 set z5 6 99
+z7 set z6 7 116
+z8 set z7 8 101
+z9 set z8 9 100
+z10 set z9 10 32
+r call ad_append p0 11 z10
+ret r
+end
+fn sd_got (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 32
+z2 set z1 2 103
+z3 set z2 3 111
+z4 set z3 4 116
+z5 set z4 5 32
+r call ad_append p0 6 z5
+ret r
+end
+fn sd_if (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 105
+z1 set z0 1 102
+z2 set z1 2 32
+r call ad_append p0 3 z2
+ret r
+end
+fn sd_right (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 32
+z1 set z0 1 105
+z2 set z1 2 115
+z3 set z2 3 32
+z4 set z3 4 114
+z5 set z4 5 105
+z6 set z5 6 103
+z7 set z6 7 104
+z8 set z7 8 116
+z9 set z8 9 44
+z10 set z9 10 32
+z11 set z10 11 99
+z12 set z11 12 104
+z13 set z12 13 97
+z14 set z13 14 110
+z15 set z14 15 103
+z16 set z15 16 101
+z17 set z16 17 32
+z18 set z17 18 116
+z19 set z18 19 104
+z20 set z19 20 101
+z21 set z20 21 32
+z22 set z21 22 108
+z23 set z22 23 105
+z24 set z23 24 110
+z25 set z24 25 101
+z26 set z25 26 32
+z27 set z26 27 116
+z28 set z27 28 111
+z29 set z28 29 32
+z30 set z29 30 96
+z31 set z30 31 101
+z32 set z31 32 120
+z33 set z32 33 32
+r call ad_append p0 34 z33
+ret r
+end
+fn sd_arrow (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 45
+z1 set z0 1 62
+z2 set z1 2 32
+r call ad_append p0 3 z2
+ret r
+end
+fn sd_fixmiddle (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 96
+z1 set z0 1 59
+z2 set z1 2 32
+z3 set z2 3 105
+z4 set z3 4 102
+z5 set z4 5 32
+z6 set z5 6 116
+z7 set z6 7 104
+z8 set z7 8 101
+z9 set z8 9 32
+z10 set z9 10 101
+z11 set z10 11 120
+z12 set z11 12 97
+z13 set z12 13 109
+z14 set z13 14 112
+z15 set z14 15 108
+z16 set z15 16 101
+z17 set z16 17 32
+z18 set z17 18 105
+z19 set z18 19 115
+z20 set z19 20 32
+z21 set z20 21 114
+z22 set z21 22 105
+z23 set z22 23 103
+z24 set z23 24 104
+z25 set z24 25 116
+z26 set z25 26 44
+z27 set z26 27 32
+z28 set z27 28 102
+z29 set z28 29 105
+z30 set z29 30 120
+z31 set z30 31 32
+r call ad_append p0 32 z31
+ret r
+end
+fn sd_remove (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 96
+z1 set z0 1 59
+z2 set z1 2 32
+z3 set z2 3 96
+z4 set z3 4 45
+z5 set z4 5 101
+z6 set z5 6 120
+z7 set z6 7 32
+r call ad_append p0 8 z7
+ret r
+end
+fn sd_removemiddle (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 59
+z1 set z0 1 32
+z2 set z1 2 96
+z3 set z2 3 45
+z4 set z3 4 101
+z5 set z4 5 120
+z6 set z5 6 32
+r call ad_append p0 7 z6
+ret r
+end
+fn sd_removetail (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 96
+z1 set z0 1 32
+z2 set z1 2 114
+z3 set z2 3 101
+z4 set z3 4 109
+z5 set z4 5 111
+z6 set z5 6 118
+z7 set z6 7 101
+z8 set z7 8 115
+z9 set z8 9 32
+z10 set z9 10 105
+z11 set z10 11 116
+r call ad_append p0 12 z11
+ret r
+end
+fn sd_jexpected (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 108
+z3 set z2 3 105
+z4 set z3 4 110
+z5 set z4 5 101
+z6 set z5 6 34
+z7 set z6 7 58
+z8 set z7 8 110
+z9 set z8 9 117
+z10 set z9 10 108
+z11 set z10 11 108
+z12 set z11 12 44
+z13 set z12 13 34
+z14 set z13 14 101
+z15 set z14 15 120
+z16 set z15 16 112
+z17 set z16 17 101
+z18 set z17 18 99
+z19 set z18 19 116
+z20 set z19 20 101
+z21 set z20 21 100
+z22 set z21 22 34
+z23 set z22 23 58
+r call ad_append p0 24 z23
+ret r
+end
+fn sd_jactual (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 97
+z3 set z2 3 99
+z4 set z3 4 116
+z5 set z4 5 117
+z6 set z5 6 97
+z7 set z6 7 108
+z8 set z7 8 34
+z9 set z8 9 58
+r call ad_append p0 10 z9
+ret r
+end
+fn sd_jfix (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 102
+z3 set z2 3 105
+z4 set z3 4 120
+z5 set z4 5 34
+z6 set z5 6 58
+r call ad_append p0 7 z6
+ret r
+end
+fn sd_jex (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 101
+z3 set z2 3 120
+z4 set z3 4 34
+z5 set z4 5 58
+r call ad_append p0 6 z5
+ret r
+end
+fn sd_jspecinput (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 108
+z3 set z2 3 105
+z4 set z3 4 110
+z5 set z4 5 101
+z6 set z5 6 34
+z7 set z6 7 58
+z8 set z7 8 34
+z9 set z8 9 101
+z10 set z9 10 120
+z11 set z10 11 34
+z12 set z11 12 44
+z13 set z12 13 34
+z14 set z13 14 105
+z15 set z14 15 110
+z16 set z15 16 112
+z17 set z16 17 117
+z18 set z17 18 116
+z19 set z18 19 34
+z20 set z19 20 58
+r call ad_append p0 21 z20
+ret r
+end
+fn sd_jspecexpected (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 101
+z3 set z2 3 120
+z4 set z3 4 112
+z5 set z4 5 101
+z6 set z5 6 99
+z7 set z6 7 116
+z8 set z7 8 101
+z9 set z8 9 100
+z10 set z9 10 34
+z11 set z10 11 58
+r call ad_append p0 12 z11
+ret r
+end
+fn sd_jspecactual (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 44
+z1 set z0 1 34
+z2 set z1 2 97
+z3 set z2 3 99
+z4 set z3 4 116
+z5 set z4 5 117
+z6 set z5 6 97
+z7 set z6 7 108
+z8 set z7 8 34
+z9 set z8 9 58
+r call ad_append p0 10 z9
+ret r
+end
+fn sd_close (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 125
+z1 set z0 1 125
+r call ad_append p0 2 z1
+ret r
+end
+fn sd_true (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 116
+z1 set z0 1 114
+z2 set z1 2 117
+z3 set z2 3 101
+r call ad_append p0 4 z3
+ret r
+end
+fn sd_false (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 102
+z1 set z0 1 97
+z2 set z1 2 108
+z3 set z2 3 115
+z4 set z3 4 101
+r call ad_append p0 5 z4
+ret r
+end
+fn sd_space (u32,(u32,u32,u32),io) -> (u32,(u32,u32,u32),io)
+z call arena_zero
+z0 set z 0 32
+r call ad_append p0 1 z0
+ret r
+end
+fn sd_num (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 call ad_number p0 p2
+ret q0
+end
+fn sd_true_step (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call sd_true p0
+ret q0
+end
+fn sd_false_step (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call sd_false p0
+ret q0
+end
+fn sd_bool (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 ne p2 0
+q1 select q0 1 0
+a fold sd_true_step q1 p0
+q2 eq p2 0
+q3 select q2 1 0
+q4 fold sd_false_step q3 a
+ret q4
+end
+fn sd_gap (u32,(u32,u32,u32),io) u32 -> (u32,(u32,u32,u32),io)
+q0 call sd_space p0
+ret q0
+end
+fn sd_scalar (u32,(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),io)
+q0 eq p1 0
+q1 select q0 1 0
+a fold sd_num q1 p0 p2
+q2 eq p1 1
+q3 select q2 1 0
+q4 fold sd_bool q3 a p2
+ret q4
+end
+# Failure-only typed aggregate formatting. Work is bounded to 131073 stack steps.
+# Runtime aggregate blocks contain count then (kind,payload) pairs; IO is never formatted.
+fn dv_pushgo (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 call arena_zero
+q1 set q0 0 p2
+q2 set q1 1 p3
+q3 set q2 2 p4
+z set q3 3 p5
+q4 at p0 3
+q5 at p0 2
+a call av_append q4 q5 4 z
+q6 at p0 0
+q7 ne q6 0
+q8 at p0 0
+q9 at a 0
+q10 select q7 q8 q9
+q11 at p0 1
+q12 at a 1
+q13 at a 2
+q14 rec q10 q11 q12 q13
+ret q14
+end
+fn dv_push (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 0
+q1 eq q0 0
+q2 select q1 1 0
+q3 fold dv_pushgo q2 p0 p1 p2 p3 p4
+ret q3
+end
+fn dv_byte (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+a call ad_byte q3 p2
+q4 at a 0
+q5 at a 1
+q6 at p0 2
+q7 at a 2
+q8 rec q4 q5 q6 q7
+ret q8
+end
+fn dv_scalar (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32 u32 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 0
+q1 at p0 1
+q2 at p0 3
+q3 rec q0 q1 q2
+a call sd_scalar q3 p2 p3
+q4 at a 0
+q5 at a 1
+q6 at p0 2
+q7 at a 2
+q8 rec q4 q5 q6 q7
+ret q8
+end
+fn dv_aggregate (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 3
+q1 get p2 2
+h call arena_load q0 q1 0 1
+q2 at h 0
+q3 eq q2 0
+q4 at h 1
+q5 get q4 0
+q6 get p3 2
+q7 eq q5 q6
+q8 and q3 q7
+q9 get p3 2
+q10 le q9 2147483647
+q11 and q8 q10
+q12 get p2 2
+q13 ne q12 0
+valid and q11 q13
+q14 select valid 0 7
+q15 at p0 1
+q16 at p0 2
+q17 at h 2
+q18 select valid 1 0
+q19 rec q14 q15 q16 q17
+q20 get p3 0
+q21 eq q20 3
+q22 select q21 91 40
+a fold dv_byte q18 q19 q22
+q23 get p2 0
+q24 get p2 2
+q25 call dv_push a q23 q24 0 1
+ret q25
+end
+fn dv_value (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 get p3 0
+scalar le q0 1
+q1 get p3 0
+q2 eq q1 3
+q3 get p3 0
+q4 eq q3 4
+aggregate or q2 q4
+q5 get p2 1
+q6 get p3 0
+q7 eq q5 q6
+q8 and scalar q7
+q9 get p3 0
+q10 ne q9 1
+q11 get p2 2
+q12 le q11 1
+q13 or q10 q12
+q14 and q8 q13
+q15 get p2 1
+q16 ge q15 3
+q17 and aggregate q16
+q18 get p2 1
+q19 ne q18 4294967295
+q20 and q17 q19
+valid or q14 q20
+q21 select valid 0 7
+q22 at p0 1
+q23 at p0 2
+q24 at p0 3
+q25 and valid scalar
+q26 select q25 1 0
+q27 rec q21 q22 q23 q24
+q28 get p2 1
+q29 get p2 2
+a fold dv_scalar q26 q27 q28 q29
+q30 and valid aggregate
+q31 select q30 1 0
+q32 fold dv_aggregate q31 a p2 p3
+ret q32
+end
+fn dv_child (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 u32x128 u32x128 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 get p2 2
+q1 ne q0 0
+q2 select q1 1 0
+a fold dv_byte q2 p0 59
+q3 at a 3
+q4 get p2 1
+q5 get p2 2
+q6 mul q5 2
+q7 add 1 q6
+r call arena_load q3 q4 q7 2
+q8 at r 2
+q9 get p4 71
+q10 get p4 72
+q11 get p4 73
+q12 rec q9 q10 q11
+q13 get p3 0
+q14 eq q13 4
+q15 get p3 1
+q16 get p2 2
+q17 add q15 q16
+q18 select q14 q17 0
+q19 get p3 0
+q20 eq q19 4
+q21 select q20 1 0
+t call av_load q8 q12 q18 q21
+q22 at r 0
+q23 eq q22 0
+q24 at t 0
+q25 eq q24 0
+valid and q23 q25
+q26 at a 0
+q27 ne q26 0
+q28 at a 0
+q29 select valid 0 7
+q30 select q27 q28 q29
+q31 at a 1
+q32 at a 2
+q33 at t 2
+q34 rec q30 q31 q32 q33
+q35 get p2 0
+q36 get p2 1
+q37 get p2 2
+q38 add q37 1
+a_1 call dv_push q34 q35 q36 q38 1
+q39 get p3 0
+q40 eq q39 4
+q41 at t 1
+q42 get q41 0
+q43 get p3 1
+q44 select q40 q42 q43
+q45 at r 1
+q46 get q45 0
+q47 at r 1
+q48 get q47 1
+q49 call dv_push a_1 q44 q46 q48 0
+ret q49
+end
+fn dv_close (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 get p2 0
+q1 eq q0 4
+q2 get p2 2
+q3 eq q2 1
+q4 and q1 q3
+q5 select q4 1 0
+a fold dv_byte q5 p0 59
+q6 get p2 0
+q7 eq q6 3
+q8 select q7 93 41
+q9 call dv_byte a 0 q8
+ret q9
+end
+fn dv_continue (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 u32x128 u32x128 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 get p3 0
+q1 ne q0 4
+q2 get p3 1
+q3 get p4 72
+q4 le q2 q3
+q5 get p3 2
+q6 get p4 72
+q7 get p3 1
+q8 sub q6 q7
+q9 le q5 q8
+q10 and q4 q9
+fields or q1 q10
+q11 get p3 0
+q12 eq q11 3
+q13 get p3 0
+q14 eq q13 4
+q15 or q12 q14
+q16 get p2 2
+q17 get p3 2
+q18 le q16 q17
+q19 and q15 q18
+q20 get p3 2
+q21 le q20 2147483647
+q22 and q19 q21
+valid and q22 fields
+q23 select valid 0 7
+q24 at p0 1
+q25 at p0 2
+q26 at p0 3
+q27 get p2 2
+q28 get p3 2
+q29 lt q27 q28
+child and valid q29
+q30 select child 1 0
+q31 rec q23 q24 q25 q26
+a fold dv_child q30 q31 p2 p3 p4
+q32 xor child true
+q33 and valid q32
+q34 select q33 1 0
+q35 fold dv_close q34 a p3
+ret q35
+end
+fn dv_step (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 -> (u32,(u32,u32,u32),(u32,u32,u32),io)
+q0 at p0 3
+q1 at p0 2
+q2 at p0 2
+q3 at q2 1
+q4 sub q3 4
+r call av_load q0 q1 q4 4
+frame at r 1
+q5 at r 0
+q6 eq q5 0
+q7 get frame 0
+q8 get p2 69
+q9 div q8 5
+q10 lt q7 q9
+q11 and q6 q10
+q12 get frame 3
+q13 le q12 1
+valid and q11 q13
+q14 at r 2
+q15 get p2 68
+q16 get p2 69
+q17 get p2 70
+q18 rec q15 q16 q17
+q19 get frame 0
+q20 mul q19 5
+q21 select valid q20 0
+q22 select valid 5 0
+t call av_load q14 q18 q21 q22
+q23 at t 0
+q24 eq q23 0
+q25 and valid q24
+q26 select q25 0 7
+q27 at p0 1
+q28 at p0 2
+q29 at q28 0
+q30 at p0 2
+q31 at q30 1
+q32 sub q31 4
+q33 at p0 2
+q34 at q33 2
+q35 rec q29 q32 q34
+q36 at t 2
+q37 eq q26 0
+q38 get frame 3
+q39 eq q38 0
+q40 and q37 q39
+q41 select q40 1 0
+q42 rec q26 q27 q35 q36
+q43 at t 1
+a fold dv_value q41 q42 frame q43
+q44 at a 0
+q45 eq q44 0
+q46 get frame 3
+q47 eq q46 1
+q48 and q45 q47
+q49 select q48 1 0
+q50 at t 1
+q51 fold dv_continue q49 a frame q50 p2
+ret q51
+end
+fn dv_more (u32,(u32,u32,u32),(u32,u32,u32),io) u32 u32x128 -> bool
+q0 at p0 0
+q1 eq q0 0
+q2 at p0 2
+q3 at q2 1
+q4 ne q3 0
+q5 and q1 q4
+ret q5
+end
+fn dv_walk (u32,(u32,u32,u32),io) u32 u32x128 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 at p0 0
+q1 at p0 1
+q2 rec 0 0 0
+q3 at p0 2
+q4 rec q0 q1 q2 q3
+a call dv_push q4 p3 p4 p5 0
+a_1 loop dv_more dv_step 131073 a p2
+q5 at a_1 0
+q6 ne q5 0
+q7 at a_1 0
+q8 at a_1 2
+q9 at q8 1
+q10 eq q9 0
+q11 select q10 0 7
+q12 select q6 q7 q11
+q13 at a_1 1
+q14 at a_1 3
+q15 rec q12 q13 q14
+ret q15
+end
+fn dv_simple (u32,(u32,u32,u32),io) u32 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 eq p3 p2
+q1 ne p2 1
+q2 le p4 1
+q3 or q1 q2
+valid and q0 q3
+q4 at p0 0
+q5 ne q4 0
+q6 at p0 0
+q7 select valid 0 7
+q8 select q5 q6 q7
+q9 at p0 1
+q10 at p0 2
+q11 rec q8 q9 q10
+q12 call sd_scalar q11 p3 p4
+ret q12
+end
+fn sd_value (u32,(u32,u32,u32),io) u32x128 u32 u32 u32 -> (u32,(u32,u32,u32),io)
+q0 le p2 1
+q1 select q0 1 0
+a fold dv_simple q1 p0 p2 p3 p4
+q2 at a 0
+q3 eq q2 0
+q4 gt p2 1
+q5 and q3 q4
+q6 select q5 1 0
+q7 fold dv_walk q6 a p1 p2 p3 p4
+ret q7
+end
+
+fn sd_input (u32,(u32,u32,u32),io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),io)
+q0 at p0 2
+q1 get p2 41
+q2 get p2 42
+q3 get p2 43
+q4 rec q1 q2 q3
+q5 get p3 2
+q6 mul q5 14
+f call av_load q0 q4 q6 3
+q7 at f 2
+q8 get p2 50
+q9 get p2 51
+q10 get p2 52
+q11 rec q8 q9 q10
+q12 at f 1
+q13 get q12 1
+q14 add q13 p1
+t call av_load q7 q11 q14 1
+q15 at t 2
+q16 get p3 35
+q17 get p3 36
+q18 get p3 37
+q19 rec q16 q17 q18
+q20 mul p1 2
+v call av_load q15 q19 q20 2
+q21 at f 0
+q22 eq q21 0
+q23 at t 0
+q24 eq q23 0
+q25 and q22 q24
+q26 at v 0
+q27 eq q26 0
+valid and q25 q27
+q28 at p0 0
+q29 ne q28 0
+q30 at p0 0
+q31 select valid 0 7
+q32 select q29 q30 q31
+q33 at p0 1
+q34 at v 2
+q35 ne p1 0
+q36 select q35 1 0
+q37 rec q32 q33 q34
+b fold sd_gap q36 q37
+q38 at t 1
+q39 get q38 0
+q40 at v 1
+q41 get q40 0
+q42 at v 1
+q43 get q42 1
+q44 call sd_value b p2 q39 q41 q43
+ret q44
+end
+
+fn sd_714 (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 0
+q1 eq q0 6
+q2 get p2 5
+q3 eq q2 9
+q4 and q1 q3
+q5 get p2 18
+q6 get p2 67
+q7 lt q5 q6
+valid and q4 q7
+q8 select valid 0 7
+q9 rec 0 0 0
+q10 at p0 3
+q11 rec q8 q9 q10
+q12 get p2 18
+a call ad_symbol q11 p2 q12
+name at a 1
+q13 at a 0
+q14 rec 0 0 0
+q15 at a 2
+q16 rec q13 q14 q15
+m call sd_line q16
+q17 get p2 2
+m_1 call ad_number m q17
+m_2 call sd_colon m_1
+m_3 call sd_specof m_2
+m_4 call ad_string m_3 name
+m_5 call sd_many m_4
+msg at m_5 1
+q18 at m_5 0
+q19 rec 0 0 0
+q20 at m_5 2
+q21 rec q18 q19 q20
+fix call sd_manyfix q21
+q22 at fix 0
+q23 rec 0 0 0
+q24 at fix 2
+q25 rec q22 q23 q24
+j call sd_head714 q25
+j_1 call ad_quoted j msg
+j_2 call sd_jline j_1
+q26 get p2 2
+j_3 call ad_number j_2 q26
+j_4 call sd_jnull j_3
+q27 at fix 1
+j_5 call ad_quoted j_4 q27
+j_6 call sd_jtail j_5
+j_7 call ad_quoted j_6 name
+j_8 call sd_exnull j_7
+q28 at j_8 0
+q29 at j_8 0
+q30 eq q29 0
+q31 at j_8 1
+q32 rec 0 0 0
+q33 select q30 q31 q32
+q34 at p0 2
+q35 at j_8 0
+q36 eq q35 0
+q37 at p0 2
+q38 get q37 20
+q39 select q36 15 q38
+q40 set q34 20 q39
+q41 at j_8 2
+q42 rec q28 q33 q40 q41
+ret q42
+end
+fn sd_715_body (u32,(u32,u32,u32),u32x128,io) u32 u32x128 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p3 9
+q1 le q0 64
+q2 get p3 19
+q3 get p2 69
+q4 div q3 5
+q5 lt q2 q4
+q6 and q1 q5
+q7 get p3 15
+q8 get p2 67
+q9 lt q7 q8
+valid and q6 q9
+q10 select valid 0 7
+q11 rec 0 0 0
+q12 at p0 3
+q13 rec q10 q11 q12
+q14 get p3 15
+a call ad_symbol q13 p2 q14
+name at a 1
+q15 get p3 9
+q16 select valid q15 0
+q17 at a 0
+q18 rec 0 0 0
+q19 at a 2
+q20 rec q17 q18 q19
+input fold sd_input q16 q20 p2 p3
+q21 at input 0
+q22 rec 0 0 0
+q23 at input 2
+q24 rec q21 q22 q23
+q25 get p3 19
+q26 get p3 17
+q27 get p3 18
+expected call sd_value q24 p2 q25 q26 q27
+q28 at expected 0
+q29 rec 0 0 0
+q30 at expected 2
+q31 rec q28 q29 q30
+q32 get p3 19
+q33 get p3 7
+q34 get p3 8
+actual call sd_value q31 p2 q32 q33 q34
+q35 at actual 0
+q36 rec 0 0 0
+q37 at actual 2
+q38 rec q35 q36 q37
+m call ad_string q38 name
+m_1 call sd_ex m
+q39 get p3 3
+q40 add q39 1
+m_2 call ad_number m_1 q40
+m_3 call sd_failed m_2
+q41 at input 1
+m_4 call ad_string m_3 q41
+m_5 call sd_expected m_4
+q42 at expected 1
+m_6 call ad_string m_5 q42
+m_7 call sd_got m_6
+q43 at actual 1
+m_8 call ad_string m_7 q43
+msg at m_8 1
+q44 at m_8 0
+q45 rec 0 0 0
+q46 at m_8 2
+q47 rec q44 q45 q46
+fix call sd_if q47
+fix_1 call ad_string fix name
+fix_2 call sd_right fix_1
+q48 at input 1
+fix_3 call ad_string fix_2 q48
+q49 get p3 9
+q50 ne q49 0
+q51 select q50 1 0
+fix_4 fold sd_gap q51 fix_3
+fix_5 call sd_arrow fix_4
+q52 at actual 1
+fix_6 call ad_string fix_5 q52
+fix_7 call sd_fixmiddle fix_6
+fix_8 call ad_string fix_7 name
+fix_9 call sd_removemiddle fix_8
+q53 at input 1
+fix_10 call ad_string fix_9 q53
+q54 get p3 9
+q55 ne q54 0
+q56 select q55 1 0
+fix_11 fold sd_gap q56 fix_10
+fix_12 call sd_arrow fix_11
+q57 at expected 1
+fix_13 call ad_string fix_12 q57
+fix_14 call sd_removetail fix_13
+q58 at fix_14 0
+q59 rec 0 0 0
+q60 at fix_14 2
+q61 rec q58 q59 q60
+j call sd_head715 q61
+j_1 call ad_quoted j msg
+j_2 call sd_jexpected j_1
+q62 at expected 1
+j_3 call ad_quoted j_2 q62
+j_4 call sd_jactual j_3
+q63 at actual 1
+j_5 call ad_quoted j_4 q63
+j_6 call sd_jfix j_5
+q64 at fix_14 1
+j_7 call ad_quoted j_6 q64
+j_8 call sd_jtail j_7
+j_9 call ad_quoted j_8 name
+j_10 call sd_jex j_9
+q65 get p3 3
+q66 add q65 1
+j_11 call ad_number j_10 q66
+j_12 call sd_jspecinput j_11
+q67 at input 1
+j_13 call ad_quoted j_12 q67
+j_14 call sd_jspecexpected j_13
+q68 at expected 1
+j_15 call ad_quoted j_14 q68
+j_16 call sd_jspecactual j_15
+q69 at actual 1
+j_17 call ad_quoted j_16 q69
+j_18 call sd_close j_17
+q70 get p3 24
+q71 set p2 3 q70
+q72 get p3 25
+source set q71 4 q72
+q73 at j_18 2
+location call ad_utf q73 source
+q74 at j_18 0
+q75 ne q74 0
+q76 at j_18 0
+q77 at location 0
+status select q75 q76 q77
+q78 at p0 2
+q79 get p3 22
+q80 add q79 1
+facts set q78 2 q80
+q81 get p3 24
+facts_1 set facts 3 q81
+q82 get p3 25
+facts_2 set facts_1 4 q82
+q83 get p3 2
+facts_3 set facts_2 7 q83
+q84 at location 1
+facts_4 set facts_3 12 q84
+q85 at location 2
+facts_5 set facts_4 13 q85
+q86 eq status 0
+q87 get facts_5 20
+q88 select q86 15 q87
+facts_6 set facts_5 20 q88
+q89 eq status 0
+q90 at j_18 1
+q91 rec 0 0 0
+q92 select q89 q90 q91
+q93 at location 3
+q94 rec status q92 facts_6 q93
+ret q94
+end
+
+fn sd_715 (u32,(u32,u32,u32),u32x128,io) u32 u32x128 -> (u32,(u32,u32,u32),u32x128,io)
+q0 get p2 0
+q1 eq q0 8
+q2 get p2 5
+q3 eq q2 3
+q4 and q1 q3
+q5 get p2 127
+q6 ne q5 0
+valid and q4 q6
+q7 at p0 3
+q8 get p2 127
+q9 rec q8 128 128
+q10 select valid 128 0
+a call av_load q7 q9 0 q10
+q11 at a 0
+q12 eq q11 0
+ready and valid q12
+q13 rec 0 0 0
+q14 at p0 2
+q15 at a 2
+q16 select ready 1 0
+q17 rec 7 q13 q14 q15
+q18 at a 1
+q19 fold sd_715_body q16 q17 p2 q18
+ret q19
+end
+fn ad_render io u32x128 u32 -> (u32,(u32,u32,u32),u32x128,io)
+r call ad_render_regular p0 p1 p2
+q0 le p2 1
+q1 at r 0
+q2 eq q1 7
+allowed and q0 q2
+q3 get p1 1
+q4 eq q3 714
+q5 and allowed q4
+q6 select q5 1 0
+a fold sd_714 q6 r p1
+q7 get p1 1
+q8 eq q7 715
+q9 and allowed q8
+q10 select q9 1 0
+q11 fold sd_715 q10 a p1
+ret q11
+end
+
 fn arena_diagnostic io u32x128 -> (u32,(u32,u32,u32),u32x128,io)
 q0 call ad_render p0 p1 1
 ret q0

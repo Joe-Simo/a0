@@ -15,7 +15,9 @@ import {
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { A0Error } from '../core.js';
 import { sourceUses } from '../link.js';
+import { assertNoPlaintextWriters, PLAINTEXT_WRITERS } from '../plaintext-write.js';
 import { digest, opaqueId, ProtectionError, utf8 } from './crypto.js';
+import { assertDeadLocalProcess, processLockRecord } from './process-lock.js';
 import {
   type Head,
   type Migration,
@@ -96,7 +98,8 @@ export async function writeNew(path: string, bytes: string | Uint8Array): Promis
 export class DiskVaultStore implements VaultStore {
   readonly dir: string;
   constructor(readonly projectRoot: string) {
-    this.dir = join(resolve(projectRoot), STORE_NAME);
+    this.projectRoot = resolve(projectRoot);
+    this.dir = join(this.projectRoot, STORE_NAME);
   }
   async initialize(): Promise<void> {
     assertDurableHost();
@@ -158,7 +161,10 @@ export class DiskVaultStore implements VaultStore {
     assertDurableHost();
     const path = join(this.dir, 'commit.lock');
     const temporary = join(this.dir, `.lock-${opaqueId()}`);
-    await writeNew(temporary, JSON.stringify({ pid: process.pid, nonce: opaqueId() }));
+    await writeNew(
+      temporary,
+      JSON.stringify({ ...(await processLockRecord()), nonce: opaqueId() }),
+    );
     try {
       await linkFile(temporary, path);
     } catch (e) {
@@ -178,21 +184,108 @@ export class DiskVaultStore implements VaultStore {
       await syncDir(this.dir);
     }
   }
-  /** Owner-authenticated caller must inspect the hash; a live PID is never overridden. */
+  /** Explicit owner action only; unknown/foreign/live owners and competing recovery fail closed. */
   async recoverCommitLock(expectedHash: string): Promise<void> {
-    const path = join(this.dir, 'commit.lock');
-    const bytes = await readFile(path);
-    if ((await digest(bytes)) !== expectedHash) throw new ProtectionError('LOCK_CHANGED');
-    const { pid } = JSON.parse(bytes.toString()) as { pid: number };
-    if (!Number.isSafeInteger(pid) || pid <= 0) throw new ProtectionError('INVALID_LOCK');
-    try {
-      process.kill(pid, 0);
-      throw new ProtectionError('LOCK_OWNER_ALIVE');
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'ESRCH') throw e;
+    return this.#recoverProcessFile(
+      join(this.dir, 'commit.lock'),
+      expectedHash,
+      (record) => record,
+    );
+  }
+  /** One named lease only. Authentication is required at the owner-facing CLI boundary. */
+  async recoverPlaintextWriter(path: string, expectedHash: string): Promise<void> {
+    const parts = safePath(path).split('/');
+    const name = parts.pop()!;
+    if (parts.at(-1) !== PLAINTEXT_WRITERS || !/^[1-9][0-9]*-[0-9a-f-]{36}$/.test(name))
+      throw new ProtectionError('INVALID_WRITER_LEASE');
+    let directory = resolve(this.projectRoot);
+    await plainDirectory(directory);
+    for (const part of parts) {
+      directory = join(directory, part);
+      await plainDirectory(directory);
     }
+    return this.#recoverProcessFile(join(directory, name), expectedHash, (record) => {
+      const lease = record as { format?: unknown; owner?: { pid?: unknown } } | null;
+      if (
+        lease?.format !== 'a0-plaintext-writer-1' ||
+        String(lease.owner?.pid) !== name.split('-')[0]
+      )
+        throw new ProtectionError('INVALID_WRITER_LEASE');
+      return lease.owner;
+    });
+  }
+  /** The commit lock fences replacement of the recovery mutex; an existing commit lock refuses. */
+  async recoverRecoveryLock(expectedHash: string): Promise<void> {
+    return this.#withProcessLock(join(this.dir, 'commit.lock'), 'COMMIT_LOCKED', () =>
+      this.#removeDeadProcessFile(join(this.dir, 'recover.lock'), expectedHash, (record) => record),
+    );
+  }
+  async #withProcessLock(
+    path: string,
+    occupied: string,
+    action: () => Promise<void>,
+  ): Promise<void> {
+    await plainDirectory(this.dir);
+    const temporary = join(this.dir, `.lock-${opaqueId()}`);
+    await writeNew(
+      temporary,
+      JSON.stringify({ ...(await processLockRecord()), nonce: opaqueId() }),
+    );
+    try {
+      await linkFile(temporary, path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new ProtectionError(occupied);
+      throw error;
+    } finally {
+      await unlink(temporary);
+    }
+    try {
+      await syncDir(this.dir);
+      await action();
+    } finally {
+      await unlink(path);
+      await syncDir(this.dir);
+    }
+  }
+  async #recoverProcessFile(
+    path: string,
+    expectedHash: string,
+    owner: (record: unknown) => unknown,
+  ): Promise<void> {
+    return this.#withProcessLock(join(this.dir, 'recover.lock'), 'RECOVERY_LOCKED', () =>
+      this.#removeDeadProcessFile(path, expectedHash, owner),
+    );
+  }
+  async #removeDeadProcessFile(
+    path: string,
+    expectedHash: string,
+    owner: (record: unknown) => unknown,
+  ): Promise<void> {
+    const fd = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    let bytes: Buffer;
+    let before: Awaited<ReturnType<typeof fd.stat>>;
+    try {
+      before = await fd.stat();
+      if (!before.isFile() || before.nlink !== 1 || before.size > 4096)
+        throw new ProtectionError('INVALID_LOCK');
+      bytes = await fd.readFile();
+    } finally {
+      await fd.close();
+    }
+    if ((await digest(bytes)) !== expectedHash) throw new ProtectionError('LOCK_CHANGED');
+    let record: unknown;
+    try {
+      record = JSON.parse(bytes.toString());
+    } catch {
+      throw new ProtectionError('INVALID_LOCK');
+    }
+    await assertDeadLocalProcess(owner(record));
+    const current = await lstat(path);
+    if (current.dev !== before.dev || current.ino !== before.ino || current.isSymbolicLink())
+      throw new ProtectionError('LOCK_CHANGED');
+    if (!(await readFile(path)).equals(bytes)) throw new ProtectionError('LOCK_CHANGED');
     await unlink(path);
-    await syncDir(this.dir);
+    await syncDir(dirname(path));
   }
 }
 
@@ -211,6 +304,7 @@ const EXCLUDED = new Set([
   'dist',
   'build',
   'release',
+  PLAINTEXT_WRITERS,
 ]);
 /** OFF becomes visible to ordinary tools only after completed restoration and an atomic archive rename. */
 export async function archiveDisabledStore(store: DiskVaultStore): Promise<void> {
@@ -231,7 +325,12 @@ export interface Inventory {
   readonly incompleteGraphs: readonly string[];
 }
 /** Explicit A0-managed files only. Existing VCS, backups, build outputs and tool caches are outside this inventory. */
-export async function inventory(root: string, include: readonly string[] = []): Promise<Inventory> {
+export async function inventory(
+  root: string,
+  include: readonly string[] = [],
+  readUses: typeof sourceUses = sourceUses,
+): Promise<Inventory> {
+  root = resolve(root);
   const items: { path: string; role: Role; hash: string }[] = [];
   const unmanaged: string[] = [];
   const incompleteGraphs: string[] = [];
@@ -288,7 +387,7 @@ export async function inventory(root: string, include: readonly string[] = []): 
     const file = join(root, item.path);
     let uses: readonly string[];
     try {
-      uses = sourceUses(await readFile(file, 'utf8'), item.path);
+      uses = readUses(await readFile(file, 'utf8'), item.path);
     } catch (e) {
       if (!(e instanceof A0Error)) throw e;
       incompleteGraphs.push(item.path);
@@ -317,7 +416,7 @@ export async function confinedFile(
   createParents = true,
 ): Promise<string> {
   safePath(path);
-  const absoluteRoot = await realpath(root);
+  const absoluteRoot = await realpath(resolve(root));
   let current = absoluteRoot;
   const parts = path.split('/');
   for (let i = 0; i < parts.length - 1; i++) {
@@ -345,10 +444,14 @@ export async function resumeMigration(
   project: SealedProject,
   root: string,
   checkpoint: (step: string) => Promise<void> = async () => {},
+  readUses: typeof sourceUses = sourceUses,
 ): Promise<void> {
+  root = resolve(root);
   const migration = project.migration;
   if (!migration) throw new ProtectionError('NO_MIGRATION');
   if (migration.direction === 'on') {
+    await plainDirectory(join(root, STORE_NAME));
+    await assertNoPlaintextWriters(root);
     if (migration.stage === 'copy') {
       for (const item of migration.items) {
         const path = await confinedFile(root, item.path);
@@ -365,6 +468,7 @@ export async function resumeMigration(
       const now = await inventory(
         root,
         migration.items.map((i) => i.path),
+        readUses,
       );
       if (JSON.stringify(now.items) !== JSON.stringify(migration.items))
         throw new ProtectionError('INVENTORY_CHANGED');
@@ -396,7 +500,8 @@ export async function resumeMigration(
       await syncDir(dirname(path));
       await checkpoint('delete');
     }
-    if ((await inventory(root)).items.length !== 0) throw new ProtectionError('PLAINTEXT_REMAINS');
+    if ((await inventory(root, [], readUses)).items.length !== 0)
+      throw new ProtectionError('PLAINTEXT_REMAINS');
     // Empty directory names are metadata too. Remove only directories that are now empty.
     const parents = [
       ...new Set(

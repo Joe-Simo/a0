@@ -14,7 +14,7 @@ export const PRIMER_URL = 'https://github.com/Joe-Simo/a0/blob/main/MODEL_GUIDE.
 export const PRIMER_PATH = '.a0/MODEL_GUIDE.txt';
 const MARKER = '<!-- a0:init -->';
 
-export function agentsMd(primer: string): string {
+export function agentsMd(primer: string, command = 'a0'): string {
   return `${MARKER}
 ## A0 (\`*.a0\` files)
 
@@ -22,32 +22,35 @@ A0 is a language written by AI agents. Read the primer before touching \`*.a0\`:
 
 - Edit A0 through the a0 MCP tools, not as free text: \`a0_open\` (function view with a handle) or
   \`a0_program\` (program handle), then \`a0_apply\` with the handle line followed by edit lines,
-  then \`a0_save\` only after a successful apply. Start the server with \`a0 mcp .\`.
+  then \`a0_save\` only after a successful apply. Start the server with \`${command} mcp .\`.
 - Edit protocol: reply with the shown handle line, then edit lines. Under a function handle,
   \`id op ...\` replaces or inserts before \`ret\`, \`id op ... @ other\` inserts after \`other\`,
   \`-id\` deletes, \`ret x\` sets the result. Under a program handle, whole \`fn ... end\` blocks add or
   replace functions and \`-fn name\` removes one.
 - A diagnostic carries a code, expected/actual, and a \`fix:\`. Apply the fix exactly, then retry.
-- After any \`*.a0\` change run \`a0 check <file>\` and do not stop while it reports an error.
-  \`a0 run <file> <fn> <args...>\` runs the reference interpreter; \`a0 emit <target> <file>\` compiles.
+- After any \`*.a0\` change run \`${command} check <file>\` and do not stop while it reports an error.
+  \`${command} run <file> <fn> <args...>\` runs the reference interpreter; \`${command} emit <target> <file>\` compiles.
 `;
 }
 
 const POINTER = `${MARKER}\n@AGENTS.md\n\nA0 agent instructions are in AGENTS.md; read it before editing \`*.a0\` files.\n`;
 
-function ruleBody(primer: string): string {
+function ruleBody(primer: string, command = 'a0'): string {
   return `Before editing \`*.a0\` files read \`${primer}\` and AGENTS.md. Prefer the a0 MCP tools
 (\`a0_open\`/\`a0_program\` -> \`a0_apply\` -> \`a0_save\`). After every \`*.a0\` edit run
-\`a0 check <file>\`; if it prints \`error: <code>: ... fix: ...\`, apply that fix and check again
+\`${command} check <file>\`; if it prints \`error: <code>: ... fix: ...\`, apply that fix and check again
 until it passes.
 `;
 }
 
 /** Files `a0 init` writes, relative to the project root. `merge` files get a section appended. */
-export function initFiles(primer: string): { path: string; text: string; merge: boolean }[] {
-  const rule = ruleBody(primer);
+export function initFiles(
+  primer: string,
+  command = 'a0',
+): { path: string; text: string; merge: boolean }[] {
+  const rule = ruleBody(primer, command);
   return [
-    { path: 'AGENTS.md', text: agentsMd(primer), merge: true },
+    { path: 'AGENTS.md', text: agentsMd(primer, command), merge: true },
     { path: 'CLAUDE.md', text: POINTER, merge: true },
     { path: 'GEMINI.md', text: POINTER, merge: true },
     {
@@ -73,7 +76,9 @@ export function initFiles(primer: string): { path: string; text: string; merge: 
             AfterTool: [
               {
                 matcher: 'write_file|replace',
-                hooks: [{ name: 'a0-check', type: 'command', command: 'a0 hook', timeout: 30000 }],
+                hooks: [
+                  { name: 'a0-check', type: 'command', command: `${command} hook`, timeout: 30000 },
+                ],
               },
             ],
           },
@@ -87,7 +92,7 @@ export function initFiles(primer: string): { path: string; text: string; merge: 
 }
 
 /** The primer shipped next to the compiler (repo checkout), if present. */
-function bundledPrimer(): string | undefined {
+export function bundledPrimer(): string | undefined {
   const here = dirname(fileURLToPath(import.meta.url));
   for (const p of [join(here, '..', 'MODEL_GUIDE.txt'), join(here, '..', '..', 'MODEL_GUIDE.txt')])
     if (existsSync(p)) return p;
@@ -148,6 +153,7 @@ interface HookInput {
 export async function hookResponse(
   input: string,
   load: (path: string) => Promise<TypedProgram>,
+  command = 'a0',
 ): Promise<string | undefined> {
   const event = JSON.parse(input) as HookInput;
   const file = event.tool_input?.file_path ?? event.tool_input?.path;
@@ -158,7 +164,7 @@ export async function hookResponse(
     return undefined;
   } catch (err) {
     const diagnostic = formatDiagnostic(err);
-    const reason = `a0 check ${file} failed: error: ${diagnostic}\nApply the fix above to ${file} and re-run a0 check until it passes.`;
+    const reason = `${command} check ${file} failed: error: ${diagnostic}\nApply the fix above to ${file} and re-run ${command} check until it passes.`;
     const hookEventName = event.hook_event_name ?? 'PostToolUse';
     const hookSpecificOutput = { hookEventName, additionalContext: reason };
     // Gemini CLI AfterTool: `decision: "deny"` would hide the tool result, so the diagnostic is

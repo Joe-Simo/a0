@@ -303,3 +303,149 @@ Existing evidence must remain distinguishable from fresh measurements:
 Fresh model acceptance, tokens per accepted edit, target runtime measurements for a unified
 syntax and a single self-hosted authoritative parser are **not implemented or established** by
 this foundation. It must not be advertised as completed language unification.
+
+## Editor compatibility boundary
+
+The language server now routes checking and formatting through one `LspFrontend` contract.
+Its internal `sourceLspFrontend` connects the candidate grammar's shared linker and formatter;
+the CLI keeps the compatibility implementation until the coordinated cutover. There is no new
+CLI format flag. Candidate dependencies and unsaved editor buffers use the same confined reader,
+and operator help/completion uses the selected frontend's accepted aliases.
+
+The LSP protocol checks cover diagnostics, import definitions, unsaved dependency changes,
+formatting, example-result fixes and root confinement. The preserved migration projects retain
+revisions and C/JS output through this editor adapter (`results/lsp-source-compat.json`). This
+completes an internal integration step, not the public single-syntax migration.
+
+The same result file records the current native frontend cost against the frozen historical
+parser. That failure remains open. Public CLI/MCP editing and saving, the authoritative guide
+and grammar cutover, fresh AI accuracy/total-token-cost evidence and full-platform validation
+also remain required. Legacy readers cannot be removed until that coordinated transition is
+validated. Protection's external-writer and broader platform limitations remain unchanged.
+
+### Editor and MCP integration boundary
+
+The internal `sourceMcpFrontend` binds the candidate linker, formatter and editor reader to
+one session. `EditSession` accepts that reader at construction; node edits, whole-function
+replacements, numbered edits and executable-specification edits use the same grammar.
+The source file reader and edit reader share node parsing rather than translating replies
+through a second syntax. The MCP full and compact surfaces use this binding for loading,
+views, replies and saves. The stdio service accepts the same binding programmatically;
+the shipped CLI command still uses its compatibility default.
+
+Candidate sessions reject legacy Dense view selection and `.a0d` saves. Imported projects
+still require an explicit combined-file destination, and writes retain the existing managed
+source protection checks. The formatter used for views keeps explicit signatures (including
+unused parameters); file saves use the candidate source formatter. Numbered replacement
+retains the existing editor's metadata behavior and is not a new lossless-comment guarantee.
+
+[Integration evidence](../../results/mcp-source-compat.json) records focused protocol/editor
+checks and exact revision/C/JavaScript preservation across the six retained migration projects.
+This is compatibility infrastructure, not public activation or a performance result. CLI
+compile/check/patch/revision, protected-source sessions, guides and source inventory still
+need coordinated migration. The measured native frontend costs, independent AI accuracy/cost
+validation and full-platform requirements remain cutover gates. Legacy readers remain available
+until those gates are satisfied; they have not been relabelled as a completed single language.
+
+### CLI invocation boundary
+
+The CLI implementation now exposes a programmatic invocation whose frontend is fixed for
+that invocation. Loading, exact-fix validation, patch parsing/application, source output,
+views and MCP/LSP launch use that binding. Profile selection is invocation-local. The normal
+entry still enables the compile cache before loading the CLI implementation and selects its
+existing compatibility default; no candidate flag or second public workflow is introduced.
+
+[CLI controls](../../results/cli-source-boundary.json) retain output hashes for the migration
+projects and compare public default commands with the preceding checkpoint. Candidate sealed
+sessions, agent hooks, guide/example generation and legacy conversion commands are not migrated by this step and refuse
+explicitly when called through the candidate binding. This prevents a silent fallback to a
+different grammar. Their coordinated migration, native frontend cost, independent accuracy
+and full-platform requirements remain open. Focused controls are not an aggregate gate pass.
+
+### Legacy import through the bound CLI
+
+The candidate-bound CLI now implements `migrate` through its frontend's explicit legacy-import
+capability. The shared migration engine produces candidate `.a0` files, validates the staged
+closure, compares linked revisions and checks source hashes before publication to the new local
+directory. Original files are not rewritten. A frontend without that capability refuses the
+command; it does not silently choose another grammar.
+
+For this import command only, `--dense` identifies historical Dense files stored with `.a0`
+names; `.a0d` input is recognized by the legacy reader. Normal candidate-bound authoring commands
+still reject the legacy flag. This is import compatibility, not another authoring dialect.
+The shipped CLI retains its existing default until the complete cutover gates pass.
+
+[Fresh migration evidence](../../results/cli-source-migration.json) covers the retained six
+projects, all original and converted file hashes, linked revisions and C/JavaScript output
+hashes. Focused tests also cover each legacy input form, retained comments, refusal of an existing
+destination, an unavailable importer and the existing protection boundaries. At that checkpoint, candidate guides,
+agent hooks and sealed sessions remained unconverted (the later sections describe their migration); native frontend cost, independent AI accuracy
+and full-platform validation remain separate requirements.
+
+### Hooks, encrypted storage and the candidate reference
+
+The internal candidate invocation now enables the ordinary after-edit hook with its bound
+loader. Sealed inventory, unlock, check, run and build also receive that frontend. The encrypted
+cache stays encrypted; a protected filesystem hook or ordinary legacy import is refused rather
+than reading sealed files through a fallback. Source-object snapshots guard asynchronous linking,
+while cache-only metadata changes remain compatible with concurrent compilation.
+
+The [candidate authoring reference](candidate-authoring.md) has executable examples; it was not
+installed by the initial hooks milestone. Candidate initialization is covered below. Complete guide coverage, independent model accuracy/cost, and a coordinated
+public default change remain required. Existing encrypted legacy projects are not automatically
+rewritten: staged legacy import occurs before sealing, and any plaintext restoration remains an
+explicit owner-approved operation. [Evidence](../../results/source-sealed-hooks.json) records the
+current tested boundary and its remaining limitations.
+
+
+### Candidate initialization and installed guide
+
+Source-bound `init` installs one candidate primer, an executable starter, agent/editor rules,
+and a project-local launcher. Generated check/run/emit/MCP commands and Gemini hooks use
+`node .a0/cli.mjs`, including the repair instruction on a failed hook. The launcher binds the
+compiler installation selected by initialization; it does not add a public reader flag. Re-run
+candidate initialization after relocating that installation. The public CLI and its existing
+MODEL_GUIDE remain unchanged while cutover gates are open.
+
+Initialization validates existing managed source before installing instructions. Files requiring a legacy reader
+must first pass the staged import path; text already valid in the candidate grammar needs no
+artificial conversion. Exact recognized legacy-generated rule sections can be
+replaced while retaining user prefixes; customized or ambiguous files are refused before writes.
+A manifest records owned generated contents for idempotence, and changed user files are not
+silently overwritten. A plaintext writer lease spans initialization, so sealed roots and seal
+transitions retain their fence. An active or interrupted init lock fails closed; there is no
+unsafe automatic lock breaking. A process crash can leave partial output requiring review.
+
+The guide examples cover scalar calls, arrays, records, fold/loop, strict contracts and linear IO;
+tests execute and round-trip them. This completes the candidate primer/starter/rule initialization
+path, not the public cutover. At that checkpoint diagnostic catalog `explain` examples were still legacy-only; the
+subsequent diagnostic/relocation milestone below closes that integration gap. Native frontend cost, independent model accuracy/token cost,
+full-platform validation, launcher relocation and external-writer threat limits remain explicit.
+
+[Initialization evidence](../../results/source-candidate-init.json) records the six-project
+invariants, default-init byte equality and local tokenizer counts. The always-read primer is
+652 `o200k_base` tokens versus 669 for the historical primer; optional examples add 283 tokens
+(935 together). This is payload accounting, not a claim about model accuracy or total cost.
+
+
+### Diagnostic examples and installation relocation
+
+Candidate `explain` now renders and verifies examples through the same bound parser, edit
+syntax and runtime as candidate programs. All runnable catalog examples preserve their expected
+rejection codes; non-runnable rows retain explicit API/protocol reasons. Invalid source cannot
+be parsed into IR, so its spelling projection preserves quoted bytes and comments and is checked
+against the expected diagnostic. This is example conversion, not a compiler fallback.
+
+A generated project launcher delegates to the internal `source-cli.js` entrypoint. Moving a
+project preserves the compiler binding. After moving the compiler, regenerate explicitly with
+`node <compiler>/dist/src/source-cli.js init <project>`. Initialization updates only unchanged
+owned files; permission failures restore the previous launcher. Isolated fixtures test project
+and compiler moves, special characters in paths, deterministic output and rollback. Public CLI
+and installation files are unchanged. The guide also now correctly spells parameters after Z
+as `p26`, `p27`, rather than the unsupported `AA`, `AB`.
+
+[The cutover gate summary](unified-cutover-gates.md) separates measured engineering gaps from
+external validation requirements and records the strongest remaining native-frontend profiling
+lead. [Evidence](../../results/source-explain-relocation.json) includes diagnostic counts,
+default-output identity, project output controls and profile provenance. No cost improvement is
+claimed for this milestone.

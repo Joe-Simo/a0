@@ -1,0 +1,377 @@
+{
+  "generatedAt": "2026-10-28T11:01:44.559Z",
+  "node": "v24.19.0",
+  "platform": "linux-x64",
+  "clang": "Debian clang version 19.1.7 (3+b1)",
+  "rustc": null,
+  "flags": {
+    "c": "-std=c11 -O2 (no sanitizer); handwrittenBest: -std=c11 -O3 -march=native; every build with the timing driver adds -D_POSIX_C_SOURCE=199309L",
+    "native": "x86_64: the direct backend's assembly (src/x86_64.ts) through clang -c -x assembler, linked with the driver at -std=c11 -O2; its baseline is the emitted C at -std=c11 -O3 -march=native -c in its own object behind the same driver",
+    "js": "Node default JIT, in-process, warm",
+    "rust": "-C opt-level=3 -C target-cpu=native",
+    "table": "see tools/exec-bench-languages*.ts: clang++ -std=c++17 -O2, javac/java and the other JVM and .NET languages with a warm-up pass then a timed pass in one process, kotlinc -include-runtime, scala-cli assembly, dotnet -c Release, go build, swiftc -O, zig -O ReleaseFast, dart compile exe, nim -d:release, crystal --release, ldc2 -O3, fpc -O2, gfortran -O2, ghc -O2, ocamlopt -O3, csc -O3, cobc -O2, v -prod, odin -o:speed, valac -X -O2; interpreters and VMs at their defaults"
+  },
+  "iterationsPerSample": {
+    "c": 20000000,
+    "js": 5000000,
+    "python": 100000
+  },
+  "samplesPerSide": 11,
+  "scale": 1,
+  "loadAverage": [
+    0.75,
+    0.54,
+    1.02
+  ],
+  "loadSource": "loadavg",
+  "loadGate": {
+    "maxLoad": 10,
+    "checks": 165,
+    "waits": 0,
+    "waitedSeconds": 0,
+    "loadSource": "loadavg",
+    "highestLoadAtSampleStart": 0.75
+  },
+  "meaning": "Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain); startupCompiledMs and startupInterpretersMs hold the same measurement for every baseline language. arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; arm64A0Driver is the same kernel inside a whole program written in A0 (a fold that generates the inputs, calls the kernel and xors the results, compiled by the direct arm64 backend, so the kernel is inlined into the loop as in every other language's own driver); its ratio is against the emitted-C path. clangO3OutOfLine is the same emitted C at clang -O3 -mcpu=native in its own object behind the identical driver (the same call boundary), run interleaved with arm64 in alternating order; arm64VsClangO3OutOfLine and geomeans.arm64VsClangO3 compare the code of the direct backend and of clang at equal call cost. On an x86-64 host the same three rows are x86_64 (the direct x86-64 backend, src/x86_64.ts), x86_64ClangO3OutOfLine (the emitted C at clang -O3 -march=native in its own object) and x86_64A0Driver, compared in x86_64VsEmittedC, x86_64VsClangO3OutOfLine, x86_64VsBestFlags and geomeans.x86_64VsClangO3; the arm64 fields are then null. Every baseline row carries family, toolchain, and status; a row whose checksum did not match the A0 result for the same iteration count is skipped-checksum-mismatch and has no timing. geomeans maps each baseline to the geometric mean over kernels of (baseline median ns / A0 emitted-C median ns), so 1.0 is parity and 50 means A0 native is 50x faster per call. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.",
+  "geomeans": {
+    "c": 0.9360035532516279,
+    "cBest": 0.5001384196125965,
+    "rust": null,
+    "x86_64": 1.872960724984351,
+    "x86_64VsClangO3": 4.381176962321529,
+    "x86_64A0Driver": 1.8869211240641157,
+    "js": 4.009050971529298,
+    "jsEmitted": 4.679340996995676
+  },
+  "x86_64A0DriverVsBestFlags": {
+    "win": 0,
+    "tie": 0,
+    "loss": 3,
+    "rule": "the same comparison for the whole program in A0: the driver loop is an A0 fold calling the kernel, compiled by the direct x86_64 backend (no call boundary, like the other languages' own drivers); x86_64VsBestFlags is the kernel alone called out of line from a C driver"
+  },
+  "x86_64VsBestFlags": {
+    "win": 0,
+    "tie": 0,
+    "loss": 3,
+    "rule": "A0 x86_64 against the fastest of C -O3 -march=native, Rust opt-level=3 target-cpu=native and Zig ReleaseFast; win only at >= 1.2x, loss when slower beyond the tie band"
+  },
+  "languages": {},
+  "skipped": {},
+  "kernels": {
+    "dot1k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 167.3849,
+        "speedup": 0.13227841919193195,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 167.3849,
+        "speedup": 0.13953064791241152,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 670.8825,
+          "minNsPerCall": 600.0624,
+          "maxNsPerCall": 834.2128,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 580.2278,
+          "minNsPerCall": 503.237,
+          "maxNsPerCall": 643.1367,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 167.3849,
+          "minNsPerCall": 130.9478,
+          "maxNsPerCall": 208.279,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 1265.3984,
+          "minNsPerCall": 1124.285,
+          "maxNsPerCall": 1328.4311,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 79.0338,
+          "minNsPerCall": 71.9565,
+          "maxNsPerCall": 101.9862,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 1199.6282,
+          "minNsPerCall": 1134.7964,
+          "maxNsPerCall": 1333.6877,
+          "checksum": "824329728",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16336,
+          "handwritten": 16112
+        },
+        "startupMs": {
+          "emitted": 2.399068000000625,
+          "handwritten": 2.1106780000009167
+        },
+        "rust": null,
+        "buildMs": {
+          "a0ToNative": 118.41056200000094,
+          "rustc": null
+        },
+        "verdict": "tie",
+        "verdictVsRust": "blocked",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.8861699328869064,
+          "verdict": "loss"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 16.010851053599854,
+          "verdict": "loss"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 5020.097151999999,
+          "minNsPerCall": 4897.427007999993,
+          "maxNsPerCall": 6382.5445119999995,
+          "checksum": "3467299840",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 4751.676070400002,
+          "minNsPerCall": 4566.960895999987,
+          "maxNsPerCall": 4983.6405632000005,
+          "checksum": "3467299840",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "hist256": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 1528.9897,
+        "speedup": 0.3869970396678435,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 1528.9897,
+        "speedup": 0.3803191877023895,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 2977.0939,
+          "minNsPerCall": 2839.9247,
+          "maxNsPerCall": 4076.3792,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 2973.7535,
+          "minNsPerCall": 2858.7557,
+          "maxNsPerCall": 3795.7807,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 1528.9897,
+          "minNsPerCall": 1425.0622,
+          "maxNsPerCall": 1684.8777,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 3950.908,
+          "minNsPerCall": 3857.1735,
+          "maxNsPerCall": 4183.5999,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 1751.9365,
+          "minNsPerCall": 1589.2002,
+          "maxNsPerCall": 2577.9815,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 4020.2802,
+          "minNsPerCall": 3888.5693,
+          "maxNsPerCall": 4362.6074,
+          "checksum": "1904205",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16408,
+          "handwritten": 16160
+        },
+        "startupMs": {
+          "emitted": 3.271985000003042,
+          "handwritten": 2.95972299999994
+        },
+        "rust": null,
+        "buildMs": {
+          "a0ToNative": 127.04169600000023,
+          "rustc": null
+        },
+        "verdict": "tie",
+        "verdictVsRust": "blocked",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 1.3271022455825126,
+          "verdict": "loss"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 2.255166211789069,
+          "verdict": "loss"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 12237.171624596747,
+          "minNsPerCall": 11914.134913726903,
+          "maxNsPerCall": 13053.820644104308,
+          "checksum": "1378521",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 11495.692181659759,
+          "minNsPerCall": 10934.92591265158,
+          "maxNsPerCall": 12478.04305975116,
+          "checksum": "1378521",
+          "samples": 11
+        },
+        "verdict": "tie"
+      }
+    },
+    "sieve4k": {
+      "x86_64VsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 2677.108,
+        "speedup": 0.3719529449739007,
+        "verdict": "loss"
+      },
+      "x86_64A0DriverVsBestFlags": {
+        "best": "cO3Native",
+        "bestNsPerCall": 2677.108,
+        "speedup": 0.3509066231628168,
+        "verdict": "loss"
+      },
+      "startupInterpretersMs": {},
+      "startupCompiledMs": {},
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 2742.0608,
+          "minNsPerCall": 2428.6843,
+          "maxNsPerCall": 2897.6297,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 2602.8256,
+          "minNsPerCall": 2404.6198,
+          "maxNsPerCall": 3743.1696,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 2677.108,
+          "minNsPerCall": 2516.7553,
+          "maxNsPerCall": 3056.9151,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "x86_64": {
+          "medianNsPerCall": 7197.4373,
+          "minNsPerCall": 7092.8276,
+          "maxNsPerCall": 8620.9842,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "x86_64ClangO3OutOfLine": {
+          "medianNsPerCall": 3090.2846,
+          "minNsPerCall": 2752.2384,
+          "maxNsPerCall": 3796.8476,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "x86_64A0Driver": {
+          "medianNsPerCall": 7629.1179,
+          "minNsPerCall": 7305.773,
+          "maxNsPerCall": 8750.8266,
+          "checksum": "573959",
+          "samples": 11
+        },
+        "binaryBytes": {
+          "emitted": 16440,
+          "handwritten": 16160
+        },
+        "startupMs": {
+          "emitted": 1.9370409999974072,
+          "handwritten": 2.0137269999977434
+        },
+        "rust": null,
+        "buildMs": {
+          "a0ToNative": 130.26165900000342,
+          "rustc": null
+        },
+        "verdict": "tie",
+        "verdictVsRust": "blocked",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked",
+        "x86_64VsEmittedC": {
+          "ratio": 2.6248277572838643,
+          "verdict": "loss"
+        },
+        "x86_64VsClangO3OutOfLine": {
+          "ratio": 2.3290532205350924,
+          "verdict": "loss"
+        }
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 9134.336098310543,
+          "minNsPerCall": 8839.477726574232,
+          "maxNsPerCall": 9655.72135176696,
+          "checksum": "49067075",
+          "samples": 11
+        },
+        "handwritten": {
+          "medianNsPerCall": 6460.39180747617,
+          "minNsPerCall": 6113.874347158117,
+          "maxNsPerCall": 6971.761904761589,
+          "checksum": "49067075",
+          "samples": 11
+        },
+        "verdict": "loss"
+      }
+    }
+  }
+}

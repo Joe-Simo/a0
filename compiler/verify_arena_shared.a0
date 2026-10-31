@@ -109,6 +109,37 @@ q3 fold sv_appendgo q2 p0 p1 p2 p3
 ret q3
 end
 
+fn sv_diagnostic_context (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io) u32 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+q0 at p0 6
+q1 rec 0 0 0
+q2 at p0 0
+a call av_append q0 q1 128 q2
+q3 at p0 1
+q4 at a 1
+q5 at q4 0
+m set q3 127 q5
+q6 at a 0
+q7 eq q6 0
+q8 get m 0
+q9 at a 0
+q10 select q7 q8 q9
+m_1 set m 0 q10
+q11 at p0 0
+q12 at a 0
+q13 eq q12 0
+q14 at p0 0
+q15 get q14 0
+q16 at a 0
+q17 select q13 q15 q16
+v set q11 0 q17
+q18 at p0 2
+q19 at p0 3
+q20 at p0 4
+q21 at p0 5
+q22 at a 2
+q23 rec v m_1 q18 q19 q20 q21 q22
+ret q23
+end
 fn sv_semantic (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io) u32 u32 u32 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
 v at p0 0
 q0 get v 0
@@ -169,10 +200,15 @@ q40 at p0 3
 q41 at p0 4
 q42 at p0 5
 q43 at p0 6
-q44 rec v_7 m_5 q39 q40 q41 q42 q43
-ret q44
+q44 eq p1 715
+q45 and active q44
+q46 eq p2 3
+q47 and q45 q46
+q48 select q47 1 0
+q49 rec v_7 m_5 q39 q40 q41 q42 q43
+q50 fold sv_diagnostic_context q48 q49
+ret q50
 end
-
 fn sv_body (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io) u32 -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
 v at p0 0
 q0 at p0 1

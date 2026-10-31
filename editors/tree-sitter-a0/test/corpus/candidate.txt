@@ -1,0 +1,106 @@
+================================================================================
+Candidate inferred functions, zero-argument calls and parameter-prefix identifiers
+================================================================================
+
+fn zero
+ret 0
+end
+fn f
+ex 1 -> 2
+p0k << A 1
+ex [p0k,0]
+q (p0k,true)
+t "A # literal"
+z zero
+r get ex 0
+ret r
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_definition
+    (identifier)
+    (return_statement
+      (integer)))
+  (function_definition
+    (identifier)
+    (example
+      (integer)
+      (integer))
+    (instruction
+      (identifier)
+      (operation
+        (operator)
+        (parameter)
+        (integer)))
+    (instruction
+      (identifier)
+      (aggregate_expression
+        (identifier)
+        (integer)))
+    (instruction
+      (identifier)
+      (aggregate_expression
+        (identifier)
+        (boolean)))
+    (instruction
+      (identifier)
+      (text_expression
+        (string)))
+    (instruction
+      (identifier)
+      (direct_call_expression
+        (identifier)))
+    (instruction
+      (identifier)
+      (operation
+        (operator)
+        (identifier)
+        (integer)))
+    (return_statement
+      (identifier))))
+
+================================================================================
+Candidate repeated arrays and explicit record types
+================================================================================
+
+fn array -> _x3
+ex -> [7*3]
+v [7*3]
+ret v
+end
+fn singleton _ -> (_)
+v (A,)
+ret v
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_definition
+    (identifier)
+    (array_type)
+    (example
+      (array_literal
+        (integer)
+        (integer)))
+    (instruction
+      (identifier)
+      (aggregate_expression
+        (integer)
+        (integer)))
+    (return_statement
+      (identifier)))
+  (function_definition
+    (identifier)
+    (parameter_types
+      (primitive_type))
+    (tuple_type
+      (primitive_type))
+    (instruction
+      (identifier)
+      (aggregate_expression
+        (parameter)))
+    (return_statement
+      (identifier))))

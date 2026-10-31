@@ -4,6 +4,7 @@ import { lstat, mkdir, readFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { A0Error, checkArgument, LIMITS, run, type Value } from '../core.js';
 import { POLICY_FILE, protectionPolicy } from '../protection-policy.js';
+import type { McpFrontend } from '../source-edit.js';
 import { isTarget } from '../targets.js';
 import { compileSealed, linkSealed } from './build.js';
 import {
@@ -132,6 +133,7 @@ export async function serveUnlocked(
   root: string,
   consumer: Consumer,
   approval?: object,
+  frontend?: McpFrontend,
 ): Promise<void> {
   const access = project.sourceAccess(consumer, approval);
   output({
@@ -219,12 +221,12 @@ export async function serveUnlocked(
           continue;
         }
         if (request.op === 'check') {
-          const linked = await linkSealed(project, request.path, request.profile);
+          const linked = await linkSealed(project, request.path, request.profile, frontend);
           output({ ok: true, functions: linked.program.functions.length });
           continue;
         }
         if (request.op === 'run') {
-          const linked = await linkSealed(project, request.path, request.profile),
+          const linked = await linkSealed(project, request.path, request.profile, frontend),
             fn = linked.program.byName.get(request.function ?? '');
           if (!fn || !Array.isArray(request.args) || fn.params.length !== request.args.length)
             throw new ProtectionError('INVALID_RUN_ARGUMENTS');
@@ -242,6 +244,7 @@ export async function serveUnlocked(
             throw new ProtectionError('PLAINTEXT_ARTIFACT_CONFIRMATION_REQUIRED');
           const bytes = await compileSealed(project, request.path, request.target, {
             projectRoot: root,
+            ...(frontend === undefined ? {} : { frontend }),
             ...(request.profile === undefined ? {} : { profile: request.profile }),
           });
           output({ ok: true, artifact: Buffer.from(bytes).toString('base64') });
@@ -294,6 +297,7 @@ async function* sessionLines(input: AsyncIterable<Buffer>): AsyncGenerator<strin
 export async function protectionCli(
   command: 'seal' | 'protect',
   args: readonly string[],
+  frontend?: McpFrontend,
 ): Promise<void> {
   const [action, ...rest] = args;
   if (action === undefined || action === 'help' || args.includes('--help')) {
@@ -315,6 +319,8 @@ export async function protectionCli(
               'export',
               'import',
               'recover-lock',
+              'recover-writer',
+              'recover-mutex',
             ],
       options: [
         '--include=RELATIVE_FILE (repeat for sensitive metadata or additional source)',
@@ -322,6 +328,8 @@ export async function protectionCli(
         '--key=FILE',
         '--password-fd=N',
         '--approve=DIGEST',
+        '--approve-lock=DIGEST (explicit same-host dead-process recovery only)',
+        '--lease=RELATIVE_PATH (one plaintext writer lease for recover-writer)',
         '--confirm-exposure',
         '--consumer=local-terminal|local-editor|external-ai',
         '--recipient=ID',
@@ -341,8 +349,17 @@ export async function protectionCli(
   const include = rest
     .filter((a) => a.startsWith('--include='))
     .map((a) => a.slice('--include='.length));
+  const readUses =
+    frontend === undefined
+      ? undefined
+      : (source: string, path: string) => {
+          if (!path.endsWith('.a0')) throw new ProtectionError('SOURCE_FORMAT_MIGRATION_REQUIRED');
+          return frontend.syntax.parse(source).uses ?? [];
+        };
   const planOn = async () => {
-    const plan = await inventory(root, include);
+    const plan = await inventory(root, include, readUses);
+    if (frontend !== undefined && plan.incompleteGraphs.length !== 0)
+      throw new ProtectionError('SOURCE_GRAPH_INCOMPLETE');
     const key = flag(rest, 'key');
     if (key && plan.items.some((i) => resolve(root, i.path) === resolve(key)))
       throw new ProtectionError('KEEP_IDENTITY_OUTSIDE_MANAGED_SOURCE');
@@ -421,13 +438,8 @@ export async function protectionCli(
   }
   const owner = await identity(rest);
   if (!['unlock', 'export'].includes(action)) assertDurableHost();
-  if (action === 'recover-lock' && !head) {
-    const hash = flag(rest, 'approve-lock');
-    if (!hash) throw new ProtectionError('LOCK_HASH_REQUIRED');
-    await store.recoverCommitLock(hash);
-    output({ ok: true, phase: 'incomplete' });
-    return;
-  }
+  if (['recover-lock', 'recover-writer', 'recover-mutex'].includes(action) && !head)
+    throw new ProtectionError('PROJECT_OWNER_UNVERIFIABLE');
   if (action === 'import') {
     const input = flag(rest, 'input');
     if (!input) throw new ProtectionError('INPUT_REQUIRED');
@@ -482,7 +494,7 @@ export async function protectionCli(
         }
         approval = await project.approveDisclosure(request, async () => true);
       }
-      await serveUnlocked(project, root, consumer, approval);
+      await serveUnlocked(project, root, consumer, approval, frontend);
       return;
     }
     if (action === 'off') {
@@ -500,7 +512,7 @@ export async function protectionCli(
       }
       authorized(rest, plan.digest);
       await project.setMigration('unsealing', plan.migration);
-      await resumeMigration(project, root);
+      await resumeMigration(project, root, undefined, readUses);
       await archiveDisabledStore(store);
     } else if (action === 'on') {
       if (project.status.phase === 'off') {
@@ -508,9 +520,9 @@ export async function protectionCli(
         authorized(rest, plan.digest);
         await project.startSealing({ direction: 'on', stage: 'copy', items: plan.items });
       }
-      if (project.migration) await resumeMigration(project, root);
+      if (project.migration) await resumeMigration(project, root, undefined, readUses);
     } else if (action === 'resume') {
-      if (project.migration) await resumeMigration(project, root);
+      if (project.migration) await resumeMigration(project, root, undefined, readUses);
       if (project.status.phase === 'off') await archiveDisabledStore(store);
     } else if (action === 'rotate' || action === 'revoke') {
       if (!rest.includes('--acknowledge-old-copies'))
@@ -531,10 +543,21 @@ export async function protectionCli(
       const out = flag(rest, 'out');
       if (!out) throw new ProtectionError('OUTPUT_REQUIRED');
       await atomicWrite(resolve(out), await project.sealedExport());
-    } else if (action === 'recover-lock') {
+    } else if (
+      action === 'recover-lock' ||
+      action === 'recover-writer' ||
+      action === 'recover-mutex'
+    ) {
+      await project.assertOwner();
       const hash = flag(rest, 'approve-lock');
       if (!hash) throw new ProtectionError('LOCK_HASH_REQUIRED');
-      await store.recoverCommitLock(hash);
+      if (action === 'recover-lock') await store.recoverCommitLock(hash);
+      else if (action === 'recover-mutex') await store.recoverRecoveryLock(hash);
+      else {
+        const lease = flag(rest, 'lease');
+        if (!lease) throw new ProtectionError('WRITER_LEASE_REQUIRED');
+        await store.recoverPlaintextWriter(lease, hash);
+      }
     } else throw new ProtectionError('UNKNOWN_CONTROL');
     output({ ok: true, ...project.status });
   } finally {

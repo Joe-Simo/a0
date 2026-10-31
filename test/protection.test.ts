@@ -7,7 +7,9 @@ import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { decodeProtectedHeader } from 'jose';
 import { compile } from '../src/backends.js';
+import { compileCached, DiskCache } from '../src/cache.js';
 import { parseAndValidate, run } from '../src/core.js';
+import { withPlaintextWrite } from '../src/plaintext-write.js';
 import { compileSealed, linkSealed, protectWasm } from '../src/protection/build.js';
 import {
   createIdentity,
@@ -29,6 +31,7 @@ import {
   inventory,
   resumeMigration,
 } from '../src/protection/disk.js';
+import { processLockRecord } from '../src/protection/process-lock.js';
 import { importSealedProject, MemoryVaultStore } from '../src/protection/store.js';
 import { type Head, SealedProject } from '../src/protection/vault.js';
 import { protectionPolicy } from '../src/protection-policy.js';
@@ -617,5 +620,280 @@ test('native encrypted editing/build/export and mode controls require approval a
     assert.equal((await readdir(join(root, '.a0-seal-archive'))).length, 1);
   } finally {
     await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test('sealing waits for managed cache writers and rejects a pre-seal delayed lookup', {
+  skip: DISK_SKIP,
+}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'a0-seal-writer-'));
+  const external = await mkdtemp(join(tmpdir(), 'a0-external-cache-'));
+  try {
+    const file = join(root, 'main.a0');
+    await writeFile(file, SOURCE);
+    let release!: () => void,
+      entered!: () => void,
+      lookupRelease!: () => void,
+      lookupEntered!: () => void;
+    const blocked = new Promise<void>((r) => {
+      release = r;
+    });
+    const ready = new Promise<void>((r) => {
+      entered = r;
+    });
+    const lookupGate = new Promise<void>((r) => {
+      lookupRelease = r;
+    });
+    const lookupReady = new Promise<void>((r) => {
+      lookupEntered = r;
+    });
+    class DelayedCache extends DiskCache {
+      override async get(): Promise<undefined> {
+        lookupEntered();
+        await lookupGate;
+        return undefined;
+      }
+    }
+    const compiling = compileCached(
+      parseAndValidate(SOURCE),
+      'c',
+      new DelayedCache(external, file),
+    );
+    await lookupReady;
+    const writing = withPlaintextWrite(file, async () => {
+      entered();
+      await blocked;
+    });
+    await ready;
+    const plan = await inventory(root),
+      store = new DiskVaultStore(root);
+    await store.initialize();
+    const project = await SealedProject.create(store, owner, {
+      direction: 'on',
+      stage: 'copy',
+      items: plan.items,
+    });
+    await assert.rejects(resumeMigration(project, root), /PLAINTEXT_WRITERS_ACTIVE/);
+    assert.equal(await readFile(file, 'utf8'), SOURCE);
+    release();
+    await writing;
+    await resumeMigration(project, root);
+    lookupRelease();
+    await assert.rejects(compiling);
+    assert.deepEqual(await readdir(external), []);
+    assert.equal(project.status.phase, 'on');
+    project.lock();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(external, { recursive: true, force: true });
+  }
+});
+
+test('privileged recovery requires the project owner, not merely an authorized recipient', async () => {
+  const { project, store } = await fixture();
+  await project.share({ id: other.id, publicKey: other.publicKey, signingKey: other.signingKey });
+  await project.assertOwner();
+  const recipient = await SealedProject.unlock(store, other, project.status.project);
+  await assert.rejects(recipient.assertOwner(), /PROJECT_OWNER_REQUIRED/);
+  recipient.lock();
+  await assert.rejects(recipient.assertOwner(), /LOCKED/);
+  project.lock();
+});
+
+test('CLI lock recovery rejects recipient authority and unauthenticated incomplete projects', {
+  skip: DISK_SKIP,
+}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'a0-owner-recovery-'));
+  try {
+    const projectRoot = join(root, 'project');
+    await mkdir(projectRoot);
+    const store = new DiskVaultStore(projectRoot);
+    await store.initialize();
+    const project = await SealedProject.create(store, owner);
+    await project.share({ id: other.id, publicKey: other.publicKey, signingKey: other.signingKey });
+    const lock = JSON.stringify({ pid: 2147483647, nonce: 'synthetic unscoped lock' });
+    await writeFile(join(store.dir, 'commit.lock'), lock);
+    const key = join(root, 'recipient.json'),
+      password = join(root, 'password');
+    await writeFile(key, JSON.stringify(otherFile));
+    await writeFile(password, 'another owned synthetic test password');
+    const fd = openSync(password, 'r');
+    try {
+      const result = spawnSync(
+        process.execPath,
+        [
+          resolve('dist/src/cli.js'),
+          'seal',
+          'recover-lock',
+          projectRoot,
+          `--key=${key}`,
+          '--password-fd=3',
+          `--trust-project=${project.status.project}`,
+          `--approve-lock=${await digest(utf8.encode(lock))}`,
+        ],
+        { stdio: ['ignore', 'pipe', 'pipe', fd], encoding: 'utf8' },
+      );
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /PROJECT_OWNER_REQUIRED/);
+      assert.equal(await readFile(join(store.dir, 'commit.lock'), 'utf8'), lock);
+    } finally {
+      closeSync(fd);
+    }
+    if (process.platform === 'linux') {
+      const dead = JSON.stringify({ ...(await processLockRecord()), pid: 2147483647 });
+      await writeFile(join(store.dir, 'commit.lock'), dead);
+      const ownerKey = join(root, 'owner.json'),
+        ownerPassword = join(root, 'owner-password');
+      await writeFile(ownerKey, JSON.stringify(file));
+      await writeFile(ownerPassword, PASSWORD);
+      const ownerFd = openSync(ownerPassword, 'r');
+      try {
+        const result = spawnSync(
+          process.execPath,
+          [
+            resolve('dist/src/cli.js'),
+            'seal',
+            'recover-lock',
+            projectRoot,
+            `--key=${ownerKey}`,
+            '--password-fd=3',
+            `--approve-lock=${await digest(utf8.encode(dead))}`,
+          ],
+          { stdio: ['ignore', 'pipe', 'pipe', ownerFd], encoding: 'utf8' },
+        );
+        assert.equal(result.status, 0, result.stderr);
+        await assert.rejects(readFile(join(store.dir, 'commit.lock')), { code: 'ENOENT' });
+      } finally {
+        closeSync(ownerFd);
+      }
+    }
+    project.lock();
+    const incomplete = join(root, 'incomplete');
+    await mkdir(incomplete);
+    const incompleteStore = new DiskVaultStore(incomplete);
+    await incompleteStore.initialize();
+    await writeFile(join(incompleteStore.dir, 'commit.lock'), lock);
+    const fd2 = openSync(password, 'r');
+    try {
+      const result = spawnSync(
+        process.execPath,
+        [
+          resolve('dist/src/cli.js'),
+          'seal',
+          'recover-lock',
+          incomplete,
+          `--key=${key}`,
+          '--password-fd=3',
+          `--approve-lock=${await digest(utf8.encode(lock))}`,
+        ],
+        { stdio: ['ignore', 'pipe', 'pipe', fd2], encoding: 'utf8' },
+      );
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /PROJECT_OWNER_UNVERIFIABLE/);
+      assert.equal(await readFile(join(incompleteStore.dir, 'commit.lock'), 'utf8'), lock);
+    } finally {
+      closeSync(fd2);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('CLI writer recovery authenticates the owner and removes only the approved lease', {
+  skip: process.platform !== 'linux' ? 'Same-scope process recovery requires Linux' : false,
+}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'a0-owner-writer-'));
+  try {
+    const projectRoot = join(root, 'project');
+    await mkdir(projectRoot);
+    const store = new DiskVaultStore(projectRoot);
+    await store.initialize();
+    const project = await SealedProject.create(store, owner);
+    await project.share({ id: other.id, publicKey: other.publicKey, signingKey: other.signingKey });
+    const directory = '.a0-plaintext-writers';
+    await mkdir(join(projectRoot, directory));
+    const lease = `${directory}/2147483647-00000000-0000-4000-8000-000000000000`;
+    const record = JSON.stringify({
+      format: 'a0-plaintext-writer-1',
+      owner: { ...(await processLockRecord()), pid: 2147483647 },
+    });
+    await writeFile(join(projectRoot, lease), record);
+    const hash = await digest(utf8.encode(record));
+    const ownerKey = join(root, 'owner.json'),
+      recipientKey = join(root, 'recipient.json');
+    const ownerPassword = join(root, 'owner-password'),
+      recipientPassword = join(root, 'recipient-password');
+    await writeFile(ownerKey, JSON.stringify(file));
+    await writeFile(recipientKey, JSON.stringify(otherFile));
+    await writeFile(ownerPassword, PASSWORD);
+    await writeFile(recipientPassword, 'another owned synthetic test password');
+    const runRecovery = (
+      key: string,
+      password: string,
+      approved: string,
+      target = projectRoot,
+      action = 'recover-writer',
+    ) => {
+      const fd = openSync(password, 'r');
+      try {
+        return spawnSync(
+          process.execPath,
+          [
+            resolve('dist/src/cli.js'),
+            'seal',
+            action,
+            target,
+            `--key=${key}`,
+            '--password-fd=3',
+            `--trust-project=${project.status.project}`,
+            `--lease=${lease}`,
+            `--approve-lock=${approved}`,
+          ],
+          { stdio: ['ignore', 'pipe', 'pipe', fd], encoding: 'utf8' },
+        );
+      } finally {
+        closeSync(fd);
+      }
+    };
+    const refused = runRecovery(recipientKey, recipientPassword, hash);
+    assert.notEqual(refused.status, 0);
+    assert.match(refused.stderr, /PROJECT_OWNER_REQUIRED/);
+    assert.equal(await readFile(join(projectRoot, lease), 'utf8'), record);
+    const stale = runRecovery(ownerKey, ownerPassword, '0'.repeat(64));
+    assert.notEqual(stale.status, 0);
+    assert.match(stale.stderr, /LOCK_CHANGED/);
+    const accepted = runRecovery(ownerKey, ownerPassword, hash);
+    assert.equal(accepted.status, 0, accepted.stderr);
+    await assert.rejects(readFile(join(projectRoot, lease)), { code: 'ENOENT' });
+    const mutexRecord = JSON.stringify({ ...(await processLockRecord()), pid: 2147483647 });
+    await writeFile(join(store.dir, 'recover.lock'), mutexRecord);
+    const mutexHash = await digest(utf8.encode(mutexRecord));
+    const refusedMutex = runRecovery(
+      recipientKey,
+      recipientPassword,
+      mutexHash,
+      projectRoot,
+      'recover-mutex',
+    );
+    assert.notEqual(refusedMutex.status, 0);
+    assert.match(refusedMutex.stderr, /PROJECT_OWNER_REQUIRED/);
+    const acceptedMutex = runRecovery(
+      ownerKey,
+      ownerPassword,
+      mutexHash,
+      projectRoot,
+      'recover-mutex',
+    );
+    assert.equal(acceptedMutex.status, 0, acceptedMutex.stderr);
+    await assert.rejects(readFile(join(store.dir, 'recover.lock')), { code: 'ENOENT' });
+    const incomplete = join(root, 'incomplete');
+    await mkdir(incomplete);
+    await new DiskVaultStore(incomplete).initialize();
+    const unknown = runRecovery(ownerKey, ownerPassword, hash, incomplete);
+    assert.notEqual(unknown.status, 0);
+    assert.match(unknown.stderr, /PROJECT_OWNER_UNVERIFIABLE/);
+    project.lock();
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });

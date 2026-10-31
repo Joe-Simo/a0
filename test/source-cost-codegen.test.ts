@@ -52,6 +52,7 @@ async function fixture(root: string) {
     'src/compiler.ts': 'export const example = 1;\n',
     'src/opcodes.json': '{"read":7}\n',
     'tools/source-native-build.ts': '// independent builder input\n',
+    'tools/source-local-arena.ts': '// independent local lowering input\n',
     'tools/source-compiler-inputs.ts': '// independent provenance input\n',
     'tools/scrub-results.ts': '// independent report input\n',
     'tools/native/source_frontend.c': '/* independent driver */\n',

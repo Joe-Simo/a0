@@ -19,4 +19,6 @@ if (typeof enable === 'function') {
 }
 // The asynchronous module load still follows cache initialization. Avoid top-level await so
 // pinned Bun can bundle the standalone executable as CJS bytecode.
-void import('./cli-main.js');
+void import('./cli-main.js').then(({ main, reportCliError }) =>
+  main(process.argv.slice(2)).catch(reportCliError),
+);

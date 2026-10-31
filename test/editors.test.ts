@@ -322,3 +322,72 @@ test('TextMate grammar scopes spec lines by place and keeps nodes called ex, pre
   assert.match(scope(11, 'ex'), /variable\.other\.definition\.a0/);
   assert.match(scope(13, 'end'), /keyword\.control\.end\.a0/);
 });
+
+test('editor grammars accept the candidate guide and six migrated project closures', async () => {
+  const { SOURCE_GUIDE, SOURCE_EXAMPLES } = await import('../src/source-guide.js');
+  const { parseSource } = await import('../src/source.js');
+  const { validate } = await import('../src/core.js');
+  const { migrateSourceProject } = await import('../src/migrate.js');
+  const { readFile } = await import('node:fs/promises');
+  const dir = mkdtempSync(join(tmpdir(), 'a0-editor-candidate-'));
+  try {
+    const files: string[] = [];
+    for (const [i, match] of [
+      ...`${SOURCE_GUIDE}\n${SOURCE_EXAMPLES}`.matchAll(/```a0\n([\s\S]*?)```/g),
+    ].entries()) {
+      const source = match[1] as string;
+      validate(parseSource(source));
+      const file = join(dir, `guide-${i}.a0`);
+      writeFileSync(file, source);
+      files.push(file);
+    }
+    let copied = 0;
+    for (const [i, entry] of [
+      'examples/life.a0',
+      'site/lib/frame.a0',
+      'site/page.a0',
+      'site/docs.a0',
+      'compiler/boot.a0',
+      'compiler/parse_arena.a0',
+    ].entries()) {
+      const dest = join(dir, `project-${i}`);
+      const manifest = await migrateSourceProject(join(root, entry), dest, root);
+      for (const item of manifest.files) {
+        const file = join(dest, item.destination);
+        assert.equal((await readFile(file)).length > 0, true);
+        files.push(file);
+        copied++;
+      }
+    }
+    assert.equal(copied, 37);
+    const generated = treeSitter(['generate']);
+    assert.equal(generated.status, 0, generated.stderr);
+    const parsed = treeSitter(['parse', '--quiet', ...files]);
+    assert.equal(parsed.status, 0, `${parsed.stdout}${parsed.stderr}`);
+    const sample =
+      'profile strict\nfn f _ -> _\nx << A 1\ny [x,7]\ns "p0 # A"\nr get y 0\nret r\nend\n';
+    validate(parseSource(sample));
+    const file = join(dir, 'highlights.a0');
+    writeFileSync(file, sample);
+    const query = treeSitter(['query', 'queries/highlights.scm', file]);
+    assert.equal(query.status, 0, query.stderr);
+    assert.match(query.stdout, /variable.parameter/);
+    assert.match(query.stdout, /operator/);
+    assert.match(query.stdout, /type.builtin/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('TextMate highlights candidate shifts, parameters, types and aggregates without touching strings', async () => {
+  const lines = await tokenize(
+    'profile strict\nfn f _ -> _x2\nx << A 1\ny [x,7]\ns "A << _"\nret y\nend',
+  );
+  const scope = (n: number, w: string) => (lines[n]?.get(w) ?? []).join(' ');
+  assert.match(scope(0, 'profile'), /keyword.control.profile/);
+  assert.match(scope(1, '_'), /support.type.primitive/);
+  assert.match(scope(2, '<<'), /keyword.operator.shift/);
+  assert.match(scope(2, 'A'), /variable.parameter/);
+  assert.match(scope(3, '['), /punctuation.definition.aggregate/);
+  assert.match(scope(4, 'A << _'), /string.quoted/);
+});

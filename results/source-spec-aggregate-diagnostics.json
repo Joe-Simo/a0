@@ -1,0 +1,1151 @@
+{
+  "schema": 1,
+  "scope": "Local candidate frontend only: completed A0715 aggregate mismatch diagnostics; no default or public syntax cutover.",
+  "baseline": "1959ffb0c9f9474a3cf55e36224584a93dbe271a",
+  "change": {
+    "representation": "Declared types select array/record syntax. An iterative arena stack walks evaluator (kind,payload) values and validates block lengths, scalar kinds, booleans, record field bounds, handles and all storage statuses.",
+    "bounds": "131073 stack steps; exhaustion refuses rendering without a public partial JSON vector. Runtime traps remain unsupported.",
+    "compatibility": "Existing state/arena protocol, legacy artifact behavior, scalar fast path and immutable failure snapshots retained. No reference-parser fallback."
+  },
+  "validation": {
+    "focused": "4 groups passed: 58 source/Unicode cases, 20 dependency-owned cases, one trap refusal and seven malformed live-arena cases.",
+    "live": "9 groups passed across C-derived and direct Wasm, including existing legacy artifact refusal and source/IO state controls.",
+    "seed": "Freshness check passed; seed-built O0/O2 aggregate control passed 48 exact JSON comparisons with both fix-option modes, without skips. Full bootstrap rebuild passed: stage 2/3/4 C fixed point, with checked-in seed unchanged.",
+    "aggregate": "Corrected exact-tree available light gate pending; full real-platform gate remains outstanding.",
+    "firstAggregateAttempt": {
+      "commit": "dd84bd634f830ae4e8430396e8a4d4ee68ad9398",
+      "passed": 1345,
+      "skipped": 18,
+      "failed": 1,
+      "reason": "Intentional diagnostics_arena.a0 source fingerprint row had not been refreshed. Old row passes on 1959ffb0; only four hash fields in that row were updated. Semantic field and all other rows unchanged.",
+      "terminalWrapper": "Environment interruption lost wrapper completion; actual test log records the failed completed test run. No passing gate note claimed."
+    }
+  },
+  "resources": {
+    "scope": "Fixed seven pairs, alternating order; 50 later calls per workload. Module loading/preparation excluded from latency but included in RSS. Aggregate baseline refuses rendering, so those timings are not equivalent-work speed comparisons. Descriptive resource control, not native acceptance benchmark.",
+    "runs": [
+      {
+        "pair": 0,
+        "arm": "baseline",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 12.29119999999999,
+            "warmMs": 0.2090487200000001,
+            "cpuMicros": {
+              "user": 30018,
+              "system": 1899
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.591769000000014,
+            "warmMs": 0.49628301999999963,
+            "cpuMicros": {
+              "user": 107218,
+              "system": 2768
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.2439210000000003,
+            "warmMs": 0.38142200000000004,
+            "cpuMicros": {
+              "user": 65197,
+              "system": 7772
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.5680590000000052,
+            "warmMs": 0.27668124000000033,
+            "cpuMicros": {
+              "user": 45499,
+              "system": 660
+            },
+            "rendered": false
+          },
+          "record": {
+            "firstMs": 0.6960369999999898,
+            "warmMs": 0.2029609400000004,
+            "cpuMicros": {
+              "user": 24697,
+              "system": 12429
+            },
+            "rendered": false
+          }
+        },
+        "usage": {
+          "userCPUTime": 343636,
+          "systemCPUTime": 59272,
+          "maxRSS": 73368,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22413,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1104,
+          "involuntaryContextSwitches": 31
+        },
+        "moduleBytes": 227816
+      },
+      {
+        "pair": 0,
+        "arm": "candidate",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 9.128542999999993,
+            "warmMs": 0.14193082000000004,
+            "cpuMicros": {
+              "user": 19338,
+              "system": 3358
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.433140999999992,
+            "warmMs": 0.73275394,
+            "cpuMicros": {
+              "user": 127868,
+              "system": 38705
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.0872959999999807,
+            "warmMs": 0.4654556600000001,
+            "cpuMicros": {
+              "user": 67273,
+              "system": 3897
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 2.1256480000000124,
+            "warmMs": 0.50090894,
+            "cpuMicros": {
+              "user": 47687,
+              "system": 0
+            },
+            "rendered": true
+          },
+          "record": {
+            "firstMs": 0.9231580000000008,
+            "warmMs": 0.4722009799999995,
+            "cpuMicros": {
+              "user": 52388,
+              "system": 1837
+            },
+            "rendered": true
+          }
+        },
+        "usage": {
+          "userCPUTime": 374988,
+          "systemCPUTime": 78064,
+          "maxRSS": 70940,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22524,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1110,
+          "involuntaryContextSwitches": 36
+        },
+        "moduleBytes": 231176
+      },
+      {
+        "pair": 1,
+        "arm": "candidate",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 10.050370000000001,
+            "warmMs": 0.16978622000000002,
+            "cpuMicros": {
+              "user": 24821,
+              "system": 949
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 10.077220999999994,
+            "warmMs": 0.5723182000000002,
+            "cpuMicros": {
+              "user": 117399,
+              "system": 24071
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.6650449999999921,
+            "warmMs": 0.3912397599999997,
+            "cpuMicros": {
+              "user": 61195,
+              "system": 9787
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 2.12173199999998,
+            "warmMs": 0.45986981999999954,
+            "cpuMicros": {
+              "user": 43357,
+              "system": 706
+            },
+            "rendered": true
+          },
+          "record": {
+            "firstMs": 0.8354769999999974,
+            "warmMs": 0.5088799399999999,
+            "cpuMicros": {
+              "user": 53115,
+              "system": 4289
+            },
+            "rendered": true
+          }
+        },
+        "usage": {
+          "userCPUTime": 359253,
+          "systemCPUTime": 70810,
+          "maxRSS": 72264,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 21744,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1123,
+          "involuntaryContextSwitches": 9
+        },
+        "moduleBytes": 231176
+      },
+      {
+        "pair": 1,
+        "arm": "baseline",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 10.575699999999998,
+            "warmMs": 0.14268285999999988,
+            "cpuMicros": {
+              "user": 19891,
+              "system": 3913
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.613332,
+            "warmMs": 0.4981440000000001,
+            "cpuMicros": {
+              "user": 109507,
+              "system": 14492
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.4823509999999942,
+            "warmMs": 0.4412207800000004,
+            "cpuMicros": {
+              "user": 90385,
+              "system": 5558
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.6057759999999917,
+            "warmMs": 0.2342321599999997,
+            "cpuMicros": {
+              "user": 40698,
+              "system": 691
+            },
+            "rendered": false
+          },
+          "record": {
+            "firstMs": 0.5561969999999974,
+            "warmMs": 0.2037160799999998,
+            "cpuMicros": {
+              "user": 29765,
+              "system": 0
+            },
+            "rendered": false
+          }
+        },
+        "usage": {
+          "userCPUTime": 363868,
+          "systemCPUTime": 45604,
+          "maxRSS": 72028,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22824,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1130,
+          "involuntaryContextSwitches": 40
+        },
+        "moduleBytes": 227816
+      },
+      {
+        "pair": 2,
+        "arm": "baseline",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 9.704628999999997,
+            "warmMs": 0.15587931999999996,
+            "cpuMicros": {
+              "user": 19847,
+              "system": 3716
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 10.138447,
+            "warmMs": 0.4845425400000002,
+            "cpuMicros": {
+              "user": 106327,
+              "system": 11923
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.2961099999999988,
+            "warmMs": 0.38522523999999975,
+            "cpuMicros": {
+              "user": 61699,
+              "system": 1178
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.7991810000000044,
+            "warmMs": 0.25902968000000043,
+            "cpuMicros": {
+              "user": 48868,
+              "system": 4487
+            },
+            "rendered": false
+          },
+          "record": {
+            "firstMs": 0.7561680000000024,
+            "warmMs": 0.27915016000000037,
+            "cpuMicros": {
+              "user": 34184,
+              "system": 5307
+            },
+            "rendered": false
+          }
+        },
+        "usage": {
+          "userCPUTime": 320687,
+          "systemCPUTime": 73733,
+          "maxRSS": 71672,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22569,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1108,
+          "involuntaryContextSwitches": 33
+        },
+        "moduleBytes": 227816
+      },
+      {
+        "pair": 2,
+        "arm": "candidate",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 10.023208999999994,
+            "warmMs": 0.15539177999999992,
+            "cpuMicros": {
+              "user": 24931,
+              "system": 193
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.305748000000008,
+            "warmMs": 0.5159265599999998,
+            "cpuMicros": {
+              "user": 113908,
+              "system": 14456
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.273434999999978,
+            "warmMs": 0.4216371000000004,
+            "cpuMicros": {
+              "user": 75371,
+              "system": 1914
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.9974550000000022,
+            "warmMs": 0.4965976999999998,
+            "cpuMicros": {
+              "user": 50060,
+              "system": 8172
+            },
+            "rendered": true
+          },
+          "record": {
+            "firstMs": 0.7952670000000239,
+            "warmMs": 0.53096518,
+            "cpuMicros": {
+              "user": 58088,
+              "system": 594
+            },
+            "rendered": true
+          }
+        },
+        "usage": {
+          "userCPUTime": 382278,
+          "systemCPUTime": 64370,
+          "maxRSS": 72652,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22702,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1135,
+          "involuntaryContextSwitches": 33
+        },
+        "moduleBytes": 231176
+      },
+      {
+        "pair": 3,
+        "arm": "candidate",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 9.881966000000006,
+            "warmMs": 0.15660709999999994,
+            "cpuMicros": {
+              "user": 15878,
+              "system": 9734
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 8.228949,
+            "warmMs": 0.48693455999999996,
+            "cpuMicros": {
+              "user": 114286,
+              "system": 2666
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.2506919999999866,
+            "warmMs": 0.3951286399999998,
+            "cpuMicros": {
+              "user": 88205,
+              "system": 2027
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.921289999999999,
+            "warmMs": 0.4627955399999996,
+            "cpuMicros": {
+              "user": 37989,
+              "system": 9013
+            },
+            "rendered": true
+          },
+          "record": {
+            "firstMs": 0.7369079999999997,
+            "warmMs": 0.49145594000000015,
+            "cpuMicros": {
+              "user": 56210,
+              "system": 847
+            },
+            "rendered": true
+          }
+        },
+        "usage": {
+          "userCPUTime": 374360,
+          "systemCPUTime": 66087,
+          "maxRSS": 73608,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22333,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1146,
+          "involuntaryContextSwitches": 11
+        },
+        "moduleBytes": 231176
+      },
+      {
+        "pair": 3,
+        "arm": "baseline",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 8.989813999999996,
+            "warmMs": 0.14968559999999997,
+            "cpuMicros": {
+              "user": 24360,
+              "system": 3462
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.232198999999994,
+            "warmMs": 0.5220597799999999,
+            "cpuMicros": {
+              "user": 114943,
+              "system": 6480
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.2724249999999984,
+            "warmMs": 0.3660390799999999,
+            "cpuMicros": {
+              "user": 74367,
+              "system": 4907
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.764946000000009,
+            "warmMs": 0.25668316,
+            "cpuMicros": {
+              "user": 34571,
+              "system": 5735
+            },
+            "rendered": false
+          },
+          "record": {
+            "firstMs": 0.5565770000000043,
+            "warmMs": 0.20763153999999986,
+            "cpuMicros": {
+              "user": 25949,
+              "system": 3415
+            },
+            "rendered": false
+          }
+        },
+        "usage": {
+          "userCPUTime": 339478,
+          "systemCPUTime": 54012,
+          "maxRSS": 72952,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22339,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1133,
+          "involuntaryContextSwitches": 6
+        },
+        "moduleBytes": 227816
+      },
+      {
+        "pair": 4,
+        "arm": "baseline",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 8.439206999999996,
+            "warmMs": 0.18825559999999997,
+            "cpuMicros": {
+              "user": 27338,
+              "system": 425
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.884591,
+            "warmMs": 0.5027158999999998,
+            "cpuMicros": {
+              "user": 100857,
+              "system": 24876
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.3981530000000078,
+            "warmMs": 0.38071173999999985,
+            "cpuMicros": {
+              "user": 68117,
+              "system": 9080
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.4494909999999948,
+            "warmMs": 0.19399382000000004,
+            "cpuMicros": {
+              "user": 28282,
+              "system": 0
+            },
+            "rendered": false
+          },
+          "record": {
+            "firstMs": 0.48527999999998883,
+            "warmMs": 0.2878831000000002,
+            "cpuMicros": {
+              "user": 32441,
+              "system": 7609
+            },
+            "rendered": false
+          }
+        },
+        "usage": {
+          "userCPUTime": 321687,
+          "systemCPUTime": 72694,
+          "maxRSS": 72612,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22152,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1155,
+          "involuntaryContextSwitches": 11
+        },
+        "moduleBytes": 227816
+      },
+      {
+        "pair": 4,
+        "arm": "candidate",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 8.690763999999987,
+            "warmMs": 0.16165017999999975,
+            "cpuMicros": {
+              "user": 13124,
+              "system": 9674
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 8.910234000000003,
+            "warmMs": 0.58204182,
+            "cpuMicros": {
+              "user": 123279,
+              "system": 15152
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.305624000000023,
+            "warmMs": 0.3934178600000001,
+            "cpuMicros": {
+              "user": 59753,
+              "system": 8749
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 2.0566639999999836,
+            "warmMs": 0.43260320000000035,
+            "cpuMicros": {
+              "user": 59074,
+              "system": 0
+            },
+            "rendered": true
+          },
+          "record": {
+            "firstMs": 0.7025370000000066,
+            "warmMs": 0.45321219999999984,
+            "cpuMicros": {
+              "user": 49090,
+              "system": 1493
+            },
+            "rendered": true
+          }
+        },
+        "usage": {
+          "userCPUTime": 356358,
+          "systemCPUTime": 72790,
+          "maxRSS": 73308,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22837,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1112,
+          "involuntaryContextSwitches": 40
+        },
+        "moduleBytes": 231176
+      },
+      {
+        "pair": 5,
+        "arm": "candidate",
+        "load": [
+          0.41,
+          0.11,
+          0.18
+        ],
+        "result": {
+          "success": {
+            "firstMs": 9.914074999999997,
+            "warmMs": 0.14762467999999984,
+            "cpuMicros": {
+              "user": 18404,
+              "system": 4953
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 12.393704999999997,
+            "warmMs": 0.52803158,
+            "cpuMicros": {
+              "user": 126330,
+              "system": 16923
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.8257370000000037,
+            "warmMs": 0.36921424,
+            "cpuMicros": {
+              "user": 53256,
+              "system": 2121
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 2.2943719999999814,
+            "warmMs": 0.47415092000000014,
+            "cpuMicros": {
+              "user": 47949,
+              "system": 685
+            },
+            "rendered": true
+          },
+          "record": {
+            "firstMs": 1.1695990000000052,
+            "warmMs": 0.4846457000000004,
+            "cpuMicros": {
+              "user": 61244,
+              "system": 0
+            },
+            "rendered": true
+          }
+        },
+        "usage": {
+          "userCPUTime": 352648,
+          "systemCPUTime": 64609,
+          "maxRSS": 73028,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22926,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1153,
+          "involuntaryContextSwitches": 10
+        },
+        "moduleBytes": 231176
+      },
+      {
+        "pair": 5,
+        "arm": "baseline",
+        "load": [
+          0.62,
+          0.16,
+          0.19
+        ],
+        "result": {
+          "success": {
+            "firstMs": 10.182949999999991,
+            "warmMs": 0.15185434000000014,
+            "cpuMicros": {
+              "user": 11846,
+              "system": 15182
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.407692999999995,
+            "warmMs": 0.5009252000000004,
+            "cpuMicros": {
+              "user": 111576,
+              "system": 2711
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.267265999999978,
+            "warmMs": 0.40845035999999996,
+            "cpuMicros": {
+              "user": 92401,
+              "system": 1851
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.5182949999999948,
+            "warmMs": 0.23460433999999963,
+            "cpuMicros": {
+              "user": 29108,
+              "system": 1086
+            },
+            "rendered": false
+          },
+          "record": {
+            "firstMs": 0.436427000000009,
+            "warmMs": 0.20267331999999955,
+            "cpuMicros": {
+              "user": 27332,
+              "system": 0
+            },
+            "rendered": false
+          }
+        },
+        "usage": {
+          "userCPUTime": 327539,
+          "systemCPUTime": 58989,
+          "maxRSS": 73180,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 21543,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1149,
+          "involuntaryContextSwitches": 26
+        },
+        "moduleBytes": 227816
+      },
+      {
+        "pair": 6,
+        "arm": "baseline",
+        "load": [
+          0.62,
+          0.16,
+          0.19
+        ],
+        "result": {
+          "success": {
+            "firstMs": 9.530296000000007,
+            "warmMs": 0.13896325999999987,
+            "cpuMicros": {
+              "user": 19559,
+              "system": 2819
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 10.032103000000006,
+            "warmMs": 0.5152509399999999,
+            "cpuMicros": {
+              "user": 111202,
+              "system": 16081
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.2825790000000268,
+            "warmMs": 0.40497424000000026,
+            "cpuMicros": {
+              "user": 70380,
+              "system": 214
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.6644440000000031,
+            "warmMs": 0.3348934200000002,
+            "cpuMicros": {
+              "user": 37158,
+              "system": 11223
+            },
+            "rendered": false
+          },
+          "record": {
+            "firstMs": 0.5276340000000062,
+            "warmMs": 0.17204042000000017,
+            "cpuMicros": {
+              "user": 18443,
+              "system": 0
+            },
+            "rendered": false
+          }
+        },
+        "usage": {
+          "userCPUTime": 305789,
+          "systemCPUTime": 74035,
+          "maxRSS": 74040,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 21793,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1107,
+          "involuntaryContextSwitches": 48
+        },
+        "moduleBytes": 227816
+      },
+      {
+        "pair": 6,
+        "arm": "candidate",
+        "load": [
+          0.62,
+          0.16,
+          0.19
+        ],
+        "result": {
+          "success": {
+            "firstMs": 8.242358999999993,
+            "warmMs": 0.14032029999999993,
+            "cpuMicros": {
+              "user": 15756,
+              "system": 10450
+            },
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.541764999999998,
+            "warmMs": 0.4745176599999999,
+            "cpuMicros": {
+              "user": 99468,
+              "system": 10283
+            },
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.1986229999999978,
+            "warmMs": 0.43426549999999964,
+            "cpuMicros": {
+              "user": 66729,
+              "system": 8314
+            },
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.8639149999999916,
+            "warmMs": 0.4547597400000001,
+            "cpuMicros": {
+              "user": 65809,
+              "system": 0
+            },
+            "rendered": true
+          },
+          "record": {
+            "firstMs": 0.6963379999999972,
+            "warmMs": 0.44401999999999986,
+            "cpuMicros": {
+              "user": 47429,
+              "system": 3522
+            },
+            "rendered": true
+          }
+        },
+        "usage": {
+          "userCPUTime": 358159,
+          "systemCPUTime": 57807,
+          "maxRSS": 70928,
+          "sharedMemorySize": 0,
+          "unsharedDataSize": 0,
+          "unsharedStackSize": 0,
+          "minorPageFault": 22070,
+          "majorPageFault": 0,
+          "swappedOut": 0,
+          "fsRead": 0,
+          "fsWrite": 0,
+          "ipcSent": 0,
+          "ipcReceived": 0,
+          "signalsCount": 0,
+          "voluntaryContextSwitches": 1112,
+          "involuntaryContextSwitches": 46
+        },
+        "moduleBytes": 231176
+      }
+    ],
+    "summary": {
+      "baseline": {
+        "moduleBytes": 227816,
+        "maxRSSKiB": 72952,
+        "cases": {
+          "success": {
+            "firstMs": 9.704628999999997,
+            "warmMs": 0.15185434000000014,
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.613332,
+            "warmMs": 0.5009252000000004,
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.2825790000000268,
+            "warmMs": 0.38522523999999975,
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 1.6057759999999917,
+            "warmMs": 0.25668316,
+            "rendered": false
+          },
+          "record": {
+            "firstMs": 0.5561969999999974,
+            "warmMs": 0.2037160799999998,
+            "rendered": false
+          }
+        }
+      },
+      "candidate": {
+        "moduleBytes": 231176,
+        "maxRSSKiB": 72652,
+        "cases": {
+          "success": {
+            "firstMs": 9.881966000000006,
+            "warmMs": 0.15539177999999992,
+            "rendered": "success"
+          },
+          "scalar": {
+            "firstMs": 9.433140999999992,
+            "warmMs": 0.52803158,
+            "rendered": true
+          },
+          "boolean": {
+            "firstMs": 1.273434999999978,
+            "warmMs": 0.3951286399999998,
+            "rendered": true
+          },
+          "array": {
+            "firstMs": 2.0566639999999836,
+            "warmMs": 0.4627955399999996,
+            "rendered": true
+          },
+          "record": {
+            "firstMs": 0.7952670000000239,
+            "warmMs": 0.4846457000000004,
+            "rendered": true
+          }
+        }
+      }
+    },
+    "limitation": "Exploratory descriptive controls only. The seed-build attempt overlapped part of this run. No speed or memory improvement claim; aggregate baseline refused rendering, so its times are not equivalent-work comparisons."
+  },
+  "remaining": [
+    "Runtime trap and other unsupported specification diagnostic families",
+    "Native latency/CPU/RSS/build-cost acceptance against the current reader",
+    "Independent blinded AI study execution; frozen study remains in separate 122ffbde checkpoint",
+    "Full required real-platform gate and independent protection assurance",
+    "Coordinated public/default cutover after acceptance; website-only publication is separate"
+  ]
+}

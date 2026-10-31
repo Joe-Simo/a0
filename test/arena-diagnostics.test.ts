@@ -1218,6 +1218,7 @@ function prepare(): Promise<string> {
         `#define IR_STATE ${resultType('source_ir_init')}`,
         `#define IR_SYMBOL ${resultType('source_ir_symbol')}`,
         `#define VERIFIED ${resultType('arena_verify_begin')}`,
+        `#define PARSED ${resultType('arena_parse')}`,
         '',
       ].join('\n'),
     );
@@ -1256,13 +1257,14 @@ async function request(
   source: string,
   budget = 50_000_000,
   options = 1,
+  verify = false,
 ) {
   const input = join(dir, 'source.bin');
   const output = join(dir, 'output.bin');
   await writeFile(input, source);
   const ran = runTool(
     join(dir, `driver-O${level}`),
-    [input, output, String(budget), String(options)],
+    [input, output, String(budget), String(options), ...(verify ? ['verify'] : [])],
     {
       cwd: dir,
       timeoutMs: 120_000,
@@ -2197,4 +2199,31 @@ test('seed-built A0 diagnostics preserve unsupported and allocation refusal stat
       else assert.deepEqual(JSON.parse(result.json.toString('utf8')), reference(source));
     }
   }
+});
+
+test('seed-built aggregate spec diagnostics preserve exact errors, nested values and snapshots', {
+  skip,
+}, async () => {
+  const dir = await prepare();
+  const sources = [
+    'fn f -> _x2\nex -> [1 2]\na [2 3]\nret a\nend\n',
+    'fn f _x2 -> _\nex [1 2] -> 9\nx get A 0\nret x\nend\n',
+    'fn f (_,bool) -> (_,bool)\nex (7 false) -> (8 true)\nret A\nend\n',
+    'fn f (u32) -> (u32)\nex (7,) -> (8,)\nret A\nend\n',
+    'fn f -> _x2x2\nex -> [[1 2] [3 4]]\na [5 6]\nb [7 8]\nc [a b]\nret c\nend\n',
+  ];
+  for (const width of [1, 63, 64, 65, 127, 128, 129]) {
+    const a = Array.from({ length: width }, (_, i) => i).join(' ');
+    const b = Array.from({ length: width }, (_, i) => i + 1).join(' ');
+    sources.push(`fn f _x${width} -> _x${width}\nex [${a}] -> [${b}]\nret A\nend\n`);
+  }
+  for (const level of [0, 2])
+    for (const source of sources)
+      for (const options of [0, 1]) {
+        const expected = reference(source, options);
+        assert.equal(expected?.id, 'A0715');
+        const result = await request(dir, level, source, 50_000_000, options, true);
+        assert.equal(result.status, 0);
+        assert.deepEqual(JSON.parse(result.json.toString('utf8')), expected);
+      }
 });

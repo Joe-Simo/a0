@@ -320,7 +320,8 @@ export class SealedProject {
     this.#serial = result.catch(() => undefined);
     return result;
   }
-  async #persist(expected: string | undefined): Promise<void> {
+  async #persist(expected: string | undefined, authorize?: () => void): Promise<void> {
+    authorize?.();
     const h = this.#head;
     const signature = await sign(
       utf8.encode(
@@ -346,18 +347,24 @@ export class SealedProject {
       { ...h, object: h.manifest },
     );
     this.#assert();
+    authorize?.();
     await this.store.put(h.manifest, cipher);
     this.#assert();
+    authorize?.();
     await this.store.commit(expected, h);
   }
   /** A failed commit invalidates the session: reopen and authenticate the durable head. */
-  async #change(manifest: Manifest, extra: Partial<Head> = {}): Promise<void> {
+  async #change(
+    manifest: Manifest,
+    extra: Partial<Head> = {},
+    authorize?: () => void,
+  ): Promise<void> {
     const expected = this.#head.revision;
     const revision = opaqueId();
     this.#head = { ...this.#head, ...extra, revision, manifest: opaqueId(), phase: manifest.phase };
     this.#manifest = { ...manifest, revision };
     try {
-      await this.#persist(expected);
+      await this.#persist(expected, authorize);
     } catch (e) {
       this.lock();
       throw e;
@@ -375,6 +382,7 @@ export class SealedProject {
     try {
       this.#assert();
       if ((await digest(bytes)) !== e.hash) throw new ProtectionError('INTEGRITY_OR_KEY_FAILURE');
+      this.#assert();
       return bytes;
     } catch (error) {
       bytes.fill(0);
@@ -387,6 +395,12 @@ export class SealedProject {
   async writeBatch(
     changes: readonly { readonly path: string; readonly bytes: Uint8Array; readonly role: Role }[],
   ): Promise<void> {
+    return this.#writeBatch(changes);
+  }
+  async #writeBatch(
+    changes: readonly { readonly path: string; readonly bytes: Uint8Array; readonly role: Role }[],
+    authorize?: () => void,
+  ): Promise<void> {
     const paths = new Set<string>();
     for (const item of changes) {
       safePath(item.path);
@@ -394,6 +408,7 @@ export class SealedProject {
       paths.add(item.path);
     }
     return this.#queue(async () => {
+      authorize?.();
       const entries = { ...this.#manifest.entries };
       let changed = false;
       for (let i = 0; i < changes.length; i += 16) {
@@ -405,17 +420,23 @@ export class SealedProject {
             const object = opaqueId();
             const cipher = await encrypt(bytes, this.#key, { ...this.#head, object });
             this.#assert();
+            authorize?.();
             await this.store.put(object, cipher);
             entries[path] = { object, hash, role };
             changed = true;
           }),
         );
       }
+      authorize?.();
       if (!changed) return;
-      await this.#change({
-        ...this.#manifest,
-        entries,
-      });
+      await this.#change(
+        {
+          ...this.#manifest,
+          entries,
+        },
+        {},
+        authorize,
+      );
     });
   }
   async setMigration(phase: Phase, migration: Migration | null): Promise<void> {
@@ -450,6 +471,11 @@ export class SealedProject {
       this.identity,
       'a0-authority+jws',
     );
+  }
+  /** Authorize privileged host maintenance without changing encrypted project state. */
+  async assertOwner(): Promise<void> {
+    this.#assert();
+    await this.#requireOwner();
   }
   async #requireOwner(): Promise<void> {
     if (
@@ -570,10 +596,14 @@ export class SealedProject {
         }
       },
       write: async (path, source) => {
-        allow(path);
+        const authorize = (): void => {
+          allow(path);
+          if (this.#manifest.phase !== 'on') throw new ProtectionError('MIGRATION_IN_PROGRESS');
+        };
+        authorize();
         const bytes = utf8.encode(source);
         try {
-          await this.write(path, bytes);
+          await this.#writeBatch([{ path, bytes, role: 'source' }], authorize);
         } finally {
           bytes.fill(0);
         }

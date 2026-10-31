@@ -2107,7 +2107,7 @@ test('x86_64 backend: io goes through module helpers sized by the io capacities'
   // ninput at 4 * 8, position at 36, output at 40, noutput at 40 + 4 * 16.
   assert.match(text, /\.La0io_read:\n\tmovl 36\(%r11\), %eax\n\tcmpl 32\(%r11\), %eax/);
   assert.match(text, /\.La0io_write:\n\tmovl 104\(%r11\), %r10d\n\tcmpl \$16, %r10d/);
-  assert.doesNotMatch(text, /La0io_sread|La0io_puts|a0_trap/);
+  assert.doesNotMatch(text, /La0io_sread|La0io_puts|a0r_trap/);
   // The strict read traps `input` through the trap runtime.
   const strict = compile(
     parseAndValidate('profile strict\nfn r io -> u32\nx read p0\nv at x 0\nret v\nend'),

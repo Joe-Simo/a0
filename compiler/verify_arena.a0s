@@ -53,6 +53,14 @@ fn sv_append(q:(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),off:u32,n:u3
  let v=q#0
  return fold(sv_appendgo,v[0]==0?1:0,q,off,n,page)
 end
+raw # Preserve failure-only scalar/example context for the native diagnostic renderer.
+fn sv_diagnostic_context(q:(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
+ let a=av_append(q#6,(0,0,0),128,q#0)
+ let m=set(q#1,127,a#1#0)
+ let m=set(m,0,a#0==0?m[0]:a#0)
+ let v=set(q#0,0,a#0==0?get(q#0,0):a#0)
+ return (v,m,q#2,q#3,q#4,q#5,a#2)
+end
 fn sv_semantic(q:(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),id:u32,kind:u32,phase:u32) -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
  let v=q#0
  let active=(v[0]==0)&(id!=0)
@@ -69,7 +77,8 @@ fn sv_semantic(q:(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),id:u32,kin
  let m=set(m,3,active?0:m[3])
  let m=set(m,4,active?0:m[4])
  let m=set(m,5,active?kind:m[5])
- return (v,m,q#2,q#3,q#4,q#5,q#6)
+ let out=(v,m,q#2,q#3,q#4,q#5,q#6)
+ return fold(sv_diagnostic_context,active&(id==715)&(kind==3)?1:0,out)
 end
 fn sv_body(q:(u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io),i:u32) -> (u32x128,u32x128,u32x128,u32x128,u32x128,u32x128,io)
  let v=q#0

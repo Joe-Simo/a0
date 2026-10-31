@@ -1,0 +1,43 @@
+{
+  "baseline": "a44ba500dd7ef38e097ecbc83c22795aa330fd44",
+  "scope": "Explicit authenticated recovery of one same-scope dead managed plaintext writer lease; no automatic age-based deletion.",
+  "baselineReproduction": {
+    "termination": "SIGKILL",
+    "remainingLeases": 1,
+    "error": "PLAINTEXT_WRITERS_ACTIVE",
+    "oldMetadata": "PID only, insufficient for safe recovery"
+  },
+  "focused": {
+    "tests": 40,
+    "pass": 40,
+    "fail": 0,
+    "skipped": 0
+  },
+  "cases": [
+    "live writer refused",
+    "actual crashed child; nested and root leases recovered independently",
+    "wrong approval digest refused",
+    "legacy and foreign/unknown scope refused",
+    "filename/owner mismatch refused",
+    "relative path containment",
+    "symlink and hardlink refused",
+    "competing recovery refused",
+    "CLI recipient refused",
+    "CLI owner accepted",
+    "incomplete project owner unverifiable"
+  ],
+  "boundaries": [
+    "Linux current boot and PID namespace only",
+    "cooperating processes and trusted local filesystem",
+    "legacy PID-only leases need manual review",
+    "external custom-cache leases outside authenticated project not recovered",
+    "arbitrary external writers not controlled",
+    "production security review and full-platform validation pending"
+  ],
+  "nativeCost": {
+    "retainedChange": false,
+    "reason": "Existing owned reply loop already mutates in place. Remaining immutable call results and snapshot protocol buffers require lifetime or ownership changes; vector growth cannot discard observable old handles.",
+    "priorBulkExperiments": "Both rejected, preserved separately. No new native performance claim."
+  },
+  "aggregate": "Pending exact-tree available validation; no full-platform pass claimed."
+}

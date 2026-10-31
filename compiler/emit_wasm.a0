@@ -10958,15 +10958,21 @@ p set o n 2
 q get p0 m
 r select l p q
 s set p0 m r
-t select h c 0
+# Frames are 0..3. A rejected inline probe must not write frame 4,
+# which aliases the outer loop context at word 640. Keep wxcan running
+# to reset its result and preserve the ordinary-call fallback.
+hd lt a 3
+hp and h hd
+pc select hp 1 0
+t select hp c 0
 u fold wxsrc t s a d p5
 v select h 1 0
 zsl0 add a 1
-zsl2 fold wxfs 1 u zsl0 9 0
-zsl3 fold wxfs 1 zsl2 zsl0 18 0
-zsl4 fold wxfs 1 zsl3 zsl0 22 0
-zsl5 fold wxfs 1 zsl4 zsl0 24 0
-zsl1 fold wxfs 1 zsl5 zsl0 25 0
+zsl2 fold wxfs pc u zsl0 9 0
+zsl3 fold wxfs pc zsl2 zsl0 18 0
+zsl4 fold wxfs pc zsl3 zsl0 22 0
+zsl5 fold wxfs pc zsl4 zsl0 24 0
+zsl1 fold wxfs pc zsl5 zsl0 25 0
 zqw fold wxcan v zsl1 a e 0 8 0 p3 p4 p5 p6 p7 p8 p9 p10 0
 zqx shr 16 7
 zqy and 16 127

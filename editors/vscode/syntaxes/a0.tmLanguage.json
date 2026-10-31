@@ -10,6 +10,9 @@
       "include": "#comment"
     },
     {
+      "include": "#profile"
+    },
+    {
       "include": "#use"
     },
     {
@@ -56,11 +59,11 @@
       "patterns": [
         {
           "name": "support.type.primitive.a0",
-          "match": "\\b(u32|bool|io)(?=x[0-9]|[\\s,)]|$)"
+          "match": "\\b(_|u32|bool|io)(?=x[0-9]|[\\s,)]|$)"
         },
         {
           "name": "constant.numeric.length.a0",
-          "match": "(?<=[a-z0-9)])x[0-9]+"
+          "match": "(?<=[a-z0-9_)])x[0-9]+"
         },
         {
           "name": "punctuation.definition.tuple.a0",
@@ -113,6 +116,10 @@
           "include": "#string"
         },
         {
+          "name": "keyword.operator.shift.a0",
+          "match": "\\G\\s*(<<|>>)"
+        },
+        {
           "match": "\\G\\s*(call|fold)\\s+([a-z][a-z0-9_]*)",
           "captures": {
             "1": {
@@ -154,7 +161,7 @@
           }
         },
         {
-          "match": "\\G\\s*([a-z][a-z0-9_]*)(?=\\s+\\S)",
+          "match": "\\G\\s*([a-z][a-z0-9_]*)(?=\\s+(?:\\S)|\\s*$)",
           "captures": {
             "1": {
               "name": "entity.name.function.call.a0"
@@ -167,7 +174,7 @@
         },
         {
           "name": "variable.parameter.a0",
-          "match": "\\bp(0|[1-9][0-9]*)\\b"
+          "match": "\\b([A-Z]|p(0|[1-9][0-9]*))\\b"
         },
         {
           "name": "constant.numeric.integer.a0",
@@ -176,6 +183,10 @@
         {
           "name": "variable.other.a0",
           "match": "\\b[a-z][a-z0-9_]*\\b"
+        },
+        {
+          "name": "punctuation.definition.aggregate.a0",
+          "match": "[\\[\\](),;*]"
         }
       ]
     },
@@ -297,9 +308,20 @@
         },
         {
           "name": "punctuation.definition.aggregate.a0",
-          "match": "[\\[\\]();,]"
+          "match": "[\\[\\]();,*]"
         }
       ]
+    },
+    "profile": {
+      "match": "^\\s*(profile)\\s+(strict)\\b",
+      "captures": {
+        "1": {
+          "name": "keyword.control.profile.a0"
+        },
+        "2": {
+          "name": "keyword.control.profile.a0"
+        }
+      }
     }
   }
 }
