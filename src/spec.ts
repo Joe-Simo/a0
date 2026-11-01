@@ -210,7 +210,9 @@ class Scanner {
     }
     return this.fail(
       `'${word}' is not a literal`,
-      'a literal is a number, true, false, an array [1;2;3] or a record (1;true)',
+      this.compact
+        ? 'a literal is a number, true, false, an array [1 2 3] or a record (1 true)'
+        : 'a literal is a number, true, false, an array [1;2;3] or a record (1;true)',
     );
   }
 

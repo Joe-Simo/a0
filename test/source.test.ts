@@ -110,3 +110,42 @@ test('candidate alias diagnostics retain original words and public parsing defau
   );
   failure(() => parseSource('fn f\nret (>> A 1)\nend\n'), 'A0010', 'nested operand', 'ret >> A 1');
 });
+
+test('candidate spec literal repairs use executable candidate aggregate syntax', () => {
+  const hint = 'a literal is a number, true, false, an array [1 2 3] or a record (1 true)';
+  for (const example of ['ex nope -> 1', 'ex 1 -> nope', 'ex [1 nope] -> 1', 'ex (1 nope) -> 1']) {
+    assert.throws(
+      () => parseSource(`fn f\n${example}\nret A\nend\n`),
+      (error) => {
+        assert.ok(error instanceof A0Error);
+        assert.equal(error.id, 'A0714');
+        assert.equal(error.line, 2);
+        assert.equal(error.fix, hint);
+        return true;
+      },
+    );
+  }
+  for (const [type, value] of [
+    ['_x3', '[1 2 3]'],
+    ['(_,bool)', '(1 true)'],
+  ]) {
+    assert.ok(value && hint.includes(value));
+    const program = validate(
+      parseSource(`fn f -> ${type}\nex -> ${value}\nx ${value}\nret x\nend\n`),
+    );
+    const fn = program.byName.get('f');
+    assert.ok(fn);
+    assert.deepEqual(run(fn, []), value.startsWith('[') ? [1, 2, 3] : [1, true]);
+  }
+  assert.throws(
+    () => parseAndValidate('fn f u32 -> u32\nex nope -> 1\nret p0\nend\n'),
+    (error) => {
+      assert.ok(error instanceof A0Error);
+      assert.equal(
+        error.fix,
+        'a literal is a number, true, false, an array [1;2;3] or a record (1;true)',
+      );
+      return true;
+    },
+  );
+});
