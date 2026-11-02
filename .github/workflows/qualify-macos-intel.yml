@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [reader, other]
+        suite: [reader-a, reader-b, other]
     runs-on: macos-15-intel
     timeout-minutes: 75
     steps:
@@ -45,7 +45,9 @@ jobs:
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import { readdirSync } from 'node:fs';
+          import { readFileSync } from 'node:fs';
           import { spawnSync } from 'node:child_process';
+          import ts from 'typescript';
           const all = readdirSync('dist/test').filter(name => name.endsWith('.test.js')).sort();
           const reader = all.filter(name => name === 'dense-a0.test.js');
           const other = all.filter(name => name !== 'dense-a0.test.js');
@@ -53,10 +55,35 @@ jobs:
           assert.ok(other.length > 0);
           assert.deepEqual([...reader, ...other].sort(), all);
           const suite = process.env.A0_TEST_PARTITION;
-          assert.ok(suite === 'reader' || suite === 'other');
-          const selected = suite === 'reader' ? reader : other;
-          console.log(JSON.stringify({ suite, allFileCount: all.length, selected }));
-          const result = spawnSync(process.execPath, ['--test', ...selected.map(name => 'dist/test/' + name)], { stdio: 'inherit' });
+          assert.ok(['reader-a', 'reader-b', 'other'].includes(suite));
+          let args;
+          if (suite === 'other') {
+            args = ['--test', ...other.map(name => 'dist/test/' + name)];
+            console.log(JSON.stringify({ suite, allFileCount: all.length, selected: other }));
+          } else {
+            const source = ts.createSourceFile('reader.ts', readFileSync('test/dense-a0.test.ts', 'utf8'), ts.ScriptTarget.Latest, true);
+            const names = [];
+            function visit(node) {
+              if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'test') {
+                assert.ok(node.arguments[0] && ts.isStringLiteral(node.arguments[0]), 'reader test names must be static');
+                names.push(node.arguments[0].text);
+              }
+              if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'test') {
+                assert.fail('reader test modifiers require explicit partition support');
+              }
+              ts.forEachChild(node, visit);
+            }
+            visit(source);
+            assert.ok(names.length > 1);
+            assert.equal(new Set(names).size, names.length, 'reader test names must be unique');
+            const partitions = [names.filter((_, i) => i % 2 === 0), names.filter((_, i) => i % 2 === 1)];
+            assert.deepEqual(partitions.flat().sort(), [...names].sort());
+            const selected = partitions[suite === 'reader-a' ? 0 : 1];
+            const escape = name => Array.from(name, c => '.^$*+?()[]{}|'.includes(c) || c.charCodeAt(0) === 92 ? String.fromCharCode(92) + c : c).join('');
+            args = ['--test', '--test-name-pattern=^(?:' + selected.map(escape).join('|') + ')$', 'dist/test/dense-a0.test.js'];
+            console.log(JSON.stringify({ suite, allFileCount: all.length, readerTests: names.length, selectedNames: selected }));
+          }
+          const result = spawnSync(process.execPath, args, { stdio: 'inherit' });
           if (result.error) throw result.error;
           process.exit(result.status ?? 1);
           JS
@@ -66,7 +93,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Require both complete unit partitions
+      - name: Require all complete unit partitions
         env:
           UNIT_RESULT: ${{ needs.unit.result }}
         run: test "$UNIT_RESULT" = success

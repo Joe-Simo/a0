@@ -101,8 +101,11 @@ fix and is not evidence for the newer tree.
 The [decimal-distance study](../results/decimal-distance-20261102.json) records a
 bounded optimization of native integer formatting, with exact output checks and
 separate runtime, compile-cost, size and memory measurements. This workload is
-separate from the native frontend acceptance budget; the Intel timeout remains
-unqualified until the unchanged oracle passes on that platform.
+separate from the native frontend acceptance budget. The unchanged decimal oracle
+now passes on hosted Intel. The [unit qualification report](../results/cloud-unit-qualification-20261102.json)
+records passing Linux, ARM macOS and Windows checks for the measured commit, plus
+the separate Intel reader timeout and its exhaustive scheduling correction.
+Full Intel qualification remains pending; platform skips remain explicit.
 
 The current local review is scoped source review plus adversarial tests. It is not a hosted
 Codex Security scan, independent cryptographic certification or production-security approval.
