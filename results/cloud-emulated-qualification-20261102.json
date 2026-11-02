@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "scope": "Existing deterministic corpus and strict reference tests on QEMU system emulators. Not physical-device qualification, exhaustive proof or a runtime benchmark.",
+  "subject": "15c604b066bf1b18813c89a2f59efc1e11d68407",
+  "tree": "05d97b09e3641e1f866d04f42a727ef6f90606e7",
+  "run": "https://github.com/Joe-Simo/a0/actions/runs/41418701583",
+  "runner": "ubuntu-24.04 standard public-repository runner",
+  "artifactUploads": 0,
+  "cacheUploads": 0,
+  "initialAttempt": {
+    "subject": "48ddd9892ee187f1fca41c751681890479143b58",
+    "run": "https://github.com/Joe-Simo/a0/actions/runs/41418196775",
+    "status": "failed",
+    "details": "RISC-V canonical corpus passed. The new strict wrapper incorrectly reused canonical BigInt expectations; replaced with the unchanged existing strict reference test. ARM32 could not start QEMU without ipxe-qemu's efi-virtio.rom; the distribution runtime dependency was added."
+  },
+  "targets": {
+    "riscv64": {
+      "canonical": {
+        "inputCases": 5262,
+        "corpusSha256": "2e98e7f28506960f2dba25829bacdc5e9445eaf218ba4d43de9c01c6eae313b5",
+        "corpusSeed": 10534639,
+        "inputSeed": 305419896,
+        "oracle": "Existing independent BigInt oracle; interpreter and optimizer controls passed.",
+        "status": "passed",
+        "cases": 4297,
+        "detail": "native RISC-V RV64 assembly (src/riscv64.ts) via `riscv64-elf-gcc -march=rv64gc -mabi=lp64`, linked with the C test driver over a bare-metal libc shim (UART out, embedded input), executed under qemu-system-riscv64 (virt board, no firmware); 10 io functions (965 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
+        "tool": "riscv64-unknown-elf-gcc (13.2.0-11ubuntu1+12) 13.2.0; QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+        "skippedIoFunctions": 10,
+        "skippedIoCases": 965
+      },
+      "strict": {
+        "test": "riscv64, arm32 and avr: the strict corpus equals the interpreter, value or trap line, on every case (optimized and not)",
+        "status": "passed",
+        "tests": 1,
+        "failures": 0,
+        "skippedTests": 0,
+        "oracle": "Existing interpreter-derived values and exact traps, distinct from the canonical BigInt oracle.",
+        "caseAccounting": {
+          "cases": 4297,
+          "traps": 3597,
+          "strictCorpusSha256": "379163458c9bd949c434a99fda3c55d5bccf2dfa183d764e47ac8fe8b7000f42",
+          "method": "Locally recomputed from the unchanged existing strict test construction on the same source. The remote TAP log reports the named test pass, not per-case totals."
+        },
+        "limitation": "Only the installed target is qualified by this job; other unavailable targets inside the shared test are not claimed."
+      }
+    },
+    "arm32": {
+      "canonical": {
+        "inputCases": 5262,
+        "corpusSha256": "2e98e7f28506960f2dba25829bacdc5e9445eaf218ba4d43de9c01c6eae313b5",
+        "corpusSeed": 10534639,
+        "inputSeed": 305419896,
+        "oracle": "Existing independent BigInt oracle; interpreter and optimizer controls passed.",
+        "status": "passed",
+        "cases": 4297,
+        "detail": "native 32-bit ARM assembly (src/arm32.ts, ARMv7-A ARM mode, AAPCS hard-float) assembled and linked with the C test driver by `arm-none-eabi-gcc` (newlib, semihosting), executed on an emulated Cortex-A7 (`qemu-system-arm -M virt`); 10 io functions (965 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
+        "tool": "arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009; QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+        "skippedIoFunctions": 10,
+        "skippedIoCases": 965
+      },
+      "strict": {
+        "test": "riscv64, arm32 and avr: the strict corpus equals the interpreter, value or trap line, on every case (optimized and not)",
+        "status": "passed",
+        "tests": 1,
+        "failures": 0,
+        "skippedTests": 0,
+        "oracle": "Existing interpreter-derived values and exact traps, distinct from the canonical BigInt oracle.",
+        "caseAccounting": {
+          "cases": 4297,
+          "traps": 3597,
+          "strictCorpusSha256": "379163458c9bd949c434a99fda3c55d5bccf2dfa183d764e47ac8fe8b7000f42",
+          "method": "Locally recomputed from the unchanged existing strict test construction on the same source. The remote TAP log reports the named test pass, not per-case totals."
+        },
+        "limitation": "Only the installed target is qualified by this job; other unavailable targets inside the shared test are not claimed."
+      }
+    },
+    "avr": {
+      "canonical": {
+        "inputCases": 5262,
+        "corpusSha256": "2e98e7f28506960f2dba25829bacdc5e9445eaf218ba4d43de9c01c6eae313b5",
+        "oracle": "Existing independent BigInt oracle; interpreter and optimizer controls passed.",
+        "status": "passed",
+        "cases": 4297,
+        "detail": "native AVR assembly for the ATmega328P (src/avr.ts) via avr-as, linked with an avr-gcc C driver per function (cases in program memory, results on UART0), executed under libsimavr; 10 io functions (965 cases) skipped: io is out of scope for this backend; every io-free function fits the part; optimized and unoptimized emissions each executed on every case run",
+        "tool": "avr-gcc (GCC) 7.3.0; simavr",
+        "skippedIoFunctions": 10,
+        "skippedIoCases": 965,
+        "skippedLimitFunctions": 0,
+        "skippedLimitCases": 0,
+        "skips": []
+      },
+      "strict": {
+        "status": "passed",
+        "test": "riscv64, arm32 and avr: the strict corpus equals the interpreter, value or trap line, on every case (optimized and not)",
+        "tests": 1,
+        "failures": 0,
+        "skippedTests": 0,
+        "oracle": "Existing interpreter-derived values and exact traps.",
+        "limitation": "The existing test asserts more than 1000 executed cases and reports one TAP pass. Exact strict AVR execution/resource counts were not emitted; no exact strict case count is claimed."
+      }
+    }
+  },
+  "additionalAvrRun": {
+    "subject": "f82eba6b27fc95149e436b966bbc70a7f02bc403",
+    "tree": "8f71bcc5145d0f3911f589fb160d54b57f3ce177",
+    "run": "https://github.com/Joe-Simo/a0/actions/runs/41420047115",
+    "status": "passed",
+    "artifactUploads": 0,
+    "controls": "RISC-V and ARM32 canonical corpus and existing strict test also passed on this commit.",
+    "priorProbe": {
+      "subject": "dff6c99bf5be84b423b6e96723d7da8b2a029638",
+      "run": "https://github.com/Joe-Simo/a0/actions/runs/41419313808",
+      "status": "failed",
+      "cause": "Installed libsimavr was not discovered at the distribution multiarch path."
+    },
+    "discovery": "Retains direct prefix/lib precedence; otherwise requires matching pkg-config prefix, an absolute library directory and the actual libsimavr.a file.",
+    "syntheticDiscoveryTests": {
+      "baselinePassed": 7,
+      "baselineFailed": 2,
+      "correctedPassed": 9,
+      "correctedFailed": 0
+    }
+  }
+}

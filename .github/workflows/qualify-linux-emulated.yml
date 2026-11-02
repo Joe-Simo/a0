@@ -1,0 +1,82 @@
+name: qualify-linux-emulated
+# Existing corpus/oracle/backend checks on QEMU, not physical hardware qualification.
+# Standard public runners only; no persistent cache or artifact uploads.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['validation/linux-emulated-*']
+permissions:
+  contents: read
+jobs:
+  corpus:
+    name: ${{ matrix.target }} corpus
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: riscv64
+            packages: gcc-riscv64-unknown-elf qemu-system-misc
+          - target: avr
+            packages: gcc-avr avr-libc libsimavr-dev libelf-dev clang pkg-config
+          - target: arm32
+            packages: gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm ipxe-qemu
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.4
+          no-cache: true
+      - name: Install distribution toolchains
+        env:
+          A0_PACKAGES: ${{ matrix.packages }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $A0_PACKAGES
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Run existing corpus and strict reference checks
+        env:
+          A0_TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD HEAD^{tree}
+          corpus_status=0
+          node --input-type=module <<'JS' || corpus_status=$?
+          import { generateCorpus, generateCases, corpusSha256, CORPUS_SEED, INPUT_SEED } from './dist/tools/corpus.js';
+          import { checkInterpreter, checkOptimizer, checkRiscv64, checkArm32, checkAvr } from './dist/tools/verify.js';
+          import { findRiscv64Gcc, findQemuRiscv64, findArmGcc, findQemuSystemArm, findAvrGcc, findClang, findSimavr } from './dist/src/toolchain.js';
+          const target = process.env.A0_TARGET;
+          if (!['riscv64', 'arm32', 'avr'].includes(target)) throw new Error('unexpected target');
+          let failed = false;
+          {
+            const profile = 'canonical';
+            const program = generateCorpus();
+            const cases = generateCases(program);
+            const interpreter = checkInterpreter(program, cases);
+            const optimizer = checkOptimizer(program, cases);
+            const native = target === 'riscv64'
+              ? await checkRiscv64(program, cases, findRiscv64Gcc(), findQemuRiscv64())
+              : target === 'arm32'
+                ? await checkArm32(program, cases, findArmGcc(), findQemuSystemArm())
+                : await checkAvr(program, cases, findAvrGcc(), findClang());
+            if (target === 'avr') console.log(JSON.stringify({simavr: findSimavr()}));
+            console.log(JSON.stringify({
+              target, profile, execution: target === 'avr' ? 'libsimavr emulation, not physical hardware' : 'QEMU system emulation, not physical hardware',
+              node: process.version, platform: `${process.platform}-${process.arch}`,
+              corpusSeed: CORPUS_SEED, inputSeed: INPUT_SEED, corpusSha256: corpusSha256(program),
+              inputCases: cases.length, interpreter, optimizer, native,
+            }, null, 2));
+            if ([interpreter, optimizer, native].some(row => row.status !== 'passed')) failed = true;
+          }
+          if (failed) process.exitCode = 1;
+          JS
+          # The existing strict test constructs interpreter value/trap expectations;
+          # canonical BigInt cases must not be reused as strict expectations.
+          strict_status=0
+          node --test --test-name-pattern='^riscv64, arm32 and avr: the strict corpus equals the interpreter' dist/test/strict-targets.test.js || strict_status=$?
+          test "$corpus_status" -eq 0
+          test "$strict_status" -eq 0

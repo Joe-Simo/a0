@@ -17,10 +17,10 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { compile } from '../src/backends.js';
 import { formatProgram, formatSource, parse, run } from '../src/core.js';
-import { parseDense } from '../src/dense.js';
+import { formatDense, parseDense } from '../src/dense.js';
 import { programRevision } from '../src/edit.js';
 import { link } from '../src/link.js';
-import { migrateProject } from '../src/migrate.js';
+import { migrateProject, migrateWithCodec } from '../src/migrate.js';
 import { TARGETS } from '../src/targets.js';
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -226,6 +226,114 @@ test('migration refuses invalid UTF-8 rather than silently changing source bytes
     await assert.rejects(migrateProject(entry, output), /valid UTF-8/);
     assert.deepEqual(await readFile(entry), bytes);
     await assert.rejects(access(output));
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+});
+
+test('migration preserves data added to its reserved destination before publication', async () => {
+  const scratch = await mkdtemp(join(tmpdir(), 'a0-migrate-race-'));
+  try {
+    const entry = join(scratch, 'main.a0'),
+      output = join(scratch, 'output');
+    await writeFile(entry, 'fn main -> u32\nret 1\nend\n');
+    await assert.rejects(
+      migrateWithCodec(entry, output, scratch, false, {
+        extension: '.a0d',
+        print: (program, known) => formatDense(program, { known, comments: true }),
+        parse: (text, known) => parseDense(text, { known }),
+        link: async (...args) => {
+          await writeFile(join(output, 'keep'), 'concurrent data');
+          return link(...args);
+        },
+      }),
+    );
+    assert.equal(await read(join(output, 'keep')), 'concurrent data');
+    assert.deepEqual(await readdir(output), ['keep']);
+    assert.equal(
+      (await readdir(scratch)).some((name) => name.startsWith('.a0-migrate-')),
+      false,
+    );
+    assert.equal(await read(entry), 'fn main -> u32\nret 1\nend\n');
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+});
+
+for (const kind of ['empty', 'populated', 'file'])
+  test(`Windows migration preserves a competing ${kind} destination at publication`, {
+    skip: process.platform !== 'win32' ? 'Windows publication race' : false,
+  }, async () => {
+    const scratch = await mkdtemp(join(tmpdir(), 'a0-migrate-publish-race-'));
+    try {
+      const entry = join(scratch, 'main.a0'),
+        output = join(scratch, 'output');
+      await writeFile(entry, 'fn main -> u32\nret 1\nend\n');
+      const module = new URL('../src/migrate.js', import.meta.url).href;
+      const child = spawnSync(
+        process.execPath,
+        [
+          '--input-type=module',
+          '-e',
+          `
+        import fs from 'node:fs/promises';
+        import {syncBuiltinESMExports} from 'node:module';
+        const rmdir = fs.rmdir;
+        let injected = false;
+        fs.rmdir = async (target, ...args) => {
+          const result = await rmdir(target, ...args);
+          if (target === ${JSON.stringify(output)}) {
+            if (${JSON.stringify(kind)} === 'file') await fs.writeFile(target, 'preserved');
+            else {
+              await fs.mkdir(target);
+              if (${JSON.stringify(kind)} === 'populated')
+                await fs.writeFile(target + '/keep', 'preserved');
+            }
+            injected = true;
+          }
+          return result;
+        };
+        syncBuiltinESMExports();
+        const {migrateProject} = await import(${JSON.stringify(module)});
+        let refused = false;
+        try { await migrateProject(${JSON.stringify(entry)}, ${JSON.stringify(output)}); }
+        catch { refused = true; }
+        if (!injected || !refused) throw new Error('publication race was not refused');
+      `,
+        ],
+        { encoding: 'utf8', timeout: 30_000 },
+      );
+      assert.equal(child.status, 0, child.stderr);
+      if (kind === 'file') assert.equal(await read(output), 'preserved');
+      else {
+        assert.deepEqual(await readdir(output), kind === 'empty' ? [] : ['keep']);
+        if (kind === 'populated') assert.equal(await read(join(output, 'keep')), 'preserved');
+      }
+      assert.equal(
+        (await readdir(scratch)).some((name) => name.startsWith('.a0-migrate-')),
+        false,
+      );
+      assert.equal(await read(entry), 'fn main -> u32\nret 1\nend\n');
+    } finally {
+      await rm(scratch, { recursive: true, force: true });
+    }
+  });
+
+test('migration treats shell-significant path characters as data', async () => {
+  const scratch = await mkdtemp(join(tmpdir(), 'a0-migrate-path-data-'));
+  try {
+    const input = join(scratch, "input ' ; $() & [literal]");
+    const output = join(scratch, "output ' ; $() & [literal]");
+    await mkdir(input);
+    const entry = join(input, 'main.a0');
+    await writeFile(entry, 'fn main -> u32\nret 1\nend\n');
+    const manifest = await migrateProject(entry, output);
+    assert.equal(manifest.entry, 'main.a0d');
+    assert.equal(
+      (await link(join(output, manifest.entry), read, { root: output })).program.functions.length,
+      1,
+    );
+    assert.equal(await read(entry), 'fn main -> u32\nret 1\nend\n');
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }

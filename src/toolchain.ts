@@ -23,7 +23,7 @@ import {
 } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
-import { basename, delimiter, dirname, join } from 'node:path';
+import { basename, delimiter, dirname, isAbsolute, join } from 'node:path';
 import { A0Error } from './core.js';
 
 export interface ToolResult {
@@ -347,25 +347,47 @@ export function findAvrGcc(): ToolInfo {
 /** A libsimavr install (headers and static library) for an in-process AVR simulator host. */
 export function findSimavr(): {
   readonly prefix: string | undefined;
+  readonly libraryDirectory: string | undefined;
   readonly version: string | undefined;
 } {
-  const prefix = [
+  let prefix: string | undefined, libraryDirectory: string | undefined;
+  let metadata: { prefix: string; library: string } | null | undefined;
+  for (const candidate of [
     process.env.A0_SIMAVR_PREFIX,
     '/opt/homebrew',
     '/usr/local',
     '/usr',
     ...(process.platform === 'win32' ? ['C:\\msys64\\ucrt64', 'C:\\msys64\\mingw64'] : []),
-  ].find(
-    (p) =>
-      p !== undefined &&
-      existsSync(join(p, 'include', 'simavr', 'sim_avr.h')) &&
-      existsSync(join(p, 'lib', 'libsimavr.a')),
-  );
+  ]) {
+    if (candidate === undefined || !existsSync(join(candidate, 'include', 'simavr', 'sim_avr.h')))
+      continue;
+    let library = join(candidate, 'lib');
+    if (!existsSync(join(library, 'libsimavr.a'))) {
+      // Distribution packages can place libraries in an architecture-specific directory.
+      // Accept metadata only for this prefix and only when the actual library exists.
+      if (metadata === undefined) {
+        metadata = null;
+        const pkg = onPath('pkg-config');
+        if (pkg !== undefined) {
+          const root = runTool(pkg, ['--variable=prefix', 'simavr'], { timeoutMs: 5000 });
+          const dir = runTool(pkg, ['--variable=libdir', 'simavr'], { timeoutMs: 5000 });
+          if (root.ok && dir.ok)
+            metadata = { prefix: root.stdout.trim(), library: dir.stdout.trim() };
+        }
+      }
+      if (metadata?.prefix !== candidate || !isAbsolute(metadata.library)) continue;
+      library = metadata.library;
+      if (!existsSync(join(library, 'libsimavr.a'))) continue;
+    }
+    prefix = candidate;
+    libraryDirectory = library;
+    break;
+  }
   // simavr has no --version; a Homebrew keg's directory name carries it.
   const keg = prefix === undefined ? undefined : join(prefix, 'opt', 'simavr');
   const version =
     keg !== undefined && existsSync(keg) ? `simavr ${basename(realpathSync(keg))}` : undefined;
-  return { prefix, version };
+  return { prefix, libraryDirectory, version };
 }
 
 /**

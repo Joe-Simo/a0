@@ -32,16 +32,18 @@ jobs:
           dotnet-version: '10.0.x'
       - uses: msys2/setup-msys2@cafece8e6baf9247cf9b1bf95097b0b983cc558d # v2.31.0
         with:
-          msystem: UCRT64
+          msystem: CLANG64
           path-type: inherit
           update: true
           cache: false
           install: >-
             diffutils
             mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-clang
             mingw-w64-ucrt-x86_64-winpthreads
-      - name: Existing lint, types and available unit checks
+            mingw-w64-clang-x86_64-clang
+            mingw-w64-clang-x86_64-compiler-rt
+            mingw-w64-clang-x86_64-lld
+      - name: Sanitizers, focused portability and available unit checks
         shell: msys2 {0}
         env:
           A0_DOTNET: dotnet
@@ -50,12 +52,41 @@ jobs:
           mkdir -p .a0-tmp/windows-unit
           export TMPDIR="$(pwd)/.a0-tmp/windows-unit"
           export TMP="$(cygpath -w "$TMPDIR")" TEMP="$(cygpath -w "$TMPDIR")"
-          export A0_CLANG="$(cygpath -w /ucrt64/bin/clang.exe)"
-          export A0_CLANGXX="$(cygpath -w /ucrt64/bin/clang++.exe)"
+          export A0_CLANG="$(cygpath -w /clang64/bin/clang.exe)"
+          export A0_CLANGXX="$(cygpath -w /clang64/bin/clang++.exe)"
+          export A0_GCC="$(cygpath -w /ucrt64/bin/gcc.exe)"
+          export PATH="$PATH:/ucrt64/bin"
           node -p 'process.platform + "/" + process.arch'
+          cat > .a0-tmp/windows-unit/sanitizers.c <<'C'
+          #include <limits.h>
+          #include <stdlib.h>
+          int main(int argc, char **argv) {
+            if (argc == 1) return 0;
+            if (argv[1][0] == 'u') { volatile int value = INT_MAX; return value + argc; }
+            volatile int *value = malloc(sizeof(int));
+            if (!value) return 2;
+            value[1] = argc;
+            free((void *)value);
+            return 0;
+          }
+          C
+          /clang64/bin/clang -O1 -fsanitize=address,undefined -fno-sanitize-recover=all .a0-tmp/windows-unit/sanitizers.c -o .a0-tmp/windows-unit/sanitizers.exe
+          .a0-tmp/windows-unit/sanitizers.exe
+          if .a0-tmp/windows-unit/sanitizers.exe u > .a0-tmp/windows-unit/ubsan.log 2>&1; then
+            echo 'UBSan failed to reject the controlled overflow' >&2
+            exit 1
+          fi
+          grep -q 'runtime error: signed integer overflow' .a0-tmp/windows-unit/ubsan.log
+          if .a0-tmp/windows-unit/sanitizers.exe a > .a0-tmp/windows-unit/asan.log 2>&1; then
+            echo 'ASan failed to reject the controlled out-of-bounds write' >&2
+            exit 1
+          fi
+          grep -q 'AddressSanitizer: heap-buffer-overflow' .a0-tmp/windows-unit/asan.log
           bun install --frozen-lockfile
           bun run lint
           bun run typecheck
+          bun run build
+          node --test dist/test/arena-backend-context.test.js dist/test/editors.test.js dist/test/migrate.test.js dist/test/protection-path-binding.test.js
           # Preserve test execution and exit status; bound console diagnostics so
           # large assertion values cannot make the job log unreadable by clients.
           test_status=0
