@@ -175,7 +175,9 @@ await writeReport(join(out, 'build.json'), {
   inputs: await Promise.all(
     [
       ...new Set([
-        ...linked.sources.map((source) => relative(process.cwd(), resolve(source.path))),
+        ...linked.sources.map((source) =>
+          relative(process.cwd(), resolve(source.path)).replaceAll('\\', '/'),
+        ),
         ...execFileSync('git', ['ls-files', 'src/*.ts'], { encoding: 'utf8' }).trim().split('\n'),
         'tools/native/arena_runtime.c',
         'tools/native/arena_runtime.h',

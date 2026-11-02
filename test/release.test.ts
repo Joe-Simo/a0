@@ -111,7 +111,11 @@ test('release: exact uploaded assets include the checksummed license pair and MC
     const sums = readFileSync(join(release, 'checksums.txt'), 'utf8').trim().split('\n');
     assert.equal(sums.length, 12);
     assert.deepEqual(
-      sums.map((line) => line.split(/\s+/)[1]),
+      sums.map((line) => {
+        const match = /^[0-9a-f]{64} [ *](.+)$/.exec(line);
+        assert.ok(match, `invalid checksum line: ${line}`);
+        return match[1];
+      }),
       checked,
     );
     execFileSync(
