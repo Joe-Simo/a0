@@ -41,4 +41,9 @@ jobs:
           node -e 'const a=require("node:assert/strict");a.equal(process.platform+"/"+process.arch,"darwin/arm64");a.equal(require(process.env.RUNNER_TEMP+"/a0-editor/code/Visual Studio Code.app/Contents/Resources/app/package.json").version,process.env.A0_EDITOR_VERSION)'
       - name: Restricted workspace registration and server refusal
         run: |
-          node tools/qualify-editor-host.mjs "$RUNNER_TEMP/a0-editor/code/Visual Studio Code.app/Contents/MacOS/Electron"
+          set -euo pipefail
+          app="$RUNNER_TEMP/a0-editor/code/Visual Studio Code.app"
+          executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")
+          case "$executable" in ''|'.'|'..'|*/*) exit 1;; esac
+          test -x "$app/Contents/MacOS/$executable"
+          node tools/qualify-editor-host.mjs "$app/Contents/MacOS/$executable"
