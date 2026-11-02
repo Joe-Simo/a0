@@ -27,8 +27,17 @@ export function sourceDiagnostic(error: A0Error): A0Error {
     spec.actual === undefined
   )
     return error;
-  const expected = parseExample(`${spec.input} -> ${spec.expected}`, spec.function);
-  const actual = parseExample(`${spec.input} -> ${spec.actual}`, spec.function);
+  let expected: ReturnType<typeof parseExample>;
+  let actual: ReturnType<typeof parseExample>;
+  try {
+    expected = parseExample(`${spec.input} -> ${spec.expected}`, spec.function);
+    actual = parseExample(`${spec.input} -> ${spec.actual}`, spec.function);
+  } catch (cause) {
+    // A runtime failure is diagnostic text, not an example result to paste into source.
+    // Formatting must preserve the original failure and its source ownership.
+    if (cause instanceof A0Error || cause instanceof RangeError) return error;
+    throw cause;
+  }
   const line = (example: typeof expected) =>
     [...example.args.map(literal), '->', literal(example.result)].join(' ');
   return new A0Error(error.detail, error.line, {

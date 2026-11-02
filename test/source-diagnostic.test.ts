@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { A0Error, validate } from '../src/core.js';
+import { EditSession, programRevision } from '../src/edit.js';
+import { sourceLspFrontend } from '../src/lsp-frontend.js';
 import { parseSource } from '../src/source.js';
 import { sourceDiagnostic, sourceExampleResult } from '../src/source-diagnostic.js';
+import { sourceEditSyntax } from '../src/source-edit.js';
+import { linkSource } from '../src/source-link.js';
 
 for (const [type, input, wrong] of [
   ['_x2', '[1 2]', '[2 1]'],
@@ -61,4 +65,80 @@ test('source quick-fix literal rendering accepts values and refuses malformed di
     assert.equal(sourceExampleResult(invalid), undefined, invalid);
   assert.equal(sourceExampleResult('['.repeat(10_000) + '1' + ']'.repeat(10_000)), undefined);
   assert.equal(sourceExampleResult('1'.repeat((2 << 20) + 1)), undefined);
+});
+
+const traps = [
+  { body: 'x div 1 A\nret x', bad: '0 -> 1', good: '1 -> 1', kind: 'divzero' },
+  { body: 'x [7]\ny get x A\nret y', bad: '2 -> 7', good: '0 -> 7', kind: 'bounds' },
+];
+const program = (body: string, example?: string) =>
+  `profile strict\nfn f\n${example === undefined ? '' : `ex ${example}\n`}${body}\nend\n`;
+function failure(source: string): A0Error {
+  try {
+    validate(parseSource(source));
+  } catch (error) {
+    assert.ok(error instanceof A0Error);
+    return error;
+  }
+  return assert.fail('expected a real example failure');
+}
+
+test('source diagnostic formatting preserves real runtime example failures', () => {
+  for (const row of traps) {
+    const error = failure(program(row.body, row.bad));
+    assert.equal(error.id, 'A0715');
+    assert.match(error.actual ?? '', new RegExp(`trap ${row.kind}`));
+    assert.equal(sourceDiagnostic(error), error);
+  }
+});
+
+test('runtime example rejection rolls back a source edit and permits the next valid edit', () => {
+  for (const row of traps) {
+    const session = new EditSession(validate(parseSource(program(row.body))), {
+      syntax: sourceEditSyntax,
+    });
+    session.open('f');
+    const before = programRevision(session.program);
+    const expected = failure(program(row.body, row.bad));
+    assert.throws(
+      () => session.apply(`+ex ${row.bad}`),
+      (error) => {
+        assert.ok(error instanceof A0Error);
+        assert.deepEqual(error.toJSON(), expected.toJSON());
+        return true;
+      },
+    );
+    assert.equal(programRevision(session.program), before);
+    session.apply(`+ex ${row.good}`);
+    assert.notEqual(programRevision(session.program), before);
+    assert.equal(session.program.byName.get('f')?.spec?.examples.length, 1);
+  }
+});
+
+test('source frontend keeps linked runtime diagnostics and dependency ownership intact', async () => {
+  for (const row of traps) {
+    const files = new Map([
+      ['/project/main.a0', 'profile strict\nuse "child.a0"\nfn main\nret A\nend\n'],
+      ['/project/child.a0', program(row.body, row.bad)],
+    ]);
+    const read = async (path: string) => {
+      const source = files.get(path);
+      assert.notEqual(source, undefined);
+      return source as string;
+    };
+    const options = { root: '/project', canonicalPath: async (path: string) => path };
+    let expected: A0Error | undefined;
+    await assert.rejects(linkSource('/project/main.a0', read, options), (error) => {
+      assert.ok(error instanceof A0Error);
+      expected = error;
+      return true;
+    });
+    assert.ok(expected);
+    assert.match(expected.message, /child\.a0/);
+    await assert.rejects(sourceLspFrontend.link('/project/main.a0', read, options), (error) => {
+      assert.ok(error instanceof A0Error);
+      assert.deepEqual(error.toJSON(), expected?.toJSON());
+      return true;
+    });
+  }
 });
