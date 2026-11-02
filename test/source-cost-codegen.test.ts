@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { test } from 'node:test';
 import { COMPILER_VERSION, compile } from '../src/backends.js';
 import { formatProgram } from '../src/core.js';
@@ -109,7 +109,7 @@ async function manifest(checkout: string): Promise<SourceCostBuild> {
     functions: program.program.functions.length,
     modules: await Promise.all(
       program.sources.map(async ({ path }) => ({
-        path: relative(root, path),
+        path: relative(root, path).replaceAll('\\', '/'),
         sha256: sha(await readFile(path)),
       })),
     ),
@@ -389,15 +389,16 @@ test('native build provenance records actual include bytes and effective invocat
       sha('system header'),
     );
     const command = `clang -cc1 -I ${roots.sysroot}/include -resource-dir ${roots.resource} ${roots.artifact}/driver.c -fdebug-compilation-dir ${root}`;
+    const relocated = resolve('/other');
     const other = {
-      checkout: '/other',
-      artifact: '/other/out',
-      sysroot: '/other/sdk',
-      resource: '/other/clang',
+      checkout: relocated,
+      artifact: join(relocated, 'out'),
+      sysroot: join(relocated, 'sdk'),
+      resource: join(relocated, 'clang'),
     };
     assert.equal(
       nativeCompileCommandSHA256(command, roots),
-      nativeCompileCommandSHA256(command.replaceAll(root, '/other'), other),
+      nativeCompileCommandSHA256(command.replaceAll(root, relocated), other),
     );
     assert.notEqual(
       nativeCompileCommandSHA256(command, roots),
