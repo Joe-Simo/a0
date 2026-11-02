@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "scope": "Bounded hosted Metal correctness and Linux ARM64 qualification. Test sets overlap and are not a combined case total or full release gate.",
+  "metal": {
+    "subject": "391b6deed4f7ec106a904b8d634305a463ea90d0",
+    "tree": "3ee77d0d13ae18a2e1cce325bed92fcd3c6772a3",
+    "defect": {
+      "priorSubject": "d00b50a7e8fd095dce32f7beb74dc45e632f3cfc",
+      "run": "https://github.com/Joe-Simo/a0/actions/runs/41467286243",
+      "observed": [
+        {
+          "call": "sum_to(10)",
+          "expected": 45,
+          "actual": 81
+        },
+        {
+          "call": "sum_to(100)",
+          "expected": 4950,
+          "actual": 9801
+        }
+      ],
+      "qualification": "The same prior run also timed out; it was not a passing Intel qualification."
+    },
+    "diagnosis": {
+      "subject": "c6537971da4c08cbaf19ef03d1a3ad6c5f229668",
+      "run": "https://github.com/Joe-Simo/a0/actions/runs/41479398369",
+      "method": "Five generated sum-loop variants, three fast-math settings and two dispatch group sizes, retaining exact input/output comparisons.",
+      "rows": 60,
+      "variants": {
+        "original": {
+          "passed": 0,
+          "failed": 12
+        },
+        "inline": {
+          "passed": 0,
+          "failed": 12
+        },
+        "while": {
+          "passed": 0,
+          "failed": 12
+        },
+        "volatile": {
+          "passed": 12,
+          "failed": 0
+        },
+        "formulaControl": {
+          "passed": 12,
+          "failed": 0
+        }
+      },
+      "interpretation": "Evidence supports a loop-state optimization problem on this hosted runtime, not a general proof of a Metal driver defect. Formula control was diagnostic only and is not the retained lowering."
+    },
+    "change": "Use volatile storage for scalar Metal fold/loop state, preserving ordinary C output and all actual iterations. Separate cache identities prevent reuse across storage modes. Check Metal command completion before consuming output.",
+    "run": "https://github.com/Joe-Simo/a0/actions/runs/41489360489",
+    "hosts": [
+      {
+        "runner": "macos-15",
+        "architecture": "arm64",
+        "job": 125427987566,
+        "device": "Apple Paravirtual device",
+        "status": "passed",
+        "focusedTests": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "metalCases": 64
+        },
+        "behaviorCases": 1935,
+        "independentCorpusCases": 4297
+      },
+      {
+        "runner": "macos-15-intel",
+        "architecture": "x64",
+        "job": 125427988063,
+        "device": "Apple Paravirtual device",
+        "status": "passed",
+        "focusedTests": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "metalCases": 64
+        },
+        "behaviorCases": 1935,
+        "independentCorpusCases": 4297
+      }
+    ],
+    "local": {
+      "tests": 1477,
+      "passed": 1456,
+      "skipped": 21,
+      "failed": 0,
+      "otherPassed": [
+        "lint",
+        "typecheck",
+        "build",
+        "site"
+      ]
+    },
+    "outputSize": {
+      "method": "Identical input IR; generated Metal source bytes before and after the lowering change.",
+      "iterate": {
+        "before": 4433,
+        "after": 4478
+      },
+      "generatedCorpus": {
+        "before": 19629,
+        "after": 19638
+      }
+    },
+    "limitations": [
+      "No physical GPU qualification.",
+      "No Metal performance or energy comparison; volatile storage may carry runtime cost.",
+      "Experimental compiler/emit_metal.a0 is a separate non-production route and is not changed by this host-emitter fix.",
+      "Hosted focused, behavior and corpus case sets overlap."
+    ]
+  },
+  "linuxArm64": {
+    "subject": "08217de0f895114ac20fd07efe24ed4327c92677",
+    "run": "https://github.com/Joe-Simo/a0/actions/runs/41466045036",
+    "runner": "ubuntu-24.04-arm",
+    "status": "passed",
+    "unit": {
+      "tests": 1473,
+      "passed": 1378,
+      "skipped": 95,
+      "failed": 0
+    },
+    "acceptance": "Existing corpus, hardware, .NET and Life commands passed. This result predates the Metal fix and does not qualify another tree."
+  },
+  "pendingIntelUnit": {
+    "subject": "df00c49460defed404fd71eec26d906d65767cca",
+    "run": "https://github.com/Joe-Simo/a0/actions/runs/41489693130",
+    "status": "pending",
+    "method": "Two disjoint exhaustive file partitions, with unchanged test commands and per-job limits. Aggregate fails unless both succeed."
+  },
+  "resourcePolicy": {
+    "standardPublicRepositoryRunners": true,
+    "persistentArtifactUploads": false,
+    "repositoryCacheUploads": false
+  },
+  "release": "Full release, physical devices, independent AI study, native cost acceptance and protection assurance remain outstanding."
+}

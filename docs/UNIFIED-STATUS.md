@@ -91,5 +91,12 @@ on standard Linux runners. The [emulator report](../results/cloud-emulated-quali
 records exact inputs, separate oracles, excluded I/O, the failed setup attempt and corrected run.
 This does not qualify physical devices, editor hosts or every backend feature.
 
+The [hosted Metal regression report](../results/metal-loop-qualification-20261102.json)
+records a corrected scalar-loop failure on the hosted Intel runtime and passing
+focused, behavior and independent corpus checks on both hosted Mac architectures.
+Both runners report a paravirtual Metal device; physical GPU and performance
+qualification remain outstanding. Its separate Linux ARM64 result predates this
+fix and is not evidence for the newer tree.
+
 The current local review is scoped source review plus adversarial tests. It is not a hosted
 Codex Security scan, independent cryptographic certification or production-security approval.
