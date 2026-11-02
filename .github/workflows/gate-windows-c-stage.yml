@@ -27,6 +27,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.4
+          no-cache: true
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -36,6 +37,7 @@ jobs:
           msystem: UCRT64
           path-type: inherit
           update: true
+          cache: false
           install: >-
             diffutils
             mingw-w64-ucrt-x86_64-gcc
@@ -69,15 +71,9 @@ jobs:
             CC="$compiler" sh tools/c-arena-stage.sh .a0-tmp/windows-c-stage/prepared ".a0-tmp/windows-c-stage/$compiler"
           done
           cmp .a0-tmp/windows-c-stage/gcc/stage4/module.c .a0-tmp/windows-c-stage/clang/stage4/module.c
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - name: Preserve validation evidence in job logs
         if: always()
-        with:
-          name: windows-c-stage
-          include-hidden-files: true
-          path: |
-            .a0-tmp/windows-c-stage/prepared/preparation.json
-            .a0-tmp/windows-c-stage/*-controls.log
-            .a0-tmp/windows-c-stage/controls/**/*.log
-            .a0-tmp/windows-c-stage/controls/**/*.json
-            .a0-tmp/windows-c-stage/gcc/
-            .a0-tmp/windows-c-stage/clang/
+        shell: msys2 {0}
+        run: |
+          git rev-parse HEAD HEAD^{tree}
+          find .a0-tmp/windows-c-stage -type f \( -name '*.log' -o -name 'preparation.json' \) -print -exec cat {} \; || true
