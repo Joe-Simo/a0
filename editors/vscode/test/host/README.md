@@ -16,6 +16,10 @@ directory. It does not use a user installation's profile, download an editor, or
 grant workspace trust. A trusted fixture is a test failure, not permission to disable
 the trust check. Keep the editor sandbox enabled.
 
-The test source is prepared but real-host execution remains pending. The official
-update metadata endpoint returned HTTP 403 in the current cloud executor; no editor
-binary was downloaded or run. A permitted editor executable is the remaining input.
+Real-host execution remains pending. The original cloud executor returned HTTP 403
+from the official update endpoint. The `validate-editor-host` workflow instead uses
+a standard public Linux runner and the official pinned VS Code 1.141.2 archive.
+Its editor, display and user-data directory are isolated to the temporary runner.
+No workspace trust is granted, and the editor sandbox remains enabled. Passing this
+test would qualify only Restricted Mode registration and server refusal, not the
+trusted-workspace language-server path.

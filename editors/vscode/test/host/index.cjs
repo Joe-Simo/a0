@@ -19,6 +19,7 @@ exports.run = async () => {
   assert.equal(document.languageId, 'a0');
   // Allow ordinary on-language activation to settle; never grant workspace trust.
   await new Promise((resolve) => setTimeout(resolve, 1500));
+  assert.equal(extension.isActive, false, 'the unsupported untrusted-workspace extension must remain inactive');
   await assert.rejects(fs.readFile(path.join(root, 'server-started')), { code: 'ENOENT' });
   assert.equal(vscode.workspace.isTrusted, false);
   await fs.writeFile(path.join(root, 'report.json'), JSON.stringify({
@@ -28,6 +29,7 @@ exports.run = async () => {
     extensionPresent: true,
     extensionActive: extension.isActive,
     configuredServerStarted: false,
+    observationMs: 1500,
     scope: 'Restricted-workspace language registration and server-execution refusal only',
   }, null, 2));
 };

@@ -15,7 +15,18 @@ await access(join(repository, 'editors/vscode/dist/extension.js'));
 const root = await mkdtemp(join(tmpdir(), 'a0-editor-host-'));
 try {
   const workspace = join(root, 'workspace');
+  const profile = join(root, 'profile');
   await mkdir(join(workspace, '.vscode'), { recursive: true });
+  await mkdir(join(profile, 'User'), { recursive: true });
+  await writeFile(
+    join(profile, 'User/settings.json'),
+    JSON.stringify({
+      'telemetry.telemetryLevel': 'off',
+      'update.mode': 'none',
+      'extensions.autoCheckUpdates': false,
+      'extensions.autoUpdate': false,
+    }),
+  );
   const probe = join(root, 'server-probe.cjs');
   await writeFile(
     probe,
@@ -36,7 +47,7 @@ try {
       '--skip-welcome',
       '--skip-release-notes',
       '--user-data-dir',
-      join(root, 'profile'),
+      profile,
       '--extensions-dir',
       join(root, 'extensions'),
       '--extensionDevelopmentPath',
