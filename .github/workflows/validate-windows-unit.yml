@@ -56,4 +56,38 @@ jobs:
           bun install --frozen-lockfile
           bun run lint
           bun run typecheck
-          bun run test
+          # Preserve test execution and exit status; bound console diagnostics so
+          # large assertion values cannot make the job log unreadable by clients.
+          test_status=0
+          bun run test > .a0-tmp/windows-unit/tests.log 2>&1 || test_status=$?
+          summary_status=0
+          node --input-type=module <<'JS' || summary_status=$?
+          import { createReadStream } from 'node:fs';
+          import { createInterface } from 'node:readline';
+          const reader = createInterface({ input: createReadStream('.a0-tmp/windows-unit/tests.log') });
+          const names = [], details = [], counts = [], tail = [];
+          let nameBytes = 0, detailBytes = 0, blocks = 0, capture = 0, omitted = 0;
+          for await (const line of reader) {
+            const short = line.slice(0, 500);
+            if (/^\s*(?:not ok \d+|✖ )/.test(line)) {
+              if (nameBytes + short.length <= 40000) { names.push(short); nameBytes += short.length; }
+              else omitted++;
+              if (blocks++ < 8) capture = 32;
+            }
+            if (capture > 0) {
+              if (detailBytes + short.length <= 100000) { details.push(short); detailBytes += short.length; }
+              capture--;
+            }
+            if (/^(?:# |ℹ )(tests|suites|pass|fail|cancelled|skipped|todo|duration_ms)\b/.test(line)) counts.push(short);
+            tail.push(short);
+            if (tail.length > 30) tail.shift();
+          }
+          console.log('Bounded failure names and first eight diagnostic blocks; raw output remains in the ephemeral runner.');
+          console.log(names.join('\n'));
+          if (omitted) console.log(`Additional failure names omitted from console: ${omitted}`);
+          console.log(details.join('\n'));
+          console.log('Terminal summary:\n' + counts.join('\n'));
+          console.log('Final output lines:\n' + tail.join('\n'));
+          JS
+          if [[ "$test_status" -ne 0 ]]; then exit "$test_status"; fi
+          exit "$summary_status"
