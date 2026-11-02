@@ -608,3 +608,27 @@ test('source LSP type diagnostics use the selected literal spelling', () =>
       await stop(s);
     }
   }));
+
+for (const kind of ['pre', 'post'] as const) {
+  test(`source LSP ${kind} failures use source literal spelling`, () =>
+    withRoot(async (_base, root) => {
+      const s = await start(root, true);
+      try {
+        const path = join(root, 'contract.a0');
+        const text = `fn f _x2 -> _x2\nex [1 2] -> [1 2]\n${kind} eq 0 1\nret A\nend\n`;
+        await writeFile(path, text);
+        const [diagnostic] = (await open(s, pathToFileURL(path).href, text)).diagnostics;
+        assert.equal(diagnostic?.data?.id, 'A0716');
+        assert.deepEqual(diagnostic?.data?.spec, {
+          function: 'f',
+          ex: 1,
+          line: kind,
+          input: '[1 2]',
+        });
+        assert.match(diagnostic?.message ?? '', /the input \[1 2\]/);
+        if (kind === 'post') assert.match(diagnostic?.message ?? '', /gives \[1 2\], which/);
+      } finally {
+        await stop(s);
+      }
+    }));
+}

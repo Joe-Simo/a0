@@ -218,3 +218,75 @@ test('source type projection preserves unrelated and malformed A0714 diagnostics
     assert.equal(sourceDiagnostic(custom), custom);
   }
 });
+
+for (const [type, value] of [
+  ['_x2', '[1 2]'],
+  ['(_,bool)', '(1 true)'],
+  ['_x2x2', '[[1 2] [3 4]]'],
+] as const) {
+  for (const kind of ['pre', 'post'] as const) {
+    test(`source ${kind} failure preserves ${type} values in source spelling`, () => {
+      const original = failure(
+        `fn f ${type} -> ${type}\nex ${value} -> ${value}\n${kind} eq 0 1\nret A\nend\n`,
+      );
+      assert.equal(original.id, 'A0716');
+      const projected = sourceDiagnostic(original);
+      assert.equal(projected.spec?.input, value);
+      assert.ok(projected.detail.includes(`the input ${value}`));
+      if (kind === 'post') assert.ok(projected.detail.includes(`gives ${value}, which`));
+      assert.deepEqual(sourceDiagnostic(projected).toJSON(), projected.toJSON());
+      const located = sourceDiagnostic(
+        original.rewrite(`/project/contracts.a0:3: ${original.detail}`),
+      );
+      assert.equal(located.detail, `/project/contracts.a0:3: ${projected.detail}`);
+      assert.equal(located.specOwner, original.specOwner);
+      assert.match(original.spec?.input ?? '', /;/);
+    });
+  }
+}
+
+test('source post failure handles an empty input and aggregate result', () => {
+  const original = failure('fn f -> _x2\nex -> [1 2]\npost eq 0 1\nx [1 2]\nret x\nend\n');
+  const projected = sourceDiagnostic(original);
+  assert.equal(projected.id, 'A0716');
+  assert.equal(projected.spec?.input, '');
+  assert.match(projected.detail, /input \(none\) gives \[1 2\], which/);
+});
+
+test('source contract projection preserves runtime failures and custom messages', () => {
+  for (const kind of ['pre', 'post'] as const) {
+    const original = failure(
+      `profile strict\nfn test _ -> bool\nx div A 0\ny eq x 0\nret y\nend\nfn f _ -> _\nex 1 -> 1\n${kind} call test ${kind === 'pre' ? 'A' : 'r'}\nret A\nend\n`,
+    );
+    assert.equal(original.id, 'A0716');
+    assert.equal(sourceDiagnostic(original), original);
+  }
+  const custom = new A0Error('custom contract message', undefined, {
+    id: 'A0716',
+    spec: { function: 'f', ex: 1, line: 'pre', input: '[1;2]' },
+  });
+  assert.equal(sourceDiagnostic(custom), custom);
+});
+
+for (const kind of ['pre', 'post'] as const) {
+  test(`source ${kind} rejection preserves revision and allows a valid follow-up`, () => {
+    const session = new EditSession(
+      validate(parseSource('fn f _x2 -> _x2\nex [1 2] -> [1 2]\nret A\nend\n')),
+      { syntax: sourceEditSyntax },
+    );
+    session.open('f');
+    const before = programRevision(session.program);
+    assert.throws(
+      () => session.apply(`+${kind} eq 0 1`),
+      (error) => {
+        assert.ok(error instanceof A0Error);
+        assert.equal(error.id, 'A0716');
+        assert.equal(error.spec?.input, '[1 2]');
+        return true;
+      },
+    );
+    assert.equal(programRevision(session.program), before);
+    session.apply(`+${kind} eq 0 0`);
+    assert.notEqual(programRevision(session.program), before);
+  });
+}

@@ -116,3 +116,28 @@ test('candidate MCP publishes one spelling for mismatch values and repairs', asy
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+for (const kind of ['pre', 'post'] as const) {
+  test(`candidate MCP ${kind} failures use source literal spelling`, async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'a0-source-contract-mcp-'));
+    const path = join(dir, 'main.a0');
+    await writeFile(path, `fn f _x2 -> _x2\nex [1 2] -> [1 2]\n${kind} eq 0 1\nret A\nend\n`);
+    const server = await createServer(path, { frontend: sourceMcpFrontend });
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    const client = new Client({ name: 'test', version: '0.0.0' });
+    await client.connect(clientSide);
+    try {
+      const reply = await client.callTool({ name: 'a0_open', arguments: { function: 'f' } });
+      assert.equal(reply.isError, true);
+      const diagnostic = JSON.parse((reply.content as { text: string }[])[0]?.text ?? 'null');
+      assert.equal(diagnostic.id, 'A0716');
+      assert.equal(diagnostic.spec.input, '[1 2]');
+      assert.match(diagnostic.message, /the input \[1 2\]/);
+      if (kind === 'post') assert.match(diagnostic.message, /gives \[1 2\], which/);
+    } finally {
+      await client.close();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+}

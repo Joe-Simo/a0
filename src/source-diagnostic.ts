@@ -44,6 +44,56 @@ export function sourceDiagnostic(error: A0Error): A0Error {
   }
   const spec = error.spec;
   if (
+    error.id === 'A0716' &&
+    spec?.ex !== null &&
+    spec?.input !== undefined &&
+    (spec.line === 'pre' || spec.line === 'post')
+  ) {
+    const example = diagnosticExample(`${spec.input} -> 0`, spec.function);
+    if (example === undefined) return error;
+    const input = example.args.map(literal).join(' ');
+    let originalDetail: string;
+    let sourceDetail: string;
+    if (spec.line === 'pre') {
+      originalDetail = diag('A0716', [
+        spec.function,
+        spec.ex,
+        'pre',
+        `the input ${spec.input || '(none)'} does not satisfy pre`,
+      ]).detail;
+      if (!error.detail.endsWith(originalDetail)) return error;
+      sourceDetail = diag('A0716', [
+        spec.function,
+        spec.ex,
+        'pre',
+        `the input ${input || '(none)'} does not satisfy pre`,
+      ]).detail;
+    } else {
+      const prefix = diag('A0716', [
+        spec.function,
+        spec.ex,
+        'post',
+        `the input ${spec.input || '(none)'} gives `,
+      ]).detail;
+      const suffix = ', which does not satisfy post';
+      const start = error.detail.lastIndexOf(prefix);
+      if (start < 0 || !error.detail.endsWith(suffix)) return error;
+      const serialized = error.detail.slice(start + prefix.length, -suffix.length);
+      const actual = sourceExampleResult(serialized);
+      if (actual === undefined) return error;
+      originalDetail = prefix + serialized + suffix;
+      sourceDetail = diag('A0716', [
+        spec.function,
+        spec.ex,
+        'post',
+        `the input ${input || '(none)'} gives ${actual}${suffix}`,
+      ]).detail;
+    }
+    const detail = error.detail.slice(0, -originalDetail.length) + sourceDetail;
+    if (detail === error.detail && input === spec.input) return error;
+    return new A0Error(detail, error.line, { ...error.detailOf(), spec: { ...spec, input } });
+  }
+  if (
     error.id !== 'A0715' ||
     error.fix === undefined ||
     spec?.line !== 'ex' ||
