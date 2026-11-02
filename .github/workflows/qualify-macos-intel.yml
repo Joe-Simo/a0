@@ -9,6 +9,10 @@ permissions:
   contents: read
 jobs:
   unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [reader, other]
     runs-on: macos-15-intel
     timeout-minutes: 75
     steps:
@@ -33,6 +37,36 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run build
-      - name: Whole unit suite
+      - name: Complete unit partition
         timeout-minutes: 60
-        run: node --test dist/test/*.test.js
+        env:
+          A0_TEST_PARTITION: ${{ matrix.suite }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readdirSync } from 'node:fs';
+          import { spawnSync } from 'node:child_process';
+          const all = readdirSync('dist/test').filter(name => name.endsWith('.test.js')).sort();
+          const reader = all.filter(name => name === 'dense-a0.test.js');
+          const other = all.filter(name => name !== 'dense-a0.test.js');
+          assert.equal(reader.length, 1);
+          assert.ok(other.length > 0);
+          assert.deepEqual([...reader, ...other].sort(), all);
+          const suite = process.env.A0_TEST_PARTITION;
+          assert.ok(suite === 'reader' || suite === 'other');
+          const selected = suite === 'reader' ? reader : other;
+          console.log(JSON.stringify({ suite, allFileCount: all.length, selected }));
+          const result = spawnSync(process.execPath, ['--test', ...selected.map(name => 'dist/test/' + name)], { stdio: 'inherit' });
+          if (result.error) throw result.error;
+          process.exit(result.status ?? 1);
+          JS
+  verify:
+    needs: unit
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require both complete unit partitions
+        env:
+          UNIT_RESULT: ${{ needs.unit.result }}
+        run: test "$UNIT_RESULT" = success
