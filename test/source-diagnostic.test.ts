@@ -12,6 +12,7 @@ for (const [type, input, wrong] of [
   ['_x2', '[1 2]', '[2 1]'],
   ['(_,bool)', '(7 true)', '(8 false)'],
   ['_x2x2', '[[1 2] [3 4]]', '[[4 3] [2 1]]'],
+  ['_x3', '[1*3]', '[2*3]'],
 ] as const) {
   test(`source example repair is executable for ${type}`, () => {
     const source = `fn f ${type} -> ${type}\nex ${input} -> ${wrong}\nret A\nend`;
@@ -25,10 +26,13 @@ for (const [type, input, wrong] of [
     assert.ok(original);
     const projected = sourceDiagnostic(original);
     assert.equal(projected.id, original.id);
-    assert.equal(projected.detail, original.detail);
-    assert.deepEqual(projected.spec, original.spec);
-    assert.equal(projected.actual, original.actual);
-    assert.equal(projected.expected, original.expected);
+    assert.equal(
+      projected.detail,
+      `f: ex 1 failed: input ${input}, expected ${wrong}, got ${input}`,
+    );
+    assert.deepEqual(projected.spec, { ...original.spec, input, expected: wrong, actual: input });
+    assert.equal(projected.actual, input);
+    assert.equal(projected.expected, wrong);
     const replacement = projected.fix?.match(/`(ex [^`]+)`/)?.[1];
     assert.ok(replacement);
     assert.doesNotThrow(() =>
@@ -141,4 +145,45 @@ test('source frontend keeps linked runtime diagnostics and dependency ownership 
       return true;
     });
   }
+});
+
+test('source mismatch details use the same literal spelling as executable repairs', () => {
+  const original = failure('fn f _x2 -> _x2\nex [1 2] -> [2 1]\nret A\nend\n');
+  const projected = sourceDiagnostic(original);
+  assert.equal(projected.detail, 'f: ex 1 failed: input [1 2], expected [2 1], got [1 2]');
+  assert.equal(projected.expected, '[2 1]');
+  assert.equal(projected.actual, '[1 2]');
+  assert.deepEqual(projected.spec, {
+    ...original.spec,
+    input: '[1 2]',
+    expected: '[2 1]',
+    actual: '[1 2]',
+  });
+  assert.deepEqual(sourceDiagnostic(projected).toJSON(), projected.toJSON());
+  assert.match(original.detail, /;/, 'legacy diagnostic is not mutated');
+  assert.equal(sourceExampleResult(projected.actual as string), '[1 2]');
+  const located = sourceDiagnostic(original.rewrite(`/project/child.a0:2: ${original.detail}`));
+  assert.equal(located.detail, `/project/child.a0:2: ${projected.detail}`);
+  assert.equal(located.specOwner, original.specOwner);
+  const custom = new A0Error('custom context', 12, {
+    ...original.detailOf(),
+    applicability: 'maybe',
+  });
+  const customProjected = sourceDiagnostic(custom);
+  assert.equal(customProjected.detail, custom.detail);
+  assert.equal(customProjected.line, 12);
+  assert.equal(customProjected.code, custom.code);
+  assert.equal(customProjected.applicability, custom.applicability);
+});
+
+test('source diagnostic result decoding accepts current spelling and legacy serialization', () => {
+  for (const [encoded, expected] of [
+    ['[1 2]', '[1 2]'],
+    ['[7*3]', '[7*3]'],
+    ['(7,)', '(7,)'],
+    ['[(1 true) (2 false)]', '[(1 true) (2 false)]'],
+    ['[1;2]', '[1 2]'],
+    ['(7;)', '(7,)'],
+  ])
+    assert.equal(sourceExampleResult(encoded as string), expected);
 });

@@ -122,6 +122,15 @@ test('source LSP example quick fixes remain executable in the selected grammar',
       await writeFile(join(root, 'repair.a0'), text);
       const [diagnostic] = (await open(s, uri, text)).diagnostics;
       assert.equal(diagnostic?.data?.id, 'A0715');
+      assert.match(diagnostic?.message ?? '', /input \[1 2\], expected \[2 1\], got \[1 2\]/);
+      assert.deepEqual(diagnostic?.data?.spec, {
+        function: 'f',
+        ex: 1,
+        line: 'ex',
+        input: '[1 2]',
+        expected: '[2 1]',
+        actual: '[1 2]',
+      });
       const actions = await s.conn.sendRequest<
         { title: string; edit: { changes: Record<string, { newText: string }[]> } }[]
       >('textDocument/codeAction', {

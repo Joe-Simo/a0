@@ -92,3 +92,27 @@ test('candidate MCP imported projects require explicit confined save destination
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('candidate MCP publishes one spelling for mismatch values and repairs', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'a0-source-mcp-diagnostic-'));
+  const path = join(dir, 'main.a0');
+  await writeFile(path, 'fn f _x2 -> _x2\nex [1 2] -> [2 1]\nret A\nend\n');
+  const server = await createServer(path, { frontend: sourceMcpFrontend });
+  const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverSide);
+  const client = new Client({ name: 'test', version: '0.0.0' });
+  await client.connect(clientSide);
+  try {
+    const reply = await client.callTool({ name: 'a0_open', arguments: { function: 'f' } });
+    assert.equal(reply.isError, true);
+    const diagnostic = JSON.parse((reply.content as { text: string }[])[0]?.text ?? 'null');
+    assert.equal(diagnostic.id, 'A0715');
+    assert.equal(diagnostic.expected, '[2 1]');
+    assert.equal(diagnostic.actual, '[1 2]');
+    assert.match(diagnostic.message, /input \[1 2\], expected \[2 1\], got \[1 2\]/);
+    assert.match(diagnostic.fix, /ex \[1 2\] -> \[1 2\]/);
+  } finally {
+    await client.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
