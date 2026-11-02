@@ -83,5 +83,10 @@ Node to start the executable, so this is not a Node-free packaging or startup-co
 | Protection assurance | External crypto/security review, remaining host and distributed-artifact adapters, reconstruction studies, cost budgets and unresolved lock/ownership cases. | Local regression work is possible. External assurance and unavailable hardware cannot be claimed from this review. |
 | Public cutover | Switch parser, formatter, guides, CLI/MCP/LSP/editor defaults together only after acceptance, retaining labelled legacy import and rollback. | Public defaults remain unchanged; the gates above and explicit release approval are still required. Non-release progress publication does not activate the cutover. |
 
+RISC-V RV64 and ARM32 now also have bounded QEMU corpus and strict-reference qualification
+on standard Linux runners. The [emulator report](../results/cloud-emulated-qualification-20261102.json)
+records exact inputs, separate oracles, excluded I/O, the failed setup attempt and corrected run.
+This does not qualify physical devices, AVR, editor hosts or every backend feature.
+
 The current local review is scoped source review plus adversarial tests. It is not a hosted
 Codex Security scan, independent cryptographic certification or production-security approval.
