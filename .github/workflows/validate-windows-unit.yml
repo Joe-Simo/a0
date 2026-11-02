@@ -64,12 +64,14 @@ jobs:
           node --input-type=module <<'JS' || summary_status=$?
           import { createReadStream } from 'node:fs';
           import { createInterface } from 'node:readline';
+          import { stripVTControlCharacters } from 'node:util';
           const reader = createInterface({ input: createReadStream('.a0-tmp/windows-unit/tests.log') });
           const names = [], details = [], counts = [], tail = [];
           let nameBytes = 0, detailBytes = 0, blocks = 0, capture = 0, omitted = 0;
           for await (const line of reader) {
-            const short = line.slice(0, 500);
-            if (/^\s*(?:not ok \d+|✖ )/.test(line)) {
+            const text = stripVTControlCharacters(line);
+            const short = text.slice(0, 500);
+            if (/^\s*(?:not ok \d+|✖ )/.test(text)) {
               if (nameBytes + short.length <= 40000) { names.push(short); nameBytes += short.length; }
               else omitted++;
               if (blocks++ < 8) capture = 32;
@@ -78,7 +80,7 @@ jobs:
               if (detailBytes + short.length <= 100000) { details.push(short); detailBytes += short.length; }
               capture--;
             }
-            if (/^(?:# |ℹ )(tests|suites|pass|fail|cancelled|skipped|todo|duration_ms)\b/.test(line)) counts.push(short);
+            if (/^(?:# |ℹ )(tests|suites|pass|fail|cancelled|skipped|todo|duration_ms)\b/.test(text)) counts.push(short);
             tail.push(short);
             if (tail.length > 30) tail.shift();
           }
