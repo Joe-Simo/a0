@@ -9,6 +9,7 @@ import { formatProgram, type Program, validate } from '../src/core.js';
 import { A0Error } from '../src/diagnostics.js';
 import { link } from '../src/link.js';
 import { parseSource } from '../src/source.js';
+import { sourceDiagnostic } from '../src/source-diagnostic.js';
 import { linkSource } from '../src/source-link.js';
 import type { NativeSourceResult } from '../src/source-native.js';
 import { linkNativeSource, NativeSourceError } from '../src/source-native-link.js';
@@ -146,18 +147,23 @@ const evidence: {
   name: string;
   sourceSHA256: string;
   jsonSHA256: string;
-  historicalJSONSHA256: string;
-  intentionalFlatLiteralChange: boolean;
+  rawDiagnosticJSONSHA256: string;
+  sourceDiagnosticJSONSHA256: string;
+  explicitExpectation: boolean;
+  sourceSpellingChanged: boolean;
   id: string;
 }[] = [];
 const passedGroups: string[] = [];
 test('complete spec JSON matches independent oracle and explicit flat literal fixtures on every target', () => {
   for (const [name, source] of Object.entries(sources)) {
-    const historical = reference(source);
+    const raw = reference(source);
+    const current = sourceDiagnostic(raw);
     const explicit = flatSpecDiagnosticExpectations[name];
-    const expected = explicit ?? historical.toJSON();
+    const expected = explicit ?? current.toJSON();
     const json = JSON.stringify(expected);
-    if (explicit) assert.notDeepEqual(expected, historical.toJSON(), `${name}/intentional delta`);
+    if (explicit) {
+      assert.deepEqual(expected, current.toJSON(), `${name}/independent source expectation`);
+    }
     for (const [target, engine] of engines) {
       const result = engine.parse(source);
       assert.deepEqual(
@@ -171,7 +177,7 @@ test('complete spec JSON matches independent oracle and explicit flat literal fi
         json,
         `${target}/${name}/JSON bytes`,
       );
-      if (historical.line !== undefined) {
+      if (current.line !== undefined) {
         const unit = engine.parseUnit(source);
         assert.ok(!unit.ok, `${target}/${name}/unit grammar`);
         assert.deepEqual(rendered(unit, `${target}/${name}/unit`).toJSON(), expected);
@@ -183,8 +189,10 @@ test('complete spec JSON matches independent oracle and explicit flat literal fi
       name,
       sourceSHA256: hash(source),
       jsonSHA256: hash(json),
-      historicalJSONSHA256: hash(JSON.stringify(historical.toJSON())),
-      intentionalFlatLiteralChange: explicit !== undefined,
+      rawDiagnosticJSONSHA256: hash(JSON.stringify(raw.toJSON())),
+      sourceDiagnosticJSONSHA256: hash(JSON.stringify(current.toJSON())),
+      explicitExpectation: explicit !== undefined,
+      sourceSpellingChanged: JSON.stringify(raw.toJSON()) !== JSON.stringify(current.toJSON()),
       id: expected.id as string,
     });
   }
@@ -357,7 +365,7 @@ test.after(async () => {
   for (const [, engine] of engines) engine.close();
   if (process.env.A0_SPEC_REPORT)
     await writeReport(process.env.A0_SPEC_REPORT, {
-      schema: 1,
+      schema: 2,
       scope:
         'Optional native spec diagnostic compatibility controls; no public cutover or performance claim.',
       frontendSourceSHA256: sourceHash,
