@@ -173,6 +173,7 @@ async function migrateStaged(
   // mkdir reserves the destination without overwriting even an existing empty directory.
   await mkdir(output);
   let staging: string | undefined;
+  let reserved = true;
   try {
     staging = await mkdtemp(join(dirname(output), '.a0-migrate-'));
     for (const [path, text] of converted) {
@@ -198,13 +199,20 @@ async function migrateStaged(
       flag: 'wx',
     });
     protectionPolicy(output);
+    if (process.platform === 'win32') {
+      // MoveFileEx refuses an existing directory even with REPLACE_EXISTING.
+      // Release our empty reservation only at publication. The directory rename
+      // itself refuses a competing destination; never clean up that competitor.
+      await rmdir(output);
+      reserved = false;
+    }
     await rename(staging, output);
     staging = undefined;
     return manifest;
   } catch (error) {
     // Never recursively delete the reserved output: another process may have put data in it.
     try {
-      await rmdir(output);
+      if (reserved) await rmdir(output);
     } catch (cleanupError) {
       const code = (cleanupError as NodeJS.ErrnoException).code;
       if (code !== 'ENOENT' && code !== 'ENOTEMPTY')
