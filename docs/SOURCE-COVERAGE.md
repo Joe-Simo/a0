@@ -29,7 +29,7 @@ The recursive static scan includes 138 accepted legacy-spelling observations and
 text is deduplicated across files, and a program accepted by both readers contributes
 to both columns; these counts are not a unique-program total.
 
-The recorded run covers 184 dependency graphs, 639 legacy test literals converted
+The recorded run covers 185 dependency graphs, 639 legacy test literals converted
 to candidate spelling and 774 raw candidate literals, with zero mismatches. All
 36 operations and the five type forms occur. The 19 parseable repository rejects
 retain their diagnostic IDs; another 19 syntax rejects cannot be converted by this
@@ -41,8 +41,7 @@ audited set. That is a bounded result, not proof that every possible program wor
 ## Remaining acceptance work
 
 - Dynamically generated/interpolated test programs are not extracted by this audit.
-  Expand them through explicit generators and
-  independent oracles rather than treating static literals as exhaustive.
+  Expand them through explicit generators and independent oracles rather than treating static literals as exhaustive.
 - Syntax rejects that cannot be parsed by the legacy reader cannot be converted
   by its formatter. Their candidate-spelling diagnostic locations, suggestions and
   fixes need dedicated negative fixtures beyond the diagnostic tests already present.
