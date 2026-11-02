@@ -18,8 +18,12 @@ the trust check. Keep the editor sandbox enabled.
 
 Real-host execution remains pending. The original cloud executor returned HTTP 403
 from the official update endpoint. The `validate-editor-host` workflow instead uses
-a standard public Linux runner and the official pinned VS Code 1.141.2 archive.
+a standard public macOS runner and the official pinned VS Code 1.141.2 archive.
 Its editor, display and user-data directory are isolated to the temporary runner.
 No workspace trust is granted, and the editor sandbox remains enabled. Passing this
 test would qualify only Restricted Mode registration and server refusal, not the
 trusted-workspace language-server path.
+
+The first hosted Linux attempt stopped before the extension test because the
+archive's SUID sandbox helper was not root-owned with mode 4755. No privileges were
+changed and sandboxing was not disabled. That attempt does not qualify Linux.

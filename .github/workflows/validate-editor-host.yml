@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   restricted-workspace:
-    runs-on: ubuntu-24.04
+    runs-on: macos-15
     timeout-minutes: 15
     env:
       A0_EDITOR_VERSION: '1.141.2'
@@ -30,11 +30,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/a0-editor/code"
-          curl --fail --location --retry 2 "https://update.code.visualstudio.com/$A0_EDITOR_VERSION/linux-x64/stable" --output "$RUNNER_TEMP/a0-editor/editor.tar.gz"
-          sha256sum "$RUNNER_TEMP/a0-editor/editor.tar.gz"
-          tar --extract --gzip --file "$RUNNER_TEMP/a0-editor/editor.tar.gz" --directory "$RUNNER_TEMP/a0-editor/code" --strip-components=1
-          node -e 'const a=require("node:assert/strict");a.equal(require(process.env.RUNNER_TEMP+"/a0-editor/code/resources/app/package.json").version,process.env.A0_EDITOR_VERSION)'
+          curl --fail --location --retry 2 "https://update.code.visualstudio.com/$A0_EDITOR_VERSION/darwin-arm64/stable" --output "$RUNNER_TEMP/a0-editor/editor.zip"
+          shasum -a 256 "$RUNNER_TEMP/a0-editor/editor.zip"
+          ditto -xk "$RUNNER_TEMP/a0-editor/editor.zip" "$RUNNER_TEMP/a0-editor/code"
+          node -e 'const a=require("node:assert/strict");a.equal(process.platform+"/"+process.arch,"darwin/arm64");a.equal(require(process.env.RUNNER_TEMP+"/a0-editor/code/Visual Studio Code.app/Contents/Resources/app/package.json").version,process.env.A0_EDITOR_VERSION)'
       - name: Restricted workspace registration and server refusal
         run: |
-          command -v xvfb-run
-          xvfb-run -a node tools/qualify-editor-host.mjs "$RUNNER_TEMP/a0-editor/code/code"
+          node tools/qualify-editor-host.mjs "$RUNNER_TEMP/a0-editor/code/Visual Studio Code.app/Contents/MacOS/Electron"
