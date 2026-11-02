@@ -29,7 +29,7 @@ jobs:
       - name: Download the pinned official editor into runner scratch
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/a0-editor/code"
+          mkdir -p "$RUNNER_TEMP/a0-editor/code" "$RUNNER_TEMP/a0-editor/mount"
           curl --fail --location --retry 2 "https://update.code.visualstudio.com/$A0_EDITOR_VERSION/darwin-arm64-dmg/stable" --output "$RUNNER_TEMP/a0-editor/editor.dmg"
           shasum -a 256 "$RUNNER_TEMP/a0-editor/editor.dmg"
           trap 'hdiutil detach "$RUNNER_TEMP/a0-editor/mount" || true' EXIT
