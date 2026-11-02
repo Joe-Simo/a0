@@ -100,3 +100,18 @@ explicit unsupported cases. The focused controls check these refusals and detach
 failure snapshots. See `results/source-spec-aggregate-diagnostics.json`. See [the scoped evidence](../results/source-spec-diagnostics.json).
 The warm parse-unit timing guard is mixed and does not establish a speedup or
 satisfy the full native frontend cost gate. Public defaults remain unchanged.
+
+## Current compiled diagnostic qualification
+
+The fresh compiled-frontend qualification checks 66 source cases on each of the
+C-derived, direct-Wasm and JavaScript paths. Its 15 test groups passed without skips,
+including runtime traps, complete JSON, dependency ownership, source-less IR,
+provenance refusals and executable repairs. Handwritten source fixtures remain
+independent expectations; the harness now compares them with the current public
+source-diagnostic adapter instead of requiring an obsolete spelling difference.
+See [the exact results and artifact hashes](../results/source-compiled-diagnostics-20261102.json).
+
+This supersedes the older runtime-trap refusal limitation above for these tested
+compiled artifacts. It does not establish exhaustive language coverage, native-cost
+acceptance, independent AI accuracy, physical-platform qualification or a public
+default cutover. The earlier failed harness result is retained in the report.
