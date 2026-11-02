@@ -42,25 +42,29 @@ const body = (text: string, name: string): string => {
   return match[0];
 };
 
-test('x86 loop inlining uses the 96 expanded-node budget while plain calls retain their smaller budget', () => {
-  const p = parseAndValidate(source);
-  const asm = compile(p, 'x86_64', { optimize: false }).text;
-  for (const n of counts) {
-    const call = new RegExp(`call a0_step${n}\\b`);
-    if (n <= 96) assert.doesNotMatch(body(asm, `probe${n}`), call);
-    else assert.match(body(asm, `probe${n}`), call);
-  }
-  assert.match(body(asm, 'probeexpanded'), /call a0_expanded\b/);
-  assert.match(body(asm, 'ordinary'), /call a0_step49\b/);
-  const strict = compile(parseAndValidate(`profile strict\n${source}`), 'x86_64', {
-    optimize: false,
-  }).text;
-  assert.match(
-    body(strict, 'probe49'),
-    /call a0_step49\b/,
-    'strict trapping frames stay out of line',
-  );
-});
+for (const x86Platform of ['linux', 'darwin'] as const) {
+  test(`x86 ${x86Platform} loop inlining uses the 96 expanded-node budget while plain calls retain their smaller budget`, () => {
+    const p = parseAndValidate(source);
+    const asm = compile(p, 'x86_64', { optimize: false, x86Platform }).text;
+    const prefix = x86Platform === 'darwin' ? '_' : '';
+    for (const n of counts) {
+      const call = new RegExp(`call ${prefix}a0_step${n}\\b`);
+      if (n <= 96) assert.doesNotMatch(body(asm, `probe${n}`), call);
+      else assert.match(body(asm, `probe${n}`), call);
+    }
+    assert.match(body(asm, 'probeexpanded'), new RegExp(`call ${prefix}a0_expanded\\b`));
+    assert.match(body(asm, 'ordinary'), new RegExp(`call ${prefix}a0_step49\\b`));
+    const strict = compile(parseAndValidate(`profile strict\n${source}`), 'x86_64', {
+      optimize: false,
+      x86Platform,
+    }).text;
+    assert.match(
+      body(strict, 'probe49'),
+      new RegExp(`call ${prefix}a0_step49\\b`),
+      'strict trapping frames stay out of line',
+    );
+  });
+}
 
 test('x86 expanded loop bodies preserve zero trips, live extras, state and wrapping arithmetic', async (t) => {
   const p = parseAndValidate(source);

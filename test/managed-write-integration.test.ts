@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -14,11 +14,12 @@ const moduleUrl = (path: string) => new URL(path, import.meta.url).href;
 // The child-only preload introduces a synthetic transition exactly when a public writer
 // reaches filesystem persistence. No production hook or real key is involved.
 const preload = `const fs=require('node:fs');
+const paths=require('node:path');
 const original=fs.promises.writeFile;
 let fired=false;
 fs.promises.writeFile=async function(path,...args){
  const target=String(path);
- const match=process.env.A0_TEST_MODE==='migration'?target.endsWith('/main.a0d'):target===process.env.A0_TEST_OUTPUT;
+ const match=process.env.A0_TEST_MODE==='migration'?paths.basename(target)==='main.a0d':paths.resolve(target)===paths.resolve(process.env.A0_TEST_OUTPUT);
  if(!fired&&match){
   fired=true;
   fs.mkdirSync(process.env.A0_TEST_ROOT+'/.a0-seal');
@@ -36,7 +37,9 @@ require('node:module').syncBuiltinESMExports();
 
 for (const mode of ['cli', 'mcp-full', 'mcp-compact', 'migration'] as const) {
   test(`managed ${mode} persistence holds a source lease across an introduced transition`, async () => {
-    const root = await mkdtemp(join(tmpdir(), 'a0-public-writer-'));
+    // Public writers canonicalize project paths; use the same identity on hosts
+    // whose temporary directory is a symlink (for example /var on macOS).
+    const root = await realpath(await mkdtemp(join(tmpdir(), 'a0-public-writer-')));
     try {
       const project = join(root, 'project');
       await mkdir(project);
