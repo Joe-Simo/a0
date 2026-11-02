@@ -30,9 +30,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/a0-editor/code"
-          curl --fail --location --retry 2 "https://update.code.visualstudio.com/$A0_EDITOR_VERSION/darwin-arm64/stable" --output "$RUNNER_TEMP/a0-editor/editor.zip"
-          shasum -a 256 "$RUNNER_TEMP/a0-editor/editor.zip"
-          ditto -xk "$RUNNER_TEMP/a0-editor/editor.zip" "$RUNNER_TEMP/a0-editor/code"
+          curl --fail --location --retry 2 "https://update.code.visualstudio.com/$A0_EDITOR_VERSION/darwin-arm64-dmg/stable" --output "$RUNNER_TEMP/a0-editor/editor.dmg"
+          shasum -a 256 "$RUNNER_TEMP/a0-editor/editor.dmg"
+          trap 'hdiutil detach "$RUNNER_TEMP/a0-editor/mount" || true' EXIT
+          hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/a0-editor/mount" "$RUNNER_TEMP/a0-editor/editor.dmg"
+          ditto "$RUNNER_TEMP/a0-editor/mount/Visual Studio Code.app" "$RUNNER_TEMP/a0-editor/code/Visual Studio Code.app"
+          hdiutil detach "$RUNNER_TEMP/a0-editor/mount"
+          trap - EXIT
+          codesign --verify --deep --strict "$RUNNER_TEMP/a0-editor/code/Visual Studio Code.app"
           node -e 'const a=require("node:assert/strict");a.equal(process.platform+"/"+process.arch,"darwin/arm64");a.equal(require(process.env.RUNNER_TEMP+"/a0-editor/code/Visual Studio Code.app/Contents/Resources/app/package.json").version,process.env.A0_EDITOR_VERSION)'
       - name: Restricted workspace registration and server refusal
         run: |
