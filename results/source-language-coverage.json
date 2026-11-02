@@ -1,5 +1,5 @@
 {
-  "scope": "All accepted repository graphs plus accepted static test literals including nested fixtures; malformed UTF-16 fixtures are checked for transport refusal; dynamic templates and external projects remain outside this audit.",
+  "scope": "All accepted repository graphs plus accepted static test literals including nested fixtures; malformed UTF-16 fixtures are checked for transport refusal; named existing pure generators are checked as complete programs; arbitrary dynamic templates and external projects remain outside this audit.",
   "graphs": [
     "compiler/arena.a0",
     "compiler/arena_shared.a0",
@@ -411,6 +411,76 @@
     "test/x86_64-loops.test.ts",
     "test/x86_64-owned.test.ts"
   ],
+  "generatedPrograms": [
+    {
+      "name": "owned/owned field",
+      "functions": 2
+    },
+    {
+      "name": "owned/same field read twice",
+      "functions": 2
+    },
+    {
+      "name": "owned/whole parent call alias",
+      "functions": 3
+    },
+    {
+      "name": "owned/borrowed nested field read after update",
+      "functions": 2
+    },
+    {
+      "name": "owned/swap array fields",
+      "functions": 2
+    },
+    {
+      "name": "owned/repeat one source into two fields",
+      "functions": 2
+    },
+    {
+      "name": "return-extra/direct extra",
+      "functions": 3
+    },
+    {
+      "name": "return-extra/moved extra",
+      "functions": 3
+    },
+    {
+      "name": "return-extra/selected extra",
+      "functions": 3
+    },
+    {
+      "name": "return-extra/borrowed record field",
+      "functions": 3
+    },
+    {
+      "name": "checked-operations",
+      "functions": 33
+    },
+    {
+      "name": "native-ports",
+      "functions": 47
+    },
+    {
+      "name": "snapshot-extra",
+      "functions": 2
+    },
+    {
+      "name": "repeated-extras",
+      "functions": 4
+    },
+    {
+      "name": "parallel-extras/0",
+      "functions": 2
+    },
+    {
+      "name": "parallel-extras/128",
+      "functions": 2
+    },
+    {
+      "name": "parallel-extras/n",
+      "functions": 2
+    }
+  ],
   "operations": [
     "mov",
     "add",
@@ -462,7 +532,7 @@
     "examples": 113,
     "preconditions": 31,
     "postconditions": 34,
-    "text": 3620,
+    "text": 3621,
     "imports": 54
   },
   "outputs": [
@@ -472,7 +542,7 @@
   "mismatches": 0,
   "limitations": [
     "No exhaustive language proof",
-    "Static extraction excludes dynamic templates",
+    "Only named existing pure generators are evaluated; arbitrary dynamic templates are not extracted",
     "Native cost, independent AI accuracy and full-platform gates remain outstanding"
   ]
 }

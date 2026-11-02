@@ -11,6 +11,19 @@ test('candidate source covers repository graphs and real static feature programs
   assert.ok(result.nestedLegacyLiterals > 0);
   assert.ok(result.nestedCandidateLiterals > 0);
   assert.ok(result.literalFiles.includes('test/fixtures/owned-programs.ts'));
+  assert.ok(result.generatedPrograms.length >= 17);
+  for (const name of [
+    'checked-operations',
+    'native-ports',
+    'parallel-extras/0',
+    'parallel-extras/128',
+    'parallel-extras/n',
+  ])
+    assert.ok(
+      result.generatedPrograms.some((row) => row.name === name),
+      name,
+    );
+  assert.ok(result.generatedPrograms.every((row) => row.functions > 0));
   assert.deepEqual(result.operations, ALL_OPS);
   assert.deepEqual(result.missingOperations, []);
   assert.deepEqual(result.types, ['arr', 'bool', 'io', 'rec', 'u32']);

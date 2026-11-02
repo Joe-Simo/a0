@@ -16,6 +16,7 @@ candidate frontend. Source encryption and recovery behavior is unchanged.
 | --- | --- |
 | Every accepted source/dependency graph listed by the repository corpus tool | Imports, comments, complete checked IR and C/JavaScript output equal the reference |
 | Accepted static program literals in test files, including nested fixtures | Original metadata, checked IR, per-function revisions and C/JavaScript output equal the reference |
+| Named existing pure fixture generators | Complete assembled programs preserve checked IR, revisions and C/JavaScript output |
 | Parseable repository reject cases converted to candidate spelling | Rejection and first diagnostic ID equal the reference |
 | Observed capability inventory | All current operations; scalar `u32`, `bool`, `io`, arrays and records; imports, text, both profiles, examples, preconditions and postconditions |
 
@@ -35,13 +36,20 @@ to candidate spelling and 774 raw candidate literals, with zero mismatches. All
 retain their diagnostic IDs; another 19 syntax rejects cannot be converted by this
 method. See [the exact inventory](../results/source-language-coverage.json).
 
+The named generated set adds 17 assembled programs: six record-ownership variants,
+four returned-extra variants, the shared checked-operation and native-port programs,
+a snapshot case, repeated aliases, and three parallel trip-count forms. These are
+separate observations and can overlap static programs; they are not added to a
+unique-program total. The exact names are recorded in `generatedPrograms` in the report.
+
 No unsupported language construct or semantic mismatch was confirmed in this
 audited set. That is a bounded result, not proof that every possible program works.
 
 ## Remaining acceptance work
 
-- Dynamically generated/interpolated test programs are not extracted by this audit.
-  Expand them through explicit generators and independent oracles rather than treating static literals as exhaustive.
+- Arbitrary dynamically generated/interpolated test programs are not extracted.
+  Only the named pure generators above run explicitly; further generators need
+  independent reference checks rather than treating this set as exhaustive.
 - Syntax rejects that cannot be parsed by the legacy reader cannot be converted
   by its formatter. Their candidate-spelling diagnostic locations, suggestions and
   fixes need dedicated negative fixtures beyond the diagnostic tests already present.

@@ -20,6 +20,15 @@ import { formatSource, parseSource } from '../src/source.js';
 import { nativeSource } from '../src/source-native.js';
 import { linkNativeSource } from '../src/source-native-link.js';
 import { losslessSourceString } from '../src/source-utf8.js';
+import {
+  parallelExtrasProgram,
+  RETURN_EXTRA_CASES,
+  repeatedExtrasProgram,
+  SNAPSHOT_EXTRA,
+} from '../test/fixtures/c-iteration-extras-programs.js';
+import { CHECKED_SOURCE } from '../test/fixtures/checked-ops-fixtures.js';
+import { NATIVE_PORT_SOURCE } from '../test/fixtures/native-ports/semantic.js';
+import { RECORD_CASES } from '../test/fixtures/owned-programs.js';
 import { isReject, listSources } from './dense-loader.js';
 import { writeReport } from './scrub-results.js';
 import { nativeSourceArtifact } from './source-native-artifact.js';
@@ -64,6 +73,21 @@ async function literals(root: string) {
     visit(ast);
   }
   return result;
+}
+
+/** Existing pure generators, evaluated as complete programs rather than extracted fragments. */
+function generatedPrograms(): readonly (readonly [string, string])[] {
+  return [
+    ...RECORD_CASES.map(([name, source]) => [`owned/${name}`, source] as const),
+    ...RETURN_EXTRA_CASES.map(([name, source]) => [`return-extra/${name}`, source] as const),
+    ['checked-operations', CHECKED_SOURCE],
+    ['native-ports', NATIVE_PORT_SOURCE],
+    ['snapshot-extra', SNAPSHOT_EXTRA],
+    ['repeated-extras', repeatedExtrasProgram()],
+    ...([0, 128, 'n'] as const).map(
+      (count) => [`parallel-extras/${count}`, parallelExtrasProgram(count)] as const,
+    ),
+  ];
 }
 
 export async function auditSourceCoverage(root = process.cwd()) {
@@ -225,9 +249,15 @@ export async function auditSourceCoverage(root = process.cwd()) {
         }
       }
     }
+    const generated: { name: string; functions: number }[] = [];
+    for (const [name, source] of generatedPrograms()) {
+      const expected = validate(parse(source));
+      compare(formatSource(expected), expected, `generated/${name}`);
+      generated.push({ name, functions: expected.functions.length });
+    }
     return {
       scope:
-        'All accepted repository graphs plus accepted static test literals including nested fixtures; malformed UTF-16 fixtures are checked for transport refusal; dynamic templates and external projects remain outside this audit.',
+        'All accepted repository graphs plus accepted static test literals including nested fixtures; malformed UTF-16 fixtures are checked for transport refusal; named existing pure generators are checked as complete programs; arbitrary dynamic templates and external projects remain outside this audit.',
       graphs,
       rejects,
       syntaxRejects,
@@ -237,6 +267,7 @@ export async function auditSourceCoverage(root = process.cwd()) {
       nestedLegacyLiterals,
       nestedCandidateLiterals,
       literalFiles: [...literalFiles].sort(),
+      generatedPrograms: generated,
       operations: ALL_OPS.filter((op) => ops.has(op)),
       missingOperations: ALL_OPS.filter((op) => !ops.has(op)),
       types: [...types].sort(),
@@ -245,7 +276,7 @@ export async function auditSourceCoverage(root = process.cwd()) {
       mismatches: 0,
       limitations: [
         'No exhaustive language proof',
-        'Static extraction excludes dynamic templates',
+        'Only named existing pure generators are evaluated; arbitrary dynamic templates are not extracted',
         'Native cost, independent AI accuracy and full-platform gates remain outstanding',
       ],
     };
