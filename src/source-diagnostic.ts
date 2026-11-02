@@ -31,6 +31,17 @@ export function sourceExampleResult(value: string): string | undefined {
 }
 
 export function sourceDiagnostic(error: A0Error): A0Error {
+  if (error.id === 'A0714' && error.actual !== undefined && error.expected !== undefined) {
+    const suffix = ` is ${error.actual}, which is not a ${error.expected}`;
+    if (!error.detail.endsWith(suffix)) return error;
+    const actual = sourceExampleResult(error.actual);
+    if (actual === undefined || actual === error.actual) return error;
+    return new A0Error(
+      `${error.detail.slice(0, -suffix.length)} is ${actual}, which is not a ${error.expected}`,
+      error.line,
+      { ...error.detailOf(), actual },
+    );
+  }
   const spec = error.spec;
   if (
     error.id !== 'A0715' ||

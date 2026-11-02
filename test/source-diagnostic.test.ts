@@ -187,3 +187,34 @@ test('source diagnostic result decoding accepts current spelling and legacy seri
   ])
     assert.equal(sourceExampleResult(encoded as string), expected);
 });
+
+for (const [type, input, actual] of [
+  ['_x2', '[1 2 3]', '[1 2 3]'],
+  ['(_,bool)', '(1 true 2)', '(1 true 2)'],
+  ['_x2x2', '[[1 2] [3 4] [5 6]]', '[[1 2] [3 4] [5 6]]'],
+  ['_x2', '(1,)', '(1,)'],
+] as const) {
+  test(`source spec type error preserves ${type} ownership and projects ${input}`, () => {
+    const original = failure(`fn f ${type} -> _\nex ${input} -> 0\nret 0\nend\n`);
+    assert.equal(original.id, 'A0714');
+    const projected = sourceDiagnostic(original);
+    assert.equal(projected.actual, actual);
+    assert.equal(projected.expected, original.expected);
+    assert.equal(projected.specOwner, original.specOwner);
+    assert.ok(projected.detail.includes(` is ${actual}, which is not a `));
+    assert.deepEqual(sourceDiagnostic(projected).toJSON(), projected.toJSON());
+    assert.match(original.actual ?? '', /;/);
+  });
+}
+
+test('source type projection preserves unrelated and malformed A0714 diagnostics', () => {
+  for (const actual of ['[1;2]', 'not-a-value']) {
+    const custom = new A0Error('custom type message', 2, {
+      id: 'A0714',
+      expected: 'u32x2',
+      actual,
+      specOwner: 'f',
+    });
+    assert.equal(sourceDiagnostic(custom), custom);
+  }
+});

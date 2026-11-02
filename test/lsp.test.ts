@@ -592,3 +592,19 @@ test('candidate LSP completion snippets use one executable spelling for shifts a
       await stop(s);
     }
   }));
+
+test('source LSP type diagnostics use the selected literal spelling', () =>
+  withRoot(async (_base, root) => {
+    const s = await start(root, true);
+    try {
+      const path = join(root, 'type-error.a0');
+      const uri = pathToFileURL(path).href;
+      const text = 'fn f _x2 -> _\nex [1 2 3] -> 0\nret 0\nend\n';
+      await writeFile(path, text);
+      const [diagnostic] = (await open(s, uri, text)).diagnostics;
+      assert.equal(diagnostic?.data?.id, 'A0714');
+      assert.match(diagnostic?.message ?? '', / is \[1 2 3\], which is not a u32x2/);
+    } finally {
+      await stop(s);
+    }
+  }));
