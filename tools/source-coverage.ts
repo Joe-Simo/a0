@@ -148,6 +148,7 @@ export async function auditSourceCoverage(root = process.cwd()) {
   const graphs: string[] = [],
     rejects: { path: string; id: string }[] = [];
   const transportRejects: { path: string; line: number; reason: string }[] = [];
+  const syntaxRejectCases: { path: string; legacyId: string; id: string }[] = [];
   let syntaxRejects = 0,
     candidateLiterals = 0,
     legacyLiterals = 0;
@@ -155,11 +156,28 @@ export async function auditSourceCoverage(root = process.cwd()) {
     for (const path of listSources(root)) {
       const label = relative(root, path);
       if (isReject(path, root)) {
+        const source = await read(path);
         let program: Program;
         try {
-          program = parse(await read(path));
+          program = parse(source);
         } catch (error) {
           assert.ok(error instanceof A0Error);
+          assert.ok(error.id, `${label}: legacy rejection has no diagnostic ID`);
+          let id: string | undefined;
+          assert.throws(
+            () => validate(parseSource(source)),
+            (candidate) => {
+              assert.ok(candidate instanceof A0Error);
+              id = candidate.id;
+              return true;
+            },
+            `${label}: candidate unexpectedly accepts syntax rejection`,
+          );
+          assert.ok(id, `${label}: candidate rejection has no diagnostic ID`);
+          const actual = engine.parse(source);
+          assert.ok(!actual.ok, `${label}: native candidate unexpectedly accepts syntax rejection`);
+          assert.equal(`A${String(actual.state[1]).padStart(4, '0')}`, id, label);
+          syntaxRejectCases.push({ path: label, legacyId: error.id, id });
           syntaxRejects++;
           continue;
         }
@@ -261,6 +279,7 @@ export async function auditSourceCoverage(root = process.cwd()) {
       graphs,
       rejects,
       syntaxRejects,
+      syntaxRejectCases,
       transportRejects,
       legacyLiterals,
       candidateLiterals,

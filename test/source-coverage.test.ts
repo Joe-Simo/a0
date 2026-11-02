@@ -28,6 +28,9 @@ test('candidate source covers repository graphs and real static feature programs
   assert.deepEqual(result.missingOperations, []);
   assert.deepEqual(result.types, ['arr', 'bool', 'io', 'rec', 'u32']);
   assert.ok(result.rejects.length >= 19);
+  assert.ok(result.syntaxRejectCases.length >= 19);
+  assert.equal(result.syntaxRejectCases.length, result.syntaxRejects);
+  for (const row of result.syntaxRejectCases) assert.equal(row.id, row.legacyId, row.path);
   for (const count of Object.values(result.features)) assert.ok(count > 0);
   assert.equal(result.mismatches, 0);
   assert.ok(

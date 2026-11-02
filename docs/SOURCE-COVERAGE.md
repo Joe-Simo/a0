@@ -18,6 +18,7 @@ candidate frontend. Source encryption and recovery behavior is unchanged.
 | Accepted static program literals in test files, including nested fixtures | Original metadata, checked IR, per-function revisions and C/JavaScript output equal the reference |
 | Named existing pure fixture generators | Complete assembled programs preserve checked IR, revisions and C/JavaScript output |
 | Parseable repository reject cases converted to candidate spelling | Rejection and first diagnostic ID equal the reference |
+| Raw repository syntax rejects | Host and native candidate readers reject with matching first diagnostic IDs; cases are listed individually |
 | Observed capability inventory | All current operations; scalar `u32`, `bool`, `io`, arrays and records; imports, text, both profiles, examples, preconditions and postconditions |
 
 The ordinary source corpus alone omits checked operations, strict-profile units
@@ -33,8 +34,8 @@ to both columns; these counts are not a unique-program total.
 The recorded run covers 185 dependency graphs, 639 legacy test literals converted
 to candidate spelling and 774 raw candidate literals, with zero mismatches. All
 36 operations and the five type forms occur. The 19 parseable repository rejects
-retain their diagnostic IDs; another 19 syntax rejects cannot be converted by this
-method. See [the exact inventory](../results/source-language-coverage.json).
+retain their diagnostic IDs. Another 19 syntax rejects are checked as raw candidate
+inputs against the host candidate reader, with matching first diagnostic IDs. See [the exact inventory](../results/source-language-coverage.json).
 
 The named generated set adds 17 assembled programs: six record-ownership variants,
 four returned-extra variants, the shared checked-operation and native-port programs,
@@ -50,9 +51,9 @@ audited set. That is a bounded result, not proof that every possible program wor
 - Arbitrary dynamically generated/interpolated test programs are not extracted.
   Only the named pure generators above run explicitly; further generators need
   independent reference checks rather than treating this set as exhaustive.
-- Syntax rejects that cannot be parsed by the legacy reader cannot be converted
-  by its formatter. Their candidate-spelling diagnostic locations, suggestions and
-  fixes need dedicated negative fixtures beyond the diagnostic tests already present.
+- Raw syntax-reject IDs are covered. Complete diagnostic locations, suggestions,
+  fixes and executable repairs still need dedicated negative fixtures beyond the
+  diagnostic tests already present.
 - External projects, all capacity boundaries and their combinations remain outside
   this corpus. Existing resource-limit tests are separate evidence.
 - C/JavaScript output identity does not replace real target execution. Required
