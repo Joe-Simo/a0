@@ -19,7 +19,7 @@ jobs:
           - target: riscv64
             packages: gcc-riscv64-unknown-elf qemu-system-misc
           - target: arm32
-            packages: gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm
+            packages: gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm ipxe-qemu
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -36,23 +36,23 @@ jobs:
           sudo apt-get install -y --no-install-recommends $A0_PACKAGES
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - name: Run unchanged corpus checks on both semantic profiles
+      - name: Run existing corpus and strict reference checks
         env:
           A0_TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
           git rev-parse HEAD HEAD^{tree}
-          node --input-type=module <<'JS'
-          import { validate } from './dist/src/core.js';
+          corpus_status=0
+          node --input-type=module <<'JS' || corpus_status=$?
           import { generateCorpus, generateCases, corpusSha256, CORPUS_SEED, INPUT_SEED } from './dist/tools/corpus.js';
           import { checkInterpreter, checkOptimizer, checkRiscv64, checkArm32 } from './dist/tools/verify.js';
           import { findRiscv64Gcc, findQemuRiscv64, findArmGcc, findQemuSystemArm } from './dist/src/toolchain.js';
           const target = process.env.A0_TARGET;
           if (!['riscv64', 'arm32'].includes(target)) throw new Error('unexpected target');
           let failed = false;
-          for (const profile of ['canonical', 'strict']) {
-            const base = generateCorpus();
-            const program = profile === 'strict' ? validate({ profile, functions: base.functions }) : base;
+          {
+            const profile = 'canonical';
+            const program = generateCorpus();
             const cases = generateCases(program);
             const interpreter = checkInterpreter(program, cases);
             const optimizer = checkOptimizer(program, cases);
@@ -69,3 +69,9 @@ jobs:
           }
           if (failed) process.exitCode = 1;
           JS
+          # The existing strict test constructs interpreter value/trap expectations;
+          # canonical BigInt cases must not be reused as strict expectations.
+          strict_status=0
+          node --test --test-name-pattern='^riscv64, arm32 and avr: the strict corpus equals the interpreter' dist/test/strict-targets.test.js || strict_status=$?
+          test "$corpus_status" -eq 0
+          test "$strict_status" -eq 0
