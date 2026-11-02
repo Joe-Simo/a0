@@ -298,6 +298,15 @@ q6 and q5 p4
 q7 or q4 q6
 ret q7
 end
+fn ni_inside_distance u32x128 u32x128 bool -> bool
+q0 call ni_small p0 2
+relation call ni_cmp q0 p1
+q1 eq relation 1
+q2 eq relation 0
+q3 and q2 p2
+q4 or q1 q3
+ret q4
+end
 fn ni_search_more (bool,u32x128,u32x128,u32x128,u32x128,u32) u32 u32x128 u32x128 u32x128 bool -> bool
 q0 at p0 0
 ret q0
@@ -313,12 +322,13 @@ q4 call ni_small q2 q3
 remainder call ni_add q1 q4
 q5 at p0 1
 quantum call ni_small q5 10
-floor call ni_sub p2 remainder
-ceil call ni_add floor quantum
-low call ni_interval floor p2 p3 p4 p5
-high call ni_interval ceil p2 p3 p4 p5
-left call ni_sub p2 floor
-right call ni_sub ceil p2
+# Decimal division maintains n = floor + remainder, 0 <= remainder < quantum.
+# Use those distances directly; reconstructing floor/ceil and subtracting them
+# again only repeats whole-limb arithmetic. Bounds and ties remain unchanged.
+left mov remainder
+right call ni_sub quantum remainder
+low call ni_inside_distance left p4 p5
+high call ni_inside_distance right p3 p5
 relation call ni_cmp left right
 q6 xor high true
 q7 eq relation 1
