@@ -28,9 +28,17 @@ import { nativeSourceArtifact } from './source-native-artifact.js';
 async function literals(root: string) {
   const seen = new Set<string>();
   const result: { path: string; line: number; source: string }[] = [];
-  for (const name of (await readdir(join(root, 'test'))).sort()) {
-    if (!name.endsWith('.ts')) continue;
-    const path = `test/${name}`;
+  async function files(directory: string): Promise<string[]> {
+    const result: string[] = [];
+    const entries = await readdir(join(root, directory), { withFileTypes: true });
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      const path = `${directory}/${entry.name}`;
+      if (entry.isDirectory()) result.push(...(await files(path)));
+      else if (entry.isFile() && entry.name.endsWith('.ts')) result.push(path);
+    }
+    return result;
+  }
+  for (const path of await files('test')) {
     const ast = ts.createSourceFile(
       path,
       await readFile(join(root, path), 'utf8'),
@@ -177,6 +185,9 @@ export async function auditSourceCoverage(root = process.cwd()) {
       observe(expected.program);
       graphs.push(label);
     }
+    let nestedLegacyLiterals = 0;
+    let nestedCandidateLiterals = 0;
+    const literalFiles = new Set<string>();
     for (const row of await literals(root)) {
       try {
         losslessSourceString(row.source);
@@ -204,19 +215,28 @@ export async function auditSourceCoverage(root = process.cwd()) {
           expected,
           `${row.path}:${row.line} ${grammar}`,
         );
-        if (grammar === 'legacy') legacyLiterals++;
-        else candidateLiterals++;
+        literalFiles.add(row.path);
+        if (grammar === 'legacy') {
+          legacyLiterals++;
+          if (row.path.split('/').length > 2) nestedLegacyLiterals++;
+        } else {
+          candidateLiterals++;
+          if (row.path.split('/').length > 2) nestedCandidateLiterals++;
+        }
       }
     }
     return {
       scope:
-        'All accepted repository graphs plus accepted static top-level test literals; malformed UTF-16 fixtures are checked for transport refusal; dynamic templates and external projects remain outside this audit.',
+        'All accepted repository graphs plus accepted static test literals including nested fixtures; malformed UTF-16 fixtures are checked for transport refusal; dynamic templates and external projects remain outside this audit.',
       graphs,
       rejects,
       syntaxRejects,
       transportRejects,
       legacyLiterals,
       candidateLiterals,
+      nestedLegacyLiterals,
+      nestedCandidateLiterals,
+      literalFiles: [...literalFiles].sort(),
       operations: ALL_OPS.filter((op) => ops.has(op)),
       missingOperations: ALL_OPS.filter((op) => !ops.has(op)),
       types: [...types].sort(),
@@ -225,7 +245,7 @@ export async function auditSourceCoverage(root = process.cwd()) {
       mismatches: 0,
       limitations: [
         'No exhaustive language proof',
-        'Static extraction excludes dynamic templates and nested fixture directories',
+        'Static extraction excludes dynamic templates',
         'Native cost, independent AI accuracy and full-platform gates remain outstanding',
       ],
     };

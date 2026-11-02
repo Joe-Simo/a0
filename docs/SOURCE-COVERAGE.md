@@ -15,7 +15,7 @@ candidate frontend. Source encryption and recovery behavior is unchanged.
 | Inputs | Checks |
 | --- | --- |
 | Every accepted source/dependency graph listed by the repository corpus tool | Imports, comments, complete checked IR and C/JavaScript output equal the reference |
-| Accepted static program literals in top-level test files | Original metadata, checked IR, per-function revisions and C/JavaScript output equal the reference |
+| Accepted static program literals in test files, including nested fixtures | Original metadata, checked IR, per-function revisions and C/JavaScript output equal the reference |
 | Parseable repository reject cases converted to candidate spelling | Rejection and first diagnostic ID equal the reference |
 | Observed capability inventory | All current operations; scalar `u32`, `bool`, `io`, arrays and records; imports, text, both profiles, examples, preconditions and postconditions |
 
@@ -24,9 +24,13 @@ and executable specifications. The additional real test programs close those
 specific coverage holes. The report separates source graphs, legacy literals and
 raw candidate literals; overlapping programs are not a unique-program total.
 Feature counters count observations, including repeated dependency occurrences.
+The recursive static scan includes 138 accepted legacy-spelling observations and
+142 accepted candidate-spelling observations owned by nested files. Identical literal
+text is deduplicated across files, and a program accepted by both readers contributes
+to both columns; these counts are not a unique-program total.
 
-The recorded run covers 184 dependency graphs, 485 legacy test literals converted
-to candidate spelling and 546 raw candidate literals, with zero mismatches. All
+The recorded run covers 184 dependency graphs, 639 legacy test literals converted
+to candidate spelling and 774 raw candidate literals, with zero mismatches. All
 36 operations and the five type forms occur. The 19 parseable repository rejects
 retain their diagnostic IDs; another 19 syntax rejects cannot be converted by this
 method. See [the exact inventory](../results/source-language-coverage.json).
@@ -36,8 +40,8 @@ audited set. That is a bounded result, not proof that every possible program wor
 
 ## Remaining acceptance work
 
-- Dynamically generated/interpolated test programs and nested fixture directories
-  are not extracted by this audit. Expand them through explicit generators and
+- Dynamically generated/interpolated test programs are not extracted by this audit.
+  Expand them through explicit generators and
   independent oracles rather than treating static literals as exhaustive.
 - Syntax rejects that cannot be parsed by the legacy reader cannot be converted
   by its formatter. Their candidate-spelling diagnostic locations, suggestions and

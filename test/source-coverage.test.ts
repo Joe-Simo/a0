@@ -8,6 +8,9 @@ test('candidate source covers repository graphs and real static feature programs
   assert.ok(result.graphs.length >= 184);
   assert.ok(result.legacyLiterals >= 485);
   assert.ok(result.candidateLiterals >= 546);
+  assert.ok(result.nestedLegacyLiterals > 0);
+  assert.ok(result.nestedCandidateLiterals > 0);
+  assert.ok(result.literalFiles.includes('test/fixtures/owned-programs.ts'));
   assert.deepEqual(result.operations, ALL_OPS);
   assert.deepEqual(result.missingOperations, []);
   assert.deepEqual(result.types, ['arr', 'bool', 'io', 'rec', 'u32']);
