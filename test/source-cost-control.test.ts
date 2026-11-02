@@ -19,6 +19,7 @@ import {
   sourceCostComponents,
   sourceCostControlMode,
   sourceCostFrontendOptions,
+  sourceCostInputs,
   verifySourceCostControl,
   verifySourceCostFrozenC,
 } from '../tools/source-cost-control.js';
@@ -454,4 +455,27 @@ test('direct provenance resolves a symlinked checkout without relaxing its exact
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('source cost inventories use portable paths on every host', () => {
+  const entry = { path: 'compiler/source_frontend.a0', sha256: 'a'.repeat(64) };
+  assert.deepEqual(sourceCostInputs([entry], 'portable'), [entry]);
+  for (const path of [
+    '/absolute',
+    'C:/absolute',
+    'C:relative',
+    '\\server\\share',
+    'compiler\\file.a0',
+    '../outside',
+    'a/../outside',
+    'a//file',
+    'a/./file',
+    'bad\0file',
+  ])
+    assert.throws(
+      () => sourceCostInputs([{ ...entry, path }], 'portable'),
+      /invalid portable inventory/,
+      path,
+    );
+  assert.throws(() => sourceCostInputs([entry, entry], 'portable'), /duplicate portable inventory/);
 });

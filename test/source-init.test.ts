@@ -40,7 +40,7 @@ async function snapshot(root: string): Promise<Record<string, string>> {
     for (const e of await readdir(join(root, dir), { withFileTypes: true })) {
       const p = join(dir, e.name);
       if (e.isDirectory()) await visit(p);
-      else out[p] = await readFile(join(root, p), 'utf8');
+      else out[p.replaceAll('\\', '/')] = await readFile(join(root, p), 'utf8');
     }
   };
   await visit('');

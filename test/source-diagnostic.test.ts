@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
 import { test } from 'node:test';
 import { A0Error, validate } from '../src/core.js';
 import { EditSession, programRevision } from '../src/edit.js';
@@ -122,28 +123,31 @@ test('runtime example rejection rolls back a source edit and permits the next va
 test('source frontend keeps linked runtime diagnostics and dependency ownership intact', async () => {
   for (const row of traps) {
     const files = new Map([
-      ['/project/main.a0', 'profile strict\nuse "child.a0"\nfn main\nret A\nend\n'],
-      ['/project/child.a0', program(row.body, row.bad)],
+      [resolve('/project/main.a0'), 'profile strict\nuse "child.a0"\nfn main\nret A\nend\n'],
+      [resolve('/project/child.a0'), program(row.body, row.bad)],
     ]);
     const read = async (path: string) => {
       const source = files.get(path);
       assert.notEqual(source, undefined);
       return source as string;
     };
-    const options = { root: '/project', canonicalPath: async (path: string) => path };
+    const options = { root: resolve('/project'), canonicalPath: async (path: string) => path };
     let expected: A0Error | undefined;
-    await assert.rejects(linkSource('/project/main.a0', read, options), (error) => {
+    await assert.rejects(linkSource(resolve('/project/main.a0'), read, options), (error) => {
       assert.ok(error instanceof A0Error);
       expected = error;
       return true;
     });
     assert.ok(expected);
     assert.match(expected.message, /child\.a0/);
-    await assert.rejects(sourceLspFrontend.link('/project/main.a0', read, options), (error) => {
-      assert.ok(error instanceof A0Error);
-      assert.deepEqual(error.toJSON(), expected?.toJSON());
-      return true;
-    });
+    await assert.rejects(
+      sourceLspFrontend.link(resolve('/project/main.a0'), read, options),
+      (error) => {
+        assert.ok(error instanceof A0Error);
+        assert.deepEqual(error.toJSON(), expected?.toJSON());
+        return true;
+      },
+    );
   }
 });
 

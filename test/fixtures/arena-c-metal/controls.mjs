@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { parseAndValidate, withoutProfile } from '../../../dist/src/core.js';
 import { emitMetal } from '../../../dist/src/metal.js';
 import { optimizeFunction } from '../../../dist/src/optimize.js';
-import { runTool } from '../../../dist/src/toolchain.js';
+import { findClangPlusPlus, runTool } from '../../../dist/src/toolchain.js';
 import { tables } from '../../../dist/test/fixtures/sv-emitter/tables.js';
 import { encode, nativeEmit, runTables } from './transport.mjs';
 
@@ -13,6 +13,8 @@ const root = process.argv[2],
 mkdirSync(work, { recursive: true });
 const clang = { path: process.argv[3] };
 assert.ok(root && clang.path);
+const clangxx = findClangPlusPlus();
+assert.ok(clangxx.path, 'C++ compiler is required for the Metal CPU shim');
 const results = [];
 const basic = parseAndValidate(`fn f u32 -> u32
 r add p0 7
@@ -323,7 +325,7 @@ int main(){` +
 `,
       );
       const b = runTool(
-        clang.path,
+        clangxx.path,
         [
           '-std=c++14',
           '-O2',

@@ -250,7 +250,7 @@ await writeReport(join(out, 'build.json'), {
   wasmBytes: wasm.length,
   modules: await Promise.all(
     linked.sources.map(async ({ path }) => ({
-      path: relative(process.cwd(), path),
+      path: relative(process.cwd(), path).replaceAll('\\', '/'),
       sha256: hash(await readFile(path)),
     })),
   ),
