@@ -74,6 +74,7 @@ for idx in order {
   enc.endEncoding()
   cmd.commit()
   cmd.waitUntilCompleted()
+  if cmd.status != .completed { print("metal command failed: \\(String(describing: cmd.error))"); exit(4) }
   let results = outBuf.contents().bindMemory(to: UInt32.self, capacity: n)
   for k in 0..<n { out += "\\(idx) \\(k) \\(results[k])\\n" }
   _ = arity

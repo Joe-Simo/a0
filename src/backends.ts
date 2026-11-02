@@ -2107,14 +2107,15 @@ function cBody(
   parallel?: CParallel,
   helpers?: Map<string, string>,
   trap = false,
+  volatileScalarLoops = false,
 ): string {
-  const first = cBodyWith(fn, variant, undefined, parallel, helpers, trap);
+  const first = cBodyWith(fn, variant, undefined, parallel, helpers, trap, volatileScalarLoops);
   if (variant !== 'value' || !isLargeC(fn.result)) return first.text;
   // A large result: build its root node in `out` (no final copy) unless the root only aliases.
   const root = cRoot(first.ctx, fn.ret);
   const def = root.kind === 'node' ? fn.nodes.find((n) => n.id === root.id) : undefined;
   if (def === undefined || def.op === 'mov' || def.op === 'select') return first.text;
-  return cBodyWith(fn, variant, def.id, parallel, helpers, trap).text;
+  return cBodyWith(fn, variant, def.id, parallel, helpers, trap, volatileScalarLoops).text;
 }
 
 function cBodyWith(
@@ -2124,6 +2125,7 @@ function cBodyWith(
   parallel?: CParallel,
   helpers?: Map<string, string>,
   trap = false,
+  volatileScalarLoops = false,
 ): { readonly text: string; readonly ctx: CContext } {
   const ctx: CContext = {
     fn,
@@ -2177,7 +2179,8 @@ function cBodyWith(
           return `${view ? 'a0v' : 'a0'}_${name}(${[`n_${n.id}`, 'i', ...extras].join(', ')})`;
         };
         const guard = n.op === 'loop' ? ` if (!${call(n.pred ?? '')}) break;` : '';
-        const decl = `${t} n_${n.id} = ${init};`;
+        const qualifier = volatileScalarLoops && fn.types.get(n.id) !== 'io' ? 'volatile ' : '';
+        const decl = `${qualifier}${t} n_${n.id} = ${init};`;
         const step = call(n.callee ?? '');
         const loop = `${markOpen}for (uint32_t i = 0; i < ${count}; i++) {${markTrip}${tripCall(trap, fn, n)}${guard} n_${n.id} = ${step}; }${markClose}`;
         return hooked({ fn, node: n, count: `${count}`, extra, state: `n_${n.id}`, decl, loop });
@@ -2280,14 +2283,19 @@ function cBodyWith(
 const tripCall = (trap: boolean, fn: TypedFunc, n: Node): string =>
   trap ? ` a0_trip("${fn.name}", "${n.id}", i);` : '';
 
-const emitCFunction = (fn: TypedFunc, parallel?: CParallel, trap = false): string => {
+const emitCFunction = (
+  fn: TypedFunc,
+  parallel?: CParallel,
+  trap = false,
+  volatileScalarLoops = false,
+): string => {
   try {
     const variants: CVariant[] = ['value'];
     if (hasOwnedVariant(fn)) variants.push('owned');
     if (hasRefVariant(fn)) variants.push('ref');
     if (hasViewVariant(fn)) variants.push('view');
     const helpers = new Map<string, string>();
-    const bodies = variants.map((v) => cBody(fn, v, parallel, helpers, trap));
+    const bodies = variants.map((v) => cBody(fn, v, parallel, helpers, trap, volatileScalarLoops));
     return [...helpers.values(), ...bodies].join('\n\n');
   } finally {
     // Reuse analysis across this function's variants without retaining it for a live project.
@@ -2934,6 +2942,8 @@ export interface CompileOptions {
   readonly cIo?: 'host';
   /** C target only: automatic parallel folds (src/parallel.ts `parallelC`); absent = sequential. */
   readonly cParallel?: CParallel;
+  /** C-compatible shader lowering: retain scalar loop-carried loads/stores under Metal optimization. */
+  readonly cLoopState?: 'volatile';
   /**
    * C target only: the trap runtime. The module counts every fold/loop trip against `maxTrips`
    * (the interpreter's `RunOptions.maxTrips`) and tracks the call chain; the trip past the cap
@@ -3045,9 +3055,13 @@ export function emitFunction(target: Target, fn: TypedFunc, options: CompileOpti
     const clocked = new Set([fn, ...fn.calls.values()].filter(needsSequential).map((f) => f.name));
     return emitSequential(source, clocked);
   }
-  if (target === 'c' && options.cParallel !== undefined)
-    return emitCFunction(source, options.cParallel);
-  if (target === 'c' && options.cTrap !== undefined) return emitCFunction(source, undefined, true);
+  if (target === 'c')
+    return emitCFunction(
+      source,
+      options.cParallel,
+      options.cTrap !== undefined,
+      options.cLoopState === 'volatile',
+    );
   if (target === 'wasm')
     return emitWasmFunction(source, {
       simd: options.wasmSimd !== false,
@@ -3092,10 +3106,7 @@ export function functionEmissionKey(
   fn: TypedFunc,
   options: CompileOptions = {},
 ): string {
-  return FunctionCache.key(
-    target,
-    options.optimize !== false,
-    fn,
+  const variant =
     target === 'c' && options.cParallel !== undefined
       ? `|${options.cParallel.key}`
       : target === 'c' && options.cTrap !== undefined
@@ -3104,6 +3115,11 @@ export function functionEmissionKey(
           ? `|${options.x86Platform}`
           : target === 'wasm'
             ? `${options.wasmSimd === false ? '|nosimd' : ''}${options.wasmUnroll === undefined || options.wasmUnroll === 1 ? '' : `|unroll${options.wasmUnroll}`}`
-            : '',
+            : '';
+  return FunctionCache.key(
+    target,
+    options.optimize !== false,
+    fn,
+    `${variant}${target === 'c' && options.cLoopState === 'volatile' ? '|volatile-loop-state' : ''}`,
   );
 }
