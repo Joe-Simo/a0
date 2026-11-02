@@ -7,7 +7,6 @@ import {
   mkdtemp,
   readdir,
   readFile,
-  rename,
   rm,
   symlink,
   writeFile,
@@ -261,78 +260,78 @@ test('migration preserves data added to its reserved destination before publicat
   }
 });
 
-test('Windows directory rename refuses competing destinations without replacing data', {
-  skip: process.platform !== 'win32' ? 'Windows directory publication primitive' : false,
-}, async () => {
-  const scratch = await mkdtemp(join(tmpdir(), 'a0-migrate-rename-'));
-  try {
-    const staging = join(scratch, 'staging'),
-      output = join(scratch, 'output');
-    await mkdir(staging);
-    await writeFile(join(staging, 'new'), 'staged');
-    for (const kind of ['empty', 'populated', 'file']) {
-      if (kind === 'file') await writeFile(output, 'existing');
+for (const kind of ['empty', 'populated', 'file'])
+  test(`Windows migration preserves a competing ${kind} destination at publication`, {
+    skip: process.platform !== 'win32' ? 'Windows publication race' : false,
+  }, async () => {
+    const scratch = await mkdtemp(join(tmpdir(), 'a0-migrate-publish-race-'));
+    try {
+      const entry = join(scratch, 'main.a0'),
+        output = join(scratch, 'output');
+      await writeFile(entry, 'fn main -> u32\nret 1\nend\n');
+      const module = new URL('../src/migrate.js', import.meta.url).href;
+      const child = spawnSync(
+        process.execPath,
+        [
+          '--input-type=module',
+          '-e',
+          `
+        import fs from 'node:fs/promises';
+        import {syncBuiltinESMExports} from 'node:module';
+        const rmdir = fs.rmdir;
+        let injected = false;
+        fs.rmdir = async (target, ...args) => {
+          const result = await rmdir(target, ...args);
+          if (target === ${JSON.stringify(output)}) {
+            if (${JSON.stringify(kind)} === 'file') await fs.writeFile(target, 'preserved');
+            else {
+              await fs.mkdir(target);
+              if (${JSON.stringify(kind)} === 'populated')
+                await fs.writeFile(target + '/keep', 'preserved');
+            }
+            injected = true;
+          }
+          return result;
+        };
+        syncBuiltinESMExports();
+        const {migrateProject} = await import(${JSON.stringify(module)});
+        let refused = false;
+        try { await migrateProject(${JSON.stringify(entry)}, ${JSON.stringify(output)}); }
+        catch { refused = true; }
+        if (!injected || !refused) throw new Error('publication race was not refused');
+      `,
+        ],
+        { encoding: 'utf8', timeout: 30_000 },
+      );
+      assert.equal(child.status, 0, child.stderr);
+      if (kind === 'file') assert.equal(await read(output), 'preserved');
       else {
-        await mkdir(output);
-        if (kind === 'populated') await writeFile(join(output, 'keep'), 'existing');
+        assert.deepEqual(await readdir(output), kind === 'empty' ? [] : ['keep']);
+        if (kind === 'populated') assert.equal(await read(join(output, 'keep')), 'preserved');
       }
-      await assert.rejects(rename(staging, output));
-      assert.equal(await read(join(staging, 'new')), 'staged');
-      if (kind === 'file') assert.equal(await read(output), 'existing');
-      else assert.deepEqual(await readdir(output), kind === 'empty' ? [] : ['keep']);
-      await rm(output, { recursive: true });
+      assert.equal(
+        (await readdir(scratch)).some((name) => name.startsWith('.a0-migrate-')),
+        false,
+      );
+      assert.equal(await read(entry), 'fn main -> u32\nret 1\nend\n');
+    } finally {
+      await rm(scratch, { recursive: true, force: true });
     }
-    await rename(staging, output);
-    assert.equal(await read(join(output, 'new')), 'staged');
-    await assert.rejects(access(staging));
-  } finally {
-    await rm(scratch, { recursive: true, force: true });
-  }
-});
+  });
 
-test('Windows migration leaves a competing empty destination after publication fails', {
-  skip: process.platform !== 'win32' ? 'Windows publication race' : false,
-}, async () => {
-  const scratch = await mkdtemp(join(tmpdir(), 'a0-migrate-publish-race-'));
+test('migration treats shell-significant path characters as data', async () => {
+  const scratch = await mkdtemp(join(tmpdir(), 'a0-migrate-path-data-'));
   try {
-    const entry = join(scratch, 'main.a0'),
-      output = join(scratch, 'output');
+    const input = join(scratch, "input ' ; $() & [literal]");
+    const output = join(scratch, "output ' ; $() & [literal]");
+    await mkdir(input);
+    const entry = join(input, 'main.a0');
     await writeFile(entry, 'fn main -> u32\nret 1\nend\n');
-    const module = new URL('../src/migrate.js', import.meta.url).href;
-    const child = spawnSync(
-      process.execPath,
-      [
-        '--input-type=module',
-        '-e',
-        `
-      import fs from 'node:fs/promises';
-      import {syncBuiltinESMExports} from 'node:module';
-      const rename = fs.rename;
-      let injected = false;
-      fs.rename = async (source, target) => {
-        if (target === ${JSON.stringify(output)}) {
-          await fs.mkdir(target);
-          injected = true;
-        }
-        return rename(source, target);
-      };
-      syncBuiltinESMExports();
-      const {migrateProject} = await import(${JSON.stringify(module)});
-      let refused = false;
-      try { await migrateProject(${JSON.stringify(entry)}, ${JSON.stringify(output)}); }
-      catch { refused = true; }
-      if (!injected || !refused) throw new Error('publication race was not refused');
-      if ((await fs.readdir(${JSON.stringify(output)})).length !== 0)
-        throw new Error('competing destination was modified');
-    `,
-      ],
-      { encoding: 'utf8', timeout: 30_000 },
-    );
-    assert.equal(child.status, 0, child.stderr);
-    assert.deepEqual(await readdir(output), []);
+    const manifest = await migrateProject(entry, output);
+    assert.equal(manifest.entry, 'main.a0d');
     assert.equal(
-      (await readdir(scratch)).some((name) => name.startsWith('.a0-migrate-')),
-      false,
+      (await link(join(output, manifest.entry), read, { root: output })).program.functions.length,
+      1,
     );
     assert.equal(await read(entry), 'fn main -> u32\nret 1\nend\n');
   } finally {

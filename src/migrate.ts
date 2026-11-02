@@ -1,8 +1,10 @@
 /** Lossless project migration using the existing source reader and printer, never a new dialect. */
 import { isUtf8 } from 'node:buffer';
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, realpath, rename, rm, rmdir, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { promisify } from 'node:util';
 import { formatProgram, formatSource, type Program } from './core.js';
 import { type Arities, formatDense, parseDense } from './dense.js';
 import { programRevision } from './edit.js';
@@ -24,6 +26,32 @@ export interface MigrationManifest {
   readonly entry: string;
   readonly revision: string;
   readonly files: readonly MigrationFile[];
+}
+
+const execFileAsync = promisify(execFile);
+/** Windows' native no-replace directory move, without interpolating source paths into code. */
+async function moveWindowsDirectory(source: string, destination: string): Promise<void> {
+  const powershell = join(
+    process.env.SystemRoot ?? 'C:\\Windows',
+    'System32',
+    'WindowsPowerShell',
+    'v1.0',
+    'powershell.exe',
+  );
+  await execFileAsync(
+    powershell,
+    [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      "$ErrorActionPreference='Stop'; [System.IO.Directory]::Move($env:A0_MIGRATION_SOURCE, $env:A0_MIGRATION_DESTINATION)",
+    ],
+    {
+      windowsHide: true,
+      env: { ...process.env, A0_MIGRATION_SOURCE: source, A0_MIGRATION_DESTINATION: destination },
+    },
+  );
 }
 
 const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex');
@@ -200,13 +228,15 @@ async function migrateStaged(
     });
     protectionPolicy(output);
     if (process.platform === 'win32') {
-      // MoveFileEx refuses an existing directory even with REPLACE_EXISTING.
-      // Release our empty reservation only at publication. The directory rename
-      // itself refuses a competing destination; never clean up that competitor.
+      // Node rename can replace a competing file on Windows. Directory.Move
+      // uses the native no-replace move instead. Release only our empty reservation
+      // and never clean up a competitor that appears before that atomic move.
       await rmdir(output);
       reserved = false;
+      await moveWindowsDirectory(staging, output);
+    } else {
+      await rename(staging, output);
     }
-    await rename(staging, output);
     staging = undefined;
     return manifest;
   } catch (error) {
