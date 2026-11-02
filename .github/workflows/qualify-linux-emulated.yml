@@ -18,6 +18,8 @@ jobs:
         include:
           - target: riscv64
             packages: gcc-riscv64-unknown-elf qemu-system-misc
+          - target: avr
+            packages: gcc-avr avr-libc libsimavr-dev libelf-dev clang
           - target: arm32
             packages: gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm ipxe-qemu
     steps:
@@ -45,10 +47,10 @@ jobs:
           corpus_status=0
           node --input-type=module <<'JS' || corpus_status=$?
           import { generateCorpus, generateCases, corpusSha256, CORPUS_SEED, INPUT_SEED } from './dist/tools/corpus.js';
-          import { checkInterpreter, checkOptimizer, checkRiscv64, checkArm32 } from './dist/tools/verify.js';
-          import { findRiscv64Gcc, findQemuRiscv64, findArmGcc, findQemuSystemArm } from './dist/src/toolchain.js';
+          import { checkInterpreter, checkOptimizer, checkRiscv64, checkArm32, checkAvr } from './dist/tools/verify.js';
+          import { findRiscv64Gcc, findQemuRiscv64, findArmGcc, findQemuSystemArm, findAvrGcc, findClang, findSimavr } from './dist/src/toolchain.js';
           const target = process.env.A0_TARGET;
-          if (!['riscv64', 'arm32'].includes(target)) throw new Error('unexpected target');
+          if (!['riscv64', 'arm32', 'avr'].includes(target)) throw new Error('unexpected target');
           let failed = false;
           {
             const profile = 'canonical';
@@ -58,9 +60,12 @@ jobs:
             const optimizer = checkOptimizer(program, cases);
             const native = target === 'riscv64'
               ? await checkRiscv64(program, cases, findRiscv64Gcc(), findQemuRiscv64())
-              : await checkArm32(program, cases, findArmGcc(), findQemuSystemArm());
+              : target === 'arm32'
+                ? await checkArm32(program, cases, findArmGcc(), findQemuSystemArm())
+                : await checkAvr(program, cases, findAvrGcc(), findClang());
+            if (target === 'avr') console.log(JSON.stringify({simavr: findSimavr()}));
             console.log(JSON.stringify({
-              target, profile, execution: 'QEMU system emulation, not physical hardware',
+              target, profile, execution: target === 'avr' ? 'libsimavr emulation, not physical hardware' : 'QEMU system emulation, not physical hardware',
               node: process.version, platform: `${process.platform}-${process.arch}`,
               corpusSeed: CORPUS_SEED, inputSeed: INPUT_SEED, corpusSha256: corpusSha256(program),
               inputCases: cases.length, interpreter, optimizer, native,
