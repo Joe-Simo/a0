@@ -80,7 +80,10 @@ jobs:
             assert.deepEqual(partitions.flat().sort(), [...names].sort());
             const selected = partitions[suite === 'reader-a' ? 0 : 1];
             const escape = name => Array.from(name, c => '.^$*+?()[]{}|'.includes(c) || c.charCodeAt(0) === 92 ? String.fromCharCode(92) + c : c).join('');
-            args = ['--test', '--test-name-pattern=^(?:' + selected.map(escape).join('|') + ')$', 'dist/test/dense-a0.test.js'];
+            const pattern = '^(?:' + selected.map(escape).join('|') + ')$';
+            const wanted = new Set(selected);
+            for (const name of names) assert.equal(new RegExp(pattern).test(name), wanted.has(name));
+            args = ['--test', '--test-name-pattern=' + pattern, 'dist/test/dense-a0.test.js'];
             console.log(JSON.stringify({ suite, allFileCount: all.length, readerTests: names.length, selectedNames: selected }));
           }
           const result = spawnSync(process.execPath, args, { stdio: 'inherit' });
