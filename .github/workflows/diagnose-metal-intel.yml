@@ -1,0 +1,103 @@
+name: diagnose-metal-intel
+# A bounded correctness probe, not a passing platform qualification.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['validation/metal-intel-probe-*']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.4
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Compare unchanged emitted loop and equivalent control forms
+        run: |
+          set -euo pipefail
+          export A0_METAL_PROBE_DIR="$RUNNER_TEMP/a0-metal-probe"
+          mkdir -p "$A0_METAL_PROBE_DIR"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          import { createHash } from 'node:crypto';
+          import { BEHAVIOR_SPEC } from './dist/tools/behavior-spec.js';
+          import { parse, run, validate } from './dist/src/core.js';
+          import { emitMetal } from './dist/src/metal.js';
+          assert.equal(process.platform + '/' + process.arch, 'darwin/x64');
+          const entry = BEHAVIOR_SPEC.find(x => x.name === 'iterate');
+          const program = validate(parse(entry.source));
+          for (const n of [0, 1, 2, 7, 10, 31, 100, 70000]) {
+            assert.equal(run(program, 'sum_to', [n]), (n * (n - 1) / 2) >>> 0);
+          }
+          const original = emitMetal(program);
+          const pattern = /uint a0_sum_to\(uint p0\) \{[\s\S]*?\n\}/;
+          assert.ok(pattern.test(original));
+          const variants = {
+            original,
+            inline: original.replace(pattern, 'uint a0_sum_to(uint p0) {\n  uint n_r = 0u;\n  for (uint i = 0; i < p0; i++) { n_r = n_r + i; }\n  return n_r;\n}'),
+            while: original.replace(pattern, 'uint a0_sum_to(uint p0) {\n  uint n_r = 0u;\n  uint i = 0u;\n  while (i < p0) { n_r = a0_sum_body(n_r, i); i++; }\n  return n_r;\n}'),
+            volatile: original.replace(pattern, 'uint a0_sum_to(uint p0) {\n  volatile uint n_r = 0u;\n  for (uint i = 0; i < p0; i++) { n_r = a0_sum_body(n_r, i); }\n  return n_r;\n}'),
+          };
+          for (const [name, source] of Object.entries(variants)) {
+            writeFileSync(join(process.env.A0_METAL_PROBE_DIR, name + '.metal'), source);
+            console.log(JSON.stringify({ name, sourceSHA256: createHash('sha256').update(source).digest('hex') }));
+          }
+          writeFileSync(join(process.env.A0_METAL_PROBE_DIR, 'manifest.json'), JSON.stringify(Object.keys(variants)));
+          JS
+          cat > "$A0_METAL_PROBE_DIR/probe.swift" <<'SWIFT'
+          import Foundation
+          import Metal
+          guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else {
+            print("No Metal device/queue"); exit(2)
+          }
+          let directory = CommandLine.arguments[1]
+          let names = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: directory + "/manifest.json"))) as! [String]
+          let inputs: [UInt32] = [0, 1, 2, 7, 10, 31, 100, 70000]
+          let expected = inputs.map { n -> UInt32 in
+            if n == 0 { return 0 }
+            return UInt32(truncatingIfNeeded: UInt64(n) * UInt64(n - 1) / 2)
+          }
+          var rows = [[String: Any]]()
+          for name in names {
+            let source = try String(contentsOfFile: directory + "/" + name + ".metal", encoding: .utf8)
+            for fast in [true, false] {
+              let options = MTLCompileOptions()
+              options.fastMathEnabled = fast
+              do {
+                let library = try device.makeLibrary(source: source, options: options)
+                guard let function = library.makeFunction(name: "k_sum_to") else { fatalError("Missing kernel") }
+                let pipeline = try device.makeComputePipelineState(function: function)
+                for group in [1, inputs.count] {
+                  let input = inputs.withUnsafeBufferPointer { p in device.makeBuffer(bytes: p.baseAddress!, length: inputs.count * 4, options: .storageModeShared)! }
+                  let output = device.makeBuffer(length: inputs.count * 4, options: .storageModeShared)!
+                  let command = queue.makeCommandBuffer()!
+                  let encoder = command.makeComputeCommandEncoder()!
+                  encoder.setComputePipelineState(pipeline)
+                  encoder.setBuffer(input, offset: 0, index: 0)
+                  encoder.setBuffer(output, offset: 0, index: 1)
+                  encoder.dispatchThreads(MTLSize(width: inputs.count, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: group, height: 1, depth: 1))
+                  encoder.endEncoding(); command.commit(); command.waitUntilCompleted()
+                  let values = Array(UnsafeBufferPointer(start: output.contents().bindMemory(to: UInt32.self, capacity: inputs.count), count: inputs.count))
+                  rows.append(["variant": name, "fastMath": fast, "group": group, "completed": command.status == .completed, "actual": values.map(Int.init), "matches": values == expected, "error": command.error?.localizedDescription ?? ""])
+                }
+              } catch {
+                rows.append(["variant": name, "fastMath": fast, "compileError": String(describing: error)])
+              }
+            }
+          }
+          let report: [String: Any] = ["diagnosticOnly": true, "device": device.name, "inputs": inputs.map(Int.init), "expected": expected.map(Int.init), "rows": rows]
+          let data = try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
+          print(String(data: data, encoding: .utf8)!)
+          SWIFT
+          swiftc -O -framework Metal -framework Foundation "$A0_METAL_PROBE_DIR/probe.swift" -o "$A0_METAL_PROBE_DIR/probe"
+          "$A0_METAL_PROBE_DIR/probe" "$A0_METAL_PROBE_DIR"
