@@ -782,7 +782,7 @@ export async function checkAvr(
         '-o',
         'host',
         'host.c',
-        `-L${join(prefix, 'lib')}`,
+        `-L${simavr.libraryDirectory as string}`,
         '-lsimavr',
         '-lelf',
         // libsimavr's gdb stub uses sockets, which Windows keeps in Winsock.
