@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { isAbsolute, join, normalize, resolve } from 'node:path';
+import { join, posix, resolve, win32 } from 'node:path';
 import { type DirectSourceArtifact, directSource } from '../src/source-direct.js';
 import { nativeSource } from '../src/source-native.js';
 import type { NativeFormatOptions } from '../src/source-native-format.js';
@@ -11,6 +11,18 @@ import { DIAGNOSTIC_OPTIONS, diagnosticInputs } from './source-diagnostic-inputs
 import { FORMAT_OPTIONS, FORMAT_ROOTS, formatInputs } from './source-format-inputs.js';
 
 const hash = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex');
+
+/** Manifest labels use one repository-relative spelling on every host. */
+const portableInputPath = (path: string): boolean =>
+  typeof path === 'string' &&
+  path.length > 0 &&
+  !posix.isAbsolute(path) &&
+  !win32.isAbsolute(path) &&
+  !/^[A-Za-z]:/.test(path) &&
+  !path.includes('\\') &&
+  !path.includes('\0') &&
+  posix.normalize(path) === path &&
+  !path.split('/').includes('..');
 
 /** Module compilation is preparation; instantiate() is deliberately separate for phase trials. */
 export async function prepareSourceFrontend(
@@ -33,10 +45,7 @@ export async function prepareSourceFrontend(
     const seen = new Set<string>();
     for (const input of inputs) {
       assert.ok(
-        !isAbsolute(input.path) &&
-          normalize(input.path) === input.path &&
-          !input.path.split('/').includes('..') &&
-          !seen.has(input.path),
+        portableInputPath(input.path) && !seen.has(input.path),
         'invalid direct input path',
       );
       seen.add(input.path);
@@ -112,10 +121,7 @@ export async function prepareSourceDiagnostic(directory: string) {
   const seen = new Set<string>();
   for (const input of build.inputs as { path: string; sha256: string }[]) {
     assert.ok(
-      !isAbsolute(input.path) &&
-        normalize(input.path) === input.path &&
-        !input.path.split('/').includes('..') &&
-        !seen.has(input.path),
+      portableInputPath(input.path) && !seen.has(input.path),
       'invalid renderer input path',
     );
     seen.add(input.path);
@@ -165,10 +171,7 @@ export async function prepareSourceFormat(directory: string) {
   const seen = new Set<string>();
   for (const input of build.inputs as { path: string; sha256: string }[]) {
     assert.ok(
-      !isAbsolute(input.path) &&
-        normalize(input.path) === input.path &&
-        !input.path.split('/').includes('..') &&
-        !seen.has(input.path),
+      portableInputPath(input.path) && !seen.has(input.path),
       'invalid formatter input path',
     );
     seen.add(input.path);

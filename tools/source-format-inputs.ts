@@ -48,7 +48,7 @@ export async function formatInputs() {
   const inputs = await Promise.all(
     [
       ...new Set([
-        ...linked.sources.map(({ path }) => relative(process.cwd(), path)),
+        ...linked.sources.map(({ path }) => relative(process.cwd(), path).replaceAll('\\', '/')),
         ...execFileSync('git', ['ls-files', 'src/*.ts'], { encoding: 'utf8' }).trim().split('\n'),
         'tools/source-format-build.ts',
         'tools/source-format-inputs.ts',
