@@ -280,7 +280,7 @@ export async function verifyDirectSourceCostBuild(
   const physicalCheckout = await realpath(checkout);
   const expected = [
     ...new Set([
-      ...sourcePaths.map((path) => relative(physicalCheckout, path).replaceAll('\\', '/')),
+      ...sourcePaths.map((path) => relative(physicalCheckout, path)),
       ...(tracked ? tracked.split('\n') : []),
       'tools/native/arena_runtime.c',
       'tools/native/arena_runtime.h',

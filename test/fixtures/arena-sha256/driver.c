@@ -2,10 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef _WIN32
-#include <fcntl.h>
-#include <io.h>
-#endif
 #include "arena_runtime.h"
 static a0_arena_session *session;
 #define A0_COMPILER_READ(t) ((void)(t),a0_runtime_read(session))
@@ -32,9 +28,6 @@ static void load(uint32_t h,uint32_t off,uint32_t count,uint32_t *page) {
  for(uint32_t i=0;i<count;i++)page[i]=a0_runtime_read(session);
 }
 int main(void) {
-#ifdef _WIN32
- if(_setmode(_fileno(stdin),_O_BINARY)==-1||_setmode(_fileno(stdout),_O_BINARY)==-1)die("binary streams");
-#endif
  unsigned char header[16];
  for(;;) {
   size_t got=fread(header,1,sizeof header,stdin);

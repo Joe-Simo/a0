@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { parseAndValidate, withoutProfile } from '../../../dist/src/core.js';
 import { emitMetal, isKernelCallable } from '../../../dist/src/metal.js';
-import { findClangPlusPlus, runTool } from '../../../dist/src/toolchain.js';
+import { runTool } from '../../../dist/src/toolchain.js';
 import { directedFixtures } from '../../../dist/test/fixtures/sv-emitter/cases.js';
 import { svTokens } from '../../../dist/test/fixtures/sv-emitter/tokens.js';
 import {
@@ -28,8 +28,6 @@ const emit = (
 const root = process.argv[2],
   clang = { path: process.argv[3] };
 assert.ok(root && clang.path);
-const clangxx = findClangPlusPlus();
-assert.ok(clangxx.path, 'C++ compiler is required for the Metal CPU shim');
 const work = `${root}/build/semantic-metal`;
 mkdirSync(work, { recursive: true });
 writeFileSync(
@@ -98,7 +96,7 @@ function check(name, p) {
   writeFileSync(`${work}/module.metal`, r.text);
   writeFileSync(`${work}/metal-target.cpp`, driver(p));
   const b = runTool(
-    clangxx.path,
+    clang.path,
     [
       '-std=c++14',
       `-O${level}`,

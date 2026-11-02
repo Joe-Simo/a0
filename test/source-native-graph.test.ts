@@ -15,21 +15,18 @@ import { nativeSourceArtifact } from '../tools/source-native-artifact.js';
 async function linkedReference(sources: readonly string[]) {
   const files = new Map(
     sources.map((source, index) => [
-      resolve(
-        resolve('/native-case'),
-        `${index === sources.length - 1 ? 'entry' : `unit${index}`}.a0`,
-      ),
+      `/native-case/${index === sources.length - 1 ? 'entry' : `unit${index}`}.a0`,
       source,
     ]),
   );
   return linkSource(
-    resolve('/native-case/entry.a0'),
+    '/native-case/entry.a0',
     async (path) => {
       const source = files.get(path);
       assert.notEqual(source, undefined, path);
       return source as string;
     },
-    { root: resolve('/native-case'), canonicalPath: async (path) => path },
+    { root: '/native-case', canonicalPath: async (path) => path },
   );
 }
 function backends(
@@ -238,16 +235,16 @@ test('native source dependency loader parses each file once and checks its IR on
     },
   };
   const files = new Map([
-    [resolve('/native-case/unit0.a0'), 'fn helper\na add A 1\nret a\nend\n'],
-    [resolve('/native-case/unit1.a0'), 'use "unit0.a0"\nfn left\na helper A\nret a\nend\n'],
-    [resolve('/native-case/unit2.a0'), 'use "unit0.a0"\nfn right\na helper A\nret a\nend\n'],
+    ['/native-case/unit0.a0', 'fn helper\na add A 1\nret a\nend\n'],
+    ['/native-case/unit1.a0', 'use "unit0.a0"\nfn left\na helper A\nret a\nend\n'],
+    ['/native-case/unit2.a0', 'use "unit0.a0"\nfn right\na helper A\nret a\nend\n'],
     [
-      resolve('/native-case/entry.a0'),
+      '/native-case/entry.a0',
       'use "unit1.a0"\nuse "unit2.a0"\nfn top\na left A\nb right a\nret b\nend\n',
     ],
   ]);
   const reads: string[] = [];
-  const options = { root: resolve('/native-case'), canonicalPath: async (path: string) => path };
+  const options = { root: '/native-case', canonicalPath: async (path: string) => path };
   const read = async (path: string): Promise<string> => {
     const source = files.get(path);
     assert.ok(source !== undefined, path);
@@ -255,7 +252,7 @@ test('native source dependency loader parses each file once and checks its IR on
   };
   try {
     const result = await linkNativeSource(
-      resolve('/native-case/entry.a0'),
+      '/native-case/entry.a0',
       async (path) => {
         reads.push(path);
         return read(path);
@@ -263,43 +260,37 @@ test('native source dependency loader parses each file once and checks its IR on
       counted,
       options,
     );
-    const expected = await linkSource(resolve('/native-case/entry.a0'), read, options);
+    const expected = await linkSource('/native-case/entry.a0', read, options);
     backends(result.program, expected.program);
     assert.equal(formatSource(result.program), formatSource(expected.program));
     assert.equal(parses, files.size);
     assert.equal(checks, 1);
     assert.equal(reads.length, files.size);
     assert.equal(new Set(reads).size, files.size);
-    files.set(
-      resolve('/native-case/entry.a0'),
-      'use "unit0.a0"\n\n# origin\nfn top -> bool\nret 1\nend\n',
-    );
+    files.set('/native-case/entry.a0', 'use "unit0.a0"\n\n# origin\nfn top -> bool\nret 1\nend\n');
     await assert.rejects(
-      linkNativeSource(resolve('/native-case/entry.a0'), read, frontend, options),
+      linkNativeSource('/native-case/entry.a0', read, frontend, options),
       (error: unknown) => {
         assert.ok(error instanceof NativeSourceError);
-        assert.equal(error.path, resolve('/native-case/entry.a0'));
+        assert.equal(error.path, '/native-case/entry.a0');
         assert.equal(error.line, 5);
         assert.equal(error.diagnostic, 201);
         return true;
       },
     );
-    files.set(resolve('/native-case/entry.a0'), 'use "entry.a0"\nfn top\nret 0\nend\n');
+    files.set('/native-case/entry.a0', 'use "entry.a0"\nfn top\nret 0\nend\n');
     await assert.rejects(
-      linkNativeSource(resolve('/native-case/entry.a0'), read, frontend, options),
+      linkNativeSource('/native-case/entry.a0', read, frontend, options),
       /cycle/,
     );
-    files.set(resolve('/native-case/entry.a0'), 'use "../outside.a0"\nfn top\nret 0\nend\n');
+    files.set('/native-case/entry.a0', 'use "../outside.a0"\nfn top\nret 0\nend\n');
     await assert.rejects(
-      linkNativeSource(resolve('/native-case/entry.a0'), read, frontend, options),
+      linkNativeSource('/native-case/entry.a0', read, frontend, options),
       /inside/,
     );
-    files.set(
-      resolve('/native-case/entry.a0'),
-      'profile strict\nuse "unit0.a0"\nfn top\nret 0\nend\n',
-    );
+    files.set('/native-case/entry.a0', 'profile strict\nuse "unit0.a0"\nfn top\nret 0\nend\n');
     await assert.rejects(
-      linkNativeSource(resolve('/native-case/entry.a0'), read, frontend, options),
+      linkNativeSource('/native-case/entry.a0', read, frontend, options),
       /profile/,
     );
   } finally {

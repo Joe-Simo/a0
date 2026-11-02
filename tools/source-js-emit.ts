@@ -67,7 +67,7 @@ const emission = {
   sourceSHA256: hash(formatProgram(linked.program)),
   modules: await Promise.all(
     linked.sources.map(async (source) => ({
-      path: relative(process.cwd(), resolve(source.path)).replaceAll('\\', '/'),
+      path: relative(process.cwd(), resolve(source.path)),
       sha256: hash(await readFile(source.path)),
     })),
   ),

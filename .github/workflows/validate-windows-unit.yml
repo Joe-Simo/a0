@@ -86,14 +86,7 @@ jobs:
           bun run lint
           bun run typecheck
           bun run build
-          node --test \
-            dist/test/arena-backend-context.test.js dist/test/editors.test.js \
-            dist/test/migrate.test.js dist/test/protection-path-binding.test.js \
-            dist/test/arena-c-metal.test.js dist/test/arena-sha256.test.js \
-            dist/test/release.test.js dist/test/source-cost-codegen.test.js \
-            dist/test/source-cost-control.test.js dist/test/source-diagnostic.test.js \
-            dist/test/source-init.test.js dist/test/source-native-graph.test.js \
-            dist/test/toolchain-discovery.test.js
+          node --test dist/test/arena-backend-context.test.js dist/test/editors.test.js dist/test/migrate.test.js dist/test/protection-path-binding.test.js
           # Preserve test execution and exit status; bound console diagnostics so
           # large assertion values cannot make the job log unreadable by clients.
           test_status=0

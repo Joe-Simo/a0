@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { posix, win32 } from 'node:path';
+import { isAbsolute, normalize } from 'node:path';
 import type { CompileOptions } from '../src/backends.js';
 import { JS_SOURCE_FUNCTION_TYPES } from '../src/source-js.js';
 
@@ -388,12 +388,8 @@ export function sourceCostInputs(value: unknown, name: string): readonly SourceC
         item &&
         typeof item.path === 'string' &&
         item.path.length > 0 &&
-        !posix.isAbsolute(item.path) &&
-        !win32.isAbsolute(item.path) &&
-        !/^[A-Za-z]:/.test(item.path) &&
-        !item.path.includes('\\') &&
-        !item.path.includes('\0') &&
-        posix.normalize(item.path) === item.path &&
+        !isAbsolute(item.path) &&
+        normalize(item.path) === item.path &&
         !item.path.split('/').includes('..') &&
         typeof item.sha256 === 'string' &&
         /^[0-9a-f]{64}$/.test(item.sha256),
