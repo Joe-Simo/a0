@@ -249,6 +249,7 @@ export function findWasmClang(): ToolInfo & { readonly wasmLd: string | undefine
     `${p}/llvm/bin/clang`,
     `${p}/llvm@20/bin/clang`,
     `${p}/llvm@19/bin/clang`,
+    `${p}/llvm@18/bin/clang`,
   ]);
   const wasmLd = firstExisting([
     process.env.A0_WASM_LD,
@@ -257,6 +258,8 @@ export function findWasmClang(): ToolInfo & { readonly wasmLd: string | undefine
       `${p}/lld/bin/wasm-ld`,
       `${p}/llvm/bin/wasm-ld`,
       `${p}/llvm@20/bin/wasm-ld`,
+      `${p}/llvm@19/bin/wasm-ld`,
+      `${p}/llvm@18/bin/wasm-ld`,
     ]),
   ]);
   const path = firstExisting([process.env.A0_WASM_CLANG, ...llvmClangs, onPath('clang')]);
