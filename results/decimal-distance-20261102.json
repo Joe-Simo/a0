@@ -1,0 +1,483 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "scope": "Decimal integer formatting workload; not a universal compiler benchmark or native-frontend acceptance result.",
+  "baseline": "903cc7c0eb063ec8065dbefd13849b4c9f9dd203",
+  "sourceCandidate": "00fd5e5c07df2fa824f5d950d8d0508873f6cfd9",
+  "change": "Use maintained nonnegative decimal remainder distances directly in interval checks. Keep bounds, even-tie decisions, source immutability and refusal behavior unchanged.",
+  "motivation": {
+    "failedIntelRun": "https://github.com/Joe-Simo/a0/actions/runs/41489693130",
+    "isolatedFailure": "https://github.com/Joe-Simo/a0/actions/runs/41498913100",
+    "failure": "Unchanged O0 decimal oracle exceeds its 600-second subprocess limit on hosted Intel. The reader partition separately passed 45 tests.",
+    "priorStatus": "This is a reproducible timeout, not claimed as a flake or a passing qualification."
+  },
+  "correctness": {
+    "requests": 8783,
+    "positive": 8745,
+    "controls": 38,
+    "optimizationLevels": [
+      0,
+      2
+    ],
+    "ubsan": true,
+    "oracle": "JS Number(original decimal bytes), exact binary64 words and String(value); atomic refusal, input immutability and I/O identity checks retained.",
+    "inputSha256": "2d824e5d21b815d833e69c41bfa8358dde99c9b4ea7a32cc56794ea91f9d5ecf",
+    "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489",
+    "allOutputsIdentical": true
+  },
+  "profile": {
+    "exitCode": 0,
+    "wallSeconds": 238.19730669500132,
+    "userSeconds": 238.097733,
+    "systemSeconds": 0.080771,
+    "maxRssKiB": 17960,
+    "phases": {
+      "parseSeconds": 25.161387205,
+      "totalNumberSeconds": 237.60588336
+    },
+    "exactOutputMatch": true,
+    "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+  },
+  "timing": {
+    "method": "three fixed paired repetitions at O0/O2; alternating order; identical full 8783-request input; UBSan; wait4 native child resources",
+    "samples": [
+      {
+        "repetition": 0,
+        "optimization": 0,
+        "subject": "baseline",
+        "wallSeconds": 247.35609188298986,
+        "userSeconds": 247.253822,
+        "systemSeconds": 0.08290499999999999,
+        "loadBefore": [
+          0.2822265625,
+          0.56298828125,
+          0.591796875
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 0,
+        "optimization": 0,
+        "subject": "candidate",
+        "wallSeconds": 133.16651748600998,
+        "userSeconds": 133.098231,
+        "systemSeconds": 0.044603,
+        "loadBefore": [
+          1.0791015625,
+          0.853515625,
+          0.7119140625
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 0,
+        "optimization": 2,
+        "subject": "baseline",
+        "wallSeconds": 108.11261344900413,
+        "userSeconds": 108.044601,
+        "systemSeconds": 0.053003999999999996,
+        "loadBefore": [
+          1.00537109375,
+          0.912109375,
+          0.75537109375
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 0,
+        "optimization": 2,
+        "subject": "candidate",
+        "wallSeconds": 65.29765483600204,
+        "userSeconds": 65.196298,
+        "systemSeconds": 0.06350499999999999,
+        "loadBefore": [
+          1.0,
+          0.943359375,
+          0.78759765625
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 1,
+        "optimization": 0,
+        "subject": "candidate",
+        "wallSeconds": 139.65918050101027,
+        "userSeconds": 139.545623,
+        "systemSeconds": 0.047438,
+        "loadBefore": [
+          1.0,
+          0.9560546875,
+          0.806640625
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 1,
+        "optimization": 0,
+        "subject": "baseline",
+        "wallSeconds": 234.58932218998962,
+        "userSeconds": 234.49212,
+        "systemSeconds": 0.073864,
+        "loadBefore": [
+          1.0,
+          0.9765625,
+          0.8369140625
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 1,
+        "optimization": 2,
+        "subject": "candidate",
+        "wallSeconds": 60.654417876008665,
+        "userSeconds": 60.607175,
+        "systemSeconds": 0.035591,
+        "loadBefore": [
+          1.0,
+          0.99951171875,
+          0.8828125
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 1,
+        "optimization": 2,
+        "subject": "baseline",
+        "wallSeconds": 106.20952277998731,
+        "userSeconds": 106.175032,
+        "systemSeconds": 0.027516,
+        "loadBefore": [
+          1.0,
+          1.0,
+          0.89453125
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 2,
+        "optimization": 0,
+        "subject": "baseline",
+        "wallSeconds": 242.5770768479997,
+        "userSeconds": 242.443724,
+        "systemSeconds": 0.073905,
+        "loadBefore": [
+          1.0,
+          1.0,
+          0.91259765625
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 2,
+        "optimization": 0,
+        "subject": "candidate",
+        "wallSeconds": 135.5056465959933,
+        "userSeconds": 135.399381,
+        "systemSeconds": 0.093497,
+        "loadBefore": [
+          1.0087890625,
+          1.00537109375,
+          0.94140625
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 2,
+        "optimization": 2,
+        "subject": "baseline",
+        "wallSeconds": 101.59466979799618,
+        "userSeconds": 101.547769,
+        "systemSeconds": 0.040047,
+        "loadBefore": [
+          1.0,
+          1.0,
+          0.95458984375
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "repetition": 2,
+        "optimization": 2,
+        "subject": "candidate",
+        "wallSeconds": 60.6049831029959,
+        "userSeconds": 60.568911,
+        "systemSeconds": 0.020999999999999998,
+        "loadBefore": [
+          1.0,
+          1.0,
+          0.96484375
+        ],
+        "exitCode": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      }
+    ],
+    "medians": {
+      "0": {
+        "baseline": {
+          "wallMedian": 242.5770768479997,
+          "cpuMedian": 242.517629,
+          "wallRange": [
+            234.58932218998962,
+            247.35609188298986
+          ]
+        },
+        "candidate": {
+          "wallMedian": 135.5056465959933,
+          "cpuMedian": 135.49287800000002,
+          "wallRange": [
+            133.16651748600998,
+            139.65918050101027
+          ]
+        },
+        "wallImprovementFraction": 0.4413913781272004
+      },
+      "2": {
+        "baseline": {
+          "wallMedian": 106.20952277998731,
+          "cpuMedian": 106.20254800000001,
+          "wallRange": [
+            101.59466979799618,
+            108.11261344900413
+          ]
+        },
+        "candidate": {
+          "wallMedian": 60.654417876008665,
+          "cpuMedian": 60.642765999999995,
+          "wallRange": [
+            60.6049831029959,
+            65.29765483600204
+          ]
+        },
+        "wallImprovementFraction": 0.42891732974213526
+      }
+    },
+    "maximumStartingLoad": 1.0791015625,
+    "scope": "Fresh native process over identical full input, excluding JS oracle generation; compile costs measured separately. Three fixed repetitions, alternating order, no optional stopping."
+  },
+  "nativeMemory": {
+    "method": "C launcher fork/exec and wait4, avoiding Python inherited memory; supplementary resource control, not extra timing samples",
+    "rows": [
+      {
+        "wallSeconds": 237.900490097,
+        "userSeconds": 237.799879,
+        "systemSeconds": 0.072314,
+        "maxRssKiB": 17964,
+        "exitCode": 0,
+        "subject": "baseline",
+        "optimization": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "wallSeconds": 129.079927514,
+        "userSeconds": 129.023515,
+        "systemSeconds": 0.046057,
+        "maxRssKiB": 17952,
+        "exitCode": 0,
+        "subject": "candidate",
+        "optimization": 0,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "wallSeconds": 110.321490024,
+        "userSeconds": 110.276127,
+        "systemSeconds": 0.036169,
+        "maxRssKiB": 17780,
+        "exitCode": 0,
+        "subject": "baseline",
+        "optimization": 2,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      },
+      {
+        "wallSeconds": 67.514175607,
+        "userSeconds": 67.485017,
+        "systemSeconds": 0.024322,
+        "maxRssKiB": 17740,
+        "exitCode": 0,
+        "subject": "candidate",
+        "optimization": 2,
+        "outputSha256": "2d584ae382bc7db03ef354b5b5147ca049262a58a820c950224c13f76a50b489"
+      }
+    ]
+  },
+  "nativeArtifacts": {
+    "baseline": {
+      "O0": {
+        "bytes": 658288,
+        "sha256": "6fb5d5ac9f8d21a9ac8208f9e0529b181136f231f0e824b090395851ccc6268c"
+      },
+      "O2": {
+        "bytes": 558688,
+        "sha256": "f0d807a2163a6570043964b55cf36ffa717fca50e18617246a7a4aabf0c7e804"
+      }
+    },
+    "candidate": {
+      "O0": {
+        "bytes": 654104,
+        "sha256": "a6caaab08684915c4d9bd6fabf7fc5997bad86506559870c28d856164ff55bb0"
+      },
+      "O2": {
+        "bytes": 521832,
+        "sha256": "caffeccee6a1156b84d2a9011fedd03367c050e613e3e50662ee14b4af9a4a3d"
+      }
+    }
+  },
+  "nativeCompileCost": {
+    "scope": "native C driver compile/link only, verified frontend generation is separate",
+    "rows": [
+      {
+        "wallSeconds": 0.268130661,
+        "userSeconds": 0.2148,
+        "systemSeconds": 0.053207,
+        "maxRssKiB": 74248,
+        "exitCode": 0,
+        "repetition": 0,
+        "optimization": 0,
+        "subject": "baseline"
+      },
+      {
+        "wallSeconds": 0.255444276,
+        "userSeconds": 0.161149,
+        "systemSeconds": 0.094216,
+        "maxRssKiB": 74520,
+        "exitCode": 0,
+        "repetition": 0,
+        "optimization": 0,
+        "subject": "candidate"
+      },
+      {
+        "wallSeconds": 1.332220339,
+        "userSeconds": 1.283553,
+        "systemSeconds": 0.048157,
+        "maxRssKiB": 88612,
+        "exitCode": 0,
+        "repetition": 0,
+        "optimization": 2,
+        "subject": "baseline"
+      },
+      {
+        "wallSeconds": 1.030390303,
+        "userSeconds": 0.96861,
+        "systemSeconds": 0.061599,
+        "maxRssKiB": 85812,
+        "exitCode": 0,
+        "repetition": 0,
+        "optimization": 2,
+        "subject": "candidate"
+      },
+      {
+        "wallSeconds": 0.271572123,
+        "userSeconds": 0.199955,
+        "systemSeconds": 0.071152,
+        "maxRssKiB": 74188,
+        "exitCode": 0,
+        "repetition": 1,
+        "optimization": 0,
+        "subject": "candidate"
+      },
+      {
+        "wallSeconds": 0.253437161,
+        "userSeconds": 0.202782,
+        "systemSeconds": 0.050412,
+        "maxRssKiB": 74116,
+        "exitCode": 0,
+        "repetition": 1,
+        "optimization": 0,
+        "subject": "baseline"
+      },
+      {
+        "wallSeconds": 1.174702798,
+        "userSeconds": 1.107091,
+        "systemSeconds": 0.066942,
+        "maxRssKiB": 85424,
+        "exitCode": 0,
+        "repetition": 1,
+        "optimization": 2,
+        "subject": "candidate"
+      },
+      {
+        "wallSeconds": 1.577099864,
+        "userSeconds": 1.483016,
+        "systemSeconds": 0.0926,
+        "maxRssKiB": 88616,
+        "exitCode": 0,
+        "repetition": 1,
+        "optimization": 2,
+        "subject": "baseline"
+      },
+      {
+        "wallSeconds": 0.309670643,
+        "userSeconds": 0.216905,
+        "systemSeconds": 0.090744,
+        "maxRssKiB": 74508,
+        "exitCode": 0,
+        "repetition": 2,
+        "optimization": 0,
+        "subject": "baseline"
+      },
+      {
+        "wallSeconds": 0.276257003,
+        "userSeconds": 0.207056,
+        "systemSeconds": 0.069102,
+        "maxRssKiB": 74052,
+        "exitCode": 0,
+        "repetition": 2,
+        "optimization": 0,
+        "subject": "candidate"
+      },
+      {
+        "wallSeconds": 1.157143624,
+        "userSeconds": 1.073253,
+        "systemSeconds": 0.082379,
+        "maxRssKiB": 88544,
+        "exitCode": 0,
+        "repetition": 2,
+        "optimization": 2,
+        "subject": "baseline"
+      },
+      {
+        "wallSeconds": 0.978730449,
+        "userSeconds": 0.918538,
+        "systemSeconds": 0.060052,
+        "maxRssKiB": 85604,
+        "exitCode": 0,
+        "repetition": 2,
+        "optimization": 2,
+        "subject": "candidate"
+      }
+    ]
+  },
+  "generatedCBytes": {
+    "baseline": 58979,
+    "candidate": 58510
+  },
+  "rejectedExperiment": {
+    "source": "156eb22f2cc8162e0c8f2f2f83816d77b9f1b3f7",
+    "change": "Fuse parser multiply-add",
+    "status": "not retained",
+    "reason": "The initial gain did not support its predeclared threshold; phase attribution showed parsing was a small part of total conversion time."
+  },
+  "qualification": {
+    "localFullOracle": "passed",
+    "nativeMemory": "no increase observed",
+    "seed": "stage 2/3/4 fixed point passed; seed files unchanged",
+    "frontend": "fresh build byte-identical; checkout provenance refreshed",
+    "aggregate": "pending",
+    "intelCandidate": "pending"
+  },
+  "limitations": [
+    "No global 616-entry ledger refresh or universal performance claim.",
+    "Does not satisfy the separate native frontend cost, independent AI study, physical-platform or protection-assurance release gates.",
+    "Hosted Intel success is not established by Linux measurements."
+  ]
+}

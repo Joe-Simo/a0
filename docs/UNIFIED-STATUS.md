@@ -98,5 +98,11 @@ Both runners report a paravirtual Metal device; physical GPU and performance
 qualification remain outstanding. Its separate Linux ARM64 result predates this
 fix and is not evidence for the newer tree.
 
+The [decimal-distance study](../results/decimal-distance-20261102.json) records a
+bounded optimization of native integer formatting, with exact output checks and
+separate runtime, compile-cost, size and memory measurements. This workload is
+separate from the native frontend acceptance budget; the Intel timeout remains
+unqualified until the unchanged oracle passes on that platform.
+
 The current local review is scoped source review plus adversarial tests. It is not a hosted
 Codex Security scan, independent cryptographic certification or production-security approval.
