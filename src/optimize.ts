@@ -902,6 +902,28 @@ function expand(body: Body): Body {
       !funcHasIo(callee) &&
       [callee.result, ...callee.types.values()].every((t) => typeWords(t) <= UNROLL_STATE_WORDS)
     ) {
+      if (independentFullFill(callee, count.value)) {
+        const set = storeOnly(callee) as Node;
+        const value = set.args[2] as Operand;
+        const element = { ...callee, nodes: callee.nodes.filter((n) => n !== set), ret: value };
+        const values: Operand[] = [];
+        for (let k = 0; k < count.value; k += 1)
+          values.push(
+            inlineInto(
+              element,
+              [init, { kind: 'u32', value: k }, ...extra],
+              out,
+              { types, calls },
+              names,
+            ),
+          );
+        const id = names.fresh();
+        out.push({ id, op: 'arr', args: values });
+        types.set(id, callee.result);
+        rename.set(node.id, { kind: 'node', id });
+        changed = true;
+        continue;
+      }
       let state = init;
       for (let k = 0; k < count.value; k += 1)
         state = inlineInto(
@@ -1365,6 +1387,7 @@ function independentFullFill(body: TypedFunc, count: number): boolean {
   const arr = arrayOf(body.result);
   return (
     arr !== undefined &&
+    count > UNROLL_TRIPS &&
     count === arr.length &&
     count <= UNROLL_STATE_WORDS &&
     storeOnly(body) !== undefined

@@ -35,6 +35,8 @@ for (const length of [16, 64]) {
       const expected = input.map((v, i) => (v ^ i) >>> 0);
       assert.deepEqual(run(source, [initial, input]), expected);
       assert.deepEqual(run(optimized, [initial, input]), expected);
+      // A loop-invariant extra may alias the initial state without observing updates.
+      assert.deepEqual(run(optimized, [input, input]), expected);
     }
   });
 }
