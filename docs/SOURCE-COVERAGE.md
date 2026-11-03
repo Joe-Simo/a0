@@ -130,3 +130,12 @@ baseline failures, corrected tests and bounded host parse/format cost samples ar
 recorded in [`results/source-unicode-guard.json`](../results/source-unicode-guard.json).
 The cost samples use standalone units without following imports; they do not clear
 the native frontend cost, full-platform, AI or public cutover gates.
+
+Initialization now decodes existing source, instructions, settings and manifests
+without replacing malformed UTF-8. Invalid input leaves original file bytes intact
+and produces no generated project files. Conflict and rollback checks compare exact
+bytes, so an intervening malformed-byte edit is preserved instead of mistaken for
+an unchanged replacement character. Synthetic regression and write-failure evidence
+is recorded in [`results/source-init-utf8.json`](../results/source-init-utf8.json).
+This does not eliminate arbitrary external writes between a check and a write, or
+replace the existing lock and protection requirements.
