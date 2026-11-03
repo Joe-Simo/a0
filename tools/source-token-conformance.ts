@@ -11,6 +11,9 @@ import { spawnWithInput, withTempDir } from '../src/toolchain.js';
 import { a0TokenText, KERNELS, type Kernel } from './exec-bench-kernels.js';
 import { writeReport } from './scrub-results.js';
 
+const isU32 = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value === value >>> 0;
+
 const hash = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 export const SOURCE_TOKEN_CONTROL_SEED = 0x60b3aa51;
 
@@ -47,10 +50,7 @@ export function checkTokenControlOutput(
   for (const [index, line] of lines.entries()) {
     assert.match(line, /^(0|[1-9][0-9]*)$/, `${label}: malformed result ${index}`);
     const value = Number(line);
-    assert.ok(
-      Number.isInteger(value) && value >= 0 && value <= 0xffffffff,
-      `${label}: non-u32 result ${index}`,
-    );
+    assert.ok(isU32(value), `${label}: non-u32 result ${index}`);
     assert.equal(value, expected[index], `${label}: input ${index}`);
   }
 }
@@ -78,8 +78,7 @@ export async function compiledTokenControl(
   assert.ok(inputs.length > 0, 'At least one control input is required');
   for (const row of inputs) {
     assert.equal(row.length, kernel.arity);
-    for (const value of row)
-      assert.ok(Number.isInteger(value) && value >= 0 && value <= 0xffffffff);
+    for (const value of row) assert.ok(isU32(value));
   }
   return withTempDir(async (directory) => {
     const source = driver(kernel, language);
@@ -164,9 +163,7 @@ export async function sourceTokenConformance(options: {
     const inputs = sourceTokenControlInputs(kernel.arity);
     const expected = inputs.map((row) => {
       const value = run(fn, [...row]);
-      assert.ok(
-        typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 0xffffffff,
-      );
+      assert.ok(isU32(value));
       return value;
     });
     const javascript = new Function(
@@ -211,6 +208,8 @@ export async function sourceTokenConformance(options: {
     scope:
       'Per-input conformance of the unchanged sources in source-tokens.json; no timing, token-score change, native-A0 or AI-cost claim.',
     sourceTokenReportSHA256: hash(reportBytes),
+    runnerSourceSHA256: hash(await readFile('tools/source-token-conformance.ts')),
+    kernelSourceSHA256: hash(await readFile('tools/exec-bench-kernels.ts')),
     toolchains,
     host: { platform: process.platform, architecture: process.arch },
     policy:
