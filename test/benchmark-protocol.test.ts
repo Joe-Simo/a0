@@ -1,10 +1,27 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  benchmarkMedian,
   readBenchmarkMeasurement,
   requireStableBenchmarkChecksum,
   validateBenchmarkMeasurement,
 } from '../tools/benchmark-protocol.js';
+
+test('benchmark medians average both middle observations without changing the samples', () => {
+  const samples = [9, 1];
+  assert.equal(benchmarkMedian(samples), 5);
+  assert.deepEqual(samples, [9, 1]);
+  assert.equal(benchmarkMedian([9, 1, 7, 3]), 5);
+  assert.equal(benchmarkMedian([9, 1, 3]), 3);
+  assert.equal(benchmarkMedian([0]), 0);
+  assert.equal(benchmarkMedian([Number.MAX_VALUE, Number.MAX_VALUE]), Number.MAX_VALUE);
+});
+
+test('benchmark medians refuse empty or invalid observations instead of returning a score', () => {
+  assert.throws(() => benchmarkMedian([]), /no samples/);
+  for (const value of [NaN, Infinity, -Infinity, -1])
+    assert.throws(() => benchmarkMedian([1, value]), /finite and nonnegative/);
+});
 
 test('benchmark protocol accepts finite positive timings and exact u32 checksums', () => {
   for (const time of ['1', '0.125', '.5', '1.', '2e-6', '+3.5E+2']) {

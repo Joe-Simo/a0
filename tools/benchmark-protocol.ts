@@ -4,6 +4,20 @@ export interface BenchmarkMeasurement {
   readonly checksum: string;
 }
 
+/** Conventional sample median; zero is allowed for measured startup durations. */
+export function benchmarkMedian(values: readonly number[]): number {
+  if (values.length === 0) throw new Error('benchmark has no samples');
+  for (const value of values)
+    if (!Number.isFinite(value) || value < 0)
+      throw new Error('benchmark samples must be finite and nonnegative');
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = sorted.length >> 1;
+  const upper = sorted[middle] as number;
+  if (sorted.length % 2 !== 0) return upper;
+  const lower = sorted[middle - 1] as number;
+  return lower + (upper - lower) / 2;
+}
+
 export function validateBenchmarkMeasurement(ns: number, checksum: string): BenchmarkMeasurement {
   if (!Number.isFinite(ns) || ns <= 0)
     throw new Error('benchmark time must be finite and positive');

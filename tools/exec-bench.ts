@@ -47,6 +47,7 @@ import { parseAndValidate } from '../src/core.js';
 import { findClang, runTool, withTempDir } from '../src/toolchain.js';
 import { parseBenchmarkOptions } from './benchmark-options.js';
 import {
+  benchmarkMedian as median,
   readBenchmarkMeasurement,
   requireStableBenchmarkChecksum,
   validateBenchmarkMeasurement,
@@ -130,7 +131,7 @@ function summarize(values: number[], checksum: string): Sample {
   for (const value of values) validateBenchmarkMeasurement(value, checksum);
   const s = [...values].sort((a, b) => a - b);
   return {
-    medianNsPerCall: s[s.length >> 1] ?? 0,
+    medianNsPerCall: median(s),
     minNsPerCall: s[0] ?? 0,
     maxNsPerCall: s[s.length - 1] ?? 0,
     checksum,
@@ -308,8 +309,8 @@ async function benchC(
       sh.push(startup(h.exe));
     }
     startupMs = {
-      emitted: [...su].sort((p, q) => p - q)[su.length >> 1] ?? 0,
-      handwritten: [...sh].sort((p, q) => p - q)[sh.length >> 1] ?? 0,
+      emitted: median(su),
+      handwritten: median(sh),
     };
     for (let i = 0; i < SAMPLES; i += 1) {
       waitQuiet();
@@ -478,8 +479,6 @@ interface LangRow {
   readonly timer?: string;
   readonly detail?: string;
 }
-
-const median = (a: readonly number[]): number => [...a].sort((p, q) => p - q)[a.length >> 1] ?? 0;
 
 /** Parse the one-line "ns checksum" protocol every baseline driver prints. */
 function readBack(
@@ -879,6 +878,8 @@ async function main(): Promise<void> {
     if (bad !== undefined) skipped[lang.id] = `${bad.status}: ${bad.detail ?? ''}`.slice(0, 300);
   }
   const report = {
+    sampleMedian:
+      'middle ordered sample; arithmetic mean of the two middle samples for even counts',
     generatedAt: new Date().toISOString(),
     node: process.version,
     platform: `${process.platform}-${process.arch}`,
