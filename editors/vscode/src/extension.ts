@@ -7,6 +7,15 @@ import {
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient | undefined;
+let deactivating = false;
+let operations: Promise<void> = Promise.resolve();
+
+function sequence(operation: () => Promise<void>): Promise<void> {
+  // Each caller receives its own failure; a later operation can still retry.
+  const next = operations.then(operation, operation);
+  operations = next;
+  return next;
+}
 
 function createClient(): LanguageClient {
   const config = workspace.getConfiguration('a0');
@@ -43,7 +52,7 @@ function createClient(): LanguageClient {
 }
 
 async function start(): Promise<void> {
-  if (!workspace.isTrusted) return;
+  if (deactivating || client || !workspace.isTrusted) return;
   try {
     client = createClient();
     await client.start();
@@ -57,32 +66,42 @@ async function start(): Promise<void> {
 
 async function stop(): Promise<void> {
   const running = client;
-  client = undefined;
-  if (running?.isRunning()) await running.stop();
+  if (!running) return;
+  if (running.isRunning()) await running.stop();
+  if (client === running) client = undefined;
+}
+
+async function restart(): Promise<void> {
+  try {
+    await sequence(async () => {
+      await stop();
+      await start();
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    void window.showErrorMessage(`A0: could not restart the language server (${message}).`);
+  }
 }
 
 export async function activate(context: ExtensionContext): Promise<void> {
   context.subscriptions.push(
     workspace.onDidGrantWorkspaceTrust(async () => {
-      await start();
+      await sequence(start);
     }),
-    commands.registerCommand('a0.restartServer', async () => {
-      await stop();
-      await start();
-    }),
+    commands.registerCommand('a0.restartServer', restart),
     workspace.onDidChangeConfiguration(async (event) => {
       if (
         event.affectsConfiguration('a0.server.path') ||
         event.affectsConfiguration('a0.server.args')
       ) {
-        await stop();
-        await start();
+        await restart();
       }
     }),
   );
-  await start();
+  await sequence(start);
 }
 
 export function deactivate(): Promise<void> {
-  return stop();
+  deactivating = true;
+  return sequence(stop);
 }
