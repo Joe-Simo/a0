@@ -15,7 +15,7 @@ until a validated migration and cutover; their historical benchmark rows are not
 | Guides and initialization | Candidate starter code, generated guides/hooks and idempotent initialization are executable tests, including conflict refusal and rollback. | `results/source-candidate-init.json` |
 | Sealed sessions and hooks | Candidate reader is integrated without a mounted plaintext tree; synthetic encrypted-session controls preserve revisions and outputs. The current review fixes additional cancellation races. | `results/source-sealed-hooks.json`, `results/security-session-review.json` |
 | Diagnostics and relocation | All 90 runnable catalog examples execute with the candidate; 60 remain explicitly non-runnable. Isolated project/compiler relocation and launcher regeneration are tested. | `results/source-explain-relocation.json` |
-| Editor assets | Candidate grammar/highlighting, snippets and trusted project launcher binding are implemented; extension typecheck/bundle passed. A real editor-host/platform matrix remains pending. | `results/source-editor-grammar.json` |
+| Editor assets | Candidate grammar/highlighting, snippets and trusted project launcher binding are implemented; extension typecheck/bundle passed. Hosted macOS ARM64 development-host Restricted Mode registration and server refusal passed; installed-extension, trusted-workspace and remaining editor-platform coverage remain pending. | `results/source-editor-grammar.json`, `results/editor-host-qualification-20261103.json` |
 
 Some historical evidence files retain their old `remaining` lists. Later rows above supersede
 those integration-only items; they do not waive the acceptance gates below.

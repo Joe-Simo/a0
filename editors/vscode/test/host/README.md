@@ -19,13 +19,14 @@ directory. It does not use a user installation's profile, download an editor, or
 grant workspace trust. A trusted fixture is a test failure, not permission to disable
 the trust check. Keep the editor sandbox enabled.
 
-Real-host execution remains pending. The original cloud executor returned HTTP 403
-from the official update endpoint. The `validate-editor-host` workflow instead uses
-a standard public macOS runner and the official pinned VS Code 1.141.2 archive.
+Real-host execution passed on a standard public macOS ARM64 runner with the
+official pinned VS Code 1.141.2 archive; see
+[`results/editor-host-qualification-20261103.json`](../../../../results/editor-host-qualification-20261103.json).
+The original cloud executor returned HTTP 403 from the official update endpoint.
 Its editor, display and user-data directory are isolated to the temporary runner.
-No workspace trust is granted, and the editor sandbox remains enabled. Passing this
-test would qualify only Restricted Mode registration and server refusal, not the
-trusted-workspace language-server path.
+No workspace trust is granted, and the editor sandbox remains enabled. This passing test qualifies only development-host Restricted Mode registration and
+server refusal, not installed-extension enablement or the trusted-workspace
+language-server path.
 
 The first hosted Linux attempt stopped before the extension test because the
 archive's SUID sandbox helper was not root-owned with mode 4755. No privileges were
