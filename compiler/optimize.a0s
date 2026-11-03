@@ -45,7 +45,8 @@ raw #
 raw # - expand (`edstep`): weighted-cost pure scalar calls are inlined and folds of 1..8
 raw #   literal trips unrolled (ordinary nodes cost 1, call/fold/loop cost 5; thresholds 16,
 raw #   256 per body and 2048 total). Square-matrix recurrences are powered first when cheaper.
-raw #   Full independent array overwrites of 9..64 elements construct the array directly.
+raw #   Sole-return independent array overwrites of 9..64 elements construct the array directly
+raw #   unless an existing lane-fill lowering applies.
 raw #   All fold rewrites require no io and at most 64 words a result/node type. Rename table
 raw #   RN, output sequence and instances describe copied or synthesized nodes.
 raw # - pass (`passa`..`passd`): per node, in order, operands resolved through the substitutions;
@@ -480,6 +481,65 @@ fn mxemit(ed: u32x128x393, i: u32, n: u32, side: u32, param: u32, trips: u32, ty
   return edsyn(ed3, 0, 22, type, 1, ed3[E_SC + E_MACC], 1, ed3[E_SC + E_MAS], len)
 end
 
+# operand p of body node j (operands at as_, op o; the set is node s) as a fill run allows it
+fn fcarg(ok: u32, p: u32, op: u32x128x512, as_: u32, j: u32, s: u32, o: u32, pf: u32, pc: u32, tl: u32x128x65, ty: u32x384x65) -> u32
+  let (k, v) = rdp(op, as_ + p)
+  let isp = k == 2
+  let vi = (isp & (v < pc)) ? v : 0
+  let sp = isp & (v >= 1) & (v < pc) & (tyw(ty, tl[pf + vi], 0) == 1)
+  let usep0 = isp & (v == 0) & !((j == s) & (p == 0))
+  let notset = j != s
+  let bad1 = notset & ((k == 4) | (isp & !sp))
+  let shf = (o == 8) | (o == 9)
+  let uni = (k == 3) | (isp & (v >= 2) & sp)
+  let bad2 = notset & shf & (p == 1) & !uni
+  return ok & bit(!(usep0 | bad1 | bad2))
+end
+# body node j: (ok, cost of the nodes but the set, operand count of the nodes but the set)
+fn fcnode(st: (u32,u32,u32), j: u32, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, first: u32, s: u32, pf: u32, pc: u32, tl: u32x128x65, ty: u32x384x65) -> (u32,u32,u32)
+  let (ok, cost, na0) = st
+  let r = first + j
+  let o = nd[r * 6 + 1]
+  let na = nd[r * 6 + 2]
+  let notset = j != s
+  let lane = (o >= 2) & (o <= 9)
+  let u = tyw(ty, nt[r], 0) == 1
+  let ok1 = ok & bit(!notset | (lane & u))
+  let ok2 = fold(fcarg, na, ok1, op, nd[r * 6 + 3], j, s, o, pf, pc, tl, ty)
+  let c = notset ? (o == 4 ? 3 : 1) : 0
+  return (ok2, cost + c, na0 + (notset ? na : 0))
+end
+# the fill run of callee c (its body present): (ok, cost, operand count of the copies, set index)
+fn fcrun(g: u32, c: u32, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, tl: u32x128x65, ty: u32x384x65) -> (u32,u32,u32,u32)
+  let first = fnt[c * 7 + 4]
+  let nc = fnt[c * 7 + 5]
+  let pf = fnt[c * 7 + 2]
+  let pc = fnt[c * 7 + 1]
+  let w = fnt[c * 7 + 6]
+  let kind = w >> 28
+  let v = w & 0xfffffff
+  let (pk, pv) = rdp(op, kind == 5 ? v : 0)
+  let rk = kind == 5 ? pk : kind
+  let rv = kind == 5 ? pv : v
+  let isn = (rk == 1) & (rv < nc)
+  let s = isn ? rv : 0
+  let sr = first + s
+  let so = nd[sr * 6 + 1]
+  let sna = nd[sr * 6 + 2]
+  let sas = nd[sr * 6 + 3]
+  let (a0k, a0v) = rdp(op, sas)
+  let (a1k, a1v) = rdp(op, sas + 1)
+  let (vk, vv) = rdp(op, sna >= 3 ? sas + 2 : sas)
+  let vi = ((vk == 2) & (vv < pc)) ? vv : 0
+  let vsp = (vv >= 1) & (vv < pc) & (tyw(ty, tl[pf + vi], 0) == 1)
+  let okv = (vk != 4) & !((vk == 2) & !vsp)
+  let okset = isn & (so == 26) & (sna >= 3) & (a0k == 2) & (a0v == 0) & (a1k == 2) & (a1v == 1) & okv
+  let r = fold(fcnode, (g == 1) & okset ? nc : 0, (1, 0, 0), nd, nt, op, first, s, pf, pc, tl, ty)
+  let (ok, cost, na) = r
+  return (bit(okset) & ok, cost, na, s)
+end
+
+
 # A full independent array overwrite. Unlike fcrun, values need not be lane operations.
 fn fiarg(ok: u32, j: u32, oa: u32x128x512, ash: u32, node: u32, omitted: u32) -> u32
   let (k, v) = rdp(oa, ash + j)
@@ -525,8 +585,18 @@ fn fiemit(ed: u32x128x393, i: u32, c: u32, host: u32, ash: u32, trips: u32, omit
   return edsyn(copied, 0, 22, type, 0, start, copied[E_SC + E_RK], stride, trips)
 end
 
+# Count local uses so returned arrays do not displace producer/consumer loop optimizations.
+fn fiusearg(n: u32, j: u32, oa: u32x128x512, ash: u32, target: u32) -> u32
+  let (k, v) = rdp(oa, ash + j)
+  return n + bit((k == 1) & (v == target))
+end
+fn fiusenode(n: u32, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, target: u32) -> u32
+  let x = sq[i]
+  return fold(fiusearg, cl[C_NA + x], n, oa, cl[C_AS + x], target)
+end
+
 # the node at sequence index i
-fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, sm: u32x128x16, fnt: u32x128x45, nd: u32x128x132, ty: u32x384x65, tl: u32x128x65, rqall: u32) -> u32x128x393
+fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, sm: u32x128x16, fnt: u32x128x45, nd: u32x128x132, ty: u32x384x65, tl: u32x128x65, rqall: u32, nbody: u32, retk: u32, retv: u32, nt: u32x128x24) -> u32x128x393
   let x = sq[i]
   let o = cl[C_OP + x]
   let na = cl[C_NA + x]
@@ -542,7 +612,10 @@ fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x
   let foldok = (o == 20) & (c0k == 3) & (na >= 2) & ((fl & 8) == 0) & ((fl & 16) != 0)
   let unr0 = foldok & (c0v >= 1) & (c0v <= 8) & (n <= 256) & ((n * c0v) <= 2048)
   let pow0 = foldok & (c0v >= 3)
-  let fill0 = foldok & (c0v > 8) & (c0v <= 64) & (n <= 256) & ((n * c0v) <= 2048)
+  let returned = (retk == 1) & (retv == x)
+  let fillcandidate = foldok & returned & (c0v > 8) & (c0v <= 64) & (n <= 256) & ((n * c0v) <= 2048)
+  let uses = fold(fiusenode, fillcandidate ? nbody : 0, 0, sq, cl, oa, x)
+  let fill0 = fillcandidate & (uses == 0)
   let fillshape = fishape(bit(fill0 & has), c, c0v, fnt, nd, oa, ty)
   let cost = fold(edcost, (has & (inl0 | unr0 | fill0)) ? fnt[c * 7 + 5] : 0, 0, nd, fnt[c * 7 + 4])
   let count = fold(mxpcnt, pow0 ? 32 : 0, (0, 0), c0v)
@@ -558,7 +631,8 @@ fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x
   let powered = power & space
   let inl = inl0 & has & (cost <= 16)
   let unr = unr0 & has & (cost <= 256) & (cost * c0v <= 2048) & !power
-  let fillvalid = fill0 & has & (fillshape#0 == 1) & (cost <= 256) & (cost * c0v <= 2048) & !power
+  let lanefill = fcrun(bit(fill0 & has), c, fnt, nd, nt, oa, tl, ty)
+  let fillvalid = fill0 & has & (lanefill#0 == 0) & (fillshape#0 == 1) & (cost <= 256) & (cost * c0v <= 2048) & !power
   let fillnodes = (fnt[c * 7 + 5] - 1) * c0v + 1
   let fillslots = fillshape#2 * c0v + c0v
   let fillspace = (ed[E_SC + E_NEXT] + fillnodes <= AN) & (ed[E_SC + E_OUTN] + fillnodes <= AN) & (ed[E_SC + E_NI] + c0v + 1 <= AN) & (ed[E_SC + E_SLOT] + fillslots <= NSL)
@@ -1514,64 +1588,6 @@ fn ubd(rt: u32x128x425, d: u32, id: u32, o: u32, xk: u32, xv: u32, yk: u32, yv: 
   return rt
 end
 
-# operand p of body node j (operands at as_, op o; the set is node s) as a fill run allows it
-fn fcarg(ok: u32, p: u32, op: u32x128x512, as_: u32, j: u32, s: u32, o: u32, pf: u32, pc: u32, tl: u32x128x65, ty: u32x384x65) -> u32
-  let (k, v) = rdp(op, as_ + p)
-  let isp = k == 2
-  let vi = (isp & (v < pc)) ? v : 0
-  let sp = isp & (v >= 1) & (v < pc) & (tyw(ty, tl[pf + vi], 0) == 1)
-  let usep0 = isp & (v == 0) & !((j == s) & (p == 0))
-  let notset = j != s
-  let bad1 = notset & ((k == 4) | (isp & !sp))
-  let shf = (o == 8) | (o == 9)
-  let uni = (k == 3) | (isp & (v >= 2) & sp)
-  let bad2 = notset & shf & (p == 1) & !uni
-  return ok & bit(!(usep0 | bad1 | bad2))
-end
-# body node j: (ok, cost of the nodes but the set, operand count of the nodes but the set)
-fn fcnode(st: (u32,u32,u32), j: u32, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, first: u32, s: u32, pf: u32, pc: u32, tl: u32x128x65, ty: u32x384x65) -> (u32,u32,u32)
-  let (ok, cost, na0) = st
-  let r = first + j
-  let o = nd[r * 6 + 1]
-  let na = nd[r * 6 + 2]
-  let notset = j != s
-  let lane = (o >= 2) & (o <= 9)
-  let u = tyw(ty, nt[r], 0) == 1
-  let ok1 = ok & bit(!notset | (lane & u))
-  let ok2 = fold(fcarg, na, ok1, op, nd[r * 6 + 3], j, s, o, pf, pc, tl, ty)
-  let c = notset ? (o == 4 ? 3 : 1) : 0
-  return (ok2, cost + c, na0 + (notset ? na : 0))
-end
-# the fill run of callee c (its body present): (ok, cost, operand count of the copies, set index)
-fn fcrun(g: u32, c: u32, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, tl: u32x128x65, ty: u32x384x65) -> (u32,u32,u32,u32)
-  let first = fnt[c * 7 + 4]
-  let nc = fnt[c * 7 + 5]
-  let pf = fnt[c * 7 + 2]
-  let pc = fnt[c * 7 + 1]
-  let w = fnt[c * 7 + 6]
-  let kind = w >> 28
-  let v = w & 0xfffffff
-  let (pk, pv) = rdp(op, kind == 5 ? v : 0)
-  let rk = kind == 5 ? pk : kind
-  let rv = kind == 5 ? pv : v
-  let isn = (rk == 1) & (rv < nc)
-  let s = isn ? rv : 0
-  let sr = first + s
-  let so = nd[sr * 6 + 1]
-  let sna = nd[sr * 6 + 2]
-  let sas = nd[sr * 6 + 3]
-  let (a0k, a0v) = rdp(op, sas)
-  let (a1k, a1v) = rdp(op, sas + 1)
-  let (vk, vv) = rdp(op, sna >= 3 ? sas + 2 : sas)
-  let vi = ((vk == 2) & (vv < pc)) ? vv : 0
-  let vsp = (vv >= 1) & (vv < pc) & (tyw(ty, tl[pf + vi], 0) == 1)
-  let okv = (vk != 4) & !((vk == 2) & !vsp)
-  let okset = isn & (so == 26) & (sna >= 3) & (a0k == 2) & (a0v == 0) & (a1k == 2) & (a1v == 1) & okv
-  let r = fold(fcnode, (g == 1) & okset ? nc : 0, (1, 0, 0), nd, nt, op, first, s, pf, pc, tl, ty)
-  let (ok, cost, na) = r
-  return (bit(okset) & ok, cost, na, s)
-end
-
 # the operand (k, v) of a body node copied for a read: p1 is the index (ik, iv), another
 # parameter the fold's operand (operands at fas), a body node its copy (copies from cb, the set
 # s left out)
@@ -1914,7 +1930,7 @@ def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt
   ed0[E_SC + E_NEXT] = nidS
   ed0[E_SC + E_SLOT] = nslotS
   let run1 = (stage == 0) | (stage >= 1)
-  let ed1 = fold(edstep, bit(run1) * nS, ed0, sqS, clS, oaS, sm, fnt, nd, ty, tl, rqall)
+  let ed1 = fold(edstep, bit(run1) * nS, ed0, sqS, clS, oaS, sm, fnt, nd, ty, tl, rqall, nS, retk, retv, nt)
   let chg = ed1[E_SC + E_CHG]
   let outn = ed1[E_SC + E_OUTN]
   let next = ed1[E_SC + E_NEXT]

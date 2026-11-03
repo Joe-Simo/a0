@@ -844,6 +844,7 @@ function matrixPower(
  */
 function expand(body: Body): Body {
   const names = new Names(body.types.keys());
+  const uses = useCounts(body.nodes, body.ret);
   const rename = new Map<string, Operand>();
   const r = (o: Operand): Operand => (o.kind === 'node' ? (rename.get(o.id) ?? o) : o);
   const out: Node[] = [];
@@ -867,6 +868,15 @@ function expand(body: Body): Body {
       continue;
     }
     const [count, init, ...extra] = node.args;
+    // Preserve local producer/consumer loops for fusion and vectorization.
+    const returnedOnly =
+      body.ret.kind === 'node' && body.ret.id === node.id && uses.get(node.id) === 1;
+    const buildArray =
+      returnedOnly &&
+      callee !== undefined &&
+      count?.kind === 'u32' &&
+      independentFullFill(callee, count.value) &&
+      fillRunIn(body.types, calls, node) === undefined;
     if (
       node.op === 'fold' &&
       callee !== undefined &&
@@ -894,7 +904,7 @@ function expand(body: Body): Body {
       callee !== undefined &&
       count?.kind === 'u32' &&
       count.value > 0 &&
-      (count.value <= UNROLL_TRIPS || independentFullFill(callee, count.value)) &&
+      (count.value <= UNROLL_TRIPS || buildArray) &&
       !mayTrapFn(callee) &&
       init !== undefined &&
       irCost(callee.nodes) <= UNROLL_BODY_COST &&
@@ -902,7 +912,7 @@ function expand(body: Body): Body {
       !funcHasIo(callee) &&
       [callee.result, ...callee.types.values()].every((t) => typeWords(t) <= UNROLL_STATE_WORDS)
     ) {
-      if (independentFullFill(callee, count.value)) {
+      if (buildArray) {
         const set = storeOnly(callee) as Node;
         const value = set.args[2] as Operand;
         const element = { ...callee, nodes: callee.nodes.filter((n) => n !== set), ret: value };

@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { compile } from '../src/backends.js';
 import { makeIo, parseAndValidate, run } from '../src/core.js';
 import { link } from '../src/link.js';
+import { fillRun, optimizeFunction } from '../src/optimize.js';
 import { wasmModuleBytes } from '../src/wasm.js';
 
 const LENGTH = 17;
@@ -115,4 +116,13 @@ test('the unchanged A0 frontend validates through direct Wasm with default SIMD'
     assert.equal(WebAssembly.validate(bytes as BufferSource), true);
     assert.ok(new WebAssembly.Module(bytes as BufferSource));
   }
+});
+
+test('returned uniform fill retains its existing SIMD-eligible form', () => {
+  const source = parseAndValidate(SOURCE).byName.get('fill_17');
+  assert.ok(source);
+  const optimized = optimizeFunction(source).fn;
+  const node = optimized.nodes.find((n) => n.op === 'fold');
+  assert.ok(node);
+  assert.equal(fillRun(optimized, node)?.count, 17);
 });

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { parseAndValidate, run } from '../src/core.js';
-import { optimizeFunction } from '../src/optimize.js';
+import { fillRun, optimizeFunction } from '../src/optimize.js';
 
 function program(length: number, count: number, stateRead = false, strict = false) {
   return parseAndValidate(`${strict ? 'profile strict\n' : ''}fn fill u32x${length} u32 u32x${length} -> u32x${length}
@@ -59,7 +60,7 @@ for (const [name, length, count, stateRead, strict] of [
 }
 
 for (const value of ['7', 'p1', 'p2']) {
-  test(`independent fill accepts direct value operand ${value}`, () => {
+  test(`existing lane fill retains direct value operand ${value}`, () => {
     const p = parseAndValidate(`fn fill u32x16 u32 u32 -> u32x16
 r set p0 p1 ${value}
 ret r
@@ -71,7 +72,9 @@ end`);
     const source = p.byName.get('top');
     assert.ok(source);
     const optimized = optimizeFunction(source).fn;
-    assert.ok(!optimized.nodes.some((n) => n.op === 'fold'));
+    const fold = optimized.nodes.find((n) => n.op === 'fold');
+    assert.ok(fold);
+    assert.ok(fillRun(optimized, fold));
     const expected = Array.from({ length: 16 }, (_, i) =>
       value === '7' ? 7 : value === 'p1' ? i : 0xffff_ffff,
     );
@@ -81,7 +84,7 @@ end`);
   });
 }
 
-test('multiple independent fills retain separate values and fresh node identities', () => {
+test('local producer/consumer fills remain available to loop fusion', () => {
   const p = parseAndValidate(`fn fill u32x16 u32 u32 -> u32x16
 m rem p2 7
 v add p1 m
@@ -99,7 +102,7 @@ end`);
   const source = p.byName.get('top');
   assert.ok(source);
   const optimized = optimizeFunction(source).fn;
-  assert.ok(!optimized.nodes.some((n) => n.op === 'fold'));
+  assert.ok(optimized.nodes.some((n) => n.op === 'fold'));
   assert.equal(new Set(optimized.nodes.map((n) => n.id)).size, optimized.nodes.length);
   for (const a of [0, 1, 0xffff_ffff]) {
     for (const b of [0, 17, 0x8000_0000]) {
@@ -156,4 +159,15 @@ end`);
   assert.throws(() => run(source, [Array(16).fill(0), 0]), /div|zero/i);
   assert.throws(() => run(optimized, [Array(16).fill(0), 0]), /div|zero/i);
   assert.deepEqual(run(optimized, [Array(16).fill(0), 2]), Array(16).fill(3));
+});
+
+test('a returned array with a local effectful consumer retains its producer', async () => {
+  const p = parseAndValidate(
+    await readFile('test/fixtures/independent-array/returned-local-use.a0', 'utf8'),
+  );
+  const source = p.byName.get('top');
+  assert.ok(source);
+  const optimized = optimizeFunction(source).fn;
+  assert.ok(optimized.nodes.some((n) => n.op === 'fold'));
+  assert.ok(optimized.nodes.some((n) => n.op === 'write'));
 });

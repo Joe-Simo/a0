@@ -599,3 +599,14 @@ test('independent array self-host parity: compact matrix recurrence', { skip: SK
   ])
     assert.equal(run(fn(q, 'mat4'), args), run(fn(p, 'mat4'), args));
 });
+
+test('independent array self-host parity: returned array also has a local consumer', {
+  skip: SKIP,
+}, async () => {
+  const p = parseAndValidate(
+    await readFile('test/fixtures/independent-array/returned-local-use.a0', 'utf8'),
+  );
+  const q = await sameIr(p);
+  assert.ok(fn(q, 'top').nodes.some((n) => n.op === 'fold'));
+  assert.ok(fn(q, 'top').nodes.some((n) => n.op === 'write'));
+});
