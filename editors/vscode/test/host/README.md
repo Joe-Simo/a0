@@ -51,3 +51,10 @@ A0 is absent from the enabled extension host and its configured server never
 starts. Static language availability is observed, not assumed. This is separate
 from both the development-host guard above and trusted-workspace LSP behavior.
 The fixture is retained only in the temporary runner workspace for diagnosis.
+
+The installed-VSIX check passed on hosted Windows x64 and macOS ARM64 with
+VS Code 1.141.2. Both runs verified the same packaged A0 bundle, kept it disabled
+in Restricted Mode and observed no configured server start. Exact commits, jobs,
+archive and bundle identities are recorded in
+[`results/editor-installed-qualification-20261103.json`](../../../../results/editor-installed-qualification-20261103.json).
+Trusted-workspace LSP and other installed editor platforms remain unqualified.
