@@ -31,3 +31,10 @@ language-server path.
 The first hosted Linux attempt stopped before the extension test because the
 archive's SUID sandbox helper was not root-owned with mode 4755. No privileges were
 changed and sandboxing was not disabled. That attempt does not qualify Linux.
+
+The same corrected host-test tree also passed on standard Windows x64 and macOS
+ARM64 runners. Windows verifies the official archive executable signature and
+checks its version through the vendor CLI, without assuming an unpacked package
+layout. Fixture path comparison follows the host platform, including Windows
+drive-letter casing. See the follow-up rows in the qualification report for exact
+commits, runs, archive hashes, earlier failures and remaining scope limits.

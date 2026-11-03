@@ -61,5 +61,76 @@
     "Trusted-workspace LSP",
     "Other real editor platforms",
     "Full release qualification"
-  ]
+  ],
+  "followup": {
+    "subject": "571e0601d8a71f413c8e9f9ac122b2ab3003fc98",
+    "tree": "a44c5b61f1b13989ada205017de4302d3af1e8ca",
+    "scope": "Development-host Restricted Mode registration and A0 execution guard; not installed-extension enablement or trusted-workspace LSP",
+    "correction": "Compare fixture paths with host platform semantics; Windows URI drive-letter casing differs from the temporary path spelling.",
+    "platforms": [
+      {
+        "runner": "windows-2025",
+        "architecture": "x64",
+        "editorVersion": "1.141.2",
+        "run": "https://github.com/Joe-Simo/a0/actions/runs/41562916850",
+        "job": 125677476132,
+        "status": "passed",
+        "archiveSHA256": "a90bd5ee5609ef2bf249ec0ee0d287b0fadc97269c8ebc51c9b2b32ecb292d18",
+        "signatureVerification": "Get-AuthenticodeSignature status Valid and Microsoft Corporation signer; exact vendor CLI version/x64 checked",
+        "observed": {
+          "workspaceTrusted": false,
+          "languageId": "a0",
+          "extensionActive": true,
+          "configuredServerStarted": false,
+          "observationMs": 1500
+        }
+      },
+      {
+        "runner": "macos-15",
+        "architecture": "arm64",
+        "editorVersion": "1.141.2",
+        "run": "https://github.com/Joe-Simo/a0/actions/runs/41562921911",
+        "job": 125677492087,
+        "status": "passed",
+        "archiveSHA256": "1eaabb4ef6be294209f0703b4c92b5130714baa6a7a0c437495a4d6094cc96bb",
+        "signatureVerification": "codesign --verify --deep --strict passed",
+        "observed": {
+          "workspaceTrusted": false,
+          "languageId": "a0",
+          "extensionActive": true,
+          "configuredServerStarted": false,
+          "observationMs": 1500
+        }
+      }
+    ],
+    "localValidation": {
+      "equivalentLocalCommit": "d18c1da331237ebe4b7a43486ea50d1824b012e6",
+      "passedSteps": [
+        "lint",
+        "typecheck",
+        "build",
+        "test",
+        "site"
+      ],
+      "tests": {
+        "total": 1477,
+        "passed": 1456,
+        "skipped": 21,
+        "failed": 0
+      },
+      "fullReleaseGate": false
+    },
+    "priorAttempts": [
+      {
+        "run": 41557399716,
+        "outcome": "Signature passed; package.json path assumption failed before A0 test; corrected to vendor CLI version check"
+      },
+      {
+        "run": 41557733086,
+        "outcome": "Actual host reached test; Windows drive-letter casing failed raw path comparison; corrected with platform path comparison"
+      }
+    ],
+    "artifactUploads": 0,
+    "securityChanges": []
+  }
 }
