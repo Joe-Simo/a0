@@ -46,8 +46,12 @@ jobs:
             throw 'The editor must have a valid Microsoft Corporation signature'
           }
           if (Test-Path (Join-Path $code 'data')) { throw 'Portable data must not override the isolated test profile' }
-          $env:A0_EDITOR_PACKAGE = Join-Path $code 'resources/app/package.json'
-          node -e 'const a=require("node:assert/strict");a.equal(process.platform+"/"+process.arch,"win32/x64");a.equal(require(process.env.A0_EDITOR_PACKAGE).version,process.env.A0_EDITOR_VERSION)'
+          $version = @(& (Join-Path $code 'bin/code.cmd') --version)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($version.Count -ne 3 -or $version[0].Trim() -ne $env:A0_EDITOR_VERSION -or $version[2].Trim() -ne 'x64') {
+            throw 'The editor CLI must report the pinned version and x64 architecture'
+          }
+          node -e 'require("node:assert/strict").equal(process.platform+"/"+process.arch,"win32/x64")'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tools/qualify-editor-host.mjs $editor
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
