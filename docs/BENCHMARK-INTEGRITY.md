@@ -20,3 +20,13 @@ That audit cannot establish historical per-sample checksums from summaries alone
 The separate [counted-source conformance check](SOURCE-TOKEN-CONFORMANCE.md) verifies
 individual outputs from the exact sources used for token counts. Neither check is an
 AI edit-cost study, universal equivalence proof or full-platform qualification.
+
+Argument validation happens before tool discovery or report writes. Unknown or empty
+kernel selections, unknown optional languages, missing option values, non-finite
+numbers and non-integer sample counts fail with a nonzero exit. Samples must be
+positive safe integers; scale must be finite and at least one. An explicit empty
+`--langs=` remains valid because the core C/Rust/JavaScript comparisons still run.
+Output filenames retain characters after the first `=`. Existing reports are not
+overwritten on argument errors. See
+[`results/benchmark-arguments.json`](../results/benchmark-arguments.json) for the
+reproduced empty-report defect, executable failure controls and valid smoke check.

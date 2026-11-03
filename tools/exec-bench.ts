@@ -45,6 +45,7 @@ import { performance } from 'node:perf_hooks';
 import { compile } from '../src/backends.js';
 import { parseAndValidate } from '../src/core.js';
 import { findClang, runTool, withTempDir } from '../src/toolchain.js';
+import { parseBenchmarkOptions } from './benchmark-options.js';
 import {
   readBenchmarkMeasurement,
   requireStableBenchmarkChecksum,
@@ -96,43 +97,22 @@ const NATIVE: { readonly target: NativeTarget; readonly cpu: string } | null =
       ? { target: 'x86_64', cpu: '-march=native' }
       : null;
 
-const CLI = parseCli(process.argv.slice(2));
+const CLI = parseBenchmarkOptions(process.argv.slice(2), {
+  languages: LANGUAGES.map((language) => language.id),
+  kernels: KERNEL_NAMES,
+  defaultOut: join('results', 'exec-benchmark.json'),
+});
+if (CLI.help) {
+  process.stdout.write(
+    `usage: bun run exec-bench [-- --langs=a,b] [--kernels=a,b] [--samples=N] [--scale=N] [--out=PATH]\n` +
+      `languages in the table: ${LANGUAGES.map((language) => language.id).join(', ')}\n` +
+      `kernels: ${KERNEL_NAMES.join(', ')}\n`,
+  );
+  process.exit(0);
+}
 const SAMPLES = CLI.samples;
 const SCALE = CLI.scale;
 const scaled = (n: number): number => Math.max(1, Math.floor(n / SCALE));
-
-interface Cli {
-  readonly langs: ReadonlySet<string> | null;
-  readonly kernels: ReadonlySet<string> | null;
-  readonly samples: number;
-  readonly scale: number;
-  readonly out: string;
-}
-
-function parseCli(argv: readonly string[]): Cli {
-  let langs: Set<string> | null = null;
-  let kernels: Set<string> | null = null;
-  let samples = 7;
-  let scale = 1;
-  let out = join('results', 'exec-benchmark.json');
-  for (const a of argv) {
-    const [key, value = ''] = a.split('=', 2) as [string, string?];
-    if (key === '--help' || key === '-h') {
-      process.stdout.write(
-        `usage: bun run exec-bench [-- --langs=a,b] [--kernels=a,b] [--samples=N] [--scale=N] [--out=PATH]\n` +
-          `languages in the table: ${LANGUAGES.map((l) => l.id).join(', ')}\n` +
-          `kernels: ${KERNEL_NAMES.join(', ')}\n`,
-      );
-      process.exit(0);
-    } else if (key === '--langs') langs = new Set(value.split(',').filter((v) => v.length > 0));
-    else if (key === '--kernels') kernels = new Set(value.split(',').filter((v) => v.length > 0));
-    else if (key === '--samples') samples = Math.max(1, Number(value) || 7);
-    else if (key === '--scale') scale = Math.max(1, Number(value) || 1);
-    else if (key === '--out') out = value;
-    else throw new Error(`unknown option ${a} (see --help)`);
-  }
-  return { langs, kernels, samples, scale, out };
-}
 
 /** Native iterations per sample for a kernel (JS runs a quarter, Python 1/200 of this). */
 const iterations = (kernel: Kernel): number => Math.floor(ITER / (kernel.iterScale ?? 1));

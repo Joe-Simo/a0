@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-03T06:54:57.123251+00:00",
+  "baseline": "718f4225cc798123f425d68db0041408a019fb92",
+  "scope": "Reject invalid execution-benchmark arguments before running workloads or writing reports.",
+  "before": {
+    "arguments": [
+      "--kernels=not-a-kernel",
+      "--samples=Infinity",
+      "--langs="
+    ],
+    "exitCode": 0,
+    "kernels": {},
+    "samplesPerSide": null,
+    "status": "invalid empty report was produced"
+  },
+  "after": [
+    {
+      "argument": "--kernels=not-a-kernel",
+      "exitCode": 1,
+      "reportCreated": false,
+      "error": "Error: --kernels: unknown or empty selection \"not-a-kernel\""
+    },
+    {
+      "argument": "--kernels=",
+      "exitCode": 1,
+      "reportCreated": false,
+      "error": "Error: --kernels: unknown or empty selection \"\""
+    },
+    {
+      "argument": "--samples=Infinity",
+      "exitCode": 1,
+      "reportCreated": false,
+      "error": "Error: --samples must be a positive safe integer"
+    },
+    {
+      "argument": "--samples=1.5",
+      "exitCode": 1,
+      "reportCreated": false,
+      "error": "Error: --samples must be a positive safe integer"
+    },
+    {
+      "argument": "--scale=NaN",
+      "exitCode": 1,
+      "reportCreated": false,
+      "error": "Error: --scale must be finite and at least 1"
+    },
+    {
+      "argument": "--langs=not-a-language",
+      "exitCode": 1,
+      "reportCreated": false,
+      "error": "Error: --langs: unknown or empty selection \"not-a-language\""
+    }
+  ],
+  "focusedTests": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  "preservedBehavior": [
+    "Default samples and scale",
+    "Explicit empty optional language set",
+    "Known kernel selection and deduplication",
+    "Finite scale values at least one, including fractional scales",
+    "Output filenames containing equals signs",
+    "Help without starting workloads"
+  ],
+  "realDriverSmoke": {
+    "kernels": [
+      "affine",
+      "mix"
+    ],
+    "samplesPerSide": 2,
+    "scale": 1000,
+    "drivers": [
+      "C",
+      "Rust",
+      "x86-64",
+      "JavaScript",
+      "Python"
+    ],
+    "result": "passed",
+    "limitation": "Compatibility only, not performance evidence"
+  },
+  "limits": [
+    "Existing published benchmark values are unchanged.",
+    "No claim that historical scores were invalid.",
+    "This is not full-platform qualification."
+  ]
+}
