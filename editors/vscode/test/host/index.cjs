@@ -17,9 +17,12 @@ exports.run = async () => {
   );
   await vscode.window.showTextDocument(document);
   assert.equal(document.languageId, 'a0');
+  // VS Code exempts development extensions from normal enablement filtering.
+  // Exercise A0's execution guard directly, without granting workspace trust.
+  await extension.activate();
   // Allow ordinary on-language activation to settle; never grant workspace trust.
   await new Promise((resolve) => setTimeout(resolve, 1500));
-  assert.equal(extension.isActive, false, 'the unsupported untrusted-workspace extension must remain inactive');
+  assert.equal(extension.isActive, true, 'the execution guard must actually be exercised');
   await assert.rejects(fs.readFile(path.join(root, 'server-started')), { code: 'ENOENT' });
   assert.equal(vscode.workspace.isTrusted, false);
   await fs.writeFile(path.join(root, 'report.json'), JSON.stringify({
@@ -30,6 +33,6 @@ exports.run = async () => {
     extensionActive: extension.isActive,
     configuredServerStarted: false,
     observationMs: 1500,
-    scope: 'Restricted-workspace language registration and server-execution refusal only',
+    scope: 'Development-host Restricted Mode registration and A0 execution guard; not installed-extension enablement or trusted-workspace LSP',
   }, null, 2));
 };

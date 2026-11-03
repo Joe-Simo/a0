@@ -2,7 +2,10 @@
 
 This runs inside the real VS Code extension host. It checks A0 language registration
 and verifies that opening an A0 file in Restricted Mode does not start the configured
-server. It does not qualify trusted-workspace LSP behavior.
+server after deliberate development-extension activation. VS Code exempts
+development extensions from ordinary enablement filtering, so this exercises A0's
+own execution guard. It does not qualify installed-extension disablement or
+trusted-workspace LSP behavior.
 
 Build the existing extension with its locked dependencies, then run from the repository:
 
