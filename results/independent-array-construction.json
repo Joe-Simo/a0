@@ -1,0 +1,3093 @@
+{
+  "schema": 1,
+  "scope": "One fixed matrix workload and unchanged-kernel controls; not AI edit accuracy, billed cost, universal superiority, or release qualification.",
+  "baselineCommit": "9812428ed0fb8edccc1ff905ff5c4e4caab6a836",
+  "measuredCompilerCommit": "ba73086d3ab8fd58ad68b66b4c0b7cba27e6e741",
+  "source": "test/fixtures/independent-array/mat4.a0",
+  "sourceSHA256": "6dd20f314882c799d5bcc285d936df7d2f00199a0e3824f1957c892a3732fd32",
+  "correctness": {
+    "fixedCases": 32,
+    "outputSHA256": "f1b78cae0443c9b4e1a7fa609df126a6fc4b080a1eee9ee816143e7804cc890c",
+    "paths": [
+      "reference",
+      "C O0",
+      "C O3",
+      "direct x86",
+      "Rust O0",
+      "Rust O3"
+    ]
+  },
+  "plan": {
+    "sha256": "a830bec30c36a2cde55591c3525e5f7e852ef428c4924eff6f10559f70f34b22",
+    "iterations": 1250000,
+    "buildRounds": 5,
+    "warmupRounds": 3,
+    "sampleRounds": 14,
+    "startupRounds": 5,
+    "orders": [
+      [
+        "baseline-c-O2",
+        "candidate-c-O2",
+        "oldcompact-c-O2",
+        "baseline-x86",
+        "candidate-x86",
+        "oldcompact-x86",
+        "rust-O3-native"
+      ],
+      [
+        "candidate-c-O2",
+        "oldcompact-c-O2",
+        "baseline-x86",
+        "candidate-x86",
+        "oldcompact-x86",
+        "rust-O3-native",
+        "baseline-c-O2"
+      ],
+      [
+        "oldcompact-c-O2",
+        "baseline-x86",
+        "candidate-x86",
+        "oldcompact-x86",
+        "rust-O3-native",
+        "baseline-c-O2",
+        "candidate-c-O2"
+      ],
+      [
+        "baseline-x86",
+        "candidate-x86",
+        "oldcompact-x86",
+        "rust-O3-native",
+        "baseline-c-O2",
+        "candidate-c-O2",
+        "oldcompact-c-O2"
+      ],
+      [
+        "candidate-x86",
+        "oldcompact-x86",
+        "rust-O3-native",
+        "baseline-c-O2",
+        "candidate-c-O2",
+        "oldcompact-c-O2",
+        "baseline-x86"
+      ],
+      [
+        "oldcompact-x86",
+        "rust-O3-native",
+        "baseline-c-O2",
+        "candidate-c-O2",
+        "oldcompact-c-O2",
+        "baseline-x86",
+        "candidate-x86"
+      ],
+      [
+        "rust-O3-native",
+        "baseline-c-O2",
+        "candidate-c-O2",
+        "oldcompact-c-O2",
+        "baseline-x86",
+        "candidate-x86",
+        "oldcompact-x86"
+      ],
+      [
+        "rust-O3-native",
+        "oldcompact-x86",
+        "candidate-x86",
+        "baseline-x86",
+        "oldcompact-c-O2",
+        "candidate-c-O2",
+        "baseline-c-O2"
+      ],
+      [
+        "baseline-c-O2",
+        "rust-O3-native",
+        "oldcompact-x86",
+        "candidate-x86",
+        "baseline-x86",
+        "oldcompact-c-O2",
+        "candidate-c-O2"
+      ],
+      [
+        "candidate-c-O2",
+        "baseline-c-O2",
+        "rust-O3-native",
+        "oldcompact-x86",
+        "candidate-x86",
+        "baseline-x86",
+        "oldcompact-c-O2"
+      ],
+      [
+        "oldcompact-c-O2",
+        "candidate-c-O2",
+        "baseline-c-O2",
+        "rust-O3-native",
+        "oldcompact-x86",
+        "candidate-x86",
+        "baseline-x86"
+      ],
+      [
+        "baseline-x86",
+        "oldcompact-c-O2",
+        "candidate-c-O2",
+        "baseline-c-O2",
+        "rust-O3-native",
+        "oldcompact-x86",
+        "candidate-x86"
+      ],
+      [
+        "candidate-x86",
+        "baseline-x86",
+        "oldcompact-c-O2",
+        "candidate-c-O2",
+        "baseline-c-O2",
+        "rust-O3-native",
+        "oldcompact-x86"
+      ],
+      [
+        "oldcompact-x86",
+        "candidate-x86",
+        "baseline-x86",
+        "oldcompact-c-O2",
+        "candidate-c-O2",
+        "baseline-c-O2",
+        "rust-O3-native"
+      ]
+    ],
+    "drivers": "Unchanged cDriver/rustDriver exports from tools/exec-bench-kernels.ts",
+    "flags": {
+      "C": [
+        "-O2"
+      ],
+      "native": [
+        "direct x86 emitter",
+        "C driver -O2"
+      ],
+      "Rust": [
+        "-C opt-level=3",
+        "-C target-cpu=native"
+      ]
+    }
+  },
+  "controls": {
+    "existingKernels": 29,
+    "emissionComparisons": 116,
+    "changedAfterVersionNormalization": 0
+  },
+  "summary": {
+    "baseline-c-O2": {
+      "medianNs": 85.24315,
+      "minNs": 70.9897,
+      "maxNs": 119.7334,
+      "medianCpuMs": 107.58,
+      "medianRssKiB": 17920,
+      "startupMs": 0.8784020028542727,
+      "buildWallMs": 379.78289200691506,
+      "buildCpuMs": 405.847,
+      "buildPeakRssKiB": 76468,
+      "binaryBytes": 20264,
+      "binarySHA256": "e62977d015fb228bf5d237e94b00718d60f4171b58ab5fbec536da7d58adb89e"
+    },
+    "candidate-c-O2": {
+      "medianNs": 79.20439999999999,
+      "minNs": 70.8932,
+      "maxNs": 130.2164,
+      "medianCpuMs": 100.3215,
+      "medianRssKiB": 17920,
+      "startupMs": 1.1050729954149574,
+      "buildWallMs": 431.00200599292293,
+      "buildCpuMs": 464.3399999999999,
+      "buildPeakRssKiB": 76964,
+      "binaryBytes": 20400,
+      "binarySHA256": "aaa510df79b749548cef3f57a71b132e24f62e8f460a30980d61662273e5b0e5"
+    },
+    "oldcompact-c-O2": {
+      "medianNs": 301.18065,
+      "minNs": 275.3927,
+      "maxNs": 373.2151,
+      "medianCpuMs": 377.5155,
+      "medianRssKiB": 17920,
+      "startupMs": 1.0681569983717054,
+      "buildWallMs": 243.28018000232987,
+      "buildCpuMs": 251.776,
+      "buildPeakRssKiB": 76052,
+      "binaryBytes": 16304,
+      "binarySHA256": "6d1ab364344c7876c3d3053be0e7b87ad5dfebab2b4dc8d8ae99b081cc1c40e1"
+    },
+    "baseline-x86": {
+      "medianNs": 106.35395,
+      "minNs": 92.4735,
+      "maxNs": 162.7257,
+      "medianCpuMs": 132.6565,
+      "medianRssKiB": 17920,
+      "startupMs": 1.107667019823566,
+      "buildWallMs": 279.9931750050746,
+      "buildCpuMs": 319.005,
+      "buildPeakRssKiB": 73752,
+      "binaryBytes": 20264,
+      "binarySHA256": "74e9ce3c5d56a0eb4ce4152da703779cdd0335899219a3683d11b97ff25994cb"
+    },
+    "candidate-x86": {
+      "medianNs": 118.63034999999999,
+      "minNs": 103.1176,
+      "maxNs": 162.0037,
+      "medianCpuMs": 149.91449999999998,
+      "medianRssKiB": 17920,
+      "startupMs": 0.9095690038520843,
+      "buildWallMs": 253.94041000981815,
+      "buildCpuMs": 287.696,
+      "buildPeakRssKiB": 73612,
+      "binaryBytes": 20392,
+      "binarySHA256": "ab86f34e770447bf7390e7c7f97257e10b028d408a28ce1d14fb47a15da26ca8"
+    },
+    "oldcompact-x86": {
+      "medianNs": 424.03959999999995,
+      "minNs": 377.2906,
+      "maxNs": 517.8604,
+      "medianCpuMs": 531.6054999999999,
+      "medianRssKiB": 17920,
+      "startupMs": 0.9805810113903135,
+      "buildWallMs": 255.51437199465,
+      "buildCpuMs": 278.429,
+      "buildPeakRssKiB": 73612,
+      "binaryBytes": 16296,
+      "binarySHA256": "3a2aa64c2ca7ec344a92874ef136c863202162582265467170cfdbe4357a303d"
+    },
+    "rust-O3-native": {
+      "medianNs": 101.1485,
+      "minNs": 92.2191,
+      "maxNs": 149.1383,
+      "medianCpuMs": 127.7965,
+      "medianRssKiB": 17920,
+      "startupMs": 1.504675019532442,
+      "buildWallMs": 140.0384829903487,
+      "buildCpuMs": 141.911,
+      "buildPeakRssKiB": 116816,
+      "binaryBytes": 3912200,
+      "binarySHA256": "230de1be9ec75a1b4db42d54e42cc54cb41cb3013595afc8e3b4ff057883dd4c"
+    }
+  },
+  "comparisons": {
+    "c-O2": {
+      "runtimeRatio": 0.929158530626801,
+      "rssRatio": 1,
+      "bytesRatio": 1.0067114093959733,
+      "nonoverlappingSpeedWin": false
+    },
+    "x86": {
+      "runtimeRatio": 1.1154296572905849,
+      "rssRatio": 1,
+      "bytesRatio": 1.0063166206079748,
+      "nonoverlappingSpeedWin": false
+    }
+  },
+  "rustRatios": {
+    "baseline-c-O2": 0.8427524876790066,
+    "candidate-c-O2": 0.783050663133907,
+    "oldcompact-c-O2": 2.9776086644883515,
+    "baseline-x86": 1.0514634423644444,
+    "candidate-x86": 1.1728335071701508,
+    "oldcompact-x86": 4.192248031359832,
+    "rust-O3-native": 1
+  },
+  "sameSourceSpeedRatios": {
+    "C": 3.80257473069678,
+    "native": 3.574461341469531
+  },
+  "samples": [
+    {
+      "wallMs": 110.30423198826611,
+      "cpuMs": 110.03299999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "warmup",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 87.2933,
+      "checksum": 3463238979,
+      "load": [
+        0.43798828125,
+        0.81982421875,
+        1.38525390625
+      ]
+    },
+    {
+      "wallMs": 84.79347699903883,
+      "cpuMs": 84.524,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "warmup",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 66.9,
+      "checksum": 3463238979,
+      "load": [
+        0.43798828125,
+        0.81982421875,
+        1.38525390625
+      ]
+    },
+    {
+      "wallMs": 350.06989701651037,
+      "cpuMs": 349.784,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "warmup",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 279.1153,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 122.15987499803305,
+      "cpuMs": 121.86699999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "warmup",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 96.7398,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 131.83918801951222,
+      "cpuMs": 131.575,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "warmup",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 104.5519,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 481.8546329915989,
+      "cpuMs": 481.58199999999994,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "warmup",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 384.5249,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 113.03074000170454,
+      "cpuMs": 112.77,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "warmup",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 89.3144,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 84.3901649932377,
+      "cpuMs": 84.106,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "warmup",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 66.5603,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 334.48999500251375,
+      "cpuMs": 334.113,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "warmup",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 266.6066,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 112.33728099614382,
+      "cpuMs": 111.97,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "warmup",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 88.8966,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 124.56151901278645,
+      "cpuMs": 124.26799999999999,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "warmup",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 98.6491,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 441.41306600067765,
+      "cpuMs": 441.065,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "warmup",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 352.1207,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 110.04787200363353,
+      "cpuMs": 109.672,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "warmup",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 86.8031,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 88.03867199458182,
+      "cpuMs": 87.785,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "warmup",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 69.4625,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 331.8450039951131,
+      "cpuMs": 331.472,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "warmup",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 264.515,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 111.79057898698375,
+      "cpuMs": 111.303,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "warmup",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 88.4149,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 130.2930010133423,
+      "cpuMs": 130.025,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "warmup",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 103.0691,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 526.55206999043,
+      "cpuMs": 526.276,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "warmup",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 420.2174,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 121.70653798966669,
+      "cpuMs": 121.32799999999999,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "warmup",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 96.0587,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 102.18447199440561,
+      "cpuMs": 101.91699999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "warmup",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 80.7904,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 89.87895600148477,
+      "cpuMs": 89.599,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "warmup",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 70.5121,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 107.33892899588682,
+      "cpuMs": 107.04599999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 84.8364,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 93.58297599828802,
+      "cpuMs": 93.183,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 73.7874,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 382.68657700973563,
+      "cpuMs": 382.36899999999997,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 305.0272,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 136.8802890065126,
+      "cpuMs": 136.505,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 108.4749,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 141.48039199062623,
+      "cpuMs": 141.117,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 112.0594,
+      "checksum": 3463238979,
+      "load": [
+        0.4833984375,
+        0.8232421875,
+        1.3828125
+      ]
+    },
+    {
+      "wallMs": 520.2268519788049,
+      "cpuMs": 519.7499999999999,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 415.0175,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 129.8505809972994,
+      "cpuMs": 129.585,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 0,
+      "iterations": 1250000,
+      "nsPerCall": 102.524,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 91.28746701753698,
+      "cpuMs": 91.035,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 71.9443,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 353.7408240081277,
+      "cpuMs": 353.389,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 281.7202,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 123.1484099989757,
+      "cpuMs": 122.60199999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 97.2187,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 136.205513990717,
+      "cpuMs": 135.702,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 107.8166,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 472.8636759973597,
+      "cpuMs": 472.512,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 377.2906,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 117.47858300805092,
+      "cpuMs": 117.16199999999999,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 92.6331,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 91.99993900256231,
+      "cpuMs": 91.73799999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 1,
+      "iterations": 1250000,
+      "nsPerCall": 72.4741,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 355.4781740240287,
+      "cpuMs": 355.136,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 283.3298,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 120.34639299963601,
+      "cpuMs": 120.087,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 95.1745,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 145.4788139963057,
+      "cpuMs": 145.123,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 115.3763,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 529.8138450016268,
+      "cpuMs": 529.5,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 421.9283,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 148.26979499775916,
+      "cpuMs": 147.931,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 117.0813,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 110.63031500088982,
+      "cpuMs": 110.372,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 85.8714,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 105.03523700754158,
+      "cpuMs": 104.671,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 2,
+      "iterations": 1250000,
+      "nsPerCall": 82.8392,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 129.24336598371156,
+      "cpuMs": 128.948,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 3,
+      "iterations": 1250000,
+      "nsPerCall": 102.0271,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 151.71012197970413,
+      "cpuMs": 151.45899999999997,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 3,
+      "iterations": 1250000,
+      "nsPerCall": 119.8684,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 485.5480289843399,
+      "cpuMs": 485.241,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 3,
+      "iterations": 1250000,
+      "nsPerCall": 387.394,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 123.70135600212961,
+      "cpuMs": 123.40599999999999,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 3,
+      "iterations": 1250000,
+      "nsPerCall": 97.6074,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 91.85114499996416,
+      "cpuMs": 91.606,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 3,
+      "iterations": 1250000,
+      "nsPerCall": 72.3998,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 90.22564900806174,
+      "cpuMs": 89.91799999999999,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 3,
+      "iterations": 1250000,
+      "nsPerCall": 71.1414,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 345.58260699850507,
+      "cpuMs": 345.24399999999997,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 3,
+      "iterations": 1250000,
+      "nsPerCall": 275.3927,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 130.1830599841196,
+      "cpuMs": 129.845,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 4,
+      "iterations": 1250000,
+      "nsPerCall": 103.1176,
+      "checksum": 3463238979,
+      "load": [
+        0.52490234375,
+        0.82666015625,
+        1.38037109375
+      ]
+    },
+    {
+      "wallMs": 489.5079489797354,
+      "cpuMs": 489.239,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 4,
+      "iterations": 1250000,
+      "nsPerCall": 390.4703,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 122.3191260069143,
+      "cpuMs": 122.05199999999999,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 4,
+      "iterations": 1250000,
+      "nsPerCall": 96.7746,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 94.27096700528637,
+      "cpuMs": 93.99499999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 4,
+      "iterations": 1250000,
+      "nsPerCall": 74.4082,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 89.96601801482029,
+      "cpuMs": 89.71300000000001,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 4,
+      "iterations": 1250000,
+      "nsPerCall": 71.0285,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 384.8292939946987,
+      "cpuMs": 384.55999999999995,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 4,
+      "iterations": 1250000,
+      "nsPerCall": 306.9333,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 120.90480298502371,
+      "cpuMs": 120.64899999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 4,
+      "iterations": 1250000,
+      "nsPerCall": 95.5703,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 534.1127330029849,
+      "cpuMs": 533.7109999999999,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 5,
+      "iterations": 1250000,
+      "nsPerCall": 426.1509,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 116.71184899751097,
+      "cpuMs": 116.404,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 5,
+      "iterations": 1250000,
+      "nsPerCall": 92.2191,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 89.94109198101796,
+      "cpuMs": 89.696,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 5,
+      "iterations": 1250000,
+      "nsPerCall": 70.9897,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 92.63152000494301,
+      "cpuMs": 92.312,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 5,
+      "iterations": 1250000,
+      "nsPerCall": 72.8469,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 355.6008589803241,
+      "cpuMs": 355.36,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 5,
+      "iterations": 1250000,
+      "nsPerCall": 283.4648,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 119.8145009984728,
+      "cpuMs": 119.55399999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 5,
+      "iterations": 1250000,
+      "nsPerCall": 94.6003,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 139.60513201891445,
+      "cpuMs": 139.34199999999998,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 5,
+      "iterations": 1250000,
+      "nsPerCall": 110.7237,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 118.1223549938295,
+      "cpuMs": 117.857,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 6,
+      "iterations": 1250000,
+      "nsPerCall": 93.3364,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 104.99133900157176,
+      "cpuMs": 104.74399999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 6,
+      "iterations": 1250000,
+      "nsPerCall": 82.7475,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 89.93308001663536,
+      "cpuMs": 89.66099999999999,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 6,
+      "iterations": 1250000,
+      "nsPerCall": 70.8932,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 372.0162489917129,
+      "cpuMs": 371.668,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 6,
+      "iterations": 1250000,
+      "nsPerCall": 296.5654,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 117.17968599987216,
+      "cpuMs": 116.592,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 6,
+      "iterations": 1250000,
+      "nsPerCall": 92.4735,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 140.8586390025448,
+      "cpuMs": 140.588,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 6,
+      "iterations": 1250000,
+      "nsPerCall": 111.7603,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 478.45122098806314,
+      "cpuMs": 478.19599999999997,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 6,
+      "iterations": 1250000,
+      "nsPerCall": 381.7904,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 126.31682699429803,
+      "cpuMs": 126.00799999999998,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 7,
+      "iterations": 1250000,
+      "nsPerCall": 99.773,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 485.62819600920193,
+      "cpuMs": 485.236,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 7,
+      "iterations": 1250000,
+      "nsPerCall": 387.2105,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 158.41997601091862,
+      "cpuMs": 158.069,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 7,
+      "iterations": 1250000,
+      "nsPerCall": 125.5394,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 137.04641797812656,
+      "cpuMs": 133.775,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 7,
+      "iterations": 1250000,
+      "nsPerCall": 108.2114,
+      "checksum": 3463238979,
+      "load": [
+        0.56298828125,
+        0.82958984375,
+        1.3779296875
+      ]
+    },
+    {
+      "wallMs": 416.75952001241967,
+      "cpuMs": 416.487,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 7,
+      "iterations": 1250000,
+      "nsPerCall": 332.3523,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 119.50772401178256,
+      "cpuMs": 118.909,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 7,
+      "iterations": 1250000,
+      "nsPerCall": 94.0753,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 150.98475298145786,
+      "cpuMs": 150.703,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 7,
+      "iterations": 1250000,
+      "nsPerCall": 119.7334,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 138.61773200915195,
+      "cpuMs": 138.308,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 8,
+      "iterations": 1250000,
+      "nsPerCall": 109.3757,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 188.39883399778046,
+      "cpuMs": 188.071,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 8,
+      "iterations": 1250000,
+      "nsPerCall": 149.1383,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 648.8376900088042,
+      "cpuMs": 648.562,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 8,
+      "iterations": 1250000,
+      "nsPerCall": 517.8604,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 204.38165997620672,
+      "cpuMs": 203.85199999999998,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 8,
+      "iterations": 1250000,
+      "nsPerCall": 162.0037,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 165.6298719753977,
+      "cpuMs": 163.305,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 8,
+      "iterations": 1250000,
+      "nsPerCall": 129.8052,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 469.78880499955267,
+      "cpuMs": 467.671,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 8,
+      "iterations": 1250000,
+      "nsPerCall": 373.2151,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 164.29433698067442,
+      "cpuMs": 163.92,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 8,
+      "iterations": 1250000,
+      "nsPerCall": 130.2164,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 131.6298320016358,
+      "cpuMs": 127.608,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 9,
+      "iterations": 1250000,
+      "nsPerCall": 104.0824,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 119.13692200323567,
+      "cpuMs": 118.80499999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 9,
+      "iterations": 1250000,
+      "nsPerCall": 94.3198,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 164.8135079885833,
+      "cpuMs": 164.413,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 9,
+      "iterations": 1250000,
+      "nsPerCall": 130.3684,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 572.9993949935306,
+      "cpuMs": 572.624,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 9,
+      "iterations": 1250000,
+      "nsPerCall": 456.8984,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 172.71472897846252,
+      "cpuMs": 172.398,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 9,
+      "iterations": 1250000,
+      "nsPerCall": 136.9297,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 131.82014800258912,
+      "cpuMs": 131.53799999999998,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 9,
+      "iterations": 1250000,
+      "nsPerCall": 104.4965,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 370.95140598830767,
+      "cpuMs": 370.623,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 9,
+      "iterations": 1250000,
+      "nsPerCall": 295.8035,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 373.02177600213327,
+      "cpuMs": 372.662,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 10,
+      "iterations": 1250000,
+      "nsPerCall": 297.3341,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 99.26563801127486,
+      "cpuMs": 98.863,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 10,
+      "iterations": 1250000,
+      "nsPerCall": 78.2421,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 112.40000900579616,
+      "cpuMs": 112.119,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 10,
+      "iterations": 1250000,
+      "nsPerCall": 88.7808,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 124.21660497784615,
+      "cpuMs": 123.812,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 10,
+      "iterations": 1250000,
+      "nsPerCall": 98.1212,
+      "checksum": 3463238979,
+      "load": [
+        0.59814453125,
+        0.83251953125,
+        1.37548828125
+      ]
+    },
+    {
+      "wallMs": 559.4965470081661,
+      "cpuMs": 559.1809999999999,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 10,
+      "iterations": 1250000,
+      "nsPerCall": 446.3844,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 171.13037401577458,
+      "cpuMs": 170.85599999999997,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 10,
+      "iterations": 1250000,
+      "nsPerCall": 134.8216,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 148.4706049959641,
+      "cpuMs": 148.16899999999998,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 10,
+      "iterations": 1250000,
+      "nsPerCall": 117.7865,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 204.8091159958858,
+      "cpuMs": 204.512,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 11,
+      "iterations": 1250000,
+      "nsPerCall": 162.7257,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 414.37579499324784,
+      "cpuMs": 414.05199999999996,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 11,
+      "iterations": 1250000,
+      "nsPerCall": 330.2876,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 116.19398900074884,
+      "cpuMs": 115.92,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 11,
+      "iterations": 1250000,
+      "nsPerCall": 91.7384,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 108.48481301218271,
+      "cpuMs": 108.114,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 11,
+      "iterations": 1250000,
+      "nsPerCall": 85.6499,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 140.726881014416,
+      "cpuMs": 140.317,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 11,
+      "iterations": 1250000,
+      "nsPerCall": 110.7509,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 561.0887149814516,
+      "cpuMs": 560.639,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 11,
+      "iterations": 1250000,
+      "nsPerCall": 447.2879,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 158.85420600534417,
+      "cpuMs": 158.519,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 11,
+      "iterations": 1250000,
+      "nsPerCall": 125.845,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 164.88534701056778,
+      "cpuMs": 164.52499999999998,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 12,
+      "iterations": 1250000,
+      "nsPerCall": 130.1856,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 152.55742499721237,
+      "cpuMs": 152.062,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 12,
+      "iterations": 1250000,
+      "nsPerCall": 119.9465,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 444.37042297795415,
+      "cpuMs": 444.081,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 12,
+      "iterations": 1250000,
+      "nsPerCall": 354.47,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 120.75782200554386,
+      "cpuMs": 120.47899999999998,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 12,
+      "iterations": 1250000,
+      "nsPerCall": 95.127,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 120.2072330052033,
+      "cpuMs": 119.86599999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 12,
+      "iterations": 1250000,
+      "nsPerCall": 94.6854,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 157.87506199558266,
+      "cpuMs": 157.549,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 12,
+      "iterations": 1250000,
+      "nsPerCall": 125.0466,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 616.0195879929233,
+      "cpuMs": 615.697,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 12,
+      "iterations": 1250000,
+      "nsPerCall": 490.7703,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 607.215169002302,
+      "cpuMs": 606.881,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "steady",
+      "round": 13,
+      "iterations": 1250000,
+      "nsPerCall": 484.5139,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 148.72942000511102,
+      "cpuMs": 148.37,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "steady",
+      "round": 13,
+      "iterations": 1250000,
+      "nsPerCall": 117.3923,
+      "checksum": 3463238979,
+      "load": [
+        0.63037109375,
+        0.83544921875,
+        1.373046875
+      ]
+    },
+    {
+      "wallMs": 141.3898250029888,
+      "cpuMs": 141.05499999999998,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "steady",
+      "round": 13,
+      "iterations": 1250000,
+      "nsPerCall": 112.0956,
+      "checksum": 3463238979,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 411.1231660062913,
+      "cpuMs": 410.848,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "steady",
+      "round": 13,
+      "iterations": 1250000,
+      "nsPerCall": 327.9195,
+      "checksum": 3463238979,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 102.03594897757284,
+      "cpuMs": 101.78,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "steady",
+      "round": 13,
+      "iterations": 1250000,
+      "nsPerCall": 80.1667,
+      "checksum": 3463238979,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 106.87953099841252,
+      "cpuMs": 106.512,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "steady",
+      "round": 13,
+      "iterations": 1250000,
+      "nsPerCall": 83.8483,
+      "checksum": 3463238979,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 152.5173310074024,
+      "cpuMs": 152.18599999999998,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "steady",
+      "round": 13,
+      "iterations": 1250000,
+      "nsPerCall": 120.3148,
+      "checksum": 3463238979,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.034457003697753,
+      "cpuMs": 0.847,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "startup",
+      "round": 0,
+      "iterations": 1,
+      "nsPerCall": 641,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.8665340137667954,
+      "cpuMs": 0.74,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "startup",
+      "round": 0,
+      "iterations": 1,
+      "nsPerCall": 861,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.1093239882029593,
+      "cpuMs": 0.6399999999999999,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "startup",
+      "round": 0,
+      "iterations": 1,
+      "nsPerCall": 721,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.9650820177048445,
+      "cpuMs": 1.828,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "startup",
+      "round": 0,
+      "iterations": 1,
+      "nsPerCall": 1212,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.9095690038520843,
+      "cpuMs": 0.7819999999999999,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "startup",
+      "round": 0,
+      "iterations": 1,
+      "nsPerCall": 1823,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.1513720091897994,
+      "cpuMs": 1.029,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "startup",
+      "round": 0,
+      "iterations": 1,
+      "nsPerCall": 861,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.5598380123265088,
+      "cpuMs": 1.4289999999999998,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "startup",
+      "round": 0,
+      "iterations": 1,
+      "nsPerCall": 411,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.1050729954149574,
+      "cpuMs": 0.815,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "startup",
+      "round": 1,
+      "iterations": 1,
+      "nsPerCall": 651,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.8794879831839353,
+      "cpuMs": 0.714,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "startup",
+      "round": 1,
+      "iterations": 1,
+      "nsPerCall": 410,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 2.051161980489269,
+      "cpuMs": 1.886,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "startup",
+      "round": 1,
+      "iterations": 1,
+      "nsPerCall": 1272,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.8785520039964467,
+      "cpuMs": 0.71,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "startup",
+      "round": 1,
+      "iterations": 1,
+      "nsPerCall": 1392,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.0440409823786467,
+      "cpuMs": 0.727,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "startup",
+      "round": 1,
+      "iterations": 1,
+      "nsPerCall": 831,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.7789170087780803,
+      "cpuMs": 1.645,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "startup",
+      "round": 1,
+      "iterations": 1,
+      "nsPerCall": 441,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.8784020028542727,
+      "cpuMs": 0.712,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "startup",
+      "round": 1,
+      "iterations": 1,
+      "nsPerCall": 832,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.0681569983717054,
+      "cpuMs": 0.923,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "startup",
+      "round": 2,
+      "iterations": 1,
+      "nsPerCall": 541,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.107667019823566,
+      "cpuMs": 0.976,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "startup",
+      "round": 2,
+      "iterations": 1,
+      "nsPerCall": 1312,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.324642973486334,
+      "cpuMs": 0.9859999999999999,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "startup",
+      "round": 2,
+      "iterations": 1,
+      "nsPerCall": 1021,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.8546760072931647,
+      "cpuMs": 0.724,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "startup",
+      "round": 2,
+      "iterations": 1,
+      "nsPerCall": 701,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.2027690245304257,
+      "cpuMs": 1.037,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "startup",
+      "round": 2,
+      "iterations": 1,
+      "nsPerCall": 320,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.7812849944457412,
+      "cpuMs": 0.6679999999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "startup",
+      "round": 2,
+      "iterations": 1,
+      "nsPerCall": 951,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.1772259895224124,
+      "cpuMs": 1.052,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "startup",
+      "round": 2,
+      "iterations": 1,
+      "nsPerCall": 651,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.008150982670486,
+      "cpuMs": 0.7879999999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "startup",
+      "round": 3,
+      "iterations": 1,
+      "nsPerCall": 1592,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.9733850019983947,
+      "cpuMs": 0.6799999999999999,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "startup",
+      "round": 3,
+      "iterations": 1,
+      "nsPerCall": 1152,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.9805810113903135,
+      "cpuMs": 0.699,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "startup",
+      "round": 3,
+      "iterations": 1,
+      "nsPerCall": 901,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.504675019532442,
+      "cpuMs": 1.313,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "startup",
+      "round": 3,
+      "iterations": 1,
+      "nsPerCall": 180,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.9411759965587407,
+      "cpuMs": 0.8099999999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "startup",
+      "round": 3,
+      "iterations": 1,
+      "nsPerCall": 771,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.5901669976301491,
+      "cpuMs": 1.359,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "startup",
+      "round": 3,
+      "iterations": 1,
+      "nsPerCall": 631,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 2.823172981152311,
+      "cpuMs": 2.6249999999999996,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "startup",
+      "round": 3,
+      "iterations": 1,
+      "nsPerCall": 1001,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.7730629877187312,
+      "cpuMs": 0.6169999999999999,
+      "peakRssKiB": 17920,
+      "variant": "candidate-x86",
+      "phase": "startup",
+      "round": 4,
+      "iterations": 1,
+      "nsPerCall": 1092,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.8004889823496342,
+      "cpuMs": 0.683,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-x86",
+      "phase": "startup",
+      "round": 4,
+      "iterations": 1,
+      "nsPerCall": 731,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.1355039896443486,
+      "cpuMs": 1.016,
+      "peakRssKiB": 17920,
+      "variant": "rust-O3-native",
+      "phase": "startup",
+      "round": 4,
+      "iterations": 1,
+      "nsPerCall": 371,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.8408749999944121,
+      "cpuMs": 0,
+      "peakRssKiB": 17920,
+      "variant": "baseline-c-O2",
+      "phase": "startup",
+      "round": 4,
+      "iterations": 1,
+      "nsPerCall": 721,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.8834049804136157,
+      "cpuMs": 0.754,
+      "peakRssKiB": 17920,
+      "variant": "candidate-c-O2",
+      "phase": "startup",
+      "round": 4,
+      "iterations": 1,
+      "nsPerCall": 781,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 0.8529179904144257,
+      "cpuMs": 0.7419999999999999,
+      "peakRssKiB": 17920,
+      "variant": "oldcompact-c-O2",
+      "phase": "startup",
+      "round": 4,
+      "iterations": 1,
+      "nsPerCall": 431,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    },
+    {
+      "wallMs": 1.0449880210217088,
+      "cpuMs": 0.7459999999999999,
+      "peakRssKiB": 17920,
+      "variant": "baseline-x86",
+      "phase": "startup",
+      "round": 4,
+      "iterations": 1,
+      "nsPerCall": 1272,
+      "checksum": 333620239,
+      "load": [
+        0.66015625,
+        0.83837890625,
+        1.37060546875
+      ]
+    }
+  ],
+  "builds": [
+    {
+      "variant": "baseline-c-O2",
+      "round": 0,
+      "wallMs": 464.17813398875296,
+      "cpuMs": 502.202,
+      "peakRssKiB": 76468,
+      "binaryBytes": 20264,
+      "binarySHA256": "e62977d015fb228bf5d237e94b00718d60f4171b58ab5fbec536da7d58adb89e"
+    },
+    {
+      "variant": "candidate-c-O2",
+      "round": 0,
+      "wallMs": 431.00200599292293,
+      "cpuMs": 464.3399999999999,
+      "peakRssKiB": 76592,
+      "binaryBytes": 20400,
+      "binarySHA256": "aaa510df79b749548cef3f57a71b132e24f62e8f460a30980d61662273e5b0e5"
+    },
+    {
+      "variant": "oldcompact-c-O2",
+      "round": 0,
+      "wallMs": 298.7618549959734,
+      "cpuMs": 311.69,
+      "peakRssKiB": 76052,
+      "binaryBytes": 16304,
+      "binarySHA256": "6d1ab364344c7876c3d3053be0e7b87ad5dfebab2b4dc8d8ae99b081cc1c40e1"
+    },
+    {
+      "variant": "baseline-x86",
+      "round": 0,
+      "wallMs": 279.9931750050746,
+      "cpuMs": 319.005,
+      "peakRssKiB": 73952,
+      "binaryBytes": 20264,
+      "binarySHA256": "74e9ce3c5d56a0eb4ce4152da703779cdd0335899219a3683d11b97ff25994cb"
+    },
+    {
+      "variant": "candidate-x86",
+      "round": 0,
+      "wallMs": 289.1148970229551,
+      "cpuMs": 338.40099999999995,
+      "peakRssKiB": 73800,
+      "binaryBytes": 20392,
+      "binarySHA256": "ab86f34e770447bf7390e7c7f97257e10b028d408a28ce1d14fb47a15da26ca8"
+    },
+    {
+      "variant": "oldcompact-x86",
+      "round": 0,
+      "wallMs": 269.52871098183095,
+      "cpuMs": 296.662,
+      "peakRssKiB": 73952,
+      "binaryBytes": 16296,
+      "binarySHA256": "3a2aa64c2ca7ec344a92874ef136c863202162582265467170cfdbe4357a303d"
+    },
+    {
+      "variant": "rust-O3-native",
+      "round": 0,
+      "wallMs": 176.90564898657613,
+      "cpuMs": 179.855,
+      "peakRssKiB": 116680,
+      "binaryBytes": 3912200,
+      "binarySHA256": "230de1be9ec75a1b4db42d54e42cc54cb41cb3013595afc8e3b4ff057883dd4c"
+    },
+    {
+      "variant": "candidate-c-O2",
+      "round": 1,
+      "wallMs": 452.762653992977,
+      "cpuMs": 479.974,
+      "peakRssKiB": 76712,
+      "binaryBytes": 20400,
+      "binarySHA256": "aaa510df79b749548cef3f57a71b132e24f62e8f460a30980d61662273e5b0e5"
+    },
+    {
+      "variant": "oldcompact-c-O2",
+      "round": 1,
+      "wallMs": 293.9428619865794,
+      "cpuMs": 306.585,
+      "peakRssKiB": 76144,
+      "binaryBytes": 16304,
+      "binarySHA256": "6d1ab364344c7876c3d3053be0e7b87ad5dfebab2b4dc8d8ae99b081cc1c40e1"
+    },
+    {
+      "variant": "baseline-x86",
+      "round": 1,
+      "wallMs": 280.31359598389827,
+      "cpuMs": 324.257,
+      "peakRssKiB": 73752,
+      "binaryBytes": 20264,
+      "binarySHA256": "74e9ce3c5d56a0eb4ce4152da703779cdd0335899219a3683d11b97ff25994cb"
+    },
+    {
+      "variant": "candidate-x86",
+      "round": 1,
+      "wallMs": 279.46284698555246,
+      "cpuMs": 322.54999999999995,
+      "peakRssKiB": 73612,
+      "binaryBytes": 20392,
+      "binarySHA256": "ab86f34e770447bf7390e7c7f97257e10b028d408a28ce1d14fb47a15da26ca8"
+    },
+    {
+      "variant": "oldcompact-x86",
+      "round": 1,
+      "wallMs": 231.1195800139103,
+      "cpuMs": 252.18,
+      "peakRssKiB": 73880,
+      "binaryBytes": 16296,
+      "binarySHA256": "3a2aa64c2ca7ec344a92874ef136c863202162582265467170cfdbe4357a303d"
+    },
+    {
+      "variant": "rust-O3-native",
+      "round": 1,
+      "wallMs": 132.86218300345354,
+      "cpuMs": 139.113,
+      "peakRssKiB": 116820,
+      "binaryBytes": 3912200,
+      "binarySHA256": "230de1be9ec75a1b4db42d54e42cc54cb41cb3013595afc8e3b4ff057883dd4c"
+    },
+    {
+      "variant": "baseline-c-O2",
+      "round": 1,
+      "wallMs": 378.2669059874024,
+      "cpuMs": 403.83899999999994,
+      "peakRssKiB": 75828,
+      "binaryBytes": 20264,
+      "binarySHA256": "e62977d015fb228bf5d237e94b00718d60f4171b58ab5fbec536da7d58adb89e"
+    },
+    {
+      "variant": "oldcompact-c-O2",
+      "round": 2,
+      "wallMs": 219.26505398005247,
+      "cpuMs": 229.144,
+      "peakRssKiB": 75772,
+      "binaryBytes": 16304,
+      "binarySHA256": "6d1ab364344c7876c3d3053be0e7b87ad5dfebab2b4dc8d8ae99b081cc1c40e1"
+    },
+    {
+      "variant": "baseline-x86",
+      "round": 2,
+      "wallMs": 220.8287629764527,
+      "cpuMs": 258.919,
+      "peakRssKiB": 74000,
+      "binaryBytes": 20264,
+      "binarySHA256": "74e9ce3c5d56a0eb4ce4152da703779cdd0335899219a3683d11b97ff25994cb"
+    },
+    {
+      "variant": "candidate-x86",
+      "round": 2,
+      "wallMs": 243.20673500187695,
+      "cpuMs": 278.85299999999995,
+      "peakRssKiB": 73612,
+      "binaryBytes": 20392,
+      "binarySHA256": "ab86f34e770447bf7390e7c7f97257e10b028d408a28ce1d14fb47a15da26ca8"
+    },
+    {
+      "variant": "oldcompact-x86",
+      "round": 2,
+      "wallMs": 255.51437199465,
+      "cpuMs": 278.429,
+      "peakRssKiB": 73148,
+      "binaryBytes": 16296,
+      "binarySHA256": "3a2aa64c2ca7ec344a92874ef136c863202162582265467170cfdbe4357a303d"
+    },
+    {
+      "variant": "rust-O3-native",
+      "round": 2,
+      "wallMs": 171.802775003016,
+      "cpuMs": 175.657,
+      "peakRssKiB": 116820,
+      "binaryBytes": 3912200,
+      "binarySHA256": "230de1be9ec75a1b4db42d54e42cc54cb41cb3013595afc8e3b4ff057883dd4c"
+    },
+    {
+      "variant": "baseline-c-O2",
+      "round": 2,
+      "wallMs": 396.2976549810264,
+      "cpuMs": 426.951,
+      "peakRssKiB": 76036,
+      "binaryBytes": 20264,
+      "binarySHA256": "e62977d015fb228bf5d237e94b00718d60f4171b58ab5fbec536da7d58adb89e"
+    },
+    {
+      "variant": "candidate-c-O2",
+      "round": 2,
+      "wallMs": 450.2455159963574,
+      "cpuMs": 480.799,
+      "peakRssKiB": 76964,
+      "binaryBytes": 20400,
+      "binarySHA256": "aaa510df79b749548cef3f57a71b132e24f62e8f460a30980d61662273e5b0e5"
+    },
+    {
+      "variant": "baseline-x86",
+      "round": 3,
+      "wallMs": 297.38996402011253,
+      "cpuMs": 349.091,
+      "peakRssKiB": 73520,
+      "binaryBytes": 20264,
+      "binarySHA256": "74e9ce3c5d56a0eb4ce4152da703779cdd0335899219a3683d11b97ff25994cb"
+    },
+    {
+      "variant": "candidate-x86",
+      "round": 3,
+      "wallMs": 236.3985109841451,
+      "cpuMs": 271.146,
+      "peakRssKiB": 73372,
+      "binaryBytes": 20392,
+      "binarySHA256": "ab86f34e770447bf7390e7c7f97257e10b028d408a28ce1d14fb47a15da26ca8"
+    },
+    {
+      "variant": "oldcompact-x86",
+      "round": 3,
+      "wallMs": 227.00660201371647,
+      "cpuMs": 249.337,
+      "peakRssKiB": 73372,
+      "binaryBytes": 16296,
+      "binarySHA256": "3a2aa64c2ca7ec344a92874ef136c863202162582265467170cfdbe4357a303d"
+    },
+    {
+      "variant": "rust-O3-native",
+      "round": 3,
+      "wallMs": 135.77738500316627,
+      "cpuMs": 135.891,
+      "peakRssKiB": 116760,
+      "binaryBytes": 3912200,
+      "binarySHA256": "230de1be9ec75a1b4db42d54e42cc54cb41cb3013595afc8e3b4ff057883dd4c"
+    },
+    {
+      "variant": "baseline-c-O2",
+      "round": 3,
+      "wallMs": 328.1613100261893,
+      "cpuMs": 348.279,
+      "peakRssKiB": 76552,
+      "binaryBytes": 20264,
+      "binarySHA256": "e62977d015fb228bf5d237e94b00718d60f4171b58ab5fbec536da7d58adb89e"
+    },
+    {
+      "variant": "candidate-c-O2",
+      "round": 3,
+      "wallMs": 382.2227129712701,
+      "cpuMs": 406.638,
+      "peakRssKiB": 77144,
+      "binaryBytes": 20400,
+      "binarySHA256": "aaa510df79b749548cef3f57a71b132e24f62e8f460a30980d61662273e5b0e5"
+    },
+    {
+      "variant": "oldcompact-c-O2",
+      "round": 3,
+      "wallMs": 243.28018000232987,
+      "cpuMs": 251.776,
+      "peakRssKiB": 76536,
+      "binaryBytes": 16304,
+      "binarySHA256": "6d1ab364344c7876c3d3053be0e7b87ad5dfebab2b4dc8d8ae99b081cc1c40e1"
+    },
+    {
+      "variant": "candidate-x86",
+      "round": 4,
+      "wallMs": 253.94041000981815,
+      "cpuMs": 287.696,
+      "peakRssKiB": 73372,
+      "binaryBytes": 20392,
+      "binarySHA256": "ab86f34e770447bf7390e7c7f97257e10b028d408a28ce1d14fb47a15da26ca8"
+    },
+    {
+      "variant": "oldcompact-x86",
+      "round": 4,
+      "wallMs": 269.5752299914602,
+      "cpuMs": 287.595,
+      "peakRssKiB": 73612,
+      "binaryBytes": 16296,
+      "binarySHA256": "3a2aa64c2ca7ec344a92874ef136c863202162582265467170cfdbe4357a303d"
+    },
+    {
+      "variant": "rust-O3-native",
+      "round": 4,
+      "wallMs": 140.0384829903487,
+      "cpuMs": 141.911,
+      "peakRssKiB": 116816,
+      "binaryBytes": 3912200,
+      "binarySHA256": "230de1be9ec75a1b4db42d54e42cc54cb41cb3013595afc8e3b4ff057883dd4c"
+    },
+    {
+      "variant": "baseline-c-O2",
+      "round": 4,
+      "wallMs": 379.78289200691506,
+      "cpuMs": 405.847,
+      "peakRssKiB": 76528,
+      "binaryBytes": 20264,
+      "binarySHA256": "e62977d015fb228bf5d237e94b00718d60f4171b58ab5fbec536da7d58adb89e"
+    },
+    {
+      "variant": "candidate-c-O2",
+      "round": 4,
+      "wallMs": 361.19041801430285,
+      "cpuMs": 387.306,
+      "peakRssKiB": 76992,
+      "binaryBytes": 20400,
+      "binarySHA256": "aaa510df79b749548cef3f57a71b132e24f62e8f460a30980d61662273e5b0e5"
+    },
+    {
+      "variant": "oldcompact-c-O2",
+      "round": 4,
+      "wallMs": 234.71406800672412,
+      "cpuMs": 244.959,
+      "peakRssKiB": 75996,
+      "binaryBytes": 16304,
+      "binarySHA256": "6d1ab364344c7876c3d3053be0e7b87ad5dfebab2b4dc8d8ae99b081cc1c40e1"
+    },
+    {
+      "variant": "baseline-x86",
+      "round": 4,
+      "wallMs": 245.53380699944682,
+      "cpuMs": 281.226,
+      "peakRssKiB": 73612,
+      "binaryBytes": 20264,
+      "binarySHA256": "74e9ce3c5d56a0eb4ce4152da703779cdd0335899219a3683d11b97ff25994cb"
+    }
+  ],
+  "loadedSamples": 0,
+  "stockBenchmarkReplacement": {
+    "accepted": false,
+    "nativeRatio": 1.1154296572905849,
+    "maximumAllowed": 1.05,
+    "sourceChanged": false
+  },
+  "limitations": [
+    "Observed ranges overlap with stock-source/Rust controls; no speed superiority claim over them.",
+    "C/Rust drivers can inline; direct x86 has an out-of-line call boundary.",
+    "Rust executable includes different runtime/debug sections; executable sizes are not language footprint comparisons.",
+    "Peak RSS reflects an inherited launcher floor and cannot establish equal memory usage.",
+    "Build time includes fresh Node parsing/emission for A0 and rustc for Rust.",
+    "No model API or AI-edit subjects were used."
+  ]
+}
