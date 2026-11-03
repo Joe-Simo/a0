@@ -4,7 +4,7 @@
   "baselineCommit": "9812428ed0fb8edccc1ff905ff5c4e4caab6a836",
   "measuredCompilerCommit": "ba73086d3ab8fd58ad68b66b4c0b7cba27e6e741",
   "source": "test/fixtures/independent-array/mat4.a0",
-  "sourceSHA256": "6dd20f314882c799d5bcc285d936df7d2f00199a0e3824f1957c892a3732fd32",
+  "sourceSHA256": "6741feef39e2ba1ab561d2fac07d3c286f7793fd48c9cf87fb780752b612db89",
   "correctness": {
     "fixedCases": 32,
     "outputSHA256": "f1b78cae0443c9b4e1a7fa609df126a6fc4b080a1eee9ee816143e7804cc890c",
@@ -155,11 +155,15 @@
     "drivers": "Unchanged cDriver/rustDriver exports from tools/exec-bench-kernels.ts",
     "flags": {
       "C": [
-        "-O2"
+        "-std=c11",
+        "-O2",
+        "-D_POSIX_C_SOURCE=199309L"
       ],
       "native": [
         "direct x86 emitter",
-        "C driver -O2"
+        "-std=c11",
+        "-O2",
+        "-D_POSIX_C_SOURCE=199309L"
       ],
       "Rust": [
         "-C opt-level=3",
@@ -3089,5 +3093,13 @@
     "Peak RSS reflects an inherited launcher floor and cannot establish equal memory usage.",
     "Build time includes fresh Node parsing/emission for A0 and rustc for Rust.",
     "No model API or AI-edit subjects were used."
-  ]
+  ],
+  "authoringSourceSHA256": "6dd20f314882c799d5bcc285d936df7d2f00199a0e3824f1957c892a3732fd32",
+  "kernel": "mat4",
+  "stockSources": "tools/exec-bench-kernels.ts: mat4 A0 and Rust entries",
+  "toolchain": {
+    "clang": "Debian clang version 19.1.7 (3+b1)",
+    "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+    "host": "Linux x86_64"
+  }
 }
