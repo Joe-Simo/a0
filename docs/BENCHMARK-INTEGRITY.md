@@ -30,3 +30,11 @@ Output filenames retain characters after the first `=`. Existing reports are not
 overwritten on argument errors. See
 [`results/benchmark-arguments.json`](../results/benchmark-arguments.json) for the
 reproduced empty-report defect, executable failure controls and valid smoke check.
+
+The standalone native benchmark also validates its iteration count before reading
+source or starting a measurement. Zero, signed, fractional, partial and overflowing
+counts cannot produce a successful timing row. Positive decimal counts (including
+leading zeros) preserve the random-input sequence and checksum protocol. The
+reproduction and native/sanitizer controls are recorded in
+[`results/native-bench-count.json`](../results/native-bench-count.json). This does not
+change published scores or establish a performance improvement.

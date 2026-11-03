@@ -768,7 +768,20 @@ static int cmd_run(const char *file, const char *name, int argc, char **argv) {
 
 static bool scalar(uint32_t t) { return tag_of(t) == 1 || tag_of(t) == 2; }
 
+static long bench_iterations(const char *text) {
+  long n = 0;
+  if (*text == '\0') die(64, "bench: iterations must be a positive decimal integer within LONG_MAX");
+  for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
+    if (*p < '0' || *p > '9' || n > (LONG_MAX - (*p - '0')) / 10)
+      die(64, "bench: iterations must be a positive decimal integer within LONG_MAX");
+    n = n * 10 + (*p - '0');
+  }
+  if (n == 0) die(64, "bench: iterations must be a positive decimal integer within LONG_MAX");
+  return n;
+}
+
 static int cmd_bench(const char *file, const char *name, const char *iters) {
+  long n = bench_iterations(iters);
   uint32_t code = front(file, true);
   if (code != 0) return diagnose(file, code);
   uint32_t fi = find_fn(name);
@@ -776,7 +789,6 @@ static int cmd_bench(const char *file, const char *name, const char *iters) {
   for (uint32_t k = 0; k < f->nparams; k++)
     if (!scalar(tlist[f->tfirst + k])) die(1, "bench: %s has a parameter that is not u32 or bool", name);
   if (!scalar(f->result)) die(1, "bench: %s does not return u32 or bool", name);
-  long n = atol(iters);
   uint32_t s = 0x9e3779b9u, acc = 0;
   struct timespec t0, t1;
   clock_gettime(CLOCK_MONOTONIC, &t0);
@@ -791,7 +803,7 @@ static int cmd_bench(const char *file, const char *name, const char *iters) {
     acc ^= *result_of(f);
   }
   clock_gettime(CLOCK_MONOTONIC, &t1);
-  double ns = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / (double)(n > 0 ? n : 1);
+  double ns = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / (double)n;
   printf("%.4f %u\n", ns, acc);
   return 0;
 }
