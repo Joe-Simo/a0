@@ -155,3 +155,12 @@ capacity refusal retains the full CLI fallback; it is not a new language path
 limit. Valid imports and NUL bytes in text/comments remain supported. Reproduction,
 regressions and bounded unchanged-output controls are recorded in
 [`results/native-import-path.json`](../results/native-import-path.json).
+
+Standalone native `run`, `bench` and `calls` now explicitly refuse strict-profile
+execution: that evaluator implements wrapping semantics and previously accepted
+strict programs without enforcing their traps. Profile detection uses the existing
+parser; comments and contextual names do not enable the profile. The configured
+launcher continues to delegate execution to the full CLI, retaining its strict
+traps. This is an unsupported-path refusal, not native strict-runtime support.
+See [`results/native-strict-refusal.json`](../results/native-strict-refusal.json)
+for the reproduced mismatch, compatibility controls and bounded resource samples.
