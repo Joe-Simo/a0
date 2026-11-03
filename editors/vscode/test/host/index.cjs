@@ -8,7 +8,8 @@ exports.run = async () => {
   assert.ok(root, 'the isolated host runner must supply its fixture root');
   assert.equal(vscode.workspace.isTrusted, false, 'this test requires Restricted Mode');
   assert.equal(vscode.workspace.workspaceFolders?.length, 1);
-  assert.equal(vscode.workspace.workspaceFolders[0].uri.fsPath, path.join(root, 'workspace'));
+  // Windows drive-letter casing is normalized by VS Code's URI implementation.
+  assert.equal(path.relative(vscode.workspace.workspaceFolders[0].uri.fsPath, path.join(root, 'workspace')), '');
   const extension = vscode.extensions.getExtension('a0lang.a0');
   assert.ok(extension, 'the real A0 extension must be loaded as a development extension');
   assert.equal(extension.packageJSON.capabilities.untrustedWorkspaces.supported, false);
