@@ -30,7 +30,7 @@
  *   --out=PATH      report path (default results/exec-benchmark.json, the Apple silicon run;
  *                   the Linux x64 run is recorded as results/exec-benchmark-linux-x64.json)
  *   --help          this text and the language ids
- * Toolchain overrides: A0_CLANG, A0_CLANGXX, A0_JAVA, A0_JAVAC, A0_KOTLINC, A0_GO,
+ * Toolchain overrides: A0_CLANG, A0_CLANGXX, A0_RUSTC, A0_JAVA, A0_JAVAC, A0_KOTLINC, A0_GO,
  * A0_SWIFTC, A0_ZIG, A0_DOTNET, A0_PYTHON, A0_RUBY, ... (one A0_<TOOL> per finder in the
  * table; see `single(...)` calls).
  *
@@ -45,6 +45,11 @@ import { performance } from 'node:perf_hooks';
 import { compile } from '../src/backends.js';
 import { parseAndValidate } from '../src/core.js';
 import { findClang, runTool, withTempDir } from '../src/toolchain.js';
+import {
+  readBenchmarkMeasurement,
+  requireStableBenchmarkChecksum,
+  validateBenchmarkMeasurement,
+} from './benchmark-protocol.js';
 import {
   A0_DRIVER_MAIN,
   a0DriverSource,
@@ -141,6 +146,8 @@ interface Sample {
 }
 
 function summarize(values: number[], checksum: string): Sample {
+  if (values.length === 0) throw new Error('benchmark has no samples');
+  for (const value of values) validateBenchmarkMeasurement(value, checksum);
   const s = [...values].sort((a, b) => a - b);
   return {
     medianNsPerCall: s[s.length >> 1] ?? 0,
@@ -283,11 +290,16 @@ async function benchC(
       process.stderr.write(`rustc failed for ${kernel.name}: ${rb.stderr.slice(0, 400)}\n`);
     const rs: number[] = [];
     let rc = '';
+    const checksums = new Map<string, string>();
     const runOne = (exe: string): { ns: number; checksum: string } => {
       const r = runTool(exe, [String(scaled(iterations(kernel)))], { timeoutMs: 600_000 });
       if (!r.ok) throw new Error(r.stderr);
-      const [ns, sum] = r.stdout.trim().split(' ');
-      return { ns: Number(ns), checksum: sum ?? '' };
+      const measurement = readBenchmarkMeasurement(r.stdout);
+      const previous = checksums.get(exe);
+      if (previous !== undefined)
+        requireStableBenchmarkChecksum(measurement.checksum, previous, kernel.name);
+      checksums.set(exe, measurement.checksum);
+      return measurement;
     };
     const es: number[] = [];
     const hs: number[] = [];
@@ -304,7 +316,8 @@ async function benchC(
     // Startup: wall time of a process that runs a single iteration (spawn + exit dominated).
     const startup = (exe: string): number => {
       const t = performance.now();
-      runTool(exe, ['1']);
+      const result = runTool(exe, ['1']);
+      if (!result.ok) throw new Error(`${kernel.name}: startup failed: ${result.stderr}`);
       return performance.now() - t;
     };
     const su: number[] = [];
@@ -429,7 +442,10 @@ async function benchJs(
             : f(a[0] as number, a[1] as number, a[2] as number);
       acc = (acc ^ r) >>> 0;
     }
-    return { ns: ((performance.now() - start) * 1e6) / iterations, checksum: String(acc) };
+    return validateBenchmarkMeasurement(
+      ((performance.now() - start) * 1e6) / iterations,
+      String(acc),
+    );
   };
   run(emitted);
   run(handwritten); // warm-up (JIT)
@@ -441,6 +457,11 @@ async function benchJs(
     waitQuiet();
     const a = run(emitted);
     const b = run(handwritten);
+    requireStableBenchmarkChecksum(a.checksum, b.checksum, `${kernel.name}: JavaScript pair`);
+    if (i > 0) {
+      requireStableBenchmarkChecksum(a.checksum, ec, `${kernel.name}: emitted JavaScript`);
+      requireStableBenchmarkChecksum(b.checksum, hc, `${kernel.name}: handwritten JavaScript`);
+    }
     es.push(a.ns);
     hs.push(b.ns);
     ec = a.checksum;
@@ -485,17 +506,7 @@ function readBack(
   lang: Language,
   r: { stdout: string; stderr: string },
 ): { ns: number; checksum: string } {
-  const text = lang.output === 'stderr' ? r.stderr : r.stdout;
-  const line = text
-    .trim()
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => /^[0-9.eE+-]+ [0-9]+$/.test(l))
-    .pop();
-  if (line === undefined)
-    throw new Error(`no "ns checksum" line in output: ${(r.stdout + r.stderr).slice(-300)}`);
-  const [ns, checksum] = line.split(' ') as [string, string];
-  return { ns: Number(ns), checksum };
+  return readBenchmarkMeasurement(lang.output === 'stderr' ? r.stderr : r.stdout, true);
 }
 
 interface Prepared {
@@ -612,7 +623,9 @@ async function benchLanguages(
       waitQuiet();
       for (const p of prepared) {
         const t = performance.now();
-        runTool(p.one[0], p.one[1], { env: p.env, timeoutMs: 600_000 });
+        const result = runTool(p.one[0], p.one[1], { env: p.env, timeoutMs: 600_000 });
+        if (!result.ok)
+          throw new Error(`${p.lang.id}/${kernel.name}: startup failed: ${result.stderr}`);
         p.startup.push(performance.now() - t);
       }
     }
@@ -694,7 +707,7 @@ function verdict(emitted: Sample, handwritten: Sample): 'win' | 'tie' | 'loss' {
 
 async function main(): Promise<void> {
   const clang = findClang();
-  const rustc = `${homedir()}/.cargo/bin/rustc`;
+  const rustc = process.env.A0_RUSTC ?? `${homedir()}/.cargo/bin/rustc`;
   const table = LANGUAGES.filter((l) => CLI.langs === null || CLI.langs.has(l.id)).map((lang) => ({
     lang,
     tool: lang.find(),
