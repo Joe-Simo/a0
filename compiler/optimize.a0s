@@ -45,7 +45,8 @@ raw #
 raw # - expand (`edstep`): weighted-cost pure scalar calls are inlined and folds of 1..8
 raw #   literal trips unrolled (ordinary nodes cost 1, call/fold/loop cost 5; thresholds 16,
 raw #   256 per body and 2048 total). Square-matrix recurrences are powered first when cheaper.
-raw #   Both fold rewrites require no io and at most 64 words a result/node type. Rename table
+raw #   Full independent array overwrites of 9..64 elements construct the array directly.
+raw #   All fold rewrites require no io and at most 64 words a result/node type. Rename table
 raw #   RN, output sequence and instances describe copied or synthesized nodes.
 raw # - pass (`passa`..`passd`): per node, in order, operands resolved through the substitutions;
 raw #   a variable trip count that propagation would make a literal beyond the static compute bound
@@ -221,7 +222,7 @@ end
 # parameter i of an instance: mode 1 (fold) binds the state and the trip index
 def mparam(oa: u32x128x512, ed: u32x128x393, mode: u32, k: u32, b0k: u32, b0v: u32, ash: u32, i: u32) -> (u32, u32)
   let (hk, hv) = harg(oa, ed, ash, i)
-  let isf = mode == 1
+  let isf = (mode == 1) | (mode == 4)
   let s0 = isf & (i == 0)
   let s1 = isf & (i == 1)
   return (s0 ? b0k : s1 ? 3 : hk, s0 ? b0v : s1 ? k : hv)
@@ -232,11 +233,16 @@ fn edcopy(ed: u32x128x393, j: u32, first: u32, nd: u32x128x132) -> u32x128x393
   let base = ed[E_SC + E_NEXT]
   let outn = ed[E_SC + E_OUTN]
   let slot = ed[E_SC + E_SLOT]
-  let id = base + j
-  ed[E_OUT + outn + j] = id
-  ed[E_INST + id] = ed[E_SC + E_NI]
-  ed[E_ASL + id] = slot
-  ed[E_SC + E_SLOT] = slot + nd[(first + j) * 6 + 2]
+  let ni = ed[E_SC + E_NI]
+  let independent = ed[E_IMO + ni] == 4
+  let omitted = ed[E_IB0K + ni]
+  let skip = independent & (j == omitted)
+  let offset = j - bit(independent & (j > omitted))
+  let id = base + offset
+  ed[E_OUT + outn + offset] = id if !skip
+  ed[E_INST + id] = ni if !skip
+  ed[E_ASL + id] = slot if !skip
+  ed[E_SC + E_SLOT] = slot + (skip ? 0 : nd[(first + j) * 6 + 2])
   return ed
 end
 
@@ -250,7 +256,9 @@ fn edinst(ed: u32x128x393, i: u32, mode: u32, k: u32, c: u32, host: u32, ash: u3
   let ni = ed[E_SC + E_NI]
   let b0k = ed[E_SC + E_B0K]
   let b0v = ed[E_SC + E_B0V]
-  let ok = ((base + nc) <= AN) & ((outn + nc) <= AN) & (ni < AN)
+  let independent = mode == 4
+  let copied = nc - bit(independent)
+  let ok = ((base + copied) <= AN) & ((outn + copied) <= AN) & (ni < AN)
   ed[E_SC + E_ERR] = ed[E_SC + E_ERR] | (ok ? 0 : 1)
   ed[E_IBS + ni] = base if ok
   ed[E_ICA + ni] = c if ok
@@ -264,15 +272,18 @@ fn edinst(ed: u32x128x393, i: u32, mode: u32, k: u32, c: u32, host: u32, ash: u3
   let kind = w >> 28
   let v = w & 0xfffffff
   let (pk, pv) = rdp(oa, v)
-  let rk = kind == 5 ? pk : kind
-  let rv = kind == 5 ? pv : v
+  let rk0 = kind == 5 ? pk : kind
+  let rv0 = kind == 5 ? pv : v
+  let (vk, vv) = rdp(oa, nd[(first + b0k) * 6 + 3] + 2)
+  let rk = independent ? vk : rk0
+  let rv = independent ? vv : rv0
   let (mk, mv) = mparam(oa, ed1, mode, k, b0k, b0v, ash, rv)
   let isp = rk == 2
   let isn = rk == 1
   ed1[E_SC + E_RK] = isp ? mk : rk
-  ed1[E_SC + E_RV] = isp ? mv : isn ? base + rv : rv
-  ed1[E_SC + E_NEXT] = base + (ok ? nc : 0)
-  ed1[E_SC + E_OUTN] = outn + (ok ? nc : 0)
+  ed1[E_SC + E_RV] = isp ? mv : isn ? base + rv - bit(independent & (rv > b0k)) : rv
+  ed1[E_SC + E_NEXT] = base + (ok ? copied : 0)
+  ed1[E_SC + E_OUTN] = outn + (ok ? copied : 0)
   ed1[E_SC + E_NI] = ni + (ok ? 1 : 0)
   ed1[E_SC + E_CHG] = 1
   return ed1
@@ -374,7 +385,8 @@ end
 
 # Synthetic instances share the existing ED columns. Mode 2 is a two-operand scalar:
 # ICA=op IBS=type IHO=arg0 kind IK=arg0 value IB0K=arg1 kind IB0V=arg1 value.
-# Mode 3 is the final arr: IHO=length IK=first element node IB0V=element stride.
+# Mode 3 is an arr: IHO=length IK=first value IB0K=element kind IB0V=stride.
+# Mode 4 copies an independent fill, omitting the store at IB0K.
 const E_MACC = 10
 const E_MAS = 11
 const E_MPOW = 12
@@ -468,6 +480,51 @@ fn mxemit(ed: u32x128x393, i: u32, n: u32, side: u32, param: u32, trips: u32, ty
   return edsyn(ed3, 0, 22, type, 1, ed3[E_SC + E_MACC], 1, ed3[E_SC + E_MAS], len)
 end
 
+# A full independent array overwrite. Unlike fcrun, values need not be lane operations.
+fn fiarg(ok: u32, j: u32, oa: u32x128x512, ash: u32, node: u32, omitted: u32) -> u32
+  let (k, v) = rdp(oa, ash + j)
+  let allowed = (node == omitted) & (j == 0)
+  return ok & bit(!((k == 2) & (v == 0) & !allowed))
+end
+fn finode(st: (u32,u32), j: u32, nd: u32x128x132, oa: u32x128x512, first: u32, omitted: u32) -> (u32,u32)
+  let row = (first + j) * 6
+  let na = nd[row + 2]
+  let ok = fold(fiarg, na, st#0, oa, nd[row + 3], j, omitted)
+  return (ok, st#1 + ((j == omitted) ? 0 : na))
+end
+fn fishape(g: u32, c: u32, trips: u32, fnt: u32x128x45, nd: u32x128x132, oa: u32x128x512, ty: u32x384x65) -> (u32,u32,u32)
+  let first = fnt[c * 7 + 4]
+  let nc = fnt[c * 7 + 5]
+  let packed = fnt[c * 7 + 6]
+  let pk = packed >> 28
+  let pv = packed & 0xfffffff
+  let (bigk, bigv) = rdp(oa, pk == 5 ? pv : 0)
+  let rk = pk == 5 ? bigk : pk
+  let rv = pk == 5 ? bigv : pv
+  let omitted = ((rk == 1) & (rv < nc)) ? rv : 0
+  let row = (first + omitted) * 6
+  let (tk, tv) = rdp(oa, nd[row + 3])
+  let (ik, iv) = rdp(oa, nd[row + 3] + 1)
+  let result = fnt[c * 7 + 3]
+  let shape = (g == 1) & (tyw(ty, result, 0) == 4) & (tyw(ty, result, 1) == trips) & (rk == 1) & (rv < nc) & (nd[row + 1] == 26) & (nd[row + 2] == 3) & (tk == 2) & (tv == 0) & (ik == 2) & (iv == 1)
+  let scan = fold(finode, shape ? nc : 0, (1, 0), nd, oa, first, omitted)
+  return (bit(shape) & scan#0, omitted, scan#1)
+end
+fn ficopy(ed: u32x128x393, k: u32, c: u32, host: u32, ash: u32, fnt: u32x128x45, nd: u32x128x132, oa: u32x128x512) -> u32x128x393
+  return edinst(ed, 0, 4, k, c, host, ash, fnt, nd, oa)
+end
+fn fiemit(ed: u32x128x393, i: u32, c: u32, host: u32, ash: u32, trips: u32, omitted: u32, type: u32, fnt: u32x128x45, nd: u32x128x132, oa: u32x128x512) -> u32x128x393
+  ed[E_SC + E_B0K] = omitted
+  ed[E_SC + E_B0V] = 0
+  let copied = fold(ficopy, trips, ed, c, host, ash, fnt, nd, oa)
+  let first = fnt[c * 7 + 4]
+  let (vk, vv) = rdp(oa, nd[(first + omitted) * 6 + 3] + 2)
+  # One fixed result operand maps to an affine series: copied nodes, p1, or a constant.
+  let stride = vk == 1 ? fnt[c * 7 + 5] - 1 : ((vk == 2) & (vv == 1)) ? 1 : 0
+  let start = copied[E_SC + E_RV] - (trips - 1) * stride
+  return edsyn(copied, 0, 22, type, 0, start, copied[E_SC + E_RK], stride, trips)
+end
+
 # the node at sequence index i
 fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, sm: u32x128x16, fnt: u32x128x45, nd: u32x128x132, ty: u32x384x65, tl: u32x128x65, rqall: u32) -> u32x128x393
   let x = sq[i]
@@ -485,7 +542,9 @@ fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x
   let foldok = (o == 20) & (c0k == 3) & (na >= 2) & ((fl & 8) == 0) & ((fl & 16) != 0)
   let unr0 = foldok & (c0v >= 1) & (c0v <= 8) & (n <= 256) & ((n * c0v) <= 2048)
   let pow0 = foldok & (c0v >= 3)
-  let cost = fold(edcost, (has & (inl0 | unr0)) ? fnt[c * 7 + 5] : 0, 0, nd, fnt[c * 7 + 4])
+  let fill0 = foldok & (c0v > 8) & (c0v <= 64) & (n <= 256) & ((n * c0v) <= 2048)
+  let fillshape = fishape(bit(fill0 & has), c, c0v, fnt, nd, oa, ty)
+  let cost = fold(edcost, (has & (inl0 | unr0 | fill0)) ? fnt[c * 7 + 5] : 0, 0, nd, fnt[c * 7 + 4])
   let count = fold(mxpcnt, pow0 ? 32 : 0, (0, 0), c0v)
   let products = count#0 + count#1
   let shape = fold(mxshape, bit(pow0 & has), (0, 0, 0), nd, oa, fnt, ty, tl, c, c0v, products)
@@ -499,9 +558,15 @@ fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x
   let powered = power & space
   let inl = inl0 & has & (cost <= 16)
   let unr = unr0 & has & (cost <= 256) & (cost * c0v <= 2048) & !power
-  let possible = inl0 | unr0 | pow0
+  let fillvalid = fill0 & has & (fillshape#0 == 1) & (cost <= 256) & (cost * c0v <= 2048) & !power
+  let fillnodes = (fnt[c * 7 + 5] - 1) * c0v + 1
+  let fillslots = fillshape#2 * c0v + c0v
+  let fillspace = (ed[E_SC + E_NEXT] + fillnodes <= AN) & (ed[E_SC + E_OUTN] + fillnodes <= AN) & (ed[E_SC + E_NI] + c0v + 1 <= AN) & (ed[E_SC + E_SLOT] + fillslots <= NSL)
+  ed[E_SC + E_ERR] = ed[E_SC + E_ERR] | ((fillvalid & !fillspace) ? 1 : 0)
+  let filled = fillvalid & fillspace
+  let possible = inl0 | unr0 | pow0 | fill0
   let need = ((rqall == 1) ? ((o == 19) | (o == 20)) : possible) & !has
-  let doit = inl | unr | powered
+  let doit = inl | unr | powered | filled
   let outn = ed[E_SC + E_OUTN]
   ed[E_OUT + outn] = x if !doit
   ed[E_SC + E_OUTN] = outn + (doit ? 0 : 1)
@@ -511,9 +576,10 @@ fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x
   let ed1 = fold(edinst, bit(inl), ed, 0, 0, c, x, ash, fnt, nd, oa)
   let ed2 = fold(edunr, unr ? c0v : 0, ed1, c, x, ash, fnt, nd, oa)
   let ed3 = fold(mxemit, bit(powered), ed2, dim, shape#1, shape#2, c0v, cl[C_TY + x], oa, ash)
-  ed3[E_RNK + x] = unr ? ed3[E_SC + E_B0K] : ed3[E_SC + E_RK] if doit
-  ed3[E_RNV + x] = unr ? ed3[E_SC + E_B0V] : ed3[E_SC + E_RV] if doit
-  return ed3
+  let ed4 = fold(fiemit, bit(filled), ed3, c, x, ash, c0v, fillshape#1, cl[C_TY + x], fnt, nd, oa)
+  ed4[E_RNK + x] = unr ? ed4[E_SC + E_B0K] : ed4[E_SC + E_RK] if doit
+  ed4[E_RNV + x] = unr ? ed4[E_SC + E_B0V] : ed4[E_SC + E_RV] if doit
+  return ed4
 end
 
 # the output sequence into the body's sequence
@@ -526,9 +592,10 @@ fn clnew(cl: u32x128x193, i: u32, ed: u32x128x393, ng: u32, fnt: u32x128x45, nd:
   let id = ng + i
   let ins = ed[E_INST + id]
   let mode = ed[E_IMO + ins]
-  let syn = mode >= 2
+  let syn = (mode == 2) | (mode == 3)
   let c = syn ? 0 : ed[E_ICA + ins]
-  let sr = syn ? 0 : fnt[c * 7 + 4] + (id - ed[E_IBS + ins])
+  let local = id - ed[E_IBS + ins]
+  let sr = syn ? 0 : fnt[c * 7 + 4] + local + bit((mode == 4) & (local >= ed[E_IB0K + ins]))
   let b = sr * 6
   cl[C_OP + id] = syn ? ed[E_ICA + ins] : nd[b + 1]
   cl[C_NA + id] = mode == 3 ? ed[E_IHO + ins] : syn ? 2 : nd[b + 2]
@@ -546,18 +613,19 @@ end
 fn oanew(oa: u32x128x512, j: u32, ed: u32x128x393, cl: u32x128x193, op: u32x128x512, nd: u32x128x132, fnt: u32x128x45, id: u32) -> u32x128x512
   let ins = ed[E_INST + id]
   let mode = ed[E_IMO + ins]
-  let syn = mode >= 2
+  let syn = (mode == 2) | (mode == 3)
   let c = syn ? 0 : ed[E_ICA + ins]
   let base = ed[E_IBS + ins]
-  let sr = syn ? 0 : fnt[c * 7 + 4] + (id - base)
+  let local = id - base
+  let sr = syn ? 0 : fnt[c * 7 + 4] + local + bit((mode == 4) & (local >= ed[E_IB0K + ins]))
   let (k, v) = rdp(op, nd[sr * 6 + 3] + j)
   let host = syn ? 0 : ed[E_IHO + ins]
   let (mk, mv) = mparam(oa, ed, mode, ed[E_IK + ins], ed[E_IB0K + ins], ed[E_IB0V + ins], cl[C_AS + host], v)
   let isp = k == 2
   let isn = k == 1
-  let sk = mode == 3 ? 1 : j == 0 ? ed[E_IHO + ins] : ed[E_IB0K + ins]
+  let sk = mode == 3 ? ed[E_IB0K + ins] : j == 0 ? ed[E_IHO + ins] : ed[E_IB0K + ins]
   let sv = mode == 3 ? (ed[E_IK + ins] + j * ed[E_IB0V + ins]) : j == 0 ? ed[E_IK + ins] : ed[E_IB0V + ins]
-  return wrp(oa, cl[C_AS + id] + j, syn ? sk : isp ? mk : k, syn ? sv : isp ? mv : isn ? base + v : v)
+  return wrp(oa, cl[C_AS + id] + j, syn ? sk : isp ? mk : k, syn ? sv : isp ? mv : isn ? base + v - bit((mode == 4) & (v > ed[E_IB0K + ins])) : v)
 end
 # the operands of the node at output index i: renamed, or the callee's mapped
 fn oawr(oa: u32x128x512, i: u32, ed: u32x128x393, cl: u32x128x193, ng: u32, op: u32x128x512, nd: u32x128x132, fnt: u32x128x45) -> u32x128x512

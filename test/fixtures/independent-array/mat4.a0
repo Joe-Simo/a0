@@ -1,0 +1,61 @@
+fn dot u32 u32 u32x16 u32x16 u32 u32 -> u32
+ai add p4 p1
+av get p2 ai
+bi mul p1 4
+bj add bi p5
+bv get p3 bj
+m mul av bv
+r add p0 m
+ret r
+end
+
+fn cell u32x16 u32 u32x16 u32x16 -> u32x16
+row div p1 4
+base mul row 4
+col and p1 3
+s fold dot 4 0 p2 p3 base col
+r set p0 p1 s
+ret r
+end
+
+fn mulstep u32x16 u32 u32x16 -> u32x16
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r fold cell 16 z p0 p2
+ret r
+end
+
+fn inita u32x16 u32 u32 u32 -> u32x16
+k add p1 1
+m mul p2 k
+s shr p3 p1
+v xor m s
+r set p0 p1 v
+ret r
+end
+
+fn initb u32x16 u32 u32 u32 -> u32x16
+k add p1 3
+m mul p3 k
+s shr p2 p1
+v add m s
+r set p0 p1 v
+ret r
+end
+
+fn mat4 u32 u32 -> u32
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+a fold inita 16 z p0 p1
+b fold initb 16 z p0 p1
+r fold mulstep 8 a b
+a0 get r 0
+a5 get r 5
+a10 get r 10
+a15 get r 15
+s0 add a0 a5
+s1 add s0 a10
+s2 add s1 a15
+i and p0 15
+v get r i
+s add s2 v
+ret s
+end

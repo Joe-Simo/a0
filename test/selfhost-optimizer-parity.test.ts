@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { after, test } from 'node:test';
 import {
@@ -528,4 +528,74 @@ test('A0 matrix power retains a fold whose body has an unused IO parameter', {
   );
   assert.deepEqual(ioA.output, []);
   assert.deepEqual(ioB.output, []);
+});
+
+for (const [label, elem, value, body, extra, expected] of [
+  ['literal', 'u32', '7', '', 99, 7],
+  ['boolean', 'bool', 'true', '', false, true],
+  ['index', 'u32', 'p1', '', 99, undefined],
+  ['parameter', 'u32', 'p2', '', 0xffff_ffff, 0xffff_ffff],
+  ['node', 'u32', 'v', 'v rem p2 7\n', 17, 3],
+  ['nested array', 'u32x4', 'p2', '', [1, 2, 3, 4], [1, 2, 3, 4]],
+] as const) {
+  test(`independent array self-host parity: ${label}`, { skip: SKIP }, async () => {
+    const p = parseAndValidate(`fn fill ${elem}x16 u32 ${elem} -> ${elem}x16
+${body}r set p0 p1 ${value}
+dead add p1 9
+ret r
+end
+fn top ${elem}x16 ${elem} -> ${elem}x16
+r fold fill 16 p0 p1
+ret r
+end`);
+    const q = await sameIr(p);
+    const initial = Array.from({ length: 16 }, () => extra) as Value[];
+    const want = Array.from({ length: 16 }, (_, i) => (label === 'index' ? i : expected));
+    assert.deepEqual(run(fn(q, 'top'), [initial, extra] as Value[]), want);
+    assert.deepEqual(run(fn(p, 'top'), [initial, extra] as Value[]), want);
+  });
+}
+
+test('independent array self-host parity: multiple live fills', { skip: SKIP }, async () => {
+  const p = parseAndValidate(`fn fill u32x16 u32 u32 -> u32x16
+m rem p2 7
+v add p1 m
+r set p0 p1 v
+ret r
+end
+fn top u32x16 u32 u32 -> (u32x16,u32x16)
+a fold fill 16 p0 p1
+b fold fill 16 p0 p2
+r rec a b
+ret r
+end`);
+  const q = await sameIr(p);
+  const args = [Array(16).fill(9), 17, 0xffff_ffff] as Value[];
+  assert.deepEqual(run(fn(q, 'top'), args), run(fn(p, 'top'), args));
+});
+
+test('independent array self-host parity: oversized state stays a fold', {
+  skip: SKIP,
+}, async () => {
+  const p = parseAndValidate(`fn fill u32x5x16 u32 u32x5 -> u32x5x16
+r set p0 p1 p2
+ret r
+end
+fn top u32x5x16 u32x5 -> u32x5x16
+r fold fill 16 p0 p1
+ret r
+end`);
+  const q = await sameIr(p);
+  assert.ok(fn(q, 'top').nodes.some((n) => n.op === 'fold'));
+});
+
+test('independent array self-host parity: compact matrix recurrence', { skip: SKIP }, async () => {
+  const p = parseAndValidate(await readFile('test/fixtures/independent-array/mat4.a0', 'utf8'));
+  const q = await sameIr(p);
+  for (const args of [
+    [0, 0],
+    [7, 31],
+    [0xffff_ffff, 0x8000_0000],
+  ])
+    assert.equal(run(fn(q, 'mat4'), args), run(fn(p, 'mat4'), args));
 });

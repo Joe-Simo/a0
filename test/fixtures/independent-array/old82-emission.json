@@ -1,0 +1,53 @@
+{
+  "provenance": {
+    "commit": "9812428ed0fb8edccc1ff905ff5c4e4caab6a836",
+    "compilerVersion": "a0c-0.1.82",
+    "target": "wasm"
+  },
+  "source": "fn dot u32 u32 u32x16 u32x16 u32 u32 -> u32\nai add p4 p1\nav get p2 ai\nbi mul p1 4\nbj add bi p5\nbv get p3 bj\nm mul av bv\nr add p0 m\nret r\nend\n\nfn cell u32x16 u32 u32x16 u32x16 -> u32x16\nrow div p1 4\nbase mul row 4\ncol and p1 3\ns fold dot 4 0 p2 p3 base col\nr set p0 p1 s\nret r\nend\n\nfn mulstep u32x16 u32 u32x16 -> u32x16\nz arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nr fold cell 16 z p0 p2\nret r\nend\n\nfn inita u32x16 u32 u32 u32 -> u32x16\nk add p1 1\nm mul p2 k\ns shr p3 p1\nv xor m s\nr set p0 p1 v\nret r\nend\n\nfn initb u32x16 u32 u32 u32 -> u32x16\nk add p1 3\nm mul p3 k\ns shr p2 p1\nv add m s\nr set p0 p1 v\nret r\nend\n\nfn mat4 u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\na fold inita 16 z p0 p1\nb fold initb 16 z p0 p1\nr fold mulstep 8 a b\na0 get r 0\na5 get r 5\na10 get r 10\na15 get r 15\ns0 add a0 a5\ns1 add s0 a10\ns2 add s1 a15\ni and p0 15\nv get r i\ns add s2 v\nret s\nend\n",
+  "sourceSHA256": "6741feef39e2ba1ab561d2fac07d3c286f7793fd48c9cf87fb780752b612db89",
+  "records": [
+    {
+      "name": "dot",
+      "descriptor": "a0c-0.1.82|wasm|O1|5f99c746c545c42dea0e7b4633d9f918e55aa101ab8bd4714a84e5627a95e970",
+      "diskKey": "a4ff85cc24f866200839791c806d49b2f2de6abe2d9e98a2c9fe10054be52648",
+      "bodySHA256": "7a1a80e357149d2547a61463cf12c85821d41741509cc61e257bdd709a80a9dc",
+      "body": "{\"name\":\"dot\",\"pool\":[],\"variants\":[{\"symbol\":\"a0_dot\",\"exportAs\":\"a0_dot\",\"params\":6,\"result\":true,\"locals\":1,\"frame\":0,\"code\":[\"IAQgAWohBiACIAZBD3FBAnRqKAIAIAFBBGwgBWohBiADIAZBD3FBAnRqKAIAbCEGIAAgBmo=\"]}]}"
+    },
+    {
+      "name": "cell",
+      "descriptor": "a0c-0.1.82|wasm|O1|2ce3d914c6ed35f504c3fee089fe8128c092f4754c33d0199178a85c51648470",
+      "diskKey": "811c2c758505bfe0ca155067c0c5ee74b669c8f42ff0d4cc8f9e9505c94763c7",
+      "bodySHA256": "38732e5e0e5bd8e375725976450048c1a4b1a3f929eebf0729d239397cfe3f98",
+      "body": "{\"name\":\"cell\",\"pool\":[],\"variants\":[{\"symbol\":\"a0_cell\",\"exportAs\":\"a0_cell\",\"params\":5,\"result\":false,\"locals\":4,\"frame\":0,\"code\":[\"IAJBAnZBBGwhBSACQQNxIQYgAyAFQQ9xQQJ0aigCACAEIAZBD3FBAnRqKAIAbCAFQQFqIQcgAyAHQQ9xQQJ0aigCAEEEIAZqIQcgBCAHQQ9xQQJ0aigCAGxqIQcgBUECaiEIIAMgCEEPcUECdGooAgBBCCAGaiEIIAQgCEEPcUECdGooAgBsIAVBA2ohBSADIAVBD3FBAnRqKAIAQQwgBmohBSAEIAVBD3FBAnRqKAIAbGogB2ohBSAAIAFBwAD8CgAAIAAgAkEPcUECdGogBTYCAA==\"]},{\"symbol\":\"a0o_cell\",\"params\":4,\"result\":false,\"locals\":4,\"frame\":0,\"code\":[\"IAFBAnZBBGwhBCABQQNxIQUgAiAEQQ9xQQJ0aigCACADIAVBD3FBAnRqKAIAbCAEQQFqIQYgAiAGQQ9xQQJ0aigCAEEEIAVqIQYgAyAGQQ9xQQJ0aigCAGxqIQYgBEECaiEHIAIgB0EPcUECdGooAgBBCCAFaiEHIAMgB0EPcUECdGooAgBsIARBA2ohBCACIARBD3FBAnRqKAIAQQwgBWohBCADIARBD3FBAnRqKAIAbGogBmohBCAAIAFBD3FBAnRqIAQ2AgA=\"]}]}"
+    },
+    {
+      "name": "mulstep",
+      "descriptor": "a0c-0.1.82|wasm|O1|b708cfe4dbb106bae2cc068e3e5269dae8cb7c9f269285de1a4b9235ac466ee9",
+      "diskKey": "fb67b8e98b96e9c12141aa6dc23242df7d6f5e8e2f0bf552a24d2dca3dc96821",
+      "bodySHA256": "a4e6dd6bbca4aba79d13abc166253746b0f246c386443f06d874078dab9d31a9",
+      "body": "{\"name\":\"mulstep\",\"pool\":[],\"variants\":[{\"symbol\":\"a0_mulstep\",\"exportAs\":\"a0_mulstep\",\"params\":4,\"result\":false,\"locals\":1,\"frame\":0,\"code\":[\"QQAhBANAIAAgBCABIAM=\",{\"call\":\"a0o_cell\"},\"IARBAWoiBEEQSQ0ACw==\"]},{\"symbol\":\"a0o_mulstep\",\"params\":3,\"result\":false,\"locals\":2,\"frame\":64,\"code\":[\"IwBBwABrIgMkAEEAIQQDQCADIAQgACAC\",{\"call\":\"a0o_cell\"},\"IARBAWoiBEEQSQ0ACyAAIANBwAD8CgAAIANBwABqJAA=\"]}]}"
+    },
+    {
+      "name": "inita",
+      "descriptor": "a0c-0.1.82|wasm|O1|b3033dc0cc78e61ee01e2f9bbcb112769f810980d0d65340e4eda5e55e2b20b6",
+      "diskKey": "40fe762bb9a7d77b1b015daf3836a306cb86ec0b7e633745580ffeea8546d510",
+      "bodySHA256": "6530d83b4e62b51836c80745ad2637356350e107816afa5c67e5f59d27253b95",
+      "body": "{\"name\":\"inita\",\"pool\":[],\"variants\":[{\"symbol\":\"a0_inita\",\"exportAs\":\"a0_inita\",\"params\":5,\"result\":false,\"locals\":1,\"frame\":0,\"code\":[\"IAJBAWohBSADIAVsIAQgAnZzIQUgACABQcAA/AoAACAAIAJBD3FBAnRqIAU2AgA=\"]},{\"symbol\":\"a0o_inita\",\"params\":4,\"result\":false,\"locals\":1,\"frame\":0,\"code\":[\"IAFBAWohBCACIARsIAMgAXZzIQQgACABQQ9xQQJ0aiAENgIA\"]}]}"
+    },
+    {
+      "name": "initb",
+      "descriptor": "a0c-0.1.82|wasm|O1|04921e02db17fc15d514d0a347134795055d513a0365253de0adab549fd538e5",
+      "diskKey": "cbf0ac4414ac022431a55f04c59a92e00b6d1fc4d81f6ba22ebcb31dd55f9e3d",
+      "bodySHA256": "3db9161adf08966f9fd16de9ea5a43ca0f931a7cbb96e03d0bc5c655c98a4f55",
+      "body": "{\"name\":\"initb\",\"pool\":[],\"variants\":[{\"symbol\":\"a0_initb\",\"exportAs\":\"a0_initb\",\"params\":5,\"result\":false,\"locals\":1,\"frame\":0,\"code\":[\"IAJBA2ohBSAEIAVsIAMgAnZqIQUgACABQcAA/AoAACAAIAJBD3FBAnRqIAU2AgA=\"]},{\"symbol\":\"a0o_initb\",\"params\":4,\"result\":false,\"locals\":1,\"frame\":0,\"code\":[\"IAFBA2ohBCADIARsIAIgAXZqIQQgACABQQ9xQQJ0aiAENgIA\"]}]}"
+    },
+    {
+      "name": "mat4",
+      "descriptor": "a0c-0.1.82|wasm|O1|370b5bd99f91a4306021d43e447bc63446d95912763dceaaba05f3fef58562c9",
+      "diskKey": "3631d9f34dfdd1e30b98345ae1620e84d70e1cd34126eeac17f1b0cc42ec0845",
+      "bodySHA256": "85c9dfb3b62db0e9e85f45439bd521314220ca1c667e2fb07cd0936332ec513b",
+      "body": "{\"name\":\"mat4\",\"pool\":[],\"variants\":[{\"symbol\":\"a0_mat4\",\"exportAs\":\"a0_mat4\",\"params\":2,\"result\":true,\"locals\":13,\"frame\":704,\"code\":[\"IwBBwAVrIgIkACACQcAAaiEDIAJBgAFqIQQgAkHAAWohBSACQYACaiEGIAJBwAJqIQcgAkGAA2ohCCACQcADaiEJIAJBgARqQQBBwAD8CwAgAkHABGohCkEAIQsDQCALQQFqIQwgACAMbCABIAt2cyENIAogC0ECdGogDTYCACALQQFqIgtBEEkNAAsgAkGABWohC0EAIQwDQCAMQQNqIQ0gASANbCAAIAx2aiEOIAsgDEECdGogDjYCACAMQQFqIgxBEEkNAAtBACEMA0AgCSAMIAogCw==\",{\"call\":\"a0o_cell\"},\"IAxBAWoiDEEQSQ0AC0EAIQoDQCAIIAogCSAL\",{\"call\":\"a0o_cell\"},\"IApBAWoiCkEQSQ0AC0EAIQkDQCAHIAkgCCAL\",{\"call\":\"a0o_cell\"},\"IAlBAWoiCUEQSQ0AC0EAIQgDQCAGIAggByAL\",{\"call\":\"a0o_cell\"},\"IAhBAWoiCEEQSQ0AC0EAIQcDQCAFIAcgBiAL\",{\"call\":\"a0o_cell\"},\"IAdBAWoiB0EQSQ0AC0EAIQYDQCAEIAYgBSAL\",{\"call\":\"a0o_cell\"},\"IAZBAWoiBkEQSQ0AC0EAIQUDQCADIAUgBCAL\",{\"call\":\"a0o_cell\"},\"IAVBAWoiBUEQSQ0AC0EAIQQDQCACIAQgAyAL\",{\"call\":\"a0o_cell\"},\"IARBAWoiBEEQSQ0ACyACKAIoIAIoAjxqIAIoAgAgAigCFGpqIABBD3EhAyACIANBD3FBAnRqKAIAaiACQcAFaiQA\"]}]}"
+    }
+  ]
+}

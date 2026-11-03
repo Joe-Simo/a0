@@ -45,7 +45,8 @@
 # - expand (`edstep`): weighted-cost pure scalar calls are inlined and folds of 1..8
 #   literal trips unrolled (ordinary nodes cost 1, call/fold/loop cost 5; thresholds 16,
 #   256 per body and 2048 total). Square-matrix recurrences are powered first when cheaper.
-#   Both fold rewrites require no io and at most 64 words a result/node type. Rename table
+#   Full independent array overwrites of 9..64 elements construct the array directly.
+#   All fold rewrites require no io and at most 64 words a result/node type. Rename table
 #   RN, output sequence and instances describe copied or synthesized nodes.
 # - pass (`passa`..`passd`): per node, in order, operands resolved through the substitutions;
 #   a variable trip count that propagation would make a literal beyond the static compute bound
@@ -273,38 +274,74 @@ q2 get p0 392
 q3 get q2 1
 q4 get p0 392
 q5 get q4 2
-id add q1 p1
-q6 add 8192 q3
-q7 add q6 p1
-q8 shr q7 7
-q9 and q7 127
-ed_g get p0 q8
-ed_h set ed_g q9 id
-ed set p0 q8 ed_h
-q10 add 12288 id
-q11 get ed 392
-q12 get q11 3
-q13 shr q10 7
-q14 and q10 127
-ed_g_1 get ed q13
-ed_h_1 set ed_g_1 q14 q12
-ed_1 set ed q13 ed_h_1
-q15 add 16384 id
-q16 shr q15 7
-q17 and q15 127
-ed_g_2 get ed_1 q16
-ed_h_2 set ed_g_2 q17 q5
-ed_2 set ed_1 q16 ed_h_2
-q18 add p2 p1
-q19 mul q18 6
-q20 add q19 2
-q21 shr q20 7
-q22 and q20 127
-q23 get p3 q21
-q24 get q23 q22
-q25 add q5 q24
+q6 get p0 392
+q7 get q6 3
+q8 add 32768 q7
+q9 shr q8 7
+q10 and q8 127
+q11 get p0 q9
+q12 get q11 q10
+independent eq q12 4
+q13 add 40960 q7
+q14 shr q13 7
+q15 and q13 127
+q16 get p0 q14
+q17 get q16 q15
+q18 eq p1 q17
+skip and independent q18
+q19 gt p1 q17
+q20 and independent q19
+q21 select q20 1 0
+offset sub p1 q21
+id add q1 offset
+q22 add 8192 q3
+q23 add q22 offset
+q24 xor skip true
+q25 shr q23 7
+q26 and q23 127
+q27 get p0 q25
+q28 get q27 q26
+q29 select q24 id q28
+q30 shr q23 7
+q31 and q23 127
+ed_g get p0 q30
+ed_h set ed_g q31 q29
+ed set p0 q30 ed_h
+q32 add 12288 id
+q33 xor skip true
+q34 shr q32 7
+q35 and q32 127
+q36 get ed q34
+q37 get q36 q35
+q38 select q33 q7 q37
+q39 shr q32 7
+q40 and q32 127
+ed_g_1 get ed q39
+ed_h_1 set ed_g_1 q40 q38
+ed_1 set ed q39 ed_h_1
+q41 add 16384 id
+q42 xor skip true
+q43 shr q41 7
+q44 and q41 127
+q45 get ed_1 q43
+q46 get q45 q44
+q47 select q42 q5 q46
+q48 shr q41 7
+q49 and q41 127
+ed_g_2 get ed_1 q48
+ed_h_2 set ed_g_2 q49 q47
+ed_2 set ed_1 q48 ed_h_2
+q50 add p2 p1
+q51 mul q50 6
+q52 add q51 2
+q53 shr q52 7
+q54 and q52 127
+q55 get p3 q53
+q56 get q55 q54
+q57 select skip 0 q56
+q58 add q5 q57
 ed_g_3 get ed_2 392
-ed_h_3 set ed_g_3 2 q25
+ed_h_3 set ed_g_3 2 q58
 ed_3 set ed_2 392 ed_h_3
 ret ed_3
 end
@@ -331,184 +368,214 @@ q18 get p0 392
 q19 get q18 6
 q20 get p0 392
 q21 get q20 7
-q22 add q13 q5
-q23 le q22 4096
-q24 add q15 q5
-q25 le q24 4096
-q26 and q23 q25
-q27 lt q17 4096
-ok and q26 q27
-q28 get p0 392
-q29 get q28 5
-q30 select ok 0 1
-q31 or q29 q30
+independent eq p2 4
+q22 select independent 1 0
+copied sub q5 q22
+q23 add q13 copied
+q24 le q23 4096
+q25 add q15 copied
+q26 le q25 4096
+q27 and q24 q26
+q28 lt q17 4096
+ok and q27 q28
+q29 get p0 392
+q30 get q29 5
+q31 select ok 0 1
+q32 or q30 q31
 ed_g get p0 392
-ed_h set ed_g 5 q31
+ed_h set ed_g 5 q32
 ed set p0 392 ed_h
-q32 add 20480 q17
-q33 shr q32 7
-q34 and q32 127
-q35 get ed q33
-q36 get q35 q34
-q37 select ok q13 q36
-q38 shr q32 7
-q39 and q32 127
-ed_g_1 get ed q38
-ed_h_1 set ed_g_1 q39 q37
-ed_1 set ed q38 ed_h_1
-q40 add 24576 q17
-q41 shr q40 7
-q42 and q40 127
-q43 get ed_1 q41
-q44 get q43 q42
-q45 select ok p4 q44
-q46 shr q40 7
-q47 and q40 127
-ed_g_2 get ed_1 q46
-ed_h_2 set ed_g_2 q47 q45
-ed_2 set ed_1 q46 ed_h_2
-q48 add 28672 q17
-q49 shr q48 7
-q50 and q48 127
-q51 get ed_2 q49
-q52 get q51 q50
-q53 select ok p5 q52
-q54 shr q48 7
-q55 and q48 127
-ed_g_3 get ed_2 q54
-ed_h_3 set ed_g_3 q55 q53
-ed_3 set ed_2 q54 ed_h_3
-q56 add 32768 q17
-q57 shr q56 7
-q58 and q56 127
-q59 get ed_3 q57
-q60 get q59 q58
-q61 select ok p2 q60
-q62 shr q56 7
-q63 and q56 127
-ed_g_4 get ed_3 q62
-ed_h_4 set ed_g_4 q63 q61
-ed_4 set ed_3 q62 ed_h_4
-q64 add 36864 q17
-q65 shr q64 7
-q66 and q64 127
-q67 get ed_4 q65
-q68 get q67 q66
-q69 select ok p3 q68
-q70 shr q64 7
-q71 and q64 127
-ed_g_5 get ed_4 q70
-ed_h_5 set ed_g_5 q71 q69
-ed_5 set ed_4 q70 ed_h_5
-q72 add 40960 q17
-q73 shr q72 7
-q74 and q72 127
-q75 get ed_5 q73
-q76 get q75 q74
-q77 select ok q19 q76
-q78 shr q72 7
-q79 and q72 127
-ed_g_6 get ed_5 q78
-ed_h_6 set ed_g_6 q79 q77
-ed_6 set ed_5 q78 ed_h_6
-q80 add 45056 q17
-q81 shr q80 7
-q82 and q80 127
-q83 get ed_6 q81
-q84 get q83 q82
-q85 select ok q21 q84
-q86 shr q80 7
-q87 and q80 127
-ed_g_7 get ed_6 q86
-ed_h_7 set ed_g_7 q87 q85
-ed_7 set ed_6 q86 ed_h_7
-q88 select ok q5 0
-ed1 fold edcopy q88 ed_7 q11 p8
-q89 mul p4 7
-q90 add q89 6
-q91 shr q90 7
-q92 and q90 127
-q93 get p7 q91
-q94 get q93 q92
-kind shr q94 28
-v and q94 268435455
-q95 mul v 2
-q96 shr q95 7
-q97 and q95 127
-q98 get p9 q96
-q99 get q98 q97
-q100 mul v 2
-q101 add q100 1
-q102 shr q101 7
-q103 and q101 127
-q104 get p9 q102
-q105 get q104 q103
-q106 eq kind 5
-rk select q106 q99 kind
+q33 add 20480 q17
+q34 shr q33 7
+q35 and q33 127
+q36 get ed q34
+q37 get q36 q35
+q38 select ok q13 q37
+q39 shr q33 7
+q40 and q33 127
+ed_g_1 get ed q39
+ed_h_1 set ed_g_1 q40 q38
+ed_1 set ed q39 ed_h_1
+q41 add 24576 q17
+q42 shr q41 7
+q43 and q41 127
+q44 get ed_1 q42
+q45 get q44 q43
+q46 select ok p4 q45
+q47 shr q41 7
+q48 and q41 127
+ed_g_2 get ed_1 q47
+ed_h_2 set ed_g_2 q48 q46
+ed_2 set ed_1 q47 ed_h_2
+q49 add 28672 q17
+q50 shr q49 7
+q51 and q49 127
+q52 get ed_2 q50
+q53 get q52 q51
+q54 select ok p5 q53
+q55 shr q49 7
+q56 and q49 127
+ed_g_3 get ed_2 q55
+ed_h_3 set ed_g_3 q56 q54
+ed_3 set ed_2 q55 ed_h_3
+q57 add 32768 q17
+q58 shr q57 7
+q59 and q57 127
+q60 get ed_3 q58
+q61 get q60 q59
+q62 select ok p2 q61
+q63 shr q57 7
+q64 and q57 127
+ed_g_4 get ed_3 q63
+ed_h_4 set ed_g_4 q64 q62
+ed_4 set ed_3 q63 ed_h_4
+q65 add 36864 q17
+q66 shr q65 7
+q67 and q65 127
+q68 get ed_4 q66
+q69 get q68 q67
+q70 select ok p3 q69
+q71 shr q65 7
+q72 and q65 127
+ed_g_5 get ed_4 q71
+ed_h_5 set ed_g_5 q72 q70
+ed_5 set ed_4 q71 ed_h_5
+q73 add 40960 q17
+q74 shr q73 7
+q75 and q73 127
+q76 get ed_5 q74
+q77 get q76 q75
+q78 select ok q19 q77
+q79 shr q73 7
+q80 and q73 127
+ed_g_6 get ed_5 q79
+ed_h_6 set ed_g_6 q80 q78
+ed_6 set ed_5 q79 ed_h_6
+q81 add 45056 q17
+q82 shr q81 7
+q83 and q81 127
+q84 get ed_6 q82
+q85 get q84 q83
+q86 select ok q21 q85
+q87 shr q81 7
+q88 and q81 127
+ed_g_7 get ed_6 q87
+ed_h_7 set ed_g_7 q88 q86
+ed_7 set ed_6 q87 ed_h_7
+q89 select ok q5 0
+ed1 fold edcopy q89 ed_7 q11 p8
+q90 mul p4 7
+q91 add q90 6
+q92 shr q91 7
+q93 and q91 127
+q94 get p7 q92
+q95 get q94 q93
+kind shr q95 28
+v and q95 268435455
+q96 mul v 2
+q97 shr q96 7
+q98 and q96 127
+q99 get p9 q97
+q100 get q99 q98
+q101 mul v 2
+q102 add q101 1
+q103 shr q102 7
+q104 and q102 127
+q105 get p9 q103
+q106 get q105 q104
 q107 eq kind 5
-rv select q107 q105 v
-q108 add p6 rv
-q109 mul q108 2
-q110 shr q109 7
-q111 and q109 127
-q112 get p9 q110
-q113 get q112 q111
-q114 mul q108 2
-q115 add q114 1
-q116 shr q115 7
-q117 and q115 127
-q118 get p9 q116
-q119 get q118 q117
-q120 add 0 q119
-q121 shr q120 7
-q122 and q120 127
-q123 get ed1 q121
-q124 get q123 q122
-q125 eq q113 1
-q126 ne q124 0
-m4_hit and q125 q126
-q127 select m4_hit q124 q113
-q128 add 4096 q119
-q129 shr q128 7
-q130 and q128 127
-q131 get ed1 q129
-q132 get q131 q130
-q133 select m4_hit q132 q119
-m1_isf eq p2 1
-q134 eq rv 0
-m1_s0 and m1_isf q134
-q135 eq rv 1
-m1_s1 and m1_isf q135
-q136 select m1_s1 3 q127
-q137 select m1_s0 q19 q136
-q138 select m1_s1 p3 q133
-q139 select m1_s0 q21 q138
+rk0 select q107 q100 kind
+q108 eq kind 5
+rv0 select q108 q106 v
+q109 add q11 q19
+q110 mul q109 6
+q111 add q110 3
+q112 shr q111 7
+q113 and q111 127
+q114 get p8 q112
+q115 get q114 q113
+q116 add q115 2
+q117 mul q116 2
+q118 shr q117 7
+q119 and q117 127
+q120 get p9 q118
+q121 get q120 q119
+q122 mul q116 2
+q123 add q122 1
+q124 shr q123 7
+q125 and q123 127
+q126 get p9 q124
+q127 get q126 q125
+rk select independent q121 rk0
+rv select independent q127 rv0
+q128 add p6 rv
+q129 mul q128 2
+q130 shr q129 7
+q131 and q129 127
+q132 get p9 q130
+q133 get q132 q131
+q134 mul q128 2
+q135 add q134 1
+q136 shr q135 7
+q137 and q135 127
+q138 get p9 q136
+q139 get q138 q137
+q140 add 0 q139
+q141 shr q140 7
+q142 and q140 127
+q143 get ed1 q141
+q144 get q143 q142
+q145 eq q133 1
+q146 ne q144 0
+m5_hit and q145 q146
+q147 select m5_hit q144 q133
+q148 add 4096 q139
+q149 shr q148 7
+q150 and q148 127
+q151 get ed1 q149
+q152 get q151 q150
+q153 select m5_hit q152 q139
+q154 eq p2 1
+q155 eq p2 4
+m2_isf or q154 q155
+q156 eq rv 0
+m2_s0 and m2_isf q156
+q157 eq rv 1
+m2_s1 and m2_isf q157
+q158 select m2_s1 3 q147
+q159 select m2_s0 q19 q158
+q160 select m2_s1 p3 q153
+q161 select m2_s0 q21 q160
 isp eq rk 2
 isn eq rk 1
-q140 select isp q137 rk
+q162 select isp q159 rk
 ed1_g get ed1 392
-ed1_h set ed1_g 8 q140
+ed1_h set ed1_g 8 q162
 ed1_1 set ed1 392 ed1_h
-q141 add q13 rv
-q142 select isn q141 rv
-q143 select isp q139 q142
+q163 add q13 rv
+q164 gt rv q19
+q165 and independent q164
+q166 select q165 1 0
+q167 sub q163 q166
+q168 select isn q167 rv
+q169 select isp q161 q168
 ed1_g_1 get ed1_1 392
-ed1_h_1 set ed1_g_1 9 q143
+ed1_h_1 set ed1_g_1 9 q169
 ed1_2 set ed1_1 392 ed1_h_1
-q144 select ok q5 0
-q145 add q13 q144
+q170 select ok copied 0
+q171 add q13 q170
 ed1_g_2 get ed1_2 392
-ed1_h_2 set ed1_g_2 0 q145
+ed1_h_2 set ed1_g_2 0 q171
 ed1_3 set ed1_2 392 ed1_h_2
-q146 select ok q5 0
-q147 add q15 q146
+q172 select ok copied 0
+q173 add q15 q172
 ed1_g_3 get ed1_3 392
-ed1_h_3 set ed1_g_3 1 q147
+ed1_h_3 set ed1_g_3 1 q173
 ed1_4 set ed1_3 392 ed1_h_3
-q148 select ok 1 0
-q149 add q17 q148
+q174 select ok 1 0
+q175 add q17 q174
 ed1_g_4 get ed1_4 392
-ed1_h_4 set ed1_g_4 3 q149
+ed1_h_4 set ed1_g_4 3 q175
 ed1_5 set ed1_4 392 ed1_h_4
 ed1_g_5 get ed1_5 392
 ed1_h_5 set ed1_g_5 4 1
@@ -1523,6 +1590,250 @@ q58 get q57 11
 q59 call edsyn ed3 0 22 p6 1 q56 1 q58 len
 ret q59
 end
+fn fiarg u32 u32 u32x128x512 u32 u32 u32 -> u32
+q0 add p3 p1
+q1 mul q0 2
+q2 shr q1 7
+q3 and q1 127
+q4 get p2 q2
+q5 get q4 q3
+q6 mul q0 2
+q7 add q6 1
+q8 shr q7 7
+q9 and q7 127
+q10 get p2 q8
+q11 get q10 q9
+q12 eq p4 p5
+q13 eq p1 0
+allowed and q12 q13
+q14 eq q5 2
+q15 eq q11 0
+q16 and q14 q15
+q17 xor allowed true
+q18 and q16 q17
+q19 xor q18 true
+q20 select q19 1 0
+q21 and p0 q20
+ret q21
+end
+fn finode (u32,u32) u32 u32x128x132 u32x128x512 u32 u32 -> (u32,u32)
+q0 add p4 p1
+row mul q0 6
+q1 add row 2
+q2 shr q1 7
+q3 and q1 127
+q4 get p2 q2
+q5 get q4 q3
+q6 at p0 0
+q7 add row 3
+q8 shr q7 7
+q9 and q7 127
+q10 get p2 q8
+q11 get q10 q9
+ok fold fiarg q5 q6 p3 q11 p1 p5
+q12 at p0 1
+q13 eq p1 p5
+q14 select q13 0 q5
+q15 add q12 q14
+q16 rec ok q15
+ret q16
+end
+fn fishape u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x384x65 -> (u32,u32,u32)
+q0 mul p1 7
+q1 add q0 4
+q2 shr q1 7
+q3 and q1 127
+q4 get p3 q2
+q5 get q4 q3
+q6 mul p1 7
+q7 add q6 5
+q8 shr q7 7
+q9 and q7 127
+q10 get p3 q8
+q11 get q10 q9
+q12 mul p1 7
+q13 add q12 6
+q14 shr q13 7
+q15 and q13 127
+q16 get p3 q14
+q17 get q16 q15
+pk shr q17 28
+pv and q17 268435455
+q18 eq pk 5
+q19 select q18 pv 0
+q20 mul q19 2
+q21 shr q20 7
+q22 and q20 127
+q23 get p5 q21
+q24 get q23 q22
+q25 mul q19 2
+q26 add q25 1
+q27 shr q26 7
+q28 and q26 127
+q29 get p5 q27
+q30 get q29 q28
+q31 eq pk 5
+rk select q31 q24 pk
+q32 eq pk 5
+rv select q32 q30 pv
+q33 eq rk 1
+q34 lt rv q11
+q35 and q33 q34
+omitted select q35 rv 0
+q36 add q5 omitted
+row mul q36 6
+q37 add row 3
+q38 shr q37 7
+q39 and q37 127
+q40 get p4 q38
+q41 get q40 q39
+q42 mul q41 2
+q43 shr q42 7
+q44 and q42 127
+q45 get p5 q43
+q46 get q45 q44
+q47 mul q41 2
+q48 add q47 1
+q49 shr q48 7
+q50 and q48 127
+q51 get p5 q49
+q52 get q51 q50
+q53 add row 3
+q54 shr q53 7
+q55 and q53 127
+q56 get p4 q54
+q57 get q56 q55
+q58 add q57 1
+q59 mul q58 2
+q60 shr q59 7
+q61 and q59 127
+q62 get p5 q60
+q63 get q62 q61
+q64 mul q58 2
+q65 add q64 1
+q66 shr q65 7
+q67 and q65 127
+q68 get p5 q66
+q69 get q68 q67
+q70 mul p1 7
+q71 add q70 3
+q72 shr q71 7
+q73 and q71 127
+q74 get p3 q72
+q75 get q74 q73
+q76 eq p0 1
+q77 shr q75 7
+m3_pg get p6 q77
+q78 and q75 127
+q79 mul q78 3
+q80 add q79 0
+q81 get m3_pg q80
+q82 eq q81 4
+q83 and q76 q82
+q84 shr q75 7
+m4_pg get p6 q84
+q85 and q75 127
+q86 mul q85 3
+q87 add q86 1
+q88 get m4_pg q87
+q89 eq q88 p2
+q90 and q83 q89
+q91 eq rk 1
+q92 and q90 q91
+q93 lt rv q11
+q94 and q92 q93
+q95 add row 1
+q96 shr q95 7
+q97 and q95 127
+q98 get p4 q96
+q99 get q98 q97
+q100 eq q99 26
+q101 and q94 q100
+q102 add row 2
+q103 shr q102 7
+q104 and q102 127
+q105 get p4 q103
+q106 get q105 q104
+q107 eq q106 3
+q108 and q101 q107
+q109 eq q46 2
+q110 and q108 q109
+q111 eq q52 0
+q112 and q110 q111
+q113 eq q63 2
+q114 and q112 q113
+q115 eq q69 1
+shape and q114 q115
+q116 select shape q11 0
+q117 rec 1 0
+scan fold finode q116 q117 p4 p5 q5 omitted
+q118 select shape 1 0
+q119 at scan 0
+q120 and q118 q119
+q121 at scan 1
+q122 rec q120 omitted q121
+ret q122
+end
+fn ficopy u32x128x393 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 -> u32x128x393
+q0 call edinst p0 0 4 p1 p2 p3 p4 p5 p6 p7
+ret q0
+end
+fn fiemit u32x128x393 u32 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 -> u32x128x393
+ed_g get p0 392
+ed_h set ed_g 6 p6
+ed set p0 392 ed_h
+ed_g_1 get ed 392
+ed_h_1 set ed_g_1 7 0
+ed_1 set ed 392 ed_h_1
+copied fold ficopy p5 ed_1 p2 p3 p4 p8 p9 p10
+q0 mul p2 7
+q1 add q0 4
+q2 shr q1 7
+q3 and q1 127
+q4 get p8 q2
+q5 get q4 q3
+q6 add q5 p6
+q7 mul q6 6
+q8 add q7 3
+q9 shr q8 7
+q10 and q8 127
+q11 get p9 q9
+q12 get q11 q10
+q13 add q12 2
+q14 mul q13 2
+q15 shr q14 7
+q16 and q14 127
+q17 get p10 q15
+q18 get q17 q16
+q19 mul q13 2
+q20 add q19 1
+q21 shr q20 7
+q22 and q20 127
+q23 get p10 q21
+q24 get q23 q22
+q25 eq q18 1
+q26 mul p2 7
+q27 add q26 5
+q28 shr q27 7
+q29 and q27 127
+q30 get p8 q28
+q31 get q30 q29
+q32 sub q31 1
+q33 eq q18 2
+q34 eq q24 1
+q35 and q33 q34
+q36 select q35 1 0
+stride select q25 q32 q36
+q37 get copied 392
+q38 get q37 9
+q39 sub p5 1
+q40 mul q39 stride
+start sub q38 q40
+q41 get copied 392
+q42 get q41 8
+q43 call edsyn copied 0 22 p7 0 start q42 stride p5
+ret q43
+end
 fn edstep u32x128x393 u32 u32x128x32 u32x128x193 u32x128x512 u32x128x16 u32x128x45 u32x128x132 u32x384x65 u32x128x65 u32 -> u32x128x393
 q0 shr p1 7
 q1 and p1 127
@@ -1648,198 +1959,274 @@ q115 le q114 2048
 unr0 and q113 q115
 q116 ge q66 3
 pow0 and foldok q116
-q117 or inl0 unr0
-q118 and has q117
-q119 mul q23 7
-q120 add q119 5
-q121 shr q120 7
-q122 and q120 127
-q123 get p6 q121
-q124 get q123 q122
-q125 select q118 q124 0
-q126 mul q23 7
-q127 add q126 4
-q128 shr q127 7
-q129 and q127 127
-q130 get p6 q128
-q131 get q130 q129
-cost fold edcost q125 0 p7 q131
-q132 select pow0 32 0
-q133 rec 0 0
-count fold mxpcnt q132 q133 q66
-q134 at count 0
-q135 at count 1
-products add q134 q135
-q136 and pow0 has
-q137 select q136 1 0
-q138 rec 0 0 0
-shape fold mxshape q137 q138 p7 p4 p6 p8 p9 q23 q66 products
+q117 gt q66 8
+q118 and foldok q117
+q119 le q66 64
+q120 and q118 q119
+q121 le q28 256
+q122 and q120 q121
+q123 mul q28 q66
+q124 le q123 2048
+fill0 and q122 q124
+q125 and fill0 has
+q126 select q125 1 0
+fillshape call fishape q126 q23 q66 p6 p7 p4 p8
+q127 or inl0 unr0
+q128 or q127 fill0
+q129 and has q128
+q130 mul q23 7
+q131 add q130 5
+q132 shr q131 7
+q133 and q131 127
+q134 get p6 q132
+q135 get q134 q133
+q136 select q129 q135 0
+q137 mul q23 7
+q138 add q137 4
+q139 shr q138 7
+q140 and q138 127
+q141 get p6 q139
+q142 get q141 q140
+cost fold edcost q136 0 p7 q142
+q143 select pow0 32 0
+q144 rec 0 0
+count fold mxpcnt q143 q144 q66
+q145 at count 0
+q146 at count 1
+products add q145 q146
+q147 and pow0 has
+q148 select q147 1 0
+q149 rec 0 0 0
+shape fold mxshape q148 q149 p7 p4 p6 p8 p9 q23 q66 products
 dim at shape 0
 len mul dim dim
-q139 and pow0 has
-q140 ge dim 2
-q141 and q139 q140
-q142 lt products q66
-q143 and q141 q142
-q144 mul products 2
-q145 mul q144 dim
-q146 mul q145 dim
-q147 mul q146 dim
-q148 le q147 2048
-power and q143 q148
-q149 mul 2 len
-q150 mul products len
-q151 mul 2 dim
-q152 sub q151 1
-q153 mul q150 q152
-q154 add q149 q153
-added add q154 1
-q155 mul 5 len
-q156 mul 2 products
-q157 mul q156 len
-q158 mul 2 dim
-q159 sub q158 1
-q160 mul q157 q159
-slots add q155 q160
-q161 get p0 392
-q162 get q161 0
-q163 add q162 added
-q164 le q163 4096
-q165 get p0 392
-q166 get q165 1
-q167 add q166 added
-q168 le q167 4096
-q169 and q164 q168
-q170 get p0 392
-q171 get q170 3
-q172 add q171 added
-q173 le q172 4096
-q174 and q169 q173
-q175 get p0 392
-q176 get q175 2
-q177 add q176 slots
-q178 le q177 32768
-space and q174 q178
-q179 get p0 392
-q180 get q179 5
-q181 xor space true
-q182 and power q181
-q183 select q182 1 0
-q184 or q180 q183
+q150 and pow0 has
+q151 ge dim 2
+q152 and q150 q151
+q153 lt products q66
+q154 and q152 q153
+q155 mul products 2
+q156 mul q155 dim
+q157 mul q156 dim
+q158 mul q157 dim
+q159 le q158 2048
+power and q154 q159
+q160 mul 2 len
+q161 mul products len
+q162 mul 2 dim
+q163 sub q162 1
+q164 mul q161 q163
+q165 add q160 q164
+added add q165 1
+q166 mul 5 len
+q167 mul 2 products
+q168 mul q167 len
+q169 mul 2 dim
+q170 sub q169 1
+q171 mul q168 q170
+slots add q166 q171
+q172 get p0 392
+q173 get q172 0
+q174 add q173 added
+q175 le q174 4096
+q176 get p0 392
+q177 get q176 1
+q178 add q177 added
+q179 le q178 4096
+q180 and q175 q179
+q181 get p0 392
+q182 get q181 3
+q183 add q182 added
+q184 le q183 4096
+q185 and q180 q184
+q186 get p0 392
+q187 get q186 2
+q188 add q187 slots
+q189 le q188 32768
+space and q185 q189
+q190 get p0 392
+q191 get q190 5
+q192 xor space true
+q193 and power q192
+q194 select q193 1 0
+q195 or q191 q194
 ed_g get p0 392
-ed_h set ed_g 5 q184
+ed_h set ed_g 5 q195
 ed set p0 392 ed_h
 powered and power space
-q185 and inl0 has
-q186 le cost 16
-inl and q185 q186
-q187 and unr0 has
-q188 le cost 256
-q189 and q187 q188
-q190 mul cost q66
-q191 le q190 2048
-q192 and q189 q191
-q193 xor power true
-unr and q192 q193
-q194 or inl0 unr0
-possible or q194 pow0
-q195 eq p10 1
-q196 eq q8 19
-q197 eq q8 20
-q198 or q196 q197
-q199 select q195 q198 possible
-q200 xor has true
-need and q199 q200
-q201 or inl unr
-doit or q201 powered
-q202 get ed 392
-q203 get q202 1
-q204 add 8192 q203
-q205 xor doit true
-q206 shr q204 7
-q207 and q204 127
-q208 get ed q206
-q209 get q208 q207
-q210 select q205 q3 q209
-q211 shr q204 7
-q212 and q204 127
-ed_g_1 get ed q211
-ed_h_1 set ed_g_1 q212 q210
-ed_1 set ed q211 ed_h_1
-q213 select doit 0 1
-q214 add q203 q213
-ed_g_2 get ed_1 392
-ed_h_2 set ed_g_2 1 q214
-ed_2 set ed_1 392 ed_h_2
-q215 add 49152 q23
-q216 shr q215 7
-q217 and q215 127
-q218 get ed_2 q216
-q219 get q218 q217
-q220 select need 1 q219
-q221 shr q215 7
-q222 and q215 127
-ed_g_3 get ed_2 q221
-ed_h_3 set ed_g_3 q222 q220
-ed_3 set ed_2 q221 ed_h_3
-q223 get ed_3 392
-q224 get q223 6
-q225 select unr q86 q224
-ed_g_4 get ed_3 392
-ed_h_4 set ed_g_4 6 q225
-ed_4 set ed_3 392 ed_h_4
-q226 get ed_4 392
-q227 get q226 7
-q228 select unr q92 q227
+q196 and inl0 has
+q197 le cost 16
+inl and q196 q197
+q198 and unr0 has
+q199 le cost 256
+q200 and q198 q199
+q201 mul cost q66
+q202 le q201 2048
+q203 and q200 q202
+q204 xor power true
+unr and q203 q204
+q205 and fill0 has
+q206 at fillshape 0
+q207 eq q206 1
+q208 and q205 q207
+q209 le cost 256
+q210 and q208 q209
+q211 mul cost q66
+q212 le q211 2048
+q213 and q210 q212
+q214 xor power true
+fillvalid and q213 q214
+q215 mul q23 7
+q216 add q215 5
+q217 shr q216 7
+q218 and q216 127
+q219 get p6 q217
+q220 get q219 q218
+q221 sub q220 1
+q222 mul q221 q66
+fillnodes add q222 1
+q223 at fillshape 2
+q224 mul q223 q66
+fillslots add q224 q66
+q225 get ed 392
+q226 get q225 0
+q227 add q226 fillnodes
+q228 le q227 4096
+q229 get ed 392
+q230 get q229 1
+q231 add q230 fillnodes
+q232 le q231 4096
+q233 and q228 q232
+q234 get ed 392
+q235 get q234 3
+q236 add q235 q66
+q237 add q236 1
+q238 le q237 4096
+q239 and q233 q238
+q240 get ed 392
+q241 get q240 2
+q242 add q241 fillslots
+q243 le q242 32768
+fillspace and q239 q243
+q244 get ed 392
+q245 get q244 5
+q246 xor fillspace true
+q247 and fillvalid q246
+q248 select q247 1 0
+q249 or q245 q248
+ed_g_1 get ed 392
+ed_h_1 set ed_g_1 5 q249
+ed_1 set ed 392 ed_h_1
+filled and fillvalid fillspace
+q250 or inl0 unr0
+q251 or q250 pow0
+possible or q251 fill0
+q252 eq p10 1
+q253 eq q8 19
+q254 eq q8 20
+q255 or q253 q254
+q256 select q252 q255 possible
+q257 xor has true
+need and q256 q257
+q258 or inl unr
+q259 or q258 powered
+doit or q259 filled
+q260 get ed_1 392
+q261 get q260 1
+q262 add 8192 q261
+q263 xor doit true
+q264 shr q262 7
+q265 and q262 127
+q266 get ed_1 q264
+q267 get q266 q265
+q268 select q263 q3 q267
+q269 shr q262 7
+q270 and q262 127
+ed_g_2 get ed_1 q269
+ed_h_2 set ed_g_2 q270 q268
+ed_2 set ed_1 q269 ed_h_2
+q271 select doit 0 1
+q272 add q261 q271
+ed_g_3 get ed_2 392
+ed_h_3 set ed_g_3 1 q272
+ed_3 set ed_2 392 ed_h_3
+q273 add 49152 q23
+q274 shr q273 7
+q275 and q273 127
+q276 get ed_3 q274
+q277 get q276 q275
+q278 select need 1 q277
+q279 shr q273 7
+q280 and q273 127
+ed_g_4 get ed_3 q279
+ed_h_4 set ed_g_4 q280 q278
+ed_4 set ed_3 q279 ed_h_4
+q281 get ed_4 392
+q282 get q281 6
+q283 select unr q86 q282
 ed_g_5 get ed_4 392
-ed_h_5 set ed_g_5 7 q228
+ed_h_5 set ed_g_5 6 q283
 ed_5 set ed_4 392 ed_h_5
-q229 select inl 1 0
-ed1 fold edinst q229 ed_5 0 0 q23 q3 q18 p6 p7 p4
-q230 select unr q66 0
-ed2 fold edunr q230 ed1 q23 q3 q18 p6 p7 p4
-q231 select powered 1 0
-q232 at shape 1
-q233 at shape 2
-q234 add 20480 q3
-q235 shr q234 7
-q236 and q234 127
-q237 get p3 q235
-q238 get q237 q236
-ed3 fold mxemit q231 ed2 dim q232 q233 q66 q238 p4 q18
-q239 add 0 q3
-q240 get ed3 392
-q241 get q240 6
-q242 get ed3 392
-q243 get q242 8
-q244 select unr q241 q243
-q245 shr q239 7
-q246 and q239 127
-q247 get ed3 q245
-q248 get q247 q246
-q249 select doit q244 q248
-q250 shr q239 7
-q251 and q239 127
-ed3_g get ed3 q250
-ed3_h set ed3_g q251 q249
-ed3_1 set ed3 q250 ed3_h
-q252 add 4096 q3
-q253 get ed3_1 392
-q254 get q253 7
-q255 get ed3_1 392
-q256 get q255 9
-q257 select unr q254 q256
-q258 shr q252 7
-q259 and q252 127
-q260 get ed3_1 q258
-q261 get q260 q259
-q262 select doit q257 q261
-q263 shr q252 7
-q264 and q252 127
-ed3_g_1 get ed3_1 q263
-ed3_h_1 set ed3_g_1 q264 q262
-ed3_2 set ed3_1 q263 ed3_h_1
-ret ed3_2
+q284 get ed_5 392
+q285 get q284 7
+q286 select unr q92 q285
+ed_g_6 get ed_5 392
+ed_h_6 set ed_g_6 7 q286
+ed_6 set ed_5 392 ed_h_6
+q287 select inl 1 0
+ed1 fold edinst q287 ed_6 0 0 q23 q3 q18 p6 p7 p4
+q288 select unr q66 0
+ed2 fold edunr q288 ed1 q23 q3 q18 p6 p7 p4
+q289 select powered 1 0
+q290 at shape 1
+q291 at shape 2
+q292 add 20480 q3
+q293 shr q292 7
+q294 and q292 127
+q295 get p3 q293
+q296 get q295 q294
+ed3 fold mxemit q289 ed2 dim q290 q291 q66 q296 p4 q18
+q297 select filled 1 0
+q298 at fillshape 1
+q299 add 20480 q3
+q300 shr q299 7
+q301 and q299 127
+q302 get p3 q300
+q303 get q302 q301
+ed4 fold fiemit q297 ed3 q23 q3 q18 q66 q298 q303 p6 p7 p4
+q304 add 0 q3
+q305 get ed4 392
+q306 get q305 6
+q307 get ed4 392
+q308 get q307 8
+q309 select unr q306 q308
+q310 shr q304 7
+q311 and q304 127
+q312 get ed4 q310
+q313 get q312 q311
+q314 select doit q309 q313
+q315 shr q304 7
+q316 and q304 127
+ed4_g get ed4 q315
+ed4_h set ed4_g q316 q314
+ed4_1 set ed4 q315 ed4_h
+q317 add 4096 q3
+q318 get ed4_1 392
+q319 get q318 7
+q320 get ed4_1 392
+q321 get q320 9
+q322 select unr q319 q321
+q323 shr q317 7
+q324 and q317 127
+q325 get ed4_1 q323
+q326 get q325 q324
+q327 select doit q322 q326
+q328 shr q317 7
+q329 and q317 127
+ed4_g_1 get ed4_1 q328
+ed4_h_1 set ed4_g_1 q329 q327
+ed4_2 set ed4_1 q328 ed4_h_1
+ret ed4_2
 end
 fn cpout u32x128x32 u32 u32x128x393 -> u32x128x32
 q0 add 8192 p1
@@ -1866,115 +2253,127 @@ q6 shr q5 7
 q7 and q5 127
 q8 get p2 q6
 q9 get q8 q7
-syn ge q9 2
-q10 add 24576 q4
-q11 shr q10 7
-q12 and q10 127
-q13 get p2 q11
-q14 get q13 q12
-c select syn 0 q14
-q15 mul c 7
-q16 add q15 4
-q17 shr q16 7
-q18 and q16 127
-q19 get p4 q17
-q20 get q19 q18
-q21 add 20480 q4
-q22 shr q21 7
-q23 and q21 127
-q24 get p2 q22
-q25 get q24 q23
-q26 sub id q25
-q27 add q20 q26
-sr select syn 0 q27
+q10 eq q9 2
+q11 eq q9 3
+syn or q10 q11
+q12 add 24576 q4
+q13 shr q12 7
+q14 and q12 127
+q15 get p2 q13
+q16 get q15 q14
+c select syn 0 q16
+q17 add 20480 q4
+q18 shr q17 7
+q19 and q17 127
+q20 get p2 q18
+q21 get q20 q19
+local sub id q21
+q22 mul c 7
+q23 add q22 4
+q24 shr q23 7
+q25 and q23 127
+q26 get p4 q24
+q27 get q26 q25
+q28 add q27 local
+q29 eq q9 4
+q30 add 40960 q4
+q31 shr q30 7
+q32 and q30 127
+q33 get p2 q31
+q34 get q33 q32
+q35 ge local q34
+q36 and q29 q35
+q37 select q36 1 0
+q38 add q28 q37
+sr select syn 0 q38
 b mul sr 6
-q28 add 0 id
-q29 add 24576 q4
-q30 shr q29 7
-q31 and q29 127
-q32 get p2 q30
-q33 get q32 q31
-q34 add b 1
-q35 shr q34 7
-q36 and q34 127
-q37 get p5 q35
-q38 get q37 q36
-q39 select syn q33 q38
-q40 shr q28 7
-q41 and q28 127
-cl_g get p0 q40
-cl_h set cl_g q41 q39
-cl set p0 q40 cl_h
-q42 add 4096 id
-q43 eq q9 3
-q44 add 28672 q4
-q45 shr q44 7
-q46 and q44 127
-q47 get p2 q45
-q48 get q47 q46
-q49 add b 2
-q50 shr q49 7
-q51 and q49 127
-q52 get p5 q50
-q53 get q52 q51
-q54 select syn 2 q53
-q55 select q43 q48 q54
-q56 shr q42 7
-q57 and q42 127
-cl_g_1 get cl q56
-cl_h_1 set cl_g_1 q57 q55
-cl_1 set cl q56 cl_h_1
-q58 add 8192 id
-q59 add 16384 id
-q60 shr q59 7
-q61 and q59 127
-q62 get p2 q60
-q63 get q62 q61
-q64 shr q58 7
-q65 and q58 127
-cl_g_2 get cl_1 q64
-cl_h_2 set cl_g_2 q65 q63
-cl_2 set cl_1 q64 cl_h_2
-q66 add 12288 id
-q67 add b 4
-q68 shr q67 7
-q69 and q67 127
-q70 get p5 q68
-q71 get q70 q69
-q72 select syn 0 q71
-q73 shr q66 7
-q74 and q66 127
-cl_g_3 get cl_2 q73
-cl_h_3 set cl_g_3 q74 q72
-cl_3 set cl_2 q73 cl_h_3
-q75 add 16384 id
-q76 add b 5
-q77 shr q76 7
-q78 and q76 127
-q79 get p5 q77
-q80 get q79 q78
-q81 select syn 0 q80
-q82 shr q75 7
-q83 and q75 127
-cl_g_4 get cl_3 q82
-cl_h_4 set cl_g_4 q83 q81
-cl_4 set cl_3 q82 cl_h_4
-q84 add 20480 id
-q85 add 20480 q4
-q86 shr q85 7
-q87 and q85 127
-q88 get p2 q86
-q89 get q88 q87
-q90 shr sr 7
-q91 and sr 127
-q92 get p6 q90
-q93 get q92 q91
-q94 select syn q89 q93
-q95 shr q84 7
-q96 and q84 127
-cl_g_5 get cl_4 q95
-cl_h_5 set cl_g_5 q96 q94
-cl_5 set cl_4 q95 cl_h_5
+q39 add 0 id
+q40 add 24576 q4
+q41 shr q40 7
+q42 and q40 127
+q43 get p2 q41
+q44 get q43 q42
+q45 add b 1
+q46 shr q45 7
+q47 and q45 127
+q48 get p5 q46
+q49 get q48 q47
+q50 select syn q44 q49
+q51 shr q39 7
+q52 and q39 127
+cl_g get p0 q51
+cl_h set cl_g q52 q50
+cl set p0 q51 cl_h
+q53 add 4096 id
+q54 eq q9 3
+q55 add 28672 q4
+q56 shr q55 7
+q57 and q55 127
+q58 get p2 q56
+q59 get q58 q57
+q60 add b 2
+q61 shr q60 7
+q62 and q60 127
+q63 get p5 q61
+q64 get q63 q62
+q65 select syn 2 q64
+q66 select q54 q59 q65
+q67 shr q53 7
+q68 and q53 127
+cl_g_1 get cl q67
+cl_h_1 set cl_g_1 q68 q66
+cl_1 set cl q67 cl_h_1
+q69 add 8192 id
+q70 add 16384 id
+q71 shr q70 7
+q72 and q70 127
+q73 get p2 q71
+q74 get q73 q72
+q75 shr q69 7
+q76 and q69 127
+cl_g_2 get cl_1 q75
+cl_h_2 set cl_g_2 q76 q74
+cl_2 set cl_1 q75 cl_h_2
+q77 add 12288 id
+q78 add b 4
+q79 shr q78 7
+q80 and q78 127
+q81 get p5 q79
+q82 get q81 q80
+q83 select syn 0 q82
+q84 shr q77 7
+q85 and q77 127
+cl_g_3 get cl_2 q84
+cl_h_3 set cl_g_3 q85 q83
+cl_3 set cl_2 q84 cl_h_3
+q86 add 16384 id
+q87 add b 5
+q88 shr q87 7
+q89 and q87 127
+q90 get p5 q88
+q91 get q90 q89
+q92 select syn 0 q91
+q93 shr q86 7
+q94 and q86 127
+cl_g_4 get cl_3 q93
+cl_h_4 set cl_g_4 q94 q92
+cl_4 set cl_3 q93 cl_h_4
+q95 add 20480 id
+q96 add 20480 q4
+q97 shr q96 7
+q98 and q96 127
+q99 get p2 q97
+q100 get q99 q98
+q101 shr sr 7
+q102 and sr 127
+q103 get p6 q101
+q104 get q103 q102
+q105 select syn q100 q104
+q106 shr q95 7
+q107 and q95 127
+cl_g_5 get cl_4 q106
+cl_h_5 set cl_g_5 q107 q105
+cl_5 set cl_4 q106 cl_h_5
 ret cl_5
 end
 fn oaorig u32x128x512 u32 u32x128x393 u32 -> u32x128x512
@@ -2032,174 +2431,203 @@ q6 shr q5 7
 q7 and q5 127
 q8 get p2 q6
 q9 get q8 q7
-syn ge q9 2
-q10 add 24576 q4
-q11 shr q10 7
-q12 and q10 127
-q13 get p2 q11
-q14 get q13 q12
-c select syn 0 q14
-q15 add 20480 q4
-q16 shr q15 7
-q17 and q15 127
-q18 get p2 q16
-q19 get q18 q17
-q20 mul c 7
-q21 add q20 4
-q22 shr q21 7
-q23 and q21 127
-q24 get p6 q22
-q25 get q24 q23
-q26 sub p7 q19
-q27 add q25 q26
-sr select syn 0 q27
-q28 mul sr 6
-q29 add q28 3
-q30 shr q29 7
-q31 and q29 127
-q32 get p5 q30
-q33 get q32 q31
-q34 add q33 p1
-q35 mul q34 2
-q36 shr q35 7
-q37 and q35 127
-q38 get p4 q36
-q39 get q38 q37
-q40 mul q34 2
-q41 add q40 1
-q42 shr q41 7
-q43 and q41 127
-q44 get p4 q42
-q45 get q44 q43
-q46 add 28672 q4
+q10 eq q9 2
+q11 eq q9 3
+syn or q10 q11
+q12 add 24576 q4
+q13 shr q12 7
+q14 and q12 127
+q15 get p2 q13
+q16 get q15 q14
+c select syn 0 q16
+q17 add 20480 q4
+q18 shr q17 7
+q19 and q17 127
+q20 get p2 q18
+q21 get q20 q19
+local sub p7 q21
+q22 mul c 7
+q23 add q22 4
+q24 shr q23 7
+q25 and q23 127
+q26 get p6 q24
+q27 get q26 q25
+q28 add q27 local
+q29 eq q9 4
+q30 add 40960 q4
+q31 shr q30 7
+q32 and q30 127
+q33 get p2 q31
+q34 get q33 q32
+q35 ge local q34
+q36 and q29 q35
+q37 select q36 1 0
+q38 add q28 q37
+sr select syn 0 q38
+q39 mul sr 6
+q40 add q39 3
+q41 shr q40 7
+q42 and q40 127
+q43 get p5 q41
+q44 get q43 q42
+q45 add q44 p1
+q46 mul q45 2
 q47 shr q46 7
 q48 and q46 127
-q49 get p2 q47
+q49 get p4 q47
 q50 get q49 q48
-host select syn 0 q50
-q51 add 36864 q4
-q52 shr q51 7
-q53 and q51 127
-q54 get p2 q52
-q55 get q54 q53
-q56 add 40960 q4
-q57 shr q56 7
-q58 and q56 127
-q59 get p2 q57
-q60 get q59 q58
-q61 add 45056 q4
-q62 shr q61 7
-q63 and q61 127
-q64 get p2 q62
-q65 get q64 q63
-q66 add 8192 host
-q67 shr q66 7
-q68 and q66 127
-q69 get p3 q67
-q70 get q69 q68
-q71 add q70 q45
-q72 mul q71 2
+q51 mul q45 2
+q52 add q51 1
+q53 shr q52 7
+q54 and q52 127
+q55 get p4 q53
+q56 get q55 q54
+q57 add 28672 q4
+q58 shr q57 7
+q59 and q57 127
+q60 get p2 q58
+q61 get q60 q59
+host select syn 0 q61
+q62 add 36864 q4
+q63 shr q62 7
+q64 and q62 127
+q65 get p2 q63
+q66 get q65 q64
+q67 add 40960 q4
+q68 shr q67 7
+q69 and q67 127
+q70 get p2 q68
+q71 get q70 q69
+q72 add 45056 q4
 q73 shr q72 7
 q74 and q72 127
-q75 get p0 q73
+q75 get p2 q73
 q76 get q75 q74
-q77 mul q71 2
-q78 add q77 1
-q79 shr q78 7
-q80 and q78 127
-q81 get p0 q79
-q82 get q81 q80
-q83 add 0 q82
+q77 add 8192 host
+q78 shr q77 7
+q79 and q77 127
+q80 get p3 q78
+q81 get q80 q79
+q82 add q81 q56
+q83 mul q82 2
 q84 shr q83 7
 q85 and q83 127
-q86 get p2 q84
+q86 get p0 q84
 q87 get q86 q85
-q88 eq q76 1
-q89 ne q87 0
-m4_hit and q88 q89
-q90 select m4_hit q87 q76
-q91 add 4096 q82
-q92 shr q91 7
-q93 and q91 127
-q94 get p2 q92
-q95 get q94 q93
-q96 select m4_hit q95 q82
-m1_isf eq q9 1
-q97 eq q45 0
-m1_s0 and m1_isf q97
-q98 eq q45 1
-m1_s1 and m1_isf q98
-q99 select m1_s1 3 q90
-q100 select m1_s0 q60 q99
-q101 select m1_s1 q55 q96
-q102 select m1_s0 q65 q101
-isp eq q39 2
-isn eq q39 1
-q103 eq q9 3
-q104 eq p1 0
-q105 add 28672 q4
-q106 shr q105 7
-q107 and q105 127
-q108 get p2 q106
-q109 get q108 q107
-q110 add 40960 q4
-q111 shr q110 7
-q112 and q110 127
-q113 get p2 q111
-q114 get q113 q112
-q115 select q104 q109 q114
-sk select q103 1 q115
+q88 mul q82 2
+q89 add q88 1
+q90 shr q89 7
+q91 and q89 127
+q92 get p0 q90
+q93 get q92 q91
+q94 add 0 q93
+q95 shr q94 7
+q96 and q94 127
+q97 get p2 q95
+q98 get q97 q96
+q99 eq q87 1
+q100 ne q98 0
+m4_hit and q99 q100
+q101 select m4_hit q98 q87
+q102 add 4096 q93
+q103 shr q102 7
+q104 and q102 127
+q105 get p2 q103
+q106 get q105 q104
+q107 select m4_hit q106 q93
+q108 eq q9 1
+q109 eq q9 4
+m1_isf or q108 q109
+q110 eq q56 0
+m1_s0 and m1_isf q110
+q111 eq q56 1
+m1_s1 and m1_isf q111
+q112 select m1_s1 3 q101
+q113 select m1_s0 q71 q112
+q114 select m1_s1 q66 q107
+q115 select m1_s0 q76 q114
+isp eq q50 2
+isn eq q50 1
 q116 eq q9 3
-q117 add 36864 q4
+q117 add 40960 q4
 q118 shr q117 7
 q119 and q117 127
 q120 get p2 q118
 q121 get q120 q119
-q122 add 45056 q4
-q123 shr q122 7
-q124 and q122 127
-q125 get p2 q123
-q126 get q125 q124
-q127 mul p1 q126
-q128 add q121 q127
-q129 eq p1 0
-q130 add 36864 q4
-q131 shr q130 7
-q132 and q130 127
-q133 get p2 q131
-q134 get q133 q132
-q135 add 45056 q4
+q122 eq p1 0
+q123 add 28672 q4
+q124 shr q123 7
+q125 and q123 127
+q126 get p2 q124
+q127 get q126 q125
+q128 add 40960 q4
+q129 shr q128 7
+q130 and q128 127
+q131 get p2 q129
+q132 get q131 q130
+q133 select q122 q127 q132
+sk select q116 q121 q133
+q134 eq q9 3
+q135 add 36864 q4
 q136 shr q135 7
 q137 and q135 127
 q138 get p2 q136
 q139 get q138 q137
-q140 select q129 q134 q139
-sv select q116 q128 q140
-q141 add 8192 p7
-q142 shr q141 7
-q143 and q141 127
-q144 get p3 q142
-q145 get q144 q143
-q146 add q145 p1
-q147 select isp q100 q39
-q148 select syn sk q147
-q149 add q19 q45
-q150 select isn q149 q45
-q151 select isp q102 q150
-q152 select syn sv q151
-q153 mul q146 2
+q140 add 45056 q4
+q141 shr q140 7
+q142 and q140 127
+q143 get p2 q141
+q144 get q143 q142
+q145 mul p1 q144
+q146 add q139 q145
+q147 eq p1 0
+q148 add 36864 q4
+q149 shr q148 7
+q150 and q148 127
+q151 get p2 q149
+q152 get q151 q150
+q153 add 45056 q4
 q154 shr q153 7
 q155 and q153 127
-m5_oa_g get p0 q154
-m5_oa_h set m5_oa_g q155 q148
-m5_oa set p0 q154 m5_oa_h
-q156 mul q146 2
-q157 add q156 1
-q158 shr q157 7
-q159 and q157 127
-m5_oa_g_1 get m5_oa q158
-m5_oa_h_1 set m5_oa_g_1 q159 q152
-m5_oa_1 set m5_oa q158 m5_oa_h_1
+q156 get p2 q154
+q157 get q156 q155
+q158 select q147 q152 q157
+sv select q134 q146 q158
+q159 add 8192 p7
+q160 shr q159 7
+q161 and q159 127
+q162 get p3 q160
+q163 get q162 q161
+q164 add q163 p1
+q165 select isp q113 q50
+q166 select syn sk q165
+q167 add q21 q56
+q168 eq q9 4
+q169 add 40960 q4
+q170 shr q169 7
+q171 and q169 127
+q172 get p2 q170
+q173 get q172 q171
+q174 gt q56 q173
+q175 and q168 q174
+q176 select q175 1 0
+q177 sub q167 q176
+q178 select isn q177 q56
+q179 select isp q115 q178
+q180 select syn sv q179
+q181 mul q164 2
+q182 shr q181 7
+q183 and q181 127
+m5_oa_g get p0 q182
+m5_oa_h set m5_oa_g q183 q166
+m5_oa set p0 q182 m5_oa_h
+q184 mul q164 2
+q185 add q184 1
+q186 shr q185 7
+q187 and q185 127
+m5_oa_g_1 get m5_oa q186
+m5_oa_h_1 set m5_oa_g_1 q187 q180
+m5_oa_1 set m5_oa q186 m5_oa_h_1
 ret m5_oa_1
 end
 fn oawr u32x128x512 u32 u32x128x393 u32x128x193 u32 u32x128x512 u32x128x132 u32x128x45 -> u32x128x512
