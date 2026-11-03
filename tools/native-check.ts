@@ -126,6 +126,7 @@ export async function buildNativeCheck(
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'checker.c'), c, 'utf8');
   await writeFile(join(dir, 'main.c'), await readFile(DRIVER, 'utf8'), 'utf8');
+  await copyFile(join('tools', 'native', 'source_utf8.h'), join(dir, 'source_utf8.h'));
   const r = runTool(
     clang,
     [

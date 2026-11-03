@@ -1,0 +1,298 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-03T09:17:48.014Z",
+  "baseline": "4e19cbbeba6126eb8fd190016f4584ca3de8ac41",
+  "scope": "Reject malformed UTF8 before CLI source/patch interpretation or native fast-check acceptance; no source grammar/default change.",
+  "before": {
+    "sourceCheck": {
+      "exit": 0,
+      "stdout": "f (u32) -> u32: 1 nodes, rev fa475b0fd045\n",
+      "stderr": ""
+    },
+    "historicalCheck": {
+      "exit": 0,
+      "stdout": "f (u32) -> u32: 0 nodes, rev 3f56178e902c\n",
+      "stderr": ""
+    },
+    "patch": {
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "patchOverwroteOutput": true,
+    "nativeCheck": {
+      "exit": 0,
+      "stdout": "ok\n",
+      "stderr": ""
+    }
+  },
+  "after": {
+    "sourceCheck": {
+      "exit": 1,
+      "stdout": "",
+      "stderr": "/tmp/a0-cli-utf8-evidence/probe-u4aISZ/bad.a0: error: The encoded data was not valid for encoding utf-8\n"
+    },
+    "historicalCheck": {
+      "exit": 1,
+      "stdout": "",
+      "stderr": "/tmp/a0-cli-utf8-evidence/probe-u4aISZ/legacy.a0: error: The encoded data was not valid for encoding utf-8\n"
+    },
+    "patch": {
+      "exit": 1,
+      "stdout": "",
+      "stderr": "error: The encoded data was not valid for encoding utf-8\n"
+    },
+    "patchOverwroteOutput": false,
+    "nativeCheck": {
+      "exit": 64,
+      "stdout": "",
+      "stderr": "a0: /tmp/a0-cli-utf8-evidence/probe-u4aISZ/legacy.a0: source must be valid UTF-8\n"
+    }
+  },
+  "focused": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "byteOracle": {
+    "cases": 71361,
+    "inputSHA256": "8edfca63ad2eccbe30876aaf61f648d45e1532aa0ed480acf18a106110853f69",
+    "expectedSHA256": "84a0efb0dee7c118668062ffd631863f83c07398fe1c8a84a1d358daf8e1c2ea",
+    "reference": "Node node:buffer isUtf8",
+    "modes": [
+      "C O0",
+      "C O2",
+      "C O2 UBSan"
+    ],
+    "result": "all outputs match",
+    "generator": "test/fixtures/source-utf8-native/cases.ts",
+    "headerSHA256": "d31dd7e93f21bef05a32912274722a151192040d7081d29469aba58867798456"
+  },
+  "nativeCostControl": {
+    "plan": {
+      "pairs": 3,
+      "order": [
+        [
+          "baseline",
+          "candidate"
+        ],
+        [
+          "candidate",
+          "baseline"
+        ],
+        [
+          "baseline",
+          "candidate"
+        ]
+      ],
+      "inputs": [
+        {
+          "name": "examples/life.a0",
+          "sha256": "024c82152391abe11847d8c19efe7a0d0b1b35617c99ad16d3a69f0ddcf2c51c"
+        },
+        {
+          "name": "compiler/check.a0",
+          "sha256": "d51f8c78ee02d1f2264d67efb9983bdeed14f8b6daf621a20d3b386bdba1631e"
+        },
+        {
+          "name": "site/ui.a0",
+          "sha256": "f762650e65c373d639126102a841647981acca1f4230546cf1694d10eac7ea6e"
+        }
+      ],
+      "scope": "Existing native check --lines process, unchanged valid files; bounded cost control, not a speed claim."
+    },
+    "artifacts": {
+      "baseline": {
+        "bytes": 304344,
+        "sha256": "9a52aec4bc375ddb98b209ceaac21479a3833552e300a5a2932888189dd0a54b",
+        "checkerC_SHA256": "09b0e19933b7d5058cea875c6bac5295dc41198d5bbe79ef30774cdb72e27dc8"
+      },
+      "candidate": {
+        "bytes": 304344,
+        "sha256": "01285fef5b526b767d43d7f72f5e99eb8c28c43b9dea76b67cea9ff3946bbd9e",
+        "checkerC_SHA256": "09b0e19933b7d5058cea875c6bac5295dc41198d5bbe79ef30774cdb72e27dc8"
+      }
+    },
+    "runs": [
+      {
+        "input": "examples/life.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 7.657017005840316,
+        "cpuMs": 7.069,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 9.990680002374575,
+        "cpuMs": 9.681,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 6.445503007853404,
+        "cpuMs": 6.135,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 8.807630016235635,
+        "cpuMs": 8.109,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 5.988496006466448,
+        "cpuMs": 5.7749999999999995,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 6.147284002508968,
+        "cpuMs": 5.959,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 98.56613099691458,
+        "cpuMs": 98.268,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 104.52875698683783,
+        "cpuMs": 104.11399999999999,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 100.78890298609622,
+        "cpuMs": 100.018,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 102.85827401094139,
+        "cpuMs": 102.396,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 96.4525880117435,
+        "cpuMs": 96.036,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 105.91877100523561,
+        "cpuMs": 105.428,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 6.315047008683905,
+        "cpuMs": 5.951999999999999,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 6.226514000445604,
+        "cpuMs": 5.9719999999999995,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 6.222948984941468,
+        "cpuMs": 5.998,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 5.573531991103664,
+        "cpuMs": 5.32,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 6.100823986344039,
+        "cpuMs": 5.868,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 5.219607992330566,
+        "cpuMs": 4.9319999999999995,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      }
+    ]
+  },
+  "interpretation": [
+    "All valid-source output hashes match in the fixed paired process control.",
+    "Native executable bytes are equal in this build; this is not a universal size guarantee.",
+    "Small mixed timing samples are recorded as cost controls, not a speedup claim or native frontend qualification."
+  ],
+  "limits": [
+    "Finite byte cases and Linux execution only; not every possible byte string or platform.",
+    "Existing native checker binaries must be rebuilt to acquire the guard.",
+    "A direct native invalid-encoding result is nonzero; launcher/fast-path fallback retains the full CLI diagnostic.",
+    "No existing benchmark scores, public defaults, credentials or deployment settings changed."
+  ],
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v24.19.0"
+  },
+  "launcherControl": "Compiled native launcher delegates malformed source to the strict full CLI; Node fast path also rejects."
+}

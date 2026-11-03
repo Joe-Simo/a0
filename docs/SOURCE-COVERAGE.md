@@ -139,3 +139,12 @@ an unchanged replacement character. Synthetic regression and write-failure evide
 is recorded in [`results/source-init-utf8.json`](../results/source-init-utf8.json).
 This does not eliminate arbitrary external writes between a check and a write, or
 replace the existing lock and protection requirements.
+
+The shared CLI now applies fatal UTF-8 decoding to source and patch files, including
+legacy import/conversion reads. The native checker's file boundary validates UTF-8
+scalar encodings before parsing, so its fast acceptance path cannot bypass the same
+requirement. Invalid patches preserve existing output files; valid Unicode controls
+retain their outputs. The byte-oracle checks, native artifact identities and bounded
+cost controls are recorded in [`results/cli-utf8.json`](../results/cli-utf8.json).
+Existing native binaries require rebuilding; this is not a platform qualification
+or public-default change.

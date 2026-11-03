@@ -73,6 +73,7 @@ static int a0_clock(struct timespec *t) {
 #define clock_gettime(id, t) a0_clock(t)
 #endif
 #include "checker.c"
+#include "source_utf8.h"
 
 #define SRC_LIMIT A0_FRONT_END_LIMIT
 #define MAX_FILES 4096
@@ -198,6 +199,10 @@ static void visit(const char *path, const char *from) {
   size_t len = 0;
   char *text = read_all(abs, &len);
   if (text == NULL) die(64, "cannot read %s", abs);
+  if (!a0_source_utf8_valid((const unsigned char *)text, len)) {
+    free(text);
+    die(64, "%s: source must be valid UTF-8", abs);
+  }
   char dir[PATH_MAX];
   dir_of(abs, dir);
   /* Leading `use "path"` lines (before the first other non-empty line) are resolved and
