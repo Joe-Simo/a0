@@ -1,0 +1,991 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-03T07:41:40.910658+00:00",
+  "baseline": "ff5c93f2abcfbc32e029bcee9d8c619af62dfbf7",
+  "issue": {
+    "host": "accepted",
+    "native": "native source: unpaired UTF-16 surrogate",
+    "utf8RoundTripLoss": true,
+    "edit": "accepted",
+    "editRevisionChanged": true,
+    "result": 3
+  },
+  "baselineRegressions": {
+    "passed": 1,
+    "failed": 4
+  },
+  "focusedAfter": {
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0
+  },
+  "implementationSHA256": {
+    "src/core.ts": "04c1ee31dda4f23dcf04353be2260182ac32d8a00f8a9b23d2ba99ca0f8c9350",
+    "src/source.ts": "566c01273b883baf6b4d4a98fd3fa6ef00de34e39165633dfe664291938b2c76",
+    "src/edit.ts": "03c33d3a019d44915388f620ebe599c58e356eac55601e349a400ad42f2f8937",
+    "test/source-unicode-parity.test.ts": "c62f8330ba62416fac0ac645f504080582d6f575dc4d650e2914f3e9a4004f87"
+  },
+  "costControl": {
+    "scope": "Host parse and format of six standalone source units; imports are not followed. Not native frontend or whole-project cost qualification.",
+    "plan": {
+      "scope": "Host parse+format guard overhead; not native frontend or end-to-end compile qualification",
+      "pairs": 3,
+      "order": [
+        "baseline,candidate",
+        "candidate,baseline",
+        "baseline,candidate"
+      ],
+      "warmupPerInput": 1,
+      "samplesPerInput": 5,
+      "inputs": [
+        {
+          "name": "examples/life.a0",
+          "bytes": 3680,
+          "sha256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56"
+        },
+        {
+          "name": "site/lib/frame.a0",
+          "bytes": 3639,
+          "sha256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e"
+        },
+        {
+          "name": "site/page.a0",
+          "bytes": 67743,
+          "sha256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9"
+        },
+        {
+          "name": "site/docs.a0",
+          "bytes": 41140,
+          "sha256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900"
+        },
+        {
+          "name": "compiler/boot.a0",
+          "bytes": 20533,
+          "sha256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8"
+        },
+        {
+          "name": "compiler/parse_arena.a0",
+          "bytes": 102,
+          "sha256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e"
+        }
+      ],
+      "retention": "Correctness guard; record overhead without asserting speed superiority or clearing cost gates"
+    },
+    "rows": [
+      {
+        "name": "examples/life.a0",
+        "bytes": 3680,
+        "sourceSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+        "formattedSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+        "irSHA256": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+        "medianWallMs": {
+          "baseline": 1.2409879999999944,
+          "candidate": 1.2891490000000019
+        },
+        "candidateOverBaseline": 1.0388085944424987
+      },
+      {
+        "name": "site/lib/frame.a0",
+        "bytes": 3639,
+        "sourceSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+        "formattedSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+        "irSHA256": "04edd8bb5c8311200779eed901a9ce194be58e751aa402ee94399cd4c727de8a",
+        "medianWallMs": {
+          "baseline": 0.4843180000000018,
+          "candidate": 0.4436369999999954
+        },
+        "candidateOverBaseline": 0.9160035348675741
+      },
+      {
+        "name": "site/page.a0",
+        "bytes": 67743,
+        "sourceSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+        "formattedSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+        "irSHA256": "30739897f5a7a8149854b3125077ebbacdc349c997fd2d4d77d17bb6a48d95ea",
+        "medianWallMs": {
+          "baseline": 9.781566000000012,
+          "candidate": 9.53409400000001
+        },
+        "candidateOverBaseline": 0.9747001655972058
+      },
+      {
+        "name": "site/docs.a0",
+        "bytes": 41140,
+        "sourceSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+        "formattedSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+        "irSHA256": "b23a7e029da8b3e553e44f9ae07328f6cf4b631525587475c7c69f6c9c3394e8",
+        "medianWallMs": {
+          "baseline": 4.800843000000015,
+          "candidate": 4.945230000000009
+        },
+        "candidateOverBaseline": 1.0300753430178813
+      },
+      {
+        "name": "compiler/boot.a0",
+        "bytes": 20533,
+        "sourceSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+        "formattedSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+        "irSHA256": "6790fc0e209d4781367c7ac4a15bd3e0723ba36127d093a7defb3fb4983afb89",
+        "medianWallMs": {
+          "baseline": 1.5560310000000186,
+          "candidate": 1.528809999999993
+        },
+        "candidateOverBaseline": 0.9825061325898871
+      },
+      {
+        "name": "compiler/parse_arena.a0",
+        "bytes": 102,
+        "sourceSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+        "formattedSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+        "irSHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+        "medianWallMs": {
+          "baseline": 0.020841999999987593,
+          "candidate": 0.017977000000001908
+        },
+        "candidateOverBaseline": 0.86253718453184
+      }
+    ],
+    "raw": [
+      {
+        "rows": [
+          {
+            "name": "examples/life.a0",
+            "bytes": 3680,
+            "sourceSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "formattedSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "irSHA256": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+            "wallMs": [
+              1.2409879999999944,
+              1.4413179999999954,
+              1.2265150000000062,
+              1.4302419999999998,
+              0.42822400000000016
+            ],
+            "cpuMs": [
+              2.808,
+              3.236,
+              2.087,
+              5.956,
+              0.438
+            ]
+          },
+          {
+            "name": "site/lib/frame.a0",
+            "bytes": 3639,
+            "sourceSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "formattedSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "irSHA256": "04edd8bb5c8311200779eed901a9ce194be58e751aa402ee94399cd4c727de8a",
+            "wallMs": [
+              0.7343250000000054,
+              0.5132519999999943,
+              0.6744949999999932,
+              0.224347999999992,
+              0.17375100000000998
+            ],
+            "cpuMs": [
+              0.801,
+              1.205,
+              0.801,
+              0.764,
+              0.176
+            ]
+          },
+          {
+            "name": "site/page.a0",
+            "bytes": 67743,
+            "sourceSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "formattedSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "irSHA256": "30739897f5a7a8149854b3125077ebbacdc349c997fd2d4d77d17bb6a48d95ea",
+            "wallMs": [
+              8.770605000000003,
+              10.481538999999998,
+              7.695959000000002,
+              9.693603999999993,
+              12.478252999999995
+            ],
+            "cpuMs": [
+              20.843,
+              16.026,
+              11.228,
+              23.154,
+              36.716
+            ]
+          },
+          {
+            "name": "site/docs.a0",
+            "bytes": 41140,
+            "sourceSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "formattedSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "irSHA256": "b23a7e029da8b3e553e44f9ae07328f6cf4b631525587475c7c69f6c9c3394e8",
+            "wallMs": [
+              5.046141000000006,
+              3.7320250000000215,
+              6.140978999999987,
+              4.292457999999982,
+              6.3893930000000125
+            ],
+            "cpuMs": [
+              8.833,
+              6.055,
+              12.023,
+              11.118,
+              6.4
+            ]
+          },
+          {
+            "name": "compiler/boot.a0",
+            "bytes": 20533,
+            "sourceSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "formattedSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "irSHA256": "6790fc0e209d4781367c7ac4a15bd3e0723ba36127d093a7defb3fb4983afb89",
+            "wallMs": [
+              1.8678799999999853,
+              2.373271000000017,
+              2.311368000000016,
+              1.7131269999999859,
+              1.4722950000000026
+            ],
+            "cpuMs": [
+              2.465,
+              5.735,
+              5.053,
+              7.133,
+              1.703
+            ]
+          },
+          {
+            "name": "compiler/parse_arena.a0",
+            "bytes": 102,
+            "sourceSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "formattedSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "irSHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+            "wallMs": [
+              0.025879000000003316,
+              0.016554999999982556,
+              0.015453000000007933,
+              0.017046000000021877,
+              0.02341599999999744
+            ],
+            "cpuMs": [
+              0.03,
+              0.018,
+              0.016,
+              0.019,
+              0.039
+            ]
+          }
+        ],
+        "peakRssKiB": 84380,
+        "load": [
+          0.25,
+          0.49,
+          1.22
+        ],
+        "pair": 0,
+        "variant": "baseline",
+        "processWallMs": 216.72003500862047
+      },
+      {
+        "rows": [
+          {
+            "name": "examples/life.a0",
+            "bytes": 3680,
+            "sourceSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "formattedSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "irSHA256": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+            "wallMs": [
+              1.5861469999999969,
+              1.4749589999999984,
+              1.2891490000000019,
+              1.0699090000000027,
+              0.41073799999999494
+            ],
+            "cpuMs": [
+              5.445,
+              4.331,
+              4.026,
+              1.987,
+              0.421
+            ]
+          },
+          {
+            "name": "site/lib/frame.a0",
+            "bytes": 3639,
+            "sourceSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "formattedSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "irSHA256": "04edd8bb5c8311200779eed901a9ce194be58e751aa402ee94399cd4c727de8a",
+            "wallMs": [
+              0.5166579999999996,
+              0.4436369999999954,
+              1.135317999999998,
+              0.41637599999999964,
+              0.3002119999999948
+            ],
+            "cpuMs": [
+              0.53,
+              2.245,
+              3.252,
+              0.424,
+              2.388
+            ]
+          },
+          {
+            "name": "site/page.a0",
+            "bytes": 67743,
+            "sourceSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "formattedSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "irSHA256": "30739897f5a7a8149854b3125077ebbacdc349c997fd2d4d77d17bb6a48d95ea",
+            "wallMs": [
+              9.056625999999994,
+              8.819619000000003,
+              7.088194999999999,
+              7.808386999999996,
+              10.636553000000006
+            ],
+            "cpuMs": [
+              20.991,
+              13.79,
+              10.512,
+              15.692,
+              29.456
+            ]
+          },
+          {
+            "name": "site/docs.a0",
+            "bytes": 41140,
+            "sourceSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "formattedSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "irSHA256": "b23a7e029da8b3e553e44f9ae07328f6cf4b631525587475c7c69f6c9c3394e8",
+            "wallMs": [
+              4.945230000000009,
+              3.1732939999999985,
+              6.39582200000001,
+              5.334245999999979,
+              5.011269999999996
+            ],
+            "cpuMs": [
+              11.558,
+              6.644,
+              14.037,
+              11.072,
+              12.684
+            ]
+          },
+          {
+            "name": "compiler/boot.a0",
+            "bytes": 20533,
+            "sourceSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "formattedSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "irSHA256": "6790fc0e209d4781367c7ac4a15bd3e0723ba36127d093a7defb3fb4983afb89",
+            "wallMs": [
+              1.4765320000000202,
+              1.5245640000000265,
+              2.5280539999999974,
+              1.4532660000000135,
+              1.3222190000000182
+            ],
+            "cpuMs": [
+              2.514,
+              4.212,
+              5.174,
+              1.722,
+              2.36
+            ]
+          },
+          {
+            "name": "compiler/parse_arena.a0",
+            "bytes": 102,
+            "sourceSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "formattedSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "irSHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+            "wallMs": [
+              0.026239000000003898,
+              0.017977000000001908,
+              0.018116999999989503,
+              0.028822999999988497,
+              0.02713099999999713
+            ],
+            "cpuMs": [
+              0.031,
+              0.02,
+              0.019,
+              0.032,
+              0.044
+            ]
+          }
+        ],
+        "peakRssKiB": 85804,
+        "load": [
+          0.25,
+          0.49,
+          1.22
+        ],
+        "pair": 0,
+        "variant": "candidate",
+        "processWallMs": 199.5503079961054
+      },
+      {
+        "rows": [
+          {
+            "name": "examples/life.a0",
+            "bytes": 3680,
+            "sourceSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "formattedSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "irSHA256": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+            "wallMs": [
+              1.620166999999995,
+              1.7314149999999984,
+              1.0908409999999975,
+              0.683999,
+              0.7604690000000005
+            ],
+            "cpuMs": [
+              4.808,
+              4.333,
+              1.228,
+              1.886,
+              1.25
+            ]
+          },
+          {
+            "name": "site/lib/frame.a0",
+            "bytes": 3639,
+            "sourceSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "formattedSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "irSHA256": "04edd8bb5c8311200779eed901a9ce194be58e751aa402ee94399cd4c727de8a",
+            "wallMs": [
+              0.7745859999999993,
+              0.5590619999999973,
+              0.45686699999999547,
+              0.44232600000000133,
+              0.21535399999999782
+            ],
+            "cpuMs": [
+              1.915,
+              3.194,
+              0.464,
+              1.289,
+              0.218
+            ]
+          },
+          {
+            "name": "site/page.a0",
+            "bytes": 67743,
+            "sourceSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "formattedSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "irSHA256": "30739897f5a7a8149854b3125077ebbacdc349c997fd2d4d77d17bb6a48d95ea",
+            "wallMs": [
+              10.949322999999993,
+              8.911747999999989,
+              7.841937999999999,
+              9.53409400000001,
+              12.261471999999998
+            ],
+            "cpuMs": [
+              24.723,
+              13.38,
+              11.964,
+              21.757,
+              37.184
+            ]
+          },
+          {
+            "name": "site/docs.a0",
+            "bytes": 41140,
+            "sourceSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "formattedSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "irSHA256": "b23a7e029da8b3e553e44f9ae07328f6cf4b631525587475c7c69f6c9c3394e8",
+            "wallMs": [
+              4.439179000000024,
+              3.533565999999979,
+              5.672965000000005,
+              3.5247030000000166,
+              5.448617000000013
+            ],
+            "cpuMs": [
+              6.808,
+              6.873,
+              12.622,
+              7.082,
+              5.461
+            ]
+          },
+          {
+            "name": "compiler/boot.a0",
+            "bytes": 20533,
+            "sourceSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "formattedSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "irSHA256": "6790fc0e209d4781367c7ac4a15bd3e0723ba36127d093a7defb3fb4983afb89",
+            "wallMs": [
+              2.272899999999993,
+              1.445584000000025,
+              1.7124359999999967,
+              1.485194000000007,
+              2.1521479999999826
+            ],
+            "cpuMs": [
+              6.535,
+              4.903,
+              1.719,
+              2.559,
+              4.21
+            ]
+          },
+          {
+            "name": "compiler/parse_arena.a0",
+            "bytes": 102,
+            "sourceSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "formattedSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "irSHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+            "wallMs": [
+              0.00835299999999961,
+              0.004176000000001068,
+              0.003254999999995789,
+              0.02321399999999585,
+              0.009573999999986427
+            ],
+            "cpuMs": [
+              0.012,
+              0.006,
+              0.004,
+              0.026,
+              0.024
+            ]
+          }
+        ],
+        "peakRssKiB": 83576,
+        "load": [
+          0.25,
+          0.49,
+          1.22
+        ],
+        "pair": 1,
+        "variant": "candidate",
+        "processWallMs": 206.84107701526955
+      },
+      {
+        "rows": [
+          {
+            "name": "examples/life.a0",
+            "bytes": 3680,
+            "sourceSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "formattedSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "irSHA256": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+            "wallMs": [
+              1.5254049999999992,
+              1.1532760000000053,
+              0.7935140000000018,
+              1.278654000000003,
+              0.38787300000000613
+            ],
+            "cpuMs": [
+              3.259,
+              1.877,
+              1.416,
+              3.481,
+              0.397
+            ]
+          },
+          {
+            "name": "site/lib/frame.a0",
+            "bytes": 3639,
+            "sourceSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "formattedSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "irSHA256": "04edd8bb5c8311200779eed901a9ce194be58e751aa402ee94399cd4c727de8a",
+            "wallMs": [
+              0.7271140000000003,
+              0.4972980000000007,
+              0.6416949999999986,
+              0.43528500000000037,
+              0.3821049999999957
+            ],
+            "cpuMs": [
+              1.864,
+              2.783,
+              0.93,
+              0.442,
+              1.257
+            ]
+          },
+          {
+            "name": "site/page.a0",
+            "bytes": 67743,
+            "sourceSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "formattedSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "irSHA256": "30739897f5a7a8149854b3125077ebbacdc349c997fd2d4d77d17bb6a48d95ea",
+            "wallMs": [
+              11.875720999999999,
+              9.781566000000012,
+              8.673549999999992,
+              8.548215999999996,
+              12.26819300000001
+            ],
+            "cpuMs": [
+              27.798,
+              15.078,
+              13.24,
+              16.547,
+              34.679
+            ]
+          },
+          {
+            "name": "site/docs.a0",
+            "bytes": 41140,
+            "sourceSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "formattedSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "irSHA256": "b23a7e029da8b3e553e44f9ae07328f6cf4b631525587475c7c69f6c9c3394e8",
+            "wallMs": [
+              3.7527760000000114,
+              3.3068500000000256,
+              6.970676999999995,
+              5.195087000000001,
+              5.532803000000001
+            ],
+            "cpuMs": [
+              4.76,
+              6.586,
+              14.555,
+              11.75,
+              7.593
+            ]
+          },
+          {
+            "name": "compiler/boot.a0",
+            "bytes": 20533,
+            "sourceSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "formattedSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "irSHA256": "6790fc0e209d4781367c7ac4a15bd3e0723ba36127d093a7defb3fb4983afb89",
+            "wallMs": [
+              2.1248469999999884,
+              2.0763740000000155,
+              2.6126509999999996,
+              1.477702999999991,
+              1.3071660000000236
+            ],
+            "cpuMs": [
+              6.637,
+              6.278,
+              5.943,
+              2.593,
+              2.202
+            ]
+          },
+          {
+            "name": "compiler/parse_arena.a0",
+            "bytes": 102,
+            "sourceSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "formattedSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "irSHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+            "wallMs": [
+              0.02634899999998197,
+              0.08459700000000225,
+              0.020841999999987593,
+              0.017146000000025197,
+              0.01712499999999295
+            ],
+            "cpuMs": [
+              0.032,
+              0.088,
+              0.022,
+              0.018,
+              0.032
+            ]
+          }
+        ],
+        "peakRssKiB": 84660,
+        "load": [
+          0.25,
+          0.49,
+          1.22
+        ],
+        "pair": 1,
+        "variant": "baseline",
+        "processWallMs": 208.3900870056823
+      },
+      {
+        "rows": [
+          {
+            "name": "examples/life.a0",
+            "bytes": 3680,
+            "sourceSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "formattedSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "irSHA256": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+            "wallMs": [
+              1.6082499999999982,
+              1.5166719999999998,
+              1.1657639999999958,
+              1.3386039999999966,
+              0.3906570000000045
+            ],
+            "cpuMs": [
+              3.169,
+              2.035,
+              3.324,
+              3.271,
+              0.402
+            ]
+          },
+          {
+            "name": "site/lib/frame.a0",
+            "bytes": 3639,
+            "sourceSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "formattedSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "irSHA256": "04edd8bb5c8311200779eed901a9ce194be58e751aa402ee94399cd4c727de8a",
+            "wallMs": [
+              0.7032980000000038,
+              0.4843180000000018,
+              0.4032369999999972,
+              0.4788609999999949,
+              0.18170299999999884
+            ],
+            "cpuMs": [
+              1.757,
+              0.732,
+              0.626,
+              1.624,
+              0.185
+            ]
+          },
+          {
+            "name": "site/page.a0",
+            "bytes": 67743,
+            "sourceSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "formattedSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "irSHA256": "30739897f5a7a8149854b3125077ebbacdc349c997fd2d4d77d17bb6a48d95ea",
+            "wallMs": [
+              11.327731999999997,
+              8.718987999999996,
+              8.128918999999996,
+              10.592291000000003,
+              9.964301000000006
+            ],
+            "cpuMs": [
+              28.709,
+              10.967,
+              11.521,
+              22.873,
+              30.577
+            ]
+          },
+          {
+            "name": "site/docs.a0",
+            "bytes": 41140,
+            "sourceSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "formattedSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "irSHA256": "b23a7e029da8b3e553e44f9ae07328f6cf4b631525587475c7c69f6c9c3394e8",
+            "wallMs": [
+              4.254961000000009,
+              2.8558559999999886,
+              4.557026000000008,
+              4.800843000000015,
+              5.955038999999999
+            ],
+            "cpuMs": [
+              11.815,
+              4.869,
+              10.093,
+              10.581,
+              14.049
+            ]
+          },
+          {
+            "name": "compiler/boot.a0",
+            "bytes": 20533,
+            "sourceSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "formattedSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "irSHA256": "6790fc0e209d4781367c7ac4a15bd3e0723ba36127d093a7defb3fb4983afb89",
+            "wallMs": [
+              1.5403570000000002,
+              1.5560310000000186,
+              1.3378629999999987,
+              1.334828000000016,
+              0.9736750000000143
+            ],
+            "cpuMs": [
+              3.495,
+              4.485,
+              1.345,
+              7.888,
+              1.968
+            ]
+          },
+          {
+            "name": "compiler/parse_arena.a0",
+            "bytes": 102,
+            "sourceSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "formattedSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "irSHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+            "wallMs": [
+              0.02529799999999227,
+              0.023726000000010572,
+              0.024727999999981876,
+              0.017315999999993892,
+              0.017134999999996126
+            ],
+            "cpuMs": [
+              0.03,
+              0.026,
+              0.027,
+              0.019,
+              0.031
+            ]
+          }
+        ],
+        "peakRssKiB": 85220,
+        "load": [
+          0.25,
+          0.49,
+          1.22
+        ],
+        "pair": 2,
+        "variant": "baseline",
+        "processWallMs": 200.79308398999274
+      },
+      {
+        "rows": [
+          {
+            "name": "examples/life.a0",
+            "bytes": 3680,
+            "sourceSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "formattedSHA256": "0c6bc8a367bc2098bdc7417ed8d7714df51a682c95602e6fbd79135c24f6eb56",
+            "irSHA256": "8a301ed2bf99a613f0b647d8e8df12d89517a9fc86f2871a0bfbbcd67168f18c",
+            "wallMs": [
+              2.1790280000000024,
+              3.547186999999994,
+              1.1265089999999987,
+              2.0291580000000025,
+              0.8028279999999981
+            ],
+            "cpuMs": [
+              8.133,
+              4.138,
+              3.149,
+              3.181,
+              3.295
+            ]
+          },
+          {
+            "name": "site/lib/frame.a0",
+            "bytes": 3639,
+            "sourceSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "formattedSHA256": "477dcb86b2f6d8d6fc9d0703f56a3e4dc4a5c4f926c47a5ae8d145891a3f175e",
+            "irSHA256": "04edd8bb5c8311200779eed901a9ce194be58e751aa402ee94399cd4c727de8a",
+            "wallMs": [
+              0.44210499999999797,
+              0.9567389999999989,
+              1.050440000000009,
+              0.3164560000000023,
+              0.20453799999999944
+            ],
+            "cpuMs": [
+              0.452,
+              3.591,
+              2.953,
+              0.901,
+              0.207
+            ]
+          },
+          {
+            "name": "site/page.a0",
+            "bytes": 67743,
+            "sourceSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "formattedSHA256": "8d91d5af135179ec9b47eb6e2b55c313cf10f0b16a1c193423c6d6e6ccba0bb9",
+            "irSHA256": "30739897f5a7a8149854b3125077ebbacdc349c997fd2d4d77d17bb6a48d95ea",
+            "wallMs": [
+              10.254047,
+              9.688617999999991,
+              7.778412000000003,
+              10.151912999999993,
+              11.250967000000003
+            ],
+            "cpuMs": [
+              25.706,
+              14.751,
+              11.444,
+              18.813,
+              32.778
+            ]
+          },
+          {
+            "name": "site/docs.a0",
+            "bytes": 41140,
+            "sourceSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "formattedSHA256": "ed63908597aa36f360f3937d3599ea581be78605bbdc8418c0c16f7b15260900",
+            "irSHA256": "b23a7e029da8b3e553e44f9ae07328f6cf4b631525587475c7c69f6c9c3394e8",
+            "wallMs": [
+              5.888559000000015,
+              3.983633999999995,
+              6.486388000000005,
+              3.788940999999994,
+              4.619810999999999
+            ],
+            "cpuMs": [
+              16.561,
+              7.356,
+              16.142,
+              5.952,
+              8.335
+            ]
+          },
+          {
+            "name": "compiler/boot.a0",
+            "bytes": 20533,
+            "sourceSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "formattedSHA256": "e60c9f67445081a9b2c0d8f7bdbacb1f1b79da1f53342d795aeac2662d7613f8",
+            "irSHA256": "6790fc0e209d4781367c7ac4a15bd3e0723ba36127d093a7defb3fb4983afb89",
+            "wallMs": [
+              1.4146979999999871,
+              1.5784339999999872,
+              1.528809999999993,
+              1.603712999999999,
+              1.6560510000000193
+            ],
+            "cpuMs": [
+              2.168,
+              3.578,
+              1.535,
+              1.61,
+              1.663
+            ]
+          },
+          {
+            "name": "compiler/parse_arena.a0",
+            "bytes": 102,
+            "sourceSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "formattedSHA256": "c40cecdcc74bcddbe8dfa6e2e065071adb6f7657cfc708b4284edf5bf9b1d62e",
+            "irSHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+            "wallMs": [
+              0.028562999999991234,
+              0.01813699999999585,
+              0.01638499999998544,
+              0.017866999999995414,
+              0.01758600000002275
+            ],
+            "cpuMs": [
+              0.138,
+              0.019,
+              0.018,
+              0.02,
+              0.033
+            ]
+          }
+        ],
+        "peakRssKiB": 87316,
+        "load": [
+          0.25,
+          0.49,
+          1.22
+        ],
+        "pair": 2,
+        "variant": "candidate",
+        "processWallMs": 213.20921700680628
+      }
+    ],
+    "interpretation": "Fixed small control only; variation and small timings do not establish a speedup. Valid source and IR hashes match in every run. No native-cost, full-platform or release gate is cleared."
+  },
+  "limits": [
+    "Transport rejection uses the existing unpaired-UTF16 error, not an invented language diagnostic.",
+    "Valid Unicode replacement characters, BOMs and surrogate pairs remain accepted.",
+    "Malformed input is rejected before edit revision or handles are changed."
+  ]
+}

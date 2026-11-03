@@ -21,6 +21,7 @@ import {
   withComments,
 } from './core.js';
 import { A0Error, diag } from './diagnostics.js';
+import { losslessSourceString } from './source-utf8.js';
 import { type Lit, SpecBuilder } from './spec.js';
 
 const SOURCE_OP_ALIASES: Readonly<Record<string, Op>> = { '<<': 'shl', '>>': 'shr' };
@@ -79,7 +80,7 @@ function sourceNode(
 
 /** The same instruction reader used by source files and session edits. */
 export function parseSourceNode(text: string, line?: number): Node {
-  return sourceNode(text, line, undefined, parseSourceOperand);
+  return sourceNode(losslessSourceString(text, 'source node'), line, undefined, parseSourceOperand);
 }
 
 export function parseSource(source: string): Program {
@@ -228,5 +229,5 @@ export function formatSource(program: Program): string {
     if (fn.afterComments !== undefined) lines.push('', ...fn.afterComments);
   }
   lines.push(...(program.tailComments ?? []));
-  return lines.length ? `${lines.join('\n')}\n` : '';
+  return losslessSourceString(lines.length ? `${lines.join('\n')}\n` : '', 'source output');
 }

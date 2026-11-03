@@ -57,6 +57,7 @@ import {
 import { fixAll } from './fix.js';
 import { constructLegend, lazyDiagnostic, lazyHints } from './lazy.js';
 import { programRevision, revision } from './revision.js';
+import { losslessSourceString } from './source-utf8.js';
 import {
   applySpecEdits,
   type Spec,
@@ -727,6 +728,7 @@ export function formatPatch(fn: Func, nodes: readonly Node[]): string {
 }
 
 export function parsePatch(text: string, syntax: EditSyntax = legacyEditSyntax): Patch {
+  losslessSourceString(text, 'patch source');
   if (utf8Length(text) > LIMITS.maxSourceBytes) throw diag('A0606');
   const lines = text
     .split(/\r?\n/)
@@ -1879,6 +1881,7 @@ export class EditSession {
    * to the new revision (handles are stable names for the session).
    */
   apply(text: string): TypedProgram {
+    losslessSourceString(text, 'edit source');
     this.#denseNames = new Map();
     try {
       return this.#applyOrFix(text);

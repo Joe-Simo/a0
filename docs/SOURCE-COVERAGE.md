@@ -115,3 +115,18 @@ This supersedes the older runtime-trap refusal limitation above for these tested
 compiled artifacts. It does not establish exhaustive language coverage, native-cost
 acceptance, independent AI accuracy, physical-platform qualification or a public
 default cutover. The earlier failed harness result is retained in the report.
+
+## Lossless source transport
+
+The host source reader now shares the native reader's refusal of unpaired UTF-16
+surrogates. Previously a host-accepted comment or text literal could change during
+UTF-8 encoding. The same check now protects standalone text construction, candidate
+source formatting and raw patch/session replies. A rejected reply preserves its
+revision and open handles, so the next valid reply can still succeed.
+
+Valid Unicode scalars, including astral pairs, BOMs and the replacement character,
+remain accepted with identical text bytes and IR in the focused controls. The
+baseline failures, corrected tests and bounded host parse/format cost samples are
+recorded in [`results/source-unicode-guard.json`](../results/source-unicode-guard.json).
+The cost samples use standalone units without following imports; they do not clear
+the native frontend cost, full-platform, AI or public cutover gates.
