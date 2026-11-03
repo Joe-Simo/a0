@@ -894,7 +894,7 @@ function expand(body: Body): Body {
       callee !== undefined &&
       count?.kind === 'u32' &&
       count.value > 0 &&
-      count.value <= UNROLL_TRIPS &&
+      (count.value <= UNROLL_TRIPS || independentFullFill(callee, count.value)) &&
       !mayTrapFn(callee) &&
       init !== undefined &&
       irCost(callee.nodes) <= UNROLL_BODY_COST &&
@@ -1358,6 +1358,17 @@ function storeOnly(body: TypedFunc): Node | undefined {
     for (const [k, a] of n.args.entries())
       if (a.kind === 'param' && a.index === 0 && !(n === set && k === 0)) return undefined;
   return set;
+}
+
+/** A bounded full overwrite exposes independent elements to aggregate simplification. */
+function independentFullFill(body: TypedFunc, count: number): boolean {
+  const arr = arrayOf(body.result);
+  return (
+    arr !== undefined &&
+    count === arr.length &&
+    count <= UNROLL_STATE_WORDS &&
+    storeOnly(body) !== undefined
+  );
 }
 
 /**
