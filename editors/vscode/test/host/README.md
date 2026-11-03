@@ -38,3 +38,16 @@ checks its version through the vendor CLI, without assuming an unpacked package
 layout. Fixture path comparison follows the host platform, including Windows
 drive-letter casing. See the follow-up rows in the qualification report for exact
 commits, runs, archive hashes, earlier failures and remaining scope limits.
+
+## Installed-extension check
+
+`validate-editor-installed` packages the normal VSIX and installs it with the
+official editor CLI into a new temporary extension directory. A separate observer
+is the only development extension. The helper verifies the CLI's installed-version
+listing and the installed bundle's hash before observing Restricted Mode.
+
+The fixture uses no trust-setting override. Its expected result is that installed
+A0 is absent from the enabled extension host and its configured server never
+starts. Static language availability is observed, not assumed. This is separate
+from both the development-host guard above and trusted-workspace LSP behavior.
+The fixture is retained only in the temporary runner workspace for diagnosis.
