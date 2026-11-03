@@ -148,3 +148,10 @@ retain their outputs. The byte-oracle checks, native artifact identities and bou
 cost controls are recorded in [`results/cli-utf8.json`](../results/cli-utf8.json).
 Existing native binaries require rebuilding; this is not a platform qualification
 or public-default change.
+
+Native import resolution now rejects embedded NUL bytes and refuses paths that
+exceed its fixed buffer instead of executing a different, truncated import. The
+capacity refusal retains the full CLI fallback; it is not a new language path
+limit. Valid imports and NUL bytes in text/comments remain supported. Reproduction,
+regressions and bounded unchanged-output controls are recorded in
+[`results/native-import-path.json`](../results/native-import-path.json).

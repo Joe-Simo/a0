@@ -1,0 +1,301 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-03T10:05:39.246Z",
+  "baseline": "d56cb2c435e97e4f496d881782161b7e7dd6d29f",
+  "scope": "Reject native import path truncation; preserve full CLI fallback and valid text bytes.",
+  "before": {
+    "pathMax": 4096,
+    "cases": [
+      {
+        "case": "nul",
+        "pathBytes": 14,
+        "native": {
+          "exit": 0,
+          "stdout": "41\n",
+          "stderr": ""
+        },
+        "host": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "error: The argument 'path' must be a string, Uint8Array, or URL without null bytes. Received '<tmp>/fixture/dep.a0\\x00ignored'\n"
+        }
+      },
+      {
+        "case": "overlong",
+        "pathBytes": 4102,
+        "native": {
+          "exit": 0,
+          "stdout": "41\n",
+          "stderr": ""
+        },
+        "host": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "error: structure: use \"<tmp>/fixture/./././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././"
+        }
+      }
+    ]
+  },
+  "after": {
+    "pathMax": 4096,
+    "cases": [
+      {
+        "case": "nul",
+        "pathBytes": 14,
+        "native": {
+          "exit": 64,
+          "stdout": "",
+          "stderr": "a0: NUL in use path (in <tmp>/fixture/nul.a0)\n"
+        },
+        "host": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "error: The argument 'path' must be a string, Uint8Array, or URL without null bytes. Received '<tmp>/fixture/dep.a0\\x00ignored'\n"
+        }
+      },
+      {
+        "case": "overlong",
+        "pathBytes": 4102,
+        "native": {
+          "exit": 65,
+          "stdout": "",
+          "stderr": "a0: use path is too long (in <tmp>/fixture/overlong.a0)\n"
+        },
+        "host": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "error: structure: use \"<tmp>/fixture/./././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././././"
+        }
+      }
+    ]
+  },
+  "validation": {
+    "baseline": {
+      "passed": 1,
+      "failed": 2,
+      "harnessSetupFailure": "Earlier PATH_MAX feature-macro setup failure retained separately; not a product result."
+    },
+    "focused": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    "controls": "Exact capacity boundaries, Linux existing-prefix alias, valid space import, NUL text/comment, CLI and native UTF8 controls."
+  },
+  "cost": {
+    "plan": {
+      "pairs": 3,
+      "order": [
+        [
+          "baseline",
+          "candidate"
+        ],
+        [
+          "candidate",
+          "baseline"
+        ],
+        [
+          "baseline",
+          "candidate"
+        ]
+      ],
+      "inputs": [
+        {
+          "name": "examples/life.a0",
+          "sha256": "024c82152391abe11847d8c19efe7a0d0b1b35617c99ad16d3a69f0ddcf2c51c"
+        },
+        {
+          "name": "compiler/check.a0",
+          "sha256": "d51f8c78ee02d1f2264d67efb9983bdeed14f8b6daf621a20d3b386bdba1631e"
+        },
+        {
+          "name": "site/ui.a0",
+          "sha256": "f762650e65c373d639126102a841647981acca1f4230546cf1694d10eac7ea6e"
+        }
+      ],
+      "scope": "Existing native check --lines process, unchanged valid files; bounded cost control, not a speed claim."
+    },
+    "artifacts": {
+      "baseline": {
+        "bytes": 304344,
+        "sha256": "01285fef5b526b767d43d7f72f5e99eb8c28c43b9dea76b67cea9ff3946bbd9e",
+        "checkerC_SHA256": "09b0e19933b7d5058cea875c6bac5295dc41198d5bbe79ef30774cdb72e27dc8"
+      },
+      "candidate": {
+        "bytes": 304344,
+        "sha256": "7cdfc1d904dab2ac408be44e239bdeecfbea731c75920c8ff9767ea25d34ae04",
+        "checkerC_SHA256": "09b0e19933b7d5058cea875c6bac5295dc41198d5bbe79ef30774cdb72e27dc8"
+      }
+    },
+    "runs": [
+      {
+        "input": "examples/life.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 6.097808014601469,
+        "cpuMs": 5.7509999999999994,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 5.970186000922695,
+        "cpuMs": 2.585,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 5.5149059917312115,
+        "cpuMs": 5.253,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 7.021277997409925,
+        "cpuMs": 6.802,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 5.697134998627007,
+        "cpuMs": 5.444,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "examples/life.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 5.869785003596917,
+        "cpuMs": 5.664,
+        "peakRssKiB": 13696,
+        "outputSHA256": "e605288d5da053ad5f5ad7a89737e8b0a44c781eaefaedc7e1f33e6d6d939ac6"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 98.95634799613617,
+        "cpuMs": 98.68499999999999,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 95.78399802558124,
+        "cpuMs": 95.358,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 91.4256339892745,
+        "cpuMs": 91.001,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 94.31250899797305,
+        "cpuMs": 93.951,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 98.02535700146109,
+        "cpuMs": 97.538,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "compiler/check.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 97.17905402067117,
+        "cpuMs": 96.76,
+        "peakRssKiB": 13696,
+        "outputSHA256": "19128faca803dfec0a3b951c4bb532373cbcd92bf447d9481dfe343b4cb1b065"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 6.052919983631,
+        "cpuMs": 5.614999999999999,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 6.621015985729173,
+        "cpuMs": 5.929,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 5.871206987649202,
+        "cpuMs": 5.6049999999999995,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 9.44787499611266,
+        "cpuMs": 8.918,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 6.109785987064242,
+        "cpuMs": 5.791,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      },
+      {
+        "input": "site/ui.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 6.079739978304133,
+        "cpuMs": 5.795,
+        "peakRssKiB": 13696,
+        "outputSHA256": "37d7416a17baeae9432c3173d1376e49d2acf8da0f453a0edb5533ef06d5a9f9"
+      }
+    ]
+  },
+  "limitations": [
+    "Three fixed paired process samples per input are bounded regression controls, not a speed claim or native frontend acceptance.",
+    "Linux execution only; no new exact-tree platform qualification.",
+    "Native capacity refusal is status 65 for existing full CLI fallback; embedded NUL is status 64.",
+    "No publication, default cutover or release qualification."
+  ]
+}

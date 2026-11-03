@@ -225,7 +225,11 @@ static void visit(const char *path, const char *from) {
         if (*c == '"' || *c == '\\') plain = false;
       if (!plain) break;
       char rel[PATH_MAX], target[PATH_MAX * 2 + 2], canon[PATH_MAX];
-      snprintf(rel, sizeof rel, "%.*s", (int)(t1 - t0), t0);
+      size_t path_len = (size_t)(t1 - t0);
+      if (memchr(t0, '\0', path_len) != NULL) die(64, "NUL in use path (in %s)", abs);
+      if (path_len >= sizeof rel) die(65, "use path is too long (in %s)", abs);
+      memcpy(rel, t0, path_len);
+      rel[path_len] = '\0';
       if (rel[0] == '/') snprintf(target, sizeof target, "%s", rel);
       else snprintf(target, sizeof target, "%s/%s", dir, rel);
       if (realpath(target, canon) == NULL) die(64, "cannot read %s (use in %s)", target, abs);
