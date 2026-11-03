@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-03T06:11:06.287990+00:00",
+  "scope": "Execution benchmark protocol integrity; no new performance claim or historical score changes.",
+  "baseline": "acb31c05f385213474425173a3ba7da797f1948a",
+  "reproduction": {
+    "before": [
+      {
+        "stdout": "-1 0",
+        "accepted": true,
+        "ns": "-1",
+        "checksum": "0"
+      },
+      {
+        "stdout": "1e9999 0",
+        "accepted": true,
+        "ns": "Infinity",
+        "checksum": "0"
+      },
+      {
+        "stdout": ". 0",
+        "accepted": true,
+        "ns": "NaN",
+        "checksum": "0"
+      },
+      {
+        "stdout": "1 0\n2 0",
+        "accepted": true,
+        "ns": "2",
+        "checksum": "0"
+      }
+    ],
+    "after": [
+      {
+        "stdout": "-1 0",
+        "accepted": false,
+        "error": "benchmark time must be finite and positive"
+      },
+      {
+        "stdout": "1e9999 0",
+        "accepted": false,
+        "error": "benchmark time must be finite and positive"
+      },
+      {
+        "stdout": ". 0",
+        "accepted": false,
+        "error": "malformed benchmark measurement"
+      },
+      {
+        "stdout": "1 0\n2 0",
+        "accepted": false,
+        "error": "expected exactly one benchmark measurement"
+      }
+    ]
+  },
+  "focusedTests": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "controls": {
+    "unchangedKernels": [
+      "affine",
+      "mix"
+    ],
+    "samplesPerSide": 2,
+    "scale": 1000,
+    "observedDrivers": [
+      "A0 emitted C",
+      "handwritten C",
+      "C O3",
+      "Rust",
+      "direct x86-64",
+      "A0 native driver",
+      "A0 emitted JavaScript",
+      "handwritten JavaScript",
+      "Python"
+    ],
+    "result": "passed; smoke only, not performance evidence"
+  },
+  "historicalAudit": {
+    "glob": "results/exec-benchmark*.json",
+    "reports": 5,
+    "invalidTimingFields": 0,
+    "fields": [
+      "medianNsPerCall",
+      "minNsPerCall",
+      "maxNsPerCall"
+    ],
+    "limitation": "This does not prove historical per-sample checksums or process exits; raw samples are not all present."
+  },
+  "behavior": [
+    "Finite positive timings and one unambiguous measurement are required.",
+    "Unsigned 32-bit checksum spelling and per-sample stability are checked.",
+    "Failed startup processes cannot produce a successful startup measurement.",
+    "Explicit A0_RUSTC uses an existing tool; the previous default path remains unchanged."
+  ],
+  "limits": [
+    "No compiler/default/publication change.",
+    "No claim that recorded published scores were invalid.",
+    "No performance comparison from the short smoke run."
+  ]
+}

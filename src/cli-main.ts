@@ -22,6 +22,7 @@
  * and linked by wasm-ld (the build the site ships); both have the same exports and io layout.
  */
 
+import { readUtf8Source } from './cli-source.js';
 import {
   A0Error,
   checkArgument,
@@ -92,7 +93,7 @@ function usage(frontend?: McpFrontend): never {
 
 async function readSource(path: string): Promise<string> {
   protectionPolicy(path);
-  const text = await readFile(path, 'utf8');
+  const text = await readUtf8Source(path);
   if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes) throw diag('A0810');
   return text;
 }
@@ -127,7 +128,7 @@ async function loadProgram(
 ): Promise<TypedProgram> {
   const read = (p: string): Promise<string> => {
     protectionPolicy(p);
-    return readFile(p, 'utf8');
+    return readUtf8Source(p);
   };
   const profile = invocation.profile === undefined ? {} : { profile: invocation.profile };
   const readDenseA0 = invocation.denseA0 ? (await import('./dense-a0.js')).readDenseA0 : undefined;
@@ -532,7 +533,7 @@ async function mainInvocation(args: readonly string[], frontend?: McpFrontend): 
       const { program, known } = await parseFile(file, (p) => {
         paths.push(p);
         protectionPolicy(p);
-        return readFile(p, 'utf8');
+        return readUtf8Source(p);
       });
       const { formatDense, normalizeProgram } = await import('./dense.js');
       const shown = flags.includes('--normalize') ? normalizeProgram(program, known) : program;
@@ -575,7 +576,7 @@ async function mainInvocation(args: readonly string[], frontend?: McpFrontend): 
         (p) => {
           paths.push(p);
           protectionPolicy(p);
-          return readFile(p, 'utf8');
+          return readUtf8Source(p);
         },
         true,
       );

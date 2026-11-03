@@ -73,6 +73,7 @@ static int a0_clock(struct timespec *t) {
 #define clock_gettime(id, t) a0_clock(t)
 #endif
 #include "checker.c"
+#include "source_utf8.h"
 
 #define SRC_LIMIT A0_FRONT_END_LIMIT
 #define MAX_FILES 4096
@@ -198,6 +199,10 @@ static void visit(const char *path, const char *from) {
   size_t len = 0;
   char *text = read_all(abs, &len);
   if (text == NULL) die(64, "cannot read %s", abs);
+  if (!a0_source_utf8_valid((const unsigned char *)text, len)) {
+    free(text);
+    die(64, "%s: source must be valid UTF-8", abs);
+  }
   char dir[PATH_MAX];
   dir_of(abs, dir);
   /* Leading `use "path"` lines (before the first other non-empty line) are resolved and
@@ -220,7 +225,11 @@ static void visit(const char *path, const char *from) {
         if (*c == '"' || *c == '\\') plain = false;
       if (!plain) break;
       char rel[PATH_MAX], target[PATH_MAX * 2 + 2], canon[PATH_MAX];
-      snprintf(rel, sizeof rel, "%.*s", (int)(t1 - t0), t0);
+      size_t path_len = (size_t)(t1 - t0);
+      if (memchr(t0, '\0', path_len) != NULL) die(64, "NUL in use path (in %s)", abs);
+      if (path_len >= sizeof rel) die(65, "use path is too long (in %s)", abs);
+      memcpy(rel, t0, path_len);
+      rel[path_len] = '\0';
       if (rel[0] == '/') snprintf(target, sizeof target, "%s", rel);
       else snprintf(target, sizeof target, "%s/%s", dir, rel);
       if (realpath(target, canon) == NULL) die(64, "cannot read %s (use in %s)", target, abs);
@@ -672,9 +681,36 @@ static double last_;
 #define MARK(name) ((void)0)
 #endif
 
+/* A cheap candidate check only: the existing parser remains authoritative. A valid
+   profile directive is the first word after whitespace and comments. Non-ASCII
+   bytes are skipped conservatively here; parseio validates their actual meaning. */
+static bool runtime_profile_candidate(void) {
+  uint32_t n = io.input[0], i = 1;
+  while (i <= n) {
+    uint32_t c = io.input[i];
+    if (c <= 32 || c >= 128) { i++; continue; }
+    if (c == '#') {
+      while (i <= n && io.input[i] != '\n') i++;
+      continue;
+    }
+    const char *word = "profile";
+    for (uint32_t k = 0; k < 7; k++)
+      if (i + k > n || io.input[i + k] != (unsigned char)word[k]) return false;
+    return true;
+  }
+  return false;
+}
+
 static uint32_t front(const char *file, bool ir) {
   load(file);
   MARK("load");
+  if (ir && runtime_profile_candidate()) {
+    uint32_t parsed = a0_parseio(&io);
+    bool strict = parsed == 0 && io.noutput >= 2 && io.output[0] == 0 && io.output[1] == 1;
+    io.position = 0;
+    io.noutput = 0;
+    if (strict) die(65, "strict execution is unsupported by the native evaluator; use the full CLI");
+  }
   uint32_t code = ir ? a0_irio(&io) : a0_checkio(&io);
   MARK("frontend");
   if (code == 0 && ir) build();
@@ -759,7 +795,20 @@ static int cmd_run(const char *file, const char *name, int argc, char **argv) {
 
 static bool scalar(uint32_t t) { return tag_of(t) == 1 || tag_of(t) == 2; }
 
+static long bench_iterations(const char *text) {
+  long n = 0;
+  if (*text == '\0') die(64, "bench: iterations must be a positive decimal integer within LONG_MAX");
+  for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
+    if (*p < '0' || *p > '9' || n > (LONG_MAX - (*p - '0')) / 10)
+      die(64, "bench: iterations must be a positive decimal integer within LONG_MAX");
+    n = n * 10 + (*p - '0');
+  }
+  if (n == 0) die(64, "bench: iterations must be a positive decimal integer within LONG_MAX");
+  return n;
+}
+
 static int cmd_bench(const char *file, const char *name, const char *iters) {
+  long n = bench_iterations(iters);
   uint32_t code = front(file, true);
   if (code != 0) return diagnose(file, code);
   uint32_t fi = find_fn(name);
@@ -767,7 +816,6 @@ static int cmd_bench(const char *file, const char *name, const char *iters) {
   for (uint32_t k = 0; k < f->nparams; k++)
     if (!scalar(tlist[f->tfirst + k])) die(1, "bench: %s has a parameter that is not u32 or bool", name);
   if (!scalar(f->result)) die(1, "bench: %s does not return u32 or bool", name);
-  long n = atol(iters);
   uint32_t s = 0x9e3779b9u, acc = 0;
   struct timespec t0, t1;
   clock_gettime(CLOCK_MONOTONIC, &t0);
@@ -782,7 +830,7 @@ static int cmd_bench(const char *file, const char *name, const char *iters) {
     acc ^= *result_of(f);
   }
   clock_gettime(CLOCK_MONOTONIC, &t1);
-  double ns = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / (double)(n > 0 ? n : 1);
+  double ns = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / (double)n;
   printf("%.4f %u\n", ns, acc);
   return 0;
 }

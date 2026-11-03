@@ -31,6 +31,7 @@ import {
   type Trap,
   type TrapKind,
 } from './diagnostics.js';
+import { losslessSourceString } from './source-utf8.js';
 import {
   isExampleLine,
   type Spec,
@@ -1029,7 +1030,7 @@ export function textNode(id: string, raw: string, line?: number): Node {
   if (!isValidIdentifier(id)) {
     throw diag('A0005', [id], lineAt(line));
   }
-  const text = decodeText(raw, line);
+  const text = losslessSourceString(decodeText(raw, line), 'text literal');
   const bytes = new TextEncoder().encode(text);
   if (bytes.length === 0) throw diag('A0006', [], lineAt(line));
   if (bytes.length > LIMITS.maxArrayLength) {
@@ -1273,6 +1274,7 @@ export function parse(source: string): Program {
 
 /** Internal migration integration; the public compiler has no candidate syntax flag. */
 export function parseProgram(source: string, reader?: ProgramReader): Program {
+  losslessSourceString(source, 'source');
   // A UTF-16 unit is at most 3 UTF-8 bytes: a source that short cannot be over, and is not encoded to measure it.
   if (source.length * 3 > LIMITS.maxSourceBytes && utf8Length(source) > LIMITS.maxSourceBytes) {
     throw diag('A0016', [LIMITS.maxSourceBytes]);

@@ -115,3 +115,52 @@ This supersedes the older runtime-trap refusal limitation above for these tested
 compiled artifacts. It does not establish exhaustive language coverage, native-cost
 acceptance, independent AI accuracy, physical-platform qualification or a public
 default cutover. The earlier failed harness result is retained in the report.
+
+## Lossless source transport
+
+The host source reader now shares the native reader's refusal of unpaired UTF-16
+surrogates. Previously a host-accepted comment or text literal could change during
+UTF-8 encoding. The same check now protects standalone text construction, candidate
+source formatting and raw patch/session replies. A rejected reply preserves its
+revision and open handles, so the next valid reply can still succeed.
+
+Valid Unicode scalars, including astral pairs, BOMs and the replacement character,
+remain accepted with identical text bytes and IR in the focused controls. The
+baseline failures, corrected tests and bounded host parse/format cost samples are
+recorded in [`results/source-unicode-guard.json`](../results/source-unicode-guard.json).
+The cost samples use standalone units without following imports; they do not clear
+the native frontend cost, full-platform, AI or public cutover gates.
+
+Initialization now decodes existing source, instructions, settings and manifests
+without replacing malformed UTF-8. Invalid input leaves original file bytes intact
+and produces no generated project files. Conflict and rollback checks compare exact
+bytes, so an intervening malformed-byte edit is preserved instead of mistaken for
+an unchanged replacement character. Synthetic regression and write-failure evidence
+is recorded in [`results/source-init-utf8.json`](../results/source-init-utf8.json).
+This does not eliminate arbitrary external writes between a check and a write, or
+replace the existing lock and protection requirements.
+
+The shared CLI now applies fatal UTF-8 decoding to source and patch files, including
+legacy import/conversion reads. The native checker's file boundary validates UTF-8
+scalar encodings before parsing, so its fast acceptance path cannot bypass the same
+requirement. Invalid patches preserve existing output files; valid Unicode controls
+retain their outputs. The byte-oracle checks, native artifact identities and bounded
+cost controls are recorded in [`results/cli-utf8.json`](../results/cli-utf8.json).
+Existing native binaries require rebuilding; this is not a platform qualification
+or public-default change.
+
+Native import resolution now rejects embedded NUL bytes and refuses paths that
+exceed its fixed buffer instead of executing a different, truncated import. The
+capacity refusal retains the full CLI fallback; it is not a new language path
+limit. Valid imports and NUL bytes in text/comments remain supported. Reproduction,
+regressions and bounded unchanged-output controls are recorded in
+[`results/native-import-path.json`](../results/native-import-path.json).
+
+Standalone native `run`, `bench` and `calls` now explicitly refuse strict-profile
+execution: that evaluator implements wrapping semantics and previously accepted
+strict programs without enforcing their traps. Profile detection uses the existing
+parser; comments and contextual names do not enable the profile. The configured
+launcher continues to delegate execution to the full CLI, retaining its strict
+traps. This is an unsupported-path refusal, not native strict-runtime support.
+See [`results/native-strict-refusal.json`](../results/native-strict-refusal.json)
+for the reproduced mismatch, compatibility controls and bounded resource samples.

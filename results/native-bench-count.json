@@ -1,0 +1,196 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-03T10:50:56.296Z",
+  "baseline": "1f9957b29d4e6e3f036fd3125b84b5d0b461c447",
+  "scope": "Reject malformed native benchmark iteration counts before measurement; unchanged valid loop and input/checksum protocol.",
+  "before": [
+    {
+      "iterations": "0",
+      "exit": 0,
+      "stdout": "170.0000 0\n",
+      "stderr": ""
+    },
+    {
+      "iterations": "-1",
+      "exit": 0,
+      "stdout": "181.0000 0\n",
+      "stderr": ""
+    },
+    {
+      "iterations": "nan",
+      "exit": 0,
+      "stdout": "50.0000 0\n",
+      "stderr": ""
+    },
+    {
+      "iterations": "Infinity",
+      "exit": 0,
+      "stdout": "61.0000 0\n",
+      "stderr": ""
+    },
+    {
+      "iterations": "1junk",
+      "exit": 0,
+      "stdout": "221.0000 41\n",
+      "stderr": ""
+    },
+    {
+      "iterations": "1.5",
+      "exit": 0,
+      "stdout": "150.0000 41\n",
+      "stderr": ""
+    },
+    {
+      "iterations": "1",
+      "exit": 0,
+      "stdout": "110.0000 41\n",
+      "stderr": ""
+    }
+  ],
+  "after": [
+    {
+      "iterations": "0",
+      "exit": 64,
+      "stdout": "",
+      "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+    },
+    {
+      "iterations": "-1",
+      "exit": 64,
+      "stdout": "",
+      "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+    },
+    {
+      "iterations": "nan",
+      "exit": 64,
+      "stdout": "",
+      "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+    },
+    {
+      "iterations": "Infinity",
+      "exit": 64,
+      "stdout": "",
+      "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+    },
+    {
+      "iterations": "1junk",
+      "exit": 64,
+      "stdout": "",
+      "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+    },
+    {
+      "iterations": "1.5",
+      "exit": 64,
+      "stdout": "",
+      "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+    },
+    {
+      "iterations": "1",
+      "exit": 0,
+      "stdout": "351.0000 41\n",
+      "stderr": ""
+    },
+    {
+      "iterations": "0003",
+      "exit": 0,
+      "stdout": "40.0000 41\n",
+      "stderr": ""
+    },
+    {
+      "iterations": "99999999999999999999999999999999999999999999999999999999999999999999999999999999",
+      "exit": 64,
+      "stdout": "",
+      "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+    }
+  ],
+  "validation": {
+    "baseline": {
+      "passed": 1,
+      "failed": 1
+    },
+    "focused": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ubsan": [
+      {
+        "iterations": "",
+        "exit": 64,
+        "stdout": "",
+        "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+      },
+      {
+        "iterations": "0",
+        "exit": 64,
+        "stdout": "",
+        "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+      },
+      {
+        "iterations": "-1",
+        "exit": 64,
+        "stdout": "",
+        "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+      },
+      {
+        "iterations": "+1",
+        "exit": 64,
+        "stdout": "",
+        "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+      },
+      {
+        "iterations": "1junk",
+        "exit": 64,
+        "stdout": "",
+        "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+      },
+      {
+        "iterations": "1.5",
+        "exit": 64,
+        "stdout": "",
+        "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+      },
+      {
+        "iterations": "99999999999999999999999999999999999999999999999999999999999999999999999999999999",
+        "exit": 64,
+        "stdout": "",
+        "stderr": "a0: bench: iterations must be a positive decimal integer within LONG_MAX\n"
+      },
+      {
+        "iterations": "1",
+        "exit": 0,
+        "stdout": "361.0000 41\n",
+        "stderr": ""
+      },
+      {
+        "iterations": "2",
+        "exit": 0,
+        "stdout": "120.0000 0\n",
+        "stderr": ""
+      },
+      {
+        "iterations": "0003",
+        "exit": 0,
+        "stdout": "127.0000 41\n",
+        "stderr": ""
+      }
+    ],
+    "earlierInvalidAttempt": "Initial baseline overlapped a source edit and used an invalid source fixture; discarded as validation evidence and retained in the private archive."
+  },
+  "artifacts": {
+    "baseline": {
+      "bytes": 304344,
+      "sha256": "7cdfc1d904dab2ac408be44e239bdeecfbea731c75920c8ff9767ea25d34ae04"
+    },
+    "candidate": {
+      "bytes": 304344,
+      "sha256": "dadeab18203e96ba4e096a665a781965c0a857009a67ff6715837a6b50bf5096"
+    }
+  },
+  "limitations": [
+    "Linux LP64 runtime only; no new platform qualification.",
+    "LONG_MAX is the native loop representability limit, not a language source limit.",
+    "Timing rows here are functional checks, not performance comparisons.",
+    "No historical benchmark score changed or independently revalidated."
+  ]
+}

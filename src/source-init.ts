@@ -3,12 +3,14 @@ import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { bundledPrimer, type InitReport, initFiles, PRIMER_PATH, PRIMER_URL } from './agents.js';
+import { A0Error } from './core.js';
 import { withPlaintextWrite } from './plaintext-write.js';
 import { inventory } from './protection/disk.js';
 import { ProtectionError } from './protection/errors.js';
 import { parseSource } from './source.js';
 import { SOURCE_EXAMPLES, SOURCE_GUIDE, SOURCE_STARTER } from './source-guide.js';
 import { linkSource } from './source-link.js';
+import { decodeSourceUtf8 } from './source-utf8.js';
 
 const COMMAND = 'node .a0/cli.mjs';
 const MANIFEST = '.a0/init.json';
@@ -16,13 +18,25 @@ const hash = (text: string) => createHash('sha256').update(text).digest('hex');
 const missing = (e: unknown) => (e as NodeJS.ErrnoException).code === 'ENOENT';
 const conflict = () => new ProtectionError('INIT_CONFLICT_REVIEW_EXISTING_FILES');
 
-async function read(path: string): Promise<string | undefined> {
+async function readBytes(path: string): Promise<Buffer | undefined> {
   try {
-    return await readFile(path, 'utf8');
+    return await readFile(path);
   } catch (e) {
     if (missing(e)) return undefined;
     throw e;
   }
+}
+
+async function read(path: string): Promise<string | undefined> {
+  const bytes = await readBytes(path);
+  return bytes === undefined ? undefined : decodeSourceUtf8(bytes);
+}
+
+async function matches(path: string, expected: string | undefined): Promise<boolean> {
+  const bytes = await readBytes(path);
+  return expected === undefined
+    ? bytes === undefined
+    : (bytes?.equals(Buffer.from(expected, 'utf8')) ?? false);
 }
 
 async function safeParents(root: string, path: string): Promise<void> {
@@ -64,16 +78,24 @@ export async function initSourceProject(
       throw new ProtectionError('INIT_ACTIVE_OR_INTERRUPTED');
     }
     try {
-      const existing = await inventory(root, [], (text, path) => {
-        if (!path.endsWith('.a0'))
-          throw new ProtectionError('INIT_LEGACY_SOURCE_REQUIRES_MIGRATION');
-        return parseSource(text).uses ?? [];
+      const existing = await inventory(root, [], {
+        acceptsPath(path) {
+          if (!path.endsWith('.a0'))
+            throw new ProtectionError('INIT_LEGACY_SOURCE_REQUIRES_MIGRATION');
+          return true;
+        },
+        uses: (bytes) => parseSource(decodeSourceUtf8(bytes)).uses ?? [],
+        isSourceError: (error) => error instanceof A0Error,
       });
       if (existing.incompleteGraphs.length)
         throw new ProtectionError('INIT_SOURCE_REQUIRES_MIGRATION_OR_REPAIR');
       for (const item of existing.items) {
         if (item.role === 'source')
-          await linkSource(join(root, item.path), (path) => readFile(path, 'utf8'), { root });
+          await linkSource(
+            join(root, item.path),
+            async (path) => decodeSourceUtf8(await readFile(path)),
+            { root },
+          );
       }
       const launcher =
         executable === undefined
@@ -117,7 +139,7 @@ export async function initSourceProject(
         for (const f of initFiles(primer))
           legacy.set(f.path, [...(legacy.get(f.path) ?? []), f.text]);
       const legacyPrimer = bundledPrimer();
-      if (legacyPrimer) legacy.set(PRIMER_PATH, [await readFile(legacyPrimer, 'utf8')]);
+      if (legacyPrimer) legacy.set(PRIMER_PATH, [decodeSourceUtf8(await readFile(legacyPrimer))]);
       const changes: { path: string; before?: string; after: string }[] = [];
       const hashes: Record<string, string> = {};
       const skipped: string[] = [];
@@ -169,7 +191,7 @@ export async function initSourceProject(
       try {
         for (const change of changes) {
           await safeParents(root, change.path);
-          if ((await read(change.path)) !== change.before) throw conflict();
+          if (!(await matches(change.path, change.before))) throw conflict();
           await mkdir(dirname(change.path), { recursive: true });
           await writeFile(change.path, change.after, {
             flag: change.before === undefined ? 'wx' : 'w',
@@ -178,7 +200,7 @@ export async function initSourceProject(
         }
       } catch (e) {
         for (const change of applied.reverse()) {
-          if ((await read(change.path)) !== change.after) continue;
+          if (!(await matches(change.path, change.after))) continue;
           if (change.before === undefined) await rm(change.path);
           else await writeFile(change.path, change.before);
         }
