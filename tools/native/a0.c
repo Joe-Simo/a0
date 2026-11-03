@@ -681,9 +681,36 @@ static double last_;
 #define MARK(name) ((void)0)
 #endif
 
+/* A cheap candidate check only: the existing parser remains authoritative. A valid
+   profile directive is the first word after whitespace and comments. Non-ASCII
+   bytes are skipped conservatively here; parseio validates their actual meaning. */
+static bool runtime_profile_candidate(void) {
+  uint32_t n = io.input[0], i = 1;
+  while (i <= n) {
+    uint32_t c = io.input[i];
+    if (c <= 32 || c >= 128) { i++; continue; }
+    if (c == '#') {
+      while (i <= n && io.input[i] != '\n') i++;
+      continue;
+    }
+    const char *word = "profile";
+    for (uint32_t k = 0; k < 7; k++)
+      if (i + k > n || io.input[i + k] != (unsigned char)word[k]) return false;
+    return true;
+  }
+  return false;
+}
+
 static uint32_t front(const char *file, bool ir) {
   load(file);
   MARK("load");
+  if (ir && runtime_profile_candidate()) {
+    uint32_t parsed = a0_parseio(&io);
+    bool strict = parsed == 0 && io.noutput >= 2 && io.output[0] == 0 && io.output[1] == 1;
+    io.position = 0;
+    io.noutput = 0;
+    if (strict) die(65, "strict execution is unsupported by the native evaluator; use the full CLI");
+  }
   uint32_t code = ir ? a0_irio(&io) : a0_checkio(&io);
   MARK("frontend");
   if (code == 0 && ir) build();

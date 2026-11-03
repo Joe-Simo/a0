@@ -1,0 +1,438 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-03T11:40:10.637Z",
+  "baseline": "f9afe20a0037643f22af3c3b44fbfa0a87da361d",
+  "scope": "Refuse unsupported standalone native strict-profile evaluation instead of silently using wrapping semantics.",
+  "before": [
+    {
+      "case": "strict_div",
+      "kind": "native",
+      "exit": 0,
+      "stdout": "4294967295\n",
+      "stderr": ""
+    },
+    {
+      "case": "strict_div",
+      "kind": "host",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "error: runtime: trap divzero fn=f at=- trip=- chain=f fix: test the divisor first, or use cdiv/crem, which return (0,false) for a zero divisor\n"
+    },
+    {
+      "case": "strict_get",
+      "kind": "native",
+      "exit": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "case": "strict_get",
+      "kind": "host",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "error: runtime: trap bounds fn=f at=- trip=- chain=f fix: keep the index below the length (check it, or use cget for a total read)\n"
+    }
+  ],
+  "after": [
+    {
+      "case": "strict-div",
+      "variant": "candidate",
+      "exit": 65,
+      "stdout": "",
+      "stderr": "a0: strict execution is unsupported by the native evaluator; use the full CLI\n"
+    },
+    {
+      "case": "strict-div",
+      "variant": "ubsan",
+      "exit": 65,
+      "stdout": "",
+      "stderr": "a0: strict execution is unsupported by the native evaluator; use the full CLI\n"
+    },
+    {
+      "case": "strict-safe",
+      "variant": "candidate",
+      "exit": 65,
+      "stdout": "",
+      "stderr": "a0: strict execution is unsupported by the native evaluator; use the full CLI\n"
+    },
+    {
+      "case": "strict-safe",
+      "variant": "ubsan",
+      "exit": 65,
+      "stdout": "",
+      "stderr": "a0: strict execution is unsupported by the native evaluator; use the full CLI\n"
+    },
+    {
+      "case": "comment",
+      "variant": "candidate",
+      "exit": 0,
+      "stdout": "41\n",
+      "stderr": ""
+    },
+    {
+      "case": "comment",
+      "variant": "ubsan",
+      "exit": 0,
+      "stdout": "41\n",
+      "stderr": ""
+    },
+    {
+      "case": "malformed",
+      "variant": "candidate",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "<tmp>/malformed.a0: parse error 1 at token 2\n"
+    },
+    {
+      "case": "malformed",
+      "variant": "ubsan",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "<tmp>/malformed.a0: parse error 1 at token 2\n"
+    }
+  ],
+  "prefixes": [
+    {
+      "prefix": "plain",
+      "variant": "baseline",
+      "exit": 0,
+      "stdout": "4294967295\n",
+      "stderr": ""
+    },
+    {
+      "prefix": "plain",
+      "variant": "candidate",
+      "exit": 65,
+      "stdout": "",
+      "stderr": "a0: strict execution is unsupported by the native evaluator; use the full CLI\n"
+    },
+    {
+      "prefix": "comments",
+      "variant": "baseline",
+      "exit": 0,
+      "stdout": "4294967295\n",
+      "stderr": ""
+    },
+    {
+      "prefix": "comments",
+      "variant": "candidate",
+      "exit": 65,
+      "stdout": "",
+      "stderr": "a0: strict execution is unsupported by the native evaluator; use the full CLI\n"
+    },
+    {
+      "prefix": "bom",
+      "variant": "baseline",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "<tmp>/prefix.a0: parse error 1 at token 0\n"
+    },
+    {
+      "prefix": "bom",
+      "variant": "candidate",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "<tmp>/prefix.a0: parse error 1 at token 0\n"
+    },
+    {
+      "prefix": "nbsp",
+      "variant": "baseline",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "<tmp>/prefix.a0: parse error 1 at token 0\n"
+    },
+    {
+      "prefix": "nbsp",
+      "variant": "candidate",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "<tmp>/prefix.a0: parse error 1 at token 0\n"
+    }
+  ],
+  "validation": {
+    "baseline": {
+      "passed": 2,
+      "failed": 2
+    },
+    "focused": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    "initialFailure": "The first corrected test run assumed BOM/NBSP support; separate baseline comparison established both were already rejected. That failure is preserved, and exact old rejection is now asserted."
+  },
+  "cost": {
+    "plan": {
+      "pairs": 3,
+      "order": [
+        [
+          "baseline",
+          "candidate"
+        ],
+        [
+          "candidate",
+          "baseline"
+        ],
+        [
+          "baseline",
+          "candidate"
+        ]
+      ],
+      "inputs": [
+        {
+          "name": "long-prefix.a0",
+          "sha256": "127f0e7d5ee9d4aad37390b51b8ed219984b0f52bccb4eaf4ebe73b651f297e3"
+        },
+        {
+          "name": "plain.a0",
+          "sha256": "64636f0167dcc762da752b90968614b8da16ac7f7b7a831c0699ac7fbdc9ab3c"
+        },
+        {
+          "name": "profile-comment.a0",
+          "sha256": "89311f26b6dd11e14838dc80c77572b742bdbe333cf03267febfea00266882b8"
+        },
+        {
+          "name": "profile-name.a0",
+          "sha256": "4d001085556c815edd7e9e4f0332b2262f005b7b508a967227350bb61208fb5a"
+        }
+      ],
+      "scope": "Native run on fixed canonical controls, including long comment prefixes; bounded resource control, not a speed claim."
+    },
+    "artifacts": {
+      "baseline": {
+        "bytes": 304344,
+        "sha256": "dadeab18203e96ba4e096a665a781965c0a857009a67ff6715837a6b50bf5096",
+        "checkerC_SHA256": "09b0e19933b7d5058cea875c6bac5295dc41198d5bbe79ef30774cdb72e27dc8"
+      },
+      "candidate": {
+        "bytes": 304344,
+        "sha256": "52fc26b1a151e7736a8e57d741ebdcb3134aa426c5671a3218d253e674403f7f",
+        "checkerC_SHA256": "09b0e19933b7d5058cea875c6bac5295dc41198d5bbe79ef30774cdb72e27dc8"
+      }
+    },
+    "runs": [
+      {
+        "input": "long-prefix.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 12.218904012115672,
+        "cpuMs": 11.708,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "long-prefix.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 6.686387991067022,
+        "cpuMs": 4.522,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "long-prefix.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 10.725311003625393,
+        "cpuMs": 10.319999999999999,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "long-prefix.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 8.51014701765962,
+        "cpuMs": 6.55,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "long-prefix.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 7.0766599965281785,
+        "cpuMs": 6.437,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "long-prefix.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 6.071928015444428,
+        "cpuMs": 5.741,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "plain.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 4.274767998140305,
+        "cpuMs": 3.849,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "plain.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 4.413273010868579,
+        "cpuMs": 4.1659999999999995,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "plain.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 4.8923630092758685,
+        "cpuMs": 4.553,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "plain.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 5.702452006516978,
+        "cpuMs": 5.311,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "plain.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 5.883022997295484,
+        "cpuMs": 5.587999999999999,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "plain.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 4.0257080108858645,
+        "cpuMs": 3.646,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-comment.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 5.136515013873577,
+        "cpuMs": 4.835,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-comment.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 4.733938985737041,
+        "cpuMs": 4.464,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-comment.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 4.604634013958275,
+        "cpuMs": 4.378,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-comment.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 10.481063014594838,
+        "cpuMs": 9.786999999999999,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-comment.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 6.690187990898266,
+        "cpuMs": 5.098,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-comment.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 5.038342991610989,
+        "cpuMs": 2.815,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-name.a0",
+        "pair": 0,
+        "variant": "baseline",
+        "wallMs": 5.278675002045929,
+        "cpuMs": 4.986,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-name.a0",
+        "pair": 0,
+        "variant": "candidate",
+        "wallMs": 4.879874002654105,
+        "cpuMs": 4.433999999999999,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-name.a0",
+        "pair": 1,
+        "variant": "candidate",
+        "wallMs": 4.299330001231283,
+        "cpuMs": 3.993,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-name.a0",
+        "pair": 1,
+        "variant": "baseline",
+        "wallMs": 4.921667015878484,
+        "cpuMs": 4.66,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-name.a0",
+        "pair": 2,
+        "variant": "baseline",
+        "wallMs": 6.278068001847714,
+        "cpuMs": 5.265,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      },
+      {
+        "input": "profile-name.a0",
+        "pair": 2,
+        "variant": "candidate",
+        "wallMs": 8.323521993588656,
+        "cpuMs": 7.720999999999999,
+        "peakRssKiB": 13696,
+        "outputSHA256": "040316eca5e77dbb2212c1efe8b81cb23bc67ce0ac8cb5c9d902d98bd45ddfa1"
+      }
+    ]
+  },
+  "limitations": [
+    "The native evaluator still does not implement strict traps; full CLI execution remains required.",
+    "Native BOM/NBSP prefix parsing remains unsupported with unchanged parse errors.",
+    "Four fixed valid-program controls with three paired samples each are resource controls, not performance claims.",
+    "No full-platform qualification or publication."
+  ]
+}
